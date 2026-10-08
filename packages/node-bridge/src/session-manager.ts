@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { createHash, randomBytes } from 'node:crypto';
+import { validateCursorState } from '@freerdp-bridge/protocol';
 import {
   ConfigError,
   validateSessionConfig,
@@ -13,6 +14,7 @@ import type {
   CaptureOptions,
   MediaCodec,
   InputEvent,
+  CursorState,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
@@ -97,9 +99,14 @@ export interface SessionSnapshot {
   error?: BridgeFailure;
 }
 export interface SessionEvent {
-  type: 'session.state' | 'session.error' | 'certificate.prompt';
+  type:
+    | 'session.state'
+    | 'session.error'
+    | 'certificate.prompt'
+    | 'cursor.state';
   session: SessionSnapshot;
   certificate?: CertificatePrompt;
+  cursor?: CursorState;
 }
 export interface CertificateResponse {
   challenge: string;
@@ -114,6 +121,7 @@ export interface SessionWorker {
   onState(listener: (state: SessionState) => void): () => void;
   onFailure(listener: (code?: SessionErrorCode) => void): () => void;
   onCertificate?(listener: (prompt: CertificatePrompt) => void): () => void;
+  onCursor?(listener: (cursor: CursorState) => void): () => void;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
   captureFrame?(
     sinceRevision: bigint,
@@ -139,6 +147,7 @@ export interface SessionManagerOptions {
 }
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
+  cursor?: CursorState;
   certificate?: CertificatePrompt;
   owner: string;
   snapshot: SessionSnapshot;
@@ -354,6 +363,50 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
               });
             }),
           );
+        if (worker.onCursor)
+          entry.unsubscribers.push(
+            worker.onCursor((cursor) => {
+              if (
+                entry.released ||
+                terminal(entry.snapshot.state) ||
+                entry.snapshot.state === 'closing'
+              )
+                return;
+              try {
+                validateCursorState(cursor);
+              } catch {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+                return;
+              }
+              if (
+                entry.cursor &&
+                (cursor.revision <= entry.cursor.revision ||
+                  (cursor.shapeId !== 0n &&
+                    cursor.shapeId === entry.cursor.shapeId &&
+                    (cursor.width !== entry.cursor.width ||
+                      cursor.height !== entry.cursor.height ||
+                      cursor.hotX !== entry.cursor.hotX ||
+                      cursor.hotY !== entry.cursor.hotY)))
+              ) {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+                return;
+              }
+              const rgba =
+                cursor.rgba &&
+                (entry.cursor?.shapeId === cursor.shapeId
+                  ? entry.cursor.rgba
+                  : Buffer.from(cursor.rgba));
+              entry.cursor = {
+                ...cursor,
+                ...(rgba ? { rgba } : {}),
+              };
+              this.emit('event', {
+                type: 'cursor.state',
+                session: structuredClone(entry.snapshot),
+                cursor: entry.cursor,
+              });
+            }),
+          );
         if (terminal(entry.snapshot.state))
           throw new SessionError('WORKER_START_FAILED');
       } catch {
@@ -447,6 +500,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.snapshot.error = new SessionError(code).failure;
     entry.tokens.clear();
     delete entry.certificate;
+    delete entry.cursor;
     entry.abort.abort();
     this.totals.failed++;
     this.transition(entry, 'failed');
@@ -461,6 +515,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.abort.abort();
     entry.tokens.clear();
     delete entry.certificate;
+    delete entry.cursor;
     for (const unsubscribe of entry.unsubscribers.splice(0)) {
       try {
         unsubscribe();
@@ -541,6 +596,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     release: () => void;
     session: SessionSnapshot;
     certificate?: CertificatePrompt;
+    cursor?: CursorState;
     respondCertificate: (response: CertificateResponse) => Promise<void>;
     captureFrame: (
       sinceRevision: bigint,
@@ -571,6 +627,16 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     let capturing = false;
     return {
       session: structuredClone(entry.snapshot),
+      ...(entry.cursor
+        ? {
+            cursor: {
+              ...entry.cursor,
+              ...(entry.cursor.rgba
+                ? { rgba: Buffer.from(entry.cursor.rgba) }
+                : {}),
+            },
+          }
+        : {}),
       ...(entry.certificate
         ? { certificate: structuredClone(entry.certificate) }
         : {}),

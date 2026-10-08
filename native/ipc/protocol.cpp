@@ -1,4 +1,5 @@
 #include "protocol.hpp"
+#include "cursor.hpp"
 #include <algorithm>
 #include <limits>
 
@@ -39,6 +40,8 @@ static std::uint32_t limit(Kind kind) {
     return 4;
   case Kind::pipeline_stats_ack:
     return 64;
+  case Kind::cursor_update:
+    return static_cast<std::uint32_t>(cursor::metadata_bytes + cursor::max_rgba_bytes);
   case Kind::configure:
     return 2048;
   case Kind::secret:
@@ -70,10 +73,12 @@ Header decode_header(std::span<const std::uint8_t> bytes) {
   const auto length = static_cast<std::uint32_t>(read_be(bytes.subspan(20, 4)));
   const auto maximum = limit(kind);
   const bool variable = kind == Kind::hello_ack || kind == Kind::configure ||
-                        kind == Kind::secret || kind == Kind::frame || kind == Kind::frame_avc;
+                        kind == Kind::secret || kind == Kind::frame || kind == Kind::frame_avc ||
+                        kind == Kind::cursor_update;
   if (length > maximum || (!variable && length != maximum) ||
       (kind == Kind::frame && length < frame_metadata_bytes) ||
-      (kind == Kind::frame_avc && length < avc_metadata_bytes))
+      (kind == Kind::frame_avc && length < avc_metadata_bytes) ||
+      (kind == Kind::cursor_update && length < cursor::metadata_bytes))
     throw ProtocolError();
   return {kind, read_be(bytes.subspan(12, 8)), length};
 }

@@ -81,7 +81,7 @@ std::vector<std::uint8_t> build_payload() {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
-  append_be(bytes, 125, 2); // Lifecycle, connect, JPEG/AVC, input, pipeline diagnostics.
+  append_be(bytes, 253, 2); // Lifecycle, connect, JPEG/AVC, input, diagnostics, cursor.
 #else
   append_be(bytes, 1, 2);
 #endif
@@ -209,10 +209,10 @@ int main(int argc, char **argv) {
                  "\"rdp\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
-                 "\"pipelineStats\":true},"
+                 "\"pipelineStats\":true,\"cursor\":true},"
 #else
                  "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
-                 "\"pipelineStats\":false},"
+                 "\"pipelineStats\":false,\"cursor\":false},"
 #endif
               << "\"os\":\"" << platform << "\",\"arch\":\"" << arch
               << "\",\"transport\":\"framed-pipes\"}\n";

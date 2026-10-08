@@ -1,4 +1,5 @@
 #include "connection.hpp"
+#include "cursor_convert.hpp"
 #include "event_pump.hpp"
 #include <algorithm>
 #include <chrono>
@@ -8,6 +9,7 @@
 #include <freerdp/gdi/gdi.h>
 #include <freerdp/input.h>
 #include <freerdp/settings.h>
+#include <limits>
 #include <winpr/synch.h>
 #ifdef _WIN32
 #include <winpr/winsock.h>
@@ -26,7 +28,7 @@ Connection &Connection::owner(freerdp *instance) {
   return *reinterpret_cast<Context *>(instance->context)->owner;
 }
 Connection::Connection(std::function<void(const Packet &)> send)
-    : context_(nullptr, freerdp_client_context_free), send_(std::move(send)) {
+    : context_(nullptr, freerdp_client_context_free), send_(std::move(send)), cursor_(send_) {
   RDP_CLIENT_ENTRY_POINTS entry{};
   entry.Size = sizeof(entry);
   entry.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -108,6 +110,9 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_AudioPlayback, FALSE);
   boolean(FreeRDP_AudioCapture, FALSE);
   boolean(FreeRDP_SupportGraphicsPipeline, FALSE);
+  boolean(FreeRDP_GrabMouse, TRUE); // Enables remote SetPosition callbacks; no GUI is created.
+  number(FreeRDP_PointerCacheSize, 20);
+  number(FreeRDP_ColorPointerCacheSize, 20);
 }
 void Connection::secret(std::span<const std::uint8_t> payload) {
   if (!config_ || supplied_ || started_)
@@ -134,6 +139,58 @@ void Connection::erase_password() noexcept {
 BOOL Connection::pre_connect(freerdp *instance) {
   return freerdp_client_load_addins(instance->context->channels, instance->context->settings);
 }
+namespace {
+struct CursorPointer {
+  rdpPointer base;
+  std::uint64_t id;
+};
+} // namespace
+BOOL Connection::pointer_new(rdpContext *context, rdpPointer *pointer) {
+  auto &self = owner(context->instance);
+  if (!pointer || self.next_cursor_id_ == (std::numeric_limits<std::uint64_t>::max)() ||
+      !pointer->width || !pointer->height || pointer->width > cursor::max_dimension ||
+      pointer->height > cursor::max_dimension)
+    return FALSE;
+  reinterpret_cast<CursorPointer *>(pointer)->id = ++self.next_cursor_id_;
+  return TRUE;
+}
+BOOL Connection::pointer_set(rdpContext *context, rdpPointer *pointer) {
+  try {
+    auto &self = owner(context->instance);
+    const auto id = reinterpret_cast<CursorPointer *>(pointer)->id;
+    if (self.cursor_.shape_id() == id)
+      self.cursor_.visibility(true);
+    else
+      self.cursor_.shape(cursor::convert(*pointer, id, &context->gdi->palette));
+    return TRUE;
+  } catch (...) {
+    return FALSE;
+  }
+}
+BOOL Connection::pointer_null(rdpContext *context) {
+  try {
+    owner(context->instance).cursor_.visibility(false);
+    return TRUE;
+  } catch (...) {
+    return FALSE;
+  }
+}
+BOOL Connection::pointer_default(rdpContext *context) {
+  try {
+    owner(context->instance).cursor_.default_shape();
+    return TRUE;
+  } catch (...) {
+    return FALSE;
+  }
+}
+BOOL Connection::pointer_position(rdpContext *context, UINT32 x, UINT32 y) {
+  try {
+    owner(context->instance).cursor_.position(x, y);
+    return TRUE;
+  } catch (...) {
+    return FALSE;
+  }
+}
 BOOL Connection::post_connect(freerdp *instance) {
   // Decode and encode on the same RDP thread; no queue or copy of raw desktops.
   const auto width = freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopWidth);
@@ -146,6 +203,19 @@ BOOL Connection::post_connect(freerdp *instance) {
   instance->context->update->DesktopResize = resize;
   instance->context->update->BeginPaint = begin_paint;
   instance->context->update->EndPaint = end_paint;
+  rdpPointer prototype{};
+  prototype.size = sizeof(CursorPointer);
+  prototype.New = pointer_new;
+  prototype.Set = pointer_set;
+  prototype.SetNull = pointer_null;
+  prototype.SetDefault = pointer_default;
+  prototype.SetPosition = pointer_position;
+  graphics_register_pointer(instance->context->graphics, &prototype);
+  try {
+    owner(instance).cursor_.initialize();
+  } catch (...) {
+    return FALSE;
+  }
   ++owner(instance).revision_;
   return TRUE;
 }

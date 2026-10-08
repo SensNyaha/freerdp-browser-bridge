@@ -1,5 +1,7 @@
 export * from './media.js';
 export * from './input.js';
+export * from './cursor.js';
+import { CURSOR_METADATA_BYTES, MAX_CURSOR_BYTES } from './cursor.js';
 export const IPC_VERSION = 1;
 export const HEADER_BYTES = 24;
 export const MAX_CONTROL_BYTES = 4096;
@@ -31,6 +33,7 @@ export enum Kind {
   InputAck = 23,
   PipelineStats = 24,
   PipelineStatsAck = 25,
+  CursorUpdate = 26,
 }
 
 export interface Packet {
@@ -68,6 +71,8 @@ function payloadLimit(kind: number): number {
       return 4;
     case Kind.PipelineStatsAck:
       return 64;
+    case Kind.CursorUpdate:
+      return CURSOR_METADATA_BYTES + MAX_CURSOR_BYTES;
     case Kind.Configure:
       return 2048;
     case Kind.Secret:
@@ -115,10 +120,12 @@ export function decodeHeader(header: Buffer): {
       Kind.Secret,
       Kind.Frame,
       Kind.FrameAvc,
+      Kind.CursorUpdate,
     ].includes(kind) &&
       length !== payloadLimit(kind)) ||
     (kind === Kind.Frame && length < 24) ||
-    (kind === Kind.FrameAvc && length < 28)
+    (kind === Kind.FrameAvc && length < 28) ||
+    (kind === Kind.CursorUpdate && length < CURSOR_METADATA_BYTES)
   ) {
     throw new ProtocolError();
   }
@@ -214,6 +221,7 @@ export interface WorkerBuild {
     h264Capture: boolean;
     basicInput: boolean;
     pipelineStats: boolean;
+    cursor: boolean;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -229,9 +237,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~127) !== 0 ||
+    (capabilities & ~255) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 120) !== 0 && (capabilities & 4) === 0)
+    ((capabilities & 248) !== 0 && (capabilities & 4) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -269,6 +277,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       h264Capture: Boolean(capabilities & 16),
       basicInput: Boolean(capabilities & 32),
       pipelineStats: Boolean(capabilities & 64),
+      cursor: Boolean(capabilities & 128),
     },
     bridgeVersion,
     gitCommit,

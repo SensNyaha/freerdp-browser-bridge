@@ -1,6 +1,7 @@
 #pragma once
 #include "certificate.hpp"
 #include "connection_config.hpp"
+#include "cursor.hpp"
 #include "input.hpp"
 #include "jpeg.hpp"
 #include "pipeline_stats.hpp"
@@ -59,6 +60,13 @@ class Connection {
   bool input_overflow_ = false;
   input::State input_state_;
   PipelineStats pipeline_stats_;
+  cursor::State cursor_;
+  std::uint64_t next_cursor_id_ = 0;
+  static BOOL pointer_new(rdpContext *context, rdpPointer *pointer);
+  static BOOL pointer_set(rdpContext *context, rdpPointer *pointer);
+  static BOOL pointer_null(rdpContext *context);
+  static BOOL pointer_default(rdpContext *context);
+  static BOOL pointer_position(rdpContext *context, UINT32 x, UINT32 y);
   bool send_input(const input::Event &event);
   void input_pending(bool ending = false);
   void capture_pending(bool ending = false);

@@ -34,7 +34,8 @@ enum class Kind : std::uint16_t {
   input = 22,
   input_ack = 23,
   pipeline_stats = 24,
-  pipeline_stats_ack = 25
+  pipeline_stats_ack = 25,
+  cursor_update = 26
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

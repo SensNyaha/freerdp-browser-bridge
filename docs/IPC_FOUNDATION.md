@@ -33,14 +33,15 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | INPUT_ACK | 23 | empty; FreeRDP input API succeeded; echoes INPUT requestId |
 | PIPELINE_STATS | 24 | empty; requires diagnostics capability |
 | PIPELINE_STATS_ACK | 25 | exactly eight u64 counters/timings (64 bytes), described below |
+| CURSOR_UPDATE | 26 | 40-byte metadata + optional RGBA8, maximum 589,864 bytes; requestId=0; [cursor layout](CURSOR.md) |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
-bit 5 experimental basic input, bit 6 pipeline diagnostics).
+bit 5 experimental basic input, bit 6 pipeline diagnostics, bit 7 experimental cursor).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. Bundled builds set bits 2/3/4/5/6, not bit 1. Bits 3/4/5/6 require bit 2.
+set the usable RDP bit. Bundled builds set bits 2/3/4/5/6/7, not bit 1. Bits 3/4/5/6/7 require bit 2.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers

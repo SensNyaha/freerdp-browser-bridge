@@ -20,6 +20,8 @@ import {
   decodeAvcFrame,
   encodeInput,
   decodePipelineStats,
+  decodeCursorUpdate,
+  type CursorState,
   type PipelineStats,
   type InputEvent,
   type CaptureOptions,
@@ -89,6 +91,7 @@ export class WorkerProcess extends EventEmitter {
   private report: WorkerBuild | undefined;
   private connectionRequested = false;
   private certificatePrompt: CertificatePrompt | undefined;
+  private cursorState: CursorState | undefined;
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
@@ -256,6 +259,10 @@ export class WorkerProcess extends EventEmitter {
         decodeCertificatePrompt(packet.payload);
         return;
       }
+      if (packet.kind === Kind.CursorUpdate) {
+        decodeCursorUpdate(packet.payload);
+        return;
+      }
     }
     if (
       packet.requestId === 0n &&
@@ -274,6 +281,31 @@ export class WorkerProcess extends EventEmitter {
           throw new WorkerError('IPC_UNEXPECTED_EVENT');
         this.certificatePrompt = decodeCertificatePrompt(packet.payload);
         this.emit('certificate', structuredClone(this.certificatePrompt));
+        return;
+      }
+      if (
+        packet.kind === Kind.CursorUpdate &&
+        this.report?.capabilities.cursor
+      ) {
+        const update = decodeCursorUpdate(packet.payload);
+        if (this.cursorState && update.revision <= this.cursorState.revision)
+          throw new WorkerError('IPC_UNEXPECTED_EVENT');
+        if (!update.default && !update.rgba) {
+          const old = this.cursorState;
+          if (
+            !old ||
+            !old.rgba ||
+            old.shapeId !== update.shapeId ||
+            old.width !== update.width ||
+            old.height !== update.height ||
+            old.hotX !== update.hotX ||
+            old.hotY !== update.hotY
+          )
+            throw new WorkerError('IPC_UNEXPECTED_EVENT');
+          update.rgba = old.rgba;
+        }
+        this.cursorState = update;
+        this.emit('cursor', update);
         return;
       }
     }
@@ -509,6 +541,7 @@ export class WorkerProcess extends EventEmitter {
   }
 
   private async cleanup(): Promise<void> {
+    this.cursorState = undefined;
     if (this.directory) {
       await rm(this.directory, {
         recursive: true,

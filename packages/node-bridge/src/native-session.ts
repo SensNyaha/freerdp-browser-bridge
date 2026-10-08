@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import type { CursorState } from '@freerdp-bridge/protocol';
 import { WorkerProcess, WorkerError, type WorkerOptions } from './index.js';
 import {
   SessionError,
@@ -32,6 +33,9 @@ export class NativeSessionWorker implements SessionWorker {
     });
     this.worker.on('certificate', (prompt: CertificatePrompt) => {
       if (!this.closing) this.events.emit('certificate', prompt);
+    });
+    this.worker.on('cursor', (cursor: CursorState) => {
+      if (!this.closing) this.events.emit('cursor', cursor);
     });
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
@@ -102,6 +106,12 @@ export class NativeSessionWorker implements SessionWorker {
     this.events.on('certificate', listener);
     return () => {
       this.events.off('certificate', listener);
+    };
+  }
+  onCursor(listener: (cursor: CursorState) => void): () => void {
+    this.events.on('cursor', listener);
+    return () => {
+      this.events.off('cursor', listener);
     };
   }
   decideCertificate(prompt: CertificatePrompt, accept: boolean): Promise<void> {
