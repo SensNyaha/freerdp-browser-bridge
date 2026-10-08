@@ -1,9 +1,11 @@
+#include "build_features.hpp"
 #include "protocol.hpp"
 #include <csignal>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <string>
 #ifdef _WIN32
 #include <fcntl.h>
@@ -13,6 +15,7 @@
 #include <unistd.h>
 #endif
 #ifdef BRIDGE_WITH_FREERDP
+#include <freerdp/client.h>
 #include <freerdp/freerdp.h>
 #endif
 
@@ -103,6 +106,16 @@ void error(std::uint64_t request, std::uint32_t code) {
   send({Kind::error, request, std::move(payload)});
 }
 int run() {
+#ifdef BRIDGE_WITH_FREERDP
+  RDP_CLIENT_ENTRY_POINTS entry{};
+  entry.Size = sizeof(entry);
+  entry.Version = RDP_CLIENT_INTERFACE_VERSION;
+  entry.ContextSize = sizeof(rdpContext);
+  const std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)> context(
+      freerdp_client_context_new(&entry), freerdp_client_context_free);
+  if (!context)
+    throw std::runtime_error("FreeRDP context initialization failed");
+#endif
   bool ready = false;
   std::array<std::uint8_t, header_bytes> buffer{};
   while (read_exact(buffer, true)) {
@@ -139,6 +152,10 @@ int main(int argc, char **argv) {
   if (std::string(freerdp_version()) != "" && std::string(freerdp_version()) != target_freerdp) {
     std::fputs("FreeRDP runtime version mismatch\n", stderr);
     return 3;
+  }
+  if (argc == 2 && std::string(argv[1]) == "--build-features") {
+    std::cout << bridge::build_features << '\n';
+    return 0;
   }
   if (report) {
     std::cout << "{\"bridgeVersion\":\"" << BRIDGE_VERSION << "\",\"gitCommit\":\""

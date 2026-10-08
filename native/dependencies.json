@@ -5,5 +5,9 @@
     "tagObject": "6a416c893c33a902fffb3586d1f3b2201e33a7ed",
     "commit": "bf217a504e54cc719880c228e82353382cd7d4fa"
   },
-  "catch2": { "version": "3.8.1" }
+  "catch2": { "version": "3.8.1" },
+  "vcpkg": {
+    "repository": "https://github.com/microsoft/vcpkg.git",
+    "commit": "2750401336fb7c95f6619657a46a7e798661341c"
+  }
 }

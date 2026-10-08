@@ -14,7 +14,11 @@
     "format:check": "prettier --check .",
     "check": "pnpm build && pnpm lint && pnpm format:check && pnpm test",
     "build:native": "cmake --preset foundation && cmake --build --preset foundation",
-    "test:native": "ctest --preset foundation"
+    "test:native": "ctest --preset foundation",
+    "build:dependencies": "node scripts/build-dependencies.mjs",
+    "build:freerdp": "node scripts/build-freerdp.mjs",
+    "build:bundled": "node scripts/build-bundled.mjs",
+    "test:bundle": "node --test tests/packaging/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "24.10.0",
