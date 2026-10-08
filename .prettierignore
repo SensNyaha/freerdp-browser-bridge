@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+.tools
+.deps
+pnpm-lock.yaml
+*.md
+native
+CMakeLists.txt
+*.cmake

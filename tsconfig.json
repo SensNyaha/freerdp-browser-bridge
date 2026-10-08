@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/protocol" },
+    { "path": "packages/config" },
+    { "path": "packages/node-bridge" },
+    { "path": "apps/bridge-api" }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "freerdp": {
+    "version": "3.32.1",
+    "repository": "https://github.com/FreeRDP/FreeRDP.git",
+    "tagObject": "6a416c893c33a902fffb3586d1f3b2201e33a7ed",
+    "commit": "bf217a504e54cc719880c228e82353382cd7d4fa"
+  },
+  "catch2": { "version": "3.8.1" }
+}

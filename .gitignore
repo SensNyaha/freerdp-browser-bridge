@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.tools/
+.deps/
+.runtime/
+coverage/
+*.log
+*.dmp
+*.pdb
+*.obj
+*.ilk
+*.tmp
+.env
+.env.*
+!.env.example
