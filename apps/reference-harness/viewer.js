@@ -10,11 +10,23 @@ const stats = {
   width: 0,
   height: 0,
   error: undefined,
+  codec: undefined,
+  resets: 0,
+  keyframes: 0,
+  stage: 'waiting',
 };
+class DecodeFailure extends Error {}
+function closeDecoder(session) {
+  const decoder = session.decoder;
+  session.decoder = undefined;
+  if (decoder && decoder.state !== 'closed') decoder.close();
+}
 function detach() {
   if (!current) return;
   current.closed = true;
   stats.closed = true;
+  current.abortDecode?.();
+  closeDecoder(current);
   current.control.close();
   current.media.close();
   current = undefined;
@@ -50,7 +62,7 @@ document
   .addEventListener('click', () => decide(false));
 
 /** Same-origin reference consumer. The host application supplies fresh single-use attach tokens. */
-function attach(created) {
+function attach(created, options = {}) {
   detach();
   if (
     !/^[0-9a-f]{32}$/.test(created.sessionId) ||
@@ -66,6 +78,10 @@ function attach(created) {
     width: 0,
     height: 0,
     error: undefined,
+    codec: undefined,
+    resets: 0,
+    keyframes: 0,
+    stage: 'waiting',
   });
   const socket = (channel) => {
     const url = new URL(
@@ -85,6 +101,13 @@ function attach(created) {
     decoding: false,
     closed: false,
     configured: false,
+    decoder: undefined,
+    abortDecode: undefined,
+    codec: undefined,
+    needKeyframe: true,
+    timestamp: undefined,
+    queued: 0,
+    queuedBytes: 0,
   };
   current = session;
   status.textContent = 'Подключение';
@@ -119,19 +142,158 @@ function attach(created) {
   });
   session.control.addEventListener('error', fail);
   session.media.binaryType = 'arraybuffer';
-  session.media.addEventListener('open', () =>
+  let offered;
+  session.media.addEventListener('open', () => {
+    void negotiate().catch(fail);
+  });
+  async function negotiate() {
+    stats.stage = 'negotiate';
+    const requested = options.codecs ?? ['h264', 'jpeg'];
+    if (
+      !Array.isArray(requested) ||
+      requested.length < 1 ||
+      requested.length > 2 ||
+      new Set(requested).size !== requested.length ||
+      requested.some((codec) => !['h264', 'jpeg'].includes(codec))
+    )
+      throw new Error();
+    let h264 = false;
+    if (requested.includes('h264') && typeof VideoDecoder === 'function')
+      h264 = (
+        await VideoDecoder.isConfigSupported({
+          codec: 'avc1.42E028',
+          optimizeForLatency: true,
+        })
+      ).supported;
+    offered = requested.filter((codec) => codec === 'jpeg' || h264);
+    if (!offered.length) throw new Error();
+    if (session.closed) return;
     session.media.send(
       JSON.stringify({
         v: 1,
         type: 'media.hello',
-        data: { codecs: ['jpeg'] },
+        data: { codecs: offered },
       }),
-    ),
-  );
+    );
+  }
   session.media.addEventListener('error', fail);
+  let rendering = Promise.resolve();
   session.media.addEventListener('message', (event) => {
-    void render(event.data).catch(fail);
+    if (session.closed) return;
+    const size =
+      typeof event.data === 'string'
+        ? event.data.length * 2
+        : event.data.byteLength;
+    if (
+      ++session.queued > 3 ||
+      (session.queuedBytes += size) > 8 * 1024 * 1024 + 8192
+    ) {
+      fail();
+      return;
+    }
+    rendering = rendering
+      .then(() => render(event.data))
+      .catch(fail)
+      .finally(() => {
+        session.queued--;
+        session.queuedBytes -= size;
+      });
   });
+  function acknowledge(sequence) {
+    session.media.send(
+      JSON.stringify({ v: 1, type: 'media.ack', data: { sequence } }),
+    );
+  }
+  function draw(image) {
+    const width = image.displayWidth ?? image.width,
+      height = image.displayHeight ?? image.height;
+    if (width !== canvas.width || height !== canvas.height)
+      throw new DecodeFailure();
+    canvas.getContext('2d').drawImage(image, 0, 0);
+    stats.frames++;
+  }
+  async function configureAvc(description) {
+    closeDecoder(session);
+    if (
+      typeof VideoDecoder !== 'function' ||
+      description.length < 17 ||
+      description.length > 2059 ||
+      description[0] !== 1 ||
+      description[4] !== 255 ||
+      description[5] !== 225
+    )
+      throw new Error();
+    const config = {
+      codec:
+        'avc1.' +
+        Array.from(description.subarray(1, 4), (byte) =>
+          byte.toString(16).padStart(2, '0'),
+        ).join(''),
+      description,
+      codedWidth: canvas.width,
+      codedHeight: canvas.height,
+      optimizeForLatency: true,
+    };
+    if (!(await VideoDecoder.isConfigSupported(config)).supported)
+      throw new Error();
+    if (session.closed) return;
+    let pending;
+    const decoder = new VideoDecoder({
+      output(frame) {
+        try {
+          if (session.closed || session.decoder !== decoder) return;
+          if (!pending) {
+            fail();
+            return;
+          }
+          if (frame.timestamp !== pending.timestamp) throw new DecodeFailure();
+          draw(frame);
+        } catch {
+          pending?.reject(new DecodeFailure());
+          return;
+        } finally {
+          frame.close();
+        }
+        pending.resolve();
+      },
+      error() {
+        pending?.reject(new DecodeFailure());
+      },
+    });
+    decoder.configure(config);
+    session.decoder = decoder;
+    session.decode = (data, timestamp, keyframe) =>
+      new Promise((resolve, reject) => {
+        if (pending || decoder.decodeQueueSize > 0) {
+          reject(new DecodeFailure());
+          return;
+        }
+        const finish = (error) => {
+          if (!pending) return;
+          clearTimeout(timer);
+          pending = undefined;
+          session.abortDecode = undefined;
+          if (error) reject(error);
+          else resolve();
+        };
+        const timer = setTimeout(() => finish(new DecodeFailure()), 1500);
+        pending = { timestamp, resolve: () => finish(), reject: finish };
+        session.abortDecode = () => finish(new DecodeFailure());
+        try {
+          decoder.decode(
+            new EncodedVideoChunk({
+              type: keyframe ? 'key' : 'delta',
+              timestamp,
+              data,
+            }),
+          );
+        } catch {
+          finish(new DecodeFailure());
+        }
+        // Per-frame flush would require a new keyframe for every following decode.
+      });
+    session.needKeyframe = true;
+  }
   async function render(bytes) {
     if (session.closed) return;
     if (typeof bytes === 'string') {
@@ -139,12 +301,17 @@ function attach(created) {
       if (
         message.v !== 1 ||
         message.type !== 'media.ready' ||
-        message.data.codec !== 'jpeg'
+        session.codec ||
+        !offered?.includes(message.data.codec) ||
+        message.data.maxInFlight !== 1
       )
         throw new Error();
+      session.codec = stats.codec = message.data.codec;
+      stats.stage = 'ready';
       return;
     }
     if (
+      !session.codec ||
       !(bytes instanceof ArrayBuffer) ||
       bytes.byteLength < 28 ||
       bytes.byteLength > 8 * 1024 * 1024 + 28
@@ -163,11 +330,12 @@ function attach(created) {
     const type = view.getUint8(5),
       flags = view.getUint16(6);
     if (type === 1) {
+      stats.stage = 'config';
       if (
-        bytes.byteLength !== 36 ||
+        bytes.byteLength < 36 ||
         flags !== 2 ||
         view.getUint8(28) !== 1 ||
-        view.getUint8(29) !== 2 ||
+        view.getUint8(29) !== (session.codec === 'h264' ? 1 : 2) ||
         view.getUint16(34) !== 0
       )
         throw new Error();
@@ -175,34 +343,84 @@ function attach(created) {
         height = view.getUint16(32);
       if (width < 1 || width > 7680 || height < 1 || height > 4320)
         throw new Error();
+      if (session.codec === 'jpeg' && bytes.byteLength !== 36)
+        throw new Error();
+      if (
+        session.codec === 'h264' &&
+        (width < 16 ||
+          height < 16 ||
+          width > 3840 ||
+          height > 2160 ||
+          width % 2 ||
+          height % 2)
+      )
+        throw new Error();
       canvas.width = width;
       canvas.height = height;
       stats.width = width;
       stats.height = height;
+      if (session.codec === 'h264')
+        await configureAvc(new Uint8Array(bytes, 36));
       session.configured = true;
       return;
     }
-    if (type !== 2 || !session.configured || ![1, 3].includes(flags))
+    if (
+      type !== 2 ||
+      !session.configured ||
+      !(session.codec === 'h264' ? [0, 1, 3] : [1, 3]).includes(flags)
+    )
+      throw new Error();
+    const timestamp = Number(view.getBigUint64(16));
+    if (
+      !Number.isSafeInteger(timestamp) ||
+      (session.timestamp !== undefined && timestamp <= session.timestamp)
+    )
+      throw new Error();
+    session.timestamp = timestamp;
+    if (session.codec === 'h264' && session.needKeyframe && !(flags & 1))
       throw new Error();
     session.decoding = true;
+    stats.stage = 'decode';
     let bitmap;
     try {
-      bitmap = await createImageBitmap(
-        new Blob([bytes.slice(28)], { type: 'image/jpeg' }),
-      );
+      if (session.codec === 'h264') {
+        try {
+          await session.decode(
+            new Uint8Array(bytes, 28),
+            timestamp,
+            Boolean(flags & 1),
+          );
+        } catch (error) {
+          if (session.closed) return;
+          if (!(error instanceof DecodeFailure) || stats.resets >= 3)
+            throw error;
+          stats.resets++;
+          closeDecoder(session);
+          session.configured = false;
+          session.media.send(
+            JSON.stringify({
+              v: 1,
+              type: 'media.reset',
+              data: { sequence: view.getUint32(12) },
+            }),
+          );
+          return;
+        }
+        session.needKeyframe = false;
+        if (flags & 1) stats.keyframes++;
+      } else {
+        bitmap = await createImageBitmap(
+          new Blob([bytes.slice(28)], { type: 'image/jpeg' }),
+        );
+        if (session.closed) return;
+        draw(bitmap);
+        bitmap.close();
+        bitmap = undefined;
+      }
       if (session.closed) return;
-      if (bitmap.width !== canvas.width || bitmap.height !== canvas.height)
-        throw new Error();
-      canvas.getContext('2d').drawImage(bitmap, 0, 0);
-      stats.frames++;
+      stats.stage = 'render';
       stats.bytes += bytes.byteLength - 28;
-      session.media.send(
-        JSON.stringify({
-          v: 1,
-          type: 'media.ack',
-          data: { sequence: view.getUint32(12) },
-        }),
-      );
+      acknowledge(view.getUint32(12));
     } finally {
       bitmap?.close();
       session.decoding = false;

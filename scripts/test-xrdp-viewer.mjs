@@ -9,8 +9,11 @@ import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
+const mode = process.argv[3] ?? 'jpeg';
+const codecs = [mode === 'jpeg' ? 'jpeg' : 'h264'];
 if (
-  process.argv.length !== 3 ||
+  ![3, 4].includes(process.argv.length) ||
+  !['jpeg', 'h264', 'h264-reset'].includes(mode) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
 )
   throw new Error('Pass the previously verified certificate fingerprint');
@@ -58,6 +61,8 @@ for (const [url, name, type] of [
 }
 let browser;
 let sessionId;
+let page;
+let phase = 'create';
 try {
   await server.listen({ host: '127.0.0.1', port: 47999 });
   const created = await server.inject({
@@ -76,19 +81,35 @@ try {
   if (created.statusCode !== 202) throw new Error('LAB_CREATE_FAILED');
   const attachment = created.json();
   sessionId = attachment.sessionId;
+  phase = 'browser';
   browser = await chromium.launch({
     channel: process.platform === 'win32' ? 'msedge' : 'chromium',
     headless: true,
   });
-  const page = await browser.newPage({
+  page = await browser.newPage({
     viewport: { width: 1980, height: 1240 },
   });
+  if (mode === 'h264-reset')
+    await page.addInitScript(() => {
+      const Original = globalThis.EncodedVideoChunk;
+      let injected = false;
+      globalThis.EncodedVideoChunk = class extends Original {
+        constructor(init) {
+          if (!injected) {
+            injected = true;
+            super({ ...init, data: new Uint8Array([0, 0, 0, 2, 0x65, 0]) });
+          } else super(init);
+        }
+      };
+    });
   await page.goto(origin + '/harness/');
+  phase = 'attach';
   await page.waitForFunction(() => Boolean(window.bridgeViewer));
   await page.evaluate(
-    (created) => window.bridgeViewer.attach(created),
-    attachment,
+    ({ created, codecs }) => window.bridgeViewer.attach(created, { codecs }),
+    { created: attachment, codecs },
   );
+  phase = 'certificate';
   await page.waitForFunction(
     () => !document.querySelector('#certificate').hidden,
     undefined,
@@ -99,12 +120,14 @@ try {
     fingerprint,
   );
   if (!accepted) throw new Error('LAB_CERTIFICATE_CHANGED');
+  phase = 'render';
   await page.waitForFunction(
     () => window.bridgeViewer.stats.frames > 0,
     undefined,
     { timeout: 20000 },
   );
-  await delay(3000);
+  phase = 'pixels';
+  await delay(15000); // Let the remote login/desktop finish painting before visual verification.
   const stats = await page.evaluate(() => {
     const canvas = document.querySelector('#desktop');
     const pixels = canvas
@@ -126,9 +149,21 @@ try {
     stats.height !== 1080
   )
     throw new Error('LAB_RENDER_FAILED');
-  await page
-    .locator('#desktop')
-    .screenshot({ path: resolve('.local-tests/xrdp-browser.png') });
+  if (
+    stats.codec !== codecs[0] ||
+    (mode !== 'jpeg' && stats.keyframes < 1) ||
+    (mode === 'h264-reset' && stats.resets !== 1)
+  )
+    throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
+  await page.locator('#desktop').screenshot({
+    path: resolve(
+      '.local-tests/' +
+        (mode === 'jpeg'
+          ? 'xrdp-browser.png'
+          : 'xrdp-browser-' + mode + '.png'),
+    ),
+  });
+  phase = 'reattach';
   await page.evaluate(() => window.bridgeViewer.detach());
   await delay(100); // Let the old socket releases reach the registry.
   const nextAttach = {};
@@ -143,10 +178,10 @@ try {
       throw new Error('LAB_REATTACH_TOKEN_FAILED');
     nextAttach[channel] = response.json();
   }
-  await page.evaluate((created) => window.bridgeViewer.attach(created), {
-    sessionId,
-    attach: nextAttach,
-  });
+  await page.evaluate(
+    ({ created, codecs }) => window.bridgeViewer.attach(created, { codecs }),
+    { created: { sessionId, attach: nextAttach }, codecs },
+  );
   await page.waitForFunction(
     () => window.bridgeViewer.stats.frames > 0,
     undefined,
@@ -176,6 +211,10 @@ try {
     }),
   );
 } catch {
+  const stats = await page
+    ?.evaluate(() => window.bridgeViewer?.stats)
+    .catch(() => undefined);
+  console.error(JSON.stringify({ type: 'lab.browser.failure', phase, stats }));
   console.error(
     'Local XRDP browser check failed; credentials and raw diagnostics omitted',
   );

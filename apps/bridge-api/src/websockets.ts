@@ -3,7 +3,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
-import { installJpegMedia } from './media.js';
+import { installMedia } from './media.js';
 import {
   publicSessionError,
   type SessionManager,
@@ -225,7 +225,7 @@ export function installSessionWebSockets(
           if (value) value.alive = true;
         });
         if (match[2] === 'media') {
-          installJpegMedia(ws, lease, (type, data) => send(ws, type, data));
+          installMedia(ws, lease, (type, data) => send(ws, type, data));
           return;
         }
         send(ws, 'session.state', lease.session);

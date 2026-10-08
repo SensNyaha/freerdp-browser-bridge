@@ -96,6 +96,9 @@ its patch checksum ship with build metadata; see [native AVC contract](docs/MEDI
 The diagnostic browser check uses pinned Playwright core
 and an already installed Edge; browser binaries are not part of the runtime bundle.
 See [JPEG media contract](docs/MEDIA_JPEG.md) for the local harness test.
+The same helper accepts `h264` and `h264-reset` modes. They verify actual
+WebCodecs rendering and decoder-error recovery with fresh config/IDR, using the
+previously approved exact lab fingerprint. No browser binaries ship in the package.
 
 `GET /v1/build`:
 

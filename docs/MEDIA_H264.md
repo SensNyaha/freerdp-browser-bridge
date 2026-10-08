@@ -2,8 +2,9 @@
 
 The first software provider implements MEDIA_PIPELINE section 4 and ADR-003:
 encoding stays in C++, before Node. This block is verified on Windows x64.
-Browser media negotiation still supports JPEG only. A bundled codec provider
-does not imply a usable AVC transport or a completed interactive desktop.
+The worker/Node/WebSocket/WebCodecs path now renders actual 1080p XRDP in Edge.
+The full usable-desktop capability remains false until cursor/input and the
+remaining interactive acceptance gates pass.
 
 ## Provider contract
 
@@ -60,10 +61,61 @@ performs an actual BGRA → AVC → decoded I420 roundtrip and reports the loade
 DLL path. FreeRDP's WITH_OPENH264 decoder setting remains separate from this
 outbound bridge provider.
 
-## Remaining integration
+## Capture, negotiation and records
 
-AVC capture/force-IDR IPC, RWB1 config/access-unit forwarding, codec negotiation,
-WebCodecs support checks/rendering and predictive backpressure recovery remain
-pending. Hardware auto/prefer/off selection and encoder timing instrumentation
-are also pending. Linux integration and actual XRDP → AVC → browser validation
-have not run. See ITERATION_006.md for the accepted native test evidence.
+CAPTURE_AVC/FRAME_AVC and the h264Capture HELLO bit are defined in
+IPC_FOUNDATION.md. Native encoding remains lazy and runs on the RDP update
+thread. JPEG and AVC share one pending capture. A new media attachment starts
+from revision zero and force-IDR; static revisions otherwise produce no video.
+
+Send the versioned media.hello envelope with data.codecs containing h264 and/or
+jpeg, one or two unique entries. The server selects H.264 first when offered
+and supported by the session backend; otherwise it selects JPEG when offered.
+No supported codec produces MEDIA_NOT_IMPLEMENTED before media.ready.
+Startup capability discovery shares the five-second negotiation deadline.
+
+For H.264, media.ready reports codec=h264, maxFps=30, maxInFlight=1 and
+maxPayloadBytes=8388608. A 34 ms native/poll interval keeps the ceiling below
+30 FPS; this is not a measured motion/CPU performance guarantee. Returning render
+credit schedules against the previous pull deadline, avoiding a second full
+frame interval after decode. Slow consumers pause requests and coalesce RDP
+revisions without dropping a transmitted predictive unit.
+
+RWB1 VIDEO_CONFIG has schema u8=1, codec u8=1, width/height u16, reserved u16=0,
+then AVCDecoderConfigurationRecord. VIDEO_ACCESS_UNIT carries the complete
+AVCC access unit. Config uses DISCONTINUITY=2; IDR uses KEYFRAME=1, plus
+DISCONTINUITY after config. Deltas use flags=0. Config precedes initial IDR,
+dimension/config changes and decoder reset. Stream ID is 1; sequences start at
+zero per attachment. Worker microsecond timestamps are preserved.
+
+One unacknowledged access unit holds all credit. media.ack acknowledges that
+unit's sequence after drawing and closing the decoded frame. The ACK deadline
+is five seconds. WS encoded backlog is bounded to 8 MiB + 2,059 + 128 bytes;
+the stored previous config is a small owned copy. Stale/replayed ACKs fail media.
+
+## WebCodecs and recovery
+
+The reference harness checks generic H.264 support before advertising it,
+then checks the exact codec string/profile/level and description from config.
+It configures VideoDecoder with optimizeForLatency and feeds timestamped
+EncodedVideoChunks. VideoFrame output must match the pending timestamp and
+display dimensions; it is drawn and closed in finally before credit returns.
+The input queue allows at most three messages / 8 MiB + 8 KiB and one decode.
+
+It does not flush after each frame: WebCodecs flush requires a keyframe on the
+next decode. The behavior is defined in the [WebCodecs specification](https://www.w3.org/TR/webcodecs/).
+This path is verified in Edge; other browser/decoder implementations may buffer
+output differently and require separate low-latency acceptance.
+
+A decode error or 1.5-second output deadline sends media.reset with the failed
+access-unit sequence. The server consumes that credit once, clears the config
+cache, and forces a new config/IDR even on an unchanged revision. At most three
+resets are allowed per attachment. Invalid/stale resets or exhausted recovery
+close media while preserving the RDP session. Reattachment uses fresh tokens
+and a new independent config/IDR. The host can explicitly attach with
+codecs=['jpeg'] when AVC is unavailable.
+
+Hardware auto/prefer/off selection, dynamic congestion bitrate control,
+encoder timing instrumentation, Linux integration, other browsers and the
+30-minute interactive acceptance gate remain pending. See ITERATION_006.md
+for native codec evidence and ITERATION_007.md for the actual browser path.

@@ -340,7 +340,8 @@ test('fake-backend WebSocket: Origin, channel/session scope, one controller, rep
       'media',
       one.attach.media.token,
     );
-    assert.equal(media.first.type, 'media.ready');
+    assert.equal(media.first.type, 'media.error');
+    assert.equal(media.first.data.code, 'MEDIA_NOT_IMPLEMENTED');
     await closeSocket(media.ws);
     assert.equal(
       await rejected(wsBase, one.sessionId, 'media', one.attach.media.token),

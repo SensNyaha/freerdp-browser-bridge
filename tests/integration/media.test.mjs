@@ -18,12 +18,15 @@ class MediaWorker extends FakeSessionWorker {
   revision = 1n;
   requests = 0;
   width = 640;
-  async captureFrame(since) {
+  supportsCodec(codec) {
+    return codec === 'jpeg' || Boolean(this.avcEnabled);
+  }
+  async captureFrame(since, options) {
     this.requests++;
     await delay(10);
     if (this.failedMedia)
       throw new Error('sensitive diagnostic must not be forwarded');
-    return {
+    const frame = {
       revision: this.revision,
       timestampUs: 123n,
       width: this.width,
@@ -31,6 +34,23 @@ class MediaWorker extends FakeSessionWorker {
       jpeg:
         since === this.revision ? undefined : Buffer.from('ffd8ffd9', 'hex'),
     };
+    if (options?.codec === 'h264') {
+      this.forces ??= [];
+      this.forces.push(options.forceKeyframe);
+      frame.jpeg = undefined;
+      if (since !== this.revision || options.forceKeyframe) {
+        const keyframe =
+          !this.ignoreForce &&
+          (options.forceKeyframe || this.lastWidth !== this.width);
+        this.lastWidth = this.width;
+        frame.avc = {
+          config: Buffer.from('0142c01effe100046742c01e01000468ce3c80', 'hex'),
+          bytes: Buffer.from(keyframe ? '000000026588' : '00000002419a', 'hex'),
+          keyframe: Boolean(keyframe),
+        };
+      }
+    }
+    return frame;
   }
 }
 async function setup(run) {
@@ -84,13 +104,105 @@ async function setup(run) {
     await rm(root, { recursive: true, force: true, maxRetries: 3 });
   }
 }
-const hello = (ws) =>
-  ws.send(
-    JSON.stringify({ v: 1, type: 'media.hello', data: { codecs: ['jpeg'] } }),
-  );
+const hello = (ws, codecs = ['jpeg']) =>
+  ws.send(JSON.stringify({ v: 1, type: 'media.hello', data: { codecs } }));
 const acknowledge = (ws, sequence) =>
   ws.send(JSON.stringify({ v: 1, type: 'media.ack', data: { sequence } }));
 const binary = (messages) => messages.filter(Buffer.isBuffer);
+const reset = (ws, sequence) =>
+  ws.send(JSON.stringify({ v: 1, type: 'media.reset', data: { sequence } }));
+
+test(
+  'fake AVC transport: negotiation, delta credit, reset on static revision and resize IDR/config',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, messages, worker }) => {
+      worker.avcEnabled = true;
+      hello(ws, ['h264', 'jpeg']);
+      await eventually(() => binary(messages).length === 2);
+      assert.equal(messages[0].data.codec, 'h264');
+      assert.equal(binary(messages)[0][29], 1);
+      assert.equal(binary(messages)[1].readUInt16BE(6), 3);
+      assert.deepEqual(worker.forces, [true]);
+      const requests = worker.requests;
+      worker.revision = 10n;
+      await delay(150);
+      assert.equal(worker.requests, requests);
+      acknowledge(ws, 1);
+      await eventually(() => binary(messages).length === 3);
+      assert.equal(binary(messages)[2].readUInt16BE(6), 0);
+      assert.equal(worker.forces.at(-1), false);
+      reset(ws, 2);
+      await eventually(() => binary(messages).length === 5);
+      assert.equal(worker.forces.at(-1), true);
+      assert.equal(binary(messages)[3][5], 1);
+      assert.equal(binary(messages)[4].readUInt16BE(6), 3);
+      acknowledge(ws, 4);
+      await delay(150);
+      assert.equal(binary(messages).length, 5);
+      worker.width = 800;
+      worker.revision++;
+      await eventually(() => binary(messages).length === 7);
+      assert.equal(binary(messages)[5].readUInt16BE(30), 800);
+      assert.equal(binary(messages)[6].readUInt16BE(6), 3);
+      assert.equal(worker.closed, 0);
+    });
+  },
+);
+test(
+  'fake AVC transport: bounded resets, stale reset rejected and missing forced IDR isolated',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, messages, worker }) => {
+      worker.avcEnabled = true;
+      hello(ws, ['h264']);
+      await eventually(() => binary(messages).length === 2);
+      for (let count = 1; count <= 3; count++) {
+        reset(ws, binary(messages).at(-1).readUInt32BE(12));
+        await eventually(() => binary(messages).length === (count + 1) * 2);
+      }
+      const closed = once(ws, 'close');
+      reset(ws, binary(messages).at(-1).readUInt32BE(12));
+      assert.equal((await closed)[0], 1008);
+      assert.equal(worker.closed, 0);
+    });
+    await setup(async ({ ws, messages, worker }) => {
+      worker.avcEnabled = true;
+      hello(ws, ['h264']);
+      await eventually(() => binary(messages).length === 2);
+      const closed = once(ws, 'close');
+      reset(ws, 0);
+      assert.equal((await closed)[0], 1008);
+      assert.equal(worker.closed, 0);
+    });
+    await setup(async ({ ws, worker }) => {
+      worker.avcEnabled = true;
+      worker.ignoreForce = true;
+      const closed = once(ws, 'close');
+      hello(ws, ['h264']);
+      assert.equal((await closed)[0], 1008);
+      assert.equal(worker.closed, 0);
+    });
+  },
+);
+test(
+  'fake codec negotiation: JPEG fallback, unavailable AVC and duplicate offers',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, messages }) => {
+      hello(ws, ['h264', 'jpeg']);
+      await eventually(() => binary(messages).length === 2);
+      assert.equal(messages[0].data.codec, 'jpeg');
+    });
+    for (const codecs of [['h264'], ['h264', 'h264']])
+      await setup(async ({ ws, worker }) => {
+        const closed = once(ws, 'close');
+        hello(ws, codecs);
+        assert.equal((await closed)[0], 1008);
+        assert.equal(worker.requests, 0);
+      });
+  },
+);
 
 test(
   'fake media transport: one render credit, static suppression, latest revision and resize config',

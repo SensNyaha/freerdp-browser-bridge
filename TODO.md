@@ -6,8 +6,8 @@ Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do 
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
-now renders real 1080p XRDP frames through the native JPEG fallback in Edge.
-Stages 0/1/3/4 remain **IN PROGRESS**; H.264 transport/browser, input/audio and device gates remain open.
+now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
+Stages 0/1/3/4 remain **IN PROGRESS**; cursor/input/audio, broader platforms and device gates remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -15,8 +15,8 @@ Stages 0/1/3/4 remain **IN PROGRESS**; H.264 transport/browser, input/audio and 
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 48/48 Node tests; CTest/Catch2:
-  7 IPC cases / 113 assertions, 2 AVC cases / 19 assertions, 1 JPEG case / 13 assertions
+  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 52/52 Node tests; CTest/Catch2:
+  8 IPC cases / 119 assertions, 2 AVC cases / 19 assertions, 1 JPEG case / 13 assertions
   and 2 H.264 cases / 66 assertions.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
@@ -101,14 +101,14 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize callbacks wired; modern surface/GFX and actual dynamic resize gates remain open.
 - [~] IN PROGRESS — Dirty-union/revision changes and unchanged suppression implemented; detailed rectangle accumulation/partial-region encoding pending.
 - [ ] Cursor shape/hotspot/position extraction.
-- [~] IN PROGRESS — JPEG latest-state scheduling uses one pending capture and a 20 FPS ceiling; separate configurable scheduler/provider selection pending.
+- [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture; ceilings are 20/30 FPS with render credit. Configurable scheduler/provider selection and adaptive congestion pending.
 - [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/ITERATION_006.md). Linux/hardware selection pending.
-- [~] IN PROGRESS — Native AVCC config/access-unit packetization and bounds verified; worker/browser records and end-to-end AVC acceptance pending.
-- [~] IN PROGRESS — JPEG worker→Node RWI1 and browser RWB1 media forwarding verified; primary AVC transport pending.
-- [~] IN PROGRESS — Reference harness renders actual 1080p JPEG in Edge and closes ImageBitmaps; WebCodecs/AVC pending.
+- [x] DONE on Windows/XRDP — AVCC config/access-unit packetization, IPC/RWB1 bounds and actual browser decode verified; [evidence](docs/ITERATION_007.md).
+- [x] DONE on Windows/XRDP — Encoded JPEG/AVC worker→Node RWI1 and browser RWB1 forwarding, without raw frames in JS.
+- [x] DONE in Edge/Windows — Reference harness checks WebCodecs support, renders actual 1080p AVC/JPEG and closes VideoFrames/ImageBitmaps. Other browsers/platforms remain unverified.
 - [ ] Cursor overlay in harness.
 - [x] DONE on Windows/XRDP — Native JPEG fallback and browser canvas path, private libjpeg-turbo, bounded allocation and relocation verified. [Contract](docs/MEDIA_JPEG.md).
-- [~] IN PROGRESS — JPEG render credit, ACK deadline, stale-lease revocation, latest state and dimension reconfiguration tested; predictive AVC recovery pending.
+- [~] IN PROGRESS — Single-frame credit, ACK deadline, stale lease/ACK/reset rejection, static/latest revision and dimension config verified. Actual WebCodecs decoder-error recovery forces config/IDR; adaptive bitrate/drop policy remains pending.
 - [ ] Instrument encode/queue latency.
 
 **Gate:** stable 1080p interactive Windows/XRDP desktop for 30 min, resize safe, cursor smooth, no unbounded queue growth.
