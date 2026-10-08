@@ -28,6 +28,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   [Cursor block evidence](docs/ITERATION_012.md), [dirty tracking evidence](docs/ITERATION_013.md),
   [GFX binding evidence](docs/ITERATION_014.md), [incoming AVC420 evidence](docs/ITERATION_015.md).
   GFX implementation commit: `90285bb`.
+  Incoming AVC420 and incremental build corrections: `d5b1a0a`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
