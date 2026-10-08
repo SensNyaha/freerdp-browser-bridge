@@ -1,14 +1,17 @@
 import { resolve } from 'node:path';
-import { createBuildServer } from './index.js';
+import { createSessionServer } from './session-server.js';
 
-const server = await createBuildServer({
-  workerPath:
-    process.env.BRIDGE_WORKER_PATH ??
-    resolve(
-      'build/foundation/rdp-worker' +
-        (process.platform === 'win32' ? '.exe' : ''),
-    ),
-  runtimeRoot: process.env.BRIDGE_SESSION_RUNTIME_DIR ?? resolve('.runtime'),
+const server = await createSessionServer({
+  worker: {
+    workerPath:
+      process.env.BRIDGE_WORKER_PATH ??
+      resolve(
+        'build/foundation/rdp-worker' +
+          (process.platform === 'win32' ? '.exe' : ''),
+      ),
+    runtimeRoot: process.env.BRIDGE_SESSION_RUNTIME_DIR ?? resolve('.runtime'),
+  },
+  allowedOrigins: [],
 });
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
   process.once(signal, () => {
