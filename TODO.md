@@ -17,7 +17,7 @@ for motion only. Cursor, Unicode/IME, audio, broader platforms and device gates 
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 58/58 Node tests; CTest/Catch2:
+  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 59/59 Node tests; CTest/Catch2:
   11 IPC/input cases / 152 assertions, 2 AVC cases / 19 assertions, 1 JPEG case / 13 assertions
   and 2 H.264 cases / 66 assertions.
   The 100 sequential worker test passes with no processes or
@@ -116,6 +116,9 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 **Gate:** stable 1080p interactive Windows/XRDP desktop for 30 min, resize safe, cursor smooth, no unbounded queue growth.
 
 ## Stage 5 — keyboard, mouse, wheel and touch
+
+Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
+[Launch commands](docs/DEVELOPMENT.md#manual-windowsxrdp-viewer).
 
 - [~] IN PROGRESS — Physical set-1 mapping and extended left/right/numpad events implemented; native/Node/Edge fixture tests pass. Remote keyboard-layout gate pending. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_008.md).
 - [ ] Modifier state synchronization.

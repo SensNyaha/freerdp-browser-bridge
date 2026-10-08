@@ -54,3 +54,15 @@ Actual remote keyboard layouts, button/wheel behavior and no-stuck-keys acceptan
 on a controlled desktop remain pending. Unicode/IME, automatic modifier/toggle
 reconciliation, precise trackpad accumulation, touch, pen and separate cursor
 transport remain open. Full usable-desktop `rdp` capability remains false.
+
+## Manual viewer follow-up
+
+The lab helper now accepts `h264 --manual` or `jpeg --manual` to open installed
+Edge visibly and keep the session running until the window closes or Ctrl+C.
+This explicit mode enables user keyboard/buttons/wheel; automatic checks retain
+their movement/reset-only guard. [Commands](DEVELOPMENT.md#manual-windowsxrdp-viewer).
+
+Shutdown-listener tests pass and bundled `pnpm check` now passes 59/59 tests.
+Automatic H.264 regression still passes: 1920x1080, 46 frames / 904,563 AVC bytes,
+one motion ACK, detach reset, reattachment and empty runtime. This regression
+does not claim manual remote keyboard/button acceptance.

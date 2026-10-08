@@ -1,5 +1,31 @@
 # Building the foundation
 
+## Manual Windows/XRDP viewer
+
+From the project root in PowerShell, with the existing local toolchain and
+bundled native build, run:
+
+```powershell
+& .\scripts\local-pnpm.ps1 -PnpmArguments @('build')
+$fingerprint = 'sha256:7a826b7c5f71b03b67866a63d03e15279aefb6638a36cfc9c7209e349d5e75ed'
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint h264 --manual
+```
+
+This local helper opens installed Edge visibly, uses the ignored lab configuration
+and credentials, and accepts only the supplied previously verified certificate.
+It serves the harness only on 127.0.0.1:47999. Click the desktop to give it keyboard
+focus; mouse buttons and wheel are enabled in this explicit manual mode. Changing
+`h264` to `jpeg` selects the fallback. Close the Edge window or press Ctrl+C to
+close the session and clean up the worker. Automatic mode without `--manual`
+retains its movement/reset-only lab guard and finishes after its smoke checks.
+
+The lab files are `.local-tests/xrdp-lab.json` and
+`.local-tests/xrdp-lab.secrets.json`; the existing user-authorized development
+exception permits the latter locally. Neither file is published or packaged.
+If the native worker needs rebuilding, run `./scripts/native-build.ps1 -Task bundled`.
+
+## Foundation prerequisites
+
 Prerequisites: Node.js 24, pnpm 10.11.0, CMake >=3.24, Ninja and a C++20 compiler.
 Windows: run in an x64 Visual Studio 2022 Developer shell. Linux: install Ninja and GCC/Clang.
 No GUI, Docker or system FreeRDP is needed for this *lifecycle-only* development profile.

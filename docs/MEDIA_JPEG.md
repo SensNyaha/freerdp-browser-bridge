@@ -87,6 +87,11 @@ Run after Node and bundled builds:
 & .\.tools\node-v24.21.0-win-x64\node.exe scripts/test-xrdp-viewer.mjs sha256:<verified-fingerprint>
 ```
 
+For a visible interactive window that remains open, add a codec and `--manual`:
+`scripts/test-xrdp-viewer.mjs sha256:<verified-fingerprint> h264 --manual`.
+See [manual Windows launch commands](DEVELOPMENT.md). This explicit mode enables
+keyboard/buttons/wheel and cleans up when the user closes Edge or presses Ctrl+C.
+
 Linux browser execution requires an installed compatible Chromium and has not been
 verified. The default API CLI still has no authenticated connection backend.
 See ITERATION_005.md for actual test evidence.

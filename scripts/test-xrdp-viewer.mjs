@@ -6,13 +6,17 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
+import { waitForViewerClose } from './viewer-window.mjs';
 
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
 const mode = process.argv[3] ?? 'jpeg';
+const manual = process.argv[4] === '--manual';
 const codecs = [mode === 'jpeg' ? 'jpeg' : 'h264'];
 if (
-  ![3, 4].includes(process.argv.length) ||
+  ![3, 4, 5].includes(process.argv.length) ||
+  (process.argv.length === 5 && !manual) ||
+  (manual && mode === 'h264-reset') ||
   !['jpeg', 'h264', 'h264-reset'].includes(mode) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
 )
@@ -34,7 +38,7 @@ const deliverInput = nativeWorker.sendInput.bind(nativeWorker);
 let inputMoves = 0;
 let inputResets = 0;
 nativeWorker.sendInput = async (event) => {
-  if (!['move', 'reset'].includes(event.type))
+  if (!manual && !['move', 'reset'].includes(event.type))
     throw new Error('LAB_READ_ONLY_INPUT');
   await deliverInput(event);
   if (event.type === 'move') inputMoves++;
@@ -96,10 +100,10 @@ try {
   phase = 'browser';
   browser = await chromium.launch({
     channel: process.platform === 'win32' ? 'msedge' : 'chromium',
-    headless: true,
+    headless: !manual,
   });
   page = await browser.newPage({
-    viewport: { width: 1980, height: 1240 },
+    viewport: manual ? null : { width: 1980, height: 1240 },
   });
   if (mode === 'h264-reset')
     await page.addInitScript(() => {
@@ -138,103 +142,114 @@ try {
     undefined,
     { timeout: 20000 },
   );
-  phase = 'pixels';
-  await delay(15000); // Let the remote login/desktop finish painting before visual verification.
-  const stats = await page.evaluate(() => {
-    const canvas = document.querySelector('#desktop');
-    const pixels = canvas
-      .getContext('2d')
-      .getImageData(0, 0, canvas.width, canvas.height).data;
-    let min = 255,
-      max = 0;
-    for (let i = 0; i < pixels.length; i += 64) {
-      min = Math.min(min, pixels[i]);
-      max = Math.max(max, pixels[i]);
-    }
-    return { ...window.bridgeViewer.stats, hasImage: max - min > 20 };
-  });
-  if (
-    stats.error ||
-    stats.closed ||
-    !stats.hasImage ||
-    stats.width !== 1920 ||
-    stats.height !== 1080
-  )
-    throw new Error('LAB_RENDER_FAILED');
-  if (
-    stats.codec !== codecs[0] ||
-    (mode !== 'jpeg' && stats.keyframes < 1) ||
-    (mode === 'h264-reset' && stats.resets !== 1)
-  )
-    throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
-  phase = 'pointer';
-  const desktop = await page.locator('#desktop').boundingBox();
-  if (!desktop) throw new Error('LAB_INPUT_VIEW_UNAVAILABLE');
-  // Motion only: never click or type into the lab's operational desktop.
-  await page.mouse.move(desktop.x + 10, desktop.y + 10);
-  const inputDeadline = Date.now() + 3000;
-  while (inputMoves === 0 && Date.now() < inputDeadline) await delay(10);
-  if (inputMoves === 0) throw new Error('LAB_INPUT_MOVE_FAILED');
-  await page.locator('#desktop').screenshot({
-    path: resolve(
-      '.local-tests/' +
-        (mode === 'jpeg'
-          ? 'xrdp-browser.png'
-          : 'xrdp-browser-' + mode + '.png'),
-    ),
-  });
-  phase = 'reattach';
-  await page.evaluate(() => window.bridgeViewer.detach());
-  await delay(100); // Let the old socket releases reach the registry.
-  const resetDeadline = Date.now() + 3000;
-  while (inputResets === 0 && Date.now() < resetDeadline) await delay(10);
-  if (inputResets === 0) throw new Error('LAB_INPUT_RELEASE_FAILED');
-  const nextAttach = {};
-  for (const channel of ['control', 'media']) {
-    const response = await server.inject({
-      method: 'POST',
-      url: '/v1/sessions/' + sessionId + '/attach-token',
-      headers: { authorization: 'Bearer ' + bearer },
-      payload: { channel },
+  if (manual) {
+    phase = 'manual';
+    console.log(
+      'Ручной просмотр открыт в Edge. Щёлкните по рабочему столу для ввода.',
+    );
+    console.log(
+      'Для завершения закройте окно Edge или нажмите Ctrl+C в этом терминале.',
+    );
+    await waitForViewerClose(browser, page);
+  } else {
+    phase = 'pixels';
+    await delay(15000); // Let the remote login/desktop finish painting before visual verification.
+    const stats = await page.evaluate(() => {
+      const canvas = document.querySelector('#desktop');
+      const pixels = canvas
+        .getContext('2d')
+        .getImageData(0, 0, canvas.width, canvas.height).data;
+      let min = 255,
+        max = 0;
+      for (let i = 0; i < pixels.length; i += 64) {
+        min = Math.min(min, pixels[i]);
+        max = Math.max(max, pixels[i]);
+      }
+      return { ...window.bridgeViewer.stats, hasImage: max - min > 20 };
     });
-    if (response.statusCode !== 200)
-      throw new Error('LAB_REATTACH_TOKEN_FAILED');
-    nextAttach[channel] = response.json();
-  }
-  await page.evaluate(
-    ({ created, codecs }) => window.bridgeViewer.attach(created, { codecs }),
-    { created: { sessionId, attach: nextAttach }, codecs },
-  );
-  await page.waitForFunction(
-    () => window.bridgeViewer.stats.frames > 0,
-    undefined,
-    { timeout: 5000 },
-  );
-  if (
-    await page.evaluate(() =>
-      Boolean(
-        window.bridgeViewer.stats.error || window.bridgeViewer.stats.closed,
-      ),
+    if (
+      stats.error ||
+      stats.closed ||
+      !stats.hasImage ||
+      stats.width !== 1920 ||
+      stats.height !== 1080
     )
-  )
-    throw new Error('LAB_REATTACH_FAILED');
-  await page.evaluate(() => window.bridgeViewer.detach());
-  const closed = await server.inject({
-    method: 'DELETE',
-    url: '/v1/sessions/' + sessionId,
-    headers: { authorization: 'Bearer ' + bearer },
-  });
-  if (closed.statusCode !== 200) throw new Error('LAB_CLOSE_FAILED');
-  console.log(
-    JSON.stringify({
-      type: 'lab.browser',
-      browser: 'chromium',
-      ...stats,
-      reattach: true,
-      inputMoves,
-      inputResets,
-    }),
-  );
+      throw new Error('LAB_RENDER_FAILED');
+    if (
+      stats.codec !== codecs[0] ||
+      (mode !== 'jpeg' && stats.keyframes < 1) ||
+      (mode === 'h264-reset' && stats.resets !== 1)
+    )
+      throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
+    phase = 'pointer';
+    const desktop = await page.locator('#desktop').boundingBox();
+    if (!desktop) throw new Error('LAB_INPUT_VIEW_UNAVAILABLE');
+    // Motion only: never click or type into the lab's operational desktop.
+    await page.mouse.move(desktop.x + 10, desktop.y + 10);
+    const inputDeadline = Date.now() + 3000;
+    while (inputMoves === 0 && Date.now() < inputDeadline) await delay(10);
+    if (inputMoves === 0) throw new Error('LAB_INPUT_MOVE_FAILED');
+    await page.locator('#desktop').screenshot({
+      path: resolve(
+        '.local-tests/' +
+          (mode === 'jpeg'
+            ? 'xrdp-browser.png'
+            : 'xrdp-browser-' + mode + '.png'),
+      ),
+    });
+    phase = 'reattach';
+    await page.evaluate(() => window.bridgeViewer.detach());
+    await delay(100); // Let the old socket releases reach the registry.
+    const resetDeadline = Date.now() + 3000;
+    while (inputResets === 0 && Date.now() < resetDeadline) await delay(10);
+    if (inputResets === 0) throw new Error('LAB_INPUT_RELEASE_FAILED');
+    const nextAttach = {};
+    for (const channel of ['control', 'media']) {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/v1/sessions/' + sessionId + '/attach-token',
+        headers: { authorization: 'Bearer ' + bearer },
+        payload: { channel },
+      });
+      if (response.statusCode !== 200)
+        throw new Error('LAB_REATTACH_TOKEN_FAILED');
+      nextAttach[channel] = response.json();
+    }
+    await page.evaluate(
+      ({ created, codecs }) => window.bridgeViewer.attach(created, { codecs }),
+      { created: { sessionId, attach: nextAttach }, codecs },
+    );
+    await page.waitForFunction(
+      () => window.bridgeViewer.stats.frames > 0,
+      undefined,
+      { timeout: 5000 },
+    );
+    if (
+      await page.evaluate(() =>
+        Boolean(
+          window.bridgeViewer.stats.error || window.bridgeViewer.stats.closed,
+        ),
+      )
+    )
+      throw new Error('LAB_REATTACH_FAILED');
+    await page.evaluate(() => window.bridgeViewer.detach());
+    const closed = await server.inject({
+      method: 'DELETE',
+      url: '/v1/sessions/' + sessionId,
+      headers: { authorization: 'Bearer ' + bearer },
+    });
+    if (closed.statusCode !== 200) throw new Error('LAB_CLOSE_FAILED');
+    console.log(
+      JSON.stringify({
+        type: 'lab.browser',
+        browser: 'chromium',
+        ...stats,
+        reattach: true,
+        inputMoves,
+        inputResets,
+      }),
+    );
+  }
 } catch {
   const stats = await page
     ?.evaluate(() => window.bridgeViewer?.stats)
