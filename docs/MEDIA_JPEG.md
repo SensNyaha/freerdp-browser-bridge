@@ -92,9 +92,12 @@ See ITERATION_005.md for actual test evidence.
 
 ## Open acceptance work
 
-H.264 provider, AVCC/WebCodecs, codec/hardware selection, configurable quality/FPS,
+AVC worker/browser transport and WebCodecs, codec/hardware selection, configurable quality/FPS,
 cursor extraction/overlay, input, audio, modern GFX, negotiated dynamic resize and
 encode/queue latency instrumentation remain pending. Classic paint/resize callbacks
 are wired, but current XRDP checks do not prove a dynamic resize. No 30-minute
 interactive Windows/XRDP soak gate is claimed. Large image records can still delay
 other records on the shared inherited output pipe; priority scheduling is pending.
+
+The native H.264 software provider and AVCC packetizer are now independently
+verified; see MEDIA_H264.md. They have not yet replaced JPEG media negotiation.

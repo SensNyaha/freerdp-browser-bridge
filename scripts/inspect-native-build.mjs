@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const lock = JSON.parse(readFileSync(resolve('native/dependencies.json')));
 const entries = readFileSync(
@@ -23,7 +24,14 @@ const status = readFileSync(
   resolve('.deps/installed/vcpkg/status'),
   'utf8',
 ).replace(/\r\n/g, '\n');
-for (const name of ['zlib', 'openssl', 'libusb', 'libjpeg-turbo', 'libspng']) {
+for (const name of [
+  'zlib',
+  'openssl',
+  'libusb',
+  'libjpeg-turbo',
+  'libspng',
+  'openh264',
+]) {
   const block = status
     .split(/\r?\n\r?\n/)
     .find(
@@ -39,7 +47,21 @@ for (const name of ['zlib', 'openssl', 'libusb', 'libjpeg-turbo', 'libspng']) {
 }
 const report = {
   enabledChannels,
-  codecProviders: ['libjpeg-turbo'],
+  codecProviders: ['libjpeg-turbo', 'openh264'],
+  portOverlays: {
+    openh264: {
+      basePort: '2.6.0#4',
+      nasmPatchSha256: createHash('sha256')
+        .update(
+          readFileSync(
+            resolve(
+              'native/vcpkg/ports/openh264/002-relative-windows-nasm-includes.patch',
+            ),
+          ),
+        )
+        .digest('hex'),
+    },
+  },
   dependencies,
   freeRdpSourceCommit: lock.freerdp.commit,
   vcpkgCommit: lock.vcpkg.commit,

@@ -7,7 +7,7 @@ Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP frames through the native JPEG fallback in Edge.
-Stages 0/1/3/4 remain **IN PROGRESS**; H.264, input/audio and device gates remain open.
+Stages 0/1/3/4 remain **IN PROGRESS**; H.264 transport/browser, input/audio and device gates remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -16,7 +16,8 @@ Stages 0/1/3/4 remain **IN PROGRESS**; H.264, input/audio and device gates remai
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
   [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 48/48 Node tests; CTest/Catch2:
-  7 IPC cases / 113 assertions plus 1 JPEG case / 13 assertions.
+  7 IPC cases / 113 assertions, 2 AVC cases / 19 assertions, 1 JPEG case / 13 assertions
+  and 2 H.264 cases / 66 assertions.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -25,8 +26,9 @@ Stages 0/1/3/4 remain **IN PROGRESS**; H.264, input/audio and device gates remai
   1.0.30 build and link. Private native ZIP contains runtime DLLs, release CRT, licenses and
   dependency metadata. Relocation test checks actual loaded ZLIB/FreeRDP paths and static
   channel inventory without dependency PATH. JPEG now also ships privately and is encoded/decoded
-  in the relocated runtime probe. Current native ZIP is approximately 5.2 MiB, 13.3 MiB installed,
-  excluding Node.js and future H.264/audio providers. [Iteration 5](docs/ITERATION_005.md).
+  in the relocated runtime probe. OpenH264 software encoding and AVCC are now verified natively.
+  Current native ZIP is approximately 5.6 MiB, 14.1 MiB installed, excluding Node.js and future
+  audio/hardware providers. [Iteration 5](docs/ITERATION_005.md), [iteration 6](docs/ITERATION_006.md).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
 - **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP lab is available
   in this session. The XRDP lab has passed strict certificate rejection and explicitly
@@ -100,8 +102,8 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [~] IN PROGRESS — Dirty-union/revision changes and unchanged suppression implemented; detailed rectangle accumulation/partial-region encoding pending.
 - [ ] Cursor shape/hotspot/position extraction.
 - [~] IN PROGRESS — JPEG latest-state scheduling uses one pending capture and a 20 FPS ceiling; separate configurable scheduler/provider selection pending.
-- [ ] H.264 encoder interface and one software provider.
-- [ ] AVCC config/access-unit packetization.
+- [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/ITERATION_006.md). Linux/hardware selection pending.
+- [~] IN PROGRESS — Native AVCC config/access-unit packetization and bounds verified; worker/browser records and end-to-end AVC acceptance pending.
 - [~] IN PROGRESS — JPEG worker→Node RWI1 and browser RWB1 media forwarding verified; primary AVC transport pending.
 - [~] IN PROGRESS — Reference harness renders actual 1080p JPEG in Edge and closes ImageBitmaps; WebCodecs/AVC pending.
 - [ ] Cursor overlay in harness.

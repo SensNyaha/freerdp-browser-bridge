@@ -5,6 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
 
 const source = resolve(process.env.BRIDGE_NATIVE_STAGE ?? 'build/native-stage');
@@ -47,10 +48,13 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     assert.equal(lines.zlib, features.dependencies.zlib);
     assert.equal(lines.freerdp, '3.32.1');
     assert.equal(lines.jpegRoundtrip, 'true');
+    assert.equal(lines.h264Roundtrip, 'true');
+    assert.equal(lines.openh264, features.dependencies.openh264);
     for (const runtime of [
       lines.runtime,
       lines.freerdpRuntime,
       lines.jpegRuntime,
+      lines.openh264Runtime,
     ]) {
       const loadedPath = relative(relocated, resolve(runtime));
       assert.ok(
@@ -72,6 +76,21 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     assert.equal(JSON.parse(cli.stdout).capabilities.rdp, false);
     assert.equal(JSON.parse(cli.stdout).capabilities.jpegCapture, true);
     assert.ok(features.codecProviders.includes('libjpeg-turbo'));
+    assert.ok(features.codecProviders.includes('openh264'));
+    const patch = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'openh264',
+        '002-relative-windows-nasm-includes.patch',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(patch).digest('hex'),
+      features.portOverlays.openh264.nasmPatchSha256,
+    );
     for (const dependency of [
       'zlib',
       'openssl',
@@ -79,6 +98,7 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       'freerdp',
       'libjpeg-turbo',
       'libspng',
+      'openh264',
     ]) {
       assert.ok(
         (

@@ -46,6 +46,7 @@ run(executable, [
   `--triplet=${triplet}`,
   `--x-manifest-root=${resolve('native/vcpkg')}`,
   `--overlay-triplets=${resolve('native/vcpkg/triplets')}`,
+  `--overlay-ports=${resolve('native/vcpkg/ports')}`,
   `--x-install-root=${output}`,
   `--x-buildtrees-root=${join(work, 'buildtrees')}`,
   `--x-packages-root=${join(work, 'packages')}`,

@@ -1,4 +1,6 @@
+#include "avc_decode_probe.hpp"
 #include "jpeg.hpp"
+#include "video_encoder.hpp"
 #include <array>
 #include <filesystem>
 #include <freerdp/client/channels.h>
@@ -59,6 +61,20 @@ bool jpeg_roundtrip() {
     return false;
   }
 }
+bool h264_roundtrip() {
+  try {
+    bridge::media::SoftwareH264Encoder encoder;
+    bridge::diagnostics::AvcDecodeProbe decoder;
+    std::vector<std::uint8_t> source(32 * 16 * 4, 240);
+    const auto unit = encoder.encode({source, 32, 16, 32 * 4, 1000}, true);
+    const auto sample = decoder.decode(unit);
+    return unit.keyframe && sample.width == 32 && sample.height == 16 && sample.yuv[0] >= 218 &&
+           sample.yuv[0] <= 226 && sample.yuv[1] >= 124 && sample.yuv[1] <= 132 &&
+           sample.yuv[2] >= 124 && sample.yuv[2] <= 132;
+  } catch (...) {
+    return false;
+  }
+}
 } // namespace
 int main() {
   constexpr std::array<unsigned char, 11> original{'b', 'u', 'n', 'd', 'l', 'e',
@@ -77,10 +93,14 @@ int main() {
   const auto freerdp_path =
       module_path(reinterpret_cast<const void *>(&freerdp_get_version_string));
   const auto jpeg_path = module_path(reinterpret_cast<const void *>(&tj3InitVersion));
-  if (zlib_path.empty() || freerdp_path.empty() || jpeg_path.empty())
+  const auto h264_path = module_path(reinterpret_cast<const void *>(&WelsGetCodecVersion));
+  if (zlib_path.empty() || freerdp_path.empty() || jpeg_path.empty() || h264_path.empty())
     return 3;
   if (!jpeg_roundtrip())
     return 5;
+  if (!h264_roundtrip())
+    return 6;
+  const auto h264_version = WelsGetCodecVersion();
   const std::unique_ptr<FREERDP_ADDIN *, decltype(&freerdp_channels_addin_list_free)> addins(
       freerdp_channels_list_addins(nullptr, nullptr, nullptr,
                                    FREERDP_ADDIN_CLIENT | FREERDP_ADDIN_STATIC),
@@ -96,7 +116,9 @@ int main() {
   std::cout << "zlib=" << zlibVersion() << "\nruntime=" << utf8(zlib_path)
             << "\nfreerdp=" << freerdp_get_version_string()
             << "\nfreerdpRuntime=" << utf8(freerdp_path) << "\njpegRuntime=" << utf8(jpeg_path)
-            << "\njpegRoundtrip=true\nchannels=";
+            << "\njpegRoundtrip=true\nopenh264=" << h264_version.uMajor << '.'
+            << h264_version.uMinor << '.' << h264_version.uRevision
+            << "\nopenh264Runtime=" << utf8(h264_path) << "\nh264Roundtrip=true\nchannels=";
   for (const auto &channel : channels)
     std::cout << channel << ',';
   std::cout << '\n';
