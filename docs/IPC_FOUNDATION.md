@@ -27,13 +27,15 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | CERTIFICATE_DECISION_ACK | 17 | empty |
 | CAPTURE | 18 | u64 last browser revision; zero forces an initial full image |
 | FRAME | 19 | 24-byte metadata + 0..8 MiB JPEG; echoes CAPTURE requestId |
+| CAPTURE_AVC | 20 | u64 last revision, u8 force-IDR (0/1), three reserved zero bytes |
+| FRAME_AVC | 21 | 28-byte metadata + AVC config + access unit; echoes CAPTURE_AVC requestId |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
-bit 2 experimental connection core, bit 3 experimental JPEG capture).
+bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. Bundled builds set bits 2/3, not bit 1. Bit 3 requires bit 2.
+set the usable RDP bit. Bundled builds set bits 2/3/4, not bit 1. Bits 3/4 require bit 2.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers
@@ -106,3 +108,25 @@ there is no raw-frame queue. The worker enforces a 50 ms minimum interval. A fre
 attachment requests revision zero; subsequent requests pass its last received revision.
 Equal revisions return only metadata. Resize increments revision. See MEDIA_JPEG.md
 for browser credit and RWB1 framing; H.264/cursor/GFX acceptance remains separate.
+
+## AVC capture payload
+
+FRAME_AVC: u64 revision (nonzero), u64 monotonic timestampUs, u16 width, u16 height,
+u8 status (0 unchanged, 1 delta, 2 IDR), u8 reserved=0, u16 configLength,
+u32 accessUnitLength, then config and access-unit bytes. Unchanged replies have
+exactly 28 bytes and zero lengths. Changed replies contain the bounded AVCC
+configuration and length-prefixed complete access unit from MEDIA_H264.md.
+Config is at most 2,059 bytes; access unit at most 8 MiB. The header permits
+28..8,390,695 bytes, checked before allocation.
+
+Dimensions are even, 16..3840 by 16..2160. Node validates parameter-set lengths,
+profile fields, NAL lengths/types/count (maximum 1,024), forbidden bits, absence
+of embedded Annex-B start codes and IDR/status agreement. It forwards only
+encoded data. New viewers and explicit reset request force-IDR even when the
+desktop revision is unchanged. Codec failure returns ERROR 4, drops the native
+predictive encoder and preserves RDP; the next encoder starts independently.
+
+JPEG and AVC share one pending request across codecs. All encoding runs on the
+RDP thread. AVC uses a 34 ms minimum interval; the event wait wakes at the pending
+frame deadline. No attachment means no requests or encoding. Capture revision
+zero also forces initial IDR. Browser delivery/recovery is defined in MEDIA_H264.md.

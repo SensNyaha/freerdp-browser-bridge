@@ -17,6 +17,8 @@ import {
   decodeCertificatePrompt,
   encodeCertificateDecision,
   decodeCapturedFrame,
+  decodeAvcFrame,
+  type CaptureOptions,
   type CapturedFrame,
   type CertificatePrompt,
   type Packet,
@@ -272,7 +274,11 @@ export class WorkerProcess extends EventEmitter {
       }
     }
     const pending = this.pending.get(packet.requestId);
-    if (pending?.expected === Kind.Frame && packet.kind === Kind.Error) {
+    if (
+      pending &&
+      [Kind.Frame, Kind.FrameAvc].includes(pending.expected) &&
+      packet.kind === Kind.Error
+    ) {
       clearTimeout(pending.timer);
       this.pending.delete(packet.requestId);
       const code = packet.payload.readUInt32BE(0);
@@ -288,6 +294,7 @@ export class WorkerProcess extends EventEmitter {
     if (!pending || packet.kind !== pending.expected)
       throw new WorkerError('IPC_UNEXPECTED_REPLY');
     if (packet.kind === Kind.Frame) decodeCapturedFrame(packet.payload);
+    if (packet.kind === Kind.FrameAvc) decodeAvcFrame(packet.payload);
     clearTimeout(pending.timer);
     this.pending.delete(packet.requestId);
     pending.resolve(packet);
@@ -336,8 +343,22 @@ export class WorkerProcess extends EventEmitter {
   }
 
   /** Pulls the latest changed desktop. At most one encoded frame request may be in flight. */
-  async captureFrame(sinceRevision = 0n): Promise<CapturedFrame> {
-    if (!this.report?.capabilities.jpegCapture)
+  async captureFrame(
+    sinceRevision = 0n,
+    options: CaptureOptions = { codec: 'jpeg' },
+  ): Promise<CapturedFrame> {
+    const avc = options.codec === 'h264';
+    if (
+      !['h264', 'jpeg'].includes(options.codec) ||
+      (options.forceKeyframe !== undefined &&
+        typeof options.forceKeyframe !== 'boolean')
+    )
+      throw new WorkerError('INVALID_MEDIA_REQUEST');
+    if (
+      !(avc
+        ? this.report?.capabilities.h264Capture
+        : this.report?.capabilities.jpegCapture)
+    )
       throw new WorkerError('MEDIA_NOT_IMPLEMENTED');
     if (!this.rdpConnected || this.status !== 'ready')
       throw new WorkerError('MEDIA_NOT_CONNECTED');
@@ -348,18 +369,25 @@ export class WorkerProcess extends EventEmitter {
       sinceRevision > 0xffffffffffffffffn
     )
       throw new WorkerError('INVALID_MEDIA_REQUEST');
-    const payload = Buffer.alloc(8);
+    const payload = Buffer.alloc(avc ? 12 : 8);
     payload.writeBigUInt64BE(sinceRevision);
+    if (avc) payload[8] = options.forceKeyframe ? 1 : 0;
     this.capturing = true;
     try {
-      const reply = await this.request(Kind.Capture, Kind.Frame, payload);
-      return decodeCapturedFrame(reply.payload);
+      const reply = await this.request(
+        avc ? Kind.CaptureAvc : Kind.Capture,
+        avc ? Kind.FrameAvc : Kind.Frame,
+        payload,
+      );
+      return avc
+        ? decodeAvcFrame(reply.payload)
+        : decodeCapturedFrame(reply.payload);
     } finally {
       this.capturing = false;
     }
   }
 
-  /** Experimental connection-only core. Does not imply browser media/input availability. */
+  /** Experimental RDP core. Media/input support is gated separately. */
   async connect(value: unknown): Promise<void> {
     if (this.status !== 'ready' || this.connectionRequested)
       throw new WorkerError('INVALID_STATE');

@@ -11,6 +11,8 @@ import type {
   NativeConnectionState,
   SessionState,
   CapturedFrame,
+  CaptureOptions,
+  MediaCodec,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -100,10 +102,11 @@ export class NativeSessionWorker implements SessionWorker {
   }
   async captureFrame(
     sinceRevision: bigint,
+    options?: CaptureOptions,
   ): Promise<CapturedFrame | undefined> {
     try {
       if (this.closing) return undefined;
-      return await this.worker.captureFrame(sinceRevision);
+      return await this.worker.captureFrame(sinceRevision, options);
     } catch (error) {
       if (
         error instanceof WorkerError &&
@@ -116,5 +119,13 @@ export class NativeSessionWorker implements SessionWorker {
           : 'MEDIA_FAILED',
       );
     }
+  }
+  supportsCodec(codec: MediaCodec): boolean | undefined {
+    const build = this.worker.build;
+    return build
+      ? codec === 'h264'
+        ? build.capabilities.h264Capture
+        : build.capabilities.jpegCapture
+      : undefined;
   }
 }

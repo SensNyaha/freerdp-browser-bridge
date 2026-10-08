@@ -28,10 +28,14 @@ enum class Kind : std::uint16_t {
   certificate_decision = 16,
   certificate_decision_ack = 17,
   capture = 18,
-  frame = 19
+  frame = 19,
+  capture_avc = 20,
+  frame_avc = 21
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;
+constexpr std::size_t avc_metadata_bytes = 28;
+constexpr std::size_t max_avc_config_bytes = 2059;
 struct Header {
   Kind kind;
   std::uint64_t request_id;

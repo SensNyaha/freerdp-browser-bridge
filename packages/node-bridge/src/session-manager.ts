@@ -10,6 +10,8 @@ import type {
   SessionState,
   CertificatePrompt,
   CapturedFrame,
+  CaptureOptions,
+  MediaCodec,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
@@ -108,7 +110,11 @@ export interface SessionWorker {
   onFailure(listener: (code?: SessionErrorCode) => void): () => void;
   onCertificate?(listener: (prompt: CertificatePrompt) => void): () => void;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
-  captureFrame?(sinceRevision: bigint): Promise<CapturedFrame | undefined>;
+  captureFrame?(
+    sinceRevision: bigint,
+    options?: CaptureOptions,
+  ): Promise<CapturedFrame | undefined>;
+  supportsCodec?(codec: MediaCodec): boolean | undefined;
 }
 export interface SessionManagerOptions {
   workerFactory?: () => SessionWorker;
@@ -526,7 +532,11 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     session: SessionSnapshot;
     certificate?: CertificatePrompt;
     respondCertificate: (response: CertificateResponse) => Promise<void>;
-    captureFrame: (sinceRevision: bigint) => Promise<CapturedFrame | undefined>;
+    captureFrame: (
+      sinceRevision: bigint,
+      options?: CaptureOptions,
+    ) => Promise<CapturedFrame | undefined>;
+    supportsCodec: (codec: MediaCodec) => boolean | undefined;
   } {
     const entry = this.entries.get(id);
     if (!entry || !/^[A-Za-z0-9_-]{43}$/.test(token))
@@ -553,7 +563,19 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       ...(entry.certificate
         ? { certificate: structuredClone(entry.certificate) }
         : {}),
-      captureFrame: async (sinceRevision) => {
+      supportsCodec: (codec) => {
+        if (
+          channel !== 'media' ||
+          entry.attachments.get(channel) !== lease ||
+          entry.released
+        )
+          throw new SessionError('ATTACH_INVALID');
+        if (!entry.worker.captureFrame) return false;
+        return entry.worker.supportsCodec
+          ? entry.worker.supportsCodec(codec)
+          : codec === 'jpeg';
+      },
+      captureFrame: async (sinceRevision, options) => {
         if (
           channel !== 'media' ||
           entry.attachments.get(channel) !== lease ||
@@ -566,7 +588,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         if (capturing) throw new SessionError('MEDIA_FAILED');
         capturing = true;
         try {
-          const frame = await entry.worker.captureFrame(sinceRevision);
+          const frame = await entry.worker.captureFrame(sinceRevision, options);
           if (entry.attachments.get(channel) !== lease || entry.released)
             throw new SessionError('ATTACH_INVALID');
           return frame;

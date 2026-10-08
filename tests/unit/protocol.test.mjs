@@ -15,7 +15,101 @@ import {
   decodeCapturedFrame,
   encodeJpegRecords,
   MAX_JPEG_BYTES,
+  decodeAvcFrame,
+  encodeAvcRecords,
 } from '../../packages/protocol/dist/index.js';
+
+test('AVC IPC/RWB1 independent vectors, parameter sets, keyframe classification and allocation bounds', () => {
+  const config = '0142c01effe100046742c01e01000468ce3c80';
+  const payload = Buffer.from(
+    '00000000000000010000000000000002008000400200001300000006' +
+      config +
+      '000000026588',
+    'hex',
+  );
+  const frame = decodeAvcFrame(payload);
+  assert.equal(frame.avc.keyframe, true);
+  assert.equal(frame.width, 128);
+  const records = encodeAvcRecords(frame, 10, true);
+  assert.equal(
+    records[0].toString('hex'),
+    '5257423101010002000000010000000a00000000000000020000001b0101008000400000' +
+      config,
+  );
+  assert.equal(
+    records[1].toString('hex'),
+    '5257423101020003000000010000000b000000000000000200000006000000026588',
+  );
+  const delta = Buffer.from(payload);
+  delta[20] = 1;
+  delta[delta.length - 2] = 0x41;
+  assert.equal(decodeAvcFrame(delta).avc.keyframe, false);
+  assert.throws(
+    () => encodeAvcRecords(decodeAvcFrame(delta), 0, true),
+    ProtocolError,
+  );
+  const unchanged = Buffer.from(payload.subarray(0, 28));
+  unchanged.fill(0, 20);
+  assert.equal(decodeAvcFrame(unchanged).avc, undefined);
+  for (const offset of [
+    16,
+    18,
+    20,
+    21,
+    22,
+    24,
+    28,
+    32,
+    33,
+    34,
+    36,
+    40,
+    43,
+    payload.length - 2,
+  ]) {
+    const bad = Buffer.from(payload);
+    bad[offset] ^= 255;
+    assert.throws(() => decodeAvcFrame(bad), ProtocolError, 'offset ' + offset);
+  }
+  assert.throws(() => decodeAvcFrame(payload.subarray(0, -1)), ProtocolError);
+  assert.throws(
+    () => decodeAvcFrame(Buffer.concat([unchanged, Buffer.alloc(1)])),
+    ProtocolError,
+  );
+  const mixed = {
+    ...frame,
+    avc: { ...frame.avc, bytes: Buffer.from('000000076588000001419a', 'hex') },
+  };
+  assert.throws(() => encodeAvcRecords(mixed, 0, false), ProtocolError);
+  const many = {
+    ...frame,
+    avc: {
+      ...frame.avc,
+      keyframe: false,
+      bytes: Buffer.concat(
+        Array.from({ length: 1025 }, () => Buffer.from('00000002419a', 'hex')),
+      ),
+    },
+  };
+  assert.throws(() => encodeAvcRecords(many, 0, false), ProtocolError);
+  for (const [kind, length] of [
+    [Kind.CaptureAvc, 11],
+    [Kind.FrameAvc, 27],
+    [Kind.FrameAvc, MAX_JPEG_BYTES + 2059 + 29],
+  ])
+    assert.throws(
+      () =>
+        encodePacket({ kind, requestId: 1n, payload: Buffer.alloc(length) }),
+      ProtocolError,
+    );
+  const header = encodePacket({
+    kind: Kind.FrameAvc,
+    requestId: 1n,
+    payload,
+  }).subarray(0, 24);
+  header.writeUInt32BE(MAX_JPEG_BYTES + 2059 + 29, 20);
+  assert.throws(() => decodeHeader(header), ProtocolError);
+});
 
 test('JPEG IPC metadata and RWB1 vectors have independent byte order and strict bounds', () => {
   const payload = Buffer.from(

@@ -2,6 +2,7 @@
 #include "certificate.hpp"
 #include "connection_config.hpp"
 #include "jpeg.hpp"
+#include "video_encoder.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <freerdp/client.h>
@@ -48,6 +49,8 @@ class Connection {
   std::uint64_t frame_request_ = 0, requested_revision_ = 0, revision_ = 0;
   std::chrono::steady_clock::time_point next_frame_{};
   std::unique_ptr<media::JpegEncoder> encoder_;
+  std::unique_ptr<media::SoftwareH264Encoder> avc_encoder_;
+  bool requested_avc_ = false, force_idr_ = false;
   void capture_pending(bool ending = false);
   void state(RdpState state, RdpError error = RdpError::none) noexcept;
   void run() noexcept;
@@ -71,7 +74,7 @@ public:
   void secret(std::span<const std::uint8_t> payload);
   void start();
   void decide(std::span<const std::uint8_t> payload);
-  bool capture(std::uint64_t request, std::span<const std::uint8_t> payload);
+  bool capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc);
   void stop() noexcept;
 };
 } // namespace bridge

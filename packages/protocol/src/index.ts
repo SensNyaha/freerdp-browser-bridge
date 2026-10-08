@@ -24,6 +24,8 @@ export enum Kind {
   CertificateDecisionAck = 17,
   Capture = 18,
   Frame = 19,
+  CaptureAvc = 20,
+  FrameAvc = 21,
 }
 
 export interface Packet {
@@ -71,6 +73,10 @@ function payloadLimit(kind: number): number {
       return 8;
     case Kind.Frame:
       return MAX_JPEG_BYTES + 24;
+    case Kind.CaptureAvc:
+      return 12;
+    case Kind.FrameAvc:
+      return MAX_JPEG_BYTES + 2059 + 28;
     default:
       throw new ProtocolError();
   }
@@ -93,9 +99,16 @@ export function decodeHeader(header: Buffer): {
   const length = header.readUInt32BE(20);
   if (
     length > payloadLimit(kind) ||
-    (![Kind.HelloAck, Kind.Configure, Kind.Secret, Kind.Frame].includes(kind) &&
+    (![
+      Kind.HelloAck,
+      Kind.Configure,
+      Kind.Secret,
+      Kind.Frame,
+      Kind.FrameAvc,
+    ].includes(kind) &&
       length !== payloadLimit(kind)) ||
-    (kind === Kind.Frame && length < 24)
+    (kind === Kind.Frame && length < 24) ||
+    (kind === Kind.FrameAvc && length < 28)
   ) {
     throw new ProtocolError();
   }
@@ -188,6 +201,7 @@ export interface WorkerBuild {
     rdp: boolean;
     connectCore: boolean;
     jpegCapture: boolean;
+    h264Capture: boolean;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -203,9 +217,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~15) !== 0 ||
+    (capabilities & ~31) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 8) !== 0 && (capabilities & 4) === 0)
+    ((capabilities & 24) !== 0 && (capabilities & 4) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -240,6 +254,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       rdp: Boolean(capabilities & 2),
       connectCore: Boolean(capabilities & 4),
       jpegCapture: Boolean(capabilities & 8),
+      h264Capture: Boolean(capabilities & 16),
     },
     bridgeVersion,
     gitCommit,

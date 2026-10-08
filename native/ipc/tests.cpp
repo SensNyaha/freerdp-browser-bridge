@@ -70,6 +70,20 @@ TEST_CASE("connection settings independently encoded vector, truncation and poli
     REQUIRE_THROWS_AS(decode_connection_config(bad), ProtocolError);
   }
 }
+TEST_CASE("AVC IPC class bounds are checked before body allocation") {
+  REQUIRE_NOTHROW(encode({Kind::capture_avc, 1, std::vector<std::uint8_t>(12)}));
+  REQUIRE_THROWS_AS(encode({Kind::capture_avc, 1, std::vector<std::uint8_t>(11)}), ProtocolError);
+  REQUIRE_THROWS_AS(encode({Kind::frame_avc, 1, std::vector<std::uint8_t>(27)}), ProtocolError);
+  auto bytes = encode({Kind::frame_avc, 1, std::vector<std::uint8_t>(28)});
+  REQUIRE(decode_header(std::span(bytes).first(header_bytes)).kind == Kind::frame_avc);
+  const auto maximum = max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes;
+  bytes.resize(20);
+  append_be(bytes, maximum, 4);
+  REQUIRE(decode_header(bytes).length == maximum);
+  bytes.resize(20);
+  append_be(bytes, maximum + 1, 4);
+  REQUIRE_THROWS_AS(decode_header(bytes), ProtocolError);
+}
 TEST_CASE("secret class limits, canonical UTF-8, embedded NUL and overwrite") {
   REQUIRE_NOTHROW(validate_secret({}));
   REQUIRE_NOTHROW(validate_secret(std::vector<std::uint8_t>(4096, 'x')));

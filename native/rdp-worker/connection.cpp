@@ -166,13 +166,16 @@ BOOL Connection::end_paint(rdpContext *context) {
     ++owner(context->instance).revision_;
   return TRUE;
 }
-bool Connection::capture(std::uint64_t request, std::span<const std::uint8_t> payload) {
+bool Connection::capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc) {
   std::lock_guard lock(media_mutex_);
-  if (payload.size() != 8 || request == 0 || frame_request_ != 0)
+  if (payload.size() != (avc ? 12U : 8U) || request == 0 || frame_request_ != 0 ||
+      (avc && (payload[8] > 1 || read_be(payload.subspan(9, 3)) != 0)))
     throw ProtocolError();
   if (!connected_ || stopping_)
     return false;
-  requested_revision_ = read_be(payload);
+  requested_revision_ = read_be(payload.first(8));
+  requested_avc_ = avc;
+  force_idr_ = avc && (payload[8] == 1 || requested_revision_ == 0);
   frame_request_ = request;
   if (!SetEvent(media_event_))
     throw ProtocolError();
@@ -184,42 +187,60 @@ void Connection::capture_pending(bool ending) {
   if (!frame_request_ || (!ending && now < next_frame_))
     return;
   const auto *gdi = context_->gdi;
-  const bool changed = !ending && revision_ != requested_revision_;
+  const bool changed = !ending && (revision_ != requested_revision_ || force_idr_);
+  const auto timestamp = static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count());
   std::span<const std::uint8_t> jpeg;
+  media::AvcUnit avc{};
   if (changed) {
     try {
-      if (!encoder_)
-        encoder_ = std::make_unique<media::JpegEncoder>();
       if (!gdi || gdi->width < 1 || gdi->height < 1 || gdi->stride > INT32_MAX)
         throw ProtocolError();
-      jpeg = encoder_->encode({gdi->primary_buffer, static_cast<std::size_t>(gdi->stride) *
-                                                        static_cast<std::size_t>(gdi->height)},
-                              gdi->width, gdi->height, static_cast<int>(gdi->stride));
+      const std::span<const std::uint8_t> pixels{gdi->primary_buffer,
+                                                 static_cast<std::size_t>(gdi->stride) *
+                                                     static_cast<std::size_t>(gdi->height)};
+      if (requested_avc_) {
+        if (!avc_encoder_)
+          avc_encoder_ = std::make_unique<media::SoftwareH264Encoder>();
+        avc = avc_encoder_->encode(
+            {pixels, gdi->width, gdi->height, static_cast<int>(gdi->stride), timestamp},
+            force_idr_);
+      } else {
+        if (!encoder_)
+          encoder_ = std::make_unique<media::JpegEncoder>();
+        jpeg = encoder_->encode(pixels, gdi->width, gdi->height, static_cast<int>(gdi->stride));
+      }
     } catch (...) {
       std::vector<std::uint8_t> error;
       append_be(error, 4, 4);
       send_({Kind::error, frame_request_, std::move(error)});
       frame_request_ = 0;
+      avc_encoder_.reset(); // A failed predictive chain must restart from config/IDR.
       next_frame_ = now + std::chrono::milliseconds(50);
       return; // Media provider failure does not disconnect the remote session.
     }
   }
   std::vector<std::uint8_t> payload;
-  payload.reserve(frame_metadata_bytes + jpeg.size());
+  payload.reserve(avc_metadata_bytes + avc.config.size() + avc.bytes.size() + jpeg.size());
   append_be(payload, revision_, 8);
-  append_be(
-      payload,
-      static_cast<std::uint64_t>(
-          std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()),
-      8);
+  append_be(payload, timestamp, 8);
   append_be(payload, gdi ? static_cast<std::uint64_t>(gdi->width) : config_->width, 2);
   append_be(payload, gdi ? static_cast<std::uint64_t>(gdi->height) : config_->height, 2);
-  append_be(payload, changed ? 1 : 0, 1);
-  append_be(payload, 0, 3);
-  payload.insert(payload.end(), jpeg.begin(), jpeg.end());
-  send_({Kind::frame, frame_request_, std::move(payload)});
+  if (requested_avc_) {
+    append_be(payload, changed ? (avc.keyframe ? 2 : 1) : 0, 1);
+    append_be(payload, 0, 1);
+    append_be(payload, avc.config.size(), 2);
+    append_be(payload, avc.bytes.size(), 4);
+    payload.insert(payload.end(), avc.config.begin(), avc.config.end());
+    payload.insert(payload.end(), avc.bytes.begin(), avc.bytes.end());
+  } else {
+    append_be(payload, changed ? 1 : 0, 1);
+    append_be(payload, 0, 3);
+    payload.insert(payload.end(), jpeg.begin(), jpeg.end());
+  }
+  send_({requested_avc_ ? Kind::frame_avc : Kind::frame, frame_request_, std::move(payload)});
   frame_request_ = 0;
-  next_frame_ = now + std::chrono::milliseconds(50); // Diagnostic JPEG ceiling: 20 FPS.
+  next_frame_ = now + std::chrono::milliseconds(requested_avc_ ? 34 : 50);
 }
 void Connection::post_disconnect(freerdp *instance) { gdi_free(instance); }
 BOOL Connection::authenticate(freerdp *instance, char **username, char **password, char **,
@@ -352,7 +373,18 @@ void Connection::run() noexcept {
         }
         capture_pending();
         events[count] = media_event_;
-        const auto result = WaitForMultipleObjects(count + 1, events.data(), FALSE, 50);
+        DWORD wait_ms = 50;
+        {
+          std::lock_guard lock(media_mutex_);
+          if (frame_request_) {
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       next_frame_ - std::chrono::steady_clock::now())
+                                       .count() +
+                                   1;
+            wait_ms = static_cast<DWORD>(std::clamp<std::int64_t>(remaining, 1, 50));
+          }
+        }
+        const auto result = WaitForMultipleObjects(count + 1, events.data(), FALSE, wait_ms);
         if (result == WAIT_FAILED || !freerdp_check_event_handles(context_.get())) {
           healthy = false;
           break;
