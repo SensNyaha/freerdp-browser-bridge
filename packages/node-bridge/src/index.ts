@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 export * from './session-manager.js';
+export * from './native-session.js';
 import { EventEmitter } from 'node:events';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -11,6 +12,11 @@ import {
   decodeBuild,
   encodePacket,
   helloPayload,
+  encodeConnectionSettings,
+  decodeConnectionState,
+  decodeCertificatePrompt,
+  encodeCertificateDecision,
+  type CertificatePrompt,
   type Packet,
   type WorkerBuild,
 } from '@freerdp-bridge/protocol';
@@ -18,6 +24,10 @@ export {
   validateSessionConfig,
   SessionCreateSchema,
   redactSecrets,
+  type SessionCreate,
+} from '@freerdp-bridge/config';
+import {
+  validateSessionConfig,
   type SessionCreate,
 } from '@freerdp-bridge/config';
 export type {
@@ -69,6 +79,8 @@ export class WorkerProcess extends EventEmitter {
   private closePromise: Promise<void> | undefined;
   private status: Status = 'created';
   private report: WorkerBuild | undefined;
+  private connectionRequested = false;
+  private certificatePrompt: CertificatePrompt | undefined;
   private readonly options: Required<WorkerOptions>;
 
   constructor(options: WorkerOptions) {
@@ -221,6 +233,39 @@ export class WorkerProcess extends EventEmitter {
   }
 
   private receive(packet: Packet): void {
+    if (
+      packet.requestId === 0n &&
+      this.connectionRequested &&
+      this.status === 'closing'
+    ) {
+      if (packet.kind === Kind.State) {
+        decodeConnectionState(packet.payload);
+        return;
+      }
+      if (packet.kind === Kind.Certificate) {
+        decodeCertificatePrompt(packet.payload);
+        return;
+      }
+    }
+    if (
+      packet.requestId === 0n &&
+      this.connectionRequested &&
+      this.status === 'ready'
+    ) {
+      if (packet.kind === Kind.State) {
+        const value = decodeConnectionState(packet.payload);
+        if (value.state !== 'awaiting-user') this.certificatePrompt = undefined;
+        this.emit('rdp-state', value);
+        return;
+      }
+      if (packet.kind === Kind.Certificate) {
+        if (this.certificatePrompt)
+          throw new WorkerError('IPC_UNEXPECTED_EVENT');
+        this.certificatePrompt = decodeCertificatePrompt(packet.payload);
+        this.emit('certificate', structuredClone(this.certificatePrompt));
+        return;
+      }
+    }
     const pending = this.pending.get(packet.requestId);
     if (!pending || packet.kind !== pending.expected)
       throw new WorkerError('IPC_UNEXPECTED_REPLY');
@@ -260,6 +305,7 @@ export class WorkerProcess extends EventEmitter {
       );
       this.pending.set(requestId, { expected, resolve: done, reject, timer });
       child.stdin.write(bytes, (error) => {
+        if (kind === Kind.Secret) bytes.fill(0);
         if (error) this.fail('IPC_WRITE_FAILED');
       });
     });
@@ -268,6 +314,60 @@ export class WorkerProcess extends EventEmitter {
   async ping(): Promise<void> {
     if (this.status !== 'ready') throw new WorkerError('INVALID_STATE');
     await this.request(Kind.Heartbeat, Kind.HeartbeatAck);
+  }
+
+  /** Experimental connection-only core. Does not imply browser media/input availability. */
+  async connect(value: unknown): Promise<void> {
+    if (this.status !== 'ready' || this.connectionRequested)
+      throw new WorkerError('INVALID_STATE');
+    if (!this.report?.capabilities.connectCore)
+      throw new WorkerError('RDP_NOT_IMPLEMENTED');
+    const config = validateSessionConfig(value);
+    try {
+      const payload = connectionPayload(config);
+      const password = Buffer.from(config.auth.password ?? '', 'utf8');
+      try {
+        if (
+          password.length > 4096 ||
+          password.includes(0) ||
+          new TextDecoder('utf-8', { fatal: true }).decode(password) !==
+            (config.auth.password ?? '')
+        )
+          throw new WorkerError('INVALID_SESSION_CONFIG');
+        await this.request(Kind.Configure, Kind.ConfigureAck, payload);
+        await this.request(Kind.Secret, Kind.SecretAck, password);
+      } finally {
+        password.fill(0);
+      }
+      this.connectionRequested = true;
+      await this.request(Kind.Connect, Kind.ConnectAck);
+    } finally {
+      delete config.auth.password;
+    }
+  }
+
+  async decideCertificate(
+    prompt: CertificatePrompt,
+    accept: boolean,
+  ): Promise<void> {
+    if (
+      !this.certificatePrompt ||
+      this.status !== 'ready' ||
+      this.certificatePrompt.challenge !== prompt.challenge ||
+      this.certificatePrompt.fingerprint !== prompt.fingerprint
+    )
+      throw new WorkerError('CERTIFICATE_PROMPT_STALE');
+    const payload = encodeCertificateDecision(prompt, accept);
+    this.certificatePrompt = undefined;
+    await this.request(
+      Kind.CertificateDecision,
+      Kind.CertificateDecisionAck,
+      payload,
+    );
+  }
+
+  terminate(): void {
+    this.fail('WORKER_TERMINATED');
   }
 
   close(): Promise<void> {
@@ -314,6 +414,45 @@ export class WorkerProcess extends EventEmitter {
       this.directory = undefined;
     }
   }
+}
+
+function connectionPayload(config: SessionCreate): Buffer {
+  const allowed = (value: object | undefined, names: string[]) => {
+    if (value && Object.keys(value).some((key) => !names.includes(key)))
+      throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
+  };
+  allowed(config, ['target', 'auth', 'security', 'display', 'timeouts']);
+  allowed(config.target, ['host', 'port']);
+  allowed(config.auth, ['username', 'domain', 'password', 'mode']);
+  allowed(config.security, ['protocol', 'certificatePolicy', 'minimumTls']);
+  allowed(config.display, ['width', 'height', 'colorDepth']);
+  allowed(config.timeouts, ['connectMs', 'tcpAckMs']);
+  if (
+    (config.auth.mode && !['auto', 'password'].includes(config.auth.mode)) ||
+    (config.security?.protocol &&
+      !['auto', 'nla', 'tls'].includes(config.security.protocol)) ||
+    config.security?.certificatePolicy === 'tofu'
+  )
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
+  return encodeConnectionSettings({
+    host: config.target.host,
+    port: config.target.port ?? 3389,
+    username: config.auth.username ?? '',
+    domain: config.auth.domain ?? '',
+    width: config.display?.width ?? 1024,
+    height: config.display?.height ?? 768,
+    colorDepth: config.display?.colorDepth ?? 32,
+    security:
+      config.security?.protocol === 'nla'
+        ? 1
+        : config.security?.protocol === 'tls'
+          ? 2
+          : 0,
+    certificatePolicy: config.security?.certificatePolicy === 'prompt' ? 1 : 0,
+    minimumTls: config.security?.minimumTls === '1.3' ? 3 : 2,
+    connectMs: config.timeouts?.connectMs ?? 10000,
+    tcpAckMs: config.timeouts?.tcpAckMs ?? 10000,
+  });
 }
 
 export async function probeWorkerBuild(

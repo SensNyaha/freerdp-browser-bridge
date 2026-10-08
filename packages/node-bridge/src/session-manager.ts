@@ -5,9 +5,30 @@ import {
   validateSessionConfig,
   type SessionCreate,
 } from '@freerdp-bridge/config';
-import type { BridgeFailure, SessionState } from '@freerdp-bridge/protocol';
+import type {
+  BridgeFailure,
+  SessionState,
+  CertificatePrompt,
+} from '@freerdp-bridge/protocol';
 
 const failures = {
+  RDP_CONNECT_FAILED: [502, 'Remote connection failed', true],
+  RDP_AUTHENTICATION_FAILED: [502, 'Remote authentication failed', false],
+  RDP_CERTIFICATE_REJECTED: [502, 'Remote certificate was rejected', false],
+  RDP_CONNECT_TIMEOUT: [504, 'Remote connection deadline exceeded', true],
+  RDP_PROTOCOL_ERROR: [502, 'Remote protocol operation failed', false],
+  RDP_CONNECT_CANCELLED: [502, 'Remote connection was cancelled', true],
+  RDP_DISCONNECTED: [502, 'Remote session disconnected', true],
+  RDP_SETTING_NOT_IMPLEMENTED: [
+    501,
+    'Requested connection setting is not implemented',
+    false,
+  ],
+  CERTIFICATE_PROMPT_STALE: [
+    409,
+    'Certificate prompt is stale or unavailable',
+    false,
+  ],
   AUTH_REQUIRED: [401, 'Authentication is required', false],
   INVALID_SESSION_CONFIG: [
     400,
@@ -66,8 +87,14 @@ export interface SessionSnapshot {
   error?: BridgeFailure;
 }
 export interface SessionEvent {
-  type: 'session.state' | 'session.error';
+  type: 'session.state' | 'session.error' | 'certificate.prompt';
   session: SessionSnapshot;
+  certificate?: CertificatePrompt;
+}
+export interface CertificateResponse {
+  challenge: string;
+  fingerprint: string;
+  accept: boolean;
 }
 /** Trusted backend boundary. Stage 3 supplies native config/state IPC; tests use explicit fakes. */
 export interface SessionWorker {
@@ -75,7 +102,9 @@ export interface SessionWorker {
   close(): Promise<void>;
   terminate(): void;
   onState(listener: (state: SessionState) => void): () => void;
-  onFailure(listener: () => void): () => void;
+  onFailure(listener: (code?: SessionErrorCode) => void): () => void;
+  onCertificate?(listener: (prompt: CertificatePrompt) => void): () => void;
+  decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
 }
 export interface SessionManagerOptions {
   workerFactory?: () => SessionWorker;
@@ -94,6 +123,7 @@ export interface SessionManagerOptions {
 }
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
+  certificate?: CertificatePrompt;
   owner: string;
   snapshot: SessionSnapshot;
   worker: SessionWorker;
@@ -273,8 +303,37 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
           worker.onState((state) => this.workerState(entry, state)),
         );
         entry.unsubscribers.push(
-          worker.onFailure(() => this.fail(entry, 'WORKER_FAILED')),
+          worker.onFailure((code) =>
+            this.fail(
+              entry,
+              code && Object.hasOwn(failures, code) ? code : 'WORKER_FAILED',
+            ),
+          ),
         );
+        if (worker.onCertificate)
+          entry.unsubscribers.push(
+            worker.onCertificate((prompt) => {
+              if (
+                entry.released ||
+                terminal(entry.snapshot.state) ||
+                entry.snapshot.state === 'closing'
+              )
+                return;
+              if (
+                entry.snapshot.state !== 'awaiting-user' ||
+                entry.certificate
+              ) {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+                return;
+              }
+              entry.certificate = structuredClone(prompt);
+              this.emit('event', {
+                type: 'certificate.prompt',
+                session: structuredClone(entry.snapshot),
+                certificate: structuredClone(prompt),
+              });
+            }),
+          );
         if (terminal(entry.snapshot.state))
           throw new SessionError('WORKER_START_FAILED');
       } catch {
@@ -317,9 +376,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       if (!terminal(entry.snapshot.state) && entry.snapshot.state !== 'closing')
         this.fail(
           entry,
-          error instanceof SessionError && error.code === 'WORKER_START_TIMEOUT'
-            ? 'WORKER_START_TIMEOUT'
-            : 'WORKER_START_FAILED',
+          error instanceof SessionError ? error.code : 'WORKER_START_FAILED',
         );
     } finally {
       if (timer) clearTimeout(timer);
@@ -346,6 +403,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       return;
     }
     if (state === entry.snapshot.state) return;
+    if (state !== 'awaiting-user') delete entry.certificate;
     if (
       !Object.hasOwn(transitions, state) ||
       !transitions[entry.snapshot.state].includes(state)
@@ -368,6 +426,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     if (terminal(entry.snapshot.state)) return;
     entry.snapshot.error = new SessionError(code).failure;
     entry.tokens.clear();
+    delete entry.certificate;
     entry.abort.abort();
     this.totals.failed++;
     this.transition(entry, 'failed');
@@ -381,7 +440,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     if (entry.cleanup) return entry.cleanup;
     entry.abort.abort();
     entry.tokens.clear();
-    for (const unsubscribe of entry.unsubscribers.splice(0)) unsubscribe();
+    delete entry.certificate;
+    for (const unsubscribe of entry.unsubscribers.splice(0)) {
+      try {
+        unsubscribe();
+      } catch {
+        /* Cleanup continues after a faulty backend listener. */
+      }
+    }
     entry.cleanup = (async () => {
       let timer: NodeJS.Timeout | undefined;
       try {
@@ -451,7 +517,12 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     id: string,
     token: string,
     channel: SessionChannel,
-  ): { release: () => void; session: SessionSnapshot } {
+  ): {
+    release: () => void;
+    session: SessionSnapshot;
+    certificate?: CertificatePrompt;
+    respondCertificate: (response: CertificateResponse) => Promise<void>;
+  } {
     const entry = this.entries.get(id);
     if (!entry || !/^[A-Za-z0-9_-]{43}$/.test(token))
       throw new SessionError('ATTACH_INVALID');
@@ -473,6 +544,30 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.attachments.set(channel, lease);
     return {
       session: structuredClone(entry.snapshot),
+      ...(entry.certificate
+        ? { certificate: structuredClone(entry.certificate) }
+        : {}),
+      respondCertificate: async (response) => {
+        const prompt = entry.certificate;
+        if (
+          channel !== 'control' ||
+          entry.attachments.get(channel) !== lease ||
+          entry.snapshot.state !== 'awaiting-user' ||
+          !prompt ||
+          !entry.worker.decideCertificate ||
+          !response ||
+          typeof response.accept !== 'boolean' ||
+          response.challenge !== prompt.challenge ||
+          response.fingerprint !== prompt.fingerprint
+        )
+          throw new SessionError('CERTIFICATE_PROMPT_STALE');
+        delete entry.certificate; // Consume before awaiting backend delivery.
+        try {
+          await entry.worker.decideCertificate(prompt, response.accept);
+        } catch {
+          throw new SessionError('CERTIFICATE_PROMPT_STALE');
+        }
+      },
       release: () => {
         if (entry.attachments.get(channel) === lease)
           entry.attachments.delete(channel);

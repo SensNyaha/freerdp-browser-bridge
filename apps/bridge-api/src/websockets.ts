@@ -35,6 +35,16 @@ const knownCommands = new Set([
   'media.request-keyframe',
   'session.detach',
 ]);
+const certificateResponse = TypeCompiler.Compile(
+  Type.Object(
+    {
+      challenge: Type.String({ pattern: '^[1-9][0-9]{0,19}$' }),
+      fingerprint: Type.String({ pattern: '^sha256:[0-9a-f]{64}$' }),
+      accept: Type.Boolean(),
+    },
+    { additionalProperties: false },
+  ),
+);
 
 export function installSessionWebSockets(
   server: FastifyInstance,
@@ -92,7 +102,11 @@ export function installSessionWebSockets(
       send(
         ws,
         value.type,
-        value.type === 'session.error' ? value.session.error : value.session,
+        value.type === 'session.error'
+          ? value.session.error
+          : value.type === 'certificate.prompt'
+            ? value.certificate
+            : value.session,
       );
       if (
         value.session.state === 'closing' ||
@@ -207,6 +221,8 @@ export function installSessionWebSockets(
           return;
         }
         send(ws, 'session.state', lease.session);
+        if (lease.certificate)
+          send(ws, 'certificate.prompt', lease.certificate);
         let lastSequence = -1;
         let window = Date.now();
         let received = 0;
@@ -243,6 +259,24 @@ export function installSessionWebSockets(
             return;
           }
           lastSequence = data.seq;
+          if (data.type === 'certificate.response') {
+            if (!certificateResponse.Check(data.data)) {
+              send(ws, 'session.error', {
+                code: 'CONTROL_PROTOCOL_ERROR',
+                message: 'Invalid certificate response',
+                retryable: false,
+              });
+            } else {
+              void lease.respondCertificate(data.data).catch(() => {
+                send(ws, 'session.error', {
+                  code: 'CERTIFICATE_PROMPT_STALE',
+                  message: 'Certificate prompt is stale or unavailable',
+                  retryable: false,
+                });
+              });
+            }
+            return;
+          }
           if (
             data.type === 'session.detach' &&
             Object.keys(data.data).length === 0
