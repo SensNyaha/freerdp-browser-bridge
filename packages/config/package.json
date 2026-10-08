@@ -1,0 +1,14 @@
+{
+  "name": "@freerdp-bridge/config",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.41"
+  }
+}
