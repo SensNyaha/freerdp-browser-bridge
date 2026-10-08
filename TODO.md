@@ -26,6 +26,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   add 5 cases / 4,022 assertions (combined GDI/GFX: 8 / 13,133).
   [Cursor block evidence](docs/ITERATION_012.md), [dirty tracking evidence](docs/ITERATION_013.md),
   [GFX binding evidence](docs/ITERATION_014.md).
+  GFX implementation commit: `90285bb`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
