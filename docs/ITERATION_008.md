@@ -4,6 +4,7 @@ Date: 2026-10-08. Implements the physical keyboard/pointer portion of
 SPECIFICATION.md §2.5 and ARCHITECTURE.md §7, needed for the interactive Stage 4
 desktop gate. The normative blueprint and remaining input requirements are
 preserved. [INPUT.md](INPUT.md) specifies the actual control and native wire contract.
+Implementation and verified tests: commit `3a8ad71`.
 
 The worker now advertises a separate `basicInput` capability, accepts bounded
 fixed-size records and dispatches them on the RDP thread using FreeRDP 3.32.1
