@@ -1,0 +1,44 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "foundation",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/foundation",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "BRIDGE_WITH_FREERDP": "OFF"
+      }
+    },
+    {
+      "name": "sanitizers",
+      "inherits": "foundation",
+      "binaryDir": "${sourceDir}/build/sanitizers",
+      "cacheVariables": { "BRIDGE_SANITIZERS": "ON" }
+    },
+    {
+      "name": "fuzz",
+      "inherits": "sanitizers",
+      "binaryDir": "${sourceDir}/build/fuzz",
+      "cacheVariables": { "BRIDGE_FUZZ": "ON", "CMAKE_CXX_COMPILER": "clang++" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "foundation", "configurePreset": "foundation" },
+    { "name": "sanitizers", "configurePreset": "sanitizers" },
+    { "name": "fuzz", "configurePreset": "fuzz" }
+  ],
+  "testPresets": [
+    {
+      "name": "foundation",
+      "configurePreset": "foundation",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "sanitizers",
+      "configurePreset": "sanitizers",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

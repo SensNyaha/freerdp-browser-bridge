@@ -11,6 +11,7 @@ coverage/
 *.obj
 *.ilk
 *.tmp
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
