@@ -4,6 +4,7 @@ build/
 .tools/
 .deps/
 .runtime/
+.local-tests/
 coverage/
 *.log
 *.dmp
