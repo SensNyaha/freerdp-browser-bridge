@@ -37,6 +37,8 @@ OFF because pinned upstream does not implement these POSIX clients on Windows. F
 media providers and audio backends await their documented stages; codecProviders remains empty.
 Linux builds/runtime, SOCK_SEQPACKET, sanitizer/fuzz CI, clean-machine acceptance and complete
 MSI/EXE/DEB/RPM installers remain unverified. Stage 0/1 overall gates remain open.
+Pinned libusb requires Linux libudev development headers; these and Autotools/NASM/Perl are
+prepared in manual CI. Linux transitive OS-library/package dependency acceptance remains open.
 
 A user-authorized XRDP lab is now TCP/3389 reachable. Non-secret endpoint details stay in ignored
 .local-tests. Password persistence requires secure interactive entry through the DPAPI helper;

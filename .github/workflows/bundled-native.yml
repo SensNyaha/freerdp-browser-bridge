@@ -17,6 +17,11 @@ jobs:
           version: 10.11.0
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
+      - name: Linux dependency build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build build-essential autoconf autoconf-archive automake libtool libltdl-dev libudev-dev pkg-config nasm perl
       - uses: actions/cache@v4
         with:
           path: .tools/vcpkg-cache

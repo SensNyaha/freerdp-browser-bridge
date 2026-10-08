@@ -45,6 +45,10 @@ enabled. The native build still requires the Visual Studio x64 Developer shell.
 
 Private dependency and runtime build (Windows x64 verified; Linux acceptance pending):
 
+Linux build prerequisites include Perl, NASM, pkg-config, Autotools/libtool and libudev-dev
+in addition to CMake/Ninja/compiler. The pinned libusb Linux port enables udev by default;
+its OS integration library must be inventoried and declared before Linux installer acceptance.
+
 ```sh
 pnpm build:dependencies
 pnpm build:freerdp
