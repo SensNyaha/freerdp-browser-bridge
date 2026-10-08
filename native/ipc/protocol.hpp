@@ -16,7 +16,17 @@ enum class Kind : std::uint16_t {
   heartbeat_ack = 4,
   shutdown = 5,
   shutdown_ack = 6,
-  error = 7
+  error = 7,
+  configure = 8,
+  configure_ack = 9,
+  secret = 10,
+  secret_ack = 11,
+  connect = 12,
+  connect_ack = 13,
+  state = 14,
+  certificate = 15,
+  certificate_decision = 16,
+  certificate_decision_ack = 17
 };
 struct Header {
   Kind kind;

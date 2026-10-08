@@ -1,4 +1,5 @@
 #include "build_features.hpp"
+#include "connection_config.hpp"
 #include "protocol.hpp"
 #include <csignal>
 #include <cstdio>
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <string>
 #ifdef _WIN32
 #include <fcntl.h>
@@ -15,12 +17,15 @@
 #include <unistd.h>
 #endif
 #ifdef BRIDGE_WITH_FREERDP
+#include "connection.hpp"
 #include <freerdp/client.h>
 #include <freerdp/freerdp.h>
+#include <winpr/wlog.h>
 #endif
 
 namespace {
 using namespace bridge::ipc;
+std::mutex output_mutex;
 class RuntimeGuard {
   std::filesystem::path path_;
 
@@ -75,7 +80,11 @@ void append_string(std::vector<std::uint8_t> &bytes, const std::string &text) {
 std::vector<std::uint8_t> build_payload() {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
-  append_be(bytes, 1, 2); // Lifecycle only; linking FreeRDP is not RDP capability.
+#ifdef BRIDGE_WITH_FREERDP
+  append_be(bytes, 5, 2); // Lifecycle + experimental connect core; usable browser RDP still false.
+#else
+  append_be(bytes, 1, 2);
+#endif
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
                             platform, arch, "framed-pipes"})
     append_string(bytes, value);
@@ -95,6 +104,7 @@ bool read_exact(std::span<std::uint8_t> bytes, bool allow_eof = false) {
   return true;
 }
 void send(const Packet &packet) {
+  const std::lock_guard lock(output_mutex);
   const auto bytes = encode(packet);
   if (std::fwrite(bytes.data(), 1, bytes.size(), stdout) != bytes.size() ||
       std::fflush(stdout) != 0)
@@ -107,20 +117,25 @@ void error(std::uint64_t request, std::uint32_t code) {
 }
 int run() {
 #ifdef BRIDGE_WITH_FREERDP
-  RDP_CLIENT_ENTRY_POINTS entry{};
-  entry.Size = sizeof(entry);
-  entry.Version = RDP_CLIENT_INTERFACE_VERSION;
-  entry.ContextSize = sizeof(rdpContext);
-  const std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)> context(
-      freerdp_client_context_new(&entry), freerdp_client_context_free);
-  if (!context)
-    throw std::runtime_error("FreeRDP context initialization failed");
+  if (!WLog_SetLogLevel(WLog_GetRoot(), WLOG_OFF))
+    throw std::runtime_error("FreeRDP logging initialization failed");
+  bridge::Connection connection(send);
 #endif
   bool ready = false;
   std::array<std::uint8_t, header_bytes> buffer{};
   while (read_exact(buffer, true)) {
     const auto header = decode_header(buffer); // Validate class limit before allocation.
+    if (header.request_id == 0)
+      throw ProtocolError();
     std::vector<std::uint8_t> payload(header.length);
+    struct SecretWiper {
+      std::vector<std::uint8_t> &bytes;
+      bool secret;
+      ~SecretWiper() {
+        if (secret)
+          wipe(bytes);
+      }
+    } wiper{payload, header.kind == Kind::secret};
     (void)read_exact(payload);
     if (header.kind == Kind::hello && !ready) {
       try {
@@ -134,8 +149,25 @@ int run() {
     } else if (header.kind == Kind::heartbeat && ready) {
       send({Kind::heartbeat_ack, header.request_id, {}});
     } else if (header.kind == Kind::shutdown && ready) {
+#ifdef BRIDGE_WITH_FREERDP
+      connection.stop();
+#endif
       send({Kind::shutdown_ack, header.request_id, {}});
       return 0;
+#ifdef BRIDGE_WITH_FREERDP
+    } else if (header.kind == Kind::configure && ready) {
+      connection.configure(payload);
+      send({Kind::configure_ack, header.request_id, {}});
+    } else if (header.kind == Kind::secret && ready) {
+      connection.secret(payload);
+      send({Kind::secret_ack, header.request_id, {}});
+    } else if (header.kind == Kind::connect && ready) {
+      connection.start();
+      send({Kind::connect_ack, header.request_id, {}});
+    } else if (header.kind == Kind::certificate_decision && ready) {
+      connection.decide(payload);
+      send({Kind::certificate_decision_ack, header.request_id, {}});
+#endif
     } else {
       error(header.request_id, 3);
       return 2;
@@ -165,7 +197,12 @@ int main(int argc, char **argv) {
     else
       std::cout << "null";
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
-                 "\"rdp\":false},"
+                 "\"rdp\":false,\"connectCore\":"
+#ifdef BRIDGE_WITH_FREERDP
+                 "true},"
+#else
+                 "false},"
+#endif
               << "\"os\":\"" << platform << "\",\"arch\":\"" << arch
               << "\",\"transport\":\"framed-pipes\"}\n";
     return 0;

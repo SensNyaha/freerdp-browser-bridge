@@ -1,0 +1,104 @@
+#include "connection_config.hpp"
+#include <algorithm>
+
+namespace bridge::ipc {
+namespace {
+bool utf8(std::span<const std::uint8_t> bytes) {
+  std::size_t i = 0;
+  while (i < bytes.size()) {
+    const auto c = bytes[i++];
+    if (c == 0)
+      return false;
+    if (c < 0x80)
+      continue;
+    std::uint32_t value = 0, minimum = 0;
+    unsigned count = 0;
+    if (c >= 0xc2 && c <= 0xdf) {
+      value = c & 0x1fU;
+      count = 1;
+      minimum = 0x80;
+    } else if (c >= 0xe0 && c <= 0xef) {
+      value = c & 0x0fU;
+      count = 2;
+      minimum = 0x800;
+    } else if (c >= 0xf0 && c <= 0xf4) {
+      value = c & 7U;
+      count = 3;
+      minimum = 0x10000;
+    } else {
+      return false;
+    }
+    if (bytes.size() - i < count)
+      return false;
+    while (count--) {
+      const auto next = bytes[i++];
+      if ((next & 0xc0U) != 0x80)
+        return false;
+      value = (value << 6) | (next & 0x3fU);
+    }
+    if (value < minimum || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff))
+      return false;
+  }
+  return true;
+}
+} // namespace
+ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() > 2048)
+    throw ProtocolError();
+  std::size_t offset = 0;
+  const auto number = [&](std::size_t count) {
+    if (count > bytes.size() - offset)
+      throw ProtocolError();
+    const auto value = read_be(bytes.subspan(offset, count));
+    offset += count;
+    return value;
+  };
+  const auto text = [&](std::size_t maximum) {
+    const auto length = static_cast<std::size_t>(number(2));
+    if (length > maximum || length > bytes.size() - offset)
+      throw ProtocolError();
+    const auto slice = bytes.subspan(offset, length);
+    if (!utf8(slice))
+      throw ProtocolError();
+    offset += length;
+    return std::string(slice.begin(), slice.end());
+  };
+  if (number(2) != 1)
+    throw ProtocolError();
+  ConnectionConfig config{};
+  config.host = text(253);
+  config.username = text(256);
+  config.domain = text(256);
+  config.port = static_cast<std::uint16_t>(number(2));
+  config.width = static_cast<std::uint16_t>(number(2));
+  config.height = static_cast<std::uint16_t>(number(2));
+  config.color_depth = static_cast<std::uint16_t>(number(2));
+  config.security = static_cast<std::uint8_t>(number(1));
+  config.certificate_policy = static_cast<std::uint8_t>(number(1));
+  config.minimum_tls = static_cast<std::uint8_t>(number(1));
+  const auto reserved = number(1);
+  config.connect_ms = static_cast<std::uint32_t>(number(4));
+  config.tcp_ack_ms = static_cast<std::uint32_t>(number(4));
+  if (offset != bytes.size() || config.host.empty() ||
+      std::any_of(config.host.begin(), config.host.end(),
+                  [](unsigned char c) { return c <= 32; }) ||
+      config.port == 0 || config.width == 0 || config.width > 7680 || config.height == 0 ||
+      config.height > 4320 ||
+      (config.color_depth != 16 && config.color_depth != 24 && config.color_depth != 32) ||
+      config.security > 2 || config.certificate_policy > 1 ||
+      (config.minimum_tls != 2 && config.minimum_tls != 3) || reserved != 0 ||
+      config.connect_ms < 100 || config.connect_ms > 120000 || config.tcp_ack_ms < 100 ||
+      config.tcp_ack_ms > 120000)
+    throw ProtocolError();
+  return config;
+}
+void validate_secret(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() > 4096 || !utf8(bytes))
+    throw ProtocolError();
+}
+void wipe(std::span<std::uint8_t> bytes) noexcept {
+  volatile std::uint8_t *output = bytes.data();
+  for (std::size_t i = 0; i < bytes.size(); ++i)
+    output[i] = 0;
+}
+} // namespace bridge::ipc

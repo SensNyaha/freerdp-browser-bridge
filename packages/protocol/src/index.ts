@@ -10,6 +10,16 @@ export enum Kind {
   Shutdown = 5,
   ShutdownAck = 6,
   Error = 7,
+  Configure = 8,
+  ConfigureAck = 9,
+  Secret = 10,
+  SecretAck = 11,
+  Connect = 12,
+  ConnectAck = 13,
+  State = 14,
+  Certificate = 15,
+  CertificateDecision = 16,
+  CertificateDecisionAck = 17,
 }
 
 export interface Packet {
@@ -35,9 +45,24 @@ function payloadLimit(kind: number): number {
     case Kind.HeartbeatAck:
     case Kind.Shutdown:
     case Kind.ShutdownAck:
+    case Kind.ConfigureAck:
+    case Kind.SecretAck:
+    case Kind.Connect:
+    case Kind.ConnectAck:
+    case Kind.CertificateDecisionAck:
       return 0;
     case Kind.Error:
       return 4;
+    case Kind.Configure:
+      return 2048;
+    case Kind.Secret:
+      return 4096;
+    case Kind.State:
+      return 8;
+    case Kind.Certificate:
+      return 42;
+    case Kind.CertificateDecision:
+      return 41;
     default:
       throw new ProtocolError();
   }
@@ -60,7 +85,8 @@ export function decodeHeader(header: Buffer): {
   const length = header.readUInt32BE(20);
   if (
     length > payloadLimit(kind) ||
-    (kind !== Kind.HelloAck && length !== payloadLimit(kind))
+    (![Kind.HelloAck, Kind.Configure, Kind.Secret].includes(kind) &&
+      length !== payloadLimit(kind))
   ) {
     throw new ProtocolError();
   }
@@ -148,7 +174,7 @@ export function helloPayload(): Buffer {
 
 export interface WorkerBuild {
   protocolVersion: number;
-  capabilities: { lifecycle: boolean; rdp: boolean };
+  capabilities: { lifecycle: boolean; rdp: boolean; connectCore: boolean };
   bridgeVersion: string;
   gitCommit: string;
   freeRdpVersion: string | null;
@@ -162,7 +188,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
   if (payload.length < 4 || payload.readUInt16BE(0) !== IPC_VERSION)
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
-  if ((capabilities & ~3) !== 0 || !(capabilities & 1))
+  if ((capabilities & ~7) !== 0 || !(capabilities & 1))
     throw new ProtocolError();
   let offset = 4;
   const string = (): string => {
@@ -186,12 +212,16 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
   const transport = string();
   if (
     offset !== payload.length ||
-    (Boolean(capabilities & 2) && !freeRdpVersion)
+    (Boolean(capabilities & 6) && !freeRdpVersion)
   )
     throw new ProtocolError();
   return {
     protocolVersion: IPC_VERSION,
-    capabilities: { lifecycle: true, rdp: Boolean(capabilities & 2) },
+    capabilities: {
+      lifecycle: true,
+      rdp: Boolean(capabilities & 2),
+      connectCore: Boolean(capabilities & 4),
+    },
     bridgeVersion,
     gitCommit,
     freeRdpVersion,
@@ -225,4 +255,152 @@ export interface DeviceCapability {
   origins: Array<'bridge-host' | 'browser-virtual' | 'companion'>;
   requires: string[];
   policy: 'disabled-by-default' | 'enabled';
+}
+
+export interface ConnectionSettings {
+  host: string;
+  username: string;
+  domain: string;
+  port: number;
+  width: number;
+  height: number;
+  colorDepth: number;
+  security: 0 | 1 | 2;
+  certificatePolicy: 0 | 1;
+  minimumTls: 2 | 3;
+  connectMs: number;
+  tcpAckMs: number;
+}
+/** Versioned non-secret connection settings. Passwords use a separate message class. */
+export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
+  const parts: Buffer[] = [Buffer.from([0, 1])];
+  for (const [value, maximum] of [
+    [c.host, 253],
+    [c.username, 256],
+    [c.domain, 256],
+  ] as const) {
+    const bytes = Buffer.from(value, 'utf8');
+    if (
+      bytes.length > maximum ||
+      value.includes('\0') ||
+      new TextDecoder('utf-8', { fatal: true }).decode(bytes) !== value
+    )
+      throw new ProtocolError();
+    const length = Buffer.alloc(2);
+    length.writeUInt16BE(bytes.length);
+    parts.push(length, bytes);
+  }
+  if (
+    !c.host ||
+    /[\s\u0000-\u001f]/u.test(c.host) ||
+    !Number.isInteger(c.port) ||
+    c.port < 1 ||
+    c.port > 65535 ||
+    !Number.isInteger(c.width) ||
+    c.width < 1 ||
+    c.width > 7680 ||
+    !Number.isInteger(c.height) ||
+    c.height < 1 ||
+    c.height > 4320 ||
+    ![16, 24, 32].includes(c.colorDepth) ||
+    ![0, 1, 2].includes(c.security) ||
+    ![0, 1].includes(c.certificatePolicy) ||
+    ![2, 3].includes(c.minimumTls) ||
+    !Number.isInteger(c.connectMs) ||
+    c.connectMs < 100 ||
+    c.connectMs > 120000 ||
+    !Number.isInteger(c.tcpAckMs) ||
+    c.tcpAckMs < 100 ||
+    c.tcpAckMs > 120000
+  )
+    throw new ProtocolError();
+  const fixed = Buffer.alloc(20);
+  fixed.writeUInt16BE(c.port, 0);
+  fixed.writeUInt16BE(c.width, 2);
+  fixed.writeUInt16BE(c.height, 4);
+  fixed.writeUInt16BE(c.colorDepth, 6);
+  fixed[8] = c.security;
+  fixed[9] = c.certificatePolicy;
+  fixed[10] = c.minimumTls;
+  fixed.writeUInt32BE(c.connectMs, 12);
+  fixed.writeUInt32BE(c.tcpAckMs, 16);
+  return Buffer.concat([...parts, fixed]);
+}
+
+export type NativeConnectionState = {
+  nativeError: number;
+  state: 'connecting' | 'awaiting-user' | 'connected' | 'closed' | 'failed';
+  error:
+    | 'NONE'
+    | 'RDP_CONNECT_FAILED'
+    | 'RDP_AUTHENTICATION_FAILED'
+    | 'RDP_CERTIFICATE_REJECTED'
+    | 'RDP_CONNECT_TIMEOUT'
+    | 'RDP_PROTOCOL_ERROR'
+    | 'RDP_CONNECT_CANCELLED'
+    | 'RDP_DISCONNECTED';
+};
+export function decodeConnectionState(payload: Buffer): NativeConnectionState {
+  const states = [
+    'connecting',
+    'awaiting-user',
+    'connected',
+    'closed',
+    'failed',
+  ] as const;
+  const errors = [
+    'NONE',
+    'RDP_CONNECT_FAILED',
+    'RDP_AUTHENTICATION_FAILED',
+    'RDP_CERTIFICATE_REJECTED',
+    'RDP_CONNECT_TIMEOUT',
+    'RDP_PROTOCOL_ERROR',
+    'RDP_CONNECT_CANCELLED',
+    'RDP_DISCONNECTED',
+  ] as const;
+  if (payload.length !== 8) throw new ProtocolError();
+  const state = states[payload.readUInt16BE(0) - 1];
+  const error = errors[payload.readUInt16BE(2)];
+  if (!state || !error || (state === 'failed') !== (error !== 'NONE'))
+    throw new ProtocolError();
+  return { state, error, nativeError: payload.readUInt32BE(4) };
+}
+export interface CertificatePrompt {
+  challenge: string;
+  fingerprint: string;
+  untrusted: boolean;
+  hostnameMismatch: boolean;
+}
+export function decodeCertificatePrompt(payload: Buffer): CertificatePrompt {
+  if (
+    payload.length !== 42 ||
+    payload.readBigUInt64BE(0) === 0n ||
+    payload.readUInt16BE(8) === 0 ||
+    (payload.readUInt16BE(8) & ~3) !== 0
+  )
+    throw new ProtocolError();
+  return {
+    challenge: payload.readBigUInt64BE(0).toString(),
+    fingerprint: 'sha256:' + payload.subarray(10).toString('hex'),
+    untrusted: Boolean(payload.readUInt16BE(8) & 1),
+    hostnameMismatch: Boolean(payload.readUInt16BE(8) & 2),
+  };
+}
+export function encodeCertificateDecision(
+  prompt: CertificatePrompt,
+  accept: boolean,
+): Buffer {
+  if (
+    !/^[1-9][0-9]{0,19}$/.test(prompt.challenge) ||
+    !/^sha256:[0-9a-f]{64}$/.test(prompt.fingerprint) ||
+    typeof accept !== 'boolean'
+  )
+    throw new ProtocolError();
+  const challenge = BigInt(prompt.challenge);
+  if (challenge > 0xffffffffffffffffn) throw new ProtocolError();
+  const bytes = Buffer.alloc(41);
+  bytes.writeBigUInt64BE(challenge);
+  Buffer.from(prompt.fingerprint.slice(7), 'hex').copy(bytes, 8);
+  bytes[40] = accept ? 1 : 0;
+  return bytes;
 }

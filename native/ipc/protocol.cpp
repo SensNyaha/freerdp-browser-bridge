@@ -27,9 +27,24 @@ static std::uint32_t limit(Kind kind) {
   case Kind::heartbeat_ack:
   case Kind::shutdown:
   case Kind::shutdown_ack:
+  case Kind::configure_ack:
+  case Kind::secret_ack:
+  case Kind::connect:
+  case Kind::connect_ack:
+  case Kind::certificate_decision_ack:
     return 0;
   case Kind::error:
     return 4;
+  case Kind::configure:
+    return 2048;
+  case Kind::secret:
+    return 4096;
+  case Kind::state:
+    return 8;
+  case Kind::certificate:
+    return 42;
+  case Kind::certificate_decision:
+    return 41;
   }
   throw ProtocolError();
 }
@@ -41,7 +56,8 @@ Header decode_header(std::span<const std::uint8_t> bytes) {
   const auto kind = static_cast<Kind>(read_be(bytes.subspan(6, 2)));
   const auto length = static_cast<std::uint32_t>(read_be(bytes.subspan(20, 4)));
   const auto maximum = limit(kind);
-  if (length > maximum || (kind != Kind::hello_ack && length != maximum))
+  const bool variable = kind == Kind::hello_ack || kind == Kind::configure || kind == Kind::secret;
+  if (length > maximum || (!variable && length != maximum))
     throw ProtocolError();
   return {kind, read_be(bytes.subspan(12, 8)), length};
 }
