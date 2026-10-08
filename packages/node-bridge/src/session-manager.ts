@@ -9,9 +9,12 @@ import type {
   BridgeFailure,
   SessionState,
   CertificatePrompt,
+  CapturedFrame,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
+  MEDIA_NOT_IMPLEMENTED: [501, 'Requested media codec is unavailable', false],
+  MEDIA_FAILED: [502, 'Media frame is unavailable', true],
   RDP_CONNECT_FAILED: [502, 'Remote connection failed', true],
   RDP_AUTHENTICATION_FAILED: [502, 'Remote authentication failed', false],
   RDP_CERTIFICATE_REJECTED: [502, 'Remote certificate was rejected', false],
@@ -105,6 +108,7 @@ export interface SessionWorker {
   onFailure(listener: (code?: SessionErrorCode) => void): () => void;
   onCertificate?(listener: (prompt: CertificatePrompt) => void): () => void;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
+  captureFrame?(sinceRevision: bigint): Promise<CapturedFrame | undefined>;
 }
 export interface SessionManagerOptions {
   workerFactory?: () => SessionWorker;
@@ -522,6 +526,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     session: SessionSnapshot;
     certificate?: CertificatePrompt;
     respondCertificate: (response: CertificateResponse) => Promise<void>;
+    captureFrame: (sinceRevision: bigint) => Promise<CapturedFrame | undefined>;
   } {
     const entry = this.entries.get(id);
     if (!entry || !/^[A-Za-z0-9_-]{43}$/.test(token))
@@ -542,11 +547,33 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.tokens.delete(hash);
     const lease = Symbol();
     entry.attachments.set(channel, lease);
+    let capturing = false;
     return {
       session: structuredClone(entry.snapshot),
       ...(entry.certificate
         ? { certificate: structuredClone(entry.certificate) }
         : {}),
+      captureFrame: async (sinceRevision) => {
+        if (
+          channel !== 'media' ||
+          entry.attachments.get(channel) !== lease ||
+          entry.released
+        )
+          throw new SessionError('ATTACH_INVALID');
+        if (!entry.worker.captureFrame)
+          throw new SessionError('MEDIA_NOT_IMPLEMENTED');
+        if (entry.snapshot.state !== 'connected') return undefined;
+        if (capturing) throw new SessionError('MEDIA_FAILED');
+        capturing = true;
+        try {
+          const frame = await entry.worker.captureFrame(sinceRevision);
+          if (entry.attachments.get(channel) !== lease || entry.released)
+            throw new SessionError('ATTACH_INVALID');
+          return frame;
+        } finally {
+          capturing = false;
+        }
+      },
       respondCertificate: async (response) => {
         const prompt = entry.certificate;
         if (

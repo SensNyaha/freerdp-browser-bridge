@@ -41,7 +41,9 @@ backlog to 64 KiB and commands to 32 per second. Socket/upgrade counts are bound
 Control currently emits state/error events and supports session.detach.
 Native-backend control attachments now support certificate.prompt and certificate.response;
 reattachment receives the pending prompt. Input/auth responses remain unimplemented.
-Media attach reports media.unavailable; no video/audio capability is advertised.
+Opt-in native media attachments now support the bounded JPEG negotiation and RWB1
+fallback described in MEDIA_JPEG.md. Input/audio and full usable-desktop capability
+remain unimplemented; fake backends do not imply actual RDP/media support.
 
 ## Backend and diagnostics
 

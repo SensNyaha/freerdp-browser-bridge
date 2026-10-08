@@ -6,6 +6,46 @@ import { eventually, fakeFactory } from '../fixtures/session-worker.mjs';
 
 const a = { id: 'principal-a' };
 const b = { id: 'principal-b' };
+test('fake-backend manager: released media lease cannot deliver a pending frame or reuse capture authority', async () => {
+  const factory = fakeFactory();
+  await withManager(factory, async (manager) => {
+    const created = manager.create(config(), a, '127.0.0.1');
+    await eventually(
+      () => manager.get(created.sessionId, a).state === 'connected',
+    );
+    let done;
+    factory.workers[0].captureFrame = () =>
+      new Promise((resolve) => {
+        done = resolve;
+      });
+    const lease = manager.attach(
+      created.sessionId,
+      manager.mintToken(created.sessionId, a, 'media').token,
+      'media',
+    );
+    const pending = lease.captureFrame(0n);
+    await assert.rejects(lease.captureFrame(0n), expectCode('MEDIA_FAILED'));
+    lease.release();
+    done({
+      revision: 1n,
+      timestampUs: 1n,
+      width: 640,
+      height: 480,
+      jpeg: Buffer.from('ffd8ffd9', 'hex'),
+    });
+    await assert.rejects(pending, expectCode('ATTACH_INVALID'));
+    await assert.rejects(lease.captureFrame(0n), expectCode('ATTACH_INVALID'));
+    const controller = manager.attach(
+      created.sessionId,
+      manager.mintToken(created.sessionId, a, 'control').token,
+      'control',
+    );
+    await assert.rejects(
+      controller.captureFrame(0n),
+      expectCode('ATTACH_INVALID'),
+    );
+  });
+});
 const config = () => ({
   target: { host: 'rdp.example.test' },
   auth: { username: 'example-user', password: randomBytes(24).toString('hex') },

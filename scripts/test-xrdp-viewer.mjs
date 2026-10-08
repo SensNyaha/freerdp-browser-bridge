@@ -1,0 +1,192 @@
+import { readFile, readdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { Writable } from 'node:stream';
+import { setTimeout as delay } from 'node:timers/promises';
+import { chromium } from 'playwright-core';
+import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
+import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
+
+// User-authorized local XRDP check: browser and API bind only to this machine.
+const fingerprint = process.argv[2];
+if (
+  process.argv.length !== 3 ||
+  !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
+)
+  throw new Error('Pass the previously verified certificate fingerprint');
+const readJson = async (path) =>
+  JSON.parse((await readFile(resolve(path), 'utf8')).replace(/^\uFEFF/, ''));
+const lab = await readJson('.local-tests/xrdp-lab.json');
+const credentials = await readJson('.local-tests/xrdp-lab.secrets.json');
+const origin = 'http://127.0.0.1:47999';
+const bearer = randomBytes(32).toString('base64url');
+const options = {
+  workerPath: resolve(
+    'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
+  ),
+  runtimeRoot: resolve('.runtime/viewer-lab'),
+};
+const server = await createSessionServer({
+  worker: options,
+  allowedOrigins: [origin],
+  authenticate: (request) =>
+    request.headers.authorization === 'Bearer ' + bearer
+      ? { id: 'local-lab' }
+      : undefined,
+  sessions: { workerFactory: () => new NativeSessionWorker(options) },
+  logDestination: new Writable({
+    write(_chunk, _encoding, done) {
+      done();
+    },
+  }),
+});
+for (const [url, name, type] of [
+  ['/harness/', 'index.html', 'text/html'],
+  ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
+]) {
+  const bytes = await readFile(resolve('apps/reference-harness', name));
+  server.get(url, (_request, reply) =>
+    reply
+      .header('Cache-Control', 'no-store')
+      .header(
+        'Content-Security-Policy',
+        "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src blob:",
+      )
+      .type(type)
+      .send(bytes),
+  );
+}
+let browser;
+let sessionId;
+try {
+  await server.listen({ host: '127.0.0.1', port: 47999 });
+  const created = await server.inject({
+    method: 'POST',
+    url: '/v1/sessions',
+    headers: { authorization: 'Bearer ' + bearer },
+    payload: {
+      target: { host: lab.host, port: lab.port },
+      auth: { username: credentials.username, password: credentials.password },
+      display: { width: 1920, height: 1080 },
+      security: { certificatePolicy: 'prompt' },
+      timeouts: { connectMs: 20000, tcpAckMs: 10000 },
+    },
+  });
+  delete credentials.password;
+  if (created.statusCode !== 202) throw new Error('LAB_CREATE_FAILED');
+  const attachment = created.json();
+  sessionId = attachment.sessionId;
+  browser = await chromium.launch({
+    channel: process.platform === 'win32' ? 'msedge' : 'chromium',
+    headless: true,
+  });
+  const page = await browser.newPage({
+    viewport: { width: 1980, height: 1240 },
+  });
+  await page.goto(origin + '/harness/');
+  await page.waitForFunction(() => Boolean(window.bridgeViewer));
+  await page.evaluate(
+    (created) => window.bridgeViewer.attach(created),
+    attachment,
+  );
+  await page.waitForFunction(
+    () => !document.querySelector('#certificate').hidden,
+    undefined,
+    { timeout: 20000 },
+  );
+  const accepted = await page.evaluate(
+    (verified) => window.bridgeViewer.acceptCertificate(verified),
+    fingerprint,
+  );
+  if (!accepted) throw new Error('LAB_CERTIFICATE_CHANGED');
+  await page.waitForFunction(
+    () => window.bridgeViewer.stats.frames > 0,
+    undefined,
+    { timeout: 20000 },
+  );
+  await delay(3000);
+  const stats = await page.evaluate(() => {
+    const canvas = document.querySelector('#desktop');
+    const pixels = canvas
+      .getContext('2d')
+      .getImageData(0, 0, canvas.width, canvas.height).data;
+    let min = 255,
+      max = 0;
+    for (let i = 0; i < pixels.length; i += 64) {
+      min = Math.min(min, pixels[i]);
+      max = Math.max(max, pixels[i]);
+    }
+    return { ...window.bridgeViewer.stats, hasImage: max - min > 20 };
+  });
+  if (
+    stats.error ||
+    stats.closed ||
+    !stats.hasImage ||
+    stats.width !== 1920 ||
+    stats.height !== 1080
+  )
+    throw new Error('LAB_RENDER_FAILED');
+  await page
+    .locator('#desktop')
+    .screenshot({ path: resolve('.local-tests/xrdp-browser.png') });
+  await page.evaluate(() => window.bridgeViewer.detach());
+  await delay(100); // Let the old socket releases reach the registry.
+  const nextAttach = {};
+  for (const channel of ['control', 'media']) {
+    const response = await server.inject({
+      method: 'POST',
+      url: '/v1/sessions/' + sessionId + '/attach-token',
+      headers: { authorization: 'Bearer ' + bearer },
+      payload: { channel },
+    });
+    if (response.statusCode !== 200)
+      throw new Error('LAB_REATTACH_TOKEN_FAILED');
+    nextAttach[channel] = response.json();
+  }
+  await page.evaluate((created) => window.bridgeViewer.attach(created), {
+    sessionId,
+    attach: nextAttach,
+  });
+  await page.waitForFunction(
+    () => window.bridgeViewer.stats.frames > 0,
+    undefined,
+    { timeout: 5000 },
+  );
+  if (
+    await page.evaluate(() =>
+      Boolean(
+        window.bridgeViewer.stats.error || window.bridgeViewer.stats.closed,
+      ),
+    )
+  )
+    throw new Error('LAB_REATTACH_FAILED');
+  await page.evaluate(() => window.bridgeViewer.detach());
+  const closed = await server.inject({
+    method: 'DELETE',
+    url: '/v1/sessions/' + sessionId,
+    headers: { authorization: 'Bearer ' + bearer },
+  });
+  if (closed.statusCode !== 200) throw new Error('LAB_CLOSE_FAILED');
+  console.log(
+    JSON.stringify({
+      type: 'lab.browser',
+      browser: 'chromium',
+      ...stats,
+      reattach: true,
+    }),
+  );
+} catch {
+  console.error(
+    'Local XRDP browser check failed; credentials and raw diagnostics omitted',
+  );
+  process.exitCode = 1;
+} finally {
+  delete credentials.password;
+  await browser?.close();
+  await server.close();
+  const leftovers = await readdir(options.runtimeRoot);
+  if (leftovers.length) {
+    console.error('LAB_RUNTIME_NOT_EMPTY');
+    process.exitCode = 1;
+  }
+}

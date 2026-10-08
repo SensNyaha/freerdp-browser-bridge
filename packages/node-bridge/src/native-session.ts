@@ -10,9 +10,10 @@ import type {
   CertificatePrompt,
   NativeConnectionState,
   SessionState,
+  CapturedFrame,
 } from '@freerdp-bridge/protocol';
 
-/** Explicit experimental native backend. No simulated connection or media capability. */
+/** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
 export class NativeSessionWorker implements SessionWorker {
   private readonly worker: WorkerProcess;
   private readonly events = new EventEmitter();
@@ -96,5 +97,24 @@ export class NativeSessionWorker implements SessionWorker {
   }
   decideCertificate(prompt: CertificatePrompt, accept: boolean): Promise<void> {
     return this.worker.decideCertificate(prompt, accept);
+  }
+  async captureFrame(
+    sinceRevision: bigint,
+  ): Promise<CapturedFrame | undefined> {
+    try {
+      if (this.closing) return undefined;
+      return await this.worker.captureFrame(sinceRevision);
+    } catch (error) {
+      if (
+        error instanceof WorkerError &&
+        ['MEDIA_NOT_CONNECTED', 'MEDIA_BUSY'].includes(error.code)
+      )
+        return undefined;
+      throw new SessionError(
+        error instanceof WorkerError && error.code === 'MEDIA_NOT_IMPLEMENTED'
+          ? 'MEDIA_NOT_IMPLEMENTED'
+          : 'MEDIA_FAILED',
+      );
+    }
   }
 }

@@ -91,6 +91,10 @@ async function open(wsBase, id, channel, token, header = false) {
   ws.on('error', () => {});
   const message = once(ws, 'message');
   await once(ws, 'open');
+  if (channel === 'media')
+    ws.send(
+      JSON.stringify({ v: 1, type: 'media.hello', data: { codecs: ['jpeg'] } }),
+    );
   const [data] = await message;
   return { ws, first: JSON.parse(data.toString()) };
 }
@@ -336,7 +340,7 @@ test('fake-backend WebSocket: Origin, channel/session scope, one controller, rep
       'media',
       one.attach.media.token,
     );
-    assert.equal(media.first.type, 'media.unavailable');
+    assert.equal(media.first.type, 'media.ready');
     await closeSocket(media.ws);
     assert.equal(
       await rejected(wsBase, one.sessionId, 'media', one.attach.media.token),

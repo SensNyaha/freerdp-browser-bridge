@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FreeRDP Bridge — диагностический просмотр</title>
+    <style>
+      body {
+        margin: 24px;
+        font:
+          16px system-ui,
+          sans-serif;
+        background: #111827;
+        color: #e5e7eb;
+      }
+      canvas {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        background: #000;
+        margin-top: 16px;
+      }
+      button {
+        padding: 8px 12px;
+        margin-right: 8px;
+      }
+      #fingerprint {
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>FreeRDP Bridge</h1>
+    <p id="status" role="status">Ожидание сессии</p>
+    <section id="certificate" hidden>
+      <p>Сертификат сервера требует решения для этой сессии.</p>
+      <p id="fingerprint"></p>
+      <button id="accept">Принять для этой сессии</button>
+      <button id="reject">Отклонить</button>
+    </section>
+    <canvas id="desktop" aria-label="Рабочий стол RDP"></canvas>
+    <script type="module" src="./viewer.js"></script>
+  </body>
+</html>

@@ -3,6 +3,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
+import { installJpegMedia } from './media.js';
 import {
   publicSessionError,
   type SessionManager,
@@ -65,7 +66,13 @@ export function installSessionWebSockets(
   const pending = new Set<Duplex>();
   const connections = new Map<
     WebSocket,
-    { id: string; release: () => void; sequence: number; alive: boolean }
+    {
+      id: string;
+      release: () => void;
+      sequence: number;
+      alive: boolean;
+      channel: 'control' | 'media';
+    }
   >();
   let stopping = false;
   function reject(socket: Duplex, status: number): void {
@@ -99,15 +106,16 @@ export function installSessionWebSockets(
   const event = (value: SessionEvent) => {
     for (const [ws, entry] of connections) {
       if (entry.id !== value.session.sessionId) continue;
-      send(
-        ws,
-        value.type,
-        value.type === 'session.error'
-          ? value.session.error
-          : value.type === 'certificate.prompt'
-            ? value.certificate
-            : value.session,
-      );
+      if (entry.channel === 'control')
+        send(
+          ws,
+          value.type,
+          value.type === 'session.error'
+            ? value.session.error
+            : value.type === 'certificate.prompt'
+              ? value.certificate
+              : value.session,
+        );
       if (
         value.session.state === 'closing' ||
         value.session.state === 'closed' ||
@@ -205,6 +213,7 @@ export function installSessionWebSockets(
           release: lease.release,
           sequence: 0,
           alive: true,
+          channel: match[2] === 'control' ? 'control' : 'media',
         });
         ws.on('error', () => ws.terminate());
         ws.once('close', () => {
@@ -216,8 +225,7 @@ export function installSessionWebSockets(
           if (value) value.alive = true;
         });
         if (match[2] === 'media') {
-          send(ws, 'media.unavailable', { code: 'MEDIA_NOT_IMPLEMENTED' });
-          ws.close(1003, 'media unavailable');
+          installJpegMedia(ws, lease, (type, data) => send(ws, type, data));
           return;
         }
         send(ws, 'session.state', lease.session);
