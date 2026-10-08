@@ -1,0 +1,13 @@
+{
+  "name": "@freerdp-bridge/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@freerdp-bridge/node": "workspace:*",
+    "fastify": "5.6.2"
+  }
+}

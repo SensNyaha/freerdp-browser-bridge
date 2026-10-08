@@ -1,0 +1,271 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { once } from 'node:events';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { setTimeout as delay } from 'node:timers/promises';
+import {
+  WorkerProcess,
+  probeWorkerBuild,
+} from '../../packages/node-bridge/dist/index.js';
+import { createBuildServer } from '../../apps/bridge-api/dist/index.js';
+import {
+  Kind,
+  encodePacket,
+  helloPayload,
+} from '../../packages/protocol/dist/index.js';
+const suffix = process.platform === 'win32' ? '.exe' : '';
+const binaryDir = resolve(
+  process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
+);
+const workerPath = join(binaryDir, 'rdp-worker' + suffix);
+const fixture = (mode) => join(binaryDir, `fixture-worker-${mode}${suffix}`);
+const alive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+async function withRoot(run) {
+  const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-bridge-test-'));
+  try {
+    await run(runtimeRoot);
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
+  }
+}
+
+test(
+  'native integration: 100 sequential workers, hello/heartbeat/shutdown and zero leaked resources',
+  { timeout: 120000 },
+  async () => {
+    await withRoot(async (runtimeRoot) => {
+      for (let i = 0; i < 100; ++i) {
+        const worker = new WorkerProcess({ workerPath, runtimeRoot });
+        try {
+          const build = await worker.start();
+          const pid = worker.pid;
+          assert.ok(pid);
+          assert.equal(build.targetFreeRdpVersion, '3.32.1');
+          assert.equal(build.capabilities.rdp, false);
+          assert.equal(build.transport, 'framed-pipes');
+          await worker.ping();
+          await worker.close();
+          await worker.close();
+          assert.equal(worker.state, 'closed');
+          assert.equal(alive(pid), false);
+          assert.deepEqual(await readdir(runtimeRoot), []);
+        } finally {
+          await worker.close();
+        }
+      }
+    });
+  },
+);
+
+test('native integration: worker crash is isolated and a replacement starts', async () => {
+  await withRoot(async (runtimeRoot) => {
+    const a = new WorkerProcess({ workerPath, runtimeRoot });
+    const b = new WorkerProcess({ workerPath, runtimeRoot });
+    try {
+      await Promise.all([a.start(), b.start()]);
+      const failure = once(a, 'failure');
+      process.kill(a.pid, 'SIGKILL');
+      await failure;
+      await a.close();
+      assert.equal(a.state, 'failed');
+      await b.ping();
+      const c = new WorkerProcess({ workerPath, runtimeRoot });
+      try {
+        await c.start();
+        await c.ping();
+      } finally {
+        await c.close();
+      }
+    } finally {
+      await Promise.all([a.close(), b.close()]);
+    }
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  });
+});
+
+test('native integration: build REST is backed by actual handshake and CLI report', async () => {
+  await withRoot(async (runtimeRoot) => {
+    const build = await probeWorkerBuild({ workerPath, runtimeRoot });
+    const cli = await promisify(execFile)(
+      workerPath,
+      ['--version', '--capabilities'],
+      { windowsHide: true },
+    );
+    assert.deepEqual(JSON.parse(cli.stdout), build);
+    const server = await createBuildServer({ workerPath, runtimeRoot });
+    try {
+      const response = await server.inject({ method: 'GET', url: '/v1/build' });
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.json().gitCommit, build.gitCommit);
+      assert.equal(response.json().freeRdpVersion, build.freeRdpVersion);
+      assert.equal(response.json().capabilities.rdp, false);
+      assert.equal((await server.inject('/v1/capabilities')).json().rdp, false);
+    } finally {
+      await server.close();
+    }
+  });
+});
+
+test(
+  'native integration: parent death closes inherited pipes, worker and empty runtime directory',
+  { timeout: 10000 },
+  async () => {
+    await withRoot(async (runtimeRoot) => {
+      const parent = spawn(
+        process.execPath,
+        [resolve('tests/fixtures/parent.mjs'), workerPath, runtimeRoot],
+        { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
+      );
+      let workerPid;
+      try {
+        const [chunk] = await once(parent.stdout, 'data');
+        workerPid = JSON.parse(chunk.toString()).pid;
+        assert.ok(alive(workerPid));
+        const closed = once(parent, 'close');
+        parent.kill('SIGKILL');
+        await closed;
+        for (
+          let i = 0;
+          i < 100 && (alive(workerPid) || (await readdir(runtimeRoot)).length);
+          ++i
+        )
+          await delay(25);
+        assert.equal(alive(workerPid), false);
+        assert.deepEqual(await readdir(runtimeRoot), []);
+      } finally {
+        parent.kill('SIGKILL');
+        if (workerPid && alive(workerPid)) process.kill(workerPid, 'SIGKILL');
+      }
+    });
+  },
+);
+
+test('fake-worker integration: handshake timeout, wrong reply and shutdown deadline reclaim resources', async () => {
+  await withRoot(async (runtimeRoot) => {
+    for (const mode of [1, 2]) {
+      const worker = new WorkerProcess({
+        workerPath: fixture(mode),
+        runtimeRoot,
+        requestTimeoutMs: 100,
+        startupTimeoutMs: 1000,
+      });
+      await assert.rejects(worker.start(), (error) =>
+        ['IPC_TIMEOUT', 'IPC_PROTOCOL_ERROR'].includes(error.code),
+      );
+      await worker.close();
+      assert.equal(alive(worker.pid), false);
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    }
+    const worker = new WorkerProcess({
+      workerPath: fixture(3),
+      runtimeRoot,
+      requestTimeoutMs: 1000,
+      shutdownTimeoutMs: 100,
+    });
+    await worker.start();
+    await worker.close();
+    assert.equal(alive(worker.pid), false);
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  });
+});
+
+test('fake-worker integration: bounded pending requests reject overload without growing queues', async () => {
+  await withRoot(async (runtimeRoot) => {
+    const worker = new WorkerProcess({
+      workerPath: fixture(3),
+      runtimeRoot,
+      maxPendingRequests: 1,
+      requestTimeoutMs: 100,
+    });
+    await worker.start();
+    const pending = worker.ping();
+    const first = assert.rejects(
+      pending,
+      (error) => error.code === 'IPC_TIMEOUT',
+    );
+    await assert.rejects(
+      worker.ping(),
+      (error) => error.code === 'IPC_QUEUE_FULL',
+    );
+    await first;
+    await worker.close();
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  });
+});
+
+test('native integration: malformed/truncated records and pre-handshake commands fail without payload disclosure', async () => {
+  for (const bytes of [
+    Buffer.from('secret-SENTINEL'),
+    encodePacket({
+      kind: Kind.Heartbeat,
+      requestId: 1n,
+      payload: Buffer.alloc(0),
+    }),
+    encodePacket({
+      kind: Kind.Hello,
+      requestId: 1n,
+      payload: helloPayload(),
+    }).subarray(0, 26),
+  ]) {
+    const child = spawn(workerPath, [], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    child.stdout.resume();
+    const closed = once(child, 'close');
+    child.stdin.end(bytes);
+    const [code] = await closed;
+    assert.equal(code, 2);
+    assert.ok(!stderr.includes('SENTINEL'));
+  }
+});
+
+test('missing executable fails with a sanitized error and cleans its private directory', async () => {
+  await withRoot(async (runtimeRoot) => {
+    const worker = new WorkerProcess({
+      workerPath: join(runtimeRoot, 'sentinel-NONEXISTENT'),
+      runtimeRoot,
+    });
+    await assert.rejects(
+      worker.start(),
+      (error) =>
+        error.code === 'WORKER_SPAWN_FAILED' &&
+        !error.message.includes('sentinel'),
+    );
+    await worker.close();
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  });
+});
+
+test('fake-worker integration: automatic heartbeat watchdog stops an unresponsive worker', async () => {
+  await withRoot(async (runtimeRoot) => {
+    const worker = new WorkerProcess({
+      workerPath: fixture(3),
+      runtimeRoot,
+      heartbeatIntervalMs: 25,
+      requestTimeoutMs: 100,
+    });
+    const failed = once(worker, 'failure');
+    await worker.start();
+    await failed;
+    await worker.close();
+    assert.equal(worker.state, 'failed');
+    assert.equal(alive(worker.pid), false);
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  });
+});
