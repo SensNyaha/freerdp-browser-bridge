@@ -1,0 +1,11 @@
+{
+  "name": "@freerdp-bridge/protocol",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}
