@@ -23,9 +23,10 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   2 cursor conversion cases / 11 assertions, 1 JPEG case / 13 assertions and
   4 H.264 cases / 206 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 3 cases / 9,111 assertions; GFX public callback fixtures
-  add 5 cases / 4,022 assertions (combined GDI/GFX: 8 / 13,133).
+  add 7 cases / 27,160 assertions (combined GDI/GFX: 10 / 36,271), including
+  actual incoming AVC420 decoder callbacks and malformed-command guards.
   [Cursor block evidence](docs/ITERATION_012.md), [dirty tracking evidence](docs/ITERATION_013.md),
-  [GFX binding evidence](docs/ITERATION_014.md).
+  [GFX binding evidence](docs/ITERATION_014.md), [incoming AVC420 evidence](docs/ITERATION_015.md).
   GFX implementation commit: `90285bb`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
@@ -35,8 +36,8 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   1.0.30 build and link. Private native ZIP contains runtime DLLs, release CRT, licenses and
   dependency metadata. Relocation test checks actual loaded ZLIB/FreeRDP paths and static
   channel inventory without dependency PATH. JPEG now also ships privately and is encoded/decoded
-  in the relocated runtime probe. OpenH264 software encoding and AVCC are now verified natively.
-  Current native ZIP is approximately 5.6 MiB, 14.1 MiB installed, excluding Node.js and future
+  in the relocated runtime probe. OpenH264 encoding, AVCC and FreeRDP AVC420 decoding are verified natively.
+  Current native ZIP is approximately 5.6 MiB, 14.2 MiB installed, excluding Node.js and future
   audio/hardware providers. [Iteration 5](docs/ITERATION_005.md), [iteration 6](docs/ITERATION_006.md).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
 - **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP lab is available
@@ -107,7 +108,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 ## Stage 4 — graphics, cursor and browser video
 
 - [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
-- [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixel output, reset, bounded surface/cache allocations and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, incoming AVC decoding, true scaled-output mapping and dynamic server resize remain open. [Contract](docs/GFX.md), [evidence](docs/ITERATION_014.md).
+- [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
 - [~] IN PROGRESS — Rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI/GFX callback tests pass; actual XRDP regression is recorded in [iteration 13](docs/ITERATION_013.md) and [iteration 14](docs/ITERATION_014.md). Partial-region encoding and actual negotiated GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
 - [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/ITERATION_012.md). Exact mono inversion and broader server/platform cases remain retained gaps.
 - [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture; ceilings are 20/30 FPS with render credit. Configurable scheduler/provider selection and adaptive congestion pending.

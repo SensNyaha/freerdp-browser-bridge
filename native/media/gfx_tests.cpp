@@ -1,5 +1,7 @@
+#include "avc_decode_probe.hpp"
 #include "gdi_dirty.hpp"
 #include "gfx.hpp"
+#include "video_encoder.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
 #include <freerdp/gdi/dc.h>
@@ -57,6 +59,7 @@ struct Fixture {
     boolean(FreeRDP_BitmapCachePersistEnabled, FALSE);
     boolean(FreeRDP_DeactivateClientDecoding, FALSE);
     boolean(FreeRDP_GfxSmallCache, TRUE);
+    boolean(FreeRDP_SoftwareGdi, TRUE);
     REQUIRE(dc);
     dc->hwnd = static_cast<HGDI_WND>(std::calloc(1, sizeof(GDI_WND)));
     REQUIRE(dc->hwnd);
@@ -319,4 +322,155 @@ TEST_CASE("Public GFX inter-frame output preserves origin pixels and rejects una
   REQUIRE(f.channel.SurfaceCommand(&f.channel, &command) != CHANNEL_RC_OK);
   REQUIRE(f.dirty.revision() == revision);
   REQUIRE(f.paints == 1);
+}
+namespace {
+struct AvcCommand {
+  std::vector<BYTE> bytes;
+  RDPGFX_H264_QUANT_QUALITY quality{};
+  RECTANGLE_16 region;
+  RDPGFX_AVC420_BITMAP_STREAM stream{};
+  RDPGFX_SURFACE_COMMAND command{};
+  AvcCommand(const AvcUnit &unit, RECTANGLE_16 rectangle)
+      : bytes(bridge::diagnostics::AvcDecodeProbe::annex_b(unit)), region(rectangle) {
+    stream.meta = {1, &region, &quality};
+    stream.data = bytes.data();
+    stream.length = static_cast<UINT32>(bytes.size());
+    command.surfaceId = 0;
+    command.codecId = RDPGFX_CODECID_AVC420;
+    command.format = PIXEL_FORMAT_BGRA32;
+    command.right = command.width = 64;
+    command.bottom = command.height = 32;
+    command.data = bytes.data();
+    command.length = static_cast<UINT32>(bytes.size());
+    command.extra = &stream;
+  }
+};
+} // namespace
+TEST_CASE("Public GFX AVC420 decodes IDR and predictive regions into the canonical desktop") {
+  auto fixture = std::make_unique<Fixture>();
+  auto &f = *fixture;
+  REQUIRE(f.bind());
+  REQUIRE(f.create(0, 64, 32) == CHANNEL_RC_OK);
+  const RDPGFX_MAP_SURFACE_TO_OUTPUT_PDU mapping{0, 0, 7, 9};
+  REQUIRE(f.channel.MapSurfaceToOutput(&f.channel, &mapping) == CHANNEL_RC_OK);
+  f.dirty.consume(f.dirty.revision());
+  SoftwareH264Encoder encoder;
+  // Browser encoding uses limited-range YUV: these neutral inputs encode Y=50/222.
+  // RDP's full-range YUV-to-RGB conversion preserves that luma, not the source RGB.
+  std::vector<BYTE> source(64 * 32 * 4, 40);
+  AvcCommand initial(encoder.encode({source, 64, 32, 64 * 4, 1000}, true), {0, 0, 64, 32});
+  const RDPGFX_START_FRAME_PDU start{0, 1};
+  const RDPGFX_END_FRAME_PDU end{1};
+  REQUIRE(f.channel.StartFrame(&f.channel, &start) == CHANNEL_RC_OK);
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &initial.command) == CHANNEL_RC_OK);
+  REQUIRE(f.paints == 0);
+  REQUIRE(f.channel.EndFrame(&f.channel, &end) == CHANNEL_RC_OK);
+  REQUIRE(f.paints == 1);
+  REQUIRE(f.dirty.snapshot().rectangles[0] == DirtyRect{7, 9, 64, 32});
+  for (int y = 0; y < 48; ++y)
+    for (int x = 0; x < 80; ++x) {
+      const auto offset = static_cast<std::size_t>(y * 80 + x) * 4;
+      const bool inside = x >= 7 && x < 71 && y >= 9 && y < 41;
+      for (std::size_t component = 0; component < 3; ++component)
+        REQUIRE(std::abs(static_cast<int>(f.pixels[offset + component]) - (inside ? 50 : 0)) <=
+                (inside ? 5 : 0));
+    }
+  f.dirty.consume(f.dirty.revision());
+  const auto before = f.pixels;
+  for (int y = 0; y < 16; ++y)
+    for (int x = 0; x < 16; ++x) {
+      const auto offset = static_cast<std::size_t>(y * 64 + x) * 4;
+      source[offset] = source[offset + 1] = source[offset + 2] = 240;
+    }
+  const auto delta = encoder.encode({source, 64, 32, 64 * 4, 34333}, false);
+  REQUIRE_FALSE(delta.keyframe);
+  AvcCommand changed(delta, {0, 0, 16, 16});
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &changed.command) == CHANNEL_RC_OK);
+  REQUIRE(f.paints == 2); // Inter-frame path: no StartFrame/EndFrame needed.
+  REQUIRE(f.dirty.snapshot().rectangles[0] == DirtyRect{7, 9, 16, 16});
+  for (int y = 0; y < 48; ++y)
+    for (int x = 0; x < 80; ++x) {
+      const auto offset = static_cast<std::size_t>(y * 80 + x) * 4;
+      const bool inside = x >= 7 && x < 23 && y >= 9 && y < 25;
+      for (std::size_t component = 0; component < 3; ++component)
+        REQUIRE(std::abs(static_cast<int>(f.pixels[offset + component]) -
+                         (inside ? 222 : before[offset + component])) <= (inside ? 5 : 0));
+    }
+  const auto revision = f.dirty.revision();
+  const auto pixels = f.pixels;
+  std::array<BYTE, 6> corrupt{0, 0, 0, 1, 0x67, 0};
+  changed.command.data = changed.stream.data = corrupt.data();
+  changed.command.length = changed.stream.length = static_cast<UINT32>(corrupt.size());
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &changed.command) == CHANNEL_RC_OK);
+  // Pinned OpenH264 can return zero for an incomplete SPS. Upstream GDI then
+  // invalidates the region without new pixels; retain and test that behavior.
+  REQUIRE(f.dirty.revision() > revision);
+  REQUIRE(f.pixels == pixels);
+  REQUIRE(f.paints == 3);
+  AvcCommand recovery(encoder.encode({source, 64, 32, 64 * 4, 67666}, true), {0, 0, 64, 32});
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &recovery.command) == CHANNEL_RC_OK);
+  REQUIRE(f.paints == 4);
+  REQUIRE(f.dirty.revision() > revision);
+  REQUIRE(std::abs(static_cast<int>(f.pixels[(9 * 80 + 7) * 4]) - 222) <= 5);
+  REQUIRE(f.gfx.unbind());
+  REQUIRE(f.bind());
+  REQUIRE(f.create(0, 64, 32) == CHANNEL_RC_OK);
+  REQUIRE(f.channel.MapSurfaceToOutput(&f.channel, &mapping) == CHANNEL_RC_OK);
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &recovery.command) == CHANNEL_RC_OK);
+  REQUIRE(f.paints == 5); // Fresh surface/decoder accepts the config + IDR.
+}
+TEST_CASE("GFX AVC420 rejects malformed commands before allocating a decoder or mutating pixels") {
+  auto fixture = std::make_unique<Fixture>();
+  auto &f = *fixture;
+  REQUIRE(f.bind());
+  REQUIRE(f.create(0, 64, 32) == CHANNEL_RC_OK);
+  std::array<BYTE, 8> data{};
+  RECTANGLE_16 region{0, 0, 64, 32};
+  RDPGFX_H264_QUANT_QUALITY quality{};
+  RDPGFX_AVC420_BITMAP_STREAM stream{{1, &region, &quality}, 8, data.data()};
+  RDPGFX_SURFACE_COMMAND command{};
+  command.codecId = RDPGFX_CODECID_AVC420;
+  command.right = command.width = 64;
+  command.bottom = command.height = 32;
+  command.data = data.data();
+  command.length = static_cast<UINT32>(data.size());
+  command.extra = &stream;
+  const auto *surface = static_cast<gdiGfxSurface *>(f.channel.GetSurfaceData(&f.channel, 0));
+  const auto rejected = [&](const RDPGFX_SURFACE_COMMAND &invalid) {
+    REQUIRE(f.channel.SurfaceCommand(&f.channel, &invalid) == ERROR_INVALID_DATA);
+    REQUIRE(surface->h264 == nullptr);
+    REQUIRE(f.paints == 0);
+  };
+  auto invalid = command;
+  invalid.surfaceId = UINT16_MAX + 1U;
+  rejected(invalid);
+  invalid = command;
+  invalid.length = Gfx::command_limit + 1;
+  rejected(invalid);
+  invalid = command;
+  invalid.extra = nullptr;
+  rejected(invalid);
+  invalid = command;
+  invalid.right = 65;
+  rejected(invalid);
+  stream.meta.numRegionRects = Gfx::avc_region_limit + 1;
+  rejected(command);
+  stream.meta.numRegionRects = 1;
+  stream.meta.regionRects = nullptr;
+  rejected(command);
+  stream.meta.regionRects = &region;
+  region.bottom = 33;
+  rejected(command);
+  region.bottom = 32;
+  stream.length = 9;
+  rejected(command);
+  stream.length = 1;
+  stream.data = data.data() + data.size();
+  rejected(command);
+  stream.data = data.data();
+  stream.meta.quantQualityVals = nullptr;
+  rejected(command);
+  command.codecId = RDPGFX_CODECID_AVC444;
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &command) == ERROR_NOT_SUPPORTED);
+  REQUIRE(surface->h264 == nullptr);
 }

@@ -1,5 +1,6 @@
 #include "gfx.hpp"
 #include <algorithm>
+#include <cstdint>
 #include <freerdp/settings.h>
 #include <winpr/error.h>
 
@@ -63,6 +64,7 @@ bool Gfx::bind(GfxClientContext &client, RdpgfxClientContext *context) noexcept 
   import_reply_ = context->CacheImportReply;
   map_ = context->MapSurfaceToOutput;
   map_scaled_ = context->MapSurfaceToScaledOutput;
+  command_ = context->SurfaceCommand;
   context->CreateSurface = create;
   context->DeleteSurface = remove;
   context->ResetGraphics = reset;
@@ -74,6 +76,7 @@ bool Gfx::bind(GfxClientContext &client, RdpgfxClientContext *context) noexcept 
   context->MapSurfaceToScaledOutput = map_scaled;
   context->MapSurfaceToWindow = map_window;
   context->MapSurfaceToScaledWindow = map_scaled_window;
+  context->SurfaceCommand = command;
   return true;
 }
 bool Gfx::unbind() noexcept {
@@ -167,6 +170,40 @@ UINT Gfx::reset(RdpgfxClientContext *context, const RDPGFX_RESET_GRAPHICS_PDU *p
       (pdu->monitorCount && !pdu->monitorDefArray))
     return ERROR_INVALID_DATA;
   return self->reset_(context, pdu);
+}
+UINT Gfx::command(RdpgfxClientContext *context, const RDPGFX_SURFACE_COMMAND *pdu) {
+  auto *self = owner(context);
+  if (!self || !pdu || pdu->surfaceId > UINT16_MAX || !pdu->length || pdu->length > command_limit ||
+      !pdu->data)
+    return ERROR_INVALID_DATA;
+  const auto *surface = static_cast<gdiGfxSurface *>(
+      context->GetSurfaceData(context, static_cast<UINT16>(pdu->surfaceId)));
+  if (!surface)
+    return ERROR_INVALID_DATA;
+  if (pdu->codecId == RDPGFX_CODECID_AVC444 || pdu->codecId == RDPGFX_CODECID_AVC444v2)
+    return ERROR_NOT_SUPPORTED;
+  if (pdu->codecId == RDPGFX_CODECID_AVC420) {
+    if (!pdu->extra || pdu->left > pdu->right || pdu->top > pdu->bottom ||
+        pdu->right > surface->width || pdu->bottom > surface->height)
+      return ERROR_INVALID_DATA;
+    const auto &bs = *static_cast<const RDPGFX_AVC420_BITMAP_STREAM *>(pdu->extra);
+    const auto &meta = bs.meta;
+    if (!bs.data || !bs.length || bs.length > command_limit ||
+        meta.numRegionRects > avc_region_limit ||
+        (meta.numRegionRects && (!meta.regionRects || !meta.quantQualityVals)))
+      return ERROR_INVALID_DATA;
+    const auto begin = reinterpret_cast<std::uintptr_t>(pdu->data);
+    const auto bits = reinterpret_cast<std::uintptr_t>(bs.data);
+    if (bits < begin || bits - begin > pdu->length || bs.length > pdu->length - (bits - begin))
+      return ERROR_INVALID_DATA;
+    for (UINT32 i = 0; i < meta.numRegionRects; ++i) {
+      const auto &r = meta.regionRects[i];
+      if (r.left >= r.right || r.top >= r.bottom || r.right > surface->width ||
+          r.bottom > surface->height)
+        return ERROR_INVALID_DATA;
+    }
+  }
+  return self->command_(context, pdu);
 }
 UINT Gfx::store(RdpgfxClientContext *context, const RDPGFX_SURFACE_TO_CACHE_PDU *pdu) {
   auto *self = owner(context);

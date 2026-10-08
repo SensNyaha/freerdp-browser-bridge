@@ -49,6 +49,10 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     assert.equal(lines.freerdp, '3.32.1');
     assert.equal(lines.jpegRoundtrip, 'true');
     assert.equal(lines.h264Roundtrip, 'true');
+    assert.equal(lines.freerdpAvc420Roundtrip, 'true');
+    assert.equal(features.diagnostics.openH264, true);
+    assert.equal(features.diagnostics.gfxH264, true);
+    assert.equal(features.diagnostics.openH264DynamicLoading, false);
     assert.equal(lines.openh264, features.dependencies.openh264);
     for (const runtime of [
       lines.runtime,

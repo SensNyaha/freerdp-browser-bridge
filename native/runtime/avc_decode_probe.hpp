@@ -29,7 +29,7 @@ public:
     if (decoder_->Initialize(&parameters) != 0)
       throw ipc::ProtocolError();
   }
-  DecodedSample decode(const media::AvcUnit &unit, int x = 0, int y = 0) {
+  static std::vector<std::uint8_t> annex_b(const media::AvcUnit &unit) {
     const auto config = unit.config;
     if (config.size() < 11 || config.size() > 2059 || config[0] != 1 || config[4] != 0xff ||
         config[5] != 0xe1 || unit.bytes.empty() || unit.bytes.size() > media::max_access_unit_bytes)
@@ -57,6 +57,10 @@ public:
       add(unit.bytes.subspan(offset, length));
       offset += length;
     }
+    return annex;
+  }
+  DecodedSample decode(const media::AvcUnit &unit, int x = 0, int y = 0) {
+    const auto annex = annex_b(unit);
     std::array<unsigned char *, 3> output{};
     SBufferInfo info{};
     if (decoder_->DecodeFrameNoDelay(annex.data(), static_cast<int>(annex.size()), output.data(),

@@ -32,10 +32,12 @@ class Gfx {
   pcRdpgfxCacheImportReply import_reply_ = nullptr;
   pcRdpgfxMapSurfaceToOutput map_ = nullptr;
   pcRdpgfxMapSurfaceToScaledOutput map_scaled_ = nullptr;
+  pcRdpgfxSurfaceCommand command_ = nullptr;
   static Gfx *owner(RdpgfxClientContext *context) noexcept;
   static UINT create(RdpgfxClientContext *, const RDPGFX_CREATE_SURFACE_PDU *);
   static UINT remove(RdpgfxClientContext *, const RDPGFX_DELETE_SURFACE_PDU *);
   static UINT reset(RdpgfxClientContext *, const RDPGFX_RESET_GRAPHICS_PDU *);
+  static UINT command(RdpgfxClientContext *, const RDPGFX_SURFACE_COMMAND *);
   static UINT store(RdpgfxClientContext *, const RDPGFX_SURFACE_TO_CACHE_PDU *);
   static UINT evict(RdpgfxClientContext *, const RDPGFX_EVICT_CACHE_ENTRY_PDU *);
   static UINT import_reply(RdpgfxClientContext *, const RDPGFX_CACHE_IMPORT_REPLY_PDU *);
@@ -49,6 +51,8 @@ class Gfx {
 public:
   static constexpr std::size_t surface_limit = 256U * 1024U * 1024U;
   static constexpr std::size_t cache_limit = 128U * 1024U * 1024U;
+  static constexpr UINT32 command_limit = 8U * 1024U * 1024U;
+  static constexpr UINT32 avc_region_limit = 1024;
   explicit Gfx(std::size_t surface_budget = surface_limit, std::size_t cache_budget = cache_limit);
   Gfx(const Gfx &) = delete;
   Gfx &operator=(const Gfx &) = delete;

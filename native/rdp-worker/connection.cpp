@@ -123,9 +123,10 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_BitmapCachePersistEnabled, FALSE);
   boolean(FreeRDP_GfxSmallCache, TRUE);
   boolean(FreeRDP_GfxThinClient, TRUE);
+  boolean(FreeRDP_SoftwareGdi, TRUE);
 #ifdef WITH_GFX_H264
   boolean(FreeRDP_GfxH264, TRUE);
-  boolean(FreeRDP_GfxAVC444, TRUE);
+  boolean(FreeRDP_GfxAVC444, FALSE); // AVC420 is verified; dual-stream AVC444 gate remains open.
 #else
   boolean(FreeRDP_GfxH264, FALSE);
   boolean(FreeRDP_GfxAVC444, FALSE);

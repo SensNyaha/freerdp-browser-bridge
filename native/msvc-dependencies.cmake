@@ -1,10 +1,20 @@
 # CMake's automatic prefix detection can decode UTF-8 cl output as the OEM code page.
 # Probe the actual installed UI language explicitly as UTF-8; an English pack is not required.
 # A mismatched Ninja prefix silently loses header dependencies and can retain stale ABI objects.
-set(bridge_include_probe "${CMAKE_CURRENT_BINARY_DIR}/msvc-include-probe.cpp")
+if(NOT MSVC)
+  return()
+endif()
+if(CMAKE_CXX_COMPILER_LOADED)
+  set(bridge_include_compiler "${CMAKE_CXX_COMPILER}")
+  set(bridge_include_extension cpp)
+else()
+  set(bridge_include_compiler "${CMAKE_C_COMPILER}")
+  set(bridge_include_extension c)
+endif()
+set(bridge_include_probe "${CMAKE_CURRENT_BINARY_DIR}/msvc-include-probe.${bridge_include_extension}")
 file(WRITE "${bridge_include_probe}" "#include <stddef.h>\n")
 execute_process(
-  COMMAND "${CMAKE_CXX_COMPILER}" /nologo /showIncludes /Zs "${bridge_include_probe}"
+  COMMAND "${bridge_include_compiler}" /nologo /showIncludes /Zs "${bridge_include_probe}"
   RESULT_VARIABLE bridge_include_result
   OUTPUT_VARIABLE bridge_include_output
   ERROR_VARIABLE bridge_include_error

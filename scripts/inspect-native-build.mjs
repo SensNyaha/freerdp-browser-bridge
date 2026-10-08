@@ -13,6 +13,13 @@ const entries = readFileSync(
     return match ? [[match[1], match[2].trim()]] : [];
   });
 const cache = new Map(entries);
+const installedConfig = readFileSync(
+  resolve('.deps/freerdp-install/include/freerdp3/freerdp/config.h'),
+  'utf8',
+);
+const gfxH264 = /^#define WITH_GFX_H264\b/m.test(installedConfig);
+if (cache.get('WITH_OPENH264') === 'ON' && !gfxH264)
+  throw new Error('Installed FreeRDP headers do not match the decoder build');
 const enabledChannels = entries
   .filter(([key, value]) => /^CHANNEL_.+_CLIENT$/.test(key) && value === 'ON')
   .map(([key]) => key.slice(8, -7).toLowerCase())
@@ -77,6 +84,8 @@ const report = {
   diagnostics: {
     ffmpeg: cache.get('WITH_FFMPEG') === 'ON',
     openH264: cache.get('WITH_OPENH264') === 'ON',
+    gfxH264,
+    openH264DynamicLoading: cache.get('WITH_OPENH264_LOADING') === 'ON',
     absolutePluginPaths: cache.get('WITH_ABSOLUTE_PLUGIN_LOAD_PATHS') === 'ON',
   },
 };

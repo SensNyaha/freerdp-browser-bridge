@@ -21,7 +21,7 @@ dirty after accepted resize.
 `SynchronousDynamicChannels=true`, `AsyncChannels=false` and `AsyncUpdate=false`
 keep GFX decode, framebuffer writes, dirty snapshots and encoding on the RDP
 loop thread. The binding rejects asynchronous settings; allocation, cache,
-reset and mapping wrappers also reject use from a different thread. There is
+reset, mapping and surface-command wrappers also reject use from a different thread. There is
 no additional raw-frame queue. FreeRDP codec implementations can still use
 their own internal threads and working buffers.
 
@@ -44,6 +44,14 @@ Before calling upstream allocation callbacks, the bridge enforces:
 - at most 16 monitors and a required pointer for nonempty monitor metadata;
 - valid desktop mapping origins and nonzero bounded target dimensions.
 
+SurfaceCommand additionally checks surface existence, 16-bit identifiers and an
+8 MiB encoded command limit before forwarding to the renderer. AVC420 checks
+the bitstream range inside the command, bounded surface coordinates, at most
+1024 update rectangles and their required metadata pointers/geometry before
+upstream creates the surface decoder. AVC444/v2 commands return unsupported.
+These callbacks run after upstream DVC/ZGFX parsing and metadata allocation;
+they do not provide pre-allocation transport limits for those upstream layers.
+
 Byte accounting includes the pinned upstream 16-pixel surface alignment,
 16-byte stride padding and surface/cache structs. Cache replacement must fit
 the transient old-plus-new footprint: FreeRDP allocates the new bitmap before
@@ -60,20 +68,37 @@ open rather than inferred from these guards.
 
 ## Build and acceptance limits
 
-The current private FreeRDP build does not include its H.264 decoder or Cairo
-scaler. GFX AVC420/444 flags are therefore disabled in this build. The separate
-private OpenH264 provider still encodes browser video as before; browser H.264
-does not prove server-side GFX AVC negotiation. True scaled-output mapping is
-rejected before changing mapping state; identity mapping via that PDU works.
-Adding a scaling provider and incoming AVC decoder remains required work.
+The private FreeRDP build now links the pinned private OpenH264 provider with
+`WITH_OPENH264=ON`, `WITH_OPENH264_LOADING=OFF` and
+`WITH_MEDIA_FOUNDATION=OFF`. Software GDI and incoming AVC420 are enabled;
+AVC444 remains disabled until dual-stream decoding is verified. FFmpeg and Cairo
+remain absent. Browser AVC encoding is a separate path and does not prove
+server-side GFX AVC negotiation. True scaled-output mapping is rejected before
+changing mapping state; identity mapping via that PDU works. A scaling provider
+and actual negotiated GFX acceptance remain required work.
+
+The relocated runtime probe calls FreeRDP's public `avc420_decompress` on an
+actual compressed frame, in addition to the direct OpenH264 roundtrip. Windows
+Ninja tracks C-only FreeRDP feature headers using the same UTF-8 MSVC include
+probe as the bridge. Runtime DLL copies refresh on every build even without an
+executable relink, so changed decoder binaries cannot remain stale locally.
 
 Linked native tests invoke the actual public GDI GFX callbacks, codec reset,
 pixel copy and region invalidation. They use bridge fixture channel storage and
 desktop resize metadata, not a real DVC transport, full `gdi_init`, or an RDP
 server. Tests cover frame-end pixel placement, inter-frame/origin pixels, empty
 updates, geometry/count/byte guards, transient cache replacement, teardown and
-rebinding. Real XRDP browser regression is recorded separately; it does not
-establish that XRDP negotiated GFX. A Windows/GFX server, compressed-codec
-fixtures, actual server resize and the 30-minute desktop soak remain open.
+rebinding. AVC420 fixtures additionally exercise actual IDR/predictive decoding,
+mapped full-frame and partial-region pixels, malformed command rejection before
+decoder allocation, incomplete SPS behavior, IDR recovery and fresh decoder
+rebinding. Pixel checks account explicitly for the test encoder's limited-range
+luma versus RDP's full-range YUV conversion. Incomplete SPS can produce no new
+pixels yet still trigger an upstream invalidation; that pinned behavior is
+tested, not represented as a successful decoded update.
 
-Evidence: [iteration 14](ITERATION_014.md).
+Real XRDP browser regression is recorded separately; it does not establish that
+XRDP negotiated GFX. A Windows/GFX server, AVC444/other compressed-codec fixtures,
+SPS/codec working-memory limits, actual server resize and the 30-minute desktop
+soak remain open.
+
+Evidence: [iteration 14](ITERATION_014.md), [iteration 15](ITERATION_015.md).

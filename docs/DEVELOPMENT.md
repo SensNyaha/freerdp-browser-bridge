@@ -118,8 +118,10 @@ are changed. Existing native-build commands above remain the entry points.
 
 Pinned vcpkg builds release shared libraries into .deps/installed/<triplet>, with downloads,
 tooling, build trees and binary cache under .tools/.deps. No system installation or global vcpkg
-integration is performed. ZLIB/OpenSSL/libusb paths are checked before building FreeRDP.
-FFmpeg/OpenH264 bridge media providers are not implemented or advertised in this lifecycle profile.
+integration is performed. ZLIB/OpenSSL/libusb/OpenH264 paths are checked before building FreeRDP.
+The Windows bundled profile includes private OpenH264 browser encoding and incoming
+FreeRDP AVC420 decoding; FFmpeg remains disabled. These are experimental media
+features, with the overall `rdp` capability still false. [GFX contract](GFX.md).
 Windows serial/parallel client modules are explicitly disabled because pinned upstream lacks them.
 
 build/native-stage contains only the native runtime and licenses/metadata. Windows DLLs and

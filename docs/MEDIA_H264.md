@@ -67,8 +67,10 @@ AVX2 is not a minimum host requirement. Both patch hashes are recorded in the bu
 The native package carries the OpenH264 DLL, copyright, overlay sources and
 the applied patch SHA-256 in native-features.json. The relocated runtime probe
 performs an actual BGRA → AVC → decoded I420 roundtrip and reports the loaded
-DLL path. FreeRDP's WITH_OPENH264 decoder setting remains separate from this
-outbound bridge provider.
+module path. FreeRDP's incoming AVC420 decoder also links this private provider
+with dynamic provider loading disabled; a separate public FreeRDP decode probe
+and GFX callback fixtures verify that path. Incoming server GFX negotiation
+remains distinct from outbound browser AVC acceptance. See [GFX](GFX.md).
 
 ## Capture, negotiation and records
 

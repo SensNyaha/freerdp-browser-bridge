@@ -4,6 +4,7 @@
 #include <array>
 #include <filesystem>
 #include <freerdp/client/channels.h>
+#include <freerdp/codec/h264.h>
 #include <freerdp/freerdp.h>
 #include <iostream>
 #include <memory>
@@ -75,6 +76,30 @@ bool h264_roundtrip() {
     return false;
   }
 }
+bool freerdp_avc420_roundtrip() {
+  try {
+    bridge::media::SoftwareH264Encoder encoder;
+    std::vector<std::uint8_t> source(32 * 16 * 4, 240);
+    const auto unit = encoder.encode({source, 32, 16, 32 * 4, 1000}, true);
+    const auto annex = bridge::diagnostics::AvcDecodeProbe::annex_b(unit);
+    const std::unique_ptr<H264_CONTEXT, decltype(&h264_context_free)> decoder(
+        h264_context_new(FALSE), h264_context_free);
+    if (!decoder || !h264_context_set_option(decoder.get(), H264_CONTEXT_OPTION_HW_ACCEL, 0) ||
+        !h264_context_reset(decoder.get(), 32, 16))
+      return false;
+    std::vector<std::uint8_t> bgra(32 * 16 * 4);
+    const RECTANGLE_16 rectangle{0, 0, 32, 16};
+    const auto result =
+        avc420_decompress(decoder.get(), annex.data(), static_cast<UINT32>(annex.size()),
+                          bgra.data(), PIXEL_FORMAT_BGRA32, 32 * 4, 32, 16, &rectangle, 1);
+    // The browser encoder's limited-range Y=222 becomes neutral RGB=222 in RDP's
+    // full-range conversion. This probes the FreeRDP decoder, not browser color conversion.
+    return result > 0 && bgra[0] >= 218 && bgra[0] <= 226 && bgra[1] >= 218 && bgra[1] <= 226 &&
+           bgra[2] >= 218 && bgra[2] <= 226;
+  } catch (...) {
+    return false;
+  }
+}
 } // namespace
 int main() {
   constexpr std::array<unsigned char, 11> original{'b', 'u', 'n', 'd', 'l', 'e',
@@ -100,6 +125,8 @@ int main() {
     return 5;
   if (!h264_roundtrip())
     return 6;
+  if (!freerdp_avc420_roundtrip())
+    return 7;
   const auto h264_version = WelsGetCodecVersion();
   const std::unique_ptr<FREERDP_ADDIN *, decltype(&freerdp_channels_addin_list_free)> addins(
       freerdp_channels_list_addins(nullptr, nullptr, nullptr,
@@ -118,7 +145,8 @@ int main() {
             << "\nfreerdpRuntime=" << utf8(freerdp_path) << "\njpegRuntime=" << utf8(jpeg_path)
             << "\njpegRoundtrip=true\nopenh264=" << h264_version.uMajor << '.'
             << h264_version.uMinor << '.' << h264_version.uRevision
-            << "\nopenh264Runtime=" << utf8(h264_path) << "\nh264Roundtrip=true\nchannels=";
+            << "\nopenh264Runtime=" << utf8(h264_path)
+            << "\nh264Roundtrip=true\nfreerdpAvc420Roundtrip=true\nchannels=";
   for (const auto &channel : channels)
     std::cout << channel << ',';
   std::cout << '\n';
