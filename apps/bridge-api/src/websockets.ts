@@ -5,6 +5,7 @@ import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
 import { installMedia } from './media.js';
 import { normalizeInput } from './input.js';
+import type { MediaMetrics } from './metrics.js';
 import {
   publicSessionError,
   type SessionManager,
@@ -54,6 +55,7 @@ export function installSessionWebSockets(
   server: FastifyInstance,
   manager: SessionManager,
   origins: ReadonlySet<string>,
+  mediaMetrics: MediaMetrics,
 ) {
   const config = {
     noServer: true as const,
@@ -228,7 +230,12 @@ export function installSessionWebSockets(
           if (value) value.alive = true;
         });
         if (match[2] === 'media') {
-          installMedia(ws, lease, (type, data) => send(ws, type, data));
+          installMedia(
+            ws,
+            lease,
+            (type, data) => send(ws, type, data),
+            mediaMetrics,
+          );
           return;
         }
         send(ws, 'session.state', lease.session);

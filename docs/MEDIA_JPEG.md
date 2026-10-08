@@ -108,3 +108,7 @@ other records on the shared inherited output pipe; priority scheduling is pendin
 H.264/AVCC worker transport and WebCodecs are now verified on Windows/XRDP;
 see MEDIA_H264.md. The harness prefers H.264 when supported and keeps an explicit
 JPEG fallback. The local lab script accepts an optional jpeg/h264/h264-reset mode.
+
+Protected `/metrics` now reports JPEG capture/write/render-credit durations separately
+from AVC. Changed-frame captures and unchanged polls use different histogram stages.
+See [metric definitions](SESSION_API.md); full dirty-revision/queue latency remains open.

@@ -266,7 +266,7 @@ export async function createSessionServer(options: SessionServerOptions) {
       return reply.type(metrics.contentType).send(await metrics.render());
     },
   );
-  installSessionWebSockets(server, manager, allowedOrigins);
+  installSessionWebSockets(server, manager, allowedOrigins, metrics.media);
   server.addHook('onClose', async () => {
     await manager.shutdown();
   });

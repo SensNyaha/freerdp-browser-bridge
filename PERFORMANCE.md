@@ -98,3 +98,14 @@ dispatch correction. The controlled synthetic encode p95 improved from 192.802 t
 26.326 ms; live initial-update encode p95 from 474.918 to 84.861 ms. These samples
 do not satisfy the full latency/queue/CPU/RSS/soak gates above. Queue latency and
 controlled interactive scene replay remain open.
+
+## 10. Node media timing instrumentation
+
+Protected `/metrics` now aggregates bounded histograms for changed capture requests,
+unchanged polls, local WS writes and valid render-credit round trips. Frame/byte
+counters and credit occupancy distinguish producer work from consumer stalls.
+See [metric semantics](docs/SESSION_API.md) and [iteration evidence](docs/ITERATION_011.md).
+Timing uses one Node monotonic clock; worker media timestamps are preserved.
+The stages overlap and cannot be summed into an end-to-end bridge latency number.
+Framebuffer dirty-to-send age, independent queue delays, controlled scene replay,
+CPU/RSS and the existing full performance/soak gates remain pending.

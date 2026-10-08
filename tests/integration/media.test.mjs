@@ -17,13 +17,14 @@ const origin = 'https://media.example.test';
 class MediaWorker extends FakeSessionWorker {
   revision = 1n;
   requests = 0;
+  captureDelay = 10;
   width = 640;
   supportsCodec(codec) {
     return codec === 'jpeg' || Boolean(this.avcEnabled);
   }
   async captureFrame(since, options) {
     this.requests++;
-    await delay(10);
+    await delay(this.captureDelay);
     if (this.failedMedia)
       throw new Error('sensitive diagnostic must not be forwarded');
     const frame = {
@@ -111,6 +112,245 @@ const acknowledge = (ws, sequence) =>
 const binary = (messages) => messages.filter(Buffer.isBuffer);
 const reset = (ws, sequence) =>
   ws.send(JSON.stringify({ v: 1, type: 'media.reset', data: { sequence } }));
+
+async function mediaMetrics(server) {
+  const response = await server.inject({ method: 'GET', url: '/metrics' });
+  assert.equal(response.statusCode, 200);
+  return response.body;
+}
+function sample(body, name, labels) {
+  const line = body
+    .split('\n')
+    .find(
+      (entry) =>
+        entry.startsWith(name + '{') &&
+        Object.entries(labels).every(([key, value]) =>
+          entry.includes(`${key}="${value}"`),
+        ),
+    );
+  return line ? Number(line.slice(line.lastIndexOf(' ') + 1)) : 0;
+}
+async function releasedCredit(server, codec) {
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    const body = await mediaMetrics(server);
+    if (sample(body, 'bridge_media_frames_in_flight', { codec }) === 0)
+      return body;
+    await delay(5);
+  }
+  assert.fail('Server did not release media credit after socket close');
+}
+
+test(
+  'fake media metrics: stalled render credit bounds capture and tracks valid ACK separately from writes',
+  { timeout: 10000 },
+  async () => {
+    for (const codec of ['jpeg', 'h264'])
+      await setup(async ({ ws, messages, worker, server, created }) => {
+        worker.avcEnabled = true;
+        hello(ws, [codec]);
+        await eventually(() => binary(messages).length === 2);
+        await delay(100);
+        assert.equal(worker.requests, 1);
+        let body = await mediaMetrics(server);
+        assert.equal(
+          sample(body, 'bridge_media_frames_in_flight', { codec }),
+          1,
+        );
+        assert.equal(
+          sample(body, 'bridge_media_frames_queued_total', { codec }),
+          1,
+        );
+        assert.equal(
+          sample(body, 'bridge_media_bytes_queued_total', { codec }),
+          binary(messages).reduce((sum, bytes) => sum + bytes.length, 0),
+        );
+        assert.equal(
+          sample(body, 'bridge_media_stage_duration_seconds_count', {
+            codec,
+            stage: 'capture_changed',
+          }),
+          1,
+        );
+        assert.equal(
+          sample(body, 'bridge_media_stage_duration_seconds_count', {
+            codec,
+            stage: 'forward',
+          }),
+          1,
+        );
+        assert.equal(
+          sample(body, 'bridge_media_stage_duration_seconds_count', {
+            codec,
+            stage: 'render_credit',
+          }),
+          0,
+        );
+        assert.ok(
+          sample(body, 'bridge_media_stage_duration_seconds_sum', {
+            codec,
+            stage: 'capture_changed',
+          }) >= 0.008,
+        );
+        for (const secret of [
+          created.sessionId,
+          created.attach.media.token,
+          'fixture-owner',
+          'fake.example.test',
+        ])
+          assert.ok(!body.includes(secret));
+
+        worker.revision = 100n;
+        acknowledge(ws, 1);
+        await eventually(() => binary(messages).length === 3);
+        body = await mediaMetrics(server);
+        assert.equal(
+          sample(body, 'bridge_media_frames_in_flight', { codec }),
+          1,
+        );
+        assert.equal(
+          sample(body, 'bridge_media_frames_queued_total', { codec }),
+          2,
+        );
+        assert.equal(
+          sample(body, 'bridge_media_stage_duration_seconds_count', {
+            codec,
+            stage: 'render_credit',
+          }),
+          1,
+        );
+        assert.ok(
+          sample(body, 'bridge_media_stage_duration_seconds_sum', {
+            codec,
+            stage: 'render_credit',
+          }) >= 0.09,
+        );
+        const closed = once(ws, 'close');
+        ws.close();
+        await closed;
+        body = await releasedCredit(server, codec);
+        assert.equal(
+          sample(body, 'bridge_media_frames_in_flight', { codec }),
+          0,
+        );
+        assert.equal(
+          sample(body, 'bridge_media_stage_duration_seconds_count', {
+            codec,
+            stage: 'render_credit',
+          }),
+          1,
+        );
+        assert.equal(worker.closed, 0);
+      });
+  },
+);
+
+test(
+  'fake media metrics: decoder reset and invalid ACK release credit without counting successful rendering',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, messages, worker, server }) => {
+      worker.avcEnabled = true;
+      hello(ws, ['h264']);
+      await eventually(() => binary(messages).length === 2);
+      reset(ws, 1);
+      await eventually(() => binary(messages).length === 4);
+      let body = await mediaMetrics(server);
+      assert.equal(
+        sample(body, 'bridge_media_frames_in_flight', { codec: 'h264' }),
+        1,
+      );
+      assert.equal(
+        sample(body, 'bridge_media_stage_duration_seconds_count', {
+          codec: 'h264',
+          stage: 'render_credit',
+        }),
+        0,
+      );
+      const closed = once(ws, 'close');
+      acknowledge(ws, 1); // Stale acknowledgement of the frame whose credit reset consumed.
+      assert.equal((await closed)[0], 1008);
+      body = await releasedCredit(server, 'h264');
+      assert.equal(
+        sample(body, 'bridge_media_frames_in_flight', { codec: 'h264' }),
+        0,
+      );
+      assert.equal(
+        sample(body, 'bridge_media_stage_duration_seconds_count', {
+          codec: 'h264',
+          stage: 'render_credit',
+        }),
+        0,
+      );
+      assert.equal(worker.closed, 0);
+    });
+  },
+);
+
+test(
+  'fake media metrics: detaching during capture cannot enqueue a late frame or leak credit',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, worker, server }) => {
+      worker.captureDelay = 150;
+      hello(ws);
+      await eventually(() => worker.requests === 1);
+      const closed = once(ws, 'close');
+      ws.close();
+      await closed;
+      await delay(200);
+      const body = await mediaMetrics(server);
+      assert.equal(
+        sample(body, 'bridge_media_frames_in_flight', { codec: 'jpeg' }),
+        0,
+      );
+      assert.equal(
+        sample(body, 'bridge_media_frames_queued_total', { codec: 'jpeg' }),
+        0,
+      );
+      assert.equal(
+        sample(body, 'bridge_media_bytes_queued_total', { codec: 'jpeg' }),
+        0,
+      );
+    });
+  },
+);
+
+test(
+  'fake media metrics: unchanged polls do not mix with changed-frame capture timings',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, messages, worker, server }) => {
+      hello(ws);
+      await eventually(() => binary(messages).length === 2);
+      acknowledge(ws, 1);
+      await eventually(() => worker.requests >= 3);
+      const body = await mediaMetrics(server);
+      assert.equal(
+        sample(body, 'bridge_media_stage_duration_seconds_count', {
+          codec: 'jpeg',
+          stage: 'capture_changed',
+        }),
+        1,
+      );
+      assert.ok(
+        sample(body, 'bridge_media_stage_duration_seconds_count', {
+          codec: 'jpeg',
+          stage: 'capture_unchanged',
+        }) >= 1,
+      );
+      assert.equal(
+        sample(body, 'bridge_media_frames_in_flight', { codec: 'jpeg' }),
+        0,
+      );
+      assert.equal(
+        sample(body, 'bridge_media_frames_queued_total', { codec: 'jpeg' }),
+        1,
+      );
+      assert.equal(binary(messages).length, 2);
+    });
+  },
+);
 
 test(
   'fake AVC transport: negotiation, delta credit, reset on static revision and resize IDR/config',

@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { Writable } from 'node:stream';
@@ -182,6 +182,22 @@ try {
     )
       throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
     const pipeline = await nativeWorker.pipelineStats();
+    const telemetry = await server.inject({
+      method: 'GET',
+      url: '/metrics',
+      headers: { authorization: 'Bearer ' + bearer },
+    });
+    if (telemetry.statusCode !== 200)
+      throw new Error('LAB_MEDIA_METRICS_FAILED');
+    const mediaMetricsArtifact = '.local-tests/media-metrics-' + mode + '.prom';
+    // Only fixed media metric names/codec/stage labels; no session or lab identity.
+    await writeFile(
+      resolve(mediaMetricsArtifact),
+      telemetry.body
+        .split('\n')
+        .filter((line) => line.startsWith('bridge_media_'))
+        .join('\n') + '\n',
+    );
     phase = 'pointer';
     const desktop = await page.locator('#desktop').boundingBox();
     if (!desktop) throw new Error('LAB_INPUT_VIEW_UNAVAILABLE');
@@ -247,6 +263,7 @@ try {
         ...stats,
         reattach: true,
         pipeline,
+        mediaMetricsArtifact,
         inputMoves,
         inputResets,
       }),

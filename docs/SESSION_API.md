@@ -62,5 +62,29 @@ Public failures have fixed messages and do not forward backend diagnostics.
 Prometheus labels are bounded state names, without session/principal/host/credential
 labels. Rejection counters cover manager admission, not every HTTP validation error.
 
+Media attachments add fixed `codec` (`h264`/`jpeg`) and `stage` labels to
+`bridge_media_stage_duration_seconds`. The histogram stages are:
+
+- `capture_changed`: successful worker capture request to changed encoded response,
+  including native scheduling, encode, IPC and Node response validation;
+- `capture_unchanged`: successful polls returning no changed image, kept separate;
+- `forward`: from queuing RWB1 records to the final successful local WS write callback;
+- `render_credit`: from holding credit before sending records to a valid frame ACK.
+
+All intervals use the Node monotonic clock and are exported in seconds. Forwarding
+completion is a local socket write, while render credit includes transport, browser
+decode/draw and ACK return. These overlapping intervals must not be summed. Failed
+captures/writes and reset/abandoned credit are excluded from successful timing samples.
+The histogram has eleven fixed finite buckets plus infinity; no individual samples
+or per-session labels are retained.
+
+`bridge_media_frames_queued_total` counts changed frames;
+`bridge_media_bytes_queued_total` counts their RWB1 configuration/image bytes.
+Queued counters do not establish successful rendering or sustained FPS.
+`bridge_media_frames_in_flight` counts frames currently holding render credit and
+is decremented once on valid ACK, accepted decoder reset or server socket close.
+These metrics aggregate all sessions on the server and retain `/metrics` authentication.
+Fake transport regression evidence is in `tests/integration/media.test.mjs`.
+
 Evidence: tests/unit/session-manager.test.mjs and
 tests/integration/session-api.test.mjs; eight tests each.

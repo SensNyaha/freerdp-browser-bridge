@@ -125,6 +125,12 @@ and a new independent config/IDR. The host can explicitly attach with
 codecs=['jpeg'] when AVC is unavailable.
 
 Hardware auto/prefer/off selection, dynamic congestion bitrate control,
-queue latency instrumentation, Linux integration, other browsers and the
+full framebuffer-to-browser queue latency instrumentation, Linux integration, other browsers and the
 30-minute interactive acceptance gate remain pending. See ITERATION_006.md
 for native codec evidence and ITERATION_007.md for the actual browser path.
+
+Node capture/write/render-credit durations, queued frame/byte counters and current
+credit occupancy are exposed through protected `/metrics`; see [metric definitions](SESSION_API.md).
+The automatic lab helper saves only fixed media series to
+`.local-tests/media-metrics-<mode>.prom` alongside its existing browser evidence.
+The timing stages overlap and do not establish full bridge or scene-transition latency.

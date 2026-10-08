@@ -8,6 +8,7 @@ import {
   type MediaCodec,
 } from '@freerdp-bridge/protocol';
 import { publicSessionError, type SessionManager } from '@freerdp-bridge/node';
+import type { MediaMetrics } from './metrics.js';
 
 const hello = TypeCompiler.Compile(
   Type.Object(
@@ -63,6 +64,7 @@ export function installMedia(
   ws: WebSocket,
   lease: ReturnType<SessionManager['attach']>,
   send: (type: string, data: unknown) => void,
+  metrics: MediaMetrics,
 ): void {
   let negotiated = false,
     busy = false,
@@ -81,6 +83,18 @@ export function installMedia(
   let timer: NodeJS.Timeout | undefined;
   let lastPull = performance.now();
   let deadline: NodeJS.Timeout | undefined;
+  let creditStarted: number | undefined;
+  const releaseCredit = (acknowledged: boolean) => {
+    if (creditStarted === undefined || !codec) return;
+    if (acknowledged)
+      metrics.observe(
+        codec,
+        'render_credit',
+        performance.now() - creditStarted,
+      );
+    metrics.credit(codec, -1);
+    creditStarted = undefined;
+  };
   const fail = (code: string) => {
     send('media.error', { code });
     ws.close(1008, 'media unavailable');
@@ -110,8 +124,16 @@ export function installMedia(
         codec,
         forceKeyframe,
       });
+      const changed = Boolean(
+        frame && (codec === 'h264' ? frame.avc : frame.jpeg),
+      );
+      metrics.observe(
+        codec,
+        changed ? 'capture_changed' : 'capture_unchanged',
+        performance.now() - lastPull,
+      );
       if (ws.readyState !== WebSocket.OPEN) return;
-      if (!frame || !(codec === 'h264' ? frame.avc : frame.jpeg)) {
+      if (!frame || !changed) {
         schedule();
         return;
       }
@@ -142,12 +164,22 @@ export function installMedia(
       revision = frame.revision;
       sequence += records.length;
       expectedAck = sequence - 1;
+      creditStarted = performance.now();
+      metrics.credit(codec, 1);
+      metrics.queued(codec, bytes);
       deadline = setTimeout(() => {
         ws.close(1008, 'media acknowledgement deadline');
       }, 5000);
-      for (const record of records)
+      const writeStarted = performance.now();
+      for (const [index, record] of records.entries())
         ws.send(record, { binary: true }, (error) => {
           if (error) ws.terminate();
+          else if (index === records.length - 1)
+            metrics.observe(
+              codec!,
+              'forward',
+              performance.now() - writeStarted,
+            );
         });
     } catch (error) {
       fail(publicSessionError(error).code);
@@ -191,6 +223,7 @@ export function installMedia(
     5000,
   );
   ws.once('close', () => {
+    releaseCredit(false);
     clearTimeout(timer);
     clearTimeout(deadline);
   });
@@ -227,6 +260,7 @@ export function installMedia(
       resets < 3
     ) {
       resets++;
+      releaseCredit(false);
       clearTimeout(deadline);
       expectedAck = undefined;
       forceKeyframe = true;
@@ -239,6 +273,7 @@ export function installMedia(
       expectedAck !== undefined &&
       value.data.sequence === expectedAck
     ) {
+      releaseCredit(true);
       clearTimeout(deadline);
       expectedAck = undefined;
       schedule();

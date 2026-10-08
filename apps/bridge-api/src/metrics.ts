@@ -1,5 +1,20 @@
-import { Gauge, Counter, Registry } from 'prom-client';
+import { Gauge, Counter, Histogram, Registry } from 'prom-client';
 import { type SessionManager } from '@freerdp-bridge/node';
+import type { MediaCodec } from '@freerdp-bridge/protocol';
+
+export interface MediaMetrics {
+  observe(
+    codec: MediaCodec,
+    stage:
+      | 'capture_changed'
+      | 'capture_unchanged'
+      | 'forward'
+      | 'render_credit',
+    milliseconds: number,
+  ): void;
+  queued(codec: MediaCodec, bytes: number): void;
+  credit(codec: MediaCodec, change: 1 | -1): void;
+}
 
 export function createSessionMetrics(manager: SessionManager) {
   const registry = new Registry();
@@ -54,8 +69,51 @@ export function createSessionMetrics(manager: SessionManager) {
     registers: [registry],
   });
   const previous = { created: 0, failed: 0, rejected: 0 };
+  const duration = new Histogram({
+    name: 'bridge_media_stage_duration_seconds',
+    help: 'Successful capture requests, local WebSocket writes and valid render-credit round trips',
+    labelNames: ['codec', 'stage'] as const,
+    buckets: [0.001, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6, 1.5, 5],
+    registers: [registry],
+  });
+  const frames = new Counter({
+    name: 'bridge_media_frames_queued_total',
+    help: 'Changed encoded frames queued for media attachments',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  const bytes = new Counter({
+    name: 'bridge_media_bytes_queued_total',
+    help: 'RWB1 bytes queued, including configuration and encoded frames',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  const inFlight = new Gauge({
+    name: 'bridge_media_frames_in_flight',
+    help: 'Frames currently holding browser render credit',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  for (const codec of ['h264', 'jpeg'] as const) {
+    frames.inc({ codec }, 0);
+    bytes.inc({ codec }, 0);
+    inFlight.set({ codec }, 0);
+  }
+  const media: MediaMetrics = {
+    observe(codec, stage, milliseconds) {
+      duration.observe({ codec, stage }, milliseconds / 1000);
+    },
+    queued(codec, length) {
+      frames.inc({ codec });
+      bytes.inc({ codec }, length);
+    },
+    credit(codec, change) {
+      inFlight.inc({ codec }, change);
+    },
+  };
   return {
     contentType: registry.contentType,
+    media,
     async render() {
       for (const [key, counter] of [
         ['created', created],
