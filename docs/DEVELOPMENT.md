@@ -27,7 +27,9 @@ If the native worker needs rebuilding, run `./scripts/native-build.ps1 -Task bun
 ## Foundation prerequisites
 
 Prerequisites: Node.js 24, pnpm 10.11.0, CMake >=3.24, Ninja and a C++20 compiler.
-Windows: run in an x64 Visual Studio 2022 Developer shell. Linux: install Ninja and GCC/Clang.
+Windows: initialize the x64 MSVC/SDK environment with `scripts/msvc-env.cmd`
+and the Visual Studio installation path in a disposable `cmd.exe` session.
+Linux: install Ninja and GCC/Clang.
 No GUI, Docker or system FreeRDP is needed for this *lifecycle-only* development profile.
 
 ```sh
@@ -68,7 +70,7 @@ CI uses Node.js 24 directly. Catch2 v3.8.1 is fetched only at configure time, no
 
 On this machine, `./scripts/local-pnpm.ps1 check` selects the local Node/pnpm for one command.
 The helper restores PATH after execution. It uses Windows system CA trust, keeping TLS checks
-enabled. The native build still requires the Visual Studio x64 Developer shell.
+enabled. Native compilation still requires an initialized MSVC/SDK environment.
 
 Private dependency and runtime build (Windows x64 verified; Linux acceptance pending):
 
@@ -84,8 +86,9 @@ BRIDGE_TEST_BINARY_DIR=build/bundled pnpm check
 pnpm test:bundle
 ```
 
-On Windows, use an x64 Visual Studio Developer shell for the commands above. On this machine,
-the workspace has long non-ASCII paths, so vcpkg requires a temporary short workspace alias:
+On Windows, prefer the helper commands below from regular PowerShell. They prepare
+the MSVC/SDK environment and a temporary short workspace alias for vcpkg, which
+is needed for this workspace's long non-ASCII path:
 
 ```powershell
 ./scripts/native-build.ps1 dependencies
@@ -100,6 +103,18 @@ The helper creates an unused R:–Z: subst alias, initializes the MSVC shell, se
 Node.js and removes the alias in finally. Build caches contain this temporary alias; subsequent
 builds must reuse the same available drive letter. Fresh checkouts can use installed Node.js 24
 in an MSVC shell on a short ASCII workspace path; local-pnpm/native-build helpers are machine helpers.
+
+The Windows helper uses `scripts/msvc-env.cmd`: `VsDevCmd -no_ext` initializes
+the SDK, followed by explicit C++ and CMake batch extensions. It does not invoke
+Visual Studio's vcpkg shell integration, whose `iex (Get-Content ...)` initialization
+can be blocked by endpoint protection. The target and host overlay triplets set
+`VCPKG_LOAD_VCVARS_ENV=OFF` and pass only build-tool environment variables, so
+private vcpkg does not repeat the full Visual Studio shell initialization.
+Compiler tracking remains enabled and environment values participate in ABI hashes.
+The supported variables are described in [Microsoft's vcpkg documentation](https://learn.microsoft.com/en-us/vcpkg/users/triplets#vcpkg_load_vcvars_env).
+This requires an initialized MSVC environment; use the helper from a regular terminal.
+No antivirus settings, exclusions, execution policy or Visual Studio installation files
+are changed. Existing native-build commands above remain the entry points.
 
 Pinned vcpkg builds release shared libraries into .deps/installed/<triplet>, with downloads,
 tooling, build trees and binary cache under .tools/.deps. No system installation or global vcpkg

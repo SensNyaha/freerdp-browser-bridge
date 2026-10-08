@@ -14,10 +14,10 @@ try {
   $vswherePath = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
   $visualStudioPath = & $vswherePath -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
   if (!$visualStudioPath) { throw 'Visual Studio x64 C++ build tools are absent' }
-  $vcvarsPath = Join-Path $visualStudioPath 'VC\Auxiliary\Build\vcvars64.bat'
+  $compilerEnvironmentPath = $driveName + '\scripts\msvc-env.cmd'
   $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
   $scriptPath = $driveName + '\scripts\build-' + $Task + '.mjs'
-  & cmd.exe /d /c ('call "' + $vcvarsPath + '" >nul && "' + $nodePath + '" "' + $scriptPath + '"')
+  & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" && "' + $nodePath + '" "' + $scriptPath + '"')
   $nativeExitCode = $LASTEXITCODE
 } finally {
   Set-Location -LiteralPath $previousLocation.Path
