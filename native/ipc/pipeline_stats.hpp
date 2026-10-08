@@ -22,13 +22,13 @@ public:
     recent_[captures_ % recent_.size()] = us;
     ++captures_;
     total_us_ += us;
-    max_us_ = std::max(max_us_, us);
+    max_us_ = (std::max)(max_us_, us);
   }
   void read(std::uint64_t count, std::uint64_t us) {
     std::lock_guard lock(mutex_);
     checks_ += count;
-    max_batch_ = std::max(max_batch_, count);
-    max_batch_us_ = std::max(max_batch_us_, us);
+    max_batch_ = (std::max)(max_batch_, count);
+    max_batch_us_ = (std::max)(max_batch_us_, us);
   }
   std::array<std::uint64_t, 8> snapshot() {
     std::lock_guard lock(mutex_);

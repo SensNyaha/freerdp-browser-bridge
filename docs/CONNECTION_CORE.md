@@ -8,8 +8,9 @@ strict/prompt certificate policy; minimum TLS 1.2/1.3; initial width/height/dept
 connect/TCP acknowledgement deadlines. Recognized fields outside this slice fail
 with RDP_SETTING_NOT_IMPLEMENTED, rather than being ignored. Legacy RDP security,
 certificate ignore, TOFU, Gateway/proxy, reconnect, interactive auth replacement,
-primary H.264/audio, input, files/devices remain pending. The experimental JPEG
-capture/browser fallback is documented separately in MEDIA_JPEG.md.
+complete media/input acceptance, audio and files/devices remain pending.
+The experimental JPEG and H.264 browser paths are documented in
+[MEDIA_JPEG.md](MEDIA_JPEG.md) and [MEDIA_H264.md](MEDIA_H264.md).
 
 The worker uses custom public client entry points with rdpClientContext at the
 start of its bridge context. Windows networking initializes WinSock 2.2.
@@ -21,7 +22,11 @@ when cleanup exceeds its deadline.
 Initial headless GDI/resize check dimensions before framebuffer allocation:
 maximum 7680x4320. Classic paint revisions and bounded native JPEG capture are
 implemented; a real XRDP image has rendered in the reference canvas at 1080p.
-Cursor, modern GFX, dynamic resize and the complete media gate remain pending.
+Independent cursor extraction/overlay and XRDP replay are implemented.
+The modern GFX binding feeds these same GDI callbacks in synchronous DVC mode;
+[GFX.md](GFX.md) records native fixture coverage, allocation guards and retained
+decoder/scaling gaps. Actual negotiated GFX, dynamic resize and the complete
+media gate remain pending.
 AutoLogon is enabled for supplied credentials.
 
 ## Secrets and trust

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstring>
 #include <freerdp/client/cmdline.h>
+#include <freerdp/config.h>
 #include <freerdp/error.h>
 #include <freerdp/gdi/gdi.h>
 #include <freerdp/input.h>
@@ -110,7 +111,25 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_RedirectSmartCards, FALSE);
   boolean(FreeRDP_AudioPlayback, FALSE);
   boolean(FreeRDP_AudioCapture, FALSE);
+#ifdef CHANNEL_RDPGFX_CLIENT
+  boolean(FreeRDP_SupportGraphicsPipeline, c.color_depth == 32);
+#else
   boolean(FreeRDP_SupportGraphicsPipeline, FALSE);
+#endif
+  boolean(FreeRDP_SynchronousDynamicChannels, TRUE);
+  boolean(FreeRDP_AsyncChannels, FALSE);
+  boolean(FreeRDP_AsyncUpdate, FALSE);
+  boolean(FreeRDP_RemoteApplicationMode, FALSE);
+  boolean(FreeRDP_BitmapCachePersistEnabled, FALSE);
+  boolean(FreeRDP_GfxSmallCache, TRUE);
+  boolean(FreeRDP_GfxThinClient, TRUE);
+#ifdef WITH_GFX_H264
+  boolean(FreeRDP_GfxH264, TRUE);
+  boolean(FreeRDP_GfxAVC444, TRUE);
+#else
+  boolean(FreeRDP_GfxH264, FALSE);
+  boolean(FreeRDP_GfxAVC444, FALSE);
+#endif
   boolean(FreeRDP_GrabMouse, TRUE); // Enables remote SetPosition callbacks; no GUI is created.
   number(FreeRDP_PointerCacheSize, 20);
   number(FreeRDP_ColorPointerCacheSize, 20);
@@ -138,7 +157,34 @@ void Connection::erase_password() noexcept {
     reason_ = RdpError::protocol;
 }
 BOOL Connection::pre_connect(freerdp *instance) {
+  auto &self = owner(instance);
+  auto *pubsub = instance->context->pubSub;
+  if (PubSub_SubscribeChannelConnected(pubsub, channel_connected) < 0)
+    return FALSE;
+  self.subscribed_connected_ = true;
+  if (PubSub_SubscribeChannelDisconnected(pubsub, channel_disconnected) < 0)
+    return FALSE;
+  self.subscribed_disconnected_ = true;
   return freerdp_client_load_addins(instance->context->channels, instance->context->settings);
+}
+void Connection::channel_connected(void *context, const ChannelConnectedEventArgs *event) {
+  auto *base = static_cast<rdpContext *>(context);
+  if (!event || !event->name || std::strcmp(event->name, RDPGFX_DVC_CHANNEL_NAME) != 0)
+    return;
+  auto &self = owner(base->instance);
+  if (!self.gfx_->bind(reinterpret_cast<Context *>(base)->base,
+                       static_cast<RdpgfxClientContext *>(event->pInterface))) {
+    self.reason_ = RdpError::protocol;
+    setChannelError(base, ERROR_BAD_CONFIGURATION, "Bridge GFX initialization failed");
+  }
+}
+void Connection::channel_disconnected(void *context, const ChannelDisconnectedEventArgs *event) {
+  auto *base = static_cast<rdpContext *>(context);
+  if (!event || !event->name || std::strcmp(event->name, RDPGFX_DVC_CHANNEL_NAME) != 0)
+    return;
+  auto &self = owner(base->instance);
+  if (!self.gfx_->unbind())
+    self.reason_ = RdpError::protocol;
 }
 namespace {
 struct CursorPointer {
@@ -335,7 +381,20 @@ void Connection::capture_pending(bool ending) {
   frame_request_ = 0;
   next_frame_ = now + std::chrono::milliseconds(requested_avc_ ? 34 : 50);
 }
-void Connection::post_disconnect(freerdp *instance) { gdi_free(instance); }
+void Connection::post_disconnect(freerdp *instance) {
+  auto &self = owner(instance);
+  if (!self.gfx_->unbind())
+    self.reason_ = RdpError::protocol;
+  if (self.subscribed_connected_) {
+    PubSub_UnsubscribeChannelConnected(instance->context->pubSub, channel_connected);
+    self.subscribed_connected_ = false;
+  }
+  if (self.subscribed_disconnected_) {
+    PubSub_UnsubscribeChannelDisconnected(instance->context->pubSub, channel_disconnected);
+    self.subscribed_disconnected_ = false;
+  }
+  gdi_free(instance);
+}
 unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload) {
   const auto event = input::decode(payload);
   std::lock_guard lock(input_mutex_);

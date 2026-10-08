@@ -3,6 +3,7 @@
 #include "connection_config.hpp"
 #include "cursor.hpp"
 #include "dirty_regions.hpp"
+#include "gfx.hpp"
 #include "input.hpp"
 #include "jpeg.hpp"
 #include "pipeline_stats.hpp"
@@ -32,7 +33,7 @@ enum class RdpError : std::uint16_t {
 };
 class Connection {
   struct Context {
-    rdpClientContext base;
+    media::GfxClientContext base;
     Connection *owner;
   };
   using ContextPtr = std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)>;
@@ -53,6 +54,8 @@ class Connection {
   std::atomic<bool> connected_{false};
   std::uint64_t frame_request_ = 0, requested_revision_ = 0;
   media::DirtyRegions dirty_;
+  std::unique_ptr<media::Gfx> gfx_ = std::make_unique<media::Gfx>();
+  bool subscribed_connected_ = false, subscribed_disconnected_ = false;
   std::chrono::steady_clock::time_point next_frame_{};
   std::unique_ptr<media::JpegEncoder> encoder_;
   std::unique_ptr<media::SoftwareH264Encoder> avc_encoder_;
@@ -77,6 +80,8 @@ class Connection {
   void erase_password() noexcept;
   static Connection &owner(freerdp *instance);
   static BOOL pre_connect(freerdp *instance);
+  static void channel_connected(void *context, const ChannelConnectedEventArgs *event);
+  static void channel_disconnected(void *context, const ChannelDisconnectedEventArgs *event);
   static BOOL post_connect(freerdp *instance);
   static BOOL resize(rdpContext *context);
   static BOOL begin_paint(rdpContext *context);

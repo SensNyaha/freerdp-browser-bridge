@@ -4,7 +4,9 @@ Implements SPECIFICATION §2.3 and MEDIA_PIPELINE §2 with the full-frame encodi
 policy of ARCHITECTURE §4 and ADR-003. The framebuffer remains authoritative
 inside the worker; only rectangle metadata is snapshotted, never raw pixels.
 
-The RDP thread owns `DirtyRegions` and its desktop revision. Initial connection
+The RDP thread owns `DirtyRegions` and its desktop revision. GFX dynamic channels
+are explicitly synchronous so their public GDI output callbacks use this same
+thread and adapter; see [GFX binding](GFX.md). Initial connection
 and accepted server resize mark the entire desktop dirty. A nonempty classic
 paint advances revision once, independent of how many rectangles it contains.
 Empty, zero-area and entirely offscreen updates do not advance it. Coordinates
@@ -57,7 +59,8 @@ origin-pixel case; it is not full `gdi_init` or an RDP server integration test.
 Actual XRDP video regression remains a separate test. Evidence is recorded in
 [iteration 13](ITERATION_013.md).
 
-Modern GFX frame-end callbacks, confirmed dynamic resize, partial/tile transport,
+Modern GFX frame-end output is now checked through public FreeRDP callback
+fixtures. Actual negotiated GFX, confirmed dynamic resize, partial/tile transport,
 dirty-area metrics and the full desktop performance/soak gates remain open.
 The original requirements are retained. This block completes classic bounded
 rectangle tracking, rather than the entirety of Stage 4.
