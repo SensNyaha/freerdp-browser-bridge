@@ -1,6 +1,8 @@
+export * from './media.js';
 export const IPC_VERSION = 1;
 export const HEADER_BYTES = 24;
 export const MAX_CONTROL_BYTES = 4096;
+export const MAX_JPEG_BYTES = 8 * 1024 * 1024;
 
 export enum Kind {
   Hello = 1,
@@ -20,6 +22,8 @@ export enum Kind {
   Certificate = 15,
   CertificateDecision = 16,
   CertificateDecisionAck = 17,
+  Capture = 18,
+  Frame = 19,
 }
 
 export interface Packet {
@@ -63,6 +67,10 @@ function payloadLimit(kind: number): number {
       return 42;
     case Kind.CertificateDecision:
       return 41;
+    case Kind.Capture:
+      return 8;
+    case Kind.Frame:
+      return MAX_JPEG_BYTES + 24;
     default:
       throw new ProtocolError();
   }
@@ -85,8 +93,9 @@ export function decodeHeader(header: Buffer): {
   const length = header.readUInt32BE(20);
   if (
     length > payloadLimit(kind) ||
-    (![Kind.HelloAck, Kind.Configure, Kind.Secret].includes(kind) &&
-      length !== payloadLimit(kind))
+    (![Kind.HelloAck, Kind.Configure, Kind.Secret, Kind.Frame].includes(kind) &&
+      length !== payloadLimit(kind)) ||
+    (kind === Kind.Frame && length < 24)
   ) {
     throw new ProtocolError();
   }
@@ -174,7 +183,12 @@ export function helloPayload(): Buffer {
 
 export interface WorkerBuild {
   protocolVersion: number;
-  capabilities: { lifecycle: boolean; rdp: boolean; connectCore: boolean };
+  capabilities: {
+    lifecycle: boolean;
+    rdp: boolean;
+    connectCore: boolean;
+    jpegCapture: boolean;
+  };
   bridgeVersion: string;
   gitCommit: string;
   freeRdpVersion: string | null;
@@ -188,7 +202,11 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
   if (payload.length < 4 || payload.readUInt16BE(0) !== IPC_VERSION)
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
-  if ((capabilities & ~7) !== 0 || !(capabilities & 1))
+  if (
+    (capabilities & ~15) !== 0 ||
+    !(capabilities & 1) ||
+    ((capabilities & 8) !== 0 && (capabilities & 4) === 0)
+  )
     throw new ProtocolError();
   let offset = 4;
   const string = (): string => {
@@ -221,6 +239,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       lifecycle: true,
       rdp: Boolean(capabilities & 2),
       connectCore: Boolean(capabilities & 4),
+      jpegCapture: Boolean(capabilities & 8),
     },
     bridgeVersion,
     gitCommit,

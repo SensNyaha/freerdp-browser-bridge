@@ -81,7 +81,7 @@ std::vector<std::uint8_t> build_payload() {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
-  append_be(bytes, 5, 2); // Lifecycle + experimental connect core; usable browser RDP still false.
+  append_be(bytes, 13, 2); // Lifecycle, connect core and JPEG capture; usable desktop still false.
 #else
   append_be(bytes, 1, 2);
 #endif
@@ -167,6 +167,9 @@ int run() {
     } else if (header.kind == Kind::certificate_decision && ready) {
       connection.decide(payload);
       send({Kind::certificate_decision_ack, header.request_id, {}});
+    } else if (header.kind == Kind::capture && ready) {
+      if (!connection.capture(header.request_id, payload))
+        error(header.request_id, 5);
 #endif
     } else {
       error(header.request_id, 3);
@@ -199,9 +202,9 @@ int main(int argc, char **argv) {
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
                  "\"rdp\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
-                 "true},"
+                 "true,\"jpegCapture\":true},"
 #else
-                 "false},"
+                 "false,\"jpegCapture\":false},"
 #endif
               << "\"os\":\"" << platform << "\",\"arch\":\"" << arch
               << "\",\"transport\":\"framed-pipes\"}\n";

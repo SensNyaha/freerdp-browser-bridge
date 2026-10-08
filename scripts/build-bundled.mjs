@@ -19,6 +19,7 @@ function run(command, args) {
   if (result.status !== 0)
     throw new Error('Bundled native build failed; inspect the build log');
 }
+run(process.execPath, ['scripts/inspect-native-build.mjs']);
 run('cmake', [
   '-S',
   '.',

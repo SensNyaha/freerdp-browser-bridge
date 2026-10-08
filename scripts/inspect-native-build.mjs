@@ -23,7 +23,7 @@ const status = readFileSync(
   resolve('.deps/installed/vcpkg/status'),
   'utf8',
 ).replace(/\r\n/g, '\n');
-for (const name of ['zlib', 'openssl', 'libusb']) {
+for (const name of ['zlib', 'openssl', 'libusb', 'libjpeg-turbo', 'libspng']) {
   const block = status
     .split(/\r?\n\r?\n/)
     .find(
@@ -39,7 +39,7 @@ for (const name of ['zlib', 'openssl', 'libusb']) {
 }
 const report = {
   enabledChannels,
-  codecProviders: [],
+  codecProviders: ['libjpeg-turbo'],
   dependencies,
   freeRdpSourceCommit: lock.freerdp.commit,
   vcpkgCommit: lock.vcpkg.commit,

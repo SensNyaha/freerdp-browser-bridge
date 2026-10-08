@@ -47,11 +47,16 @@ Connection::Connection(std::function<void(const Packet &)> send)
   instance->GetAccessToken = nullptr;
   instance->RetryDialog = nullptr;
   instance->PresentGatewayMessage = nullptr;
+  media_event_ = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+  if (!media_event_)
+    throw ProtocolError();
 }
 Connection::~Connection() {
   stop();
   if (thread_.joinable())
     thread_.join();
+  if (media_event_ && !CloseHandle(media_event_))
+    reason_ = RdpError::protocol;
   erase_password();
 }
 void Connection::configure(std::span<const std::uint8_t> payload) {
@@ -128,7 +133,7 @@ BOOL Connection::pre_connect(freerdp *instance) {
   return freerdp_client_load_addins(instance->context->channels, instance->context->settings);
 }
 BOOL Connection::post_connect(freerdp *instance) {
-  // Headless protocol decoding only. No browser framebuffer/media capability yet.
+  // Decode and encode on the same RDP thread; no queue or copy of raw desktops.
   const auto width = freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopWidth);
   const auto height =
       freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopHeight);
@@ -137,6 +142,9 @@ BOOL Connection::post_connect(freerdp *instance) {
   if (!gdi_init(instance, PIXEL_FORMAT_BGRA32))
     return FALSE;
   instance->context->update->DesktopResize = resize;
+  instance->context->update->BeginPaint = begin_paint;
+  instance->context->update->EndPaint = end_paint;
+  ++owner(instance).revision_;
   return TRUE;
 }
 BOOL Connection::resize(rdpContext *context) {
@@ -144,7 +152,74 @@ BOOL Connection::resize(rdpContext *context) {
   const auto height = freerdp_settings_get_uint32(context->settings, FreeRDP_DesktopHeight);
   if (width == 0 || width > 7680 || height == 0 || height > 4320)
     return FALSE;
-  return gdi_resize(context->gdi, width, height);
+  if (!gdi_resize(context->gdi, width, height))
+    return FALSE;
+  ++owner(context->instance).revision_;
+  return TRUE;
+}
+BOOL Connection::begin_paint(rdpContext *context) {
+  context->gdi->primary->hdc->hwnd->invalid->null = TRUE;
+  return TRUE;
+}
+BOOL Connection::end_paint(rdpContext *context) {
+  if (!context->gdi->primary->hdc->hwnd->invalid->null)
+    ++owner(context->instance).revision_;
+  return TRUE;
+}
+bool Connection::capture(std::uint64_t request, std::span<const std::uint8_t> payload) {
+  std::lock_guard lock(media_mutex_);
+  if (payload.size() != 8 || request == 0 || frame_request_ != 0)
+    throw ProtocolError();
+  if (!connected_ || stopping_)
+    return false;
+  requested_revision_ = read_be(payload);
+  frame_request_ = request;
+  if (!SetEvent(media_event_))
+    throw ProtocolError();
+  return true;
+}
+void Connection::capture_pending(bool ending) {
+  std::lock_guard lock(media_mutex_);
+  const auto now = std::chrono::steady_clock::now();
+  if (!frame_request_ || (!ending && now < next_frame_))
+    return;
+  const auto *gdi = context_->gdi;
+  const bool changed = !ending && revision_ != requested_revision_;
+  std::span<const std::uint8_t> jpeg;
+  if (changed) {
+    try {
+      if (!encoder_)
+        encoder_ = std::make_unique<media::JpegEncoder>();
+      if (!gdi || gdi->width < 1 || gdi->height < 1 || gdi->stride > INT32_MAX)
+        throw ProtocolError();
+      jpeg = encoder_->encode({gdi->primary_buffer, static_cast<std::size_t>(gdi->stride) *
+                                                        static_cast<std::size_t>(gdi->height)},
+                              gdi->width, gdi->height, static_cast<int>(gdi->stride));
+    } catch (...) {
+      std::vector<std::uint8_t> error;
+      append_be(error, 4, 4);
+      send_({Kind::error, frame_request_, std::move(error)});
+      frame_request_ = 0;
+      next_frame_ = now + std::chrono::milliseconds(50);
+      return; // Media provider failure does not disconnect the remote session.
+    }
+  }
+  std::vector<std::uint8_t> payload;
+  payload.reserve(frame_metadata_bytes + jpeg.size());
+  append_be(payload, revision_, 8);
+  append_be(
+      payload,
+      static_cast<std::uint64_t>(
+          std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count()),
+      8);
+  append_be(payload, gdi ? static_cast<std::uint64_t>(gdi->width) : config_->width, 2);
+  append_be(payload, gdi ? static_cast<std::uint64_t>(gdi->height) : config_->height, 2);
+  append_be(payload, changed ? 1 : 0, 1);
+  append_be(payload, 0, 3);
+  payload.insert(payload.end(), jpeg.begin(), jpeg.end());
+  send_({Kind::frame, frame_request_, std::move(payload)});
+  frame_request_ = 0;
+  next_frame_ = now + std::chrono::milliseconds(50); // Diagnostic JPEG ceiling: 20 FPS.
 }
 void Connection::post_disconnect(freerdp *instance) { gdi_free(instance); }
 BOOL Connection::authenticate(freerdp *instance, char **username, char **password, char **,
@@ -221,6 +296,8 @@ void Connection::start() {
 }
 void Connection::stop() noexcept {
   stopping_ = true;
+  if (media_event_ && !SetEvent(media_event_))
+    reason_ = RdpError::protocol;
   condition_.notify_all();
   if (started_ && !finished_ && !freerdp_abort_connect_context(context_.get()))
     reason_ = RdpError::protocol;
@@ -262,27 +339,33 @@ void Connection::run() noexcept {
       }
       state(stopping_ ? RdpState::closed : RdpState::failed, stopping_ ? RdpError::none : error);
     } else {
+      connected_ = true;
       state(RdpState::connected);
       bool healthy = true;
       while (!stopping_ && !freerdp_shall_disconnect_context(context_.get())) {
         std::array<HANDLE, 64> events{};
         const auto count = freerdp_get_event_handles(context_.get(), events.data(),
-                                                     static_cast<DWORD>(events.size()));
-        if (count == 0 || count > events.size()) {
+                                                     static_cast<DWORD>(events.size() - 1));
+        if (count == 0 || count >= events.size()) {
           healthy = false;
           break;
         }
-        const auto result = WaitForMultipleObjects(count, events.data(), FALSE, 100);
+        capture_pending();
+        events[count] = media_event_;
+        const auto result = WaitForMultipleObjects(count + 1, events.data(), FALSE, 50);
         if (result == WAIT_FAILED || !freerdp_check_event_handles(context_.get())) {
           healthy = false;
           break;
         }
       }
+      connected_ = false;
+      capture_pending(true);
       const auto disconnected = freerdp_disconnect(context_->instance);
       state(stopping_ || (healthy && disconnected) ? RdpState::closed : RdpState::failed,
             stopping_ || (healthy && disconnected) ? RdpError::none : RdpError::disconnect);
     }
   } catch (...) {
+    connected_ = false;
     erase_password();
     state(RdpState::failed, RdpError::protocol);
   }

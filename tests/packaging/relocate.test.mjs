@@ -46,7 +46,12 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     );
     assert.equal(lines.zlib, features.dependencies.zlib);
     assert.equal(lines.freerdp, '3.32.1');
-    for (const runtime of [lines.runtime, lines.freerdpRuntime]) {
+    assert.equal(lines.jpegRoundtrip, 'true');
+    for (const runtime of [
+      lines.runtime,
+      lines.freerdpRuntime,
+      lines.jpegRuntime,
+    ]) {
       const loadedPath = relative(relocated, resolve(runtime));
       assert.ok(
         loadedPath &&
@@ -65,7 +70,16 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     );
     assert.equal(JSON.parse(cli.stdout).freeRdpVersion, '3.32.1');
     assert.equal(JSON.parse(cli.stdout).capabilities.rdp, false);
-    for (const dependency of ['zlib', 'openssl', 'libusb', 'freerdp']) {
+    assert.equal(JSON.parse(cli.stdout).capabilities.jpegCapture, true);
+    assert.ok(features.codecProviders.includes('libjpeg-turbo'));
+    for (const dependency of [
+      'zlib',
+      'openssl',
+      'libusb',
+      'freerdp',
+      'libjpeg-turbo',
+      'libspng',
+    ]) {
       assert.ok(
         (
           await readFile(

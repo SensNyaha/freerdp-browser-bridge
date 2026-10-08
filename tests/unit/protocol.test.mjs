@@ -12,7 +12,60 @@ import {
   decodeConnectionState,
   decodeCertificatePrompt,
   encodeCertificateDecision,
+  decodeCapturedFrame,
+  encodeJpegRecords,
+  MAX_JPEG_BYTES,
 } from '../../packages/protocol/dist/index.js';
+
+test('JPEG IPC metadata and RWB1 vectors have independent byte order and strict bounds', () => {
+  const payload = Buffer.from(
+    '000000000000000100000000000000020400030001000000ffd8ffd9',
+    'hex',
+  );
+  const frame = decodeCapturedFrame(payload);
+  assert.equal(frame.revision, 1n);
+  assert.equal(frame.width, 1024);
+  assert.equal(frame.height, 768);
+  const records = encodeJpegRecords(frame, 10, true);
+  assert.equal(
+    records[0].toString('hex'),
+    '5257423101010002000000010000000a0000000000000002000000080102040003000000',
+  );
+  assert.equal(
+    records[1].toString('hex'),
+    '5257423101020003000000010000000b000000000000000200000004ffd8ffd9',
+  );
+  const noChange = Buffer.from(payload.subarray(0, 24));
+  noChange[20] = 0;
+  assert.equal(decodeCapturedFrame(noChange).jpeg, undefined);
+  const zeroRevision = Buffer.from(payload);
+  zeroRevision.fill(0, 0, 8);
+  assert.throws(() => decodeCapturedFrame(zeroRevision), ProtocolError);
+  for (const offset of [16, 18, 20, 21, 25, 27]) {
+    const bad = Buffer.from(payload);
+    bad[offset] = 255;
+    assert.throws(() => decodeCapturedFrame(bad), ProtocolError);
+  }
+  assert.throws(
+    () => decodeCapturedFrame(payload.subarray(0, 23)),
+    ProtocolError,
+  );
+  assert.throws(
+    () => decodeCapturedFrame(Buffer.alloc(MAX_JPEG_BYTES + 25)),
+    ProtocolError,
+  );
+  assert.throws(
+    () => decodeCapturedFrame(Buffer.concat([noChange, Buffer.alloc(1)])),
+    ProtocolError,
+  );
+  const header = encodePacket({
+    kind: Kind.Frame,
+    requestId: 1n,
+    payload,
+  }).subarray(0, 24);
+  header.writeUInt32BE(MAX_JPEG_BYTES + 25, 20);
+  assert.throws(() => decodeHeader(header), ProtocolError);
+});
 
 test('RWI1 golden network-order vector is independent of native serializer', () => {
   const packet = encodePacket({

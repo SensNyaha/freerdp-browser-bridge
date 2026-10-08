@@ -14,7 +14,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | HEARTBEAT_ACK | 4 | empty |
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
-| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state |
+| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media not connected |
 | CONFIGURE | 8 | connection schema v1 below; maximum 2048 bytes |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
@@ -25,13 +25,15 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | CERTIFICATE | 15 | u64 challenge, u16 flags, 32-byte SHA-256; requestId=0 |
 | CERTIFICATE_DECISION | 16 | u64 challenge, 32-byte SHA-256, u8 accept (0/1) |
 | CERTIFICATE_DECISION_ACK | 17 | empty |
+| CAPTURE | 18 | u64 last browser revision; zero forces an initial full image |
+| FRAME | 19 | 24-byte metadata + 0..8 MiB JPEG; echoes CAPTURE requestId |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
-bit 2 experimental connection core).
+bit 2 experimental connection core, bit 3 experimental JPEG capture).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. Bundled connection-core builds set bit 2, not bit 1.
+set the usable RDP bit. Bundled builds set bits 2/3, not bit 1. Bit 3 requires bit 2.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers
@@ -87,3 +89,20 @@ CERTIFICATE flags: bit 0 chain/server-purpose/validity verification failure,
 bit 1 hostname/IP mismatch. No PEM, subject, username or secret is forwarded.
 Decisions are consumed once and permit session-only trust. Persistent trust/TOFU
 and changed-fingerprint history remain pending.
+
+## JPEG capture payload
+
+FRAME: u64 revision (nonzero), u64 monotonic timestampUs, u16 width, u16 height,
+u8 codec (0 unchanged, 1 JPEG), three reserved zero bytes, then complete JPEG bytes.
+Dimensions retain the connection bounds. Unchanged replies have exactly 24 bytes;
+JPEG replies have 28..8388632 bytes and SOI/EOI markers. Header limits are checked
+before allocation. Native JPEG encoding has a fixed 8 MiB destination and disallows
+provider reallocation. An overflow/provider error returns ERROR 4, without terminating
+the RDP session. A connect/disconnect race returns ERROR 5.
+
+There is at most one CAPTURE pending in Node and native code. The RDP thread owns
+paint revisions and reads/encodes the current BGRA framebuffer after processing updates;
+there is no raw-frame queue. The worker enforces a 50 ms minimum interval. A fresh
+attachment requests revision zero; subsequent requests pass its last received revision.
+Equal revisions return only metadata. Resize increments revision. See MEDIA_JPEG.md
+for browser credit and RWB1 framing; H.264/cursor/GFX acceptance remains separate.

@@ -43,6 +43,16 @@ TEST_CASE("HELLO rejects incompatible version ranges and unknown required featur
     REQUIRE_THROWS_AS(validate_hello(payload), ProtocolError);
   }
 }
+TEST_CASE("frame payload bounds are checked before allocation") {
+  auto bytes = encode({Kind::capture, 1, std::vector<std::uint8_t>(8)});
+  REQUIRE(decode_header(std::span(bytes).first(header_bytes)).length == 8);
+  REQUIRE_THROWS_AS(encode({Kind::capture, 1, {}}), ProtocolError);
+  bytes = encode({Kind::frame, 1, std::vector<std::uint8_t>(frame_metadata_bytes)});
+  REQUIRE(decode_header(std::span(bytes).first(header_bytes)).kind == Kind::frame);
+  bytes[20] = 0xff;
+  REQUIRE_THROWS_AS(decode_header(std::span(bytes).first(header_bytes)), ProtocolError);
+  REQUIRE_THROWS_AS(encode({Kind::frame, 1, std::vector<std::uint8_t>(23)}), ProtocolError);
+}
 TEST_CASE("connection settings independently encoded vector, truncation and policy boundaries") {
   const auto c = decode_connection_config(connection);
   REQUIRE(c.host == "localhost");

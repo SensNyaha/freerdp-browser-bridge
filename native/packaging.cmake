@@ -17,7 +17,7 @@ if(BRIDGE_WITH_FREERDP)
     install(DIRECTORY "${BRIDGE_DEPENDENCY_PREFIX}/lib/" "${BRIDGE_FREERDP_PREFIX}/lib/"
       DESTINATION lib FILES_MATCHING PATTERN "*.so" PATTERN "*.so.*")
   endif()
-  foreach(dependency zlib openssl libusb)
+  foreach(dependency zlib openssl libusb libjpeg-turbo libspng)
     install(FILES "${BRIDGE_DEPENDENCY_PREFIX}/share/${dependency}/copyright"
       DESTINATION "share/freerdp-bridge/licenses/${dependency}")
   endforeach()

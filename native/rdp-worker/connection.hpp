@@ -1,6 +1,7 @@
 #pragma once
 #include "certificate.hpp"
 #include "connection_config.hpp"
+#include "jpeg.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <freerdp/client.h>
@@ -9,6 +10,7 @@
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <winpr/synch.h>
 
 namespace bridge {
 enum class RdpState : std::uint16_t { connecting = 1, awaiting_user, connected, closed, failed };
@@ -40,6 +42,13 @@ class Connection {
   std::optional<CertificateCheck> certificate_;
   std::optional<bool> decision_;
   std::atomic<RdpError> reason_{RdpError::none};
+  std::mutex media_mutex_;
+  HANDLE media_event_ = nullptr;
+  std::atomic<bool> connected_{false};
+  std::uint64_t frame_request_ = 0, requested_revision_ = 0, revision_ = 0;
+  std::chrono::steady_clock::time_point next_frame_{};
+  std::unique_ptr<media::JpegEncoder> encoder_;
+  void capture_pending(bool ending = false);
   void state(RdpState state, RdpError error = RdpError::none) noexcept;
   void run() noexcept;
   void erase_password() noexcept;
@@ -47,6 +56,8 @@ class Connection {
   static BOOL pre_connect(freerdp *instance);
   static BOOL post_connect(freerdp *instance);
   static BOOL resize(rdpContext *context);
+  static BOOL begin_paint(rdpContext *context);
+  static BOOL end_paint(rdpContext *context);
   static void post_disconnect(freerdp *instance);
   static BOOL authenticate(freerdp *instance, char **username, char **password, char **domain,
                            rdp_auth_reason reason);
@@ -60,6 +71,7 @@ public:
   void secret(std::span<const std::uint8_t> payload);
   void start();
   void decide(std::span<const std::uint8_t> payload);
+  bool capture(std::uint64_t request, std::span<const std::uint8_t> payload);
   void stop() noexcept;
 };
 } // namespace bridge

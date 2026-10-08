@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -73,6 +73,24 @@ try {
     else {
       await delay(3000);
       await worker.ping();
+      const frame = await worker.captureFrame();
+      if (!frame.jpeg) throw new Error('LAB_FRAME_MISSING');
+      await writeFile(resolve('.local-tests/xrdp-frame.jpg'), frame.jpeg, {
+        mode: 0o600,
+      });
+      let revision = frame.revision;
+      let changed = 1,
+        unchanged = 0,
+        bytes = frame.jpeg.length;
+      for (let i = 0; i < 40; i++) {
+        const next = await worker.captureFrame(revision);
+        if (next.jpeg) {
+          changed++;
+          bytes += next.jpeg.length;
+        } else unchanged++;
+        revision = next.revision;
+      }
+      await worker.ping();
       if (lastState !== 'connected') process.exitCode = 1;
       else
         console.log(
@@ -80,6 +98,13 @@ try {
             type: 'lab.activation',
             connected: true,
             heartbeat: true,
+            image: {
+              width: frame.width,
+              height: frame.height,
+              changed,
+              unchanged,
+              bytes,
+            },
           }),
         );
     }

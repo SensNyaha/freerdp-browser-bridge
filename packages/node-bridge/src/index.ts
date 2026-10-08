@@ -16,6 +16,8 @@ import {
   decodeConnectionState,
   decodeCertificatePrompt,
   encodeCertificateDecision,
+  decodeCapturedFrame,
+  type CapturedFrame,
   type CertificatePrompt,
   type Packet,
   type WorkerBuild,
@@ -81,6 +83,8 @@ export class WorkerProcess extends EventEmitter {
   private report: WorkerBuild | undefined;
   private connectionRequested = false;
   private certificatePrompt: CertificatePrompt | undefined;
+  private rdpConnected = false;
+  private capturing = false;
   private readonly options: Required<WorkerOptions>;
 
   constructor(options: WorkerOptions) {
@@ -254,6 +258,7 @@ export class WorkerProcess extends EventEmitter {
     ) {
       if (packet.kind === Kind.State) {
         const value = decodeConnectionState(packet.payload);
+        this.rdpConnected = value.state === 'connected';
         if (value.state !== 'awaiting-user') this.certificatePrompt = undefined;
         this.emit('rdp-state', value);
         return;
@@ -267,8 +272,22 @@ export class WorkerProcess extends EventEmitter {
       }
     }
     const pending = this.pending.get(packet.requestId);
+    if (pending?.expected === Kind.Frame && packet.kind === Kind.Error) {
+      clearTimeout(pending.timer);
+      this.pending.delete(packet.requestId);
+      const code = packet.payload.readUInt32BE(0);
+      if (code !== 4 && code !== 5)
+        throw new WorkerError('IPC_UNEXPECTED_REPLY');
+      pending.reject(
+        new WorkerError(
+          code === 5 ? 'MEDIA_NOT_CONNECTED' : 'MEDIA_ENCODE_FAILED',
+        ),
+      );
+      return;
+    }
     if (!pending || packet.kind !== pending.expected)
       throw new WorkerError('IPC_UNEXPECTED_REPLY');
+    if (packet.kind === Kind.Frame) decodeCapturedFrame(packet.payload);
     clearTimeout(pending.timer);
     this.pending.delete(packet.requestId);
     pending.resolve(packet);
@@ -314,6 +333,30 @@ export class WorkerProcess extends EventEmitter {
   async ping(): Promise<void> {
     if (this.status !== 'ready') throw new WorkerError('INVALID_STATE');
     await this.request(Kind.Heartbeat, Kind.HeartbeatAck);
+  }
+
+  /** Pulls the latest changed desktop. At most one encoded frame request may be in flight. */
+  async captureFrame(sinceRevision = 0n): Promise<CapturedFrame> {
+    if (!this.report?.capabilities.jpegCapture)
+      throw new WorkerError('MEDIA_NOT_IMPLEMENTED');
+    if (!this.rdpConnected || this.status !== 'ready')
+      throw new WorkerError('MEDIA_NOT_CONNECTED');
+    if (this.capturing) throw new WorkerError('MEDIA_BUSY');
+    if (
+      typeof sinceRevision !== 'bigint' ||
+      sinceRevision < 0n ||
+      sinceRevision > 0xffffffffffffffffn
+    )
+      throw new WorkerError('INVALID_MEDIA_REQUEST');
+    const payload = Buffer.alloc(8);
+    payload.writeBigUInt64BE(sinceRevision);
+    this.capturing = true;
+    try {
+      const reply = await this.request(Kind.Capture, Kind.Frame, payload);
+      return decodeCapturedFrame(reply.payload);
+    } finally {
+      this.capturing = false;
+    }
   }
 
   /** Experimental connection-only core. Does not imply browser media/input availability. */
