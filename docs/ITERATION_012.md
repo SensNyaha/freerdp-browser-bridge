@@ -1,6 +1,7 @@
 # Iteration 12: independent cursor extraction and browser overlay
 
 Native/IPC implementation commit: `ec828d1`.
+Browser/transport and acceptance commit: `990aee3`.
 
 Requirement: SPECIFICATION §2.4, MEDIA_PIPELINE cursor handling, PROTOCOL cursor
 events and ADR-004. The user accepted current screen responsiveness and asked to
