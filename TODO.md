@@ -111,7 +111,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [ ] Cursor overlay in harness.
 - [x] DONE on Windows/XRDP — Native JPEG fallback and browser canvas path, private libjpeg-turbo, bounded allocation and relocation verified. [Contract](docs/MEDIA_JPEG.md).
 - [~] IN PROGRESS — Single-frame credit, ACK deadline, stale lease/ACK/reset rejection, static/latest revision and dimension config verified. Actual WebCodecs decoder-error recovery forces config/IDR; adaptive bitrate/drop policy remains pending.
-- [~] IN PROGRESS — Bounded native encode/read counters, browser decode/draw timings and a deterministic 1080p encoder benchmark implemented; queue-delay and full performance gates remain open. [Evidence](docs/ITERATION_009.md).
+- [~] IN PROGRESS — Bounded native encode/read counters, browser decode/draw timings and a deterministic 1080p encoder benchmark implemented; queue-delay and full performance gates remain open. [Evidence](docs/ITERATION_009.md); `06233ce`, build tracking `be42b9d`.
 
 **Gate:** stable 1080p interactive Windows/XRDP desktop for 30 min, resize safe, cursor smooth, no unbounded queue growth.
 

@@ -4,6 +4,7 @@ Date: 2026-10-08. Implements MEDIA_PIPELINE §4, PERFORMANCE §2.3/8 and
 ADR-003 without changing the native framebuffer ownership or render-credit model.
 Addresses reported previous-scene remnants and slow tile-by-tile scene replacement.
 This is a Windows performance correction; the Stage 4/10 acceptance gates remain open.
+Implementation and verified tests: build correction `be42b9d`, media correction `06233ce`.
 
 ## Findings and implementation
 
