@@ -305,7 +305,7 @@ test('fake-backend WebSocket: Origin, channel/session scope, one controller, rep
     attached.ws.send(
       JSON.stringify({
         v: 1,
-        type: 'input.key',
+        type: 'input.touch',
         seq: 2,
         ts: Date.now(),
         data: {},

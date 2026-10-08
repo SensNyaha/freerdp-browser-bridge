@@ -38,7 +38,11 @@
       <button id="accept">Принять для этой сессии</button>
       <button id="reject">Отклонить</button>
     </section>
-    <canvas id="desktop" aria-label="Рабочий стол RDP"></canvas>
+    <p>
+      Щёлкните по рабочему столу для ввода. При выходе из окна нажатия
+      освобождаются.
+    </p>
+    <canvas id="desktop" tabindex="0" aria-label="Рабочий стол RDP"></canvas>
     <script type="module" src="./viewer.js"></script>
   </body>
 </html>

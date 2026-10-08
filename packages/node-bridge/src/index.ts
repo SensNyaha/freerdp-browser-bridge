@@ -18,6 +18,8 @@ import {
   encodeCertificateDecision,
   decodeCapturedFrame,
   decodeAvcFrame,
+  encodeInput,
+  type InputEvent,
   type CaptureOptions,
   type CapturedFrame,
   type CertificatePrompt,
@@ -274,6 +276,19 @@ export class WorkerProcess extends EventEmitter {
       }
     }
     const pending = this.pending.get(packet.requestId);
+    if (pending?.expected === Kind.InputAck && packet.kind === Kind.Error) {
+      const code = packet.payload.readUInt32BE(0);
+      if (code !== 5 && code !== 6)
+        throw new WorkerError('IPC_UNEXPECTED_REPLY');
+      clearTimeout(pending.timer);
+      this.pending.delete(packet.requestId);
+      pending.reject(
+        new WorkerError(
+          code === 5 ? 'INPUT_NOT_CONNECTED' : 'INPUT_QUEUE_FULL',
+        ),
+      );
+      return;
+    }
     if (
       pending &&
       [Kind.Frame, Kind.FrameAvc].includes(pending.expected) &&
@@ -340,6 +355,15 @@ export class WorkerProcess extends EventEmitter {
   async ping(): Promise<void> {
     if (this.status !== 'ready') throw new WorkerError('INVALID_STATE');
     await this.request(Kind.Heartbeat, Kind.HeartbeatAck);
+  }
+
+  async sendInput(event: InputEvent): Promise<void> {
+    const payload = encodeInput(event);
+    if (!this.report?.capabilities.basicInput)
+      throw new WorkerError('INPUT_NOT_IMPLEMENTED');
+    if (!this.rdpConnected || this.status !== 'ready')
+      throw new WorkerError('INPUT_NOT_CONNECTED');
+    await this.request(Kind.Input, Kind.InputAck, payload);
   }
 
   /** Pulls the latest changed desktop. At most one encoded frame request may be in flight. */

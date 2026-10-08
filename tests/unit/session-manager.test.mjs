@@ -6,6 +6,115 @@ import { eventually, fakeFactory } from '../fixtures/session-worker.mjs';
 
 const a = { id: 'principal-a' };
 const b = { id: 'principal-b' };
+test('control input is serialized, stale queued commands are discarded and reset precedes a new controller', async () => {
+  const factory = fakeFactory();
+  await withManager(factory, async (manager) => {
+    const created = manager.create(config(), a, '127.0.0.1');
+    await eventually(
+      () => manager.get(created.sessionId, a).state === 'connected',
+    );
+    const sent = [];
+    let unblock;
+    factory.workers[0].sendInput = async (event) => {
+      sent.push(event);
+      if (sent.length === 1)
+        await new Promise((done) => {
+          unblock = done;
+        });
+    };
+    const attach = (channel) =>
+      manager.attach(
+        created.sessionId,
+        manager.mintToken(created.sessionId, a, channel).token,
+        channel,
+      );
+    const media = attach('media');
+    await assert.rejects(
+      media.sendInput({ type: 'reset' }),
+      expectCode('ATTACH_INVALID'),
+    );
+    const first = attach('control');
+    const down = first.sendInput({
+      type: 'key',
+      scancode: 30,
+      down: true,
+      repeat: false,
+    });
+    await eventually(() => Boolean(unblock));
+    const queued = first.sendInput({
+      type: 'key',
+      scancode: 31,
+      down: true,
+      repeat: false,
+    });
+    const stale = assert.rejects(queued, expectCode('ATTACH_INVALID'));
+    first.release();
+    first.release();
+    await assert.rejects(
+      first.sendInput({ type: 'reset' }),
+      expectCode('ATTACH_INVALID'),
+    );
+    const next = attach('control');
+    const nextEvent = {
+      type: 'key',
+      scancode: 32,
+      down: true,
+      repeat: false,
+    };
+    const nextInput = next.sendInput(nextEvent);
+    nextEvent.scancode = 33; // Already queued input owns an immutable snapshot.
+    unblock();
+    await Promise.all([down, stale, nextInput]);
+    assert.deepEqual(
+      sent.map((e) => (e.type === 'key' ? e.scancode : e.type)),
+      [30, 'reset', 32],
+    );
+    next.release();
+    await eventually(() => sent.length === 4);
+    assert.equal(sent[3].type, 'reset');
+  });
+});
+test('input queue overflow reserves reset capacity and keeps queued input bounded', async () => {
+  const factory = fakeFactory();
+  await withManager(factory, async (manager) => {
+    const created = manager.create(config(), a, '127.0.0.1');
+    await eventually(
+      () => manager.get(created.sessionId, a).state === 'connected',
+    );
+    let unblock;
+    const sent = [];
+    factory.workers[0].sendInput = async (event) => {
+      sent.push(event);
+      if (sent.length === 1)
+        await new Promise((done) => {
+          unblock = done;
+        });
+    };
+    const lease = manager.attach(
+      created.sessionId,
+      manager.mintToken(created.sessionId, a, 'control').token,
+      'control',
+    );
+    const first = lease.sendInput({ type: 'move', x: 1, y: 1 });
+    await eventually(() => Boolean(unblock));
+    const queued = Array.from({ length: 63 }, () =>
+      lease.sendInput({ type: 'move', x: 2, y: 2 }).catch((e) => e.code),
+    );
+    await assert.rejects(
+      lease.sendInput({ type: 'move', x: 3, y: 3 }),
+      expectCode('INPUT_QUEUE_FULL'),
+    );
+    lease.release();
+    unblock();
+    await first;
+    assert.deepEqual(
+      await Promise.all(queued),
+      Array(63).fill('ATTACH_INVALID'),
+    );
+    await eventually(() => sent.length === 2);
+    assert.equal(sent[1].type, 'reset');
+  });
+});
 test('fake-backend manager: released media lease cannot deliver a pending frame or reuse capture authority', async () => {
   const factory = fakeFactory();
   await withManager(factory, async (manager) => {

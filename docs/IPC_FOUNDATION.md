@@ -14,7 +14,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | HEARTBEAT_ACK | 4 | empty |
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
-| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media not connected |
+| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue full |
 | CONFIGURE | 8 | connection schema v1 below; maximum 2048 bytes |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
@@ -29,13 +29,16 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | FRAME | 19 | 24-byte metadata + 0..8 MiB JPEG; echoes CAPTURE requestId |
 | CAPTURE_AVC | 20 | u64 last revision, u8 force-IDR (0/1), three reserved zero bytes |
 | FRAME_AVC | 21 | 28-byte metadata + AVC config + access unit; echoes CAPTURE_AVC requestId |
+| INPUT | 22 | exactly 12 bytes; [input layout](INPUT.md) |
+| INPUT_ACK | 23 | empty; FreeRDP input API succeeded; echoes INPUT requestId |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
-bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture).
+bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
+bit 5 experimental basic input).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. Bundled builds set bits 2/3/4, not bit 1. Bits 3/4 require bit 2.
+set the usable RDP bit. Bundled builds set bits 2/3/4/5, not bit 1. Bits 3/4/5 require bit 2.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers

@@ -12,9 +12,14 @@ import type {
   CapturedFrame,
   CaptureOptions,
   MediaCodec,
+  InputEvent,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
+  INPUT_NOT_IMPLEMENTED: [501, 'Input is unavailable in this build', false],
+  INPUT_NOT_CONNECTED: [409, 'Remote input requires a connected session', true],
+  INPUT_FAILED: [502, 'Remote input delivery failed', false],
+  INPUT_QUEUE_FULL: [429, 'Remote input queue is full', false],
   MEDIA_NOT_IMPLEMENTED: [501, 'Requested media codec is unavailable', false],
   MEDIA_FAILED: [502, 'Media frame is unavailable', true],
   RDP_CONNECT_FAILED: [502, 'Remote connection failed', true],
@@ -115,6 +120,7 @@ export interface SessionWorker {
     options?: CaptureOptions,
   ): Promise<CapturedFrame | undefined>;
   supportsCodec?(codec: MediaCodec): boolean | undefined;
+  sendInput?(event: InputEvent): Promise<void>;
 }
 export interface SessionManagerOptions {
   workerFactory?: () => SessionWorker;
@@ -142,6 +148,8 @@ type Entry = {
   tokens: Map<string, Token>;
   attachments: Map<SessionChannel, symbol>;
   released: boolean;
+  inputTail: Promise<void>;
+  inputPending: number;
   cleanup?: Promise<void>;
 };
 const transitions: Record<SessionState, readonly SessionState[]> = {
@@ -305,6 +313,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         tokens: new Map(),
         attachments: new Map(),
         released: false,
+        inputTail: Promise.resolve(),
+        inputPending: 0,
       };
       this.entries.set(entry.snapshot.sessionId, entry);
       this.totals.created++;
@@ -537,6 +547,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       options?: CaptureOptions,
     ) => Promise<CapturedFrame | undefined>;
     supportsCodec: (codec: MediaCodec) => boolean | undefined;
+    sendInput: (event: InputEvent) => Promise<void>;
   } {
     const entry = this.entries.get(id);
     if (!entry || !/^[A-Za-z0-9_-]{43}$/.test(token))
@@ -563,6 +574,26 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       ...(entry.certificate
         ? { certificate: structuredClone(entry.certificate) }
         : {}),
+      sendInput: (event) => {
+        if (
+          channel !== 'control' ||
+          entry.attachments.get(channel) !== lease ||
+          entry.released
+        )
+          return Promise.reject(new SessionError('ATTACH_INVALID'));
+        if (!entry.worker.sendInput)
+          return Promise.reject(new SessionError('INPUT_NOT_IMPLEMENTED'));
+        if (entry.snapshot.state !== 'connected')
+          return Promise.reject(new SessionError('INPUT_NOT_CONNECTED'));
+        if (entry.inputPending >= 64)
+          return Promise.reject(new SessionError('INPUT_QUEUE_FULL'));
+        // Queued commands lose authority immediately when this lease is released.
+        return this.queueInput(
+          entry,
+          structuredClone(event),
+          () => entry.attachments.get(channel) === lease,
+        );
+      },
       supportsCodec: (codec) => {
         if (
           channel !== 'media' ||
@@ -618,10 +649,42 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         }
       },
       release: () => {
-        if (entry.attachments.get(channel) === lease)
+        if (entry.attachments.get(channel) === lease) {
           entry.attachments.delete(channel);
+          if (
+            channel === 'control' &&
+            entry.worker.sendInput &&
+            entry.snapshot.state === 'connected'
+          )
+            void this.queueInput(entry, { type: 'reset' }).catch(() => {});
+        }
       },
     };
+  }
+  private queueInput(
+    entry: Entry,
+    event: InputEvent,
+    authorized = () => true,
+  ): Promise<void> {
+    if (entry.inputPending >= 65) {
+      this.fail(entry, 'INPUT_QUEUE_FULL');
+      return Promise.reject(new SessionError('INPUT_QUEUE_FULL'));
+    }
+    entry.inputPending++;
+    const delivery = entry.inputTail.then(async () => {
+      if (entry.released || entry.snapshot.state !== 'connected') return;
+      if (!authorized()) throw new SessionError('ATTACH_INVALID');
+      await entry.worker.sendInput!(event);
+    });
+    entry.inputTail = delivery
+      .catch((error: unknown) => {
+        if (!(error instanceof SessionError && error.code === 'ATTACH_INVALID'))
+          this.fail(entry, 'INPUT_FAILED');
+      })
+      .finally(() => {
+        entry.inputPending--;
+      });
+    return delivery;
   }
   private expireTokens(entry: Entry): void {
     for (const [hash, token] of entry.tokens)

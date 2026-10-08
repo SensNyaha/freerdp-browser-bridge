@@ -4,6 +4,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
 import { installMedia } from './media.js';
+import { normalizeInput } from './input.js';
 import {
   publicSessionError,
   type SessionManager,
@@ -28,6 +29,8 @@ const knownCommands = new Set([
   'input.pointer',
   'input.wheel',
   'input.touch',
+  'input.reset',
+  'input.sync',
   'display.resize.request',
   'clipboard.set',
   'clipboard.request',
@@ -234,12 +237,14 @@ export function installSessionWebSockets(
         let lastSequence = -1;
         let window = Date.now();
         let received = 0;
+        let commands = 0;
         ws.on('message', (buffer, binary) => {
           if (Date.now() - window >= 1000) {
             window = Date.now();
             received = 0;
+            commands = 0;
           }
-          if (++received > 32) {
+          if (++received > 256) {
             ws.close(1008, 'message rate limit');
             return;
           }
@@ -267,6 +272,36 @@ export function installSessionWebSockets(
             return;
           }
           lastSequence = data.seq;
+          if (
+            [
+              'input.key',
+              'input.pointer',
+              'input.wheel',
+              'input.reset',
+              'input.sync',
+            ].includes(data.type)
+          ) {
+            const input = normalizeInput(data.type, data.data);
+            if (!input) {
+              send(ws, 'session.error', {
+                code: 'CONTROL_PROTOCOL_ERROR',
+                message: 'Invalid input record',
+                retryable: false,
+              });
+              ws.close(1008, 'invalid input');
+            } else {
+              void lease.sendInput(input).catch((error: unknown) => {
+                if (ws.readyState !== WebSocket.OPEN) return;
+                send(ws, 'session.error', publicSessionError(error).failure);
+                ws.close(1008, 'input unavailable');
+              });
+            }
+            return;
+          }
+          if (++commands > 32) {
+            ws.close(1008, 'message rate limit');
+            return;
+          }
           if (data.type === 'certificate.response') {
             if (!certificateResponse.Check(data.data)) {
               send(ws, 'session.error', {

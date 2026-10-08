@@ -99,6 +99,10 @@ See [JPEG media contract](docs/MEDIA_JPEG.md) for the local harness test.
 The same helper accepts `h264` and `h264-reset` modes. They verify actual
 WebCodecs rendering and decoder-error recovery with fresh config/IDR, using the
 previously approved exact lab fingerprint. No browser binaries ship in the package.
+The helper also verifies pointer motion and detach reset through the native input
+API. It explicitly forbids keyboard, button and wheel input on the operational
+lab desktop. [Input fixture and wire contract](docs/INPUT.md) cover broader input
+tests; their remote keyboard-layout acceptance remains pending.
 
 `GET /v1/build`:
 

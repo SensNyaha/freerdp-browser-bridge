@@ -32,6 +32,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::connect:
   case Kind::connect_ack:
   case Kind::certificate_decision_ack:
+  case Kind::input_ack:
     return 0;
   case Kind::error:
     return 4;
@@ -50,6 +51,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::frame:
     return static_cast<std::uint32_t>(max_jpeg_bytes + frame_metadata_bytes);
   case Kind::capture_avc:
+  case Kind::input:
     return 12;
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);

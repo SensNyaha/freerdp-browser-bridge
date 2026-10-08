@@ -29,6 +29,17 @@ const options = {
   ),
   runtimeRoot: resolve('.runtime/viewer-lab'),
 };
+const nativeWorker = new NativeSessionWorker(options);
+const deliverInput = nativeWorker.sendInput.bind(nativeWorker);
+let inputMoves = 0;
+let inputResets = 0;
+nativeWorker.sendInput = async (event) => {
+  if (!['move', 'reset'].includes(event.type))
+    throw new Error('LAB_READ_ONLY_INPUT');
+  await deliverInput(event);
+  if (event.type === 'move') inputMoves++;
+  else inputResets++;
+};
 const server = await createSessionServer({
   worker: options,
   allowedOrigins: [origin],
@@ -36,7 +47,7 @@ const server = await createSessionServer({
     request.headers.authorization === 'Bearer ' + bearer
       ? { id: 'local-lab' }
       : undefined,
-  sessions: { workerFactory: () => new NativeSessionWorker(options) },
+  sessions: { workerFactory: () => nativeWorker },
   logDestination: new Writable({
     write(_chunk, _encoding, done) {
       done();
@@ -46,6 +57,7 @@ const server = await createSessionServer({
 for (const [url, name, type] of [
   ['/harness/', 'index.html', 'text/html'],
   ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
+  ['/harness/input.js', 'input.js', 'text/javascript'],
 ]) {
   const bytes = await readFile(resolve('apps/reference-harness', name));
   server.get(url, (_request, reply) =>
@@ -155,6 +167,14 @@ try {
     (mode === 'h264-reset' && stats.resets !== 1)
   )
     throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
+  phase = 'pointer';
+  const desktop = await page.locator('#desktop').boundingBox();
+  if (!desktop) throw new Error('LAB_INPUT_VIEW_UNAVAILABLE');
+  // Motion only: never click or type into the lab's operational desktop.
+  await page.mouse.move(desktop.x + 10, desktop.y + 10);
+  const inputDeadline = Date.now() + 3000;
+  while (inputMoves === 0 && Date.now() < inputDeadline) await delay(10);
+  if (inputMoves === 0) throw new Error('LAB_INPUT_MOVE_FAILED');
   await page.locator('#desktop').screenshot({
     path: resolve(
       '.local-tests/' +
@@ -166,6 +186,9 @@ try {
   phase = 'reattach';
   await page.evaluate(() => window.bridgeViewer.detach());
   await delay(100); // Let the old socket releases reach the registry.
+  const resetDeadline = Date.now() + 3000;
+  while (inputResets === 0 && Date.now() < resetDeadline) await delay(10);
+  if (inputResets === 0) throw new Error('LAB_INPUT_RELEASE_FAILED');
   const nextAttach = {};
   for (const channel of ['control', 'media']) {
     const response = await server.inject({
@@ -208,6 +231,8 @@ try {
       browser: 'chromium',
       ...stats,
       reattach: true,
+      inputMoves,
+      inputResets,
     }),
   );
 } catch {

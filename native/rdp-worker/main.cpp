@@ -81,7 +81,7 @@ std::vector<std::uint8_t> build_payload() {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
-  append_be(bytes, 29, 2); // Lifecycle, connect core, JPEG/AVC capture; usable desktop still false.
+  append_be(bytes, 61, 2); // Lifecycle, connect core, JPEG/AVC capture, basic input.
 #else
   append_be(bytes, 1, 2);
 #endif
@@ -170,6 +170,10 @@ int run() {
     } else if ((header.kind == Kind::capture || header.kind == Kind::capture_avc) && ready) {
       if (!connection.capture(header.request_id, payload, header.kind == Kind::capture_avc))
         error(header.request_id, 5);
+    } else if (header.kind == Kind::input && ready) {
+      const auto code = connection.enqueue_input(header.request_id, payload);
+      if (code != 0)
+        error(header.request_id, code);
 #endif
     } else {
       error(header.request_id, 3);
@@ -202,9 +206,9 @@ int main(int argc, char **argv) {
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
                  "\"rdp\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
-                 "true,\"jpegCapture\":true,\"h264Capture\":true},"
+                 "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true},"
 #else
-                 "false,\"jpegCapture\":false,\"h264Capture\":false},"
+                 "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false},"
 #endif
               << "\"os\":\"" << platform << "\",\"arch\":\"" << arch
               << "\",\"transport\":\"framed-pipes\"}\n";

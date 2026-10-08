@@ -36,7 +36,9 @@ Default active limits are 32 globally and four per principal. Creation rate is f
 per minute per principal and IP, with at most 1024 rate keys. Terminal retention is
 bounded at 64 snapshots/five minutes. Worker startup/cleanup deadlines are 10 seconds/
 two seconds. HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
-backlog to 64 KiB and commands to 32 per second. Socket/upgrade counts are bounded.
+backlog to 64 KiB and all messages to 256 per second, with at most 32 non-input
+commands per second. Socket/upgrade counts are bounded. Experimental connected
+control input and its queue/release contract are documented in [INPUT.md](INPUT.md).
 
 Control currently emits state/error events and supports session.detach.
 Native-backend control attachments now support certificate.prompt and certificate.response;

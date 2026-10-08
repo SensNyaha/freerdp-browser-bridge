@@ -7,7 +7,9 @@ Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
-Stages 0/1/3/4 remain **IN PROGRESS**; cursor/input/audio, broader platforms and device gates remain open.
+Stages 0/1/3/4/5 remain **IN PROGRESS**. Physical input and release ownership are
+implemented and tested with native/fake/Edge fixtures; actual XRDP input is verified
+for motion only. Cursor, Unicode/IME, audio, broader platforms and device gates remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -15,8 +17,8 @@ Stages 0/1/3/4 remain **IN PROGRESS**; cursor/input/audio, broader platforms and
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 52/52 Node tests; CTest/Catch2:
-  8 IPC cases / 119 assertions, 2 AVC cases / 19 assertions, 1 JPEG case / 13 assertions
+  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 58/58 Node tests; CTest/Catch2:
+  11 IPC/input cases / 152 assertions, 2 AVC cases / 19 assertions, 1 JPEG case / 13 assertions
   and 2 H.264 cases / 66 assertions.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
@@ -115,13 +117,13 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 ## Stage 5 — keyboard, mouse, wheel and touch
 
-- [ ] Browser `KeyboardEvent.code` → RDP scancode mapping.
+- [~] IN PROGRESS — Physical set-1 mapping and extended left/right/numpad events implemented; native/Node/Edge fixture tests pass. Remote keyboard-layout gate pending. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_008.md).
 - [ ] Modifier state synchronization.
 - [ ] Unicode text fallback/IME pathway.
-- [ ] Absolute pointer and all primary/extra buttons.
-- [ ] Vertical/horizontal wheel.
-- [ ] Coalesce only pointer move.
-- [ ] Release pressed keys/buttons on blur/detach.
+- [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK verified; actual remote buttons pending.
+- [~] IN PROGRESS — Both wheel axes implemented with bounded deltas; control/Edge fixture tests pass. Actual remote wheel behavior and precise trackpad accumulation pending.
+- [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Remote cursor display/performance gate remains open.
+- [~] IN PROGRESS — Native pressed-state reset and retry, blur/disposal, transport loss and stale lease cancellation verified. Graceful close resets input; actual remote no-stuck-key gate pending.
 - [ ] Touch contacts via RDPEI when available.
 - [ ] Pen capability placeholder/implementation if supported.
 

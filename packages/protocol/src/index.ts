@@ -1,4 +1,5 @@
 export * from './media.js';
+export * from './input.js';
 export const IPC_VERSION = 1;
 export const HEADER_BYTES = 24;
 export const MAX_CONTROL_BYTES = 4096;
@@ -26,6 +27,8 @@ export enum Kind {
   Frame = 19,
   CaptureAvc = 20,
   FrameAvc = 21,
+  Input = 22,
+  InputAck = 23,
 }
 
 export interface Packet {
@@ -56,6 +59,7 @@ function payloadLimit(kind: number): number {
     case Kind.Connect:
     case Kind.ConnectAck:
     case Kind.CertificateDecisionAck:
+    case Kind.InputAck:
       return 0;
     case Kind.Error:
       return 4;
@@ -74,6 +78,7 @@ function payloadLimit(kind: number): number {
     case Kind.Frame:
       return MAX_JPEG_BYTES + 24;
     case Kind.CaptureAvc:
+    case Kind.Input:
       return 12;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
@@ -202,6 +207,7 @@ export interface WorkerBuild {
     connectCore: boolean;
     jpegCapture: boolean;
     h264Capture: boolean;
+    basicInput: boolean;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -217,9 +223,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~31) !== 0 ||
+    (capabilities & ~63) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 24) !== 0 && (capabilities & 4) === 0)
+    ((capabilities & 56) !== 0 && (capabilities & 4) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -255,6 +261,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       connectCore: Boolean(capabilities & 4),
       jpegCapture: Boolean(capabilities & 8),
       h264Capture: Boolean(capabilities & 16),
+      basicInput: Boolean(capabilities & 32),
     },
     bridgeVersion,
     gitCommit,

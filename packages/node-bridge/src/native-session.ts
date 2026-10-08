@@ -13,6 +13,7 @@ import type {
   CapturedFrame,
   CaptureOptions,
   MediaCodec,
+  InputEvent,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -73,6 +74,11 @@ export class NativeSessionWorker implements SessionWorker {
     this.closing = true;
     if (this.worker.state === 'starting') this.worker.terminate();
     await this.startup?.catch(() => {});
+    if (
+      this.worker.state === 'ready' &&
+      this.worker.build?.capabilities.basicInput
+    )
+      await this.worker.sendInput({ type: 'reset' }).catch(() => {});
     await this.worker.close();
   }
   terminate(): void {
@@ -127,5 +133,17 @@ export class NativeSessionWorker implements SessionWorker {
         ? build.capabilities.h264Capture
         : build.capabilities.jpegCapture
       : undefined;
+  }
+  async sendInput(event: InputEvent): Promise<void> {
+    try {
+      if (this.closing) throw new SessionError('INPUT_NOT_CONNECTED');
+      await this.worker.sendInput(event);
+    } catch (error) {
+      throw new SessionError(
+        error instanceof WorkerError && error.code === 'INPUT_NOT_IMPLEMENTED'
+          ? 'INPUT_NOT_IMPLEMENTED'
+          : 'INPUT_FAILED',
+      );
+    }
   }
 }

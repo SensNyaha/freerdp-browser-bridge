@@ -1,10 +1,12 @@
 #pragma once
 #include "certificate.hpp"
 #include "connection_config.hpp"
+#include "input.hpp"
 #include "jpeg.hpp"
 #include "video_encoder.hpp"
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 #include <freerdp/client.h>
 #include <functional>
 #include <memory>
@@ -51,6 +53,12 @@ class Connection {
   std::unique_ptr<media::JpegEncoder> encoder_;
   std::unique_ptr<media::SoftwareH264Encoder> avc_encoder_;
   bool requested_avc_ = false, force_idr_ = false;
+  std::mutex input_mutex_;
+  std::deque<std::pair<std::uint64_t, input::Event>> input_queue_;
+  bool input_overflow_ = false;
+  input::State input_state_;
+  bool send_input(const input::Event &event);
+  void input_pending(bool ending = false);
   void capture_pending(bool ending = false);
   void state(RdpState state, RdpError error = RdpError::none) noexcept;
   void run() noexcept;
@@ -75,6 +83,7 @@ public:
   void start();
   void decide(std::span<const std::uint8_t> payload);
   bool capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc);
+  unsigned enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload);
   void stop() noexcept;
 };
 } // namespace bridge

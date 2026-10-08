@@ -1,3 +1,4 @@
+import { installInput } from './input.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -22,7 +23,9 @@ function closeDecoder(session) {
   if (decoder && decoder.state !== 'closed') decoder.close();
 }
 function detach() {
-  if (!current) return;
+  if (!current || current.detaching) return;
+  current.detaching = true;
+  current.disposeInput?.();
   current.closed = true;
   stats.closed = true;
   current.abortDecode?.();
@@ -96,6 +99,7 @@ function attach(created, options = {}) {
     control: socket('control'),
     media: socket('media'),
     controlSequence: 0,
+    connected: false,
     mediaSequence: 0,
     prompt: undefined,
     decoding: false,
@@ -110,6 +114,28 @@ function attach(created, options = {}) {
     queuedBytes: 0,
   };
   current = session;
+  session.disposeInput = installInput(
+    canvas,
+    (type, data) => {
+      if (
+        session.control.readyState !== WebSocket.OPEN ||
+        session.control.bufferedAmount > 16384
+      )
+        return false;
+      session.control.send(
+        JSON.stringify({
+          v: 1,
+          type,
+          seq: session.controlSequence++,
+          ts: Date.now(),
+          data,
+        }),
+      );
+      return true;
+    },
+    () => !session.closed && session.connected && session === current,
+    () => detach(),
+  );
   status.textContent = 'Подключение';
   const fail = () => {
     if (session !== current || session.closed) return;
@@ -133,9 +159,10 @@ function attach(created, options = {}) {
         session.prompt = message.data;
         fingerprint.textContent = message.data.fingerprint;
         certificate.hidden = false;
-      } else if (message.type === 'session.state')
+      } else if (message.type === 'session.state') {
+        session.connected = message.data.state === 'connected';
         status.textContent = message.data.state;
-      else if (message.type === 'session.error') fail();
+      } else if (message.type === 'session.error') fail();
     } catch {
       fail();
     }

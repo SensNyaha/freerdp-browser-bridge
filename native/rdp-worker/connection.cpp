@@ -5,6 +5,7 @@
 #include <freerdp/client/cmdline.h>
 #include <freerdp/error.h>
 #include <freerdp/gdi/gdi.h>
+#include <freerdp/input.h>
 #include <freerdp/settings.h>
 #include <winpr/synch.h>
 #ifdef _WIN32
@@ -243,6 +244,80 @@ void Connection::capture_pending(bool ending) {
   next_frame_ = now + std::chrono::milliseconds(requested_avc_ ? 34 : 50);
 }
 void Connection::post_disconnect(freerdp *instance) { gdi_free(instance); }
+unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload) {
+  const auto event = input::decode(payload);
+  std::lock_guard lock(input_mutex_);
+  if (!connected_ || stopping_)
+    return 5;
+  if (input_queue_.size() >= 64 || input_overflow_) {
+    input_overflow_ = true;
+    if (!SetEvent(media_event_))
+      throw ProtocolError();
+    return 6;
+  }
+  input_queue_.emplace_back(request, event);
+  if (!SetEvent(media_event_))
+    throw ProtocolError();
+  return 0;
+}
+bool Connection::send_input(const input::Event &e) {
+  auto *in = context_->input;
+  switch (e.type) {
+  case input::Type::key:
+    return freerdp_input_send_keyboard_event_ex(in, (e.flags & 1) != 0, (e.flags & 2) != 0, e.a) !=
+           FALSE;
+  case input::Type::move:
+    return freerdp_input_send_mouse_event(in, PTR_FLAGS_MOVE, e.a, e.b) != FALSE;
+  case input::Type::button: {
+    if (e.c >= 3)
+      return freerdp_input_send_extended_mouse_event(
+                 in,
+                 static_cast<UINT16>((e.flags ? PTR_XFLAGS_DOWN : 0) |
+                                     (e.c == 3 ? PTR_XFLAGS_BUTTON1 : PTR_XFLAGS_BUTTON2)),
+                 e.a, e.b) != FALSE;
+    constexpr std::array<UINT16, 3> buttons{PTR_FLAGS_BUTTON1, PTR_FLAGS_BUTTON3,
+                                            PTR_FLAGS_BUTTON2};
+    return freerdp_input_send_mouse_event(
+               in, static_cast<UINT16>(buttons[e.c] | (e.flags ? PTR_FLAGS_DOWN : 0)), e.a, e.b) !=
+           FALSE;
+  }
+  case input::Type::wheel:
+    return freerdp_input_send_mouse_event(
+               in,
+               static_cast<UINT16>((e.flags ? PTR_FLAGS_HWHEEL : PTR_FLAGS_WHEEL) |
+                                   (e.a & WheelRotationMask)),
+               0, 0) != FALSE;
+  case input::Type::sync:
+    return freerdp_input_send_synchronize_event(in, e.a) != FALSE;
+  case input::Type::reset:
+    return false; // Expanded to tracked releases by State, never sent directly.
+  }
+  return false;
+}
+void Connection::input_pending(bool ending) {
+  std::lock_guard lock(input_mutex_);
+  const input::State::Sink sink = [this](const auto &e) { return send_input(e); };
+  while (!input_queue_.empty()) {
+    const auto [request, event] = input_queue_.front();
+    input_queue_.pop_front();
+    if (ending) {
+      std::vector<std::uint8_t> p;
+      append_be(p, 5, 4);
+      send_({Kind::error, request, std::move(p)});
+    } else {
+      const auto *gdi = context_->gdi;
+      if (!gdi || !input_state_.apply(event, sink, static_cast<std::uint16_t>(gdi->width),
+                                      static_cast<std::uint16_t>(gdi->height)))
+        throw ProtocolError();
+      send_({Kind::input_ack, request, {}});
+    }
+  }
+  if (ending || input_overflow_) {
+    input_overflow_ = false;
+    if (!input_state_.release(sink) && !ending)
+      throw ProtocolError();
+  }
+}
 BOOL Connection::authenticate(freerdp *instance, char **username, char **password, char **,
                               rdp_auth_reason) {
   if (username && password && *username && **username && *password)
@@ -371,6 +446,7 @@ void Connection::run() noexcept {
           healthy = false;
           break;
         }
+        input_pending();
         capture_pending();
         events[count] = media_event_;
         DWORD wait_ms = 50;
@@ -391,6 +467,7 @@ void Connection::run() noexcept {
         }
       }
       connected_ = false;
+      input_pending(true);
       capture_pending(true);
       const auto disconnected = freerdp_disconnect(context_->instance);
       state(stopping_ || (healthy && disconnected) ? RdpState::closed : RdpState::failed,
@@ -398,6 +475,14 @@ void Connection::run() noexcept {
     }
   } catch (...) {
     connected_ = false;
+    if (context_->gdi) {
+      // Attempt every tracked release before tearing down a failed transport.
+      try {
+        (void)input_state_.release([this](const auto &e) { return send_input(e); });
+      } catch (...) {
+      }
+      (void)freerdp_disconnect(context_->instance);
+    }
     erase_password();
     state(RdpState::failed, RdpError::protocol);
   }

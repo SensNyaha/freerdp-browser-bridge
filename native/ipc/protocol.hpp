@@ -30,7 +30,9 @@ enum class Kind : std::uint16_t {
   capture = 18,
   frame = 19,
   capture_avc = 20,
-  frame_avc = 21
+  frame_avc = 21,
+  input = 22,
+  input_ack = 23
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

@@ -76,6 +76,7 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     assert.equal(JSON.parse(cli.stdout).capabilities.rdp, false);
     assert.equal(JSON.parse(cli.stdout).capabilities.jpegCapture, true);
     assert.equal(JSON.parse(cli.stdout).capabilities.h264Capture, true);
+    assert.equal(JSON.parse(cli.stdout).capabilities.basicInput, true);
     assert.ok(features.codecProviders.includes('libjpeg-turbo'));
     assert.ok(features.codecProviders.includes('openh264'));
     const patch = await readFile(
