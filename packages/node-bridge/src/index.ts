@@ -1,4 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { EventEmitter } from 'node:events';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -321,5 +323,67 @@ export async function probeWorkerBuild(
     return await worker.start();
   } finally {
     await worker.close();
+  }
+}
+
+export interface BuildFeatureReport {
+  enabledChannels: string[];
+  codecProviders: string[];
+  dependencies: Record<string, string>;
+}
+
+/** Build diagnostics only; compiled channels are not usable redirection claims. */
+export async function probeWorkerFeatures(
+  options: WorkerOptions,
+): Promise<BuildFeatureReport> {
+  try {
+    const result = await promisify(execFile)(
+      resolve(options.workerPath),
+      ['--build-features'],
+      {
+        encoding: 'utf8',
+        windowsHide: true,
+        timeout: options.startupTimeoutMs ?? 10000,
+        maxBuffer: 16384,
+        env: Object.fromEntries(
+          ['SystemRoot', 'WINDIR', 'PATH'].flatMap((key) =>
+            process.env[key] === undefined ? [] : [[key, process.env[key]!]],
+          ),
+        ),
+      },
+    );
+    const data: unknown = JSON.parse(result.stdout);
+    if (!data || typeof data !== 'object') throw new Error();
+    const candidate = data as Record<string, unknown>;
+    const strings = (value: unknown): value is string[] =>
+      Array.isArray(value) &&
+      value.length <= 64 &&
+      value.every(
+        (item: unknown) => typeof item === 'string' && item.length <= 64,
+      );
+    if (
+      !strings(candidate.enabledChannels) ||
+      !strings(candidate.codecProviders) ||
+      !candidate.dependencies ||
+      typeof candidate.dependencies !== 'object' ||
+      Array.isArray(candidate.dependencies)
+    )
+      throw new Error();
+    const dependencies = candidate.dependencies as Record<string, unknown>;
+    if (
+      Object.entries(dependencies).length > 32 ||
+      Object.entries(dependencies).some(
+        ([key, value]) =>
+          key.length > 64 || typeof value !== 'string' || value.length > 64,
+      )
+    )
+      throw new Error();
+    return {
+      enabledChannels: candidate.enabledChannels,
+      codecProviders: candidate.codecProviders,
+      dependencies: dependencies as Record<string, string>,
+    };
+  } catch {
+    throw new WorkerError('BUILD_FEATURE_REPORT_UNAVAILABLE');
   }
 }

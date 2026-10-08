@@ -103,6 +103,12 @@ test('native integration: build REST is backed by actual handshake and CLI repor
       { windowsHide: true },
     );
     assert.deepEqual(JSON.parse(cli.stdout), build);
+    const featureCli = await promisify(execFile)(
+      workerPath,
+      ['--build-features'],
+      { windowsHide: true },
+    );
+    const features = JSON.parse(featureCli.stdout);
     const server = await createBuildServer({ workerPath, runtimeRoot });
     try {
       const response = await server.inject({ method: 'GET', url: '/v1/build' });
@@ -110,6 +116,11 @@ test('native integration: build REST is backed by actual handshake and CLI repor
       assert.equal(response.json().gitCommit, build.gitCommit);
       assert.equal(response.json().freeRdpVersion, build.freeRdpVersion);
       assert.equal(response.json().capabilities.rdp, false);
+      assert.deepEqual(
+        response.json().enabledChannels,
+        features.enabledChannels,
+      );
+      assert.deepEqual(response.json().dependencies, features.dependencies);
       assert.equal((await server.inject('/v1/capabilities')).json().rdp, false);
     } finally {
       await server.close();
