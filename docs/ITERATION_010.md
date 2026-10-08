@@ -1,5 +1,7 @@
 # Iteration 10: static Windows native toolchain initialization
 
+Implementation commit: `d8b6d35`.
+
 Requirement: preserve ADR-010's project-private pinned dependencies while building
 from regular PowerShell without Visual Studio's dynamic vcpkg shell integration.
 

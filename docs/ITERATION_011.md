@@ -1,5 +1,7 @@
 # Iteration 11: bounded Node media timing and render-credit metrics
 
+Implementation commit: `a3a3f28`.
+
 Requirement: SPECIFICATION desktop/media behavior and PERFORMANCE instrumentation
 before further optimization. Static Windows initialization was completed first
 in `d8b6d35`; [iteration 10](ITERATION_010.md) records its verification.
