@@ -1,5 +1,7 @@
 # Iteration 13: bounded classic desktop dirty tracking
 
+Implementation commit: `aac32a3`.
+
 Requirement: SPECIFICATION §2.3, MEDIA_PIPELINE §2, ARCHITECTURE §4 and ADR-003.
 This continues Stage 4 after the user accepted current screen responsiveness;
 FPS, codec quality and transport contracts are unchanged.
