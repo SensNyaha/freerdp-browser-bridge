@@ -1,0 +1,59 @@
+# Session API implementation — Stage 2
+
+The session registry and HTTP/WebSocket boundary are implemented. The Stage 2 gate
+uses an explicitly injected fake connection backend; it does not establish RDP sessions.
+The native process supervisor is tested separately with real C++ workers.
+
+## Hosting and authorization
+
+createSessionServer accepts a trusted authenticate hook and explicit allowedOrigins.
+The hook supplies the principal; request bodies cannot select an owner. The default
+loopback CLI has no identity provider and denies protected routes with 401.
+Without a connection backend, authenticated creation returns RDP_NOT_IMPLEMENTED (501).
+
+Protected routes are POST /v1/sessions, GET/DELETE /v1/sessions/:id,
+POST /v1/sessions/:id/attach-token and GET /metrics. Lookups are owner scoped;
+foreign and unknown IDs produce the same 404. Health/build endpoints remain available.
+Responses use Cache-Control: no-store.
+
+Creation returns a snapshot and newly issued control/media attach credentials.
+These are fresh server credentials, not echoes of supplied passwords or tokens.
+This implements SPECIFICATION section 2.1 and interprets PROTOCOL section 2's
+non-echo requirement as applying to caller-supplied secrets.
+
+## Attach and bounds
+
+Upgrades require an allowlisted Origin, subprotocol freerdp-bridge-v1,
+and a channel-scoped single-use token. Authorization Bearer is preferred;
+query tokens are supported without logging URLs. Cookies, ambiguous token sources,
+extra query fields and replay are rejected.
+
+IDs use 128 random bits; tokens use 256 random bits. Only SHA-256 digests are retained.
+Default TTL is 60 seconds, maximum 300 seconds; at most four outstanding tokens per
+session. One attachment per channel is supported. Detach does not close the session.
+
+Default active limits are 32 globally and four per principal. Creation rate is five
+per minute per principal and IP, with at most 1024 rate keys. Terminal retention is
+bounded at 64 snapshots/five minutes. Worker startup/cleanup deadlines are 10 seconds/
+two seconds. HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
+backlog to 64 KiB and commands to 32 per second. Socket/upgrade counts are bounded.
+
+Control currently emits state/error events and supports session.detach.
+Input, certificate/auth responses and other commands are explicitly unimplemented.
+Media attach reports media.unavailable; no video/audio capability is advertised.
+
+## Backend and diagnostics
+
+Each session owns a fresh trusted backend instance. Starting receives a cloned,
+validated configuration and abort signal. Secrets are dereferenced after startup
+settles or is aborted; this is not guaranteed zeroization of JS strings.
+Failure/shutdown revoke tokens and attachments and bound cleanup time.
+Stage 3 must supply private native configuration/state IPC.
+
+Pino omits URLs, bodies and headers and recursively redacts secret keys.
+Public failures have fixed messages and do not forward backend diagnostics.
+Prometheus labels are bounded state names, without session/principal/host/credential
+labels. Rejection counters cover manager admission, not every HTTP validation error.
+
+Evidence: tests/unit/session-manager.test.mjs and
+tests/integration/session-api.test.mjs; eight tests each.

@@ -13,7 +13,7 @@ are **IN PROGRESS**, not fully accepted. No RDP connection, media or device capa
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). `pnpm check`: 16/16 Node tests; CTest/Catch2:
+  [native tests](native/ipc/tests.cpp). `pnpm check`: 32/32 Node tests; CTest/Catch2:
   4 native cases / 43 assertions. The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -60,16 +60,20 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 2 — Node session manager and public API
 
-- [ ] Fastify server, TypeBox schemas, pino redaction.
-- [ ] Implement `POST/GET/DELETE /v1/sessions`.
-- [ ] Add attach-token generation/TTL/scope.
-- [ ] Add control/media WebSocket upgrade authorization and Origin checks.
-- [ ] Add per-session/global limits.
-- [~] IN PROGRESS — Add worker crash supervision. Process-level isolation/watchdog implemented and tested (`316cdc0`); session registry state/error mapping remains TODO.
-- [ ] Add Prometheus baseline metrics.
-- [ ] Add session state/error model.
+- [x] DONE — Fastify, TypeBox and Pino. Recursive credential/log tests pass.
+- [x] DONE — POST/GET/DELETE /v1/sessions. Owner-scoped lifecycle tests pass with explicit fake backend.
+- [x] DONE — Attach-token generation/TTL/scope. Hash-only storage, bounded TTL/count, replay/expiry/channel tests pass.
+- [x] DONE — Control/media WebSocket authorization and Origin checks. Actual socket tests pass; media remains unavailable.
+- [x] DONE — Per-session/global limits. Startup/cleanup/retention/rate/body/token/socket bounds tested.
+- [x] DONE — Registry crash supervision. Isolation/state/error tests pass; native connection adapter remains Stage 3.
+- [x] DONE — Prometheus baseline metrics. Protected endpoint and bounded label tests pass.
+- [x] DONE — Session state/error model. Transition, deadline, abort and shutdown tests pass.
 
 **Gate:** fake worker can drive complete lifecycle and WS attach tests.
+**Accepted on Windows:** eight manager and eight API tests; full pnpm check passes 32/32.
+The CLI denies protected routes until hosting authentication is configured; without
+a native backend creation returns 501. [Contract](docs/SESSION_API.md),
+[evidence](docs/ITERATION_003.md). Linux and actual RDP acceptance remain open.
 
 ## Stage 3 — FreeRDP connect core
 
