@@ -18,23 +18,27 @@ are **IN PROGRESS**, not fully accepted. No RDP connection, media or device capa
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
   `316cdc0` Node supervisor/API/integration. Original blueprint is preserved in `3065f2d`.
-- **BLOCKED:** pinned FreeRDP configure fails on `ZLIB_LIBRARY` / `ZLIB_INCLUDE_DIR` on this
-  host. See [dependency profile](native/freerdp-profile.cmake) and
-  [build instructions](docs/DEVELOPMENT.md). Remaining dependency inventory is unverified.
-- **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP/XRDP lab is available
-  in this session. Linux SOCK_SEQPACKET remains unimplemented. Linux CI, ASan/UBSan and libFuzzer
+- **DONE on Windows:** exact FreeRDP/WinPR 3.32.1, local ZLIB 1.3.2, OpenSSL 3.6.5 and libusb
+  1.0.30 build and link. Private native ZIP contains runtime DLLs, release CRT, licenses and
+  dependency metadata. Relocation test checks actual loaded ZLIB/FreeRDP paths and static
+  channel inventory without dependency PATH. Native ZIP is approximately 4.7 MiB, 11.5 MiB installed.
+  This excludes Node.js and future media providers. [Iteration 2](docs/ITERATION_002.md).
+  Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
+- **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP lab is available
+  in this session. A user-provided XRDP lab is reachable on TCP/3389; actual worker connection
+  still awaits Stage 3. Linux SOCK_SEQPACKET remains unimplemented. Linux CI, ASan/UBSan and libFuzzer
   jobs are prepared but have not run; they are not counted as passing integration gates.
 
 Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration report:
-[contract audit](docs/CONTRACT_AUDIT.md), [verified results](docs/ITERATION_001.md).
+[contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
 
 - [x] DONE — Create pnpm monorepo layout from `STACK.md` (core packages/apps/native; future component directories are created with their implementations). `9517003`.
 - [x] DONE — Add TypeScript strict config, lint/format, CI skeleton. `pnpm check`; `9517003`.
 - [x] DONE — Add CMake/Ninja native workspace. MSVC x64 build + CTest; `9517003`, `1672590`.
-- [~] IN PROGRESS — Pin FreeRDP **3.32.1** source/build and record commit/checksum. Source commit verified as `bf217a504e54cc719880c228e82353382cd7d4fa`; actual library build blocked by ZLIB. [Lock metadata](native/dependencies.json).
-- [!] BLOCKED — Enable required client channels; emit build feature report. Required-channel profile exists; linked libraries/channels unverified because FreeRDP configure stops at missing ZLIB.
+- [x] DONE on Windows — Pin FreeRDP **3.32.1** source/build and record commit/checksum. Source commit verified as `bf217a504e54cc719880c228e82353382cd7d4fa`; libraries built locally, linked CLI reports 3.32.1, archive SHA-256 generated. [Lock metadata](native/dependencies.json), [verification](docs/ITERATION_002.md). Linux build/fresh-checkout gate remains open.
+- [~] IN PROGRESS — Enable required client channels; emit build feature report. Windows cache inventory matches actual static addins in the relocated bundle; CLI and REST expose it. Upstream 3.32.1 has no Windows serial/parallel clients; these are OFF explicitly. Linux inventory and all runtime device gates remain pending.
 - [x] DONE — Add `rdp-worker --version --capabilities`. Native CLI and handshake reports agree; absent library reported as null, RDP false. [Integration test](tests/integration/worker.test.mjs); `1672590`, `316cdc0`.
 - [x] DONE — Add Node `/v1/build` backed by real worker/build information. Fastify injection + native handshake/CLI comparison; `316cdc0`.
 - [~] IN PROGRESS — Add debug ASan/UBSan native CI job. [Workflow](.github/workflows/ci.yml) is configured; execution and sanitizer acceptance pending Linux CI.
@@ -69,7 +73,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 3 — FreeRDP connect core
 
-- [ ] Create custom `RDP_CLIENT_ENTRY_POINTS` client context.
+- [~] IN PROGRESS — Create custom `RDP_CLIENT_ENTRY_POINTS` client context. Public client context creation/free is now exercised by 100 actual linked-worker lifecycle runs; connection callbacks and custom bridge context remain TODO.
 - [ ] Map target/auth/security settings through public FreeRDP settings APIs.
 - [ ] Implement auth callback/prompt path without logging secrets.
 - [ ] Implement strict certificate callback and prompt/TOFU flow.
@@ -223,4 +227,4 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 - [ ] TODO — Secret-material/config IPC classes and zeroization where practical. Stage 3 must deliver secrets after handshake through private IPC; foundation currently sends no session credentials.
 - [ ] TODO — Explicit restricted Windows runtime ACLs and multi-user isolation acceptance. Traces to ARCHITECTURE §2 and SECURITY §2/6.
 - [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
-- [ ] TODO — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Development foundation profile is deliberately lifecycle-only; Stage 0/10 packaging gates remain open.
+- [~] IN PROGRESS — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Windows native ZIP and relocation are verified; [manual bundled CI](.github/workflows/bundled-native.yml) is prepared, not run. Linux, Node.js distribution, MSI/EXE/DEB/RPM installer integration and clean-machine tests remain open.

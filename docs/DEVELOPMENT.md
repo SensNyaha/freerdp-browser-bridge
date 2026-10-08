@@ -31,10 +31,9 @@ node scripts/seed-fuzz.mjs
 build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20
 ```
 
-The pinned FreeRDP source metadata is native/dependencies.json. Future production dependency
-builds must include FreeRDP/WinPR and required channels, package all runtime libraries and
-verify exact runtime ABI. BRIDGE_WITH_FREERDP is an optional exact-version link probe; it does
-not implement connection callbacks or claim RDP support. Foundation defaults to OFF explicitly.
+The pinned FreeRDP source metadata is native/dependencies.json. The bundled development profile
+links exact FreeRDP/WinPR 3.32.1 and creates/frees a headless client context. It does not implement
+connection callbacks or claim RDP support. Foundation defaults to BRIDGE_WITH_FREERDP=OFF explicitly.
 
 The Windows test machine originally had Node.js 22. A SHA-256 verified portable Node.js
 24.21.0 and pnpm were installed under ignored .tools without changing system installation.
@@ -44,16 +43,55 @@ On this machine, `./scripts/local-pnpm.ps1 check` selects the local Node/pnpm fo
 The helper restores PATH after execution. It uses Windows system CA trust, keeping TLS checks
 enabled. The native build still requires the Visual Studio x64 Developer shell.
 
-Dependency build preparation (not yet accepted on this machine):
+Private dependency and runtime build (Windows x64 verified; Linux acceptance pending):
 
 ```sh
-node scripts/fetch-freerdp.mjs
-cmake -S .deps/FreeRDP -B build/freerdp -G Ninja -C native/freerdp-profile.cmake
-cmake --build build/freerdp
+pnpm build:dependencies
+pnpm build:freerdp
+pnpm build:bundled
+BRIDGE_TEST_BINARY_DIR=build/bundled pnpm check
+pnpm test:bundle
 ```
 
-The configure probe currently stops at missing ZLIB_LIBRARY/ZLIB_INCLUDE_DIR. This does not
-prove the remaining dependencies are present. Resolve dependency inventory before building
-or claiming any required FreeRDP channel. Preserve upstream license/notices in distribution.
+On Windows, use an x64 Visual Studio Developer shell for the commands above. On this machine,
+the workspace has long non-ASCII paths, so vcpkg requires a temporary short workspace alias:
+
+```powershell
+./scripts/native-build.ps1 dependencies
+./scripts/native-build.ps1 freerdp
+./scripts/native-build.ps1 bundled
+$env:BRIDGE_TEST_BINARY_DIR = 'build/bundled'
+./scripts/local-pnpm.ps1 check
+./scripts/local-pnpm.ps1 test:bundle
+```
+
+The helper creates an unused R:–Z: subst alias, initializes the MSVC shell, selects local
+Node.js and removes the alias in finally. Build caches contain this temporary alias; subsequent
+builds must reuse the same available drive letter. Fresh checkouts can use installed Node.js 24
+in an MSVC shell on a short ASCII workspace path; local-pnpm/native-build helpers are machine helpers.
+
+Pinned vcpkg builds release shared libraries into .deps/installed/<triplet>, with downloads,
+tooling, build trees and binary cache under .tools/.deps. No system installation or global vcpkg
+integration is performed. ZLIB/OpenSSL/libusb paths are checked before building FreeRDP.
+FFmpeg/OpenH264 bridge media providers are not implemented or advertised in this lifecycle profile.
+Windows serial/parallel client modules are explicitly disabled because pinned upstream lacks them.
+
+build/native-stage contains only the native runtime and licenses/metadata. Windows DLLs and
+release CRT live beside the worker; Linux libraries use private lib paths with relative RPATH.
+build/packages contains the ZIP/TGZ and SHA-256 sidecars. MSI/EXE/DEB/RPM generators can consume
+the same CPack install rules once their tooling and installer integration are added and tested;
+none of those installer formats is accepted yet. Node.js and the API are not in this native bundle.
+
+rdp-worker --build-features and /v1/build expose compiled channel inventory and dependency versions.
+Compiled channels do not imply working redirection. tests/packaging/relocate.test.mjs moves the
+runtime to a path containing spaces, removes dependency PATH entries, validates loaded module
+paths and static addins, then runs worker HELLO/heartbeat/shutdown and cleanup.
+
+For the user-provided XRDP lab, non-secret connection parameters are in ignored .local-tests.
+To persist its password, run ./scripts/save-xrdp-lab-credential.ps1 interactively. It accepts no
+password arguments and stores a current-user Windows DPAPI credential with a private directory
+ACL. Password entry remains pending; automatic plaintext command-line storage was rejected.
+These local lab files never enter the package or Git. Future test credentials must be delivered
+to the worker over private IPC, retaining strict certificate verification.
 
 Original blueprint: ../README.md. Current implementation status: ../TODO.md.
