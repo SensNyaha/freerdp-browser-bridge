@@ -21,7 +21,9 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 73/73 Node tests;
   CTest/Catch2: 17 IPC/input/state cases / 195 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 1 JPEG case / 13 assertions and
-  4 H.264 cases / 206 assertions. [Cursor block evidence](docs/ITERATION_012.md).
+  4 H.264 cases / 206 assertions. Dirty state adds 4 cases / 696 assertions;
+  public GDI integration adds 3 cases / 9,111 assertions.
+  [Cursor block evidence](docs/ITERATION_012.md), [dirty tracking evidence](docs/ITERATION_013.md).
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -103,7 +105,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 - [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize callbacks wired; modern surface/GFX and actual dynamic resize gates remain open.
-- [~] IN PROGRESS — Dirty-union/revision changes and unchanged suppression implemented; detailed rectangle accumulation/partial-region encoding pending.
+- [~] IN PROGRESS — Classic rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI regression tests pass; actual XRDP regression is recorded in [iteration 13](docs/ITERATION_013.md). Partial-region encoding and modern GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
 - [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/ITERATION_012.md). Exact mono inversion and broader server/platform cases remain retained gaps.
 - [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture; ceilings are 20/30 FPS with render credit. Configurable scheduler/provider selection and adaptive congestion pending.
 - [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/ITERATION_006.md). Linux/hardware selection pending.

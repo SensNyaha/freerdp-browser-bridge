@@ -2,6 +2,7 @@
 #include "certificate.hpp"
 #include "connection_config.hpp"
 #include "cursor.hpp"
+#include "dirty_regions.hpp"
 #include "input.hpp"
 #include "jpeg.hpp"
 #include "pipeline_stats.hpp"
@@ -50,7 +51,8 @@ class Connection {
   std::mutex media_mutex_;
   HANDLE media_event_ = nullptr;
   std::atomic<bool> connected_{false};
-  std::uint64_t frame_request_ = 0, requested_revision_ = 0, revision_ = 0;
+  std::uint64_t frame_request_ = 0, requested_revision_ = 0;
+  media::DirtyRegions dirty_;
   std::chrono::steady_clock::time_point next_frame_{};
   std::unique_ptr<media::JpegEncoder> encoder_;
   std::unique_ptr<media::SoftwareH264Encoder> avc_encoder_;

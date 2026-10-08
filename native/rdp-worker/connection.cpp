@@ -1,6 +1,7 @@
 #include "connection.hpp"
 #include "cursor_convert.hpp"
 #include "event_pump.hpp"
+#include "gdi_dirty.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -213,10 +214,10 @@ BOOL Connection::post_connect(freerdp *instance) {
   graphics_register_pointer(instance->context->graphics, &prototype);
   try {
     owner(instance).cursor_.initialize();
+    owner(instance).dirty_.resize(width, height);
   } catch (...) {
     return FALSE;
   }
-  ++owner(instance).revision_;
   return TRUE;
 }
 BOOL Connection::resize(rdpContext *context) {
@@ -226,18 +227,23 @@ BOOL Connection::resize(rdpContext *context) {
     return FALSE;
   if (!gdi_resize(context->gdi, width, height))
     return FALSE;
-  ++owner(context->instance).revision_;
-  return TRUE;
+  try {
+    owner(context->instance).dirty_.resize(width, height);
+    return TRUE;
+  } catch (...) {
+    return FALSE;
+  }
 }
 BOOL Connection::begin_paint(rdpContext *context) {
-  context->gdi->primary->hdc->hwnd->invalid->null = TRUE;
-  return TRUE;
+  return media::begin_gdi_paint(context->gdi) ? TRUE : FALSE;
 }
 BOOL Connection::end_paint(rdpContext *context) {
-  if (!context->gdi->primary->hdc->hwnd->invalid->null) {
-    ++owner(context->instance).revision_;
-    owner(context->instance).pipeline_stats_.paint();
-  }
+  auto &self = owner(context->instance);
+  const auto before = self.dirty_.revision();
+  if (!media::end_gdi_paint(context->gdi, self.dirty_))
+    return FALSE;
+  if (self.dirty_.revision() != before)
+    self.pipeline_stats_.paint();
   return TRUE;
 }
 std::vector<std::uint8_t> Connection::pipeline_stats() {
@@ -267,7 +273,8 @@ void Connection::capture_pending(bool ending) {
   if (!frame_request_ || (!ending && now < next_frame_))
     return;
   const auto *gdi = context_->gdi;
-  const bool changed = !ending && (revision_ != requested_revision_ || force_idr_);
+  const auto snapshot = dirty_.snapshot();
+  const bool changed = !ending && (snapshot.revision != requested_revision_ || force_idr_);
   const auto timestamp = static_cast<std::uint64_t>(
       std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count());
   std::span<const std::uint8_t> jpeg;
@@ -306,7 +313,7 @@ void Connection::capture_pending(bool ending) {
   }
   std::vector<std::uint8_t> payload;
   payload.reserve(avc_metadata_bytes + avc.config.size() + avc.bytes.size() + jpeg.size());
-  append_be(payload, revision_, 8);
+  append_be(payload, snapshot.revision, 8);
   append_be(payload, timestamp, 8);
   append_be(payload, gdi ? static_cast<std::uint64_t>(gdi->width) : config_->width, 2);
   append_be(payload, gdi ? static_cast<std::uint64_t>(gdi->height) : config_->height, 2);
@@ -323,6 +330,8 @@ void Connection::capture_pending(bool ending) {
     payload.insert(payload.end(), jpeg.begin(), jpeg.end());
   }
   send_({requested_avc_ ? Kind::frame_avc : Kind::frame, frame_request_, std::move(payload)});
+  if (changed)
+    dirty_.consume(snapshot.revision);
   frame_request_ = 0;
   next_frame_ = now + std::chrono::milliseconds(requested_avc_ ? 34 : 50);
 }
