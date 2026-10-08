@@ -6,6 +6,9 @@ import {
   encodeAvcRecords,
   MAX_JPEG_BYTES,
   type MediaCodec,
+  encodeCursorShape,
+  type CursorState,
+  MAX_CURSOR_BYTES,
 } from '@freerdp-bridge/protocol';
 import { publicSessionError, type SessionManager } from '@freerdp-bridge/node';
 import type { MediaMetrics } from './metrics.js';
@@ -25,6 +28,7 @@ const hello = TypeCompiler.Compile(
               uniqueItems: true,
             },
           ),
+          cursor: Type.Optional(Type.Boolean()),
         },
         { additionalProperties: false },
       ),
@@ -65,7 +69,7 @@ export function installMedia(
   lease: ReturnType<SessionManager['attach']>,
   send: (type: string, data: unknown) => void,
   metrics: MediaMetrics,
-): void {
+): { cursor: (state: CursorState) => void } {
   let negotiated = false,
     busy = false,
     revision = 0n;
@@ -84,6 +88,40 @@ export function installMedia(
   let lastPull = performance.now();
   let deadline: NodeJS.Timeout | undefined;
   let creditStarted: number | undefined;
+  let cursorOffered = false,
+    cursorSequence = 0,
+    sentShapeId = 0n;
+  let latestCursor = lease.cursor;
+  let cursorBusy = false;
+  const cursor = (state: CursorState) => {
+    latestCursor = state;
+    if (
+      !cursorOffered ||
+      cursorBusy ||
+      !codec ||
+      state.default ||
+      state.shapeId === sentShapeId ||
+      !state.rgba ||
+      ws.readyState !== WebSocket.OPEN
+    )
+      return;
+    if (cursorSequence > 0xffffffff) {
+      ws.close(1000, 'cursor sequence exhausted');
+      return;
+    }
+    const record = encodeCursorShape(state, cursorSequence++);
+    if (ws.bufferedAmount + record.length > limit) {
+      ws.close(1008, 'cursor backlog limit');
+      return;
+    }
+    sentShapeId = state.shapeId;
+    cursorBusy = true;
+    ws.send(record, { binary: true }, (error) => {
+      cursorBusy = false;
+      if (error) ws.terminate();
+      else if (latestCursor) cursor(latestCursor);
+    });
+  };
   const releaseCredit = (acknowledged: boolean) => {
     if (creditStarted === undefined || !codec) return;
     if (acknowledged)
@@ -99,7 +137,7 @@ export function installMedia(
     send('media.error', { code });
     ws.close(1008, 'media unavailable');
   };
-  const limit = MAX_JPEG_BYTES + 2059 + 128;
+  const limit = MAX_JPEG_BYTES + 2059 + 128 + MAX_CURSOR_BYTES + 48;
   const schedule = () => {
     if (ws.readyState === WebSocket.OPEN)
       timer = setTimeout(
@@ -212,7 +250,9 @@ export function installMedia(
         maxFps: codec === 'h264' ? 30 : 20,
         maxInFlight: 1,
         maxPayloadBytes: MAX_JPEG_BYTES,
+        cursor: cursorOffered,
       });
+      if (latestCursor) cursor(latestCursor);
       void pull();
     } catch (error) {
       fail(publicSessionError(error).code);
@@ -223,6 +263,8 @@ export function installMedia(
     5000,
   );
   ws.once('close', () => {
+    latestCursor = undefined;
+    delete lease.cursor;
     releaseCredit(false);
     clearTimeout(timer);
     clearTimeout(deadline);
@@ -251,6 +293,7 @@ export function installMedia(
     if (!negotiated && hello.Check(value)) {
       negotiated = true;
       offered = value.data.codecs;
+      cursorOffered = value.data.cursor ?? false;
       negotiate();
     } else if (
       codec === 'h264' &&
@@ -279,4 +322,5 @@ export function installMedia(
       schedule();
     } else fail('MEDIA_PROTOCOL_ERROR');
   });
+  return { cursor };
 }

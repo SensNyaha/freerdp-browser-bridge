@@ -21,7 +21,8 @@ The fixed native JPEG destination is 8 MiB; overflows fail media rather than RDP
 This bounds output, not the separately bounded FreeRDP framebuffer allocation.
 
 The browser transport also permits one unacknowledged video frame, polls no faster
-than once per 50 ms, and shares the media backlog limit of 8 MiB + 2,059 + 128 bytes.
+than once per 50 ms, and shares the media backlog limit of
+8 MiB + 2,059 + 128 + 589,872 bytes, including one independent [cursor shape](CURSOR.md).
 It stops requesting while waiting for browser acknowledgement. If decoding/rendering
 is slow, RDP updates are coalesced until credit returns; the next image uses the
 latest revision. JPEG frames are independent keyframes, so no predictive chain needs
@@ -99,11 +100,13 @@ See ITERATION_005.md for actual test evidence.
 ## Open acceptance work
 
 Codec/hardware selection, configurable quality/FPS,
-cursor extraction/overlay, input, audio, modern GFX, negotiated dynamic resize and
+broader cursor acceptance, input, audio, modern GFX, negotiated dynamic resize and
 encode/queue latency instrumentation remain pending. Classic paint/resize callbacks
 are wired, but current XRDP checks do not prove a dynamic resize. No 30-minute
 interactive Windows/XRDP soak gate is claimed. Large image records can still delay
 other records on the shared inherited output pipe; priority scheduling is pending.
+Independent cursor extraction/overlay and XRDP shape replay are now implemented;
+see [cursor contract and retained limitations](CURSOR.md).
 
 H.264/AVCC worker transport and WebCodecs are now verified on Windows/XRDP;
 see MEDIA_H264.md. The harness prefers H.264 when supported and keeps an explicit

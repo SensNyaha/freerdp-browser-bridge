@@ -9,7 +9,8 @@ The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
 Stages 0/1/3/4/5 remain **IN PROGRESS**. Physical input and release ownership are
 implemented and tested with native/fake/Edge fixtures; actual XRDP input is verified
-for motion only. Cursor, Unicode/IME, audio, broader platforms and device gates remain open.
+for motion only. Independent cursor extraction/overlay and XRDP shape replay are
+verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -17,9 +18,10 @@ for motion only. Cursor, Unicode/IME, audio, broader platforms and device gates 
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 59/59 Node tests; CTest/Catch2:
-  11 IPC/input cases / 152 assertions, 2 AVC cases / 19 assertions, 1 JPEG case / 13 assertions
-  and 2 H.264 cases / 66 assertions.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 73/73 Node tests;
+  CTest/Catch2: 17 IPC/input/state cases / 195 assertions, 2 AVC cases / 19 assertions,
+  2 cursor conversion cases / 11 assertions, 1 JPEG case / 13 assertions and
+  4 H.264 cases / 206 assertions. [Cursor block evidence](docs/ITERATION_012.md).
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -102,13 +104,13 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize callbacks wired; modern surface/GFX and actual dynamic resize gates remain open.
 - [~] IN PROGRESS — Dirty-union/revision changes and unchanged suppression implemented; detailed rectangle accumulation/partial-region encoding pending.
-- [ ] Cursor shape/hotspot/position extraction.
+- [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/ITERATION_012.md). Exact mono inversion and broader server/platform cases remain retained gaps.
 - [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture; ceilings are 20/30 FPS with render credit. Configurable scheduler/provider selection and adaptive congestion pending.
 - [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/ITERATION_006.md). Linux/hardware selection pending.
 - [x] DONE on Windows/XRDP — AVCC config/access-unit packetization, IPC/RWB1 bounds and actual browser decode verified; [evidence](docs/ITERATION_007.md).
 - [x] DONE on Windows/XRDP — Encoded JPEG/AVC worker→Node RWI1 and browser RWB1 forwarding, without raw frames in JS.
 - [x] DONE in Edge/Windows — Reference harness checks WebCodecs support, renders actual 1080p AVC/JPEG and closes VideoFrames/ImageBitmaps. Other browsers/platforms remain unverified.
-- [ ] Cursor overlay in harness.
+- [x] DONE in Edge/Windows — Independent binary shape stream and transparent overlay; local movement, CSS-scaled hotspot, hide/default and disposal tested. Actual XRDP shape and browser reattachment replay pass. [Evidence](docs/ITERATION_012.md). Full desktop soak remains open.
 - [x] DONE on Windows/XRDP — Native JPEG fallback and browser canvas path, private libjpeg-turbo, bounded allocation and relocation verified. [Contract](docs/MEDIA_JPEG.md).
 - [~] IN PROGRESS — Single-frame credit, ACK deadline, stale lease/ACK/reset rejection, static/latest revision and dimension config verified. Actual WebCodecs decoder-error recovery forces config/IDR; adaptive bitrate/drop policy remains pending.
 - [~] IN PROGRESS — Bounded native encode/read counters, browser decode/draw timings and a deterministic 1080p encoder benchmark implemented. Protected Node capture/write/render-credit histograms, queued frame/byte counters and credit occupancy now distinguish consumer stalls from capture time. Full dirty-to-send/queue-delay and performance gates remain open. [Encoder evidence](docs/ITERATION_009.md); `06233ce`, build tracking `be42b9d`. [Node timing evidence](docs/ITERATION_011.md).
@@ -125,7 +127,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [ ] Unicode text fallback/IME pathway.
 - [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK verified; actual remote buttons pending.
 - [~] IN PROGRESS — Both wheel axes implemented with bounded deltas; control/Edge fixture tests pass. Actual remote wheel behavior and precise trackpad accumulation pending.
-- [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Remote cursor display/performance gate remains open.
+- [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Independent remote cursor display now passes XRDP/Edge; measured latency and desktop soak gates remain open.
 - [~] IN PROGRESS — Native pressed-state reset and retry, blur/disposal, transport loss and stale lease cancellation verified. Graceful close resets input; actual remote no-stuck-key gate pending.
 - [ ] Touch contacts via RDPEI when available.
 - [ ] Pen capability placeholder/implementation if supported.

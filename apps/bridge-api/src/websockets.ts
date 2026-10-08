@@ -6,6 +6,7 @@ import { TypeCompiler } from '@sinclair/typebox/compiler';
 import { installMedia } from './media.js';
 import { normalizeInput } from './input.js';
 import type { MediaMetrics } from './metrics.js';
+import type { CursorState } from '@freerdp-bridge/protocol';
 import {
   publicSessionError,
   type SessionManager,
@@ -77,6 +78,7 @@ export function installSessionWebSockets(
       sequence: number;
       alive: boolean;
       channel: 'control' | 'media';
+      cursor?: (state: CursorState) => void;
     }
   >();
   let stopping = false;
@@ -111,6 +113,11 @@ export function installSessionWebSockets(
   const event = (value: SessionEvent) => {
     for (const [ws, entry] of connections) {
       if (entry.id !== value.session.sessionId) continue;
+      if (value.type === 'cursor.state' && value.cursor) {
+        if (entry.channel === 'control') sendCursor(ws, value.cursor);
+        else entry.cursor?.(value.cursor);
+        continue;
+      }
       if (entry.channel === 'control')
         send(
           ws,
@@ -129,6 +136,15 @@ export function installSessionWebSockets(
         ws.close(1000, 'session terminal');
     }
   };
+  function sendCursor(ws: WebSocket, cursor: CursorState) {
+    send(ws, 'cursor.visibility', {
+      visible: cursor.visible,
+      default: cursor.default,
+      shapeId: cursor.shapeId.toString(),
+    });
+    if (cursor.positioned)
+      send(ws, 'cursor.position', { x: cursor.x, y: cursor.y });
+  }
   manager.on('event', event);
   server.server.on('upgrade', (request, socket, head) => {
     socket.on('error', () => socket.destroy());
@@ -230,15 +246,17 @@ export function installSessionWebSockets(
           if (value) value.alive = true;
         });
         if (match[2] === 'media') {
-          installMedia(
+          const media = installMedia(
             ws,
             lease,
             (type, data) => send(ws, type, data),
             mediaMetrics,
           );
+          connections.get(ws)!.cursor = media.cursor;
           return;
         }
         send(ws, 'session.state', lease.session);
+        if (lease.cursor) sendCursor(ws, lease.cursor);
         if (lease.certificate)
           send(ws, 'certificate.prompt', lease.certificate);
         let lastSequence = -1;

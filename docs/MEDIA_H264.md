@@ -99,7 +99,8 @@ zero per attachment. Worker microsecond timestamps are preserved.
 
 One unacknowledged access unit holds all credit. media.ack acknowledges that
 unit's sequence after drawing and closing the decoded frame. The ACK deadline
-is five seconds. WS encoded backlog is bounded to 8 MiB + 2,059 + 128 bytes;
+is five seconds. WS encoded backlog is bounded to 8 MiB + 2,059 + 128 + 589,872 bytes
+(including one independent [cursor shape](CURSOR.md));
 the stored previous config is a small owned copy. Stale/replayed ACKs fail media.
 
 ## WebCodecs and recovery

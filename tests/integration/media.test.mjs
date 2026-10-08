@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
+import { cursorState } from '../fixtures/cursor.mjs';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
 )('ws');
@@ -112,6 +113,157 @@ const acknowledge = (ws, sequence) =>
 const binary = (messages) => messages.filter(Buffer.isBuffer);
 const reset = (ws, sequence) =>
   ws.send(JSON.stringify({ v: 1, type: 'media.reset', data: { sequence } }));
+
+test(
+  'fake cursor transport: shape stream is independent of video credit and cursor-only changes never capture video',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, messages, worker }) => {
+      ws.send(
+        JSON.stringify({
+          v: 1,
+          type: 'media.hello',
+          data: { codecs: ['jpeg'], cursor: true },
+        }),
+      );
+      await eventually(() => binary(messages).length === 2);
+      assert.equal(messages[0].data.cursor, true);
+      worker.emit('cursor', cursorState());
+      await eventually(() => binary(messages).length === 3);
+      assert.equal(binary(messages)[2][5], 5);
+      assert.equal(binary(messages)[2].readUInt32BE(8), 2);
+      assert.equal(binary(messages)[2].readUInt32BE(12), 0);
+      worker.emit('cursor', cursorState({ revision: 2n, x: 400 }));
+      worker.emit(
+        'cursor',
+        cursorState({ revision: 3n, visible: false, x: 400 }),
+      );
+      await delay(100);
+      assert.equal(binary(messages).length, 3);
+      assert.equal(worker.requests, 1);
+      worker.emit('cursor', cursorState({ revision: 4n, shapeId: 8n }));
+      await eventually(() => binary(messages).length === 4);
+      assert.equal(binary(messages)[3].readUInt32BE(12), 1);
+      worker.revision = 100n;
+      acknowledge(ws, 1); // Cursor messages never consume/replace the video ACK sequence.
+      await eventually(() => binary(messages).length === 5);
+      assert.equal(binary(messages)[4][5], 2);
+      assert.equal(binary(messages)[4].readUInt32BE(12), 2);
+    });
+  },
+);
+
+test(
+  'fake cursor transport: current shape and visibility replay on media/control attach with fresh sequences',
+  { timeout: 10000 },
+  async () => {
+    await setup(async ({ ws, messages, worker, server, created }) => {
+      worker.emit('cursor', cursorState({ visible: false }));
+      ws.send(
+        JSON.stringify({
+          v: 1,
+          type: 'media.hello',
+          data: { codecs: ['jpeg'], cursor: true },
+        }),
+      );
+      await eventually(() => binary(messages).length === 3);
+      assert.equal(binary(messages)[0][5], 5);
+      assert.equal(binary(messages)[0].readBigUInt64BE(32), 7n);
+      const base = 'ws://127.0.0.1:' + server.server.address().port;
+      const control = new WebSocket(
+        base +
+          '/v1/sessions/' +
+          created.sessionId +
+          '/control?token=' +
+          created.attach.control.token,
+        ['freerdp-bridge-v1'],
+        { origin },
+      );
+      const events = [];
+      control.on('error', () => {});
+      control.on('message', (bytes) =>
+        events.push(JSON.parse(bytes.toString())),
+      );
+      try {
+        await once(control, 'open');
+        await eventually(() =>
+          events.some((e) => e.type === 'cursor.position'),
+        );
+        assert.deepEqual(
+          events.find((e) => e.type === 'cursor.visibility').data,
+          { visible: false, default: false, shapeId: '7' },
+        );
+        assert.deepEqual(
+          events.find((e) => e.type === 'cursor.position').data,
+          { x: 100, y: 200 },
+        );
+        const closed = once(ws, 'close');
+        ws.close();
+        await closed;
+        await releasedCredit(server, 'jpeg');
+        const response = await server.inject({
+          method: 'POST',
+          url: '/v1/sessions/' + created.sessionId + '/attach-token',
+          payload: { channel: 'media' },
+        });
+        const next = new WebSocket(
+          base +
+            '/v1/sessions/' +
+            created.sessionId +
+            '/media?token=' +
+            response.json().token,
+          ['freerdp-bridge-v1'],
+          { origin },
+        );
+        const records = [];
+        next.on('error', () => {});
+        next.on('message', (bytes, binary) => {
+          if (binary) records.push(bytes);
+        });
+        try {
+          await once(next, 'open');
+          next.send(
+            JSON.stringify({
+              v: 1,
+              type: 'media.hello',
+              data: { codecs: ['jpeg'], cursor: true },
+            }),
+          );
+          await eventually(() => records.length === 3);
+          assert.equal(records[0][5], 5);
+          assert.equal(records[0].readUInt32BE(12), 0);
+        } finally {
+          next.terminate();
+        }
+      } finally {
+        control.terminate();
+      }
+    });
+  },
+);
+
+test(
+  'fake cursor transport: legacy media ignores shapes and invalid backend cursor is contained',
+  { timeout: 10000 },
+  async () => {
+    for (const invalid of [
+      { revision: 2n, width: 385 },
+      { revision: 2n, hotX: 0 }, // A cached shape identity has immutable geometry.
+      { revision: 1n }, // Replayed state revision.
+    ])
+      await setup(async ({ ws, messages, worker }) => {
+        hello(ws);
+        await eventually(() => binary(messages).length === 2);
+        worker.emit('cursor', cursorState());
+        await delay(100);
+        assert.equal(binary(messages).length, 2);
+        const closed = once(ws, 'close');
+        worker.emit('cursor', cursorState(invalid));
+        await closed;
+        assert.equal(worker.closed, 1);
+      });
+  },
+);
 
 async function mediaMetrics(server) {
   const response = await server.inject({ method: 'GET', url: '/metrics' });

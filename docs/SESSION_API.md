@@ -45,8 +45,11 @@ Native-backend control attachments now support certificate.prompt and certificat
 reattachment receives the pending prompt. Input/auth responses remain unimplemented.
 Opt-in native media attachments support bounded H.264/JPEG negotiation, RWB1 records,
 render credit and decoder-reset recovery described in MEDIA_H264.md and MEDIA_JPEG.md.
-Input/audio and full usable-desktop capability
-remain unimplemented; fake backends do not imply actual RDP/media support.
+Cursor shapes use an optional independent media stream, with position/visibility
+on control; attachment replays current state. See [cursor contract](CURSOR.md).
+Experimental basic input is described in [INPUT.md](INPUT.md). Audio and full
+usable-desktop capability remain unimplemented; fake backends do not imply
+actual RDP/media support. Cursor records do not contribute to video credit metrics.
 
 ## Backend and diagnostics
 

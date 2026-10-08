@@ -34,6 +34,14 @@ const options = {
   runtimeRoot: resolve('.runtime/viewer-lab'),
 };
 const nativeWorker = new NativeSessionWorker(options);
+let cursorUpdates = 0,
+  nativeCursorShapes = 0,
+  lastCursorId = 0n;
+nativeWorker.onCursor((cursor) => {
+  cursorUpdates++;
+  if (!cursor.default && cursor.shapeId !== lastCursorId) nativeCursorShapes++;
+  lastCursorId = cursor.shapeId;
+});
 const deliverInput = nativeWorker.sendInput.bind(nativeWorker);
 let inputMoves = 0;
 let inputResets = 0;
@@ -62,6 +70,7 @@ for (const [url, name, type] of [
   ['/harness/', 'index.html', 'text/html'],
   ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
   ['/harness/input.js', 'input.js', 'text/javascript'],
+  ['/harness/cursor.js', 'cursor.js', 'text/javascript'],
 ]) {
   const bytes = await readFile(resolve('apps/reference-harness', name));
   server.get(url, (_request, reply) =>
@@ -206,6 +215,14 @@ try {
     const inputDeadline = Date.now() + 3000;
     while (inputMoves === 0 && Date.now() < inputDeadline) await delay(10);
     if (inputMoves === 0) throw new Error('LAB_INPUT_MOVE_FAILED');
+    await page.waitForFunction(
+      () => window.bridgeViewer.stats.cursorShapes > 0,
+      undefined,
+      { timeout: 3000 },
+    ); // This XRDP lab supplies a custom shape after motion.
+    const cursorShapesAfterMotion = await page.evaluate(
+      () => window.bridgeViewer.stats.cursorShapes,
+    );
     await page.locator('#desktop').screenshot({
       path: resolve(
         '.local-tests/' +
@@ -237,7 +254,9 @@ try {
       { created: { sessionId, attach: nextAttach }, codecs },
     );
     await page.waitForFunction(
-      () => window.bridgeViewer.stats.frames > 0,
+      () =>
+        window.bridgeViewer.stats.frames > 0 &&
+        window.bridgeViewer.stats.cursorShapes > 0,
       undefined,
       { timeout: 5000 },
     );
@@ -261,6 +280,10 @@ try {
         type: 'lab.browser',
         browser: 'chromium',
         ...stats,
+        cursorShapesAfterMotion,
+        nativeCursorUpdates: cursorUpdates,
+        nativeCursorShapes,
+        cursorReplayed: true,
         reattach: true,
         pipeline,
         mediaMetricsArtifact,

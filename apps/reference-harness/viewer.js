@@ -1,4 +1,5 @@
 import { installInput } from './input.js';
+import { installCursor } from './cursor.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -7,6 +8,7 @@ let current;
 const stats = {
   closed: true,
   frames: 0,
+  cursorShapes: 0,
   bytes: 0,
   width: 0,
   height: 0,
@@ -27,6 +29,7 @@ function detach() {
   if (!current || current.detaching) return;
   current.detaching = true;
   current.disposeInput?.();
+  current.cursor?.dispose();
   current.closed = true;
   stats.closed = true;
   current.abortDecode?.();
@@ -78,6 +81,7 @@ function attach(created, options = {}) {
   Object.assign(stats, {
     closed: false,
     frames: 0,
+    cursorShapes: 0,
     bytes: 0,
     width: 0,
     height: 0,
@@ -114,6 +118,7 @@ function attach(created, options = {}) {
     timestamp: undefined,
     queued: 0,
     queuedBytes: 0,
+    cursor: installCursor(canvas),
   };
   current = session;
   session.disposeInput = installInput(
@@ -164,7 +169,11 @@ function attach(created, options = {}) {
       } else if (message.type === 'session.state') {
         session.connected = message.data.state === 'connected';
         status.textContent = message.data.state;
-      } else if (message.type === 'session.error') fail();
+      } else if (message.type === 'cursor.position')
+        session.cursor.position(message.data);
+      else if (message.type === 'cursor.visibility')
+        session.cursor.visibility(message.data);
+      else if (message.type === 'session.error') fail();
     } catch {
       fail();
     }
@@ -201,7 +210,7 @@ function attach(created, options = {}) {
       JSON.stringify({
         v: 1,
         type: 'media.hello',
-        data: { codecs: offered },
+        data: { codecs: offered, cursor: true },
       }),
     );
   }
@@ -209,6 +218,19 @@ function attach(created, options = {}) {
   let rendering = Promise.resolve();
   session.media.addEventListener('message', (event) => {
     if (session.closed) return;
+    if (
+      event.data instanceof ArrayBuffer &&
+      event.data.byteLength >= 6 &&
+      new DataView(event.data).getUint8(5) === 5
+    ) {
+      try {
+        session.cursor.shape(event.data);
+        stats.cursorShapes++;
+      } catch {
+        fail();
+      }
+      return;
+    }
     const size =
       typeof event.data === 'string'
         ? event.data.length * 2
