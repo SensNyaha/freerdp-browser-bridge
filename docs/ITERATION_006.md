@@ -38,3 +38,5 @@ No browser AVC FPS, Linux acceptance or 30-minute interactive soak is claimed.
 
 Contract: MEDIA_H264.md. Next block: bounded AVC IPC/media negotiation and the
 reference WebCodecs decoder, including reattach/config/IDR recovery.
+
+Implementation commit: eb4974e.
