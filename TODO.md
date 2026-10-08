@@ -5,8 +5,9 @@ Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do 
 ## Implementation status — 2026-10-08
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
-The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 0/1/3
-are **IN PROGRESS**; browser media/input and device capabilities remain unavailable.
+The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
+now renders real 1080p XRDP frames through the native JPEG fallback in Edge.
+Stages 0/1/3/4 remain **IN PROGRESS**; H.264, input/audio and device gates remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -14,8 +15,8 @@ are **IN PROGRESS**; browser media/input and device capabilities remain unavaila
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 42/42 Node tests; CTest/Catch2:
-  6 native cases / 108 assertions. Foundation: 35 passing / 7 connection cases skipped.
+  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 48/48 Node tests; CTest/Catch2:
+  7 IPC cases / 113 assertions plus 1 JPEG case / 13 assertions.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -23,8 +24,9 @@ are **IN PROGRESS**; browser media/input and device capabilities remain unavaila
 - **DONE on Windows:** exact FreeRDP/WinPR 3.32.1, local ZLIB 1.3.2, OpenSSL 3.6.5 and libusb
   1.0.30 build and link. Private native ZIP contains runtime DLLs, release CRT, licenses and
   dependency metadata. Relocation test checks actual loaded ZLIB/FreeRDP paths and static
-  channel inventory without dependency PATH. Native ZIP is approximately 4.7 MiB, 11.5 MiB installed.
-  This excludes Node.js and future media providers. [Iteration 2](docs/ITERATION_002.md).
+  channel inventory without dependency PATH. JPEG now also ships privately and is encoded/decoded
+  in the relocated runtime probe. Current native ZIP is approximately 5.2 MiB, 13.3 MiB installed,
+  excluding Node.js and future H.264/audio providers. [Iteration 5](docs/ITERATION_005.md).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
 - **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP lab is available
   in this session. The XRDP lab has passed strict certificate rejection and explicitly
@@ -66,7 +68,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 - [x] DONE — Fastify, TypeBox and Pino. Recursive credential/log tests pass.
 - [x] DONE — POST/GET/DELETE /v1/sessions. Owner-scoped lifecycle tests pass with explicit fake backend.
 - [x] DONE — Attach-token generation/TTL/scope. Hash-only storage, bounded TTL/count, replay/expiry/channel tests pass.
-- [x] DONE — Control/media WebSocket authorization and Origin checks. Actual socket tests pass; media remains unavailable.
+- [x] DONE — Control/media WebSocket authorization and Origin checks. Actual socket tests pass; JPEG media is now implemented in Stage 4.
 - [x] DONE — Per-session/global limits. Startup/cleanup/retention/rate/body/token/socket bounds tested.
 - [x] DONE — Registry crash supervision. Isolation/state/error tests pass; native connection adapter remains Stage 3.
 - [x] DONE — Prometheus baseline metrics. Protected endpoint and bounded label tests pass.
@@ -93,18 +95,18 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 ## Stage 4 — graphics, cursor and browser video
 
-- [ ] Initialize headless FreeRDP GDI/framebuffer.
-- [ ] Register paint/resize/surface callbacks.
-- [ ] Dirty-region/revision tracker.
+- [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
+- [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize callbacks wired; modern surface/GFX and actual dynamic resize gates remain open.
+- [~] IN PROGRESS — Dirty-union/revision changes and unchanged suppression implemented; detailed rectangle accumulation/partial-region encoding pending.
 - [ ] Cursor shape/hotspot/position extraction.
-- [ ] `FrameScheduler` latest-state logic.
+- [~] IN PROGRESS — JPEG latest-state scheduling uses one pending capture and a 20 FPS ceiling; separate configurable scheduler/provider selection pending.
 - [ ] H.264 encoder interface and one software provider.
 - [ ] AVCC config/access-unit packetization.
-- [ ] Worker→Node binary media forwarding.
-- [ ] Browser harness WebCodecs decoder + canvas rendering.
+- [~] IN PROGRESS — JPEG worker→Node RWI1 and browser RWB1 media forwarding verified; primary AVC transport pending.
+- [~] IN PROGRESS — Reference harness renders actual 1080p JPEG in Edge and closes ImageBitmaps; WebCodecs/AVC pending.
 - [ ] Cursor overlay in harness.
-- [ ] JPEG/WebP fallback path.
-- [ ] Backpressure/drop/keyframe recovery.
+- [x] DONE on Windows/XRDP — Native JPEG fallback and browser canvas path, private libjpeg-turbo, bounded allocation and relocation verified. [Contract](docs/MEDIA_JPEG.md).
+- [~] IN PROGRESS — JPEG render credit, ACK deadline, stale-lease revocation, latest state and dimension reconfiguration tested; predictive AVC recovery pending.
 - [ ] Instrument encode/queue latency.
 
 **Gate:** stable 1080p interactive Windows/XRDP desktop for 30 min, resize safe, cursor smooth, no unbounded queue growth.

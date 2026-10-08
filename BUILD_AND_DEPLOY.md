@@ -89,6 +89,12 @@ Session migration between bridge instances is out of v1 scope because RDP client
 
 ## 7. Diagnostics
 
+The current Windows native bundle includes private libjpeg-turbo/libspng DLLs and
+licenses. The relocation test performs an actual JPEG roundtrip and checks the
+loaded module location. The diagnostic browser check uses pinned Playwright core
+and an already installed Edge; browser binaries are not part of the runtime bundle.
+See [JPEG media contract](docs/MEDIA_JPEG.md) for the local harness test.
+
 `GET /v1/build`:
 
 - semantic version;
