@@ -1,30 +1,56 @@
 # TODO — implementation plan
 
-Legend: `[ ]` not started, `[~]` in progress, `[x]` accepted. Do not mark complete solely because code compiles.
+Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
+
+## Implementation status — 2026-10-08
+
+The first lifecycle slice is implemented and verified on **Windows x64**. Stage 0 and Stage 1
+are **IN PROGRESS**, not fully accepted. No RDP connection, media or device capability is claimed.
+
+- **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
+  heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
+- **DONE:** initial TypeBox configuration contract and recursive redaction; real worker-backed
+  build/capability REST endpoints; reusable Node worker API and lifecycle example.
+- **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
+  [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
+  [native tests](native/ipc/tests.cpp). `pnpm check`: 16/16 Node tests; CTest/Catch2:
+  4 native cases / 43 assertions. The 100 sequential worker test passes with no processes or
+  runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
+- **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
+  `316cdc0` Node supervisor/API/integration. Original blueprint is preserved in `3065f2d`.
+- **BLOCKED:** pinned FreeRDP configure fails on `ZLIB_LIBRARY` / `ZLIB_INCLUDE_DIR` on this
+  host. See [dependency profile](native/freerdp-profile.cmake) and
+  [build instructions](docs/DEVELOPMENT.md). Remaining dependency inventory is unverified.
+- **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP/XRDP lab is available
+  in this session. Linux SOCK_SEQPACKET remains unimplemented. Linux CI, ASan/UBSan and libFuzzer
+  jobs are prepared but have not run; they are not counted as passing integration gates.
+
+Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration report:
+[contract audit](docs/CONTRACT_AUDIT.md), [verified results](docs/ITERATION_001.md).
 
 ## Stage 0 — repository and reproducible build
 
-- [ ] Create pnpm monorepo layout from `STACK.md`.
-- [ ] Add TypeScript strict config, lint/format, CI skeleton.
-- [ ] Add CMake/Ninja native workspace.
-- [ ] Pin FreeRDP **3.32.1** source/build and record commit/checksum.
-- [ ] Enable required client channels; emit build feature report.
-- [ ] Add `rdp-worker --version --capabilities`.
-- [ ] Add Node `/v1/build` backed by real worker/build information.
-- [ ] Add debug ASan/UBSan native CI job.
+- [x] DONE — Create pnpm monorepo layout from `STACK.md` (core packages/apps/native; future component directories are created with their implementations). `9517003`.
+- [x] DONE — Add TypeScript strict config, lint/format, CI skeleton. `pnpm check`; `9517003`.
+- [x] DONE — Add CMake/Ninja native workspace. MSVC x64 build + CTest; `9517003`, `1672590`.
+- [~] IN PROGRESS — Pin FreeRDP **3.32.1** source/build and record commit/checksum. Source commit verified as `bf217a504e54cc719880c228e82353382cd7d4fa`; actual library build blocked by ZLIB. [Lock metadata](native/dependencies.json).
+- [!] BLOCKED — Enable required client channels; emit build feature report. Required-channel profile exists; linked libraries/channels unverified because FreeRDP configure stops at missing ZLIB.
+- [x] DONE — Add `rdp-worker --version --capabilities`. Native CLI and handshake reports agree; absent library reported as null, RDP false. [Integration test](tests/integration/worker.test.mjs); `1672590`, `316cdc0`.
+- [x] DONE — Add Node `/v1/build` backed by real worker/build information. Fastify injection + native handshake/CLI comparison; `316cdc0`.
+- [~] IN PROGRESS — Add debug ASan/UBSan native CI job. [Workflow](.github/workflows/ci.yml) is configured; execution and sanitizer acceptance pending Linux CI.
 
 **Gate:** clean build from fresh checkout/container; exact FreeRDP version visible; no UI required.
 
 ## Stage 1 — native worker process and IPC
 
-- [ ] Implement worker process entrypoint with no RDP connection yet.
-- [ ] Implement versioned `RWI1` IPC envelope.
-- [ ] Linux `SOCK_SEQPACKET` transport + framed-stream abstraction/fallback.
-- [ ] HELLO/HELLO_ACK capability negotiation.
-- [ ] Heartbeat and graceful shutdown.
-- [ ] Length limits and parser unit tests.
-- [ ] libFuzzer target for IPC envelope.
-- [ ] Parent-death handling and private runtime directory cleanup.
+- [x] DONE — Implement worker process entrypoint with no RDP connection yet. Real C++ executable, not a fake RDP client; `1672590`.
+- [x] DONE — Implement versioned `RWI1` IPC envelope. [Native](native/ipc/tests.cpp) and [Node](tests/unit/protocol.test.mjs) boundary/golden/fragmentation tests; `1672590`.
+- [~] IN PROGRESS — Linux `SOCK_SEQPACKET` transport + framed-stream abstraction/fallback. Framed inherited pipes verified on Windows; primary Linux transport remains TODO and needs Linux integration.
+- [x] DONE — HELLO/HELLO_ACK capability negotiation. Real worker capability/CLI checks; incompatible version/required-feature native tests; `1672590`, `316cdc0`.
+- [x] DONE — Heartbeat and graceful shutdown. Real-worker and adversarial fake-worker deadline/watchdog tests; `316cdc0`.
+- [x] DONE — Length limits and parser unit tests. Header checked before body allocation; malformed/truncated inputs fail without input disclosure. `1672590`.
+- [~] IN PROGRESS — libFuzzer target for IPC envelope. [Target](native/ipc/fuzz.cpp) and seeded CI job exist; compile/run blocked locally by absent Clang compiler, not counted as fuzz verification.
+- [~] IN PROGRESS — Parent-death handling and private runtime directory cleanup. Windows EOF/cleanup test passes, including independent hidden worker process; Linux PDEATHSIG code awaits Linux verification. Explicit Windows private ACL policy remains TODO.
 
 **Gate:** Node test supervisor can spawn 100 sequential workers, exchange heartbeats, kill/restart without leaked processes/files.
 
@@ -35,7 +61,7 @@ Legend: `[ ]` not started, `[~]` in progress, `[x]` accepted. Do not mark comple
 - [ ] Add attach-token generation/TTL/scope.
 - [ ] Add control/media WebSocket upgrade authorization and Origin checks.
 - [ ] Add per-session/global limits.
-- [ ] Add worker crash supervision.
+- [~] IN PROGRESS — Add worker crash supervision. Process-level isolation/watchdog implemented and tested (`316cdc0`); session registry state/error mapping remains TODO.
 - [ ] Add Prometheus baseline metrics.
 - [ ] Add session state/error model.
 
@@ -190,3 +216,11 @@ Legend: `[ ]` not started, `[~]` in progress, `[x]` accepted. Do not mark comple
 - [ ] Unsupported feature is explicit capability state, not a crash.
 - [ ] Documentation and schema match actual code.
 - [ ] Focused commits made during implementation, not one giant final commit.
+
+## Additional foundation tasks and retained requirements
+
+- [x] DONE — Initial typed SessionCreate schema, unknown-field/range checks, safe privilege policy and recursive secret redaction. [Config tests](tests/unit/config.test.mjs); `3610524`. Traces to SPECIFICATION §2.1/3.2, CONFIG_SCHEMA, SECURITY §3/5. This is contract validation, not RDP feature support.
+- [ ] TODO — Secret-material/config IPC classes and zeroization where practical. Stage 3 must deliver secrets after handshake through private IPC; foundation currently sends no session credentials.
+- [ ] TODO — Explicit restricted Windows runtime ACLs and multi-user isolation acceptance. Traces to ARCHITECTURE §2 and SECURITY §2/6.
+- [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
+- [ ] TODO — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Development foundation profile is deliberately lifecycle-only; Stage 0/10 packaging gates remain open.

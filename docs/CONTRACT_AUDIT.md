@@ -1,6 +1,6 @@
 # Contract audit — 2026-10-08
 
-Read all 26 supplied Markdown documents before implementation. Original source documents are
+Read all 27 supplied Markdown documents (26 manifest entries plus PACKAGE_MANIFEST.md) before implementation. Original source documents are
 retained; new implementation details live in this directory.
 
 The supplied material consistently requires one headless C++ process per RDP session, typed
