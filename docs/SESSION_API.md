@@ -39,7 +39,8 @@ two seconds. HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
 backlog to 64 KiB and commands to 32 per second. Socket/upgrade counts are bounded.
 
 Control currently emits state/error events and supports session.detach.
-Input, certificate/auth responses and other commands are explicitly unimplemented.
+Native-backend control attachments now support certificate.prompt and certificate.response;
+reattachment receives the pending prompt. Input/auth responses remain unimplemented.
 Media attach reports media.unavailable; no video/audio capability is advertised.
 
 ## Backend and diagnostics
@@ -48,7 +49,8 @@ Each session owns a fresh trusted backend instance. Starting receives a cloned,
 validated configuration and abort signal. Secrets are dereferenced after startup
 settles or is aborted; this is not guaranteed zeroization of JS strings.
 Failure/shutdown revoke tokens and attachments and bound cleanup time.
-Stage 3 must supply private native configuration/state IPC.
+Stage 3 now supplies the opt-in NativeSessionWorker backend and private config/state
+IPC; see CONNECTION_CORE.md. The default server still has no connection backend.
 
 Pino omits URLs, bodies and headers and recursively redacts secret keys.
 Public failures have fixed messages and do not forward backend diagnostics.

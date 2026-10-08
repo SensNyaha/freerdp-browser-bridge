@@ -32,8 +32,9 @@ build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20
 ```
 
 The pinned FreeRDP source metadata is native/dependencies.json. The bundled development profile
-links exact FreeRDP/WinPR 3.32.1 and creates/frees a headless client context. It does not implement
-connection callbacks or claim RDP support. Foundation defaults to BRIDGE_WITH_FREERDP=OFF explicitly.
+links exact FreeRDP/WinPR 3.32.1 and provides an experimental native connection core.
+See [connection contract](CONNECTION_CORE.md) and [XRDP evidence](ITERATION_004.md).
+Usable browser RDP remains false. Foundation defaults to BRIDGE_WITH_FREERDP=OFF explicitly.
 
 The Windows test machine originally had Node.js 22. A SHA-256 verified portable Node.js
 24.21.0 and pnpm were installed under ignored .tools without changing system installation.

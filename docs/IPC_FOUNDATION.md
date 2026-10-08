@@ -15,14 +15,29 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
 | ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state |
+| CONFIGURE | 8 | connection schema v1 below; maximum 2048 bytes |
+| CONFIGURE_ACK | 9 | empty |
+| SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
+| SECRET_ACK | 11 | empty |
+| CONNECT | 12 | empty |
+| CONNECT_ACK | 13 | empty; connection proceeds asynchronously |
+| STATE | 14 | u16 state, u16 bridge reason, u32 native error; requestId=0 |
+| CERTIFICATE | 15 | u64 challenge, u16 flags, 32-byte SHA-256; requestId=0 |
+| CERTIFICATE_DECISION | 16 | u64 challenge, 32-byte SHA-256, u8 accept (0/1) |
+| CERTIFICATE_DECISION_ACK | 17 | empty |
 
-HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable RDP).
+HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
+bit 2 experimental connection core).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. No trailing bytes or unknown mandatory bits are permitted.
+set the usable RDP bit. Bundled connection-core builds set bit 2, not bit 1.
+No trailing bytes or unknown mandatory bits are permitted.
 
-Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Wrong direction/state closes
+Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers
+also accept CONFIGURE once, SECRET once after configuration, and CONNECT once after SECRET.
+Certificate decisions require the pending challenge/fingerprint. Incoming requests
+have nonzero IDs; unsolicited events reserve ID zero. Wrong direction/state closes
 the worker after a numeric ERROR where possible. Invalid envelopes/truncated records close it
 with exit code 2 and a fixed diagnostic; input bytes are never interpolated into errors.
 
@@ -50,4 +65,25 @@ has its own 10-second deadline; ordinary requests default to 2 seconds.
 
 Linux SOCK_SEQPACKET is not implemented yet. Native lifecycle tests validate actual C++ process
 integration, not RDP connectivity. FreeRDP channels/codecs/devices remain unsupported until
-their separate build and integration gates pass.
+their separate build and integration gates pass. See CONNECTION_CORE.md for the
+experimental connection slice, distinct from full usable browser RDP.
+
+## Connection payload v1
+
+CONFIGURE: u16 schemaVersion=1; three u16-length UTF-8 strings host (max 253 bytes),
+username/domain (max 256 bytes each); u16 port, width, height, colorDepth;
+u8 security (0 auto, 1 NLA, 2 TLS), certificate policy (0 strict, 1 prompt),
+minimum TLS (2 for 1.2, 3 for 1.3), reserved=0; u32 connectMs and tcpAckMs.
+Port is 1..65535; dimensions 1..7680 and 1..4320; depth 16/24/32;
+timeouts 100..120000 ms. Strings reject NUL/noncanonical UTF-8. Host rejects
+ASCII controls/whitespace. Trailing bytes and unknown/reserved values fail.
+
+STATE: 1 connecting, 2 awaiting-user, 3 connected, 4 closed, 5 failed.
+Reasons: 0 none, 1 connection, 2 authentication, 3 certificate, 4 timeout,
+5 protocol, 6 cancelled, 7 disconnected. Failed requires a nonzero reason;
+other states require reason zero. Native error is an internal numeric diagnostic.
+
+CERTIFICATE flags: bit 0 chain/server-purpose/validity verification failure,
+bit 1 hostname/IP mismatch. No PEM, subject, username or secret is forwarded.
+Decisions are consumed once and permit session-only trust. Persistent trust/TOFU
+and changed-fingerprint history remain pending.

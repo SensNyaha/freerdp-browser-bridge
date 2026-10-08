@@ -4,8 +4,9 @@ Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do 
 
 ## Implementation status — 2026-10-08
 
-The first lifecycle slice is implemented and verified on **Windows x64**. Stage 0 and Stage 1
-are **IN PROGRESS**, not fully accepted. No RDP connection, media or device capability is claimed.
+Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
+The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 0/1/3
+are **IN PROGRESS**; browser media/input and device capabilities remain unavailable.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -13,8 +14,9 @@ are **IN PROGRESS**, not fully accepted. No RDP connection, media or device capa
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). `pnpm check`: 32/32 Node tests; CTest/Catch2:
-  4 native cases / 43 assertions. The 100 sequential worker test passes with no processes or
+  [native tests](native/ipc/tests.cpp). Bundled `pnpm check`: 42/42 Node tests; CTest/Catch2:
+  6 native cases / 108 assertions. Foundation: 35 passing / 7 connection cases skipped.
+  The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
   `316cdc0` Node supervisor/API/integration. Original blueprint is preserved in `3065f2d`.
@@ -25,8 +27,9 @@ are **IN PROGRESS**, not fully accepted. No RDP connection, media or device capa
   This excludes Node.js and future media providers. [Iteration 2](docs/ITERATION_002.md).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
 - **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP lab is available
-  in this session. A user-provided XRDP lab is reachable on TCP/3389; actual worker connection
-  still awaits Stage 3. Linux SOCK_SEQPACKET remains unimplemented. Linux CI, ASan/UBSan and libFuzzer
+  in this session. The XRDP lab has passed strict certificate rejection and explicitly
+  user-approved session-only trust, activation, heartbeat and cleanup checks.
+  [Iteration 4](docs/ITERATION_004.md). Linux SOCK_SEQPACKET remains unimplemented. Linux CI, ASan/UBSan and libFuzzer
   jobs are prepared but have not run; they are not counted as passing integration gates.
 
 Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration report:
@@ -77,14 +80,14 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 ## Stage 3 — FreeRDP connect core
 
-- [~] IN PROGRESS — Create custom `RDP_CLIENT_ENTRY_POINTS` client context. Public client context creation/free is now exercised by 100 actual linked-worker lifecycle runs; connection callbacks and custom bridge context remain TODO.
-- [ ] Map target/auth/security settings through public FreeRDP settings APIs.
-- [ ] Implement auth callback/prompt path without logging secrets.
-- [ ] Implement strict certificate callback and prompt/TOFU flow.
-- [ ] Load addins and establish Windows RDP + XRDP sessions.
-- [ ] Normalize disconnect reasons.
-- [ ] Implement graceful disconnect/reconnect skeleton.
-- [ ] Never pass password/hash/PIN in argv/env.
+- [x] DONE on Windows — Custom RDP_CLIENT_ENTRY_POINTS and bridge context, headless connection callbacks, WinSock initialization; actual XRDP activation and native lifecycle tests pass.
+- [~] IN PROGRESS — Public settings mapper supports host/port, password credentials, auto/NLA/TLS, minimum TLS, initial display and deadlines. Broader settings remain explicit unsupported errors.
+- [~] IN PROGRESS — Supplied credentials/auth callback are implemented; interactive replacement prompts remain TODO.
+- [~] IN PROGRESS — Strict chain/name validation and one-session certificate prompts pass native/HTTP/WS tests. Persistent trust/TOFU and changed-certificate history remain TODO.
+- [~] IN PROGRESS — Load addins and connect: XRDP activation/heartbeat verified; Windows RDP server lab remains unavailable.
+- [~] IN PROGRESS — Stable connect/auth/certificate/timeout/disconnect failures implemented; richer remote disconnect categorization remains TODO.
+- [~] IN PROGRESS — Graceful disconnect and cancellation verified; reconnect remains unsupported.
+- [x] DONE for current connection slice — Password is delivered through a separate private IPC class after HELLO, with transport copies overwritten. No per-session secrets enter argv/env; unsupported hash/PIN modes are rejected.
 
 **Gate:** CLI-less worker connects to Windows and XRDP, reports state, rejects changed certificate correctly.
 
@@ -228,7 +231,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 ## Additional foundation tasks and retained requirements
 
 - [x] DONE — Initial typed SessionCreate schema, unknown-field/range checks, safe privilege policy and recursive secret redaction. [Config tests](tests/unit/config.test.mjs); `3610524`. Traces to SPECIFICATION §2.1/3.2, CONFIG_SCHEMA, SECURITY §3/5. This is contract validation, not RDP feature support.
-- [ ] TODO — Secret-material/config IPC classes and zeroization where practical. Stage 3 must deliver secrets after handshake through private IPC; foundation currently sends no session credentials.
+- [~] IN PROGRESS — Separate bounded config/secret IPC classes now deliver credentials after HELLO; transport copies and the active FreeRDP password setting are overwritten. Upstream/immutable JS copies and future secret classes remain open. [Contract](docs/CONNECTION_CORE.md).
 - [ ] TODO — Explicit restricted Windows runtime ACLs and multi-user isolation acceptance. Traces to ARCHITECTURE §2 and SECURITY §2/6.
 - [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
 - [~] IN PROGRESS — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Windows native ZIP and relocation are verified; [manual bundled CI](.github/workflows/bundled-native.yml) is prepared, not run. Linux, Node.js distribution, MSI/EXE/DEB/RPM installer integration and clean-machine tests remain open.

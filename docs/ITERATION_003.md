@@ -2,6 +2,8 @@
 
 Date: 2026-10-08. Platform: Windows x64.
 
+Commits: d6f81d9 dependencies, 6706605 registry, dc2810a API, 8fa03b3 acceptance docs.
+
 Implemented Stage 2: owner-scoped lifecycle, bounded admission/retention,
 channel-scoped attach credentials, authenticated REST, Origin-checked WebSocket
 upgrades, state/error events, redacted logging and baseline metrics.
