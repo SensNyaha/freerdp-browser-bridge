@@ -73,7 +73,9 @@ TEST_CASE("OpenH264 rejects invalid options, source dimensions, buffer bounds an
                              {30, 99999, 2000},
                              {30, 20000001, 2000},
                              {30, 4000000, 999},
-                             {30, 4000000, 2001}})
+                             {30, 4000000, 2001},
+                             {30, 4000000, 2000, 0},
+                             {30, 4000000, 2000, 5}})
     REQUIRE_THROWS_AS(bridge::media::SoftwareH264Encoder(options), bridge::ipc::ProtocolError);
   bridge::media::SoftwareH264Encoder encoder;
   const auto pixels = solid(128, 64, 512, true);
@@ -90,4 +92,47 @@ TEST_CASE("OpenH264 rejects invalid options, source dimensions, buffer bounds an
   REQUIRE_THROWS_AS(encoder.encode({pixels, 128, 64, 512, 1000}, false),
                     bridge::ipc::ProtocolError);
   REQUIRE_THROWS_AS(encoder.encode({pixels, 128, 64, 512, 999}, true), bridge::ipc::ProtocolError);
+}
+TEST_CASE("Predictive frames erase previous windows through rapid scene changes") {
+  for (const int threads : {1, 2, 4}) {
+    bridge::media::EncoderOptions options;
+    options.threads = threads;
+    bridge::media::SoftwareH264Encoder encoder(options);
+    bridge::diagnostics::AvcDecodeProbe decoder;
+    constexpr int width = 320, height = 192, stride = width * 4;
+    auto pixels = solid(width, height, stride, false);
+    for (int frame = 0; frame < 30; ++frame) {
+      const bool bright_background = (frame / 5) % 2 == 0;
+      const int window_x = (frame % 4) * 64;
+      for (int y = 0; y < height; ++y)
+        for (int x = 0; x < width; ++x) {
+          const bool window = x >= window_x && x < window_x + 48 && y >= 64 && y < 128;
+          const std::uint8_t shade = window ? 120 : (bright_background ? 240 : 16);
+          const auto offset = static_cast<std::size_t>(y * stride + x * 4);
+          pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = shade;
+        }
+      const auto unit = encoder.encode(
+          {pixels, width, height, stride, 1000000 + static_cast<std::uint64_t>(frame) * 33333},
+          false);
+      // Sample the preceding window's centre: it must be completely repainted, not retained.
+      const int old_x = ((frame + 3) % 4) * 64 + 24;
+      const auto decoded = decoder.decode(unit, old_x, 96);
+      const int shade = bright_background ? 240 : 16;
+      const int expected_y = ((220 * shade + 128) >> 8) + 16;
+      REQUIRE(std::abs(static_cast<int>(decoded.yuv[0]) - expected_y) <= 8);
+    }
+  }
+}
+TEST_CASE("SIMD provider preserves small diagnostic surfaces") {
+  for (const auto dimensions :
+       {std::array<int, 2>{16, 16}, {32, 16}, {64, 32}, {128, 64}, {320, 194}, {640, 194}}) {
+    const auto width = dimensions[0], height = dimensions[1];
+    INFO("width=" << width << " height=" << height);
+    bridge::media::SoftwareH264Encoder encoder;
+    bridge::diagnostics::AvcDecodeProbe decoder;
+    const auto pixels = solid(width, height, width * 4, false);
+    bridge::media::AvcUnit unit{};
+    REQUIRE_NOTHROW(unit = encoder.encode({pixels, width, height, width * 4, 1000}, true));
+    verify(decoder, unit, width, height, false);
+  }
 }

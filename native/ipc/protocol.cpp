@@ -33,9 +33,12 @@ static std::uint32_t limit(Kind kind) {
   case Kind::connect_ack:
   case Kind::certificate_decision_ack:
   case Kind::input_ack:
+  case Kind::pipeline_stats:
     return 0;
   case Kind::error:
     return 4;
+  case Kind::pipeline_stats_ack:
+    return 64;
   case Kind::configure:
     return 2048;
   case Kind::secret:

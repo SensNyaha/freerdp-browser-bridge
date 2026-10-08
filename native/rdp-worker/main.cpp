@@ -81,7 +81,7 @@ std::vector<std::uint8_t> build_payload() {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
-  append_be(bytes, 61, 2); // Lifecycle, connect core, JPEG/AVC capture, basic input.
+  append_be(bytes, 125, 2); // Lifecycle, connect, JPEG/AVC, input, pipeline diagnostics.
 #else
   append_be(bytes, 1, 2);
 #endif
@@ -174,6 +174,8 @@ int run() {
       const auto code = connection.enqueue_input(header.request_id, payload);
       if (code != 0)
         error(header.request_id, code);
+    } else if (header.kind == Kind::pipeline_stats && ready) {
+      send({Kind::pipeline_stats_ack, header.request_id, connection.pipeline_stats()});
 #endif
     } else {
       error(header.request_id, 3);
@@ -206,9 +208,11 @@ int main(int argc, char **argv) {
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
                  "\"rdp\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
-                 "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true},"
+                 "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
+                 "\"pipelineStats\":true},"
 #else
-                 "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false},"
+                 "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
+                 "\"pipelineStats\":false},"
 #endif
               << "\"os\":\"" << platform << "\",\"arch\":\"" << arch
               << "\",\"transport\":\"framed-pipes\"}\n";

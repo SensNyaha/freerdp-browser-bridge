@@ -29,7 +29,7 @@ public:
     if (decoder_->Initialize(&parameters) != 0)
       throw ipc::ProtocolError();
   }
-  DecodedSample decode(const media::AvcUnit &unit) {
+  DecodedSample decode(const media::AvcUnit &unit, int x = 0, int y = 0) {
     const auto config = unit.config;
     if (config.size() < 11 || config.size() > 2059 || config[0] != 1 || config[4] != 0xff ||
         config[5] != 0xe1 || unit.bytes.empty() || unit.bytes.size() > media::max_access_unit_bytes)
@@ -63,9 +63,13 @@ public:
                                      &info) != dsErrorFree ||
         info.iBufferStatus != 1 || !output[0] || !output[1] || !output[2])
       throw ipc::ProtocolError();
-    return {info.UsrData.sSystemBuffer.iWidth,
-            info.UsrData.sSystemBuffer.iHeight,
-            {output[0][0], output[1][0], output[2][0]}};
+    const auto &buffer = info.UsrData.sSystemBuffer;
+    if (x < 0 || y < 0 || x >= buffer.iWidth || y >= buffer.iHeight)
+      throw ipc::ProtocolError();
+    return {buffer.iWidth,
+            buffer.iHeight,
+            {output[0][y * buffer.iStride[0] + x], output[1][(y / 2) * buffer.iStride[1] + x / 2],
+             output[2][(y / 2) * buffer.iStride[1] + x / 2]}};
   }
 };
 } // namespace bridge::diagnostics

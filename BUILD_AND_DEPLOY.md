@@ -116,3 +116,9 @@ tests; their remote keyboard-layout acceptance remains pending.
 - OS/arch.
 
 `/metrics` must avoid secrets/high-cardinality session IDs by default. Per-session debug stats can be available through authenticated session API.
+
+The Windows CMake build probes the installed MSVC `/showIncludes` language using
+UTF-8 decoding for Ninja dependency tracking. This works with the Russian-only
+compiler installation and does not require an English language pack. The first
+build using the correction recompiles old objects so header/ABI changes cannot
+retain stale callers. See [Iteration 9](docs/ITERATION_009.md) for evidence.

@@ -29,6 +29,8 @@ export enum Kind {
   FrameAvc = 21,
   Input = 22,
   InputAck = 23,
+  PipelineStats = 24,
+  PipelineStatsAck = 25,
 }
 
 export interface Packet {
@@ -60,9 +62,12 @@ function payloadLimit(kind: number): number {
     case Kind.ConnectAck:
     case Kind.CertificateDecisionAck:
     case Kind.InputAck:
+    case Kind.PipelineStats:
       return 0;
     case Kind.Error:
       return 4;
+    case Kind.PipelineStatsAck:
+      return 64;
     case Kind.Configure:
       return 2048;
     case Kind.Secret:
@@ -208,6 +213,7 @@ export interface WorkerBuild {
     jpegCapture: boolean;
     h264Capture: boolean;
     basicInput: boolean;
+    pipelineStats: boolean;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -223,9 +229,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~63) !== 0 ||
+    (capabilities & ~127) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 56) !== 0 && (capabilities & 4) === 0)
+    ((capabilities & 120) !== 0 && (capabilities & 4) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -262,6 +268,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       jpegCapture: Boolean(capabilities & 8),
       h264Capture: Boolean(capabilities & 16),
       basicInput: Boolean(capabilities & 32),
+      pipelineStats: Boolean(capabilities & 64),
     },
     bridgeVersion,
     gitCommit,
@@ -288,6 +295,59 @@ export interface BridgeFailure {
   code: string;
   message: string;
   retryable: boolean;
+}
+export interface PipelineStats {
+  rdpChecks: number;
+  paints: number;
+  encodedFrames: number;
+  encodeMeanUs: number;
+  encodeP95Us: number;
+  encodeMaxUs: number;
+  maxReadBatch: number;
+  maxReadBatchUs: number;
+}
+export function decodePipelineStats(payload: Buffer): PipelineStats {
+  if (payload.length !== 64) throw new ProtocolError();
+  const values = Array.from({ length: 8 }, (_, i) =>
+    Number(payload.readBigUInt64BE(i * 8)),
+  );
+  if (values.some((value) => !Number.isSafeInteger(value)))
+    throw new ProtocolError();
+  const [
+    rdpChecks,
+    paints,
+    encodedFrames,
+    encodeMeanUs,
+    encodeP95Us,
+    encodeMaxUs,
+    maxReadBatch,
+    maxReadBatchUs,
+  ] = values as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  if (
+    encodeMeanUs > encodeMaxUs ||
+    encodeP95Us > encodeMaxUs ||
+    maxReadBatch > rdpChecks
+  )
+    throw new ProtocolError();
+  return {
+    rdpChecks,
+    paints,
+    encodedFrames,
+    encodeMeanUs,
+    encodeP95Us,
+    encodeMaxUs,
+    maxReadBatch,
+    maxReadBatchUs,
+  };
 }
 
 export interface DeviceCapability {

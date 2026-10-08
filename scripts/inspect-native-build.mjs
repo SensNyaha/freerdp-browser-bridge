@@ -60,6 +60,15 @@ const report = {
           ),
         )
         .digest('hex'),
+      simdPatchSha256: createHash('sha256')
+        .update(
+          readFileSync(
+            resolve(
+              'native/vcpkg/ports/openh264/003-enable-windows-x86-simd.patch',
+            ),
+          ),
+        )
+        .digest('hex'),
     },
   },
   dependencies,

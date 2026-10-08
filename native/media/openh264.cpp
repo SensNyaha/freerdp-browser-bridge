@@ -1,5 +1,6 @@
 #include "video_encoder.hpp"
 #include <algorithm>
+#include <chrono>
 #include <limits>
 #include <wels/codec_api.h>
 
@@ -7,6 +8,7 @@ namespace bridge::media {
 using ipc::ProtocolError;
 struct SoftwareH264Encoder::State {
   EncoderOptions options;
+  EncoderTimings timings;
   std::unique_ptr<ISVCEncoder, decltype(&WelsDestroySVCEncoder)> encoder{nullptr,
                                                                          WelsDestroySVCEncoder};
   AvcPacketizer packetizer;
@@ -16,7 +18,8 @@ struct SoftwareH264Encoder::State {
   bool encoded = false;
   explicit State(EncoderOptions value) : options(value) {
     if (value.fps < 1 || value.fps > 60 || value.bitrate < 100000 || value.bitrate > 20000000 ||
-        value.keyframe_ms < 1000 || value.keyframe_ms > 2000)
+        value.keyframe_ms < 1000 || value.keyframe_ms > 2000 || value.threads < 1 ||
+        value.threads > 4)
       throw ProtocolError();
   }
   void configure(int w, int h) {
@@ -50,7 +53,9 @@ struct SoftwareH264Encoder::State {
     parameters.bEnableFrameCroppingFlag = true;
     parameters.iEntropyCodingModeFlag = 0; // Baseline CAVLC, no B-frames.
     parameters.eSpsPpsIdStrategy = CONSTANT_ID;
-    parameters.iMultipleThreadIdc = 1;
+    // Tiny surfaces do not have enough macroblocks for parallel rate-controlled slices.
+    const int threads = w < 320 || h < 192 ? 1 : options.threads;
+    parameters.iMultipleThreadIdc = static_cast<unsigned short>(threads);
     auto &layer = parameters.sSpatialLayers[0];
     layer.iVideoWidth = w;
     layer.iVideoHeight = h;
@@ -62,7 +67,8 @@ struct SoftwareH264Encoder::State {
     layer.uiVideoFormat = 5; // Unspecified source format.
     layer.bFullRange = false;
     layer.uiColorPrimaries = layer.uiTransferCharacteristics = layer.uiColorMatrix = 6; // Rec.601.
-    layer.sSliceArgument.uiSliceMode = SM_SINGLE_SLICE;
+    layer.sSliceArgument.uiSliceMode = threads == 1 ? SM_SINGLE_SLICE : SM_FIXEDSLCNUM_SLICE;
+    layer.sSliceArgument.uiSliceNum = threads == 1 ? 0U : static_cast<unsigned int>(threads);
     if (encoder->InitializeExt(&parameters) != 0)
       throw ProtocolError();
     int format = videoFormatI420;
@@ -116,10 +122,20 @@ AvcUnit SoftwareH264Encoder::encode(const VideoFrame &frame, bool force_idr) {
           static_cast<std::uint64_t>(std::numeric_limits<long long>::max()) ||
       (state_->encoded && frame.timestamp_us <= state_->last_timestamp))
     throw ProtocolError();
+  using Clock = std::chrono::steady_clock;
+  auto start = Clock::now();
+  const auto elapsed = [&start] {
+    const auto end = Clock::now();
+    const auto us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    start = end;
+    return static_cast<std::uint64_t>(us);
+  };
   if (frame.width != state_->width || frame.height != state_->height)
     state_->configure(frame.width, frame.height);
   auto &s = *state_;
+  s.timings.configure_us = elapsed();
   s.convert(frame);
+  s.timings.convert_us = elapsed();
   force_idr =
       force_idr || !s.encoded ||
       frame.timestamp_us - s.last_idr >= static_cast<std::uint64_t>(s.options.keyframe_ms) * 1000;
@@ -143,6 +159,7 @@ AvcUnit SoftwareH264Encoder::encode(const VideoFrame &frame, bool force_idr) {
       (encoded.eFrameType != videoFrameTypeIDR && encoded.eFrameType != videoFrameTypeI &&
        encoded.eFrameType != videoFrameTypeP))
     throw ProtocolError();
+  s.timings.compress_us = elapsed();
   s.packetizer.begin();
   std::size_t total = 0;
   for (int layer_index = 0; layer_index < encoded.iLayerNum; ++layer_index) {
@@ -169,6 +186,8 @@ AvcUnit SoftwareH264Encoder::encode(const VideoFrame &frame, bool force_idr) {
   if (unit.keyframe)
     s.last_idr = frame.timestamp_us;
   s.encoded = true;
+  s.timings.packetize_us = elapsed();
   return unit;
 }
+EncoderTimings SoftwareH264Encoder::timings() const { return state_->timings; }
 } // namespace bridge::media

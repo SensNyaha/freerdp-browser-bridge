@@ -16,6 +16,7 @@ const stats = {
   keyframes: 0,
   stage: 'waiting',
 };
+let decodeTimes = [];
 class DecodeFailure extends Error {}
 function closeDecoder(session) {
   const decoder = session.decoder;
@@ -86,6 +87,7 @@ function attach(created, options = {}) {
     keyframes: 0,
     stage: 'waiting',
   });
+  decodeTimes = [];
   const socket = (channel) => {
     const url = new URL(
       '/v1/sessions/' + created.sessionId + '/' + channel,
@@ -407,6 +409,7 @@ function attach(created, options = {}) {
     if (session.codec === 'h264' && session.needKeyframe && !(flags & 1))
       throw new Error();
     session.decoding = true;
+    const decodeStart = performance.now();
     stats.stage = 'decode';
     let bitmap;
     try {
@@ -446,6 +449,8 @@ function attach(created, options = {}) {
       }
       if (session.closed) return;
       stats.stage = 'render';
+      if (decodeTimes.length === 128) decodeTimes.shift();
+      decodeTimes.push(performance.now() - decodeStart);
       stats.bytes += bytes.byteLength - 28;
       acknowledge(view.getUint32(12));
     } finally {
@@ -457,7 +462,16 @@ function attach(created, options = {}) {
 window.bridgeViewer = {
   attach,
   detach,
-  stats,
+  get stats() {
+    const times = [...decodeTimes].sort((a, b) => a - b);
+    return {
+      ...stats,
+      decodeMeanMs: times.length
+        ? times.reduce((a, b) => a + b, 0) / times.length
+        : 0,
+      decodeP95Ms: times.length ? times[Math.ceil(times.length * 0.95) - 1] : 0,
+    };
+  },
   acceptCertificate: (expectedFingerprint) => decide(true, expectedFingerprint),
 };
 window.addEventListener('pagehide', detach);

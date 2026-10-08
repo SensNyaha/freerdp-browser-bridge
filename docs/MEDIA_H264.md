@@ -26,7 +26,12 @@ work. OpenH264 rate control uses the target/max bitrate fields; an instantaneous
 transport byte budget is not enforced by the provider itself.
 
 The provider uses screen-content mode, one spatial/temporal layer, Baseline
-CAVLC, one reference, one thread and no B-frames. Frame skipping is disabled.
+CAVLC, one reference and no B-frames. Frame skipping is disabled.
+EncoderOptions additionally accepts 1–4 threads, default 4, with fixed-number
+parallel slices. Surfaces below 320 pixels wide or 192 pixels high use one thread
+and one slice to avoid unsupported small rate-controlled slice layouts.
+Native encoder timings split configuration, BGRA conversion, compression and
+packetization; the standalone h264-benchmark measures a deterministic 1080p workload.
 The first frame, resolution changes and explicit recovery requests force IDR.
 A worker-clock deadline also forces IDR when a static interval would otherwise
 stretch the GOP beyond two seconds. Resolution changes rebuild the encoder and
@@ -50,10 +55,14 @@ The provider cross-checks it against OpenH264's frame classification.
 ## Private dependency and reproducibility
 
 OpenH264 2.6.0#4 is selected from the pinned vcpkg baseline. The checked-in
-overlay copies that exact port and adds only a Windows NASM include-path fix.
+overlay copies that exact port and adds Windows NASM include-path and SIMD dispatch fixes.
 Meson resolves the workspace alias to an absolute Unicode path, which Windows
 NASM cannot use for includes. The patch calculates the relative include path
 before constructing the NASM generator, retaining SIMD assembly.
+The upstream Windows Meson branch assembled x86 functions without defining X86_ASM
+for the C++ dispatcher. The second patch defines X86_ASM and HAVE_AVX2 together with
+the matching NASM flag. CPU detection selects supported instructions at runtime;
+AVX2 is not a minimum host requirement. Both patch hashes are recorded in the build report.
 
 The native package carries the OpenH264 DLL, copyright, overlay sources and
 the applied patch SHA-256 in native-features.json. The relocated runtime probe
@@ -116,6 +125,6 @@ and a new independent config/IDR. The host can explicitly attach with
 codecs=['jpeg'] when AVC is unavailable.
 
 Hardware auto/prefer/off selection, dynamic congestion bitrate control,
-encoder timing instrumentation, Linux integration, other browsers and the
+queue latency instrumentation, Linux integration, other browsers and the
 30-minute interactive acceptance gate remain pending. See ITERATION_006.md
 for native codec evidence and ITERATION_007.md for the actual browser path.

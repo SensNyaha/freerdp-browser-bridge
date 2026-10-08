@@ -6,6 +6,7 @@ vcpkg_from_github(
     PATCHES
         001-add-bsds-to-meson.patch
         002-relative-windows-nasm-includes.patch
+        003-enable-windows-x86-simd.patch
 )
 
 set(cxx_link_libraries "")

@@ -89,3 +89,12 @@ CI/perf lab should capture:
 - file throughput without starving control/audio.
 
 Performance changes are accepted based on these metrics, not intuition.
+
+## 9. Windows scene-latency correction evidence
+
+[Iteration 9](docs/ITERATION_009.md) records before/after native encoder measurements,
+live XRDP browser observations, bounded RDP batching and the Windows OpenH264 SIMD
+dispatch correction. The controlled synthetic encode p95 improved from 192.802 to
+26.326 ms; live initial-update encode p95 from 474.918 to 84.861 ms. These samples
+do not satisfy the full latency/queue/CPU/RSS/soak gates above. Queue latency and
+controlled interactive scene replay remain open.

@@ -19,6 +19,8 @@ import {
   decodeCapturedFrame,
   decodeAvcFrame,
   encodeInput,
+  decodePipelineStats,
+  type PipelineStats,
   type InputEvent,
   type CaptureOptions,
   type CapturedFrame,
@@ -310,6 +312,8 @@ export class WorkerProcess extends EventEmitter {
       throw new WorkerError('IPC_UNEXPECTED_REPLY');
     if (packet.kind === Kind.Frame) decodeCapturedFrame(packet.payload);
     if (packet.kind === Kind.FrameAvc) decodeAvcFrame(packet.payload);
+    if (packet.kind === Kind.PipelineStatsAck)
+      decodePipelineStats(packet.payload);
     clearTimeout(pending.timer);
     this.pending.delete(packet.requestId);
     pending.resolve(packet);
@@ -364,6 +368,12 @@ export class WorkerProcess extends EventEmitter {
     if (!this.rdpConnected || this.status !== 'ready')
       throw new WorkerError('INPUT_NOT_CONNECTED');
     await this.request(Kind.Input, Kind.InputAck, payload);
+  }
+  async pipelineStats(): Promise<PipelineStats> {
+    if (!this.report?.capabilities.pipelineStats || this.status !== 'ready')
+      throw new WorkerError('DIAGNOSTICS_NOT_IMPLEMENTED');
+    const reply = await this.request(Kind.PipelineStats, Kind.PipelineStatsAck);
+    return decodePipelineStats(reply.payload);
   }
 
   /** Pulls the latest changed desktop. At most one encoded frame request may be in flight. */

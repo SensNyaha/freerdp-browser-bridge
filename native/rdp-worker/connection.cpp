@@ -1,4 +1,5 @@
 #include "connection.hpp"
+#include "event_pump.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -163,9 +164,17 @@ BOOL Connection::begin_paint(rdpContext *context) {
   return TRUE;
 }
 BOOL Connection::end_paint(rdpContext *context) {
-  if (!context->gdi->primary->hdc->hwnd->invalid->null)
+  if (!context->gdi->primary->hdc->hwnd->invalid->null) {
     ++owner(context->instance).revision_;
+    owner(context->instance).pipeline_stats_.paint();
+  }
   return TRUE;
+}
+std::vector<std::uint8_t> Connection::pipeline_stats() {
+  std::vector<std::uint8_t> p;
+  for (const auto value : pipeline_stats_.snapshot())
+    append_be(p, value, 8);
+  return p;
 }
 bool Connection::capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc) {
   std::lock_guard lock(media_mutex_);
@@ -211,6 +220,10 @@ void Connection::capture_pending(bool ending) {
           encoder_ = std::make_unique<media::JpegEncoder>();
         jpeg = encoder_->encode(pixels, gdi->width, gdi->height, static_cast<int>(gdi->stride));
       }
+      pipeline_stats_.encode(
+          static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                         std::chrono::steady_clock::now() - now)
+                                         .count()));
     } catch (...) {
       std::vector<std::uint8_t> error;
       append_be(error, 4, 4);
@@ -447,7 +460,6 @@ void Connection::run() noexcept {
           break;
         }
         input_pending();
-        capture_pending();
         events[count] = media_event_;
         DWORD wait_ms = 50;
         {
@@ -461,10 +473,30 @@ void Connection::run() noexcept {
           }
         }
         const auto result = WaitForMultipleObjects(count + 1, events.data(), FALSE, wait_ms);
-        if (result == WAIT_FAILED || !freerdp_check_event_handles(context_.get())) {
+        if (result == WAIT_FAILED) {
           healthy = false;
           break;
         }
+        bool ready_ok = true;
+        const auto batch = pump_ready_events(
+            [&] { return freerdp_check_event_handles(context_.get()) != FALSE; },
+            [&] {
+              // Exclude our media/input wakeup: only drain pending FreeRDP work.
+              const auto ready = WaitForMultipleObjects(count, events.data(), FALSE, 0);
+              ready_ok = ready == WAIT_TIMEOUT || ready < count;
+              return ready_ok && ready != WAIT_TIMEOUT;
+            },
+            [&] { return stopping_ || freerdp_shall_disconnect_context(context_.get()); },
+            [] { return std::chrono::steady_clock::now(); });
+        pipeline_stats_.read(batch.checks, static_cast<std::uint64_t>(batch.elapsed.count()));
+        if (!batch.healthy || !ready_ok) {
+          healthy = false;
+          break;
+        }
+        if (stopping_ || freerdp_shall_disconnect_context(context_.get()))
+          break;
+        input_pending();
+        capture_pending();
       }
       connected_ = false;
       input_pending(true);

@@ -1,0 +1,17 @@
+diff --git a/meson.build b/meson.build
+--- a/meson.build
++++ b/meson.build
+@@ -117,9 +117,13 @@ elif system == 'windows'
+     asm_format = 'win32'
+     asm_args += ['-DPREFIX', '-DX86_32']
++    asm_args += ['-DHAVE_AVX2']
++    add_project_arguments('-DX86_ASM', '-DX86_32_ASM', '-DHAVE_AVX2', language: 'cpp')
+     asm_inc = join_paths(meson.current_source_dir(), 'codec', 'common', 'x86', '')
+   elif cpu_family == 'x86_64'
+     asm_format = 'win64'
+     asm_args += ['-DWIN64']
++    asm_args += ['-DHAVE_AVX2']
++    add_project_arguments('-DX86_ASM', '-DHAVE_AVX2', language: 'cpp')
+     asm_inc = join_paths(meson.current_source_dir(), 'codec', 'common', 'x86', '')
+   elif cpu_family == 'arm'
+     if cpp.get_argument_syntax() == 'msvc'

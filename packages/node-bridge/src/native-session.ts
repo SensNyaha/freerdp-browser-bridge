@@ -14,6 +14,7 @@ import type {
   CaptureOptions,
   MediaCodec,
   InputEvent,
+  PipelineStats,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -145,5 +146,8 @@ export class NativeSessionWorker implements SessionWorker {
           : 'INPUT_FAILED',
       );
     }
+  }
+  pipelineStats(): Promise<PipelineStats> {
+    return this.worker.pipelineStats();
   }
 }

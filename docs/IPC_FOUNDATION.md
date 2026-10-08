@@ -31,14 +31,16 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | FRAME_AVC | 21 | 28-byte metadata + AVC config + access unit; echoes CAPTURE_AVC requestId |
 | INPUT | 22 | exactly 12 bytes; [input layout](INPUT.md) |
 | INPUT_ACK | 23 | empty; FreeRDP input API succeeded; echoes INPUT requestId |
+| PIPELINE_STATS | 24 | empty; requires diagnostics capability |
+| PIPELINE_STATS_ACK | 25 | exactly eight u64 counters/timings (64 bytes), described below |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
-bit 5 experimental basic input).
+bit 5 experimental basic input, bit 6 pipeline diagnostics).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. Bundled builds set bits 2/3/4/5, not bit 1. Bits 3/4/5 require bit 2.
+set the usable RDP bit. Bundled builds set bits 2/3/4/5/6, not bit 1. Bits 3/4/5/6 require bit 2.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers
@@ -133,3 +135,21 @@ JPEG and AVC share one pending request across codecs. All encoding runs on the
 RDP thread. AVC uses a 34 ms minimum interval; the event wait wakes at the pending
 frame deadline. No attachment means no requests or encoding. Capture revision
 zero also forces initial IDR. Browser delivery/recovery is defined in MEDIA_H264.md.
+
+## Bounded pipeline diagnostics
+
+PIPELINE_STATS is available after HELLO on linked workers, including before connection.
+It returns lifetime RDP check count, dirty paint count, encoded-frame count, encode mean
+microseconds, recent encode p95 microseconds, lifetime encode maximum microseconds,
+maximum checks per read batch and maximum read-batch microseconds, in that order.
+All fields are big-endian u64; Node rejects unsafe integers and inconsistent bounds.
+The p95 uses nearest rank over at most 128 recent encodes. Encoding includes lazy
+provider initialization and pixel conversion, excludes IPC serialization/write and
+unchanged captures. No pixels, host, user, certificate or input values are included.
+Foundation workers do not advertise diagnostics; this is private IPC, not a browser endpoint.
+
+Before capture, the worker drains ready FreeRDP handles for up to 8 ms or 256 checks.
+One expensive FreeRDP check can exceed the time budget. Media/input wakeups are excluded
+from the ready test; input is serviced before and after the bounded batch. Capture then
+samples the latest GDI state. This coalesces already received tiles without waiting for
+network packets that have not arrived, and does not drop transmitted predictive units.

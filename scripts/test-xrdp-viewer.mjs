@@ -181,6 +181,7 @@ try {
       (mode === 'h264-reset' && stats.resets !== 1)
     )
       throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
+    const pipeline = await nativeWorker.pipelineStats();
     phase = 'pointer';
     const desktop = await page.locator('#desktop').boundingBox();
     if (!desktop) throw new Error('LAB_INPUT_VIEW_UNAVAILABLE');
@@ -245,6 +246,7 @@ try {
         browser: 'chromium',
         ...stats,
         reattach: true,
+        pipeline,
         inputMoves,
         inputResets,
       }),

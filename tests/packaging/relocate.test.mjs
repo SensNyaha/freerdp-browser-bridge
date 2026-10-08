@@ -93,6 +93,20 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       createHash('sha256').update(patch).digest('hex'),
       features.portOverlays.openh264.nasmPatchSha256,
     );
+    const simdPatch = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'openh264',
+        '003-enable-windows-x86-simd.patch',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(simdPatch).digest('hex'),
+      features.portOverlays.openh264.simdPatchSha256,
+    );
     for (const dependency of [
       'zlib',
       'openssl',

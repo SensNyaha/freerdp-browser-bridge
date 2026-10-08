@@ -12,6 +12,10 @@ struct EncoderOptions {
   int fps = 30;
   int bitrate = 4000000;
   int keyframe_ms = 2000;
+  int threads = 4;
+};
+struct EncoderTimings {
+  std::uint64_t configure_us = 0, convert_us = 0, compress_us = 0, packetize_us = 0;
 };
 class VideoEncoder {
 public:
@@ -27,5 +31,6 @@ public:
   explicit SoftwareH264Encoder(EncoderOptions options = {});
   ~SoftwareH264Encoder() override;
   AvcUnit encode(const VideoFrame &frame, bool force_idr) override;
+  EncoderTimings timings() const;
 };
 } // namespace bridge::media

@@ -3,6 +3,7 @@
 #include "connection_config.hpp"
 #include "input.hpp"
 #include "jpeg.hpp"
+#include "pipeline_stats.hpp"
 #include "video_encoder.hpp"
 #include <atomic>
 #include <condition_variable>
@@ -57,6 +58,7 @@ class Connection {
   std::deque<std::pair<std::uint64_t, input::Event>> input_queue_;
   bool input_overflow_ = false;
   input::State input_state_;
+  PipelineStats pipeline_stats_;
   bool send_input(const input::Event &event);
   void input_pending(bool ending = false);
   void capture_pending(bool ending = false);
@@ -84,6 +86,7 @@ public:
   void decide(std::span<const std::uint8_t> payload);
   bool capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc);
   unsigned enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload);
+  std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;
 };
 } // namespace bridge

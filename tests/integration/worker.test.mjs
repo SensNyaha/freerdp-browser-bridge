@@ -40,6 +40,36 @@ async function withRoot(run) {
   }
 }
 
+test('native lifecycle integration: pipeline diagnostics are capability gated and start empty', async () => {
+  await withRoot(async (runtimeRoot) => {
+    const worker = new WorkerProcess({ workerPath, runtimeRoot });
+    try {
+      const build = await worker.start();
+      if (build.capabilities.pipelineStats) {
+        assert.deepEqual(await worker.pipelineStats(), {
+          rdpChecks: 0,
+          paints: 0,
+          encodedFrames: 0,
+          encodeMeanUs: 0,
+          encodeP95Us: 0,
+          encodeMaxUs: 0,
+          maxReadBatch: 0,
+          maxReadBatchUs: 0,
+        });
+      } else {
+        await assert.rejects(
+          worker.pipelineStats(),
+          /DIAGNOSTICS_NOT_IMPLEMENTED/,
+        );
+      }
+      await worker.ping();
+    } finally {
+      await worker.close();
+    }
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  });
+});
+
 test(
   'native integration: 100 sequential workers, hello/heartbeat/shutdown and zero leaked resources',
   { timeout: 120000 },
