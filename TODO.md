@@ -25,7 +25,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 115/115 Node tests;
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 124/124 Node tests;
   CTest/Catch2: 24 IPC/input/state cases / 473 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -68,6 +68,9 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   retry, text-rate budget and Edge preedit/explicit submission pass fixtures.
   Actual remote text/OS IME and direct canvas IME remain open.
   Committed Unicode/IME fallback implementation commit: `60e3ee4`.
+  [Fractional wheel evidence](docs/ITERATION_022.md): bounded per-axis DOM
+  pixel/line/page accumulation, gesture context/idle/reset handling and Edge
+  ordering pass. Real wheel/trackpad sensitivity acceptance remains open.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -173,7 +176,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Browser modifiers reconcile before focused input; observed left/right sides survive canvas focus/resize pauses, missed releases are repaired, and Caps/Num/Scroll Lock synchronize after physical lock edges. Bounded pure/native and Edge/fake-control fixtures pass; actual remote layouts, AltGraph portability and no-stuck-key acceptance remain open. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_020.md).
 - [~] IN PROGRESS — Explicit committed Unicode/IME textarea, bounded UTF-16BE private IPC and FreeRDP Unicode events implemented; native, pure, fake IPC/control and Edge composition fixtures pass. Server Unicode negotiation is required; no automatic retry of partial/uncertain delivery. Actual remote application text/OS IME, supplementary/line-ending behavior and direct canvas IME remain unverified. [Contract](docs/INPUT.md#committed-unicode-text), [evidence](docs/ITERATION_021.md).
 - [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK verified; actual remote buttons pending.
-- [~] IN PROGRESS — Both wheel axes implemented with bounded deltas; control/Edge fixture tests pass. Actual remote wheel behavior and precise trackpad accumulation pending.
+- [~] IN PROGRESS — Both wheel axes and bounded fractional DOM pixel/line/page accumulation implemented; pure/Edge/control fixtures pass. Gesture context, focus/reset/resize pauses and idle gaps discard stale fractions; no new timer/queue or wire change. Actual remote wheel sensitivity and physical trackpad acceptance remain open. [Contract](docs/INPUT.md#fractional-wheel-and-trackpad-accumulation), [evidence](docs/ITERATION_022.md).
 - [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Independent remote cursor display now passes XRDP/Edge; measured latency and desktop soak gates remain open.
 - [~] IN PROGRESS — Native pressed-state reset and retry, blur/disposal, transport loss and stale lease cancellation verified. Graceful close resets input; actual remote no-stuck-key gate pending.
 - [ ] Touch contacts via RDPEI when available.

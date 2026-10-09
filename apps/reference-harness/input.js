@@ -1,5 +1,6 @@
 /** Focus-scoped input; only adjacent moves are coalesced, transitions keep their order. */
 import { createModifierState, isModifierCode } from './modifiers.js';
+import { createWheelState } from './wheel.js';
 export function installInput(
   canvas,
   send,
@@ -23,6 +24,7 @@ export function installInput(
   let animation;
   let active = false;
   const modifiers = createModifierState();
+  const wheel = createWheelState();
   const listeners = [];
   function on(target, name, handler, options) {
     target.addEventListener(name, handler, options);
@@ -45,6 +47,7 @@ export function installInput(
     animation = undefined;
     const release = active;
     active = false;
+    wheel.reset();
     modifiers.reset(
       (event?.type === 'blur' && event.currentTarget === win) ||
         (event?.type === 'visibilitychange' && doc.hidden),
@@ -59,8 +62,7 @@ export function installInput(
       emit(type, data);
     }
   }
-  function position(event) {
-    const rect = canvas.getBoundingClientRect();
+  function position(event, rect = canvas.getBoundingClientRect()) {
     if (!rect.width || !rect.height || !canvas.width || !canvas.height) return;
     return {
       x: Math.max(
@@ -107,6 +109,7 @@ export function installInput(
         return;
       const p = position(event);
       if (!p) return;
+      wheel.reset();
       event.preventDefault();
       if (name === 'pointerdown') {
         canvas.focus({ preventScroll: true });
@@ -124,6 +127,7 @@ export function installInput(
     });
   for (const name of ['keydown', 'keyup'])
     on(canvas, name, (event) => {
+      wheel.reset();
       if (!connected()) return;
       const forward =
         physicalCode(event.code) &&
@@ -135,20 +139,25 @@ export function installInput(
     canvas,
     'wheel',
     (event) => {
-      if (!connected() || doc.activeElement !== canvas) return;
+      if (!connected() || doc.activeElement !== canvas) {
+        wheel.reset();
+        return;
+      }
       event.preventDefault();
       reconcile(modifiers.snapshot(event));
       flush();
-      // One bounded RDP wheel step per browser event; vertical DOM direction is inverted.
-      for (const [value, horizontal] of [
-        [event.deltaY, false],
-        [event.deltaX, true],
-      ])
-        if (value)
-          emit('input.wheel', {
-            delta: Math.sign(value) * (horizontal ? 120 : -120),
-            horizontal,
-          });
+      const rect = canvas.getBoundingClientRect();
+      const p = position(event, rect);
+      if (!p) {
+        wheel.reset();
+        return;
+      }
+      for (const { type, data } of wheel.consume(event, {
+        width: rect.width,
+        height: rect.height,
+        ...p,
+      }))
+        emit(type, data);
     },
     { passive: false },
   );

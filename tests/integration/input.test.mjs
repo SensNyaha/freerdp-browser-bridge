@@ -38,6 +38,10 @@ async function fixture(run) {
   server.get('/modifiers.js', (_req, reply) =>
     reply.type('text/javascript').send(modifiers),
   );
+  const wheelModule = await readFile('apps/reference-harness/wheel.js', 'utf8');
+  server.get('/wheel.js', (_req, reply) =>
+    reply.type('text/javascript').send(wheelModule),
+  );
   server.get('/input.js', (_req, reply) =>
     reply.type('text/javascript').send(module),
   );
@@ -477,6 +481,150 @@ test(
   },
 );
 test(
+  'Edge wheel fixture: fractional gestures, modes, event ordering and reset/pause/focus isolation',
+  { skip: process.platform !== 'win32', timeout: 45000 },
+  async () => {
+    await fixture(async ({ ws, sent, origin }) => {
+      const browser = await chromium.launch({
+        channel: 'msedge',
+        headless: true,
+      });
+      try {
+        const page = await browser.newPage({
+          viewport: { width: 1200, height: 800 },
+        });
+        await page.goto(origin + '/fixture');
+        let sequence = 0;
+        await page.exposeFunction('sendInput', (type, data) =>
+          ws.send(
+            JSON.stringify({
+              v: 1,
+              type,
+              seq: sequence++,
+              ts: Date.now(),
+              data,
+            }),
+          ),
+        );
+        await page.evaluate(async () => {
+          const { installInput } = await import('/input.js');
+          const canvas = document.querySelector('canvas');
+          window.ready = true;
+          window.disposeInput = installInput(
+            canvas,
+            (type, data) => {
+              void window.sendInput(type, data);
+              return true;
+            },
+            () => window.ready,
+            () => {
+              throw new Error('Fixture send failure');
+            },
+            () => true,
+          );
+          window.wheel = (data) => {
+            const rect = canvas.getBoundingClientRect();
+            return canvas.dispatchEvent(
+              new WheelEvent('wheel', {
+                cancelable: true,
+                clientX: rect.left + 100,
+                clientY: rect.top + 200,
+                ...data,
+              }),
+            );
+          };
+          canvas.focus();
+          const rect = canvas.getBoundingClientRect();
+          canvas.dispatchEvent(
+            new PointerEvent('pointermove', {
+              pointerType: 'mouse',
+              clientX: rect.left + 100,
+              clientY: rect.top + 200,
+            }),
+          );
+          window.wheel({ deltaX: 75, deltaY: 75 });
+        });
+        await eventually(() => sent.length === 1);
+        assert.deepEqual(sent[0], { type: 'move', x: 200, y: 400 });
+        assert.equal(
+          await page.evaluate(() => window.wheel({ deltaX: 25, deltaY: 25 })),
+          false,
+        );
+        await eventually(() => sent.length === 3);
+        assert.deepEqual(sent.slice(1), [
+          { type: 'wheel', delta: -120, horizontal: false },
+          { type: 'wheel', delta: 120, horizontal: true },
+        ]);
+        await page.evaluate(() => {
+          for (let i = 0; i < 6; i++)
+            window.wheel({ deltaMode: 1, deltaY: 0.5 });
+          window.wheel({ deltaMode: 2, deltaX: 1000, deltaY: -1000 });
+          window.wheel({ deltaMode: 2 });
+        });
+        await eventually(() => sent.length === 8);
+        assert.deepEqual(sent.slice(3), [
+          { type: 'wheel', delta: -120, horizontal: false },
+          { type: 'wheel', delta: 120, horizontal: false },
+          { type: 'wheel', delta: 120, horizontal: false },
+          { type: 'wheel', delta: 120, horizontal: true },
+          { type: 'wheel', delta: 120, horizontal: true },
+        ]);
+        await page.evaluate(() => {
+          window.wheel({ deltaY: 75 });
+          document.querySelector('button').focus();
+          window.wheel({ deltaY: 100 });
+          document.querySelector('canvas').focus();
+          window.wheel({ deltaY: 25 });
+        });
+        assert.equal(sent.length, 8);
+        await page.evaluate(() => {
+          window.disposeInput.reset();
+          window.wheel({ deltaY: 75 });
+          const canvas = document.querySelector('canvas');
+          canvas.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD' }));
+          canvas.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyD' }));
+          window.wheel({ deltaY: 25 });
+        });
+        await eventually(() => sent.length === 11);
+        assert.deepEqual(sent.slice(8), [
+          { type: 'sync', toggles: 0 },
+          { type: 'key', scancode: 32, down: true, repeat: false },
+          { type: 'key', scancode: 32, down: false, repeat: false },
+        ]);
+        await page.evaluate(() => {
+          window.disposeInput.reset();
+          window.wheel({ deltaY: 75 });
+          window.ready = false;
+          window.wheel({ deltaY: 1 });
+          window.ready = true;
+          window.wheel({ deltaY: 25 });
+        });
+        await eventually(() => sent.length === 12);
+        assert.deepEqual(sent.at(-1), { type: 'reset' });
+        await page.evaluate(() => {
+          window.disposeInput.reset();
+          window.wheel({ deltaY: 75 });
+          const canvas = document.querySelector('canvas');
+          const rect = canvas.getBoundingClientRect();
+          window.wheel({ deltaY: 25, clientX: rect.left + 101 });
+          window.wheel({ deltaY: 75, clientX: rect.left + 101 });
+          window.disposeInput();
+          window.wheel({ deltaY: 100 });
+        });
+        await eventually(() => sent.length === 13);
+        assert.deepEqual(sent.at(-1), {
+          type: 'wheel',
+          delta: -120,
+          horizontal: false,
+        });
+        assert.equal(ws.readyState, WebSocket.OPEN);
+      } finally {
+        await browser.close();
+      }
+    });
+  },
+);
+test(
   'Edge input fixture scales coordinates, coalesces moves and releases on blur and disposal',
   { skip: process.platform !== 'win32' },
   async () => {
@@ -605,7 +753,7 @@ test(
           { type: 'button', x: 1919, y: 120, button: 2, down: false },
         ]);
         await page.mouse.move(box.x + 50, box.y + 60);
-        await page.mouse.wheel(20, 30);
+        await page.mouse.wheel(100, 100);
         await eventually(
           () => sent.filter((e) => e.type === 'wheel').length === 2,
         );

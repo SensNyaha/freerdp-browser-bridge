@@ -32,9 +32,10 @@ are rejected. Input belongs only to the current connected control lease.
 Coordinates are desktop pixels: x 0..7679, y 0..4319. The native thread clamps them
 to the current desktop dimensions. Button numbers follow DOM: 0 left, 1 middle,
 2 right, 3 back, 4 forward. Wheel delta is -255..255 excluding zero; positive
-vertical means upward, positive horizontal means rightward. The harness sends
-120-unit steps and reverses DOM vertical direction; precise trackpad accumulation
-is pending. Toggle bits are 1 scroll lock, 2 num lock, 4 caps lock. Hosts can send
+vertical means upward, positive horizontal means rightward. The harness accumulates
+fractional DOM deltas into 120-unit steps, using the client policy below, and
+reverses DOM vertical direction. Actual trackpad/application acceptance is pending.
+Toggle bits are 1 scroll lock, 2 num lock, 4 caps lock. Hosts can send
 `input.sync`; the harness automatically reconciles browser-reported toggles and
 modifiers before focused input. Lock key edges precede their synchronize event,
 so synchronization does not set the new lock value before the physical key toggles it.
@@ -198,3 +199,38 @@ remain separate from synthetic composition DOM tests.
 
 [Iteration 21](ITERATION_021.md) records native, pure, fake-IPC/control and Edge
 fixture evidence. Operational XRDP automation remains movement/reset only.
+
+## Fractional wheel and trackpad accumulation
+
+The harness uses a bounded per-canvas accumulator for both axes. Its explicit
+conversion policy is 100 CSS pixels or three DOM lines per RDP notch. DOM page
+deltas use the canvas CSS width/height for their respective axes, divided by 100.
+The [W3C Wheel Events contract](https://w3c.github.io/uievents/split/wheel-events.html)
+defines pixels/lines/pages and leaves precise measurements to the device, OS and
+application configuration. These thresholds are client policy; real mouse/trackpad
+and remote application scroll sensitivity remain acceptance work.
+
+Each complete notch emits a separate signed 120-unit `input.wheel`. Vertical comes
+before horizontal when both axes complete a step in the same event. Remaining
+fractions stay independent and cancel reversed movement. Up to two notches per
+axis/event (four records total) are emitted; excess from a large spike is discarded
+and never becomes a backlog. The existing public -255..255 schema/native wheel
+wire remains unchanged. Separate notch records also avoid collapsing several
+steps on a server path that maps a wheel event to one button click; see the
+[XRDP source](https://github.com/neutrinolabs/xrdp/blob/devel/xrdp/xrdp_wm.c).
+This source inspection does not establish the lab's XRDP version or behavior.
+
+State contains two fractions, one fixed nine-value context and a monotonic last
+event time. CSS dimensions, remote target coordinates, modifier snapshot or DOM
+mode changes discard the old fraction. Keyboard/button transitions, focus loss,
+input reset, resize pause, pointer cancellation, page hiding and disposal clear it.
+Unfocused/paused wheel events cannot accumulate. A gap over 500 ms or backward
+clock starts a new gesture on the next event; zero-delta events do not prolong
+its lifetime. Nonfinite deltas/times and invalid mode/geometry clear state without
+emitting. Rounding within 1e-9 notch removes floating-point threshold drift.
+
+No timer or delivery queue is introduced. Earlier coalesced motion is flushed
+before wheel processing, even below a notch threshold. Input rate/lease/resize
+limits still apply. Deterministic pure and Edge/fake-control evidence is in
+[Iteration 22](ITERATION_022.md); actual remote wheel/physical trackpad acceptance
+remains separate from the movement/reset-only operational XRDP regression.
