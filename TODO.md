@@ -67,6 +67,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   server capability refusal, old-peer gating, ordered Unicode down/up and release
   retry, text-rate budget and Edge preedit/explicit submission pass fixtures.
   Actual remote text/OS IME and direct canvas IME remain open.
+  Committed Unicode/IME fallback implementation commit: `60e3ee4`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,

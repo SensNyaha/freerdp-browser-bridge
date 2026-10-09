@@ -4,6 +4,7 @@ Date: 2026-10-09. Implements SPECIFICATION §2.5, PROTOCOL §3/6,
 MEDIA_PIPELINE §10 and accepted ADR-008 / ADR-009. ADR-011's one-primary-monitor,
 100% scale scope remains. This is an experimental Stage 5 slice; global `rdp`
 remains false and actual remote Unicode/OS IME acceptance is open.
+Implementation commit: `60e3ee4`.
 
 ## Delivered
 
