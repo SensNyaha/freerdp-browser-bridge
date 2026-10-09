@@ -4,10 +4,66 @@ import {
   ConfigError,
   validateSessionConfig,
   redactSecrets,
+  resolveVideoQuality,
 } from '../../packages/config/dist/index.js';
 const base = () => ({
   target: { host: 'rdp.example.internal' },
   auth: { username: 'example', password: 'sentinel-PASSWORD' },
+});
+
+test('video quality profiles preserve defaults, clamp only FPS ceilings and resolve bitrate overrides', () => {
+  assert.deepEqual(resolveVideoQuality(), {
+    h264Fps: 30,
+    jpegFps: 20,
+    jpegQuality: 80,
+    targetBitrate: 4000000,
+    maxBitrate: 4000000,
+  });
+  assert.deepEqual(resolveVideoQuality({ profile: 'low-bandwidth' }), {
+    h264Fps: 10,
+    jpegFps: 10,
+    jpegQuality: 60,
+    targetBitrate: 1000000,
+    maxBitrate: 1000000,
+  });
+  assert.deepEqual(resolveVideoQuality({ profile: 'lan', maxFps: 60 }), {
+    h264Fps: 30,
+    jpegFps: 20,
+    jpegQuality: 90,
+    targetBitrate: 8000000,
+    maxBitrate: 8000000,
+  });
+  assert.deepEqual(
+    resolveVideoQuality({
+      profile: 'custom',
+      maxFps: 5,
+      targetBitrateKbps: 750,
+      maxBitrateKbps: 1000,
+    }),
+    {
+      h264Fps: 5,
+      jpegFps: 5,
+      jpegQuality: 80,
+      targetBitrate: 750000,
+      maxBitrate: 1000000,
+    },
+  );
+  assert.equal(
+    resolveVideoQuality({ maxBitrateKbps: 500 }).targetBitrate,
+    500000,
+  );
+  assert.equal(
+    resolveVideoQuality({ targetBitrateKbps: 9000 }).maxBitrate,
+    9000000,
+  );
+  assert.throws(
+    () =>
+      validateSessionConfig({
+        ...base(),
+        quality: { targetBitrateKbps: 2000, maxBitrateKbps: 1000 },
+      }),
+    ConfigError,
+  );
 });
 
 test('schema validates logical configuration, clones values and rejects unknown fields', () => {

@@ -32,3 +32,25 @@ TEST_CASE("native JPEG encodes padded BGRA and decodes dimensions and colour") {
   REQUIRE_THROWS_AS(encoder.encode(std::span(source).first(3), width, height, stride),
                     bridge::ipc::ProtocolError);
 }
+TEST_CASE("JPEG quality changes actual encoded output and rejects invalid values") {
+  for (const int quality : {0, 101, -1})
+    REQUIRE_THROWS_AS(bridge::media::JpegEncoder(quality), bridge::ipc::ProtocolError);
+  std::vector<std::uint8_t> pixels(64 * 64 * 4);
+  for (std::size_t i = 0; i < pixels.size(); ++i)
+    pixels[i] = static_cast<std::uint8_t>((i * 73 + i / 257) % 256);
+  bridge::media::JpegEncoder low(60), high(90);
+  const auto smaller = low.encode(pixels, 64, 64, 256);
+  const auto larger = high.encode(pixels, 64, 64, 256);
+  REQUIRE(larger.size() > smaller.size());
+  const std::unique_ptr<void, decltype(&tj3Destroy)> decoder(tj3Init(TJINIT_DECOMPRESS),
+                                                             tj3Destroy);
+  REQUIRE(decoder != nullptr);
+  std::vector<std::uint8_t> decoded(pixels.size());
+  for (const auto jpeg : {smaller, larger}) {
+    REQUIRE(tj3DecompressHeader(decoder.get(), jpeg.data(), jpeg.size()) == 0);
+    REQUIRE(tj3Get(decoder.get(), TJPARAM_JPEGWIDTH) == 64);
+    REQUIRE(tj3Get(decoder.get(), TJPARAM_JPEGHEIGHT) == 64);
+    REQUIRE(tj3Decompress8(decoder.get(), jpeg.data(), jpeg.size(), decoded.data(), 256,
+                           TJPF_BGRA) == 0);
+  }
+}

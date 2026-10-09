@@ -19,10 +19,12 @@ stride and non-increasing timestamps are rejected before encoding. BGRA is
 converted to limited-range Rec.601 I420; the matching colour description is
 written to SPS VUI. Alpha and row padding are ignored.
 
-EncoderOptions accepts 1–60 FPS, 100,000–20,000,000 bits/s and 1–2-second GOP.
+EncoderOptions accepts 1–60 FPS, target/maximum 100,000–20,000,000 bits/s
+(maximum at least target) and 1–2-second GOP.
 Defaults are 30 FPS, 4 Mbit/s and 2 seconds. These are encoder settings, not a
-measured browser FPS guarantee. FPS scheduling/congestion control is separate
-work. OpenH264 rate control uses the target/max bitrate fields; an instantaneous
+measured browser FPS guarantee. Session profiles and capped scheduling are
+implemented in [VIDEO_QUALITY.md](VIDEO_QUALITY.md); adaptive congestion remains
+open. OpenH264 rate control uses the target/max bitrate fields; an instantaneous
 transport byte budget is not enforced by the provider itself.
 
 The provider uses screen-content mode, one spatial/temporal layer, Baseline
@@ -85,7 +87,7 @@ and supported by the session backend; otherwise it selects JPEG when offered.
 No supported codec produces MEDIA_NOT_IMPLEMENTED before media.ready.
 Startup capability discovery shares the five-second negotiation deadline.
 
-For H.264, media.ready reports codec=h264, maxFps=30, maxInFlight=1 and
+For H.264, media.ready reports codec=h264, effective maxFps (default 30), maxInFlight=1 and
 maxPayloadBytes=8388608. A 34 ms native/poll interval keeps the ceiling below
 30 FPS; this is not a measured motion/CPU performance guarantee. Returning render
 credit schedules against the previous pull deadline, avoiding a second full

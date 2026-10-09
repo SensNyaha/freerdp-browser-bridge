@@ -63,7 +63,8 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     offset += length;
     return std::string(slice.begin(), slice.end());
   };
-  if (number(2) != 1)
+  const auto schema = number(2);
+  if (schema != 1 && schema != 2)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -79,6 +80,19 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
   const auto reserved = number(1);
   config.connect_ms = static_cast<std::uint32_t>(number(4));
   config.tcp_ack_ms = static_cast<std::uint32_t>(number(4));
+  if (schema == 2) {
+    config.h264_fps = static_cast<std::uint8_t>(number(1));
+    config.jpeg_fps = static_cast<std::uint8_t>(number(1));
+    config.jpeg_quality = static_cast<std::uint8_t>(number(1));
+    const auto media_reserved = number(1);
+    config.target_bitrate = static_cast<std::uint32_t>(number(4));
+    config.max_bitrate = static_cast<std::uint32_t>(number(4));
+    if (media_reserved || config.h264_fps < 1 || config.h264_fps > 30 || config.jpeg_fps < 1 ||
+        config.jpeg_fps > 20 || config.jpeg_quality < 1 || config.jpeg_quality > 100 ||
+        config.target_bitrate < 100000 || config.target_bitrate > 20000000 ||
+        config.max_bitrate < config.target_bitrate || config.max_bitrate > 20000000)
+      throw ProtocolError();
+  }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),
                   [](unsigned char c) { return c <= 32; }) ||

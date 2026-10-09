@@ -17,9 +17,11 @@ struct SoftwareH264Encoder::State {
   std::uint64_t last_timestamp = 0, last_idr = 0;
   bool encoded = false;
   explicit State(EncoderOptions value) : options(value) {
+    if (options.max_bitrate == 0)
+      options.max_bitrate = value.bitrate;
     if (value.fps < 1 || value.fps > 60 || value.bitrate < 100000 || value.bitrate > 20000000 ||
         value.keyframe_ms < 1000 || value.keyframe_ms > 2000 || value.threads < 1 ||
-        value.threads > 4)
+        value.threads > 4 || options.max_bitrate < value.bitrate || options.max_bitrate > 20000000)
       throw ProtocolError();
   }
   void configure(int w, int h) {
@@ -39,7 +41,7 @@ struct SoftwareH264Encoder::State {
     parameters.iPicWidth = w;
     parameters.iPicHeight = h;
     parameters.iTargetBitrate = options.bitrate;
-    parameters.iMaxBitrate = options.bitrate;
+    parameters.iMaxBitrate = options.max_bitrate;
     parameters.iRCMode = RC_BITRATE_MODE;
     parameters.fMaxFrameRate = static_cast<float>(options.fps);
     parameters.iTemporalLayerNum = parameters.iSpatialLayerNum = 1;
@@ -60,7 +62,8 @@ struct SoftwareH264Encoder::State {
     layer.iVideoWidth = w;
     layer.iVideoHeight = h;
     layer.fFrameRate = parameters.fMaxFrameRate;
-    layer.iSpatialBitrate = layer.iMaxSpatialBitrate = options.bitrate;
+    layer.iSpatialBitrate = options.bitrate;
+    layer.iMaxSpatialBitrate = options.max_bitrate;
     layer.uiProfileIdc = PRO_BASELINE;
     layer.uiLevelIdc = LEVEL_UNKNOWN; // Provider chooses the conforming level.
     layer.bVideoSignalTypePresent = layer.bColorDescriptionPresent = true;

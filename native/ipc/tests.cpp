@@ -1,6 +1,8 @@
 #include "connection_config.hpp"
 #include "protocol.hpp"
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
+#include <utility>
 using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
@@ -59,6 +61,11 @@ TEST_CASE("connection settings independently encoded vector, truncation and poli
   REQUIRE(c.username == "u");
   REQUIRE(c.port == 3389);
   REQUIRE(c.connect_ms == 5000);
+  REQUIRE(c.h264_fps == 30);
+  REQUIRE(c.jpeg_fps == 20);
+  REQUIRE(c.jpeg_quality == 80);
+  REQUIRE(c.target_bitrate == 4000000);
+  REQUIRE(c.max_bitrate == 4000000);
   for (std::size_t i = 0; i < connection.size(); ++i)
     REQUIRE_THROWS_AS(decode_connection_config(std::span(connection).first(i)), ProtocolError);
   auto extra = connection;
@@ -69,6 +76,37 @@ TEST_CASE("connection settings independently encoded vector, truncation and poli
     bad[static_cast<std::size_t>(offset)] = 0xff;
     REQUIRE_THROWS_AS(decode_connection_config(bad), ProtocolError);
   }
+}
+TEST_CASE("connection settings v2 independently encoded quality and rejection boundaries") {
+  auto bytes = connection;
+  bytes[1] = 2;
+  bytes.insert(bytes.end(), {10, 10, 60, 0, 0, 0x0f, 0x42, 0x40, 0, 0x1e, 0x84, 0x80});
+  const auto config = decode_connection_config(bytes);
+  REQUIRE(config.h264_fps == 10);
+  REQUIRE(config.jpeg_fps == 10);
+  REQUIRE(config.jpeg_quality == 60);
+  REQUIRE(config.target_bitrate == 1000000);
+  REQUIRE(config.max_bitrate == 2000000);
+  for (std::size_t i = 0; i < bytes.size(); ++i)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(i)), ProtocolError);
+  for (const auto [index, value] : {std::pair<std::size_t, std::uint8_t>{38, 0},
+                                    {38, 31},
+                                    {39, 0},
+                                    {39, 21},
+                                    {40, 0},
+                                    {40, 101},
+                                    {41, 1},
+                                    {42, 255},
+                                    {46, 255}}) {
+    auto invalid = bytes;
+    invalid[index] = value;
+    REQUIRE_THROWS_AS(decode_connection_config(invalid), ProtocolError);
+  }
+  auto invalid = bytes;
+  std::fill(invalid.begin() + 46, invalid.end(), 0);
+  REQUIRE_THROWS_AS(decode_connection_config(invalid), ProtocolError);
+  bytes.push_back(0);
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
 }
 TEST_CASE("AVC IPC class bounds are checked before body allocation") {
   REQUIRE_NOTHROW(encode({Kind::capture_avc, 1, std::vector<std::uint8_t>(12)}));

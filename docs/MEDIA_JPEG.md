@@ -16,7 +16,8 @@ explicit rectangle accumulation and partial-region encoding remain pending.
 CAPTURE/FRAME are documented in IPC_FOUNDATION.md. A request holds only the latest
 revision, with one request in flight and a native ceiling of 20 FPS. No browser
 attachment means no encode requests. An unchanged desktop sends no JPEG/browser
-video record. The provider is libjpeg-turbo 3.2.0, quality 80, 4:2:0, fast DCT.
+video record. The provider is libjpeg-turbo 3.2.0, profile quality (default 80),
+4:2:0, fast DCT. [VIDEO_QUALITY.md](VIDEO_QUALITY.md) defines profile/FPS settings.
 The fixed native JPEG destination is 8 MiB; overflows fail media rather than RDP.
 This bounds output, not the separately bounded FreeRDP framebuffer allocation.
 
@@ -40,7 +41,7 @@ After upgrade, send:
 ```
 
 The server replies with the ordinary server envelope, type media.ready, data
-codec=jpeg, maxFps=20, maxInFlight=1, maxPayloadBytes=8388608. Errors use media.error
+codec=jpeg, effective maxFps (default 20), maxInFlight=1, maxPayloadBytes=8388608. Errors use media.error
 with a fixed code. Negotiation also supports H.264; an explicit JPEG-only offer
 keeps this fallback. This experimental
 capability appears as jpegCapture=true; usable-desktop rdp remains false.
@@ -99,7 +100,7 @@ See ITERATION_005.md for actual test evidence.
 
 ## Open acceptance work
 
-Codec/hardware selection, configurable quality/FPS,
+Codec/hardware selection, adaptive quality/FPS,
 broader cursor acceptance, input, audio, modern GFX, negotiated dynamic resize and
 encode/queue latency instrumentation remain pending. Classic paint/resize callbacks
 are wired, but current XRDP checks do not prove a dynamic resize. No 30-minute

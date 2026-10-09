@@ -4,6 +4,8 @@ import { validateCursorState } from '@freerdp-bridge/protocol';
 import {
   ConfigError,
   validateSessionConfig,
+  resolveVideoQuality,
+  type VideoQuality,
   type SessionCreate,
 } from '@freerdp-bridge/config';
 import type {
@@ -147,6 +149,7 @@ export interface SessionManagerOptions {
 }
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
+  videoQuality: VideoQuality;
   cursor?: CursorState;
   certificate?: CertificatePrompt;
   owner: string;
@@ -309,6 +312,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         throw new SessionError('WORKER_START_FAILED');
       this.ownedWorkers.add(worker);
       const entry: Entry = {
+        videoQuality: resolveVideoQuality(config.quality),
         owner,
         worker,
         abort: new AbortController(),
@@ -603,6 +607,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       options?: CaptureOptions,
     ) => Promise<CapturedFrame | undefined>;
     supportsCodec: (codec: MediaCodec) => boolean | undefined;
+    maxFps: (codec: MediaCodec) => number;
     sendInput: (event: InputEvent) => Promise<void>;
   } {
     const entry = this.entries.get(id);
@@ -671,6 +676,17 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         return entry.worker.supportsCodec
           ? entry.worker.supportsCodec(codec)
           : codec === 'jpeg';
+      },
+      maxFps: (codec) => {
+        if (
+          channel !== 'media' ||
+          entry.attachments.get(channel) !== lease ||
+          entry.released
+        )
+          throw new SessionError('ATTACH_INVALID');
+        return codec === 'h264'
+          ? entry.videoQuality.h264Fps
+          : entry.videoQuality.jpegFps;
       },
       captureFrame: async (sinceRevision, options) => {
         if (

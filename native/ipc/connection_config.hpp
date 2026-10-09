@@ -8,6 +8,8 @@ struct ConnectionConfig {
   std::uint16_t port, width, height, color_depth;
   std::uint8_t security, certificate_policy, minimum_tls;
   std::uint32_t connect_ms, tcp_ack_ms;
+  std::uint8_t h264_fps = 30, jpeg_fps = 20, jpeg_quality = 80;
+  std::uint32_t target_bitrate = 4000000, max_bitrate = 4000000;
 };
 ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes);
 void validate_secret(std::span<const std::uint8_t> bytes);

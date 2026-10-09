@@ -13,6 +13,7 @@ struct EncoderOptions {
   int bitrate = 4000000;
   int keyframe_ms = 2000;
   int threads = 4;
+  int max_bitrate = 0; // Zero keeps the historical target == maximum default.
 };
 struct EncoderTimings {
   std::uint64_t configure_us = 0, convert_us = 0, compress_us = 0, packetize_us = 0;

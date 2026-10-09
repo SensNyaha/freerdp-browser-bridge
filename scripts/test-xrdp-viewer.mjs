@@ -12,10 +12,19 @@ import { waitForViewerClose } from './viewer-window.mjs';
 const fingerprint = process.argv[2];
 const mode = process.argv[3] ?? 'jpeg';
 const manual = process.argv[4] === '--manual';
+const qualityTest = process.argv[4] === '--quality-test';
+const quality = qualityTest
+  ? {
+      profile: 'low-bandwidth',
+      maxFps: 5,
+      targetBitrateKbps: 750,
+      maxBitrateKbps: 1000,
+    }
+  : undefined;
 const codecs = [mode === 'jpeg' ? 'jpeg' : 'h264'];
 if (
   ![3, 4, 5].includes(process.argv.length) ||
-  (process.argv.length === 5 && !manual) ||
+  (process.argv.length === 5 && !manual && !qualityTest) ||
   (manual && mode === 'h264-reset') ||
   !['jpeg', 'h264', 'h264-reset'].includes(mode) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
@@ -100,6 +109,7 @@ try {
       display: { width: 1920, height: 1080 },
       security: { certificatePolicy: 'prompt' },
       timeouts: { connectMs: 20000, tcpAckMs: 10000 },
+      ...(quality ? { quality } : {}),
     },
   });
   delete credentials.password;
@@ -186,6 +196,7 @@ try {
       throw new Error('LAB_RENDER_FAILED');
     if (
       stats.codec !== codecs[0] ||
+      (qualityTest && stats.maxFps !== 5) ||
       (mode !== 'jpeg' && stats.keyframes < 1) ||
       (mode === 'h264-reset' && stats.resets !== 1)
     )
@@ -233,6 +244,29 @@ try {
     });
     phase = 'reattach';
     await page.evaluate(() => window.bridgeViewer.detach());
+    let nativeCaptureMinIntervalUs;
+    if (qualityTest) {
+      // Let the media lease's final pending pull settle, then bypass Node pacing.
+      await delay(350);
+      const timestamps = [];
+      for (let i = 0; i < 3; i++) {
+        const frame = await nativeWorker.captureFrame(0n, {
+          codec: codecs[0],
+          forceKeyframe: true,
+        });
+        if (!frame || !(frame.avc || frame.jpeg))
+          throw new Error('LAB_QUALITY_CAPTURE_FAILED');
+        timestamps.push(frame.timestampUs);
+      }
+      nativeCaptureMinIntervalUs = Number(
+        timestamps.slice(1).reduce((minimum, value, index) => {
+          const interval = value - timestamps[index];
+          return interval < minimum ? interval : minimum;
+        }, 1000000000n),
+      );
+      if (nativeCaptureMinIntervalUs < 200000)
+        throw new Error('LAB_NATIVE_FPS_CAP_FAILED');
+    }
     await delay(100); // Let the old socket releases reach the registry.
     const resetDeadline = Date.now() + 3000;
     while (inputResets === 0 && Date.now() < resetDeadline) await delay(10);
@@ -286,6 +320,9 @@ try {
         cursorReplayed: true,
         reattach: true,
         pipeline,
+        ...(qualityTest
+          ? { qualityProfile: quality.profile, nativeCaptureMinIntervalUs }
+          : {}),
         mediaMetricsArtifact,
         inputMoves,
         inputResets,

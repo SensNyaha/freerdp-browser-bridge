@@ -14,6 +14,7 @@ const stats = {
   height: 0,
   error: undefined,
   codec: undefined,
+  maxFps: undefined,
   resets: 0,
   keyframes: 0,
   stage: 'waiting',
@@ -87,6 +88,7 @@ function attach(created, options = {}) {
     height: 0,
     error: undefined,
     codec: undefined,
+    maxFps: undefined,
     resets: 0,
     keyframes: 0,
     stage: 'waiting',
@@ -357,7 +359,14 @@ function attach(created, options = {}) {
         message.data.maxInFlight !== 1
       )
         throw new Error();
+      if (
+        !Number.isInteger(message.data.maxFps) ||
+        message.data.maxFps < 1 ||
+        message.data.maxFps > (message.data.codec === 'h264' ? 30 : 20)
+      )
+        throw new Error();
       session.codec = stats.codec = message.data.codec;
+      stats.maxFps = message.data.maxFps;
       stats.stage = 'ready';
       return;
     }

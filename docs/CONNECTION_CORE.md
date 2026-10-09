@@ -5,7 +5,8 @@ builds expose both as false. Compiled channels are not device capability claims.
 
 Supported fields: target host/port; password username/domain; security auto/NLA/TLS;
 strict/prompt certificate policy; minimum TLS 1.2/1.3; initial width/height/depth;
-connect/TCP acknowledgement deadlines. Recognized fields outside this slice fail
+connect/TCP acknowledgement deadlines; [native video quality/FPS profiles](VIDEO_QUALITY.md).
+Recognized fields outside this slice fail
 with RDP_SETTING_NOT_IMPLEMENTED, rather than being ignored. Legacy RDP security,
 certificate ignore, TOFU, Gateway/proxy, reconnect, interactive auth replacement,
 complete media/input acceptance, audio and files/devices remain pending.

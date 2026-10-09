@@ -206,7 +206,15 @@ test(
           prompted = true;
         });
         const result = terminal(worker);
-        await worker.connect(configuration(endpoint.port));
+        await worker.connect({
+          ...configuration(endpoint.port),
+          quality: {
+            profile: 'custom',
+            maxFps: 5,
+            targetBitrateKbps: 750,
+            maxBitrateKbps: 1000,
+          },
+        });
         assert.equal((await result).error, 'RDP_CERTIFICATE_REJECTED');
         assert.equal(prompted, false);
         assert.equal(endpoint.applicationBytes, 0);
@@ -427,6 +435,9 @@ test(
           { reconnect: { enabled: true } },
           { media: { audioOutput: 'pcm' } },
           { target: { host: '127.0.0.1', preferIPv6: true } },
+          { quality: { wallpaper: false } },
+          { quality: { targetBitrateKbps: 99 } },
+          { quality: { maxBitrateKbps: 20001 } },
         ]) {
           await assert.rejects(
             worker.connect({ ...configuration(3389), ...extra }),

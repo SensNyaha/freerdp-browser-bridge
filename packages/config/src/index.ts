@@ -282,6 +282,34 @@ export function validateSessionConfig(value: unknown): SessionCreate {
   return structuredClone(value);
 }
 
+export interface VideoQuality {
+  h264Fps: number;
+  jpegFps: number;
+  jpegQuality: number;
+  targetBitrate: number;
+  maxBitrate: number;
+}
+
+/** Non-secret encoder defaults. maxFps is a ceiling, not a promised render rate. */
+export function resolveVideoQuality(
+  quality?: SessionCreate['quality'],
+): VideoQuality {
+  const profile = quality?.profile ?? 'balanced';
+  const fps = quality?.maxFps ?? (profile === 'low-bandwidth' ? 10 : 30);
+  const bitrate =
+    profile === 'low-bandwidth' ? 1000 : profile === 'lan' ? 8000 : 4000;
+  const target =
+    quality?.targetBitrateKbps ??
+    Math.min(bitrate, quality?.maxBitrateKbps ?? bitrate);
+  return {
+    h264Fps: Math.min(30, fps),
+    jpegFps: Math.min(20, fps),
+    jpegQuality: profile === 'low-bandwidth' ? 60 : profile === 'lan' ? 90 : 80,
+    targetBitrate: target * 1000,
+    maxBitrate: (quality?.maxBitrateKbps ?? Math.max(bitrate, target)) * 1000,
+  };
+}
+
 export function redactSecrets(
   value: unknown,
   seen = new WeakSet<object>(),

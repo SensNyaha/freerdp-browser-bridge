@@ -86,6 +86,7 @@ export function installMedia(
     avcConfig: Buffer | undefined;
   let timer: NodeJS.Timeout | undefined;
   let lastPull = performance.now();
+  let maxFps = 0;
   let deadline: NodeJS.Timeout | undefined;
   let creditStarted: number | undefined;
   let cursorOffered = false,
@@ -144,7 +145,9 @@ export function installMedia(
         () => {
           void pull();
         },
-        codec === 'h264' ? Math.max(0, lastPull + 34 - performance.now()) : 50,
+        codec === 'h264'
+          ? Math.max(0, lastPull + Math.ceil(1000 / maxFps) - performance.now())
+          : Math.ceil(1000 / maxFps),
       );
   };
   const pull = async () => {
@@ -244,10 +247,11 @@ export function installMedia(
         return;
       }
       codec = choices[selected]!;
+      maxFps = lease.maxFps(codec);
       clearTimeout(deadline);
       send('media.ready', {
         codec,
-        maxFps: codec === 'h264' ? 30 : 20,
+        maxFps,
         maxInFlight: 1,
         maxPayloadBytes: MAX_JPEG_BYTES,
         cursor: cursorOffered,

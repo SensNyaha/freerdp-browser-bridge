@@ -24,6 +24,18 @@ The lab files are `.local-tests/xrdp-lab.json` and
 exception permits the latter locally. Neither file is published or packaged.
 If the native worker needs rebuilding, run `./scripts/native-build.ps1 -Task bundled`.
 
+Session creation now accepts [quality/FPS profiles](VIDEO_QUALITY.md). To run the
+automatic lab check with 5 FPS and the low-bandwidth profile, use the same
+fingerprint variable and pass `--quality-test` instead of `--manual`:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint h264-reset --quality-test
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint jpeg --quality-test
+```
+
+This verifies the reported cap, browser output and direct native capture pacing;
+it is a bounded smoke check, not maximum-FPS or 30-minute soak acceptance.
+
 ## Foundation prerequisites
 
 Prerequisites: Node.js 24, pnpm 10.11.0, CMake >=3.24, Ninja and a C++20 compiler.
@@ -136,10 +148,11 @@ runtime to a path containing spaces, removes dependency PATH entries, validates 
 paths and static addins, then runs worker HELLO/heartbeat/shutdown and cleanup.
 
 For the user-provided XRDP lab, non-secret connection parameters are in ignored .local-tests.
-To persist its password, run ./scripts/save-xrdp-lab-credential.ps1 interactively. It accepts no
-password arguments and stores a current-user Windows DPAPI credential with a private directory
-ACL. Password entry remains pending; automatic plaintext command-line storage was rejected.
-These local lab files never enter the package or Git. Future test credentials must be delivered
-to the worker over private IPC, retaining strict certificate verification.
+The current viewer helper reads the already authorized plaintext lab credentials
+from the ignored `.local-tests/xrdp-lab.secrets.json`, under the explicit local
+development exception in AGENTS.md. These files never enter Git or the package.
+Passwords still reach the worker through private IPC and never through argv,
+environment, logs or production persistence. Certificate verification remains
+strict by default; the lab helper uses only the previously approved exact fingerprint.
 
 Original blueprint: ../README.md. Current implementation status: ../TODO.md.

@@ -25,6 +25,7 @@ class MediaWorker extends FakeSessionWorker {
   }
   async captureFrame(since, options) {
     this.requests++;
+    (this.captureStarts ??= []).push(performance.now());
     await delay(this.captureDelay);
     if (this.failedMedia)
       throw new Error('sensitive diagnostic must not be forwarded');
@@ -55,7 +56,7 @@ class MediaWorker extends FakeSessionWorker {
     return frame;
   }
 }
-async function setup(run) {
+async function setup(run, quality) {
   const root = await mkdtemp(join(tmpdir(), 'bridge-media-'));
   const worker = new MediaWorker();
   const server = await createSessionServer({
@@ -79,6 +80,7 @@ async function setup(run) {
       payload: {
         target: { host: 'fake.example.test' },
         auth: { username: 'fixture' },
+        ...(quality ? { quality } : {}),
       },
     });
     assert.equal(response.statusCode, 202);
@@ -113,6 +115,30 @@ const acknowledge = (ws, sequence) =>
 const binary = (messages) => messages.filter(Buffer.isBuffer);
 const reset = (ws, sequence) =>
   ws.send(JSON.stringify({ v: 1, type: 'media.reset', data: { sequence } }));
+
+test(
+  'fake media transport: configured FPS is reported and limits pulls after immediate render ACK',
+  { timeout: 10000 },
+  async () => {
+    for (const codec of ['jpeg', 'h264']) {
+      await setup(
+        async ({ ws, messages, worker }) => {
+          worker.avcEnabled = true;
+          hello(ws, [codec]);
+          await eventually(() => binary(messages).length === 2);
+          assert.equal(messages[0].data.maxFps, 2);
+          worker.revision++;
+          acknowledge(ws, 1);
+          await delay(150);
+          assert.equal(worker.requests, 1);
+          await eventually(() => binary(messages).length === 3);
+          assert.ok(worker.captureStarts[1] - worker.captureStarts[0] >= 475);
+        },
+        { profile: 'custom', maxFps: 2 },
+      );
+    }
+  },
+);
 
 test(
   'fake cursor transport: shape stream is independent of video credit and cursor-only changes never capture video',

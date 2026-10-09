@@ -222,6 +222,7 @@ export interface WorkerBuild {
     basicInput: boolean;
     pipelineStats: boolean;
     cursor: boolean;
+    videoQuality: boolean;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -237,9 +238,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~255) !== 0 ||
+    (capabilities & ~511) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 248) !== 0 && (capabilities & 4) === 0)
+    ((capabilities & 504) !== 0 && (capabilities & 4) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -278,6 +279,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       basicInput: Boolean(capabilities & 32),
       pipelineStats: Boolean(capabilities & 64),
       cursor: Boolean(capabilities & 128),
+      videoQuality: Boolean(capabilities & 256),
     },
     bridgeVersion,
     gitCommit,
@@ -380,10 +382,17 @@ export interface ConnectionSettings {
   minimumTls: 2 | 3;
   connectMs: number;
   tcpAckMs: number;
+  videoQuality?: {
+    h264Fps: number;
+    jpegFps: number;
+    jpegQuality: number;
+    targetBitrate: number;
+    maxBitrate: number;
+  };
 }
 /** Versioned non-secret connection settings. Passwords use a separate message class. */
 export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
-  const parts: Buffer[] = [Buffer.from([0, 1])];
+  const parts: Buffer[] = [Buffer.from([0, c.videoQuality ? 2 : 1])];
   for (const [value, maximum] of [
     [c.host, 253],
     [c.username, 256],
@@ -434,7 +443,36 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   fixed[10] = c.minimumTls;
   fixed.writeUInt32BE(c.connectMs, 12);
   fixed.writeUInt32BE(c.tcpAckMs, 16);
-  return Buffer.concat([...parts, fixed]);
+  parts.push(fixed);
+  if (c.videoQuality) {
+    const q = c.videoQuality;
+    if (
+      !Number.isInteger(q.h264Fps) ||
+      q.h264Fps < 1 ||
+      q.h264Fps > 30 ||
+      !Number.isInteger(q.jpegFps) ||
+      q.jpegFps < 1 ||
+      q.jpegFps > 20 ||
+      !Number.isInteger(q.jpegQuality) ||
+      q.jpegQuality < 1 ||
+      q.jpegQuality > 100 ||
+      !Number.isInteger(q.targetBitrate) ||
+      q.targetBitrate < 100000 ||
+      q.targetBitrate > 20000000 ||
+      !Number.isInteger(q.maxBitrate) ||
+      q.maxBitrate < q.targetBitrate ||
+      q.maxBitrate > 20000000
+    )
+      throw new ProtocolError();
+    const media = Buffer.alloc(12);
+    media[0] = q.h264Fps;
+    media[1] = q.jpegFps;
+    media[2] = q.jpegQuality;
+    media.writeUInt32BE(q.targetBitrate, 4);
+    media.writeUInt32BE(q.maxBitrate, 8);
+    parts.push(media);
+  }
+  return Buffer.concat(parts);
 }
 
 export type NativeConnectionState = {

@@ -92,6 +92,24 @@ TEST_CASE("OpenH264 rejects invalid options, source dimensions, buffer bounds an
   REQUIRE_THROWS_AS(encoder.encode({pixels, 128, 64, 512, 1000}, false),
                     bridge::ipc::ProtocolError);
   REQUIRE_THROWS_AS(encoder.encode({pixels, 128, 64, 512, 999}, true), bridge::ipc::ProtocolError);
+  for (const int maximum : {-1, 3999999, 20000001}) {
+    bridge::media::EncoderOptions options;
+    options.max_bitrate = maximum;
+    REQUIRE_THROWS_AS(bridge::media::SoftwareH264Encoder(options), bridge::ipc::ProtocolError);
+  }
+}
+TEST_CASE("OpenH264 custom low FPS and distinct target/maximum rates remain decodable") {
+  bridge::media::EncoderOptions options;
+  options.fps = 1;
+  options.bitrate = 100000;
+  options.max_bitrate = 200000;
+  bridge::media::SoftwareH264Encoder encoder(options);
+  bridge::diagnostics::AvcDecodeProbe decoder;
+  const auto pixels = solid(128, 64, 512, false);
+  const auto unit = encoder.encode({pixels, 128, 64, 512, 1000}, true);
+  REQUIRE(unit.keyframe);
+  verify(decoder, unit, 128, 64, false);
+  verify(decoder, encoder.encode({pixels, 128, 64, 512, 1001000}, false), 128, 64, false);
 }
 TEST_CASE("Predictive frames erase previous windows through rapid scene changes") {
   for (const int threads : {1, 2, 4}) {

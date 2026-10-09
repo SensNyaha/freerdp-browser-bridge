@@ -173,6 +173,35 @@ test('RWI1 golden network-order vector is independent of native serializer', () 
   );
 });
 
+test('build IPC: video quality capability preserves old peers and requires the native connection core', () => {
+  const build = (flags) => {
+    const header = Buffer.alloc(4);
+    header.writeUInt16BE(1, 0);
+    header.writeUInt16BE(flags, 2);
+    return Buffer.concat([
+      header,
+      ...[
+        '0.1.0',
+        'fixture',
+        '3.32.1',
+        '3.32.1',
+        'windows',
+        'x64',
+        'framed-pipes',
+      ].flatMap((value) => {
+        const text = Buffer.from(value);
+        const size = Buffer.alloc(2);
+        size.writeUInt16BE(text.length);
+        return [size, text];
+      }),
+    ]);
+  };
+  assert.equal(decodeBuild(build(253)).capabilities.videoQuality, false);
+  assert.equal(decodeBuild(build(509)).capabilities.videoQuality, true);
+  for (const flags of [257, 513])
+    assert.throws(() => decodeBuild(build(flags)), ProtocolError);
+});
+
 test('connection IPC: independent golden settings, byte limits and no legacy security fallback', () => {
   const settings = {
     host: 'localhost',
@@ -192,6 +221,36 @@ test('connection IPC: independent golden settings, byte limits and no legacy sec
     encodeConnectionSettings(settings).toString('hex'),
     '000100096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e8',
   );
+  const videoQuality = {
+    h264Fps: 10,
+    jpegFps: 10,
+    jpegQuality: 60,
+    targetBitrate: 1000000,
+    maxBitrate: 2000000,
+  };
+  assert.equal(
+    encodeConnectionSettings({ ...settings, videoQuality }).toString('hex'),
+    '000200096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e80a0a3c00000f4240001e8480',
+  );
+  for (const patch of [
+    { h264Fps: 0 },
+    { h264Fps: 31 },
+    { jpegFps: 21 },
+    { jpegQuality: 0 },
+    { jpegQuality: 101 },
+    { targetBitrate: 99999 },
+    { maxBitrate: 999999 },
+    { maxBitrate: 20000001 },
+    { maxBitrate: NaN },
+  ])
+    assert.throws(
+      () =>
+        encodeConnectionSettings({
+          ...settings,
+          videoQuality: { ...videoQuality, ...patch },
+        }),
+      ProtocolError,
+    );
   for (const patch of [
     { host: '' },
     { host: 'host name' },

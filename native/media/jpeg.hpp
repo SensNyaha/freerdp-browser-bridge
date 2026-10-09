@@ -10,7 +10,7 @@ class JpegEncoder {
   std::unique_ptr<State> state_;
 
 public:
-  JpegEncoder();
+  explicit JpegEncoder(int quality = 80);
   ~JpegEncoder();
   std::span<const std::uint8_t> encode(std::span<const std::uint8_t> bgra, int width, int height,
                                        int stride);

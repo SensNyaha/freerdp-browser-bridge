@@ -38,6 +38,7 @@ export {
 } from '@freerdp-bridge/config';
 import {
   validateSessionConfig,
+  resolveVideoQuality,
   type SessionCreate,
 } from '@freerdp-bridge/config';
 export type {
@@ -461,7 +462,10 @@ export class WorkerProcess extends EventEmitter {
       throw new WorkerError('RDP_NOT_IMPLEMENTED');
     const config = validateSessionConfig(value);
     try {
-      const payload = connectionPayload(config);
+      const payload = connectionPayload(
+        config,
+        this.report.capabilities.videoQuality,
+      );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
         if (
@@ -554,17 +558,43 @@ export class WorkerProcess extends EventEmitter {
   }
 }
 
-function connectionPayload(config: SessionCreate): Buffer {
+function connectionPayload(
+  config: SessionCreate,
+  videoQuality: boolean,
+): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
       throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   };
-  allowed(config, ['target', 'auth', 'security', 'display', 'timeouts']);
+  allowed(config, [
+    'target',
+    'auth',
+    'security',
+    'display',
+    'timeouts',
+    'quality',
+  ]);
   allowed(config.target, ['host', 'port']);
   allowed(config.auth, ['username', 'domain', 'password', 'mode']);
   allowed(config.security, ['protocol', 'certificatePolicy', 'minimumTls']);
   allowed(config.display, ['width', 'height', 'colorDepth']);
   allowed(config.timeouts, ['connectMs', 'tcpAckMs']);
+  allowed(config.quality, [
+    'profile',
+    'maxFps',
+    'targetBitrateKbps',
+    'maxBitrateKbps',
+  ]);
+  const quality = config.quality
+    ? resolveVideoQuality(config.quality)
+    : undefined;
+  if (
+    quality &&
+    (!videoQuality ||
+      quality.targetBitrate < 100000 ||
+      quality.maxBitrate > 20000000)
+  )
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   if (
     (config.auth.mode && !['auto', 'password'].includes(config.auth.mode)) ||
     (config.security?.protocol &&
@@ -590,6 +620,7 @@ function connectionPayload(config: SessionCreate): Buffer {
     minimumTls: config.security?.minimumTls === '1.3' ? 3 : 2,
     connectMs: config.timeouts?.connectMs ?? 10000,
     tcpAckMs: config.timeouts?.tcpAckMs ?? 10000,
+    ...(quality ? { videoQuality: quality } : {}),
   });
 }
 

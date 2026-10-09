@@ -319,6 +319,8 @@ void Connection::capture_pending(bool ending) {
   const auto now = std::chrono::steady_clock::now();
   if (!frame_request_ || (!ending && now < next_frame_))
     return;
+  const auto fps = requested_avc_ ? config_->h264_fps : config_->jpeg_fps;
+  const auto interval = std::chrono::milliseconds((1000 + fps - 1) / fps);
   const auto *gdi = context_->gdi;
   const auto snapshot = dirty_.snapshot();
   const bool changed = !ending && (snapshot.revision != requested_revision_ || force_idr_);
@@ -334,14 +336,19 @@ void Connection::capture_pending(bool ending) {
                                                  static_cast<std::size_t>(gdi->stride) *
                                                      static_cast<std::size_t>(gdi->height)};
       if (requested_avc_) {
-        if (!avc_encoder_)
-          avc_encoder_ = std::make_unique<media::SoftwareH264Encoder>();
+        if (!avc_encoder_) {
+          media::EncoderOptions options;
+          options.fps = config_->h264_fps;
+          options.bitrate = static_cast<int>(config_->target_bitrate);
+          options.max_bitrate = static_cast<int>(config_->max_bitrate);
+          avc_encoder_ = std::make_unique<media::SoftwareH264Encoder>(options);
+        }
         avc = avc_encoder_->encode(
             {pixels, gdi->width, gdi->height, static_cast<int>(gdi->stride), timestamp},
             force_idr_);
       } else {
         if (!encoder_)
-          encoder_ = std::make_unique<media::JpegEncoder>();
+          encoder_ = std::make_unique<media::JpegEncoder>(config_->jpeg_quality);
         jpeg = encoder_->encode(pixels, gdi->width, gdi->height, static_cast<int>(gdi->stride));
       }
       pipeline_stats_.encode(
@@ -354,7 +361,7 @@ void Connection::capture_pending(bool ending) {
       send_({Kind::error, frame_request_, std::move(error)});
       frame_request_ = 0;
       avc_encoder_.reset(); // A failed predictive chain must restart from config/IDR.
-      next_frame_ = now + std::chrono::milliseconds(50);
+      next_frame_ = now + interval;
       return; // Media provider failure does not disconnect the remote session.
     }
   }
@@ -380,7 +387,7 @@ void Connection::capture_pending(bool ending) {
   if (changed)
     dirty_.consume(snapshot.revision);
   frame_request_ = 0;
-  next_frame_ = now + std::chrono::milliseconds(requested_avc_ ? 34 : 50);
+  next_frame_ = now + interval;
 }
 void Connection::post_disconnect(freerdp *instance) {
   auto &self = owner(instance);

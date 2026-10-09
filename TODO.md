@@ -2,7 +2,7 @@
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
-## Implementation status — 2026-10-08
+## Implementation status — 2026-10-09
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
@@ -18,10 +18,10 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 73/73 Node tests;
-  CTest/Catch2: 17 IPC/input/state cases / 195 assertions, 2 AVC cases / 19 assertions,
-  2 cursor conversion cases / 11 assertions, 1 JPEG case / 13 assertions and
-  4 H.264 cases / 206 assertions. Dirty state adds 4 cases / 696 assertions;
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 76/76 Node tests;
+  CTest/Catch2: 18 IPC/input/state cases / 266 assertions, 2 AVC cases / 19 assertions,
+  2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
+  5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 3 cases / 9,111 assertions; GFX public callback fixtures
   add 7 cases / 27,160 assertions (combined GDI/GFX: 10 / 36,271), including
   actual incoming AVC420 decoder callbacks and malformed-command guards.
@@ -29,6 +29,9 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   [GFX binding evidence](docs/ITERATION_014.md), [incoming AVC420 evidence](docs/ITERATION_015.md).
   GFX implementation commit: `90285bb`.
   Incoming AVC420 and incremental build corrections: `d5b1a0a`.
+  [Quality/FPS profile evidence](docs/ITERATION_016.md): actual XRDP H.264/reset
+  and JPEG report a configured 5 FPS cap; direct native capture intervals stay
+  above 200 ms independently of Node pacing. Broader performance/soak gates remain open.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -96,7 +99,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 ## Stage 3 — FreeRDP connect core
 
 - [x] DONE on Windows — Custom RDP_CLIENT_ENTRY_POINTS and bridge context, headless connection callbacks, WinSock initialization; actual XRDP activation and native lifecycle tests pass.
-- [~] IN PROGRESS — Public settings mapper supports host/port, password credentials, auto/NLA/TLS, minimum TLS, initial display and deadlines. Broader settings remain explicit unsupported errors.
+- [~] IN PROGRESS — Public settings mapper supports host/port, password credentials, auto/NLA/TLS, minimum TLS, initial display, deadlines and native video quality/FPS profiles. Broader settings remain explicit unsupported errors. [Quality contract](docs/VIDEO_QUALITY.md).
 - [~] IN PROGRESS — Supplied credentials/auth callback are implemented; interactive replacement prompts remain TODO.
 - [~] IN PROGRESS — Strict chain/name validation and one-session certificate prompts pass native/HTTP/WS tests. Persistent trust/TOFU and changed-certificate history remain TODO.
 - [~] IN PROGRESS — Load addins and connect: XRDP activation/heartbeat verified; Windows RDP server lab remains unavailable.
@@ -112,7 +115,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
 - [~] IN PROGRESS — Rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI/GFX callback tests pass; actual XRDP regression is recorded in [iteration 13](docs/ITERATION_013.md) and [iteration 14](docs/ITERATION_014.md). Partial-region encoding and actual negotiated GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
 - [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/ITERATION_012.md). Exact mono inversion and broader server/platform cases remain retained gaps.
-- [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture; ceilings are 20/30 FPS with render credit. Configurable scheduler/provider selection and adaptive congestion pending.
+- [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture with render credit. Configurable FPS caps and quality/bitrate profiles reach native encoders; effective ceilings remain 20 JPEG / 30 AVC FPS. Native/fake and actual XRDP cap checks pass. Provider selection and adaptive congestion remain pending. [Contract](docs/VIDEO_QUALITY.md), [evidence](docs/ITERATION_016.md).
 - [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/ITERATION_006.md). Linux/hardware selection pending.
 - [x] DONE on Windows/XRDP — AVCC config/access-unit packetization, IPC/RWB1 bounds and actual browser decode verified; [evidence](docs/ITERATION_007.md).
 - [x] DONE on Windows/XRDP — Encoded JPEG/AVC worker→Node RWI1 and browser RWB1 forwarding, without raw frames in JS.
