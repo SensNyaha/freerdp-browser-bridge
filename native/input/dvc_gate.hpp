@@ -56,6 +56,9 @@ public:
   UINT close() noexcept;
   Phase phase() const noexcept { return on_thread() ? phase_ : Phase::closed; }
   bool ready() const noexcept { return on_thread() && phase_ == Phase::running; }
+  bool quiescent() const noexcept {
+    return on_thread() && !receiving_ && !writing_ && !opening_ && !closing_;
+  }
   std::optional<Negotiated> negotiated() const noexcept {
     return on_thread() ? negotiated_ : std::nullopt;
   }

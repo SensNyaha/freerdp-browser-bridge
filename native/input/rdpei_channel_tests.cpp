@@ -1,5 +1,6 @@
 #include "dvc_gate.hpp"
 #include "rdpei.hpp"
+#include "rdpei_plugin.hpp"
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -32,6 +33,7 @@ template <class Api> struct Interface {
 // Uses the actual linked addin and public DVC ABI. Only the transport endpoint is fake.
 struct ChannelFixture {
   DvcGate gate; // Outlives delegated callback/plugin cleanup in close().
+  PluginRegistration registration;
   std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)> context{
       nullptr, freerdp_client_context_free};
   Interface<IDRDYNVC_ENTRY_POINTS> entries{this};
@@ -46,15 +48,20 @@ struct ChannelFixture {
   std::array<std::size_t, 8> lengths{};
   std::size_t count = 0;
   UINT write_status = CHANNEL_RC_OK;
-  ChannelFixture() {
+  UINT listener_status = CHANNEL_RC_OK, initialize_status = CHANNEL_RC_OK;
+  unsigned destroyed_listeners = 0;
+  bool return_listener = true, terminate_during_write = false;
+  UINT nested_termination = CHANNEL_RC_OK;
+  ChannelFixture(bool managed = false, UINT status = CHANNEL_RC_OK, bool partial = true)
+      : listener_status(status), return_listener(partial) {
     try {
-      initialize();
+      initialize(managed);
     } catch (...) {
       (void)close();
       throw;
     }
   }
-  void initialize() {
+  void initialize(bool managed) {
     RDP_CLIENT_ENTRY_POINTS client{};
     client.Size = sizeof(client);
     client.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -86,15 +93,19 @@ struct ChannelFixture {
         return ERROR_INVALID_DATA;
       auto &f = Interface<IWTSVirtualChannelManager>::get(m);
       f.listener_callback = callback;
-      *listener = &f.listener;
-      return CHANNEL_RC_OK;
+      *listener = f.return_listener ? &f.listener : nullptr;
+      return f.listener_status;
     };
     manager.api.DestroyListener = [](IWTSVirtualChannelManager *m, IWTSListener *) -> UINT {
-      Interface<IWTSVirtualChannelManager>::get(m).listener_callback = nullptr;
+      auto &f = Interface<IWTSVirtualChannelManager>::get(m);
+      f.listener_callback = nullptr;
+      ++f.destroyed_listeners;
       return CHANNEL_RC_OK;
     };
     channel.api.Write = [](IWTSVirtualChannel *c, ULONG size, const BYTE *bytes, void *) -> UINT {
       auto &f = Interface<IWTSVirtualChannel>::get(c);
+      if (f.terminate_during_write)
+        f.nested_termination = f.plugin->Terminated(f.plugin);
       if (f.write_status != CHANNEL_RC_OK)
         return f.write_status;
       if (!bytes || size > f.writes[0].size() || f.count == f.writes.size())
@@ -103,12 +114,21 @@ struct ChannelFixture {
       f.lengths[f.count++] = size;
       return CHANNEL_RC_OK;
     };
-    const auto entry = freerdp_channels_load_static_addin_entry(
-        RDPEI_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
-    REQUIRE(entry);
-    REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api) == CHANNEL_RC_OK);
+    if (managed) {
+      REQUIRE(registration.install(&entries.api) == CHANNEL_RC_OK);
+    } else {
+      const auto entry = freerdp_channels_load_static_addin_entry(
+          RDPEI_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
+      REQUIRE(entry);
+      REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api) == CHANNEL_RC_OK);
+    }
     REQUIRE(plugin);
-    REQUIRE(plugin->Initialize(plugin, &manager.api) == CHANNEL_RC_OK);
+    initialize_status = plugin->Initialize(plugin, &manager.api);
+    if (managed && initialize_status != CHANNEL_RC_OK) {
+      rdpei = registration.client();
+      return;
+    }
+    REQUIRE(initialize_status == CHANNEL_RC_OK);
     rdpei = static_cast<RdpeiClientContext *>(listener.pInterface);
     REQUIRE(rdpei);
   }
@@ -408,4 +428,82 @@ TEST_CASE("DVC gate rejects malformed and out-of-phase real server messages befo
   REQUIRE_FALSE(f.gate.negotiated());
   REQUIRE(f.count == 1);
   REQUIRE(f.close());
+}
+TEST_CASE(
+    "registered public RDPEI wrapper preserves context and routes real handshake and contact") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  REQUIRE(f.registration.client() == f.rdpei);
+  REQUIRE(f.plugin->pInterface == f.rdpei);
+  REQUIRE(f.plugin->Connected(f.plugin) == CHANNEL_RC_OK);
+  REQUIRE(f.plugin->Attached(f.plugin) == CHANNEL_RC_OK);
+  REQUIRE(f.plugin->Detached(f.plugin) == CHANNEL_RC_OK);
+  REQUIRE(f.open());
+  REQUIRE_FALSE(f.registration.gate().ready());
+  REQUIRE(f.ready() == CHANNEL_RC_OK);
+  REQUIRE(f.registration.gate().ready());
+  REQUIRE(send_rdpei(f.rdpei, {Action::begin, 3, 100, 110}));
+  REQUIRE(f.pump());
+  check_touch(f.packet(1),
+              RDPINPUT_CONTACT_FLAG_DOWN | RDPINPUT_CONTACT_FLAG_INRANGE |
+                  RDPINPUT_CONTACT_FLAG_INCONTACT,
+              100, 110);
+  REQUIRE(send_rdpei(f.rdpei, {Action::cancel, 3, 100, 110}));
+  REQUIRE(f.pump());
+  check_touch(f.packet(2), RDPINPUT_CONTACT_FLAG_UP | RDPINPUT_CONTACT_FLAG_CANCELED, 100, 110);
+  REQUIRE(f.close());
+  REQUIRE(f.registration.client() == nullptr);
+  REQUIRE_FALSE(f.registration.gate().ready());
+  REQUIRE(f.destroyed_listeners == 1);
+  REQUIRE(f.pump()); // The actual addin unregisters its periodic pump on termination.
+}
+TEST_CASE("registered RDPEI wrapper rejects duplicate and replacement channel generations") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  REQUIRE(f.open());
+  BOOL accepted = TRUE;
+  IWTSVirtualChannelCallback *replacement = nullptr;
+  REQUIRE(f.listener_callback->OnNewChannelConnection(f.listener_callback, &f.channel.api, nullptr,
+                                                      &accepted,
+                                                      &replacement) == ERROR_INVALID_STATE);
+  REQUIRE_FALSE(accepted);
+  REQUIRE(replacement == nullptr);
+  REQUIRE(f.ready() == CHANNEL_RC_OK);
+  REQUIRE(f.plugin->Disconnected(f.plugin, 0) == CHANNEL_RC_OK);
+  REQUIRE_FALSE(f.registration.gate().ready());
+  REQUIRE(f.callback->OnClose(f.callback) == CHANNEL_RC_OK);
+  f.callback = nullptr;
+  REQUIRE(f.listener_callback->OnNewChannelConnection(f.listener_callback, &f.channel.api, nullptr,
+                                                      &accepted,
+                                                      &replacement) == ERROR_INVALID_STATE);
+  REQUIRE(f.close());
+}
+TEST_CASE("registered actual RDPEI addin safely terminates after listener creation failure") {
+  for (const bool partial : {false, true}) {
+    const auto fixture = std::make_unique<ChannelFixture>(true, ERROR_INTERNAL_ERROR, partial);
+    auto &f = *fixture;
+    REQUIRE(f.initialize_status == ERROR_INTERNAL_ERROR);
+    REQUIRE_FALSE(f.registration.gate().ready());
+    REQUIRE_FALSE(f.open()); // A partial host listener cannot activate a failed addin.
+    REQUIRE(f.callback == nullptr);
+    REQUIRE(f.close());
+    REQUIRE(f.destroyed_listeners == (partial ? 1U : 0U));
+    REQUIRE(f.pump());
+  }
+  const auto fixture = std::make_unique<ChannelFixture>(true, CHANNEL_RC_OK, false);
+  REQUIRE(fixture->initialize_status == ERROR_INVALID_DATA);
+  REQUIRE_FALSE(fixture->open());
+  REQUIRE(fixture->close());
+}
+TEST_CASE("registered RDPEI addin cannot be terminated inside its active transport write") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  REQUIRE(f.open());
+  f.terminate_during_write = true;
+  REQUIRE(f.ready() == CHANNEL_RC_OK);
+  REQUIRE(f.nested_termination == ERROR_INVALID_STATE);
+  REQUIRE(f.registration.client() == f.rdpei);
+  REQUIRE(f.registration.gate().ready());
+  REQUIRE(f.close());
+  REQUIRE(f.destroyed_listeners == 1);
 }

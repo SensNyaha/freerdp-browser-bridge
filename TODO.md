@@ -85,6 +85,11 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   cases with fake transport. Transport resume is separate from contact/lease
   readiness; plugin/worker activation and end-to-end touch remain open.
   RDPEI transport gate implementation commit: `fb8643f`.
+- [Public RDPEI ownership evidence](docs/ITERATION_025.md): pinned static addin
+  registration, wrapped listener/gate, partial creation cleanup and lifecycle
+  tests pass. RDPEI now has 34 cases / 10,127 assertions, including fourteen
+  actual-addin/fake-DVC cases. Connection/contact drain, private IPC/browser and
+  actual remote/physical touch remain open; no touch capability is advertised.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -193,7 +198,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Both wheel axes and bounded fractional DOM pixel/line/page accumulation implemented; pure/Edge/control fixtures pass. Gesture context, focus/reset/resize pauses and idle gaps discard stale fractions; no new timer/queue or wire change. Actual remote wheel sensitivity and physical trackpad acceptance remain open. [Contract](docs/INPUT.md#fractional-wheel-and-trackpad-accumulation), [evidence](docs/ITERATION_022.md).
 - [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Independent remote cursor display now passes XRDP/Edge; measured latency and desktop soak gates remain open.
 - [~] IN PROGRESS — Native pressed-state reset and retry, blur/disposal, transport loss and stale lease cancellation verified. Graceful close resets input; actual remote no-stuck-key gate pending.
-- [~] IN PROGRESS — Native ten-contact state, pinned public RDPEI projection and observable public-DVC SC_READY/CS_READY transport gate implemented; pure/public-call and actual-addin/fake-DVC tests pass. Suspension discards upstream periodic frames without replay; transport resume alone does not restore contact/lease input readiness. Plugin/worker ownership, cancel/reset/drain integration, bounded/versioned IPC, lease/browser capture and actual remote/physical touch remain open. No touch capability is advertised. [Contract](docs/INPUT.md#native-touch-foundation), [state evidence](docs/ITERATION_023.md), [transport evidence](docs/ITERATION_024.md).
+- [~] IN PROGRESS — Native ten-contact state, pinned public RDPEI projection, observable SC_READY/CS_READY gate and public plugin/listener registration owner implemented; pure/public-call and actual-addin/fake-DVC tests pass. Suspension discards upstream periodic frames without replay; transport resume alone does not restore contact/lease input readiness. Connection binding, cancel/reset/terminal-contact drain, bounded/versioned IPC, lease/browser capture and actual remote/physical touch remain open. Same-plugin DVC reopening is unimplemented. No touch capability is advertised. [Contract](docs/INPUT.md#native-touch-foundation), [state evidence](docs/ITERATION_023.md), [transport evidence](docs/ITERATION_024.md), [ownership evidence](docs/ITERATION_025.md).
 - [ ] Pen capability placeholder/implementation if supported.
 
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.

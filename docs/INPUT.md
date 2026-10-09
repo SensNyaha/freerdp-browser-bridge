@@ -295,6 +295,9 @@ isolated component. Plugin/worker ownership, contact cleanup during suspension,
 bounded/versioned private IPC, current-control-lease delivery and browser contact
 capture/cancellation remain required before enabling input. Actual Windows/XRDP
 touch and physical-device acceptance remain open.
+The [registration owner](#public-rdpei-registration-owner) now composes the isolated
+transport gate with public plugin/listener lifecycle; Connection/contact ownership
+is still open.
 
 ### Public DVC transport gate
 
@@ -346,3 +349,50 @@ capability contract changes in this block.
 actual linked RDPEI addin tests with a fake DVC endpoint from remote RDP/device
 acceptance. Bounded header mutation tests are deterministic checks, not a
 libFuzzer/ASan campaign or a physical touch test.
+
+### Public RDPEI registration owner
+
+`native/input/rdpei_plugin.*` loads the pinned linked static RDPEI addin, captures
+its public plugin interface and registers a wrapper under the exact RDPEI DVC
+name. Its default entry comes from the linked inventory; an explicit entry is
+native test injection, with no browser/IPC setting or global provider change.
+One object permits one installation and one channel attempt; duplicate/replacement
+channels fail closed. Same-plugin DVC reopening remains retained follow-up.
+
+The object, RDP context and borrowed host manager must outlive host Terminated
+on the bound RDP thread. Its destructor cannot unregister a stored host pointer.
+Foreign-thread and reentrant lifecycle calls are rejected. This pinned synchronous
+FreeRDP profile is stronger than Microsoft's general
+[plugin threading contract](https://learn.microsoft.com/en-us/windows/win32/api/tsvirtualchannels/nn-tsvirtualchannels-iwtsplugin).
+Actual drdynvc/Connection thread and lifetime integration remain to be tested.
+
+Public pInterface/context identity is preserved. Optional notifications and public
+manager lookup methods retain host behavior. The wrapped listener routes channels
+through DvcGate and cannot activate a failed Initialize, even with a partial host
+listener. Disconnect/Terminate close the gate before delegation. Termination inside
+an active gate callback is rejected to avoid destroying an executing upstream
+object. Normal host Terminated ends ownership; see the
+[Microsoft contract](https://learn.microsoft.com/ru-ru/windows/win32/api/tsvirtualchannels/nf-tsvirtualchannels-iwtsplugin-terminated).
+Repeated termination has no repeated addin/listener cleanup.
+
+Entry failure retains the pinned entry's own cleanup contract. After successful
+entry creation, failed host registration terminates that addin once. Host failure
+must not retain a plugin pointer. Pinned host source satisfies that pointer rule,
+but its name-list append before plugin-list append can leave inconsistent
+bookkeeping; that upstream resource failure audit remains open. No private host
+storage is accessed or patched.
+
+Pinned generic Initialize dereferences its returned listener even on CreateListener
+failure. The proxy supplies a local fallback listener, preserves the error and
+blocks channel activation. Partial host listeners are reclaimed on termination.
+DestroyListener errors ignored by upstream are retained and returned by the
+wrapper. Handles are retired once because failure may already have freed them;
+a host cleanup failure is not proof of complete resource reclamation.
+
+This owner adds no input dispatcher/contact state. TouchRawEvent may accept a
+cancellation into dirty local state before a periodic frame is written; success
+cannot confirm terminal-contact transport delivery. Contact cancel/reset/drain
+across suspend and resume, control leases, Connection activation, bounded IPC,
+browser capture and real touch acceptance remain open. No new worker channel or
+capability is enabled. [Iteration 25](ITERATION_025.md) distinguishes actual-addin/
+fake-DVC lifecycle tests from fake-interface errors and remote RDP/device evidence.
