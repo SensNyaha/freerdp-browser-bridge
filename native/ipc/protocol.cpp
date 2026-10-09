@@ -66,6 +66,8 @@ static std::uint32_t limit(Kind kind) {
     return 12;
   case Kind::input_text:
     return 512;
+  case Kind::input_touch:
+    return 16;
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);
   }

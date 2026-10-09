@@ -3,6 +3,7 @@
 Date: 2026-10-09. Implements the provider/thread-lifetime part of SPECIFICATION
 §2.5, ARCHITECTURE §7 and Stage 5 under ADR-001 / ADR-008 / ADR-009 / ADR-011.
 Pinned FreeRDP 3.32.1 and source commit are unchanged.
+Implementation commit: `1072e58`.
 
 ## Delivered
 

@@ -38,6 +38,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | DISPLAY_RESIZE | 28 | exactly u16 width, u16 height; one pending request per worker |
 | DISPLAY_RESIZE_RESULT | 29 | u16 result, u16 reserved=0; echoes DISPLAY_RESIZE requestId |
 | INPUT_TEXT | 30 | 2..512 bytes, even length, UTF-16BE without BOM; [text contract](INPUT.md#committed-unicode-text) |
+| INPUT_TOUCH | 31 | exactly 16 bytes; codec/framing foundation only, dispatch unsupported; [touch layout](#touch-input-codec-foundation) |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
@@ -89,6 +90,38 @@ Linux SOCK_SEQPACKET is not implemented yet. Native lifecycle tests validate act
 integration, not RDP connectivity. FreeRDP channels/codecs/devices remain unsupported until
 their separate build and integration gates pass. See CONNECTION_CORE.md for the
 experimental connection slice, distinct from full usable browser RDP.
+
+## Touch input codec foundation
+
+The additional `INPUT_TOUCH` record (kind **31**) has a fixed **16-byte** payload;
+its header rejects every other length before allocation. This is an isolated
+codec/framing foundation. Current workers do not advertise touch support or
+dispatch this request: sending it is rejected as unsupported lifecycle state
+(ERROR 3, worker exits), not silently mapped to mouse input. No current Node worker
+API or browser control command sends it. Older readers reject this kind; future
+dispatch must be separately capability gated before any request is transmitted.
+
+Touch payload offsets, network byte order:
+
+| Offset | Bytes | Meaning |
+|---:|---:|---|
+| 0 | 2 | schema version, exactly 1 |
+| 2 | 1 | action: 1 begin, 2 update, 3 end, 4 cancel |
+| 3 | 1 | reserved, exactly 0 |
+| 4 | 4 | external contact ID, 0..2,147,483,647 |
+| 8 | 4 | x, 0..7,679 |
+| 12 | 4 | y, 0..4,319 |
+
+Native decoding returns a fixed event without heap allocation. TypeScript encoding
+validates the exact four-field shape (`action`, `contactId`, `x`, `y`) before
+allocating its 16-byte record. Coordinates/IDs are never truncated/coerced from
+out-of-range or fractional values. The wire ID is external, not a native RDPEI
+slot. Shape validation grants no control lease or channel readiness, and does not
+validate begin/update/end ownership; the bounded RDP-thread owner must do that.
+Current display bounds are applied by the owner only after record validation.
+Cancellation remains subject to tracked-contact semantics. Pressure/orientation,
+hover and pen are not part of this record. RWI1 envelope and existing INPUT /
+INPUT_TEXT records remain unchanged; no arbitrary FreeRDP options are introduced.
 
 ## Connection payload v1/v2/v3
 

@@ -2,6 +2,7 @@
 #include "display.hpp"
 #include "input.hpp"
 #include "protocol.hpp"
+#include "touch_ipc.hpp"
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
   try {
     using namespace bridge::ipc;
@@ -22,6 +23,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)bridge::input::decode(payload);
         else if (header.kind == Kind::input_text)
           (void)bridge::input::decode_text(payload);
+        else if (header.kind == Kind::input_touch)
+          (void)bridge::touch::decode_ipc(payload);
         else if (header.kind == Kind::display_resize)
           (void)decode_display_resize(payload);
       }

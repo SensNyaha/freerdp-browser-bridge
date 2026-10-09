@@ -2,6 +2,8 @@ export * from './media.js';
 export * from './input.js';
 export * from './cursor.js';
 export * from './display.js';
+export * from './touch.js';
+import { TOUCH_INPUT_BYTES } from './touch.js';
 import { DISPLAY_UPDATE_BYTES } from './display.js';
 import { CURSOR_METADATA_BYTES, MAX_CURSOR_BYTES } from './cursor.js';
 export const IPC_VERSION = 1;
@@ -40,6 +42,7 @@ export enum Kind {
   DisplayResize = 28,
   DisplayResizeResult = 29,
   InputText = 30,
+  InputTouch = 31,
 }
 
 export interface Packet {
@@ -102,6 +105,8 @@ function payloadLimit(kind: number): number {
       return 12;
     case Kind.InputText:
       return 512;
+    case Kind.InputTouch:
+      return TOUCH_INPUT_BYTES;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:

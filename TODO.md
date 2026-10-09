@@ -25,7 +25,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 124/124 Node tests;
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 129/129 Node tests;
   CTest/Catch2: 24 IPC/input/state cases / 473 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -106,6 +106,13 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   disabled until IPC/control/browser dispatch; actual remote RDPEI remains open.
   RDPEI: 62 cases / 12,612 assertions; bundled CTest 10/10, foundation 4/4,
   Node 124/124 and actual XRDP H.264 reset/resize/restoration pass.
+  Scoped RDPEI provider/lifetime implementation commit: `1072e58`.
+- [Bounded touch IPC codec evidence](docs/ITERATION_028.md): separate fixed
+  versioned 16-byte record validates in native/TypeScript before body allocation.
+  Portable touch is 14 cases / 14,182 assertions; current workers explicitly refuse
+  dispatch and advertise no touch capability. Worker/control/browser wiring and
+  remote touch acceptance remain open.
+  Bundled Node 129/129, CTest 10/10, foundation CTest 4/4 and relocation 1/1 pass.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,

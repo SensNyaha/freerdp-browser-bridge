@@ -499,3 +499,21 @@ explicitly false while IPC/control/browser dispatch is absent. No touch capabili
 or remote input is newly enabled. [Iteration 27](ITERATION_027.md) separates public
 provider/actual-addin fake-host tests from worker regressions and actual XRDP
 connection evidence. Real server RDPEI host/reassembly/resource audits remain open.
+
+### Touch IPC codec foundation
+
+`native/input/touch_ipc.*` decodes the separate fixed-size INPUT_TOUCH record;
+`packages/protocol/src/touch.ts` provides matching typed shape checks and codecs.
+The [16-byte versioned layout](IPC_FOUNDATION.md#touch-input-codec-foundation)
+validates before dispatch/allocation and preserves the external 31-bit contact ID.
+It carries one action and bounded absolute coordinates, without gesture queues,
+pressure, orientation, pen or arbitrary channel options. All legacy input records
+are unchanged. See [Iteration 28](ITERATION_028.md) for independent vectors and
+boundary/native-lifecycle evidence.
+
+This foundation does not grant a control lease, channel readiness or contact-state
+ownership. Current workers advertise no touch capability and explicitly reject
+the request; no Node worker method or browser command sends it. Future dispatch
+must check session opt-in, current lease/display generation and negotiated owner
+readiness before touching FreeRDP, and reset/drain on lease/resize/focus loss.
+Actual remote/physical touch remains open.
