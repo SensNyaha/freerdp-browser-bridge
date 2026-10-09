@@ -4,6 +4,7 @@ Date: 2026-10-09. Implements the Stage 5 mouse/wheel slice of SPECIFICATION §2.
 ARCHITECTURE §7 and accepted ADR-008 / ADR-009 under ADR-011 display scope.
 No public WS/native IPC input type, parser limit or capability bit changes.
 Global usable `rdp` remains false.
+Implementation commit: `c5d9ec3`.
 
 ## Delivered
 

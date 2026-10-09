@@ -71,6 +71,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   [Fractional wheel evidence](docs/ITERATION_022.md): bounded per-axis DOM
   pixel/line/page accumulation, gesture context/idle/reset handling and Edge
   ordering pass. Real wheel/trackpad sensitivity acceptance remains open.
+  Fractional wheel implementation commit: `c5d9ec3`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
