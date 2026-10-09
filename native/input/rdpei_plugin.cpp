@@ -30,6 +30,8 @@ PluginRegistration::PluginRegistration() noexcept {
   entries_.api.RegisterPlugin = [](IDRDYNVC_ENTRY_POINTS *p, const char *name,
                                    IWTSPlugin *plugin) -> UINT {
     auto &s = get(p);
+    if (!s.on_thread() || !s.host_ || !s.busy_ || s.retired())
+      return ERROR_INVALID_STATE;
     if (!named(name) || !plugin || !plugin->Initialize || !plugin->Terminated ||
         !plugin->pInterface)
       return ERROR_INVALID_PARAMETER;
@@ -40,6 +42,8 @@ PluginRegistration::PluginRegistration() noexcept {
   };
   entries_.api.GetPlugin = [](IDRDYNVC_ENTRY_POINTS *p, const char *name) -> IWTSPlugin * {
     auto &s = get(p);
+    if (!s.on_thread() || !s.host_)
+      return nullptr;
     if (named(name) && s.delegate_)
       return s.delegate_;
     try {
@@ -50,6 +54,8 @@ PluginRegistration::PluginRegistration() noexcept {
   };
   entries_.api.GetPluginData = [](IDRDYNVC_ENTRY_POINTS *p) -> const ADDIN_ARGV * {
     auto &s = get(p);
+    if (!s.on_thread() || !s.host_)
+      return nullptr;
     try {
       return s.host_->GetPluginData ? s.host_->GetPluginData(s.host_) : nullptr;
     } catch (...) {
@@ -57,10 +63,12 @@ PluginRegistration::PluginRegistration() noexcept {
     }
   };
   entries_.api.GetRdpContext = [](IDRDYNVC_ENTRY_POINTS *p) -> rdpContext * {
-    return get(p).context_;
+    auto &s = get(p);
+    return s.on_thread() && s.host_ ? s.context_ : nullptr;
   };
   entries_.api.GetRdpSettings = [](IDRDYNVC_ENTRY_POINTS *p) -> rdpSettings * {
-    return get(p).context_->settings;
+    auto &s = get(p);
+    return s.on_thread() && s.host_ && s.context_ ? s.context_->settings : nullptr;
   };
   plugin_.api.Initialize = [](IWTSPlugin *p, IWTSVirtualChannelManager *m) -> UINT {
     return get(p).initialize(m);
@@ -107,7 +115,7 @@ PluginRegistration::PluginRegistration() noexcept {
 }
 PluginRegistration::~PluginRegistration() { (void)terminate(); }
 UINT PluginRegistration::install(IDRDYNVC_ENTRY_POINTS *host, PDVC_PLUGIN_ENTRY entry) noexcept {
-  if (!on_thread() || attempted_ || busy_)
+  if (retired() || !on_thread() || attempted_ || busy_)
     return ERROR_INVALID_STATE;
   if (!host || !host->RegisterPlugin || !host->GetPlugin || !host->GetRdpContext ||
       !host->GetRdpSettings)
@@ -139,6 +147,7 @@ UINT PluginRegistration::install(IDRDYNVC_ENTRY_POINTS *host, PDVC_PLUGIN_ENTRY 
   busy_ = true;
   auto result = checked([&] { return entry(&entries_.api); });
   busy_ = false;
+  host_ = nullptr; // Host entry points are stack-borrowed for the entry call only.
   if (result != CHANNEL_RC_OK) {
     delegate_ = nullptr; // The pinned entry cleans its own failure path.
     return result;
@@ -239,6 +248,8 @@ UINT PluginRegistration::disconnect(DWORD code) noexcept {
   return closed ? closed : result;
 }
 UINT PluginRegistration::terminate() noexcept {
+  if (retired())
+    return retirement_result_; // No delegate/gate access on the context-free thread.
   if (!on_thread() || busy_ || !gate_.quiescent())
     return ERROR_INVALID_STATE;
   const auto closed = gate_.close();
@@ -254,6 +265,16 @@ UINT PluginRegistration::terminate() noexcept {
   host_manager_ = nullptr;
   busy_ = false;
   return closed ? closed : result ? result : destroyed ? destroyed : listener_cleanup_;
+}
+UINT PluginRegistration::retire() noexcept {
+  if (retired())
+    return retirement_result_;
+  if (!on_thread() || busy_ || !gate_.quiescent())
+    return ERROR_INVALID_STATE;
+  retirement_result_ = terminate();
+  context_ = nullptr;
+  retired_.store(true, std::memory_order_release);
+  return retirement_result_;
 }
 RdpeiClientContext *PluginRegistration::client() const noexcept {
   return on_thread() && registered_ && delegate_

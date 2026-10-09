@@ -359,12 +359,14 @@ native test injection, with no browser/IPC setting or global provider change.
 One object permits one installation and one channel attempt; duplicate/replacement
 channels fail closed. Same-plugin DVC reopening remains retained follow-up.
 
-The object, RDP context and borrowed host manager must outlive host Terminated
-on the bound RDP thread. Its destructor cannot unregister a stored host pointer.
-Foreign-thread and reentrant lifecycle calls are rejected. This pinned synchronous
+The object and RDP context must outlive host Terminated. Delegated cleanup and
+borrowed host-manager calls belong to the bound RDP thread. Its destructor cannot
+unregister a stored host pointer. Explicit retirement permits a later host
+Terminated no-op on the context-free thread; see the provider lifecycle below.
+Other foreign-thread and reentrant lifecycle calls are rejected. This pinned synchronous
 FreeRDP profile is stronger than Microsoft's general
 [plugin threading contract](https://learn.microsoft.com/en-us/windows/win32/api/tsvirtualchannels/nn-tsvirtualchannels-iwtsplugin).
-Actual drdynvc/Connection thread and lifetime integration remain to be tested.
+Actual remote RDPEI/drdynvc thread and lifetime acceptance remain to be tested.
 
 Public pInterface/context identity is preserved. Optional notifications and public
 manager lookup methods retain host behavior. The wrapped listener routes channels
@@ -456,3 +458,44 @@ responsibility.
 fake-DVC contact tests. Worker/lease/reset/resize wiring, bounded IPC/browser
 capture, actual server/physical touch and timestamp-remoting compatibility remain
 open. No worker capability or channel is enabled by this isolated component.
+
+### Scoped addin provider and worker lifetime
+
+`native/input/addin_provider.*` uses the pinned public provider APIs. FreeRDP's
+client-context creation installs its default process-wide provider, so Connection
+binds the bridge scope **after** context creation/configuration, on its RDP thread,
+before connect. A second active scope is rejected. Provider/context changes and
+scope destruction must be serialized; no callbacks may run concurrently with
+close. This matches one worker process/context per session, not a shared Node host.
+
+Only `rdpei` with the exact dynamic-channel entry ABI is intercepted. Other addin
+names/classes are forwarded to the previously installed provider. Wrong selectors,
+foreign-thread and nested RDPEI lookups return a non-null refusal entry, preventing
+FreeRDP's null-result dynamic-library fallback for that intercepted request. The
+entry verifies the public `GetRdpContext` identity before installing the owned
+registration. No private DVC manager storage, command-line options or library-path
+configuration are exposed. This scope is not a general dynamic-library allowlist.
+
+Entry points supplied by drdynvc are stack-borrowed. The registration proxy clears
+its borrowed host reference when the entry returns, and rejects later proxy
+registration/context/data lookups. The host's retained plugin wrapper is separate.
+
+Connection disconnects on the RDP thread, then closes the provider scope before
+publishing `finished`. Close retires the addin/gate/listener on that thread and
+restores the previous provider, including null. A foreign provider replacement is
+reported as an error and is not overwritten. Reentry/foreign close cannot retire
+active resources. Destruction with a still-bound scope violates its lifetime
+contract and terminates instead of leaving a global dangling callback.
+
+Registration retirement publishes its completed result with release/acquire. Its
+wrapper survives until after context destruction; a later host Terminated reads
+only the published result and never touches the delegate, manager or gate. Cleanup
+errors remain errors; repeated calls do not retry potentially freed handles. This
+permits context creation/free on the owner thread and addin cleanup on the joined
+RDP thread without permitting general asynchronous channel execution.
+
+Worker integration is guarded by `CHANNEL_RDPEI_CLIENT`. `MultiTouchInput` remains
+explicitly false while IPC/control/browser dispatch is absent. No touch capability
+or remote input is newly enabled. [Iteration 27](ITERATION_027.md) separates public
+provider/actual-addin fake-host tests from worker regressions and actual XRDP
+connection evidence. Real server RDPEI host/reassembly/resource audits remain open.

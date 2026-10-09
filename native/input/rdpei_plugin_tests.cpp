@@ -30,6 +30,7 @@ struct Fixture {
   bool partial = true, throw_register = false, throw_notify = false, fail_entry = false;
   bool entry_without_plugin = false, wrong_listener = false;
   bool throw_create = false, throw_destroy = false, wrong_plugin_name = false;
+  IDRDYNVC_ENTRY_POINTS *borrowed_entries = nullptr;
   static inline thread_local Fixture *active_entry = nullptr;
   Fixture() {
     RDP_CLIENT_ENTRY_POINTS points{};
@@ -124,6 +125,7 @@ struct Fixture {
   }
   static UINT VCAPITYPE entry(IDRDYNVC_ENTRY_POINTS *p) {
     auto &f = *active_entry;
+    f.borrowed_entries = p;
     ++f.entries;
     REQUIRE(p->GetRdpContext(p) == f.context.get());
     REQUIRE(p->GetRdpSettings(p) == f.context->settings);
@@ -278,4 +280,46 @@ TEST_CASE("RDPEI registration cleans partial listeners after host callback excep
   REQUIRE(destruction.registered->Terminated(destruction.registered) == ERROR_INTERNAL_ERROR);
   REQUIRE(destruction.destructions == 1);
   REQUIRE(destruction.registration.client() == nullptr);
+}
+TEST_CASE("RDPEI retirement publishes only completed cleanup to the context-free thread") {
+  for (const UINT status : {UINT{CHANNEL_RC_OK}, UINT{ERROR_ACCESS_DENIED}}) {
+    Fixture f;
+    REQUIRE(f.install() == CHANNEL_RC_OK);
+    REQUIRE(f.registered->Initialize(f.registered, &f.manager.api) == CHANNEL_RC_OK);
+    f.destroy_status = status;
+    UINT foreign = CHANNEL_RC_OK;
+    std::thread premature([&] { foreign = f.registration.retire(); });
+    premature.join();
+    REQUIRE(foreign == ERROR_INVALID_STATE);
+    REQUIRE_FALSE(f.registration.retired());
+    REQUIRE(f.terminations == 0);
+    REQUIRE(f.registration.retire() == status);
+    REQUIRE(f.registration.retired());
+    REQUIRE(f.terminations == 1);
+    REQUIRE(f.destructions == 1);
+    REQUIRE(f.registered->pInterface == nullptr);
+    // Mirrors context creation/free on one thread and delegated cleanup on another.
+    std::thread later([&] { foreign = f.registered->Terminated(f.registered); });
+    later.join();
+    REQUIRE(foreign == status);
+    REQUIRE(f.terminations == 1);
+    REQUIRE(f.destructions == 1);
+    REQUIRE(f.registration.retire() == status);
+    REQUIRE(f.install() == ERROR_INVALID_STATE);
+  }
+}
+TEST_CASE("RDPEI entry proxy cannot retain stack-borrowed host entry points") {
+  Fixture f;
+  REQUIRE(f.install() == CHANNEL_RC_OK);
+  REQUIRE(f.borrowed_entries);
+  REQUIRE(f.borrowed_entries->GetPluginData(f.borrowed_entries) == nullptr);
+  REQUIRE(f.borrowed_entries->GetRdpContext(f.borrowed_entries) == nullptr);
+  REQUIRE(f.borrowed_entries->GetRdpSettings(f.borrowed_entries) == nullptr);
+  REQUIRE(f.borrowed_entries->GetPlugin(f.borrowed_entries, RDPEI_DVC_CHANNEL_NAME) == nullptr);
+  REQUIRE(f.borrowed_entries->RegisterPlugin(f.borrowed_entries, RDPEI_DVC_CHANNEL_NAME,
+                                             &f.original) == ERROR_INVALID_STATE);
+  REQUIRE(f.registration.client() == &f.client);
+  REQUIRE(f.registration.retire() == CHANNEL_RC_OK);
+  REQUIRE(f.borrowed_entries->RegisterPlugin(f.borrowed_entries, RDPEI_DVC_CHANNEL_NAME,
+                                             &f.original) == ERROR_INVALID_STATE);
 }

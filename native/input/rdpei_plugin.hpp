@@ -1,5 +1,6 @@
 #pragma once
 #include "dvc_gate.hpp"
+#include <atomic>
 #include <freerdp/client/rdpei.h>
 
 namespace bridge::touch {
@@ -27,6 +28,8 @@ class PluginRegistration {
   bool attempted_ = false, registered_ = false, initialized_ = false;
   bool channel_used_ = false, busy_ = false, listener_ready_ = false;
   UINT listener_cleanup_ = CHANNEL_RC_OK;
+  std::atomic<bool> retired_{false};
+  UINT retirement_result_ = CHANNEL_RC_OK;
   template <class Api> static PluginRegistration &get(Api *api) noexcept;
   bool on_thread() const noexcept;
   UINT initialize(IWTSVirtualChannelManager *) noexcept;
@@ -45,6 +48,11 @@ public:
   // Default loads the pinned static RDPEI entry. Explicit entry is native test injection.
   // An injected entry must preserve the pinned entry's cleanup-on-error contract.
   UINT install(IDRDYNVC_ENTRY_POINTS *, PDVC_PLUGIN_ENTRY entry = nullptr) noexcept;
+  // End all delegated resources on the RDP thread, before joining it. The wrapper
+  // remains alive for the host's later Terminated call on the context-free thread.
+  // No concurrent destruction/callbacks; release/acquire publishes only this no-op.
+  UINT retire() noexcept;
+  bool retired() const noexcept { return retired_.load(std::memory_order_acquire); }
   const DvcGate &gate() const noexcept { return gate_; }
   DvcGate &gate() noexcept { return gate_; }
   RdpeiClientContext *client() const noexcept;

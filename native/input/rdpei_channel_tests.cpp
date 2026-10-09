@@ -1,3 +1,4 @@
+#include "addin_provider.hpp"
 #include "contacts.hpp"
 #include "dvc_gate.hpp"
 #include "rdpei.hpp"
@@ -35,6 +36,8 @@ template <class Api> struct Interface {
 struct ChannelFixture {
   DvcGate gate; // Outlives delegated callback/plugin cleanup in close().
   PluginRegistration registration;
+  AddinProvider provider;
+  bool via_provider = false;
   std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)> context{
       nullptr, freerdp_client_context_free};
   Interface<IDRDYNVC_ENTRY_POINTS> entries{this};
@@ -53,8 +56,9 @@ struct ChannelFixture {
   unsigned destroyed_listeners = 0;
   bool return_listener = true, terminate_during_write = false;
   UINT nested_termination = CHANNEL_RC_OK;
-  ChannelFixture(bool managed = false, UINT status = CHANNEL_RC_OK, bool partial = true)
-      : listener_status(status), return_listener(partial) {
+  ChannelFixture(bool managed = false, UINT status = CHANNEL_RC_OK, bool partial = true,
+                 bool provided = false)
+      : via_provider(provided), listener_status(status), return_listener(partial) {
     try {
       initialize(managed);
     } catch (...) {
@@ -115,7 +119,13 @@ struct ChannelFixture {
       f.lengths[f.count++] = size;
       return CHANNEL_RC_OK;
     };
-    if (managed) {
+    if (via_provider) {
+      REQUIRE(provider.bind(*context, registration) == CHANNEL_RC_OK);
+      const auto entry = freerdp_load_channel_addin_entry(RDPEI_CHANNEL_NAME, nullptr, nullptr,
+                                                          FREERDP_ADDIN_CHANNEL_DYNAMIC);
+      REQUIRE(entry);
+      REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api) == CHANNEL_RC_OK);
+    } else if (managed) {
       REQUIRE(registration.install(&entries.api) == CHANNEL_RC_OK);
     } else {
       const auto entry = freerdp_channels_load_static_addin_entry(
@@ -151,6 +161,8 @@ struct ChannelFixture {
       callback = nullptr;
     }
     if (plugin) {
+      if (via_provider)
+        ok = provider.close() == CHANNEL_RC_OK && ok;
       ok = plugin->Terminated(plugin) == CHANNEL_RC_OK && ok;
       plugin = nullptr;
       rdpei = nullptr;
@@ -221,6 +233,34 @@ void check_touch(std::span<const BYTE> bytes, UINT32 flags, UINT32 x, UINT32 y) 
   REQUIRE(reader.number(4) == flags);
 }
 } // namespace
+TEST_CASE("Scoped public provider routes the actual RDPEI addin through owned transport cleanup") {
+  ChannelFixture f(true, CHANNEL_RC_OK, true, true);
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  REQUIRE(contacts.service() == Drain::idle);
+  REQUIRE(contacts.ready());
+  REQUIRE(contacts.apply({Action::begin, 73, 123, 234}, 1920, 1080) == Result::accepted);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  check_touch(f.packet(1),
+              RDPINPUT_CONTACT_FLAG_DOWN | RDPINPUT_CONTACT_FLAG_INRANGE |
+                  RDPINPUT_CONTACT_FLAG_INCONTACT,
+              123, 234);
+  contacts.reset();
+  REQUIRE(contacts.service() == Drain::pending);
+  REQUIRE(f.pump());
+  REQUIRE(contacts.service() == Drain::ready);
+  REQUIRE(contacts.owned() == 0);
+  check_touch(f.packet(2), RDPINPUT_CONTACT_FLAG_UP | RDPINPUT_CONTACT_FLAG_CANCELED, 123, 234);
+  REQUIRE(f.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(f.registration.retired());
+  UINT terminated = ERROR_INVALID_STATE;
+  std::thread host_free([&] { terminated = f.plugin->Terminated(f.plugin); });
+  host_free.join();
+  REQUIRE(terminated == CHANNEL_RC_OK);
+  REQUIRE(f.destroyed_listeners == 1);
+}
 TEST_CASE("Real RDPEI addin version and API success do not establish server readiness") {
   ChannelFixture f;
   REQUIRE(f.rdpei->GetVersion(f.rdpei) == RDPINPUT_PROTOCOL_V300);

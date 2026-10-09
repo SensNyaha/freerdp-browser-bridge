@@ -9,11 +9,13 @@
 #include "input.hpp"
 #include "jpeg.hpp"
 #include "pipeline_stats.hpp"
+#include "rdpei_plugin.hpp"
 #include "video_encoder.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <freerdp/client.h>
+#include <freerdp/config.h>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -39,6 +41,10 @@ class Connection {
     Connection *owner;
   };
   using ContextPtr = std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)>;
+#ifdef CHANNEL_RDPEI_CLIENT
+  // Declared before context_: the host's final plugin callback must see this wrapper.
+  touch::PluginRegistration touch_registration_;
+#endif
   ContextPtr context_;
   std::function<void(const ipc::Packet &)> send_;
   std::optional<ipc::ConnectionConfig> config_;

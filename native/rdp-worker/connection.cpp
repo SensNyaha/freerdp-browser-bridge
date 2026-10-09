@@ -1,4 +1,5 @@
 #include "connection.hpp"
+#include "addin_provider.hpp"
 #include "cursor_convert.hpp"
 #include "event_pump.hpp"
 #include "gdi_dirty.hpp"
@@ -111,6 +112,8 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_RedirectSmartCards, FALSE);
   boolean(FreeRDP_AudioPlayback, FALSE);
   boolean(FreeRDP_AudioCapture, FALSE);
+  // No touch IPC/control contract is exposed yet. Do not load a raw unmanaged addin.
+  boolean(FreeRDP_MultiTouchInput, FALSE);
 #ifdef CHANNEL_DISP_CLIENT
   boolean(FreeRDP_SupportDisplayControl, TRUE);
 #else
@@ -694,7 +697,16 @@ void Connection::stop() noexcept {
     reason_ = RdpError::protocol;
 }
 void Connection::run() noexcept {
+#ifdef CHANNEL_RDPEI_CLIENT
+  touch::AddinProvider touch_provider;
+#endif
   try {
+#ifdef CHANNEL_RDPEI_CLIENT
+    // client_context_new installs the default process provider. Bind only here,
+    // after context creation/configuration, on the synchronous RDP dispatch thread.
+    if (touch_provider.bind(*context_, touch_registration_) != CHANNEL_RC_OK)
+      throw ProtocolError();
+#endif
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
     std::jthread watchdog([this, deadline](std::stop_token token) {
@@ -810,6 +822,14 @@ void Connection::run() noexcept {
   // Also covers connect failures before PostDisconnect; clear callbacks while context lives.
   if (!display_.unbind())
     reason_ = RdpError::protocol;
+#ifdef CHANNEL_RDPEI_CLIENT
+  // Retire delegated input resources before the RDP thread exits. Context may be
+  // freed later on the owner thread; only the wrapper's published no-op survives.
+  if (touch_provider.close() != CHANNEL_RC_OK) {
+    reason_ = RdpError::protocol;
+    state(RdpState::failed, RdpError::protocol);
+  }
+#endif
   finished_ = true;
   condition_.notify_all();
 }
