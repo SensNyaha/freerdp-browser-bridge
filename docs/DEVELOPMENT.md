@@ -111,6 +111,17 @@ $env:BRIDGE_TEST_BINARY_DIR = 'build/bundled'
 ./scripts/local-pnpm.ps1 test:bundle
 ```
 
+The lifecycle-only Windows foundation can use the same helper:
+
+```powershell
+./scripts/native-build.ps1 foundation
+```
+
+It configures/builds/tests the foundation preset without FreeRDP. Catch2's
+FetchContent base is explicitly kept on the temporary ASCII alias: a preset can
+expand sourceDir to the canonical non-ASCII path, and MSVC's library response-file
+reader then misreads UTF-8 object paths even when compilation itself succeeds.
+
 The helper creates an unused R:–Z: subst alias, initializes the MSVC shell, selects local
 Node.js and removes the alias in finally. Build caches contain this temporary alias; subsequent
 builds must reuse the same available drive letter. Fresh checkouts can use installed Node.js 24
