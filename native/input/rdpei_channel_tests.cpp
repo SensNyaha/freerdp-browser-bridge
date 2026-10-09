@@ -1,4 +1,6 @@
+#include "dvc_gate.hpp"
 #include "rdpei.hpp"
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <catch2/catch_test_macros.hpp>
@@ -29,6 +31,7 @@ template <class Api> struct Interface {
 };
 // Uses the actual linked addin and public DVC ABI. Only the transport endpoint is fake.
 struct ChannelFixture {
+  DvcGate gate; // Outlives delegated callback/plugin cleanup in close().
   std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)> context{
       nullptr, freerdp_client_context_free};
   Interface<IDRDYNVC_ENTRY_POINTS> entries{this};
@@ -110,8 +113,12 @@ struct ChannelFixture {
     REQUIRE(rdpei);
   }
   ~ChannelFixture() { (void)close(); }
-  bool open() {
+  bool open(bool filtered = false) {
     BOOL accepted = TRUE;
+    if (filtered)
+      return gate.open(*context, listener_callback, &channel.api, nullptr, &accepted, &callback) ==
+                 CHANNEL_RC_OK &&
+             accepted && callback;
     return listener_callback->OnNewChannelConnection(listener_callback, &channel.api, nullptr,
                                                      &accepted, &callback) == CHANNEL_RC_OK &&
            accepted && callback;
@@ -280,5 +287,125 @@ TEST_CASE("Real RDPEI write failure retains bridge cleanup ownership") {
   REQUIRE(state.active() == 0);
   REQUIRE(f.count == 3);
   check_touch(f.packet(2), RDPINPUT_CONTACT_FLAG_UP | RDPINPUT_CONTACT_FLAG_CANCELED, 120, 130);
+  REQUIRE(f.close());
+}
+TEST_CASE("DVC gate becomes ready only after the actual RDPEI readiness exchange") {
+  ChannelFixture f;
+  REQUIRE_FALSE(f.gate.ready());
+  REQUIRE_FALSE(f.gate.negotiated());
+  REQUIRE(f.open(true));
+  REQUIRE(f.gate.phase() == Phase::handshake);
+  REQUIRE_FALSE(f.gate.ready());
+  REQUIRE(f.callback->OnOpen(f.callback) == CHANNEL_RC_OK);
+  REQUIRE_FALSE(f.gate.ready());
+  REQUIRE(f.ready() == CHANNEL_RC_OK);
+  REQUIRE(f.gate.ready());
+  REQUIRE(f.gate.negotiated() == Negotiated{RDPINPUT_PROTOCOL_V10, 64});
+  REQUIRE(f.count == 1);
+  REQUIRE(f.close());
+  REQUIRE_FALSE(f.gate.ready());
+  REQUIRE_FALSE(f.gate.negotiated());
+}
+TEST_CASE("DVC gate observes real v1.1 v2 v3 and future-server version negotiation") {
+  for (const auto version : std::array<std::uint32_t, 4>{
+           RDPINPUT_PROTOCOL_V101, RDPINPUT_PROTOCOL_V200, RDPINPUT_PROTOCOL_V300, 0x00040000}) {
+    ChannelFixture f;
+    REQUIRE(f.open(true));
+    std::array<BYTE, 14> bytes{1, 0, 10, 0, 0, 0};
+    const std::size_t length = version >= RDPINPUT_PROTOCOL_V300 ? 14 : 10;
+    bytes[2] = static_cast<BYTE>(length);
+    for (unsigned i = 0; i < 4; ++i)
+      bytes[6 + i] = static_cast<BYTE>(version >> (i * 8));
+    if (length == 14)
+      bytes[10] = SC_READY_MULTIPEN_INJECTION_SUPPORTED;
+    REQUIRE(f.receive(std::span(bytes).first(length)) == CHANNEL_RC_OK);
+    REQUIRE(f.gate.ready());
+    const auto negotiated = f.gate.negotiated();
+    REQUIRE(negotiated);
+    REQUIRE(negotiated->version == (std::min)(version, std::uint32_t{RDPINPUT_PROTOCOL_V300}));
+    REQUIRE(negotiated->contacts == 64);
+    REQUIRE(f.count == 1);
+    REQUIRE(f.close());
+  }
+}
+TEST_CASE("DVC gate blocks upstream periodic contact frames during server suspension") {
+  ChannelFixture f;
+  REQUIRE(f.open(true));
+  REQUIRE(f.ready() == CHANNEL_RC_OK);
+  State state;
+  const State::Sink sink = [&](const auto &event) { return send_rdpei(f.rdpei, event); };
+  REQUIRE(state.apply({Action::begin, 7, 100, 110}, sink, 1920, 1080) == Result::accepted);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  std::array<BYTE, 6> suspend{4, 0, 6, 0, 0, 0};
+  REQUIRE(f.receive(suspend) == CHANNEL_RC_OK);
+  REQUIRE(f.gate.phase() == Phase::suspended);
+  REQUIRE_FALSE(f.gate.ready());
+  REQUIRE(f.gate.negotiated() == Negotiated{RDPINPUT_PROTOCOL_V10, 64});
+  REQUIRE(f.pump());
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  REQUIRE(f.gate.suppressed_frames() == 2);
+  std::array<BYTE, 6> resume{5, 0, 6, 0, 0, 0};
+  REQUIRE(f.receive(resume) == CHANNEL_RC_OK);
+  REQUIRE(f.gate.ready()); // Transport phase only: the owner still has to release its contact.
+  REQUIRE(f.count == 2);   // No suppressed frame is replayed by the gate.
+  REQUIRE(state.active() == 1);
+  REQUIRE(state.release(sink));
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 3);
+  REQUIRE(f.gate.suppressed_frames() == 2);
+  check_touch(f.packet(2), RDPINPUT_CONTACT_FLAG_UP | RDPINPUT_CONTACT_FLAG_CANCELED, 100, 110);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 3);
+  REQUIRE(f.close());
+}
+TEST_CASE("DVC gate latches actual CS_READY and pre-handshake periodic write failures") {
+  SECTION("CS_READY transport error") {
+    const auto fixture = std::make_unique<ChannelFixture>();
+    auto &f = *fixture;
+    REQUIRE(f.open(true));
+    f.write_status = ERROR_INTERNAL_ERROR;
+    REQUIRE(f.ready() == ERROR_INTERNAL_ERROR);
+    REQUIRE(f.gate.phase() == Phase::failed);
+    REQUIRE_FALSE(f.gate.ready());
+    REQUIRE_FALSE(f.gate.negotiated());
+    REQUIRE(f.count == 0);
+    REQUIRE(f.close());
+  }
+  SECTION("a caller bypasses readiness and queues an early contact") {
+    const auto fixture = std::make_unique<ChannelFixture>();
+    auto &f = *fixture;
+    REQUIRE(f.open(true));
+    REQUIRE(send_rdpei(f.rdpei, {Action::begin, 1, 100, 110}));
+    REQUIRE_FALSE(f.pump());
+    REQUIRE(f.gate.phase() == Phase::failed);
+    REQUIRE_FALSE(f.gate.ready());
+    REQUIRE(f.count == 0);
+    REQUIRE(f.close());
+  }
+}
+TEST_CASE("DVC gate rejects malformed and out-of-phase real server messages before FreeRDP") {
+  for (const auto bytes : {std::array<BYTE, 10>{1, 0, 9, 0, 0, 0, 0, 0, 1, 0},
+                           {1, 0, 10, 0, 0, 0, 1, 0, 0, 0},
+                           {1, 0, 10, 0, 0, 0, 0, 0, 3, 0},
+                           {99, 0, 10, 0, 0, 0, 0, 0, 1, 0},
+                           {5, 0, 10, 0, 0, 0, 0, 0, 0, 0}}) {
+    const auto fixture = std::make_unique<ChannelFixture>();
+    auto &f = *fixture;
+    REQUIRE(f.open(true));
+    auto input = bytes;
+    REQUIRE(f.receive(input) == ERROR_INVALID_DATA);
+    REQUIRE(f.gate.phase() == Phase::failed);
+    REQUIRE(f.count == 0);
+    REQUIRE(f.close());
+  }
+  ChannelFixture f;
+  REQUIRE(f.open(true));
+  REQUIRE(f.ready() == CHANNEL_RC_OK);
+  REQUIRE(f.ready() == ERROR_INVALID_DATA); // Duplicate SC_READY cannot change negotiated state.
+  REQUIRE_FALSE(f.gate.ready());
+  REQUIRE_FALSE(f.gate.negotiated());
+  REQUIRE(f.count == 1);
   REQUIRE(f.close());
 }

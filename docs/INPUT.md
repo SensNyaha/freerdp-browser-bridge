@@ -278,7 +278,7 @@ that is treated as failure. Pressure/orientation/hover and pen are not implement
 by this foundation. Upstream encodes its own contact rectangle; the helper requests
 no optional fields and does not implement another RDPEI encoder.
 
-### Open handshake and suspension integration
+### Handshake and suspension integration
 
 RDPEI enters its running phase only after the server/client readiness exchange,
 and can be suspended/resumed by the server; see the
@@ -289,9 +289,60 @@ returns success for a contact before SC_READY. DVC ChannelConnected also precede
 that exchange. None of these is a valid negotiated-readiness gate.
 
 Consequently the foundation does not activate touch in Connection or infer support
-from the compiled channel inventory. Before enabling it, implement an observable
-readiness gate, suspend/resume handling including upstream periodic contact frames,
+from the compiled channel inventory. [Iteration 23](ITERATION_023.md) records the
+initial state/API foundation; the observable transport gate below is the next
+isolated component. Plugin/worker ownership, contact cleanup during suspension,
 bounded/versioned private IPC, current-control-lease delivery and browser contact
-capture/cancellation. Actual Windows/XRDP touch and physical-device acceptance
-remain open. [Iteration 23](ITERATION_023.md) separates pure state tests, mocked
-public calls and actual linked-addin PDU fixtures from remote RDP integration.
+capture/cancellation remain required before enabling input. Actual Windows/XRDP
+touch and physical-device acceptance remain open.
+
+### Public DVC transport gate
+
+`native/input/dvc_gate.*` wraps one public `IWTSVirtualChannel` and its delegated
+`IWTSVirtualChannelCallback`. It does not register a plugin or enable a channel in
+the worker. It borrows the transport and owns the delegated callback through
+OnClose. The adapter must outlive host callbacks, close on its bound RDP thread
+before plugin termination, and rebind only after the host relinquishes the old
+callback. Synchronous dynamic channels are required; asynchronous channel/update
+modes are rejected. The pinned FreeRDP public DVC/client headers remain the ABI
+authority; no dependency patch or version change is involved.
+
+Its fixed state is closed, handshake, running, suspended or failed. Running is
+published only after a valid SC_READY, a matching CS_READY successfully written to
+the borrowed transport, and successful delegated receive completion. Negotiated
+version and upstream contact count are then retained; this is native transport
+acceptance, not application delivery acknowledgement. Server v1.0/v1.1/v2/v3 are
+supported; a future version uses the pinned addin's v3 ceiling. Only the known
+CS_READY flags and 1..64 upstream contacts are accepted; bridge contact state still
+has its separate ten-contact limit. See
+[CS_READY fields](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpei/cc0712ec-3521-4ad3-9cea-91e59bea6eb6).
+
+Already reassembled server PDUs are checked before delegated parsing: exact
+six-byte framing, total length 6..14, valid SC_READY version/shape and six-byte
+SUSPEND/RESUME in the running/suspended phase. Unknown, duplicate readiness and
+out-of-phase messages fail closed. Outbound framing is limited to 8,192 bytes
+before buffer inspection. CS_READY fields are inspected; TOUCH/PEN body encoding
+remains upstream's responsibility. The adapter allocates no packet storage and
+does not impose limits on upstream DVC reassembly itself.
+
+SUSPEND closes the transport gate before delegation. Periodic TOUCH/PEN output is
+discarded with a saturating counter, without a deferred queue, replay or changing
+the global FreeRDP_SuspendInput setting. Successful RESUME reopens **transport
+only**. This follows the protocol's Boolean
+[input transmission suspension](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpei/7dba715a-f0c9-4c5a-a52d-1eb9f7de60c6).
+The adapter does not own `touch::State` or stop the upstream periodic encoder.
+An owner must cancel/reset and drain outstanding contact state, reconcile the
+current control lease and publish input readiness only after that cleanup; held
+upstream state must not become a stale gesture on resume. That owner integration
+is still open, so this component is not linked into rdp-worker.
+
+Transport errors and delegated exceptions latch failure and remove negotiated
+readiness. Close invalidates state immediately; if a delegated method is active,
+its potentially self-owning callback is destroyed only after that method returns.
+Close is idempotent. Foreign-thread operations are rejected. No WS/private IPC or
+capability contract changes in this block.
+
+[Iteration 24](ITERATION_024.md) distinguishes fake public-interface tests and
+actual linked RDPEI addin tests with a fake DVC endpoint from remote RDP/device
+acceptance. Bounded header mutation tests are deterministic checks, not a
+libFuzzer/ASan campaign or a physical touch test.
