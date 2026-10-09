@@ -42,6 +42,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   bounded request/result correlation, observed display generations and Node supervision pass.
   Actual XRDP negotiated caps, accepted 1920×1080 → 1280×720 → 1920×1080 and delivered
   fresh AVC IDRs plus resized JPEG. Public browser resize/lease/media ownership remains open.
+  Private Display Control IPC implementation commit: `098ddab`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,

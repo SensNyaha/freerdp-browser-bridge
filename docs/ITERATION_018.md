@@ -4,6 +4,7 @@ Date: 2026-10-09. Scope: SPECIFICATION §2.3 / §2.10, MEDIA_PIPELINE §10,
 ARCHITECTURE §4 and accepted ADR-003 / ADR-008 / ADR-009. Original requirements
 retained. This completes the private native/Node request block; public browser
 dynamic-resolution acceptance remains open.
+Implementation commit: `098ddab`.
 
 ## Delivered
 
