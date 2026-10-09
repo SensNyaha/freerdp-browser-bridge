@@ -76,6 +76,7 @@ function resize(width, height, deviceScale = 1) {
   )
     return Promise.reject(new Error('Control unavailable'));
   if (session.resizeRequest) return Promise.resolve('busy');
+  session.disposeInput.reset();
   const seq = session.controlSequence++;
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -219,6 +220,7 @@ function attach(created, options = {}) {
       session === current &&
       displayInputReady(session),
     () => detach(),
+    () => !session.closed && session.connected && session === current,
   );
   status.textContent = 'Подключение';
   const fail = () => {
@@ -248,7 +250,14 @@ function attach(created, options = {}) {
         status.textContent = message.data.state;
         updateResize();
       } else if (['display.info', 'display.resize'].includes(message.type)) {
-        session.display = displayState(message.data, session.display);
+        const observed = displayState(message.data, session.display);
+        if (
+          observed.resizing ||
+          (session.display &&
+            observed.generation !== session.display.generation)
+        )
+          session.disposeInput.reset();
+        session.display = observed;
         stats.displayGeneration = session.display.generation;
         updateResize();
       } else if (message.type === 'display.resize.result') {

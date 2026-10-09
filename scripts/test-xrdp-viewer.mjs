@@ -80,6 +80,7 @@ for (const [url, name, type] of [
   ['/harness/', 'index.html', 'text/html'],
   ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
   ['/harness/input.js', 'input.js', 'text/javascript'],
+  ['/harness/modifiers.js', 'modifiers.js', 'text/javascript'],
   ['/harness/cursor.js', 'cursor.js', 'text/javascript'],
   ['/harness/display.js', 'display.js', 'text/javascript'],
 ]) {

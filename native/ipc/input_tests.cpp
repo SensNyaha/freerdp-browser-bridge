@@ -65,3 +65,28 @@ TEST_CASE("Failed releases are retried without skipping other pressed keys") {
   }));
   REQUIRE(attempts == 3);
 }
+TEST_CASE("Toggle synchronization preserves tracked physical modifier sides and release retry") {
+  input::State state;
+  std::vector<input::Event> sent;
+  const input::State::Sink sink = [&](const auto &event) {
+    sent.push_back(event);
+    return true;
+  };
+  REQUIRE(state.apply({input::Type::key, 1, 0x1d}, sink, 1920, 1080));
+  REQUIRE(state.apply({input::Type::key, 1, 0x11d}, sink, 1920, 1080));
+  for (std::uint16_t mask = 0; mask <= 7; ++mask) {
+    REQUIRE(state.apply({input::Type::sync, 0, mask}, sink, 1920, 1080));
+    REQUIRE(sent.back().type == input::Type::sync);
+    REQUIRE(sent.back().a == mask);
+    REQUIRE(sent.back().flags == 0);
+  }
+  REQUIRE_FALSE(state.apply({input::Type::sync, 0, 7}, [](const auto &) { return false; }, 1, 1));
+  REQUIRE(state.release(sink));
+  REQUIRE(sent.size() == 12);
+  REQUIRE(sent[10].a == 0x1d);
+  REQUIRE(sent[11].a == 0x11d);
+  REQUIRE(sent[10].flags == 0);
+  REQUIRE(sent[11].flags == 0);
+  REQUIRE(state.release(sink));
+  REQUIRE(sent.size() == 12);
+}

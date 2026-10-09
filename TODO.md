@@ -25,8 +25,8 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 100/100 Node tests;
-  CTest/Catch2: 20 IPC/input/state cases / 357 assertions, 2 AVC cases / 19 assertions,
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 108/108 Node tests;
+  CTest/Catch2: 21 IPC/input/state cases / 400 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -57,6 +57,11 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   resource limits and soak acceptance remain open. Broader display layouts are
   excluded from current scope by ADR-011.
   Public Display Control/browser implementation commit: `78fbb67`.
+  [Modifier/focus synchronization evidence](docs/ITERATION_020.md): eight new pure /
+  Edge-fake cases verify bounded modifier recovery, observed physical sides,
+  lock ordering, composition and reset during a resize pause. Native tracking
+  preserves both modifier sides across synchronize calls. Actual remote keyboard /
+  layouts remain unverified; no broader input acceptance is claimed.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -159,7 +164,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 [Launch commands](docs/DEVELOPMENT.md#manual-windowsxrdp-viewer).
 
 - [~] IN PROGRESS — Physical set-1 mapping and extended left/right/numpad events implemented; native/Node/Edge fixture tests pass. Remote keyboard-layout gate pending. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_008.md).
-- [ ] Modifier state synchronization.
+- [~] IN PROGRESS — Browser modifiers reconcile before focused input; observed left/right sides survive canvas focus/resize pauses, missed releases are repaired, and Caps/Num/Scroll Lock synchronize after physical lock edges. Bounded pure/native and Edge/fake-control fixtures pass; actual remote layouts, AltGraph portability and no-stuck-key acceptance remain open. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_020.md).
 - [ ] Unicode text fallback/IME pathway.
 - [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK verified; actual remote buttons pending.
 - [~] IN PROGRESS — Both wheel axes implemented with bounded deltas; control/Edge fixture tests pass. Actual remote wheel behavior and precise trackpad accumulation pending.

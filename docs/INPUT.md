@@ -8,7 +8,8 @@ The linked Windows worker advertises `basicInput` (HELLO bit 5); the foundation
 worker does not. This capability covers physical set-1 keyboard events, absolute
 mouse coordinates, five buttons, vertical/horizontal wheel, toggle synchronization
 and release of tracked pressed input. It does not imply Unicode/IME, RDPEI touch,
-pen or complete focus/modifier reconciliation. `rdp` remains false.
+pen or complete remote keyboard-layout acceptance. Browser focus/modifier and
+toggle reconciliation is implemented as described below; `rdp` remains false.
 
 ## Control channel
 
@@ -31,13 +32,16 @@ to the current desktop dimensions. Button numbers follow DOM: 0 left, 1 middle,
 vertical means upward, positive horizontal means rightward. The harness sends
 120-unit steps and reverses DOM vertical direction; precise trackpad accumulation
 is pending. Toggle bits are 1 scroll lock, 2 num lock, 4 caps lock. Hosts can send
-`input.sync`; the harness does not yet reconcile toggle/modifier state automatically.
+`input.sync`; the harness automatically reconciles browser-reported toggles and
+modifiers before focused input. Lock key edges precede their synchronize event,
+so synchronization does not set the new lock value before the physical key toggles it.
 
 `code` identifies a physical key, preserving left/right modifiers and extended
 navigation/numpad keys; it does not translate a logical character using a US
 layout. The accepted table is in `packages/protocol/src/input.ts`. Pause,
 international keys beyond IntlBackslash and consumer/media keys remain unsupported.
-The harness ignores unsupported physical codes and composition events. Remote
+The harness ignores unsupported physical text keys and composing character events;
+modifier transitions/reconciliation remain active during composition. Remote
 keyboard layout selection, Unicode text and IME require subsequent work.
 
 No positive application-level ACK is emitted on the browser control channel.
@@ -92,10 +96,51 @@ means native input queue overflow. ERROR 8 means input was paused for a queued/a
 private Display Control request. Native tracking releases held input before layout,
 rejects non-reset records without replay and resumes before the completion reply.
 Reset remains accepted. WorkerProcess exposes a nonfatal INPUT_DISPLAY_TRANSITION;
-public browser pause/error handling remains part of the pending resize integration.
+public control delivers nonfatal `input.paused`, and the viewer waits for matching
+actual/rendered display state before resuming regular input.
 ACK/error echoes the nonzero request ID. [Display contract](DISPLAY_CONTROL.md).
 
 Verification is separated: native state/record tests, fake-backend ownership and
 ordering tests, Edge DOM tests, and a real XRDP movement-only smoke test.
 See [iteration evidence](ITERATION_008.md). Actual remote keyboard, buttons,
 wheel, keyboard layouts and no-stuck-keys acceptance remain pending.
+
+## Browser modifier/focus reconciliation
+
+The harness observes only the eight Shift/Control/Alt/Meta physical sides in its
+document, without forwarding events outside canvas focus or recording character
+data. It keeps at most eight observed and eight remote modifier slots plus one
+lock snapshot. Before focused key/pointer/wheel input, aggregate DOM flags release
+tracked modifiers whose keyup was missed and restore held modifiers before the
+user's event. When observed in the document, left/right sides are preserved across
+canvas focus changes and resize input pauses. Window blur/page hiding discards
+observations; disposal removes the capture listeners.
+
+If a modifier was held outside the browser and its side has never been observed,
+DOM aggregate flags cannot identify that side. The documented fallback is left
+Shift/Control/Alt/Meta; a logical AltGraph snapshot uses right Alt. Explicit physical
+edges replace inferred sides and preserve both known physical sides. Ctrl is never
+invented merely because AltGraph is active; a browser reporting an actual composite
+Ctrl+Alt snapshot retains both. This is physical-state recovery, not a character
+or keyboard-layout translation. The [W3C UI Events contract](https://www.w3.org/TR/uievents/)
+defines aggregate state, sided keyboard events and platform-dependent AltGraph behavior.
+
+Caps/Num/Scroll Lock use only KeyboardEvent.getModifierState snapshots; pointer
+events cannot overwrite the lock cache. The first keyboard event after reset
+synchronizes even an all-off mask, changes synchronize once, and lock key edges
+force a following synchronization even when the cached mask repeats. Browsers /
+platforms not reporting a lock state cannot establish its correctness; no Kana
+lock or cross-platform layout acceptance is claimed.
+
+Transitions flush older coalesced motion. Reset discards unsent motion and clears
+remote modifier/toggle state; a canvas/resize reset can retain locally observed
+physical sides for the next focused snapshot. The installInput disposer exposes
+`reset()`, and an optional fifth predicate allows reset while regular input is
+paused. The viewer resets before its resize request and on pending/new observed
+display epochs. Reset is still accepted by the session/native resize path, and
+regular input resumes only after actual/rendered display state agrees.
+
+No new WS/IPC input type or capability bit is added: the existing bounded
+`input.key`, `input.sync`, `input.reset` and HELLO basicInput are used.
+[Iteration 20](ITERATION_020.md) separates pure reconciliation, fake control/Edge
+and native state fixtures from actual XRDP movement/reset-only regression.
