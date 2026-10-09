@@ -113,6 +113,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   dispatch and advertise no touch capability. Worker/control/browser wiring and
   remote touch acceptance remain open.
   Bundled Node 129/129, CTest 10/10, foundation CTest 4/4 and relocation 1/1 pass.
+  Bounded touch IPC codec implementation commit: `156b5d4`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,

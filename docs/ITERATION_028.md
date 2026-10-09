@@ -3,6 +3,7 @@
 Date: 2026-10-09. Implements the isolated touch-record validation part of
 SPECIFICATION §2.5, ARCHITECTURE §7 and PROTOCOL §6 / Stage 5 under
 ADR-008 / ADR-009 / ADR-011. No FreeRDP pin or original scope changes.
+Implementation commit: `156b5d4`.
 
 ## Delivered
 
