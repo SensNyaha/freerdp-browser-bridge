@@ -16,6 +16,8 @@ import type {
   MediaCodec,
   InputEvent,
   PipelineStats,
+  DisplayState,
+  DisplayResizeResult,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -36,6 +38,9 @@ export class NativeSessionWorker implements SessionWorker {
     });
     this.worker.on('cursor', (cursor: CursorState) => {
       if (!this.closing) this.events.emit('cursor', cursor);
+    });
+    this.worker.on('display', (display: DisplayState) => {
+      if (!this.closing) this.events.emit('display', display);
     });
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
@@ -117,6 +122,28 @@ export class NativeSessionWorker implements SessionWorker {
   decideCertificate(prompt: CertificatePrompt, accept: boolean): Promise<void> {
     return this.worker.decideCertificate(prompt, accept);
   }
+  onDisplay(listener: (state: DisplayState) => void): () => void {
+    this.events.on('display', listener);
+    return () => {
+      this.events.off('display', listener);
+    };
+  }
+  async resizeDisplay(
+    width: number,
+    height: number,
+  ): Promise<DisplayResizeResult> {
+    try {
+      if (this.closing) return 'disconnected';
+      return await this.worker.resizeDisplay(width, height);
+    } catch (error) {
+      if (
+        error instanceof WorkerError &&
+        error.code === 'DISPLAY_NOT_IMPLEMENTED'
+      )
+        throw new SessionError('DISPLAY_NOT_IMPLEMENTED');
+      throw new SessionError('DISPLAY_FAILED');
+    }
+  }
   async captureFrame(
     sinceRevision: bigint,
     options?: CaptureOptions,
@@ -150,10 +177,15 @@ export class NativeSessionWorker implements SessionWorker {
       if (this.closing) throw new SessionError('INPUT_NOT_CONNECTED');
       await this.worker.sendInput(event);
     } catch (error) {
+      if (error instanceof SessionError) throw error;
       throw new SessionError(
-        error instanceof WorkerError && error.code === 'INPUT_NOT_IMPLEMENTED'
-          ? 'INPUT_NOT_IMPLEMENTED'
-          : 'INPUT_FAILED',
+        error instanceof WorkerError &&
+        error.code === 'INPUT_DISPLAY_TRANSITION'
+          ? 'INPUT_DISPLAY_TRANSITION'
+          : error instanceof WorkerError &&
+              error.code === 'INPUT_NOT_IMPLEMENTED'
+            ? 'INPUT_NOT_IMPLEMENTED'
+            : 'INPUT_FAILED',
       );
     }
   }

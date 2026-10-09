@@ -22,6 +22,10 @@ export class FakeSessionWorker extends EventEmitter {
     this.on('cursor', listener);
     return () => this.off('cursor', listener);
   }
+  onDisplay(listener) {
+    this.on('display', listener);
+    return () => this.off('display', listener);
+  }
   async start(config, signal) {
     this.started++;
     this.received = config;

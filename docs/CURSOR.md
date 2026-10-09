@@ -86,6 +86,14 @@ desktop when visible and the expected shape has arrived. Default state restores
 the browser system cursor. Detach removes the canvas and event listeners;
 reattachment starts a fresh shape sequence and replays the retained shape.
 
+On a display VIDEO_CONFIG reset, the overlay remaps the last local browser
+pointer through the new canvas geometry and hotspot scale. An old server-only
+position is hidden until a fresh local position; out-of-desktop server coordinates
+cannot show an overlay outside the framebuffer. Shape identity/sequence remains
+independent and does not reset with video. The Edge fixture checks stationary local
+pointer mapping through a same-CSS-size canvas resize and restoration; see
+[iteration 19](ITERATION_019.md).
+
 ## Acceptance limits
 
 Native state/parser and linked public conversion tests are separate from fake

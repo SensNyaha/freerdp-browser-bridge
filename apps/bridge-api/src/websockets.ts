@@ -4,9 +4,10 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
 import { installMedia } from './media.js';
+import { displayData } from './display.js';
 import { normalizeInput } from './input.js';
 import type { MediaMetrics } from './metrics.js';
-import type { CursorState } from '@freerdp-bridge/protocol';
+import type { CursorState, DisplayState } from '@freerdp-bridge/protocol';
 import {
   publicSessionError,
   type SessionManager,
@@ -51,6 +52,16 @@ const certificateResponse = TypeCompiler.Compile(
     { additionalProperties: false },
   ),
 );
+const displayRequest = TypeCompiler.Compile(
+  Type.Object(
+    {
+      width: Type.Integer({ minimum: 200, maximum: 3840 }),
+      height: Type.Integer({ minimum: 200, maximum: 2160 }),
+      deviceScale: Type.Number({ minimum: 0.1, maximum: 4 }),
+    },
+    { additionalProperties: false },
+  ),
+);
 
 export function installSessionWebSockets(
   server: FastifyInstance,
@@ -79,6 +90,7 @@ export function installSessionWebSockets(
       alive: boolean;
       channel: 'control' | 'media';
       cursor?: (state: CursorState) => void;
+      display?: (state: DisplayState, resizing: boolean) => void;
     }
   >();
   let stopping = false;
@@ -116,6 +128,12 @@ export function installSessionWebSockets(
       if (value.type === 'cursor.state' && value.cursor) {
         if (entry.channel === 'control') sendCursor(ws, value.cursor);
         else entry.cursor?.(value.cursor);
+        continue;
+      }
+      if (value.display) {
+        if (entry.channel === 'control')
+          send(ws, value.type, displayData(value.display, value.resizing));
+        else entry.display?.(value.display, value.resizing ?? false);
         continue;
       }
       if (entry.channel === 'control')
@@ -253,9 +271,12 @@ export function installSessionWebSockets(
             mediaMetrics,
           );
           connections.get(ws)!.cursor = media.cursor;
+          connections.get(ws)!.display = media.display;
           return;
         }
         send(ws, 'session.state', lease.session);
+        if (lease.display)
+          send(ws, 'display.info', displayData(lease.display, lease.resizing));
         if (lease.cursor) sendCursor(ws, lease.cursor);
         if (lease.certificate)
           send(ws, 'certificate.prompt', lease.certificate);
@@ -317,7 +338,12 @@ export function installSessionWebSockets(
             } else {
               void lease.sendInput(input).catch((error: unknown) => {
                 if (ws.readyState !== WebSocket.OPEN) return;
-                send(ws, 'session.error', publicSessionError(error).failure);
+                const failure = publicSessionError(error).failure;
+                if (failure.code === 'INPUT_DISPLAY_TRANSITION') {
+                  send(ws, 'input.paused', failure);
+                  return;
+                }
+                send(ws, 'session.error', failure);
                 ws.close(1008, 'input unavailable');
               });
             }
@@ -325,6 +351,45 @@ export function installSessionWebSockets(
           }
           if (++commands > 32) {
             ws.close(1008, 'message rate limit');
+            return;
+          }
+          if (data.type === 'display.resize.request') {
+            const requestSeq = data.seq;
+            if (!displayRequest.Check(data.data)) {
+              send(ws, 'display.resize.result', {
+                requestSeq,
+                status: 'invalid',
+                error: {
+                  code: 'DISPLAY_INVALID_REQUEST',
+                  message: 'Display layout is invalid or unsupported',
+                  retryable: false,
+                },
+              });
+            } else {
+              void lease
+                .resizeDisplay(data.data)
+                .then((status) => {
+                  send(ws, 'display.resize.result', { requestSeq, status });
+                })
+                .catch((error: unknown) => {
+                  const failure = publicSessionError(error).failure;
+                  const status =
+                    failure.code === 'DISPLAY_INVALID_REQUEST'
+                      ? 'invalid'
+                      : failure.code === 'DISPLAY_NOT_IMPLEMENTED'
+                        ? 'unavailable'
+                        : ['ATTACH_INVALID', 'DISPLAY_NOT_CONNECTED'].includes(
+                              failure.code,
+                            )
+                          ? 'disconnected'
+                          : 'send-failed';
+                  send(ws, 'display.resize.result', {
+                    requestSeq,
+                    status,
+                    error: failure,
+                  });
+                });
+            }
             return;
           }
           if (data.type === 'certificate.response') {

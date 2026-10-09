@@ -54,6 +54,8 @@ Required server events include:
 - `certificate.prompt`
 - `display.info`
 - `display.resize`
+- `display.resize.result` (implemented experimental Display Control slice)
+- `input.paused` (nonfatal display transition)
 - `cursor.position`
 - `cursor.visibility`
 - `clipboard.offer`
@@ -79,6 +81,59 @@ Required client commands include:
 
 Every command has a size limit. Unknown `type` is rejected with a protocol error but must not crash the session.
 
+### Experimental Display Control (v1 additive extension)
+
+Session creation must explicitly set `display.dynamicResolution=true`. A compiled
+`displayControl` capability alone does not establish remote negotiation. Current
+requests support one primary monitor, orientation 0 and scale 100%:
+
+```json
+{
+  "v": 1,
+  "type": "display.resize.request",
+  "seq": 482,
+  "ts": 1791400000124,
+  "data": { "width": 1280, "height": 720, "deviceScale": 1 }
+}
+```
+
+The control envelope retains its 4096-byte maximum and command rate limit.
+No additional request fields are accepted. Width/height must be even integers
+within 200..3840 / 200..2160, also subject to negotiated server area. Request
+`deviceScale` is a ratio; values other than 1 are explicitly invalid for this
+provider. Unknown rotation/multimonitor settings are not silently ignored.
+
+Only the current control lease may request a layout. One request is reserved per
+session, including while previously accepted input drains. Tracked input is reset
+before dispatch. New non-reset input is paused, not replayed; `input.paused` carries
+the fixed `INPUT_DISPLAY_TRANSITION` failure and does not close the connection.
+Reset and detach remain available. Dispatch and result delivery recheck authority;
+detaching before dispatch cancels it. A sent layout can still change the remote
+desktop after detachment and its observation goes to the current attachment.
+
+`display.resize.result` uses the server event envelope and data
+`{ "requestSeq": 482, "status": "applied" }`. Status is one of `applied`,
+`unchanged`, `unavailable`, `invalid`, `busy`, `send-failed`, `timeout`,
+`disconnected`; a rejected command may also carry a fixed `error` object.
+Applied requires a newer server-observed generation matching requested dimensions.
+Timeout retains actual geometry; a later server observation remains authoritative.
+The native confirmation deadline is 5 seconds, private IPC 6.5 seconds, and the
+trusted SessionWorker boundary 7 seconds. A hung backend fails the session before
+its reservation is freed; no overlapping retry is dispatched.
+
+`display.info` replays the latest actual state on control attachment and on media
+attachment after explicit `media.hello.data.display=true` negotiation;
+`display.resize` announces a newer framebuffer generation. Their data contains
+decimal-string u64 `generation` and `framebufferRevision`, actual `width`/`height`,
+boolean `dynamicResolution`, `negotiated` and `resizing`, negotiated `maxWidth`,
+`maxHeight`, `maxArea`, plus `pixelFormat: "BGRA8"`, `orientation: 0`,
+`desktopScale: 100`, `deviceScale: 100`. Event scale values are percentages.
+When negotiation is unavailable the three maxima are zero. Generation also
+advances for a same-size framebuffer reset; caps/pending-state updates reuse it.
+The revision is the generation's native dirty floor, not an encoded-frame counter.
+Geometry/floor cannot change within an epoch. No request optimistically changes
+actual dimensions or canvas size. See [Display Control](docs/DISPLAY_CONTROL.md).
+
 ## 4. Media WebSocket
 
 Endpoint:
@@ -88,6 +143,20 @@ wss://host/v1/sessions/:id/media?token=<attach-token>
 ```
 
 Use binary messages only after initial JSON negotiation. The browser announces codecs it can decode; server chooses one supported by worker/build policy.
+
+The experimental display extension is explicitly negotiated with optional boolean
+`media.hello.data.display` (default false), and confirmed by `media.ready.data.display`.
+Only opted-in media clients receive the small JSON display events above,
+ordered before the next binary video configuration. An already transmitted access
+unit retains its ACK/reset credit and deadline across a generation change. An
+old-generation capture that has not been transmitted is dropped without consuming
+binary sequence or credit. The next unit requires DISCONTINUITY configuration and
+an AVC IDR, even for a same-size reset. The RWB1 header remains v1. The browser
+finishes the previous transmitted decode/ACK, then replaces the decoder on config.
+Input stays paused until actual metadata and the rendered epoch/dimensions match;
+ordering between the separate control and media sockets is not assumed.
+Media clients omitting this flag retain the original binary-only post-negotiation
+video contract. Internal epoch/ACK safeguards apply to both client modes.
 
 ### Binary record header
 

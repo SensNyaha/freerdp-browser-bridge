@@ -24,10 +24,27 @@ export function installCursor(desktop) {
     hotY = 0,
     x = 0,
     y = 0;
+  let localPosition;
   const update = () => {
     if (disposed) return;
     desktop.style.cursor = visible && system ? 'default' : 'none';
     const bounds = desktop.getBoundingClientRect();
+    if (localPosition && inside && bounds.width && bounds.height) {
+      x = Math.max(
+        0,
+        Math.min(
+          desktop.width - 1,
+          ((localPosition.x - bounds.left) * desktop.width) / bounds.width,
+        ),
+      );
+      y = Math.max(
+        0,
+        Math.min(
+          desktop.height - 1,
+          ((localPosition.y - bounds.top) * desktop.height) / bounds.height,
+        ),
+      );
+    }
     const ready =
       visible &&
       !system &&
@@ -35,7 +52,11 @@ export function installCursor(desktop) {
       expectedShape === shapeId &&
       shapeId !== 0n &&
       desktop.width > 0 &&
-      desktop.height > 0;
+      desktop.height > 0 &&
+      x >= 0 &&
+      x < desktop.width &&
+      y >= 0 &&
+      y < desktop.height;
     overlay.style.display = ready ? 'block' : 'none';
     if (!ready) return;
     const sx = bounds.width / desktop.width,
@@ -51,20 +72,7 @@ export function installCursor(desktop) {
     const bounds = desktop.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
     inside = true;
-    x = Math.max(
-      0,
-      Math.min(
-        desktop.width - 1,
-        ((event.clientX - bounds.left) * desktop.width) / bounds.width,
-      ),
-    );
-    y = Math.max(
-      0,
-      Math.min(
-        desktop.height - 1,
-        ((event.clientY - bounds.top) * desktop.height) / bounds.height,
-      ),
-    );
+    localPosition = { x: event.clientX, y: event.clientY };
     update();
   };
   const leave = () => {
@@ -77,6 +85,11 @@ export function installCursor(desktop) {
   const resize = new ResizeObserver(update);
   resize.observe(desktop);
   return {
+    displayReset() {
+      // Local pointer coordinates can be mapped to the new canvas; old server coordinates cannot.
+      if (!localPosition) inside = false;
+      update();
+    },
     visibility(data) {
       if (
         typeof data.visible !== 'boolean' ||
@@ -100,6 +113,7 @@ export function installCursor(desktop) {
         throw new Error('Invalid cursor position');
       x = data.x;
       y = data.y;
+      localPosition = undefined;
       update();
     },
     shape(bytes) {

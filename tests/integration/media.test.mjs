@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
 import { cursorState } from '../fixtures/cursor.mjs';
+import { display } from '../fixtures/display.mjs';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
 )('ws');
@@ -56,7 +57,7 @@ class MediaWorker extends FakeSessionWorker {
     return frame;
   }
 }
-async function setup(run, quality) {
+async function setup(run, quality, dynamicResolution = false) {
   const root = await mkdtemp(join(tmpdir(), 'bridge-media-'));
   const worker = new MediaWorker();
   const server = await createSessionServer({
@@ -80,6 +81,7 @@ async function setup(run, quality) {
       payload: {
         target: { host: 'fake.example.test' },
         auth: { username: 'fixture' },
+        ...(dynamicResolution ? { display: { dynamicResolution: true } } : {}),
         ...(quality ? { quality } : {}),
       },
     });
@@ -108,13 +110,239 @@ async function setup(run, quality) {
     await rm(root, { recursive: true, force: true, maxRetries: 3 });
   }
 }
-const hello = (ws, codecs = ['jpeg']) =>
-  ws.send(JSON.stringify({ v: 1, type: 'media.hello', data: { codecs } }));
+const hello = (ws, codecs = ['jpeg'], display = false) =>
+  ws.send(
+    JSON.stringify({
+      v: 1,
+      type: 'media.hello',
+      data: { codecs, ...(display ? { display: true } : {}) },
+    }),
+  );
 const acknowledge = (ws, sequence) =>
   ws.send(JSON.stringify({ v: 1, type: 'media.ack', data: { sequence } }));
 const binary = (messages) => messages.filter(Buffer.isBuffer);
 const reset = (ws, sequence) =>
   ws.send(JSON.stringify({ v: 1, type: 'media.reset', data: { sequence } }));
+
+test('fake display/media: a new epoch keeps the transmitted ACK and forces config/IDR, including same-size reset', async () => {
+  for (const codec of ['jpeg', 'h264'])
+    for (const width of [640, 800]) {
+      await setup(async ({ ws, messages, worker }) => {
+        worker.avcEnabled = true;
+        worker.emit('display', display({ dynamicResolution: false }));
+        hello(ws, [codec], true);
+        await eventually(() => binary(messages).length === 2);
+        const captures = worker.requests;
+        worker.width = width;
+        worker.revision = 2n;
+        worker.emit(
+          'display',
+          display({
+            dynamicResolution: false,
+            generation: 2n,
+            framebufferRevision: 2n,
+            width,
+          }),
+        );
+        await eventually(() =>
+          messages.some((m) => m.type === 'display.resize'),
+        );
+        await delay(100);
+        assert.equal(worker.requests, captures);
+        assert.equal(binary(messages).length, 2);
+        acknowledge(ws, 1); // Previous epoch still owns its transmitted unit.
+        await eventually(() => binary(messages).length === 4);
+        const records = binary(messages);
+        assert.equal(records[2][5], 1);
+        assert.equal(records[2].readUInt16BE(6), 2);
+        assert.equal(records[2].readUInt16BE(30), width);
+        assert.equal(records[3].readUInt16BE(6), 3);
+        assert.equal(records[3].readUInt32BE(12), 3);
+        if (codec === 'h264') assert.equal(worker.forces.at(-1), true);
+        acknowledge(ws, 3);
+        await delay(100);
+        assert.equal(ws.readyState, WebSocket.OPEN);
+      });
+    }
+});
+test('fake display/media: a captured but unsent old-epoch frame is discarded without consuming sequence or render credit', async () => {
+  for (const codec of ['jpeg', 'h264']) {
+    await setup(async ({ ws, messages, worker }) => {
+      worker.avcEnabled = true;
+      worker.emit('display', display({ dynamicResolution: false }));
+      const capture = worker.captureFrame.bind(worker);
+      let unblock,
+        started = false;
+      worker.captureFrame = async (...args) => {
+        const frame = await capture(...args);
+        if (!started) {
+          started = true;
+          await new Promise((resolve) => {
+            unblock = resolve;
+          });
+        }
+        return frame;
+      };
+      hello(ws, [codec], true);
+      await eventually(() => Boolean(unblock));
+      worker.width = 800;
+      worker.revision = 2n;
+      worker.emit(
+        'display',
+        display({
+          dynamicResolution: false,
+          generation: 2n,
+          framebufferRevision: 2n,
+          width: 800,
+        }),
+      );
+      unblock();
+      await eventually(() => binary(messages).length === 2);
+      assert.equal(binary(messages)[0].readUInt32BE(12), 0);
+      assert.equal(binary(messages)[0].readUInt16BE(30), 800);
+      assert.equal(binary(messages)[1].readUInt32BE(12), 1);
+      assert.equal(binary(messages)[1].readUInt16BE(6), 3);
+      assert.ok(worker.requests >= 2);
+      acknowledge(ws, 1);
+      await delay(100);
+      assert.equal(ws.readyState, WebSocket.OPEN);
+    });
+  }
+});
+test('fake legacy media: no display negotiation keeps binary-only video updates while preserving resize config and old ACK', async () => {
+  await setup(async ({ ws, messages, worker }) => {
+    worker.emit('display', display({ dynamicResolution: false }));
+    hello(ws);
+    await eventually(() => binary(messages).length === 2);
+    assert.equal(messages[0].type, 'media.ready');
+    assert.equal(messages[0].data.display, false);
+    worker.width = 800;
+    worker.revision = 2n;
+    worker.emit(
+      'display',
+      display({
+        dynamicResolution: false,
+        generation: 2n,
+        framebufferRevision: 2n,
+        width: 800,
+      }),
+    );
+    acknowledge(ws, 1);
+    await eventually(() => binary(messages).length === 4);
+    assert.equal(binary(messages)[2].readUInt16BE(30), 800);
+    assert.deepEqual(
+      messages.filter((m) => !Buffer.isBuffer(m)).map((m) => m.type),
+      ['media.ready'],
+    );
+    acknowledge(ws, 3);
+  });
+});
+test('fake display/control WS: state replay, correlated typed results, opt-in and nonfatal input pause', async () => {
+  await setup(
+    async ({ server, created, worker }) => {
+      const messages = [];
+      const control = new WebSocket(
+        'ws://127.0.0.1:' +
+          server.server.address().port +
+          '/v1/sessions/' +
+          created.sessionId +
+          '/control?token=' +
+          created.attach.control.token,
+        ['freerdp-bridge-v1'],
+        { origin },
+      );
+      control.on('error', () => {});
+      control.on('message', (bytes) =>
+        messages.push(JSON.parse(bytes.toString())),
+      );
+      let complete,
+        layouts = 0;
+      worker.sendInput = async () => {};
+      worker.resizeDisplay = async () => {
+        layouts++;
+        await new Promise((resolve) => {
+          complete = resolve;
+        });
+        worker.emit(
+          'display',
+          display({
+            generation: 2n,
+            framebufferRevision: 2n,
+            width: 1280,
+            height: 720,
+          }),
+        );
+        return 'applied';
+      };
+      worker.emit('display', display());
+      try {
+        await once(control, 'open');
+        await eventually(() => messages.some((m) => m.type === 'display.info'));
+        assert.equal(
+          messages.find((m) => m.type === 'display.info').data.generation,
+          '1',
+        );
+        const command = (seq, type, data) =>
+          control.send(
+            JSON.stringify({ v: 1, seq, ts: Date.now(), type, data }),
+          );
+        command(0, 'display.resize.request', {
+          width: 1280,
+          height: 720,
+          deviceScale: 1,
+        });
+        await eventually(() => Boolean(complete));
+        command(1, 'display.resize.request', {
+          width: 1280,
+          height: 720,
+          deviceScale: 1,
+        });
+        command(2, 'input.pointer', {
+          action: 'move',
+          x: 20,
+          y: 20,
+        });
+        command(3, 'display.resize.request', {
+          width: 1280,
+          height: 720,
+          deviceScale: 1.25,
+        });
+        await eventually(() =>
+          messages.some(
+            (m) =>
+              m.type === 'display.resize.result' && m.data.requestSeq === 3,
+          ),
+        );
+        assert.equal(
+          messages.find((m) => m.data?.requestSeq === 1).data.status,
+          'busy',
+        );
+        assert.equal(
+          messages.find((m) => m.data?.requestSeq === 3).data.status,
+          'invalid',
+        );
+        await eventually(() => messages.some((m) => m.type === 'input.paused'));
+        complete();
+        await eventually(() => messages.some((m) => m.data?.requestSeq === 0));
+        assert.equal(
+          messages.find((m) => m.data?.requestSeq === 0).data.status,
+          'applied',
+        );
+        assert.equal(layouts, 1);
+        assert.equal(control.readyState, WebSocket.OPEN);
+        const actual = messages.find((m) => m.type === 'display.resize');
+        assert.equal(actual.data.width, 1280);
+        assert.equal(actual.data.deviceScale, 100);
+        assert.equal(actual.data.framebufferRevision, '2');
+      } finally {
+        complete?.();
+        control.terminate();
+      }
+    },
+    undefined,
+    true,
+  );
+});
 
 test(
   'fake media transport: configured FPS is reported and limits pulls after immediate render ACK',

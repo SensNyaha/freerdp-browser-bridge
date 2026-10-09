@@ -181,5 +181,22 @@ The helper opts in to native dynamic resolution, checks negotiated caps, changes
 1920×1080 to 1280×720, verifies new AVC IDR/JPEG dimensions, and restores the original
 size with another IDR. It sends only input reset and lifecycle requests. If the
 server has no negotiated Display Control, it records unavailable rather than
-claiming a successful resize. This is private worker integration; the browser
-control command and browser rendering across resize remain pending.
+claiming a successful resize. This helper is private worker integration.
+
+## XRDP browser resize check
+
+The public control/media path can be tested separately in Edge for each codec:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint h264 --resize-test
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint jpeg --resize-test
+```
+
+Run sequentially (the helper uses local port 47999). It explicitly opts in, checks
+1920×1080 → 1280×720 → 1920×1080 rendering/config generations and fresh AVC IDRs,
+no-op/invalid typed replies, display/cursor reattachment replay and resumed motion.
+Only motion/reset input is sent to the operational lab desktop. The helper attempts
+restoration on failure before closing. Manual `--manual` viewing also opts in and
+shows width/height controls. Other session creators must explicitly set
+`display.dynamicResolution=true`; default remains disabled. This is one primary
+monitor at 100% scale, not automatic browser viewport or multimonitor support.

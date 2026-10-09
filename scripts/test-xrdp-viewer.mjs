@@ -13,6 +13,7 @@ const fingerprint = process.argv[2];
 const mode = process.argv[3] ?? 'jpeg';
 const manual = process.argv[4] === '--manual';
 const qualityTest = process.argv[4] === '--quality-test';
+const resizeTest = process.argv[4] === '--resize-test';
 const quality = qualityTest
   ? {
       profile: 'low-bandwidth',
@@ -24,7 +25,7 @@ const quality = qualityTest
 const codecs = [mode === 'jpeg' ? 'jpeg' : 'h264'];
 if (
   ![3, 4, 5].includes(process.argv.length) ||
-  (process.argv.length === 5 && !manual && !qualityTest) ||
+  (process.argv.length === 5 && !manual && !qualityTest && !resizeTest) ||
   (manual && mode === 'h264-reset') ||
   !['jpeg', 'h264', 'h264-reset'].includes(mode) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
@@ -80,6 +81,7 @@ for (const [url, name, type] of [
   ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
   ['/harness/input.js', 'input.js', 'text/javascript'],
   ['/harness/cursor.js', 'cursor.js', 'text/javascript'],
+  ['/harness/display.js', 'display.js', 'text/javascript'],
 ]) {
   const bytes = await readFile(resolve('apps/reference-harness', name));
   server.get(url, (_request, reply) =>
@@ -97,6 +99,8 @@ let browser;
 let sessionId;
 let page;
 let phase = 'create';
+const resizeEvidence = [];
+let restoreNeeded = false;
 try {
   await server.listen({ host: '127.0.0.1', port: 47999 });
   const created = await server.inject({
@@ -106,7 +110,11 @@ try {
     payload: {
       target: { host: lab.host, port: lab.port },
       auth: { username: credentials.username, password: credentials.password },
-      display: { width: 1920, height: 1080 },
+      display: {
+        width: 1920,
+        height: 1080,
+        dynamicResolution: resizeTest || manual,
+      },
       security: { certificatePolicy: 'prompt' },
       timeouts: { connectMs: 20000, tcpAckMs: 10000 },
       ...(quality ? { quality } : {}),
@@ -201,6 +209,71 @@ try {
       (mode === 'h264-reset' && stats.resets !== 1)
     )
       throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
+    if (resizeTest) {
+      for (const [width, height] of [
+        [1280, 720],
+        [1920, 1080],
+      ]) {
+        phase = 'resize-' + width;
+        const before = await page.evaluate(() => window.bridgeViewer.stats);
+        restoreNeeded = true;
+        const result = await page.evaluate(
+          ({ width, height }) => window.bridgeViewer.resize(width, height),
+          { width, height },
+        );
+        if (result !== 'applied') throw new Error('LAB_RESIZE_NOT_APPLIED');
+        await page.waitForFunction(
+          ({ width, height, previous }) => {
+            const value = window.bridgeViewer.stats;
+            const matches =
+              value.width === width &&
+              value.height === height &&
+              value.frames > previous.frames &&
+              value.renderedGeneration === value.displayGeneration &&
+              value.displayGeneration !== previous.displayGeneration;
+            if (!matches) return false;
+            const canvas = document.querySelector('#desktop');
+            const pixels = canvas
+              .getContext('2d')
+              .getImageData(0, 0, canvas.width, canvas.height).data;
+            let min = 255,
+              max = 0;
+            for (let i = 0; i < pixels.length; i += 64) {
+              min = Math.min(min, pixels[i]);
+              max = Math.max(max, pixels[i]);
+            }
+            return max - min > 20;
+          },
+          { width, height, previous: before },
+          { timeout: 10000 },
+        );
+        const after = await page.evaluate(() => window.bridgeViewer.stats);
+        if (
+          after.closed ||
+          after.error ||
+          after.configurations <= before.configurations ||
+          (mode !== 'jpeg' && after.keyframes <= before.keyframes)
+        )
+          throw new Error('LAB_RESIZE_DISCONTINUITY_FAILED');
+        resizeEvidence.push({
+          width,
+          height,
+          generation: after.displayGeneration,
+          configurations: after.configurations,
+          keyframes: after.keyframes,
+          hasImage: true,
+        });
+        if (width === 1920) restoreNeeded = false;
+      }
+      const unchanged = await page.evaluate(() =>
+        window.bridgeViewer.resize(1920, 1080),
+      );
+      const invalid = await page.evaluate(() =>
+        window.bridgeViewer.resize(1281, 720),
+      );
+      if (unchanged !== 'unchanged' || invalid !== 'invalid')
+        throw new Error('LAB_RESIZE_RESULT_FAILED');
+    }
     const pipeline = await nativeWorker.pipelineStats();
     const telemetry = await server.inject({
       method: 'GET',
@@ -302,6 +375,18 @@ try {
       )
     )
       throw new Error('LAB_REATTACH_FAILED');
+    if (
+      resizeTest &&
+      !(await page.evaluate(() => {
+        const value = window.bridgeViewer.stats;
+        return (
+          value.displayGeneration === value.renderedGeneration &&
+          value.width === 1920 &&
+          value.height === 1080
+        );
+      }))
+    )
+      throw new Error('LAB_DISPLAY_REPLAY_FAILED');
     await page.evaluate(() => window.bridgeViewer.detach());
     const closed = await server.inject({
       method: 'DELETE',
@@ -319,6 +404,7 @@ try {
         nativeCursorShapes,
         cursorReplayed: true,
         reattach: true,
+        ...(resizeTest ? { resizeEvidence, displayReplayed: true } : {}),
         pipeline,
         ...(qualityTest
           ? { qualityProfile: quality.profile, nativeCaptureMinIntervalUs }
@@ -340,6 +426,21 @@ try {
   process.exitCode = 1;
 } finally {
   delete credentials.password;
+  if (restoreNeeded) {
+    let result;
+    const restoreDeadline = Date.now() + 7000;
+    do {
+      result = await nativeWorker
+        .resizeDisplay(1920, 1080)
+        .catch(() => 'send-failed');
+      if (result !== 'busy') break;
+      await delay(100);
+    } while (Date.now() < restoreDeadline);
+    if (!['applied', 'unchanged'].includes(result)) {
+      console.error('LAB_DISPLAY_RESTORE_FAILED');
+      process.exitCode = 1;
+    }
+  }
   await browser?.close();
   await server.close();
   const leftovers = await readdir(options.runtimeRoot);

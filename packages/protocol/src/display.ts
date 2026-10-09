@@ -22,6 +22,30 @@ export type DisplayResizeResult =
   | 'timeout'
   | 'disconnected';
 
+/** Also validates metadata emitted by trusted SessionWorker backends. */
+export function validateDisplayState(state: DisplayState): void {
+  const integer = (value: number, min: number, max: number) =>
+    Number.isInteger(value) && value >= min && value <= max;
+  if (
+    typeof state.generation !== 'bigint' ||
+    state.generation < 1n ||
+    state.generation > 0xffffffffffffffffn ||
+    typeof state.framebufferRevision !== 'bigint' ||
+    state.framebufferRevision < 1n ||
+    state.framebufferRevision > 0xffffffffffffffffn ||
+    !integer(state.width, 1, 7680) ||
+    !integer(state.height, 1, 4320) ||
+    typeof state.dynamicResolution !== 'boolean' ||
+    typeof state.negotiated !== 'boolean' ||
+    (state.negotiated
+      ? state.maxWidth !== 3840 ||
+        state.maxHeight !== 2160 ||
+        !integer(state.maxArea, 1, 8294400)
+      : state.maxWidth !== 0 || state.maxHeight !== 0 || state.maxArea !== 0)
+  )
+    throw new ProtocolError();
+}
+
 export function decodeDisplayState(payload: Buffer): DisplayState {
   if (payload.length !== DISPLAY_UPDATE_BYTES) throw new ProtocolError();
   const generation = payload.readBigUInt64BE(0);
@@ -51,7 +75,7 @@ export function decodeDisplayState(payload: Buffer): DisplayState {
       : maxWidth !== 0 || maxHeight !== 0 || maxArea !== 0)
   )
     throw new ProtocolError();
-  return {
+  const state = {
     generation,
     framebufferRevision,
     width,
@@ -62,6 +86,8 @@ export function decodeDisplayState(payload: Buffer): DisplayState {
     maxHeight,
     maxArea,
   };
+  validateDisplayState(state);
+  return state;
 }
 
 /** Geometry outside the negotiated provider limits receives a nonfatal native result. */

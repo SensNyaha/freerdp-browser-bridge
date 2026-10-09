@@ -1,6 +1,9 @@
 import { EventEmitter } from 'node:events';
 import { createHash, randomBytes } from 'node:crypto';
-import { validateCursorState } from '@freerdp-bridge/protocol';
+import {
+  validateCursorState,
+  validateDisplayState,
+} from '@freerdp-bridge/protocol';
 import {
   ConfigError,
   validateSessionConfig,
@@ -17,9 +20,32 @@ import type {
   MediaCodec,
   InputEvent,
   CursorState,
+  DisplayState,
+  DisplayResizeResult,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
+  DISPLAY_NOT_IMPLEMENTED: [
+    501,
+    'Display Control is unavailable in this build',
+    false,
+  ],
+  DISPLAY_NOT_CONNECTED: [
+    409,
+    'Display Control requires a connected session',
+    true,
+  ],
+  DISPLAY_INVALID_REQUEST: [
+    400,
+    'Display layout is invalid or unsupported',
+    false,
+  ],
+  DISPLAY_FAILED: [502, 'Display Control operation failed', true],
+  INPUT_DISPLAY_TRANSITION: [
+    409,
+    'Input is paused during a display transition',
+    true,
+  ],
   INPUT_NOT_IMPLEMENTED: [501, 'Input is unavailable in this build', false],
   INPUT_NOT_CONNECTED: [409, 'Remote input requires a connected session', true],
   INPUT_FAILED: [502, 'Remote input delivery failed', false],
@@ -105,10 +131,19 @@ export interface SessionEvent {
     | 'session.state'
     | 'session.error'
     | 'certificate.prompt'
+    | 'display.info'
+    | 'display.resize'
     | 'cursor.state';
   session: SessionSnapshot;
   certificate?: CertificatePrompt;
   cursor?: CursorState;
+  display?: DisplayState;
+  resizing?: boolean;
+}
+export interface DisplayResizeRequest {
+  width: number;
+  height: number;
+  deviceScale: number;
 }
 export interface CertificateResponse {
   challenge: string;
@@ -124,6 +159,8 @@ export interface SessionWorker {
   onFailure(listener: (code?: SessionErrorCode) => void): () => void;
   onCertificate?(listener: (prompt: CertificatePrompt) => void): () => void;
   onCursor?(listener: (cursor: CursorState) => void): () => void;
+  onDisplay?(listener: (display: DisplayState) => void): () => void;
+  resizeDisplay?(width: number, height: number): Promise<DisplayResizeResult>;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
   captureFrame?(
     sinceRevision: bigint,
@@ -150,6 +187,9 @@ export interface SessionManagerOptions {
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
   videoQuality: VideoQuality;
+  dynamicResolution: boolean;
+  display?: DisplayState;
+  resize?: symbol;
   cursor?: CursorState;
   certificate?: CertificatePrompt;
   owner: string;
@@ -313,6 +353,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       this.ownedWorkers.add(worker);
       const entry: Entry = {
         videoQuality: resolveVideoQuality(config.quality),
+        dynamicResolution: config.display?.dynamicResolution === true,
         owner,
         worker,
         abort: new AbortController(),
@@ -411,6 +452,46 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
               });
             }),
           );
+        if (worker.onDisplay)
+          entry.unsubscribers.push(
+            worker.onDisplay((display) => {
+              if (
+                entry.released ||
+                terminal(entry.snapshot.state) ||
+                entry.snapshot.state === 'closing'
+              )
+                return;
+              const previous = entry.display;
+              try {
+                validateDisplayState(display);
+                if (
+                  entry.snapshot.state !== 'connected' ||
+                  display.dynamicResolution !== entry.dynamicResolution ||
+                  (previous &&
+                    (display.generation < previous.generation ||
+                      (display.generation === previous.generation &&
+                        (display.width !== previous.width ||
+                          display.height !== previous.height ||
+                          display.framebufferRevision !==
+                            previous.framebufferRevision)) ||
+                      (display.generation > previous.generation &&
+                        display.framebufferRevision <=
+                          previous.framebufferRevision)))
+                )
+                  throw new Error('Invalid display state');
+              } catch {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+                return;
+              }
+              entry.display = { ...display };
+              this.displayEvent(
+                entry,
+                previous && display.generation > previous.generation
+                  ? 'display.resize'
+                  : 'display.info',
+              );
+            }),
+          );
         if (terminal(entry.snapshot.state))
           throw new SessionError('WORKER_START_FAILED');
       } catch {
@@ -505,6 +586,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.tokens.clear();
     delete entry.certificate;
     delete entry.cursor;
+    delete entry.display;
     entry.abort.abort();
     this.totals.failed++;
     this.transition(entry, 'failed');
@@ -520,6 +602,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.tokens.clear();
     delete entry.certificate;
     delete entry.cursor;
+    delete entry.display;
     for (const unsubscribe of entry.unsubscribers.splice(0)) {
       try {
         unsubscribe();
@@ -601,6 +684,11 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     session: SessionSnapshot;
     certificate?: CertificatePrompt;
     cursor?: CursorState;
+    readonly display: DisplayState | undefined;
+    readonly resizing: boolean;
+    resizeDisplay: (
+      request: DisplayResizeRequest,
+    ) => Promise<DisplayResizeResult>;
     respondCertificate: (response: CertificateResponse) => Promise<void>;
     captureFrame: (
       sinceRevision: bigint,
@@ -632,6 +720,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     let capturing = false;
     return {
       session: structuredClone(entry.snapshot),
+      get display() {
+        return entry.display && { ...entry.display };
+      },
+      get resizing() {
+        return Boolean(entry.resize);
+      },
+      resizeDisplay: (request) =>
+        this.resizeDisplay(entry, channel, lease, request),
       ...(entry.cursor
         ? {
             cursor: {
@@ -656,6 +752,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
           return Promise.reject(new SessionError('INPUT_NOT_IMPLEMENTED'));
         if (entry.snapshot.state !== 'connected')
           return Promise.reject(new SessionError('INPUT_NOT_CONNECTED'));
+        if (entry.resize && event.type !== 'reset')
+          return Promise.reject(new SessionError('INPUT_DISPLAY_TRANSITION'));
         if (entry.inputPending >= 64)
           return Promise.reject(new SessionError('INPUT_QUEUE_FULL'));
         // Queued commands lose authority immediately when this lease is released.
@@ -704,6 +802,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
           const frame = await entry.worker.captureFrame(sinceRevision, options);
           if (entry.attachments.get(channel) !== lease || entry.released)
             throw new SessionError('ATTACH_INVALID');
+          if (
+            frame &&
+            entry.display &&
+            (frame.revision < entry.display.framebufferRevision ||
+              frame.width !== entry.display.width ||
+              frame.height !== entry.display.height)
+          )
+            return undefined;
           return frame;
         } finally {
           capturing = false;
@@ -743,6 +849,119 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       },
     };
   }
+  private displayEvent(
+    entry: Entry,
+    type: 'display.info' | 'display.resize' = 'display.info',
+  ): void {
+    if (
+      !entry.display ||
+      entry.snapshot.state !== 'connected' ||
+      entry.released
+    )
+      return;
+    this.emit('event', {
+      type,
+      session: structuredClone(entry.snapshot),
+      display: { ...entry.display },
+      resizing: Boolean(entry.resize),
+    });
+  }
+  private async resizeDisplay(
+    entry: Entry,
+    channel: SessionChannel,
+    lease: symbol,
+    request: DisplayResizeRequest,
+  ): Promise<DisplayResizeResult> {
+    const authorized = () => {
+      if (
+        channel !== 'control' ||
+        entry.attachments.get(channel) !== lease ||
+        entry.released
+      )
+        throw new SessionError('ATTACH_INVALID');
+      if (entry.snapshot.state !== 'connected')
+        throw new SessionError('DISPLAY_NOT_CONNECTED');
+    };
+    authorized();
+    const { width, height, deviceScale } = request;
+    if (
+      Object.keys(request).some(
+        (key) => !['width', 'height', 'deviceScale'].includes(key),
+      ) ||
+      !Number.isInteger(width) ||
+      width < 200 ||
+      width > 3840 ||
+      width % 2 !== 0 ||
+      !Number.isInteger(height) ||
+      height < 200 ||
+      height > 2160 ||
+      height % 2 !== 0 ||
+      deviceScale !== 1
+    )
+      throw new SessionError('DISPLAY_INVALID_REQUEST');
+    if (!entry.worker.resizeDisplay)
+      throw new SessionError('DISPLAY_NOT_IMPLEMENTED');
+    if (!entry.dynamicResolution || !entry.display?.negotiated)
+      return 'unavailable';
+    if (entry.resize) return 'busy';
+    const reservation = Symbol();
+    const generation = entry.display.generation;
+    entry.resize = reservation;
+    this.displayEvent(entry);
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        (async () => {
+          await entry.inputTail;
+          authorized();
+          if (entry.worker.sendInput)
+            await this.queueInput(
+              entry,
+              { type: 'reset' },
+              () => entry.attachments.get(channel) === lease,
+            );
+          authorized();
+          const result = await entry.worker.resizeDisplay!(width, height);
+          authorized();
+          if (
+            ![
+              'applied',
+              'unchanged',
+              'unavailable',
+              'invalid',
+              'busy',
+              'send-failed',
+              'timeout',
+              'disconnected',
+            ].includes(result) ||
+            ((result === 'applied' || result === 'unchanged') &&
+              (!entry.display ||
+                entry.display.width !== width ||
+                entry.display.height !== height ||
+                (result === 'applied' &&
+                  entry.display.generation <= generation)))
+          ) {
+            this.fail(entry, 'WORKER_INVALID_STATE');
+            throw new SessionError('DISPLAY_FAILED');
+          }
+          return result;
+        })(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            this.fail(entry, 'WORKER_FAILED');
+            reject(new SessionError('DISPLAY_FAILED'));
+          }, 7000);
+        }),
+      ]);
+    } catch (error) {
+      if (error instanceof SessionError) throw error;
+      throw new SessionError('DISPLAY_FAILED');
+    } finally {
+      clearTimeout(timer);
+      if (entry.resize === reservation) delete entry.resize;
+      this.displayEvent(entry);
+    }
+  }
   private queueInput(
     entry: Entry,
     event: InputEvent,
@@ -760,7 +979,12 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     });
     entry.inputTail = delivery
       .catch((error: unknown) => {
-        if (!(error instanceof SessionError && error.code === 'ATTACH_INVALID'))
+        if (
+          !(
+            error instanceof SessionError &&
+            ['ATTACH_INVALID', 'INPUT_DISPLAY_TRANSITION'].includes(error.code)
+          )
+        )
           this.fail(entry, 'INPUT_FAILED');
       })
       .finally(() => {

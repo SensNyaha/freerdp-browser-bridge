@@ -114,7 +114,9 @@ then checks the exact codec string/profile/level and description from config.
 It configures VideoDecoder with optimizeForLatency and feeds timestamped
 EncodedVideoChunks. VideoFrame output must match the pending timestamp and
 display dimensions; it is drawn and closed in finally before credit returns.
-The input queue allows at most three messages / 8 MiB + 8 KiB and one decode.
+The input queue allows at most five messages / 8 MiB + 8 KiB and one decode,
+including the ordered display metadata extension. Display epoch changes preserve
+transmitted credit and force config/IDR after its ACK; see [Display Control](DISPLAY_CONTROL.md).
 
 It does not flush after each frame: WebCodecs flush requires a keyframe on the
 next decode. The behavior is defined in the [WebCodecs specification](https://www.w3.org/TR/webcodecs/).

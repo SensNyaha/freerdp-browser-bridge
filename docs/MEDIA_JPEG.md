@@ -101,9 +101,11 @@ See ITERATION_005.md for actual test evidence.
 ## Open acceptance work
 
 Codec/hardware selection, adaptive quality/FPS,
-broader cursor acceptance, input, audio, modern GFX, negotiated dynamic resize and
-encode/queue latency instrumentation remain pending. Classic paint/resize callbacks
-are wired, but current XRDP checks do not prove a dynamic resize. No 30-minute
+broader cursor acceptance, input, audio, modern GFX and
+encode/queue latency instrumentation remain pending. Actual XRDP browser resize
+and restoration now pass through the opt-in [Display Control](DISPLAY_CONTROL.md)
+path with authoritative generations and transmitted ACK preservation. Windows-server
+resize and broader layouts remain unverified. No 30-minute
 interactive Windows/XRDP soak gate is claimed. Large image records can still delay
 other records on the shared inherited output pipe; priority scheduling is pending.
 Independent cursor extraction/overlay and XRDP shape replay are now implemented;

@@ -42,11 +42,17 @@ control input and its queue/release contract are documented in [INPUT.md](INPUT.
 
 Control currently emits state/error events and supports session.detach.
 Native-backend control attachments now support certificate.prompt and certificate.response;
-reattachment receives the pending prompt. Input/auth responses remain unimplemented.
+reattachment receives the pending prompt. Interactive auth responses remain unimplemented.
 Opt-in native media attachments support bounded H.264/JPEG negotiation, RWB1 records,
 render credit and decoder-reset recovery described in MEDIA_H264.md and MEDIA_JPEG.md.
 Cursor shapes use an optional independent media stream, with position/visibility
 on control; attachment replays current state. See [cursor contract](CURSOR.md).
+Experimental opt-in Display Control now forwards server-observed state to both
+attachments and accepts resize only from the current control lease. One bounded
+reservation drains earlier input, resets tracking and pauses new non-reset input;
+detach does not transfer request authority. Transmitted media ACK credit survives
+resize and the next epoch forces config/IDR. See [public wire contract](../PROTOCOL.md#experimental-display-control-v1-additive-extension)
+and [Display Control limits](DISPLAY_CONTROL.md).
 Experimental basic input is described in [INPUT.md](INPUT.md). Audio and full
 usable-desktop capability remain unimplemented; fake backends do not imply
 actual RDP/media support. Cursor records do not contribute to video credit metrics.

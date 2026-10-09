@@ -43,6 +43,32 @@
       освобождаются.
     </p>
     <canvas id="desktop" tabindex="0" aria-label="Рабочий стол RDP"></canvas>
+    <form id="resize">
+      <label
+        >Ширина
+        <input
+          id="resize-width"
+          type="number"
+          min="200"
+          max="3840"
+          step="2"
+          value="1280"
+          required
+      /></label>
+      <label
+        >Высота
+        <input
+          id="resize-height"
+          type="number"
+          min="200"
+          max="2160"
+          step="2"
+          value="720"
+          required
+      /></label>
+      <button id="resize-button" disabled>Изменить разрешение</button>
+      <span id="resize-status" role="status">Ожидание параметров дисплея</span>
+    </form>
     <script type="module" src="./viewer.js"></script>
   </body>
 </html>

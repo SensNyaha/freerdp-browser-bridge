@@ -1,9 +1,13 @@
 import { installInput } from './input.js';
 import { installCursor } from './cursor.js';
+import { displayState, resizeResult, displayInputReady } from './display.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
 const fingerprint = document.querySelector('#fingerprint');
+const resizeForm = document.querySelector('#resize');
+const resizeButton = document.querySelector('#resize-button');
+const resizeStatus = document.querySelector('#resize-status');
 let current;
 const stats = {
   closed: true,
@@ -17,6 +21,10 @@ const stats = {
   maxFps: undefined,
   resets: 0,
   keyframes: 0,
+  configurations: 0,
+  displayGeneration: undefined,
+  renderedGeneration: undefined,
+  resizeStatus: undefined,
   stage: 'waiting',
 };
 let decodeTimes = [];
@@ -32,6 +40,11 @@ function detach() {
   current.disposeInput?.();
   current.cursor?.dispose();
   current.closed = true;
+  if (current.resizeRequest) {
+    clearTimeout(current.resizeRequest.timer);
+    current.resizeRequest.reject(new Error('Viewer detached'));
+    current.resizeRequest = undefined;
+  }
   stats.closed = true;
   current.abortDecode?.();
   closeDecoder(current);
@@ -39,7 +52,61 @@ function detach() {
   current.media.close();
   current = undefined;
   certificate.hidden = true;
+  updateResize();
 }
+function updateResize() {
+  const state = current?.display;
+  resizeButton.disabled =
+    !current?.connected ||
+    !state?.dynamicResolution ||
+    !state.negotiated ||
+    Boolean(current.resizeRequest) ||
+    state.resizing;
+  resizeStatus.textContent = state
+    ? `${state.width} × ${state.height}${current.resizeRequest || state.resizing ? ' — изменение размера' : ''}${stats.resizeStatus ? ' · ' + stats.resizeStatus : ''}`
+    : 'Ожидание параметров дисплея';
+}
+function resize(width, height, deviceScale = 1) {
+  const session = current;
+  if (
+    !session ||
+    !session.connected ||
+    session.control.readyState !== WebSocket.OPEN ||
+    session.control.bufferedAmount > 16384
+  )
+    return Promise.reject(new Error('Control unavailable'));
+  if (session.resizeRequest) return Promise.resolve('busy');
+  const seq = session.controlSequence++;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (session.resizeRequest?.seq !== seq) return;
+      session.resizeRequest = undefined;
+      stats.resizeStatus = 'timeout';
+      updateResize();
+      reject(new Error('Display response deadline'));
+    }, 8000);
+    session.resizeRequest = { seq, resolve, reject, timer };
+    updateResize();
+    session.control.send(
+      JSON.stringify({
+        v: 1,
+        type: 'display.resize.request',
+        seq,
+        ts: Date.now(),
+        data: { width, height, deviceScale },
+      }),
+    );
+  });
+}
+resizeForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  void resize(
+    Number(document.querySelector('#resize-width').value),
+    Number(document.querySelector('#resize-height').value),
+  ).catch(() => {
+    resizeStatus.textContent = 'Не удалось получить ответ на изменение размера';
+  });
+});
 function decide(accept, expectedFingerprint) {
   const session = current;
   if (
@@ -91,6 +158,10 @@ function attach(created, options = {}) {
     maxFps: undefined,
     resets: 0,
     keyframes: 0,
+    configurations: 0,
+    displayGeneration: undefined,
+    renderedGeneration: undefined,
+    resizeStatus: undefined,
     stage: 'waiting',
   });
   decodeTimes = [];
@@ -142,7 +213,11 @@ function attach(created, options = {}) {
       );
       return true;
     },
-    () => !session.closed && session.connected && session === current,
+    () =>
+      !session.closed &&
+      session.connected &&
+      session === current &&
+      displayInputReady(session),
     () => detach(),
   );
   status.textContent = 'Подключение';
@@ -171,6 +246,23 @@ function attach(created, options = {}) {
       } else if (message.type === 'session.state') {
         session.connected = message.data.state === 'connected';
         status.textContent = message.data.state;
+        updateResize();
+      } else if (['display.info', 'display.resize'].includes(message.type)) {
+        session.display = displayState(message.data, session.display);
+        stats.displayGeneration = session.display.generation;
+        updateResize();
+      } else if (message.type === 'display.resize.result') {
+        const result = resizeResult(message.data);
+        if (session.resizeRequest?.seq === message.data.requestSeq) {
+          const pending = session.resizeRequest;
+          clearTimeout(pending.timer);
+          session.resizeRequest = undefined;
+          stats.resizeStatus = result;
+          updateResize();
+          pending.resolve(result);
+        }
+      } else if (message.type === 'input.paused') {
+        status.textContent = 'Ввод приостановлен на время изменения дисплея';
       } else if (message.type === 'cursor.position')
         session.cursor.position(message.data);
       else if (message.type === 'cursor.visibility')
@@ -212,7 +304,7 @@ function attach(created, options = {}) {
       JSON.stringify({
         v: 1,
         type: 'media.hello',
-        data: { codecs: offered, cursor: true },
+        data: { codecs: offered, cursor: true, display: true },
       }),
     );
   }
@@ -238,7 +330,7 @@ function attach(created, options = {}) {
         ? event.data.length * 2
         : event.data.byteLength;
     if (
-      ++session.queued > 3 ||
+      ++session.queued > 5 ||
       (session.queuedBytes += size) > 8 * 1024 * 1024 + 8192
     ) {
       fail();
@@ -264,6 +356,10 @@ function attach(created, options = {}) {
       throw new DecodeFailure();
     canvas.getContext('2d').drawImage(image, 0, 0);
     stats.frames++;
+    session.renderedGeneration = stats.renderedGeneration =
+      session.configuredGeneration;
+    session.renderedWidth = width;
+    session.renderedHeight = height;
   }
   async function configureAvc(description) {
     closeDecoder(session);
@@ -352,6 +448,16 @@ function attach(created, options = {}) {
     if (typeof bytes === 'string') {
       const message = JSON.parse(bytes);
       if (
+        message.v === 1 &&
+        ['display.info', 'display.resize'].includes(message.type)
+      ) {
+        session.streamDisplay = displayState(
+          message.data,
+          session.streamDisplay,
+        );
+        return;
+      }
+      if (
         message.v !== 1 ||
         message.type !== 'media.ready' ||
         session.codec ||
@@ -417,8 +523,17 @@ function attach(created, options = {}) {
         throw new Error();
       canvas.width = width;
       canvas.height = height;
+      session.cursor.displayReset();
       stats.width = width;
       stats.height = height;
+      if (
+        session.streamDisplay &&
+        (width !== session.streamDisplay.width ||
+          height !== session.streamDisplay.height)
+      )
+        throw new Error('Display config mismatch');
+      session.configuredGeneration = session.streamDisplay?.generation;
+      stats.configurations++;
       if (session.codec === 'h264')
         await configureAvc(new Uint8Array(bytes, 36));
       session.configured = true;
@@ -493,6 +608,7 @@ function attach(created, options = {}) {
 window.bridgeViewer = {
   attach,
   detach,
+  resize,
   get stats() {
     const times = [...decodeTimes].sort((a, b) => a - b);
     return {

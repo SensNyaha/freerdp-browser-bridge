@@ -62,6 +62,22 @@ test(
       assert.equal(overlay.height, 1);
       assert.equal(overlay.x, bounds.x + 99.5);
       assert.equal(overlay.y, bounds.y + 49.5);
+      await page.evaluate(() => {
+        const desktop = document.querySelector('#desktop');
+        desktop.width = 320;
+        desktop.height = 240;
+        window.cursor.displayReset();
+      });
+      const resized = await page.locator('#cursor-overlay').boundingBox();
+      assert.equal(resized.x, bounds.x + 99);
+      assert.equal(resized.y, bounds.y + 49);
+      assert.equal(resized.width, 2);
+      await page.evaluate(() => {
+        const desktop = document.querySelector('#desktop');
+        desktop.width = 640;
+        desktop.height = 480;
+        window.cursor.displayReset();
+      });
       assert.deepEqual(
         await page.evaluate(() =>
           Array.from(

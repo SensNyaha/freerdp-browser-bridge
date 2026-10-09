@@ -1,15 +1,15 @@
-# Native Display Control and private IPC
+# Display Control: native, private IPC and browser
 
 Implements the native channel/request-state slice of SPECIFICATION §2.3 / §2.10,
 MEDIA_PIPELINE §10 and accepted ADR-003 / ADR-008 / ADR-009. The authority for
 the ABI is FreeRDP 3.32.1 public `client/disp.h` and `channels/disp.h`, pinned
 commit `bf217a504e54cc719880c228e82353382cd7d4fa`.
 
-The native foundation is now connected through bounded private IPC to Node's
-`WorkerProcess`; this is not completed browser dynamic resolution. The settings
+The native foundation is connected through bounded private IPC to Node's
+`WorkerProcess`, session control leases and the reference browser. The settings
 mapper accepts explicit `display.dynamicResolution=true` on workers advertising
-the experimental `displayControl` capability. The control WS does not yet implement
-`display.resize.request`, and usable `rdp` remains false. Initial sizing and media
+the experimental `displayControl` capability. The control WS implements the additive
+v1 `display.resize.request` slice, and usable `rdp` remains false. Initial sizing and media
 negotiation retain their current contracts.
 
 ## Ownership and negotiation
@@ -76,8 +76,8 @@ discards lazy JPEG/H.264 encoders. This also handles a same-size GFX reset:
 the next AVC capture starts a fresh predictive chain with an IDR. The existing
 encoded-media dimension/config mechanism remains in place. Private display metadata
 and request correlation now use the [IPC contract](IPC_FOUNDATION.md#display-control-payloads).
-Public `display.resize`, browser scale metadata and media/ACK ownership integration
-remain open.
+Public `display.info` / `display.resize` expose the observed epoch and fixed provider
+scale metadata; the media path preserves transmitted ACK ownership across resets.
 
 ## Private IPC and supervisor
 
@@ -99,7 +99,39 @@ changed geometry with a reused generation, and rejects applied results without a
 matching newer observation. A 6.5-second IPC deadline permits the native timeout
 to arrive without triggering the ordinary two-second deadline. Timed-out commands
 do not change cached geometry, but later remote observations remain authoritative.
-These host APIs do not grant public browser/controller authority.
+These private host APIs do not by themselves grant public browser/controller authority.
+
+## Session leases and browser rendering
+
+The [public contract](../PROTOCOL.md#experimental-display-control-v1-additive-extension)
+requires explicit opt-in and negotiated caps. SessionManager caches validated
+metadata, reserves one resize across accepted-input drain, resets tracked input,
+and rechecks the current control lease before sending and after completion.
+Non-reset input during the reservation is a nonfatal pause; detach/reset can still
+proceed. A replacement controller sees the pending state and actual observations
+but cannot start a second resize. A seven-second backend deadline covers drain,
+reset and dispatch; a hung backend fails before reservation release.
+
+Control attachments, and media clients explicitly negotiating `media.hello.data.display=true`,
+replay actual metadata with decimal u64 epochs and
+BGRA8 / orientation 0 / desktop/device scale 100%. Request scale is a ratio and
+currently only 1 is accepted. Broader scale/rotation/multimonitor support remains
+open; the browser's existing CSS-scaled input/cursor mapping remains independent.
+
+Each media generation discards only unsent stale captures. An already transmitted
+unit keeps its render credit, ACK sequence and deadline. After ACK/reset, the next
+valid capture forces DISCONTINUITY config and IDR even if dimensions/SPS repeat.
+Frame revision/dimensions must match current observed metadata. Caps-only and
+pending-state updates do not reset video. One timer/capture/render-credit slot
+remains bounded. No binary RWB1 format change or raw frames in Node are needed.
+
+The harness provides manual width/height controls and `bridgeViewer.resize()`.
+It consumes display events in media order, completes previous decode/ACK before
+replacing the decoder, and changes the canvas only on VIDEO_CONFIG. Input waits
+for the rendered epoch and geometry to match actual state and for the reservation
+to clear. Cross-socket notification order is not assumed. Its ordered receive
+queue is capped at five messages / 8 MiB + 8 KiB, allowing display metadata,
+negotiation, config and the one credited unit. Cursor shapes remain independent.
 
 ## Evidence and remaining acceptance
 
@@ -117,7 +149,7 @@ IPC. [Iteration 18](ITERATION_018.md) records this separately from fake IPC and
 linked native fixtures. This does not establish browser rendering across resize,
 Windows-server acceptance, full DVC parser/resource limits or soak stability.
 
-Next: control-lease authority in the session manager,
-display state replay on attachment, browser `display.resize.request` and real
-XRDP/Windows browser resize/recovery checks, including in-flight input/cursor coordinates
-and media/ACK ownership. The 30-minute desktop gate remains open.
+The public lease/browser implementation and actual XRDP resize evidence are recorded
+in [Iteration 19](ITERATION_019.md). Windows-server resize, broader scales/rotation,
+full DVC resource audit, automatic viewport policy and the 30-minute desktop gate
+remain open.

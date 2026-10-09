@@ -9,9 +9,11 @@ import {
   encodeCursorShape,
   type CursorState,
   MAX_CURSOR_BYTES,
+  type DisplayState,
 } from '@freerdp-bridge/protocol';
 import { publicSessionError, type SessionManager } from '@freerdp-bridge/node';
 import type { MediaMetrics } from './metrics.js';
+import { displayData } from './display.js';
 
 const hello = TypeCompiler.Compile(
   Type.Object(
@@ -29,6 +31,7 @@ const hello = TypeCompiler.Compile(
             },
           ),
           cursor: Type.Optional(Type.Boolean()),
+          display: Type.Optional(Type.Boolean()),
         },
         { additionalProperties: false },
       ),
@@ -69,7 +72,10 @@ export function installMedia(
   lease: ReturnType<SessionManager['attach']>,
   send: (type: string, data: unknown) => void,
   metrics: MediaMetrics,
-): { cursor: (state: CursorState) => void } {
+): {
+  cursor: (state: CursorState) => void;
+  display: (state: DisplayState, resizing: boolean) => void;
+} {
   let negotiated = false,
     busy = false,
     revision = 0n;
@@ -92,7 +98,9 @@ export function installMedia(
   let cursorOffered = false,
     cursorSequence = 0,
     sentShapeId = 0n;
+  let displayOffered = false;
   let latestCursor = lease.cursor;
+  let latestDisplay = lease.display;
   let cursorBusy = false;
   const cursor = (state: CursorState) => {
     latestCursor = state;
@@ -140,6 +148,7 @@ export function installMedia(
   };
   const limit = MAX_JPEG_BYTES + 2059 + 128 + MAX_CURSOR_BYTES + 48;
   const schedule = () => {
+    clearTimeout(timer);
     if (ws.readyState === WebSocket.OPEN)
       timer = setTimeout(
         () => {
@@ -160,6 +169,7 @@ export function installMedia(
       return;
     busy = true;
     lastPull = performance.now();
+    const generation = latestDisplay?.generation;
     try {
       const frame = await lease.captureFrame(revision, {
         codec,
@@ -174,7 +184,7 @@ export function installMedia(
         performance.now() - lastPull,
       );
       if (ws.readyState !== WebSocket.OPEN) return;
-      if (!frame || !changed) {
+      if (!frame || !changed || generation !== latestDisplay?.generation) {
         schedule();
         return;
       }
@@ -255,11 +265,32 @@ export function installMedia(
         maxInFlight: 1,
         maxPayloadBytes: MAX_JPEG_BYTES,
         cursor: cursorOffered,
+        display: displayOffered,
       });
+      if (displayOffered && latestDisplay)
+        send('display.info', displayData(latestDisplay, lease.resizing));
       if (latestCursor) cursor(latestCursor);
       void pull();
     } catch (error) {
       fail(publicSessionError(error).code);
+    }
+  };
+  const display = (state: DisplayState, resizing: boolean) => {
+    const changed =
+      latestDisplay && state.generation !== latestDisplay.generation;
+    const initial = !latestDisplay;
+    latestDisplay = { ...state };
+    // Ordered metadata precedes the next config. Existing transmitted credit remains owned by its ACK.
+    if (displayOffered && codec)
+      send(
+        changed ? 'display.resize' : 'display.info',
+        displayData(state, resizing),
+      );
+    if (changed || initial) {
+      forceKeyframe = true;
+      avcConfig = undefined;
+      width = height = 0;
+      if (codec && !busy && expectedAck === undefined) schedule();
     }
   };
   deadline = setTimeout(
@@ -298,6 +329,7 @@ export function installMedia(
       negotiated = true;
       offered = value.data.codecs;
       cursorOffered = value.data.cursor ?? false;
+      displayOffered = value.data.display ?? false;
       negotiate();
     } else if (
       codec === 'h264' &&
@@ -326,5 +358,5 @@ export function installMedia(
       schedule();
     } else fail('MEDIA_PROTOCOL_ERROR');
   });
-  return { cursor };
+  return { cursor, display };
 }
