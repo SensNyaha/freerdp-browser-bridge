@@ -1,3 +1,4 @@
+#include "contacts.hpp"
 #include "dvc_gate.hpp"
 #include "rdpei.hpp"
 #include "rdpei_plugin.hpp"
@@ -167,8 +168,13 @@ struct ChannelFixture {
     std::array<BYTE, 10> bytes{1, 0, 10, 0, 0, 0, 0, 0, 1, 0};
     return receive(bytes);
   }
+  UINT ready101() {
+    std::array<BYTE, 10> bytes{1, 0, 10, 0, 0, 0, 1, 0, 1, 0};
+    return receive(bytes);
+  }
   bool pump() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    // Windows GetTickCount64 may quantize at ~16ms: 25ms is not always a 20ms tick.
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
     return freerdp_channels_check_fds(context->channels, context->instance) != FALSE;
   }
   std::span<const BYTE> packet(std::size_t i) const {
@@ -506,4 +512,235 @@ TEST_CASE("registered RDPEI addin cannot be terminated inside its active transpo
   REQUIRE(f.registration.gate().ready());
   REQUIRE(f.close());
   REQUIRE(f.destroyed_listeners == 1);
+}
+TEST_CASE("contact ownership retains terminal IDs until real native UP writes complete") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  REQUIRE(contacts.ready());
+  REQUIRE(contacts.apply({Action::begin, 7, 100, 110}, 1920, 1080) == Result::accepted);
+  REQUIRE(contacts.apply({Action::end, 7, 100, 110}, 1920, 1080) == Result::accepted);
+  REQUIRE(contacts.owned() == 1);
+  REQUIRE(contacts.apply({Action::begin, 7, 100, 110}, 1920, 1080) == Result::cleanup_required);
+  REQUIRE(f.pump());
+  REQUIRE(contacts.owned() == 0);
+  REQUIRE(contacts.apply({Action::begin, 7, 200, 210}, 1920, 1080) == Result::accepted);
+  contacts.reset();
+  REQUIRE_FALSE(contacts.ready());
+  REQUIRE(contacts.service() == Drain::pending);
+  REQUIRE(f.pump());
+  REQUIRE(contacts.owned() == 1);
+  REQUIRE(contacts.service() == Drain::ready);
+  REQUIRE(contacts.owned() == 0);
+  REQUIRE(contacts.ready());
+  const auto count = f.count;
+  REQUIRE(contacts.service() == Drain::idle);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == count);
+}
+TEST_CASE(
+    "suspended native cancellations survive upstream consumption and precede resume readiness") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  REQUIRE(contacts.apply({Action::begin, 3, 100, 110}, 1920, 1080) == Result::accepted);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  std::array<BYTE, 6> suspend{4, 0, 6, 0, 0, 0}, resume{5, 0, 6, 0, 0, 0};
+  REQUIRE(f.receive(suspend) == CHANNEL_RC_OK);
+  REQUIRE_FALSE(contacts.ready());
+  REQUIRE(contacts.apply({Action::update, 3, 300, 310}, 1920, 1080) == Result::cleanup_required);
+  REQUIRE(contacts.service() == Drain::pending);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  REQUIRE(contacts.owned() == 1);
+  REQUIRE(f.receive(resume) == CHANNEL_RC_OK);
+  REQUIRE(f.registration.gate().ready());
+  REQUIRE_FALSE(contacts.ready());
+  REQUIRE(contacts.service() == Drain::ready);
+  REQUIRE(f.count == 3);
+  check_touch(f.packet(2), RDPINPUT_CONTACT_FLAG_UP | RDPINPUT_CONTACT_FLAG_CANCELED, 100, 110);
+  REQUIRE(contacts.ready());
+  REQUIRE(contacts.owned() == 0);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 3);
+}
+TEST_CASE("resume before contact service never releases its application hold prematurely") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  REQUIRE(contacts.apply({Action::begin, 3, 100, 110}, 1920, 1080) == Result::accepted);
+  REQUIRE(f.pump());
+  std::array<BYTE, 6> suspend{4, 0, 6, 0, 0, 0}, resume{5, 0, 6, 0, 0, 0};
+  REQUIRE(f.receive(suspend) == CHANNEL_RC_OK);
+  REQUIRE(f.receive(resume) == CHANNEL_RC_OK);
+  REQUIRE_FALSE(contacts.ready());
+  REQUIRE(contacts.service() == Drain::pending);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  REQUIRE(contacts.service() == Drain::ready);
+  REQUIRE(f.count == 3);
+  REQUIRE(contacts.ready());
+}
+TEST_CASE(
+    "ten-contact reset re-envelopes only native terminal records in one bounded cleanup frame") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  for (std::uint32_t id = 0; id < 10; ++id)
+    REQUIRE(contacts.apply({Action::begin, id, id, id}, 1920, 1080) == Result::accepted);
+  REQUIRE(contacts.apply({Action::begin, 11, 10, 10}, 1920, 1080) == Result::full);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  contacts.reset();
+  REQUIRE(contacts.service() == Drain::pending);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 2);
+  REQUIRE(contacts.owned() == 10);
+  REQUIRE(contacts.service() == Drain::ready);
+  REQUIRE(f.count == 3);
+  const auto frame = read_touch_frame(f.packet(2));
+  REQUIRE(frame);
+  REQUIRE(frame->count == 10);
+  for (std::size_t i = 0; i < frame->count; ++i) {
+    REQUIRE(frame->contacts[i].id == i);
+    REQUIRE(frame->contacts[i].flags ==
+            (RDPINPUT_CONTACT_FLAG_UP | RDPINPUT_CONTACT_FLAG_CANCELED));
+  }
+  REQUIRE(contacts.owned() == 0);
+  REQUIRE(f.pump());
+  REQUIRE(f.count == 3);
+}
+TEST_CASE("a terminal accepted before suspend remains owned until its retained UP is transmitted") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  REQUIRE(contacts.apply({Action::begin, 3, 100, 110}, 1920, 1080) == Result::accepted);
+  REQUIRE(f.pump());
+  REQUIRE(contacts.apply({Action::end, 3, 100, 110}, 1920, 1080) == Result::accepted);
+  std::array<BYTE, 6> suspend{4, 0, 6, 0, 0, 0}, resume{5, 0, 6, 0, 0, 0};
+  REQUIRE(f.receive(suspend) == CHANNEL_RC_OK);
+  REQUIRE(contacts.service() == Drain::pending);
+  REQUIRE(f.pump());
+  REQUIRE(contacts.owned() == 1);
+  REQUIRE(f.count == 2);
+  REQUIRE(f.receive(resume) == CHANNEL_RC_OK);
+  REQUIRE(contacts.service() == Drain::ready);
+  check_touch(f.packet(2), RDPINPUT_CONTACT_FLAG_UP, 100, 110);
+  REQUIRE(contacts.owned() == 0);
+}
+TEST_CASE("contact drain fails closed on failed cleanup write and deadline without input replay") {
+  SECTION("write failure") {
+    const auto fixture = std::make_unique<ChannelFixture>(true);
+    auto &f = *fixture;
+    Contacts contacts(f.registration);
+    REQUIRE(f.open());
+    REQUIRE(f.ready101() == CHANNEL_RC_OK);
+    REQUIRE(contacts.apply({Action::begin, 3, 100, 110}, 1920, 1080) == Result::accepted);
+    REQUIRE(f.pump());
+    contacts.reset();
+    REQUIRE(contacts.service() == Drain::pending);
+    REQUIRE(f.pump());
+    f.write_status = ERROR_INTERNAL_ERROR;
+    REQUIRE(contacts.service() == Drain::failed);
+    REQUIRE(contacts.owned() == 1);
+    REQUIRE_FALSE(contacts.ready());
+    f.write_status = CHANNEL_RC_OK;
+    REQUIRE(contacts.service() == Drain::failed);
+    REQUIRE(f.count == 2);
+    REQUIRE(contacts.owned() == 0);
+  }
+  SECTION("deadline") {
+    const auto fixture = std::make_unique<ChannelFixture>(true);
+    auto &f = *fixture;
+    Contacts contacts(f.registration);
+    REQUIRE(f.open());
+    REQUIRE(f.ready101() == CHANNEL_RC_OK);
+    REQUIRE(contacts.apply({Action::begin, 3, 100, 110}, 1920, 1080) == Result::accepted);
+    const auto now = std::chrono::steady_clock::now();
+    contacts.reset();
+    REQUIRE(contacts.service(now) == Drain::pending);
+    REQUIRE(contacts.service(now + std::chrono::seconds(2)) == Drain::failed);
+    REQUIRE_FALSE(contacts.ready());
+    REQUIRE(contacts.owned() == 1);
+  }
+}
+TEST_CASE("contact owner distinguishes v1 timestamp compatibility and channel-loss abandonment") {
+  SECTION("v1.0 remains transport-only") {
+    const auto fixture = std::make_unique<ChannelFixture>(true);
+    auto &f = *fixture;
+    Contacts contacts(f.registration);
+    REQUIRE(f.open());
+    REQUIRE(f.ready() == CHANNEL_RC_OK);
+    REQUIRE(f.registration.gate().ready());
+    REQUIRE_FALSE(f.registration.gate().timestamps_disabled());
+    REQUIRE_FALSE(contacts.ready());
+    REQUIRE(contacts.service() == Drain::unavailable);
+    REQUIRE(contacts.apply({Action::begin, 1, 1, 1}, 1920, 1080) == Result::cleanup_required);
+    REQUIRE(contacts.owned() == 0);
+    REQUIRE(f.count == 1);
+  }
+  SECTION("channel loss") {
+    const auto fixture = std::make_unique<ChannelFixture>(true);
+    auto &f = *fixture;
+    Contacts contacts(f.registration);
+    REQUIRE(f.open());
+    REQUIRE(f.ready101() == CHANNEL_RC_OK);
+    REQUIRE(contacts.apply({Action::begin, 1, 1, 1}, 1920, 1080) == Result::accepted);
+    REQUIRE(f.close());
+    REQUIRE(contacts.service() == Drain::unavailable);
+    REQUIRE(contacts.owned() == 0);
+  }
+}
+TEST_CASE("contact owner rejects untracked native contacts before transport write") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  REQUIRE(send_rdpei(f.rdpei, {Action::begin, 100, 1, 1})); // Deliberately bypass the owner.
+  REQUIRE_FALSE(f.pump());
+  REQUIRE(f.count == 1);
+  REQUIRE(f.registration.gate().phase() == Phase::failed);
+  REQUIRE(contacts.service() == Drain::failed);
+  REQUIRE_FALSE(contacts.ready());
+}
+TEST_CASE("contact owner rejects foreign thread dispatch and permits long server suspension") {
+  const auto fixture = std::make_unique<ChannelFixture>(true);
+  auto &f = *fixture;
+  Contacts contacts(f.registration);
+  REQUIRE(f.open());
+  REQUIRE(f.ready101() == CHANNEL_RC_OK);
+  Result submitted = Result::accepted;
+  Drain serviced = Drain::idle;
+  bool ready = true;
+  std::thread foreign([&] {
+    submitted = contacts.apply({Action::begin, 100, 1, 1}, 1920, 1080);
+    contacts.reset();
+    serviced = contacts.service();
+    ready = contacts.ready();
+  });
+  foreign.join();
+  REQUIRE(submitted == Result::cleanup_required);
+  REQUIRE(serviced == Drain::failed);
+  REQUIRE_FALSE(ready);
+  REQUIRE(contacts.ready());
+  REQUIRE(contacts.apply({Action::begin, 100, 1, 1}, 1920, 1080) == Result::accepted);
+  std::array<BYTE, 6> suspend{4, 0, 6, 0, 0, 0};
+  REQUIRE(f.receive(suspend) == CHANNEL_RC_OK);
+  const auto now = std::chrono::steady_clock::now();
+  REQUIRE(contacts.service(now) == Drain::pending);
+  REQUIRE(contacts.service(now + std::chrono::hours(1)) == Drain::pending);
+  REQUIRE(contacts.owned() == 1);
+  REQUIRE_FALSE(contacts.ready());
 }

@@ -396,3 +396,63 @@ across suspend and resume, control leases, Connection activation, bounded IPC,
 browser capture and real touch acceptance remain open. No new worker channel or
 capability is enabled. [Iteration 25](ITERATION_025.md) distinguishes actual-addin/
 fake-DVC lifecycle tests from fake-interface errors and remote RDP/device evidence.
+
+### Terminal contact ownership and drain
+
+`native/input/contacts.*` composes the public registration, ten-contact State and
+a synchronous gate observer. It must be constructed, serviced and destroyed on
+the RDP thread while registration/context remain alive. The observer may change
+the output hold, but cannot re-enter input or lifetime APIs. A broken destruction
+contract terminates the worker rather than leaving a dangling observer.
+
+An external/native ID pair remains owned until the actual borrowed transport
+successfully writes its terminal UP. A locally accepted end/cancel cannot free
+that ID for reuse yet. At most ten active/pending-terminal IDs are owned in fixed
+storage. Invalid transitions and untracked native IDs fail before transport writes;
+the helper additionally returns native ID/status so partial API failures remain
+distinguishable from acceptance.
+
+Server SUSPEND immediately requests reset and holds all touch output. Service
+cancels active contacts through public TouchRawEvent, including any original
+terminal already pending. The gate discards gesture frames, but an observer retains
+up to ten encoded native terminal records, at most 31 bytes each. Native periodic
+encoding may consume and remove its UP state while suspended; the bridge ownership
+does not disappear. No DOWN/UPDATE records or gesture FIFO are retained.
+
+After RESUME or a local reset, normal touch output remains held. Once all terminal
+records have been observed, service re-envelopes those native UP records in one
+fresh bounded frame of at most 320 bytes. Record fields/coordinates/flags are
+copied from the pinned encoder, not reconstructed as another gesture encoder.
+Whole-frame validation occurs before any ownership mutation. Only successful
+transport writing releases terminal IDs and lifts the hold. Resume before service
+or before the next native pump cannot prematurely enable input.
+
+This cleanup profile requires RDPEI **1.0.1 or later** with the actual CS_READY
+DISABLE_TIMESTAMP_INJECTION flag. Fresh cleanup frame timing fields are zero;
+the negotiated flag instructs the server to ignore them, per
+[CS_READY](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpei/cc0712ec-3521-4ad3-9cea-91e59bea6eb6).
+The transport gate still accepts v1.0, but the contact owner reports unavailable
+for timestamp-remoting mode. Correct v1.0/timestamp-remoting cleanup is retained
+compatibility work, not removed from the requirement for negotiated touch.
+
+`touch_frame.*` validates a pinned single-frame TOUCH profile before allocation:
+6-byte exact framing, total 10..8192 bytes, one frame, 1..64 distinct native IDs,
+variable integer boundaries, permitted contact flags, known optional fields and
+orientation/pressure limits. Borrowed record views last only for the observer call.
+The owner accepts only its DOWN/UPDATE and UP/UP+CANCELED profile; hover/pen are
+not newly supported. Format authority is
+[RDPINPUT_TOUCH_CONTACT](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpei/fd7a6696-fe0a-493d-95f4-5b8c1e71b503)
+and the pinned public headers/encoder. This does not bound upstream DVC reassembly.
+
+Drain has a two-second deadline while running, without a new timer. Suspension
+does not expire a legitimate long server pause. API/cleanup-write/deadline failure
+blocks input; **the Connection owner must tear down on Drain::failed**, with no
+gesture or uncertain-write replay. Channel loss permits local abandonment only;
+it does not establish remote release. Success is transport acceptance, not remote
+application acknowledgement. Current control-lease checks remain the caller's
+responsibility.
+
+[Iteration 26](ITERATION_026.md) records pure parser/re-enveloping and actual-addin/
+fake-DVC contact tests. Worker/lease/reset/resize wiring, bounded IPC/browser
+capture, actual server/physical touch and timestamp-remoting compatibility remain
+open. No worker capability or channel is enabled by this isolated component.

@@ -1,5 +1,6 @@
 #include "rdpei.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <stdexcept>
 #include <vector>
 #include <winpr/error.h>
 #include <winpr/wtsapi.h>
@@ -13,6 +14,7 @@ struct Fixture {
   RdpeiClientContext context{};
   UINT status = CHANNEL_RC_OK;
   INT32 contact = 0;
+  bool throwing = false;
   std::vector<Write> writes;
   Fixture() {
     context.handle = this; // Replaces only the public API call, not contact state.
@@ -21,6 +23,8 @@ struct Fixture {
   static UINT raw(RdpeiClientContext *c, INT32 external, INT32 x, INT32 y, INT32 *contact,
                   UINT32 flags, UINT32 fields, ...) {
     auto &f = *static_cast<Fixture *>(c->handle);
+    if (f.throwing)
+      throw std::runtime_error("fixture");
     f.writes.push_back({external, x, y, flags, fields});
     *contact = f.contact;
     return f.status;
@@ -28,6 +32,26 @@ struct Fixture {
   bool send(const Event &event) { return send_rdpei(&context, event); }
 };
 } // namespace
+TEST_CASE("RDPEI submission preserves uncertain native IDs and catches public API exceptions") {
+  Fixture f;
+  f.contact = 63;
+  REQUIRE(submit_rdpei(&f.context, {Action::begin, 1, 1, 1}).accepted());
+  f.contact = 64;
+  const auto invalid = submit_rdpei(&f.context, {Action::begin, 1, 1, 1});
+  REQUIRE_FALSE(invalid.accepted());
+  REQUIRE(invalid.contact_id == 64);
+  f.contact = 7;
+  f.status = ERROR_INTERNAL_ERROR;
+  const auto failed = submit_rdpei(&f.context, {Action::begin, 1, 1, 1});
+  REQUIRE_FALSE(failed.accepted());
+  REQUIRE(failed.contact_id == 7);
+  REQUIRE(failed.status == ERROR_INTERNAL_ERROR);
+  f.throwing = true;
+  const auto thrown = submit_rdpei(&f.context, {Action::begin, 1, 1, 1});
+  REQUIRE_FALSE(thrown.accepted());
+  REQUIRE(thrown.status == ERROR_INTERNAL_ERROR);
+  REQUIRE(thrown.contact_id == -1);
+}
 TEST_CASE("RDPEI projection uses only valid contact flags and preserves signed API bounds") {
   Fixture f;
   for (const auto action : {Action::begin, Action::update, Action::end, Action::cancel})

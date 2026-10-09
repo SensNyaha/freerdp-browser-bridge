@@ -3,10 +3,18 @@
 #include <freerdp/dvc.h>
 #include <freerdp/freerdp.h>
 #include <optional>
+#include <span>
 #include <thread>
 
 namespace bridge::touch {
 enum class Phase { closed, handshake, running, suspended, failed };
+enum class FrameDisposition { prepare, cleanup_prepare, suppressed, delivered };
+struct GateObserver {
+  // Synchronous callbacks may change hold only; no API dispatch/lifetime reentry.
+  void *user = nullptr;
+  UINT (*frame)(void *, std::span<const BYTE>, FrameDisposition) noexcept = nullptr;
+  void (*phase)(void *, Phase) noexcept = nullptr;
+};
 struct Negotiated {
   std::uint32_t version;
   std::uint16_t contacts;
@@ -32,9 +40,14 @@ class DvcGate {
   Phase phase_ = Phase::closed;
   std::optional<Negotiated> negotiated_, candidate_;
   std::uint32_t expected_version_ = 0;
+  std::uint32_t candidate_flags_ = 0, ready_flags_ = 0;
   std::uint64_t suppressed_ = 0;
   bool receiving_ = false, writing_ = false, opening_ = false, closing_ = false;
   bool ready_reply_ = false;
+  bool held_ = false, cleanup_ = false, observing_ = false;
+  GateObserver observer_;
+  void phase(Phase value) noexcept;
+  UINT inspect(std::span<const BYTE>, FrameDisposition) noexcept;
   bool on_thread() const noexcept;
   UINT fail(UINT error) noexcept;
   UINT receive(wStream *stream) noexcept;
@@ -54,10 +67,14 @@ public:
   UINT open(rdpContext &base, IWTSListenerCallback *listener, IWTSVirtualChannel *transport,
             BYTE *data, BOOL *accepted, IWTSVirtualChannelCallback **callback) noexcept;
   UINT close() noexcept;
+  UINT observe(GateObserver observer) noexcept;
+  UINT hold(bool value) noexcept;
+  UINT submit_cleanup(std::span<const BYTE> bytes) noexcept;
   Phase phase() const noexcept { return on_thread() ? phase_ : Phase::closed; }
   bool ready() const noexcept { return on_thread() && phase_ == Phase::running; }
+  bool timestamps_disabled() const noexcept { return on_thread() && (ready_flags_ & 2U); }
   bool quiescent() const noexcept {
-    return on_thread() && !receiving_ && !writing_ && !opening_ && !closing_;
+    return on_thread() && !receiving_ && !writing_ && !opening_ && !closing_ && !observing_;
   }
   std::optional<Negotiated> negotiated() const noexcept {
     return on_thread() ? negotiated_ : std::nullopt;

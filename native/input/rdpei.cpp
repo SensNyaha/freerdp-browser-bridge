@@ -3,9 +3,9 @@
 #include <winpr/wtsapi.h>
 
 namespace bridge::touch {
-bool send_rdpei(RdpeiClientContext *context, const Event &event) noexcept {
+Submission submit_rdpei(RdpeiClientContext *context, const Event &event) noexcept {
   if (!valid(event) || !context || !context->handle || !context->TouchRawEvent)
-    return false;
+    return {ERROR_INVALID_PARAMETER, -1};
   UINT32 flags = 0;
   switch (event.action) {
   case Action::begin:
@@ -24,10 +24,18 @@ bool send_rdpei(RdpeiClientContext *context, const Event &event) noexcept {
     break;
   }
   INT32 contact_id = -1;
-  const UINT result =
-      context->TouchRawEvent(context, static_cast<INT32>(event.id), static_cast<INT32>(event.x),
-                             static_cast<INT32>(event.y), &contact_id, flags, 0);
+  UINT result = ERROR_INTERNAL_ERROR;
+  try {
+    result =
+        context->TouchRawEvent(context, static_cast<INT32>(event.id), static_cast<INT32>(event.x),
+                               static_cast<INT32>(event.y), &contact_id, flags, 0);
+  } catch (...) {
+    result = ERROR_INTERNAL_ERROR;
+  }
   // Pinned rdpei_touch_process can return OK with -1 when no contact slot exists.
-  return result == CHANNEL_RC_OK && contact_id >= 0;
+  return {result, contact_id};
+}
+bool send_rdpei(RdpeiClientContext *context, const Event &event) noexcept {
+  return submit_rdpei(context, event).accepted();
 }
 } // namespace bridge::touch

@@ -46,6 +46,7 @@ public:
   // An injected entry must preserve the pinned entry's cleanup-on-error contract.
   UINT install(IDRDYNVC_ENTRY_POINTS *, PDVC_PLUGIN_ENTRY entry = nullptr) noexcept;
   const DvcGate &gate() const noexcept { return gate_; }
+  DvcGate &gate() noexcept { return gate_; }
   RdpeiClientContext *client() const noexcept;
 };
 } // namespace bridge::touch
