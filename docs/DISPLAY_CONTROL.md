@@ -1,5 +1,10 @@
 # Display Control: native, private IPC and browser
 
+Current release scope: [accepted ADR-011](adr/ADR-011-single-display-100-percent.md)
+fixes one primary monitor at 100% desktop/device scale and the existing orientation
+0. This profile is sufficient by explicit user decision; wider layouts are outside
+current required implementation/acceptance work.
+
 Implements the native channel/request-state slice of SPECIFICATION §2.3 / §2.10,
 MEDIA_PIPELINE §10 and accepted ADR-003 / ADR-008 / ADR-009. The authority for
 the ABI is FreeRDP 3.32.1 public `client/disp.h` and `channels/disp.h`, pinned
@@ -39,8 +44,9 @@ The current native request interface supports one primary monitor at (0,0),
 orientation 0, desktop/device scale 100% and unknown physical size. Width and
 height must be even and between 200 and 3840×2160. This is the intersection
 with the currently supported browser H.264 provider, not a claim that the RDP
-protocol limits all monitors to those dimensions. Higher JPEG-only sizes,
-multimonitor, rotation and scale metadata remain required later work.
+protocol limits all monitors to those dimensions. Higher JPEG-only sizes are a
+possible provider extension; multimonitor and other rotation/scale profiles are
+outside current required scope under ADR-011.
 
 The server area limit is `MaxNumMonitors * MaxMonitorAreaFactorA *
 MaxMonitorAreaFactorB`, as specified in
@@ -115,8 +121,9 @@ reset and dispatch; a hung backend fails before reservation release.
 Control attachments, and media clients explicitly negotiating `media.hello.data.display=true`,
 replay actual metadata with decimal u64 epochs and
 BGRA8 / orientation 0 / desktop/device scale 100%. Request scale is a ratio and
-currently only 1 is accepted. Broader scale/rotation/multimonitor support remains
-open; the browser's existing CSS-scaled input/cursor mapping remains independent.
+currently only 1 is accepted. Broader scale/rotation/multimonitor support is outside
+current scope under ADR-011; the browser's existing CSS-scaled input/cursor mapping
+remains independent.
 
 Each media generation discards only unsent stale captures. An already transmitted
 unit keeps its render credit, ACK sequence and deadline. After ACK/reset, the next
@@ -150,6 +157,6 @@ linked native fixtures. This does not establish browser rendering across resize,
 Windows-server acceptance, full DVC parser/resource limits or soak stability.
 
 The public lease/browser implementation and actual XRDP resize evidence are recorded
-in [Iteration 19](ITERATION_019.md). Windows-server resize, broader scales/rotation,
-full DVC resource audit, automatic viewport policy and the 30-minute desktop gate
-remain open.
+in [Iteration 19](ITERATION_019.md). Windows-server resize, full DVC resource audit
+and the 30-minute desktop gate remain open. Automatic viewport policy is optional
+follow-up; broader scale/layout support is outside current scope under ADR-011.

@@ -8,6 +8,13 @@ The future web application is a separate consumer. The bridge must therefore exp
 
 ## 2. Functional requirements
 
+Scope decision (2026-10-09): [ADR-011](docs/adr/ADR-011-single-display-100-percent.md)
+requires one primary monitor at 100% desktop/device scale, using the existing
+orientation 0. Multimonitor and other RDP scale/layout profiles in the original
+blueprint below are outside the current release requirements. Initial sizing,
+confirmed dynamic width/height changes and all other functional/acceptance
+requirements remain. Original broader wording is retained for traceability.
+
 ### 2.1 Session lifecycle
 
 The service shall:

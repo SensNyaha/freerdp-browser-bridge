@@ -2,6 +2,13 @@
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
+Scope decision — 2026-10-09: **one primary monitor at 100% desktop/device scale
+is sufficient**, using the existing orientation 0. Multimonitor and other RDP
+scale/layout profiles are excluded from current required work by explicit user
+instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/adr/ADR-011-single-display-100-percent.md).
+All other requirements, including confirmed resize, input, audio, devices,
+platforms, resource limits and soak verification, remain.
+
 ## Implementation status — 2026-10-09
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
@@ -47,7 +54,8 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   resize, typed results, actual display replay, input pause, media epoch/ACK preservation,
   same-size reset and stale unsent-frame rejection pass native/fake/Edge checks.
   Actual XRDP browser resize/restoration passes in H.264 and JPEG; Windows-server,
-  broader layouts and soak acceptance remain open.
+  resource limits and soak acceptance remain open. Broader display layouts are
+  excluded from current scope by ADR-011.
   Public Display Control/browser implementation commit: `78fbb67`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
@@ -130,7 +138,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 - [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
-- [~] IN PROGRESS — Native Display Control binds negotiated caps and one bounded layout; private IPC/Node and public control leases expose opt-in, typed results, server-observed generations and deadlines. Actual XRDP browser resize/restoration, display replay, fresh AVC IDRs/JPEG configs, nonfatal input pause and transmitted media ACK preservation pass. Single-primary layout at 100% scale only; Windows-server, broader scales/rotation/multimonitor, DVC resource audit, automatic viewport policy and soak acceptance remain open. [Contract](docs/DISPLAY_CONTROL.md), [native evidence](docs/ITERATION_017.md), [IPC/XRDP evidence](docs/ITERATION_018.md), [public/browser evidence](docs/ITERATION_019.md).
+- [~] IN PROGRESS — Native Display Control binds negotiated caps and one bounded layout; private IPC/Node and public control leases expose opt-in, typed results, server-observed generations and deadlines. Actual XRDP browser resize/restoration, display replay, fresh AVC IDRs/JPEG configs, nonfatal input pause and transmitted media ACK preservation pass. The single-primary layout at 100% scale satisfies ADR-011; Windows-server, DVC resource audit and soak acceptance remain open. Automatic viewport policy is optional follow-up; wider layouts are outside current scope. [Contract](docs/DISPLAY_CONTROL.md), [native evidence](docs/ITERATION_017.md), [IPC/XRDP evidence](docs/ITERATION_018.md), [public/browser evidence](docs/ITERATION_019.md).
 - [~] IN PROGRESS — Rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI/GFX callback tests pass; actual XRDP regression is recorded in [iteration 13](docs/ITERATION_013.md) and [iteration 14](docs/ITERATION_014.md). Partial-region encoding and actual negotiated GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
 - [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/ITERATION_012.md). Exact mono inversion and broader server/platform cases remain retained gaps.
 - [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture with render credit. Configurable FPS caps and quality/bitrate profiles reach native encoders; effective ceilings remain 20 JPEG / 30 AVC FPS. Native/fake and actual XRDP cap checks pass. Provider selection and adaptive congestion remain pending. [Contract](docs/VIDEO_QUALITY.md), [evidence](docs/ITERATION_016.md).
@@ -214,10 +222,10 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [ ] Proxy support.
 - [ ] IPv4/IPv6 preference/force options.
 - [ ] Timeouts/reconnect policy and auto-reconnect cookie where supported.
-- [~] IN PROGRESS — Opt-in single-primary DisplayControl works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. Windows-server, broader layout/scale and soak acceptance remain open. [Evidence](docs/ITERATION_019.md).
-- [ ] Multimonitor policy where browser/future UI can represent it.
+- [~] IN PROGRESS — Opt-in single-primary DisplayControl at 100% scale satisfies ADR-011 and works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. Windows-server, DVC resource audit and soak acceptance remain open. [Evidence](docs/ITERATION_019.md).
+- OUT OF CURRENT SCOPE — Multimonitor policy: explicitly excluded by the user, ADR-011; not an unimplemented release requirement.
 - [ ] Quality profiles mapped to FreeRDP performance flags.
-- [ ] Smart sizing/scales/orientation.
+- OUT OF CURRENT SCOPE — Additional RDP smart sizing/scales/orientation profiles: existing orientation 0 and scale 100% are sufficient under ADR-011. Browser CSS sizing/coordinate mapping remains supported independently.
 - [ ] RemoteApp/RAIL capability and launch parameters.
 - [ ] Custom VC/DVC admin allowlists.
 - [ ] Restricted admin/pass-the-hash privileged policy path.

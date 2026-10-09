@@ -2,6 +2,12 @@
 
 This is a normative logical schema. Implement it with TypeBox/JSON Schema in Node and generate corresponding native enums/validation where practical.
 
+Current release scope follows [ADR-011](docs/adr/ADR-011-single-display-100-percent.md):
+one primary monitor, desktop/device scale 100%, existing orientation 0. Broader
+display fields in the preserved blueprint below are not required implementation
+or acceptance work for this release. Unsupported values remain explicit errors;
+browser CSS presentation is independent of RDP scaling.
+
 ```ts
 type SessionCreate = {
   target: {
