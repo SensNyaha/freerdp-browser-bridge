@@ -4,6 +4,7 @@
 #include "control.hpp"
 #include "cursor.hpp"
 #include "dirty_regions.hpp"
+#include "display.hpp"
 #include "gfx.hpp"
 #include "input.hpp"
 #include "jpeg.hpp"
@@ -57,6 +58,17 @@ class Connection {
   media::DirtyRegions dirty_;
   std::unique_ptr<media::Gfx> gfx_ = std::make_unique<media::Gfx>();
   display::Control display_;
+  struct ResizeRequest {
+    std::uint64_t id, generation;
+    ipc::DisplaySize size;
+  };
+  std::mutex display_mutex_;
+  std::optional<ResizeRequest> queued_resize_, active_resize_;
+  std::atomic<bool> resizing_{false};
+  std::uint64_t display_generation_ = 0, display_revision_ = 0;
+  std::vector<std::uint8_t> last_display_;
+  void publish_display();
+  void resize_pending(bool ending = false);
   bool subscribed_connected_ = false, subscribed_disconnected_ = false;
   std::chrono::steady_clock::time_point next_frame_{};
   std::unique_ptr<media::JpegEncoder> encoder_;
@@ -103,6 +115,7 @@ public:
   void decide(std::span<const std::uint8_t> payload);
   bool capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc);
   unsigned enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload);
+  void enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload);
   std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;
 };

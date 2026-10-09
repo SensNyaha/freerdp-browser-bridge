@@ -64,7 +64,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema != 1 && schema != 2)
+  if (schema != 1 && schema != 2 && schema != 3)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -80,7 +80,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
   const auto reserved = number(1);
   config.connect_ms = static_cast<std::uint32_t>(number(4));
   config.tcp_ack_ms = static_cast<std::uint32_t>(number(4));
-  if (schema == 2) {
+  if (schema >= 2) {
     config.h264_fps = static_cast<std::uint8_t>(number(1));
     config.jpeg_fps = static_cast<std::uint8_t>(number(1));
     config.jpeg_quality = static_cast<std::uint8_t>(number(1));
@@ -92,6 +92,12 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
         config.target_bitrate < 100000 || config.target_bitrate > 20000000 ||
         config.max_bitrate < config.target_bitrate || config.max_bitrate > 20000000)
       throw ProtocolError();
+  }
+  if (schema == 3) {
+    const auto flags = number(4);
+    if (flags > 1)
+      throw ProtocolError();
+    config.dynamic_resolution = flags != 0;
   }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),

@@ -198,7 +198,9 @@ test('build IPC: video quality capability preserves old peers and requires the n
   };
   assert.equal(decodeBuild(build(253)).capabilities.videoQuality, false);
   assert.equal(decodeBuild(build(509)).capabilities.videoQuality, true);
-  for (const flags of [257, 513])
+  assert.equal(decodeBuild(build(509)).capabilities.displayControl, false);
+  assert.equal(decodeBuild(build(1021)).capabilities.displayControl, true);
+  for (const flags of [257, 513, 1025])
     assert.throws(() => decodeBuild(build(flags)), ProtocolError);
 });
 
@@ -231,6 +233,28 @@ test('connection IPC: independent golden settings, byte limits and no legacy sec
   assert.equal(
     encodeConnectionSettings({ ...settings, videoQuality }).toString('hex'),
     '000200096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e80a0a3c00000f4240001e8480',
+  );
+  assert.equal(
+    encodeConnectionSettings({
+      ...settings,
+      videoQuality,
+      dynamicResolution: true,
+    }).toString('hex'),
+    '000300096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e80a0a3c00000f4240001e848000000001',
+  );
+  assert.equal(
+    encodeConnectionSettings({ ...settings, dynamicResolution: true }).toString(
+      'hex',
+    ),
+    '000300096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e81e145000003d0900003d090000000001',
+  );
+  assert.deepEqual(
+    encodeConnectionSettings({ ...settings, dynamicResolution: false }),
+    encodeConnectionSettings(settings),
+  );
+  assert.throws(
+    () => encodeConnectionSettings({ ...settings, dynamicResolution: 1 }),
+    ProtocolError,
   );
   for (const patch of [
     { h264Fps: 0 },

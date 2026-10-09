@@ -88,7 +88,12 @@ are big endian. INPUT layout: u8 type, u8 flags, u16 a, u16 b, u16 c, u32 reserv
 Scancode base bytes must be 1..127; the public browser boundary further restricts
 them to the supported physical table. Unknown types, flags, reserved data and
 lengths are fatal native protocol errors. ERROR 5 means not connected; ERROR 6
-means native input queue overflow. ACK/error echoes the nonzero request ID.
+means native input queue overflow. ERROR 8 means input was paused for a queued/active
+private Display Control request. Native tracking releases held input before layout,
+rejects non-reset records without replay and resumes before the completion reply.
+Reset remains accepted. WorkerProcess exposes a nonfatal INPUT_DISPLAY_TRANSITION;
+public browser pause/error handling remains part of the pending resize integration.
+ACK/error echoes the nonzero request ID. [Display contract](DISPLAY_CONTROL.md).
 
 Verification is separated: native state/record tests, fake-backend ownership and
 ordering tests, Edge DOM tests, and a real XRDP movement-only smoke test.

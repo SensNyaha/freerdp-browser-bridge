@@ -5,7 +5,8 @@ builds expose both as false. Compiled channels are not device capability claims.
 
 Supported fields: target host/port; password username/domain; security auto/NLA/TLS;
 strict/prompt certificate policy; minimum TLS 1.2/1.3; initial width/height/depth;
-connect/TCP acknowledgement deadlines; [native video quality/FPS profiles](VIDEO_QUALITY.md).
+connect/TCP acknowledgement deadlines; [native video quality/FPS profiles](VIDEO_QUALITY.md);
+explicit dynamic-resolution opt-in for experimental Display Control IPC.
 Recognized fields outside this slice fail
 with RDP_SETTING_NOT_IMPLEMENTED, rather than being ignored. Legacy RDP security,
 certificate ignore, TOFU, Gateway/proxy, reconnect, interactive auth replacement,
@@ -26,11 +27,13 @@ implemented; a real XRDP image has rendered in the reference canvas at 1080p.
 Independent cursor extraction/overlay and XRDP replay are implemented.
 The modern GFX binding feeds these same GDI callbacks in synchronous DVC mode;
 [GFX.md](GFX.md) records native fixture coverage, allocation guards and retained
-decoder/scaling gaps. Actual negotiated GFX, dynamic resize and the complete
+decoder/scaling gaps. Actual negotiated GFX, browser resize and the complete
 media gate remain pending.
 The [native Display Control foundation](DISPLAY_CONTROL.md) now binds public
 server caps and distinguishes sent layouts from actual desktop observations.
-Browser resize opt-in, IPC/control requests and actual server acceptance remain
+Bounded private IPC requests/results and Node WorkerProcess metadata are implemented;
+actual XRDP negotiated and accepted a resized desktop and restoration with fresh IDRs.
+Public control requests, attachment replay and browser resize acceptance remain
 pending. Successful DesktopResize resets lazy encoders, including same-size
 GFX resets, so the next AVC capture starts a fresh IDR chain.
 AutoLogon is enabled for supplied credentials.

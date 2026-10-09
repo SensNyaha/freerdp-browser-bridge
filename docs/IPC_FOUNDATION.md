@@ -14,8 +14,8 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | HEARTBEAT_ACK | 4 | empty |
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
-| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue full |
-| CONFIGURE | 8 | connection schema v1/v2 below; maximum 2048 bytes |
+| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue full, 8 input paused during display transition |
+| CONFIGURE | 8 | connection schema v1/v2/v3 below; maximum 2048 bytes |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
 | SECRET_ACK | 11 | empty |
@@ -34,15 +34,20 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | PIPELINE_STATS | 24 | empty; requires diagnostics capability |
 | PIPELINE_STATS_ACK | 25 | exactly eight u64 counters/timings (64 bytes), described below |
 | CURSOR_UPDATE | 26 | 40-byte metadata + optional RGBA8, maximum 589,864 bytes; requestId=0; [cursor layout](CURSOR.md) |
+| DISPLAY_UPDATE | 27 | exactly 32 bytes, server-observed display/reset and negotiated limits; requestId=0 |
+| DISPLAY_RESIZE | 28 | exactly u16 width, u16 height; one pending request per worker |
+| DISPLAY_RESIZE_RESULT | 29 | u16 result, u16 reserved=0; echoes DISPLAY_RESIZE requestId |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
 bit 5 experimental basic input, bit 6 pipeline diagnostics, bit 7 experimental cursor,
-bit 8 experimental configurable video quality).
+bit 8 experimental configurable video quality, bit 9 experimental Display Control IPC).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. Bundled builds set bits 2/3/4/5/6/7/8, not bit 1. Bits 3/4/5/6/7/8 require bit 2.
+set the usable RDP bit. Bundled builds set bits 2/3/4/5/6/7/8 and bit 9 when DISP is compiled,
+not bit 1. Bits 3/4/5/6/7/8/9 require bit 2. Bit 9 is a private IPC implementation claim,
+not remote negotiation or completed browser resize acceptance.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers
@@ -79,7 +84,7 @@ integration, not RDP connectivity. FreeRDP channels/codecs/devices remain unsupp
 their separate build and integration gates pass. See CONNECTION_CORE.md for the
 experimental connection slice, distinct from full usable browser RDP.
 
-## Connection payload v1/v2
+## Connection payload v1/v2/v3
 
 CONFIGURE: u16 schemaVersion=1; three u16-length UTF-8 strings host (max 253 bytes),
 username/domain (max 256 bytes each); u16 port, width, height, colorDepth;
@@ -99,6 +104,51 @@ New Node readers accept older capability reports without bit 8; explicit quality
 then fails before CONFIGURE/SECRET rather than being ignored. Older Node readers
 that reject unknown capability bits must be upgraded with the native worker.
 The RWI1 envelope and media records remain version 1. See [quality profiles](VIDEO_QUALITY.md).
+
+Schema v3 contains the v2 fields with schemaVersion=3 and an additional u32 flags:
+bit 0 enables session-authorized dynamic-resolution requests; all other bits must be zero.
+Node sends v3 only for `display.dynamicResolution=true` and HELLO bit 9, supplying default
+quality values when no quality override was given. Absent/false opt-in retains v1/v2 compatibility.
+Native v1/v2 default to disabled; v3 with zero flags is also accepted. Explicit opt-in against
+an older worker fails before CONFIGURE/SECRET. Upgrade Node and worker together because older
+Node readers reject unknown mandatory HELLO bits. Automatic FreeRDP window-driven resizing
+remains disabled; layout writes are performed by the RDP thread.
+
+## Display Control payloads
+
+DISPLAY_UPDATE offsets: u64 generation at 0, u64 framebufferRevision at 8, u16 actual width
+at 16, u16 actual height at 18, u8 flags at 20 (bit 0 session opt-in, bit 1 negotiated and
+observed Display Control ready), u8 reserved=0 at 21, u16 maxWidth at 22, u16 maxHeight at 24,
+u16 reserved=0 at 26, u32 maxArea at 28. Both u64 values are nonzero. Actual dimensions use
+the framebuffer ceiling 7680×4320. Negotiated limits are 3840×2160 with area 1..8,294,400;
+all limit fields are zero when readiness is absent. Generation increments on successful
+GDI resize/reset even when dimensions are unchanged. FramebufferRevision is the dirty revision
+at that observation, not a continuously updated paint counter. Caps-only changes retain both
+values and actual geometry. New generations require a strictly greater framebufferRevision.
+Scale/rotation/multimonitor are not negotiated by this slice; layouts use fixed 100% scales.
+
+DISPLAY_RESIZE geometry is checked on the RDP thread against negotiated caps and the current
+provider intersection: even width 200..3840 and height 200..2160, within maxArea. Semantic
+geometry failure is nonfatal. Results: 0 applied, 1 unchanged, 2 unavailable, 3 invalid,
+4 busy, 5 send-failed, 6 timeout, 7 disconnected. A successful SendMonitorLayout is not a reply.
+Only a subsequent matching successful GDI observation completes applied; its DISPLAY_UPDATE
+precedes the result and further capture replies. No-op unchanged requires actual matching
+dimensions with no pending request. Timeout after five seconds leaves actual state intact;
+a late remote resize still publishes authoritative metadata. Teardown resolves queued/pending
+requests as disconnected where the IPC transport remains writable.
+
+One fixed request slot and one active confirmation are protected from concurrent IPC access;
+they cannot both hold different requests. FreeRDP calls and observation stay on the RDP thread.
+Tracked input is released before sending a layout. While a request is queued/active, new and
+already queued non-reset input is rejected with ERROR 8; reset remains accepted. Rejected input
+is never replayed after the transition. Node treats ERROR 8 as a nonfatal input operation error.
+Resize IPC has a minimum 6.5-second transport deadline, separate from the ordinary two-second
+deadline; heartbeat/shutdown remain independently serviced. A typed timeout does not fail the
+worker. A missing reply or malformed/false applied result does fail IPC supervision.
+
+`WorkerProcess.display`, its `display` event and `resizeDisplay(width,height)` are experimental
+private host APIs. The public session attachment, control WS, browser scale/state replay,
+media discontinuity and controller ownership integration remain pending; see [Display Control](DISPLAY_CONTROL.md).
 
 STATE: 1 connecting, 2 awaiting-user, 3 connected, 4 closed, 5 failed.
 Reasons: 0 none, 1 connection, 2 authentication, 3 certificate, 4 timeout,

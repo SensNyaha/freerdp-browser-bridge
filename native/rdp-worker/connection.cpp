@@ -116,7 +116,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
 #else
   boolean(FreeRDP_SupportDisplayControl, FALSE);
 #endif
-  // Browser-driven requests remain capability-gated until the public IPC/API slice exists.
+  // Layout writes belong to the RDP thread, never to FreeRDP window automation.
   boolean(FreeRDP_DynamicResolutionUpdate, FALSE);
 #ifdef CHANNEL_RDPGFX_CLIENT
   boolean(FreeRDP_SupportGraphicsPipeline, c.color_depth == 32);
@@ -278,6 +278,8 @@ BOOL Connection::post_connect(freerdp *instance) {
     owner(instance).dirty_.resize(width, height);
     if (!owner(instance).display_.observe({width, height}))
       return FALSE;
+    owner(instance).display_generation_ = 1;
+    owner(instance).display_revision_ = owner(instance).dirty_.revision();
   } catch (...) {
     return FALSE;
   }
@@ -285,6 +287,8 @@ BOOL Connection::post_connect(freerdp *instance) {
 }
 BOOL Connection::resize(rdpContext *context) {
   auto &self = owner(context->instance);
+  if (self.display_generation_ == (std::numeric_limits<std::uint64_t>::max)())
+    return FALSE;
   if (!media::resize_gdi_desktop(context, self.dirty_))
     return FALSE;
   if (!self.display_.observe(
@@ -293,6 +297,8 @@ BOOL Connection::resize(rdpContext *context) {
   // A same-size graphics reset also invalidates a predictive chain. Encoders are lazy.
   self.encoder_.reset();
   self.avc_encoder_.reset();
+  ++self.display_generation_;
+  self.display_revision_ = self.dirty_.revision();
   return TRUE;
 }
 BOOL Connection::begin_paint(rdpContext *context) {
@@ -424,6 +430,8 @@ unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::u
   std::lock_guard lock(input_mutex_);
   if (!connected_ || stopping_)
     return 5;
+  if (resizing_ && event.type != input::Type::reset)
+    return 8;
   if (input_queue_.size() >= 64 || input_overflow_) {
     input_overflow_ = true;
     if (!SetEvent(media_event_))
@@ -475,9 +483,9 @@ void Connection::input_pending(bool ending) {
   while (!input_queue_.empty()) {
     const auto [request, event] = input_queue_.front();
     input_queue_.pop_front();
-    if (ending) {
+    if (ending || (resizing_ && event.type != input::Type::reset)) {
       std::vector<std::uint8_t> p;
-      append_be(p, 5, 4);
+      append_be(p, ending ? 5 : 8, 4);
       send_({Kind::error, request, std::move(p)});
     } else {
       const auto *gdi = context_->gdi;
@@ -492,6 +500,109 @@ void Connection::input_pending(bool ending) {
     if (!input_state_.release(sink) && !ending)
       throw ProtocolError();
   }
+}
+void Connection::publish_display() {
+#ifndef CHANNEL_DISP_CLIENT
+  return;
+#else
+  if (!display_generation_ || !display_revision_)
+    return;
+  const auto actual = display_.actual();
+  if (!actual)
+    throw ProtocolError();
+  const auto caps = display_.capabilities();
+  auto bytes = encode_display_update(
+      {display_generation_,
+       display_revision_,
+       {static_cast<std::uint16_t>(actual->width), static_cast<std::uint16_t>(actual->height)},
+       config_->dynamic_resolution,
+       display_.ready(),
+       {static_cast<std::uint16_t>(caps ? display::Control::max_width : 0),
+        static_cast<std::uint16_t>(caps ? display::Control::max_height : 0)},
+       static_cast<std::uint32_t>(caps ? caps->usable_area : 0)});
+  if (bytes != last_display_) {
+    send_({Kind::display_update, 0, bytes});
+    last_display_ = std::move(bytes);
+  }
+#endif
+}
+void Connection::enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload) {
+  const auto size = decode_display_resize(payload);
+  if (!request)
+    throw ProtocolError();
+  std::lock_guard lock(display_mutex_);
+  if (!connected_ || stopping_) {
+    send_({Kind::display_resize_result, request, encode_resize_result(ResizeResult::disconnected)});
+  } else if (!config_->dynamic_resolution) {
+    send_({Kind::display_resize_result, request, encode_resize_result(ResizeResult::unavailable)});
+  } else if (queued_resize_ || active_resize_) {
+    send_({Kind::display_resize_result, request, encode_resize_result(ResizeResult::busy)});
+  } else {
+    queued_resize_ = ResizeRequest{request, 0, size};
+    resizing_ = true;
+    if (!SetEvent(media_event_))
+      throw ProtocolError();
+  }
+}
+void Connection::resize_pending(bool ending) {
+  std::lock_guard lock(display_mutex_);
+  const auto reply = [&](std::optional<ResizeRequest> &request, ResizeResult result) {
+    const auto id = request->id;
+    request.reset();
+    // Resume input before the parent can act on the completion reply.
+    resizing_ = queued_resize_.has_value() || active_resize_.has_value();
+    send_({Kind::display_resize_result, id, encode_resize_result(result)});
+  };
+  if (!ending)
+    publish_display(); // The observed dimensions/reset precede any successful result/media.
+  if (active_resize_) {
+    if (ending)
+      reply(active_resize_, ResizeResult::disconnected);
+    else if (display_.expire(std::chrono::steady_clock::now()))
+      reply(active_resize_, ResizeResult::timeout);
+    else if (!display_.requested()) {
+      const auto actual = display_.actual();
+      const bool applied = actual && actual->width == active_resize_->size.width &&
+                           actual->height == active_resize_->size.height &&
+                           display_generation_ > active_resize_->generation;
+      reply(active_resize_, applied ? ResizeResult::applied : ResizeResult::unavailable);
+    }
+  }
+  if (queued_resize_) {
+    if (ending) {
+      reply(queued_resize_, ResizeResult::disconnected);
+    } else {
+      // Releases complete before sending layout; paused input is never replayed afterwards.
+      if (!input_state_.release([this](const auto &event) { return send_input(event); }))
+        throw ProtocolError();
+      queued_resize_->generation = display_generation_;
+      const auto result =
+          display_.request({queued_resize_->size.width, queued_resize_->size.height},
+                           std::chrono::steady_clock::now());
+      switch (result) {
+      case display::Request::sent:
+        active_resize_ = queued_resize_;
+        queued_resize_.reset();
+        break;
+      case display::Request::unchanged:
+        reply(queued_resize_, ResizeResult::unchanged);
+        break;
+      case display::Request::unavailable:
+        reply(queued_resize_, ResizeResult::unavailable);
+        break;
+      case display::Request::invalid:
+        reply(queued_resize_, ResizeResult::invalid);
+        break;
+      case display::Request::busy:
+        reply(queued_resize_, ResizeResult::busy);
+        break;
+      case display::Request::send_failed:
+        reply(queued_resize_, ResizeResult::send_failed);
+        break;
+      }
+    }
+  }
+  resizing_ = queued_resize_.has_value() || active_resize_.has_value();
 }
 BOOL Connection::authenticate(freerdp *instance, char **username, char **password, char **,
                               rdp_auth_reason) {
@@ -612,6 +723,7 @@ void Connection::run() noexcept {
     } else {
       connected_ = true;
       state(RdpState::connected);
+      publish_display();
       bool healthy = true;
       while (!stopping_ && !freerdp_shall_disconnect_context(context_.get())) {
         std::array<HANDLE, 64> events{};
@@ -658,10 +770,11 @@ void Connection::run() noexcept {
         if (stopping_ || freerdp_shall_disconnect_context(context_.get()))
           break;
         input_pending();
-        (void)display_.expire(std::chrono::steady_clock::now());
+        resize_pending();
         capture_pending();
       }
       connected_ = false;
+      resize_pending(true);
       input_pending(true);
       capture_pending(true);
       const auto disconnected = freerdp_disconnect(context_->instance);
@@ -670,6 +783,10 @@ void Connection::run() noexcept {
     }
   } catch (...) {
     connected_ = false;
+    try {
+      resize_pending(true);
+    } catch (...) {
+    }
     if (context_->gdi) {
       // Attempt every tracked release before tearing down a failed transport.
       try {

@@ -167,3 +167,19 @@ environment, logs or production persistence. Certificate verification remains
 strict by default; the lab helper uses only the previously approved exact fingerprint.
 
 Original blueprint: ../README.md. Current implementation status: ../TODO.md.
+
+## Private XRDP Display Control check
+
+After building Node and the bundled worker, use the already approved exact lab
+fingerprint with the ignored local credentials:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-display.mjs $fingerprint
+```
+
+The helper opts in to native dynamic resolution, checks negotiated caps, changes
+1920×1080 to 1280×720, verifies new AVC IDR/JPEG dimensions, and restores the original
+size with another IDR. It sends only input reset and lifecycle requests. If the
+server has no negotiated Display Control, it records unavailable rather than
+claiming a successful resize. This is private worker integration; the browser
+control command and browser rendering across resize remain pending.

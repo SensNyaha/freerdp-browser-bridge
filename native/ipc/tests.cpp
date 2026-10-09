@@ -1,4 +1,5 @@
 #include "connection_config.hpp"
+#include "display.hpp"
 #include "protocol.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -66,6 +67,7 @@ TEST_CASE("connection settings independently encoded vector, truncation and poli
   REQUIRE(c.jpeg_quality == 80);
   REQUIRE(c.target_bitrate == 4000000);
   REQUIRE(c.max_bitrate == 4000000);
+  REQUIRE_FALSE(c.dynamic_resolution);
   for (std::size_t i = 0; i < connection.size(); ++i)
     REQUIRE_THROWS_AS(decode_connection_config(std::span(connection).first(i)), ProtocolError);
   auto extra = connection;
@@ -121,6 +123,76 @@ TEST_CASE("AVC IPC class bounds are checked before body allocation") {
   bytes.resize(20);
   append_be(bytes, maximum + 1, 4);
   REQUIRE_THROWS_AS(decode_header(bytes), ProtocolError);
+}
+TEST_CASE("connection v3 explicit dynamic-resolution flag with strict legacy compatibility") {
+  auto bytes = connection;
+  bytes[1] = 3;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 1});
+  REQUIRE(decode_connection_config(bytes).dynamic_resolution);
+  REQUIRE(decode_connection_config(bytes).max_bitrate == 4000000);
+  bytes.back() = 0;
+  REQUIRE_FALSE(decode_connection_config(bytes).dynamic_resolution);
+  for (std::size_t length = 0; length < bytes.size(); ++length)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+  for (std::size_t offset = bytes.size() - 4; offset < bytes.size(); ++offset) {
+    auto invalid = bytes;
+    invalid[offset] = 2;
+    REQUIRE_THROWS_AS(decode_connection_config(invalid), ProtocolError);
+  }
+  bytes.push_back(0);
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+}
+TEST_CASE("display IPC independent vectors and exact class bounds before allocation") {
+  const DisplayUpdate update{1, 2, {1920, 1080}, true, true, {3840, 2160}, 3840U * 2160U};
+  const std::vector<std::uint8_t> expected{0,    0, 0, 0,    0, 0, 0,    1,    0,    0, 0,
+                                           0,    0, 0, 0,    2, 7, 0x80, 4,    0x38, 3, 0,
+                                           0x0f, 0, 8, 0x70, 0, 0, 0,    0x7e, 0x90, 0};
+  REQUIRE(encode_display_update(update) == expected);
+  const std::vector<std::uint8_t> resize{5, 0, 2, 0xd0};
+  const auto size = decode_display_resize(resize);
+  REQUIRE(size.width == 1280);
+  REQUIRE(size.height == 720);
+  REQUIRE(decode_display_resize(std::vector<std::uint8_t>(4)).width == 0);
+  REQUIRE(encode_resize_result(ResizeResult::timeout) == std::vector<std::uint8_t>{0, 6, 0, 0});
+  REQUIRE_THROWS_AS(encode_resize_result(static_cast<ResizeResult>(8)), ProtocolError);
+  for (const auto [kind, length] : {std::pair{Kind::display_update, std::size_t{32}},
+                                    {Kind::display_resize, 4},
+                                    {Kind::display_resize_result, 4}}) {
+    auto header = encode({kind, 1, std::vector<std::uint8_t>(length)});
+    header.resize(header_bytes);
+    REQUIRE(decode_header(header).length == length);
+    for (const auto bad_length : {std::uint64_t{0}, std::uint64_t{length - 1},
+                                  std::uint64_t{length + 1}, std::uint64_t{UINT32_MAX}}) {
+      header.resize(20);
+      append_be(header, bad_length, 4);
+      REQUIRE_THROWS_AS(decode_header(header), ProtocolError);
+    }
+  }
+  REQUIRE_THROWS_AS(decode_display_resize(std::span(resize).first(3)), ProtocolError);
+  for (const auto index : {0, 1, 2, 3, 4, 5}) {
+    auto bad = update;
+    switch (index) {
+    case 0:
+      bad.generation = 0;
+      break;
+    case 1:
+      bad.framebuffer_revision = 0;
+      break;
+    case 2:
+      bad.actual.width = 7681;
+      break;
+    case 3:
+      bad.negotiated = false;
+      break;
+    case 4:
+      bad.max_area = 3840U * 2160U + 1;
+      break;
+    case 5:
+      bad.maximum.height = 2161;
+      break;
+    }
+    REQUIRE_THROWS_AS(encode_display_update(bad), ProtocolError);
+  }
 }
 TEST_CASE("secret class limits, canonical UTF-8, embedded NUL and overwrite") {
   REQUIRE_NOTHROW(validate_secret({}));

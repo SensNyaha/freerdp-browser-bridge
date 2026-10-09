@@ -1,4 +1,5 @@
 #include "connection_config.hpp"
+#include "display.hpp"
 #include "input.hpp"
 #include "protocol.hpp"
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
@@ -19,6 +20,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           validate_secret(payload);
         else if (header.kind == Kind::input)
           (void)bridge::input::decode(payload);
+        else if (header.kind == Kind::display_resize)
+          (void)decode_display_resize(payload);
       }
     }
   } catch (const bridge::ipc::ProtocolError &) {

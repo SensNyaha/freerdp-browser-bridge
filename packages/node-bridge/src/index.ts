@@ -21,6 +21,11 @@ import {
   encodeInput,
   decodePipelineStats,
   decodeCursorUpdate,
+  decodeDisplayState,
+  encodeDisplayResize,
+  decodeDisplayResizeResult,
+  type DisplayState,
+  type DisplayResizeResult,
   type CursorState,
   type PipelineStats,
   type InputEvent,
@@ -93,6 +98,12 @@ export class WorkerProcess extends EventEmitter {
   private connectionRequested = false;
   private certificatePrompt: CertificatePrompt | undefined;
   private cursorState: CursorState | undefined;
+  private displayState: DisplayState | undefined;
+  private resizing = false;
+  private resizeRequest:
+    | { width: number; height: number; generation: bigint }
+    | undefined;
+  private dynamicResolution = false;
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
@@ -264,6 +275,10 @@ export class WorkerProcess extends EventEmitter {
         decodeCursorUpdate(packet.payload);
         return;
       }
+      if (packet.kind === Kind.DisplayUpdate) {
+        decodeDisplayState(packet.payload);
+        return;
+      }
     }
     if (
       packet.requestId === 0n &&
@@ -273,6 +288,8 @@ export class WorkerProcess extends EventEmitter {
       if (packet.kind === Kind.State) {
         const value = decodeConnectionState(packet.payload);
         this.rdpConnected = value.state === 'connected';
+        if (['failed', 'closed'].includes(value.state))
+          this.displayState = undefined;
         if (value.state !== 'awaiting-user') this.certificatePrompt = undefined;
         this.emit('rdp-state', value);
         return;
@@ -282,6 +299,30 @@ export class WorkerProcess extends EventEmitter {
           throw new WorkerError('IPC_UNEXPECTED_EVENT');
         this.certificatePrompt = decodeCertificatePrompt(packet.payload);
         this.emit('certificate', structuredClone(this.certificatePrompt));
+        return;
+      }
+      if (
+        packet.kind === Kind.DisplayUpdate &&
+        this.report?.capabilities.displayControl &&
+        this.rdpConnected
+      ) {
+        const update = decodeDisplayState(packet.payload);
+        if (update.dynamicResolution !== this.dynamicResolution)
+          throw new WorkerError('IPC_UNEXPECTED_EVENT');
+        const previous = this.displayState;
+        if (
+          previous &&
+          (update.generation < previous.generation ||
+            update.dynamicResolution !== previous.dynamicResolution ||
+            (update.generation === previous.generation
+              ? update.width !== previous.width ||
+                update.height !== previous.height ||
+                update.framebufferRevision !== previous.framebufferRevision
+              : update.framebufferRevision <= previous.framebufferRevision))
+        )
+          throw new WorkerError('IPC_UNEXPECTED_EVENT');
+        this.displayState = update;
+        this.emit('display', { ...update });
         return;
       }
       if (
@@ -313,13 +354,17 @@ export class WorkerProcess extends EventEmitter {
     const pending = this.pending.get(packet.requestId);
     if (pending?.expected === Kind.InputAck && packet.kind === Kind.Error) {
       const code = packet.payload.readUInt32BE(0);
-      if (code !== 5 && code !== 6)
+      if (code !== 5 && code !== 6 && code !== 8)
         throw new WorkerError('IPC_UNEXPECTED_REPLY');
       clearTimeout(pending.timer);
       this.pending.delete(packet.requestId);
       pending.reject(
         new WorkerError(
-          code === 5 ? 'INPUT_NOT_CONNECTED' : 'INPUT_QUEUE_FULL',
+          code === 5
+            ? 'INPUT_NOT_CONNECTED'
+            : code === 6
+              ? 'INPUT_QUEUE_FULL'
+              : 'INPUT_DISPLAY_TRANSITION',
         ),
       );
       return;
@@ -347,6 +392,21 @@ export class WorkerProcess extends EventEmitter {
     if (packet.kind === Kind.FrameAvc) decodeAvcFrame(packet.payload);
     if (packet.kind === Kind.PipelineStatsAck)
       decodePipelineStats(packet.payload);
+    if (packet.kind === Kind.DisplayResizeResult) {
+      const result = decodeDisplayResizeResult(packet.payload);
+      if (result === 'applied' || result === 'unchanged') {
+        const expected = this.resizeRequest;
+        const actual = this.displayState;
+        if (
+          !expected ||
+          !actual ||
+          actual.width !== expected.width ||
+          actual.height !== expected.height ||
+          (result === 'applied' && actual.generation <= expected.generation)
+        )
+          throw new WorkerError('IPC_UNEXPECTED_REPLY');
+      }
+    }
     clearTimeout(pending.timer);
     this.pending.delete(packet.requestId);
     pending.resolve(packet);
@@ -356,6 +416,7 @@ export class WorkerProcess extends EventEmitter {
     kind: Kind,
     expected: Kind,
     payload: Buffer = Buffer.alloc(0),
+    timeoutMs = this.options.requestTimeoutMs,
   ): Promise<Packet> {
     const child = this.child;
     if (
@@ -377,9 +438,7 @@ export class WorkerProcess extends EventEmitter {
           reject(new WorkerError('IPC_TIMEOUT'));
           this.fail('IPC_TIMEOUT');
         },
-        kind === Kind.Hello
-          ? this.options.startupTimeoutMs
-          : this.options.requestTimeoutMs,
+        kind === Kind.Hello ? this.options.startupTimeoutMs : timeoutMs,
       );
       this.pending.set(requestId, { expected, resolve: done, reject, timer });
       child.stdin.write(bytes, (error) => {
@@ -407,6 +466,43 @@ export class WorkerProcess extends EventEmitter {
       throw new WorkerError('DIAGNOSTICS_NOT_IMPLEMENTED');
     const reply = await this.request(Kind.PipelineStats, Kind.PipelineStatsAck);
     return decodePipelineStats(reply.payload);
+  }
+
+  /** A copy of the last server-observed desktop. No browser attachment authority is implied. */
+  get display(): DisplayState | undefined {
+    return this.displayState ? { ...this.displayState } : undefined;
+  }
+
+  /** Experimental private IPC API; sent layouts resolve only after observation or a typed failure. */
+  async resizeDisplay(
+    width: number,
+    height: number,
+  ): Promise<DisplayResizeResult> {
+    const payload = encodeDisplayResize(width, height);
+    if (!this.report?.capabilities.displayControl)
+      throw new WorkerError('DISPLAY_NOT_IMPLEMENTED');
+    if (!this.rdpConnected || this.status !== 'ready') return 'disconnected';
+    if (!this.displayState?.dynamicResolution) return 'unavailable';
+    if (this.resizing) return 'busy';
+    this.resizeRequest = {
+      width,
+      height,
+      generation: this.displayState.generation,
+    };
+    this.resizing = true;
+    try {
+      const reply = await this.request(
+        Kind.DisplayResize,
+        Kind.DisplayResizeResult,
+        payload,
+        Math.max(6500, this.options.requestTimeoutMs),
+      );
+      const result = decodeDisplayResizeResult(reply.payload);
+      return result;
+    } finally {
+      this.resizing = false;
+      this.resizeRequest = undefined;
+    }
   }
 
   /** Pulls the latest changed desktop. At most one encoded frame request may be in flight. */
@@ -465,6 +561,7 @@ export class WorkerProcess extends EventEmitter {
       const payload = connectionPayload(
         config,
         this.report.capabilities.videoQuality,
+        this.report.capabilities.displayControl,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -481,6 +578,7 @@ export class WorkerProcess extends EventEmitter {
         password.fill(0);
       }
       this.connectionRequested = true;
+      this.dynamicResolution = config.display?.dynamicResolution === true;
       await this.request(Kind.Connect, Kind.ConnectAck);
     } finally {
       delete config.auth.password;
@@ -546,6 +644,7 @@ export class WorkerProcess extends EventEmitter {
 
   private async cleanup(): Promise<void> {
     this.cursorState = undefined;
+    this.displayState = undefined;
     if (this.directory) {
       await rm(this.directory, {
         recursive: true,
@@ -561,6 +660,7 @@ export class WorkerProcess extends EventEmitter {
 function connectionPayload(
   config: SessionCreate,
   videoQuality: boolean,
+  displayControl: boolean,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -577,7 +677,14 @@ function connectionPayload(
   allowed(config.target, ['host', 'port']);
   allowed(config.auth, ['username', 'domain', 'password', 'mode']);
   allowed(config.security, ['protocol', 'certificatePolicy', 'minimumTls']);
-  allowed(config.display, ['width', 'height', 'colorDepth']);
+  allowed(config.display, [
+    'width',
+    'height',
+    'colorDepth',
+    'dynamicResolution',
+  ]);
+  if (config.display?.dynamicResolution && !displayControl)
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   allowed(config.timeouts, ['connectMs', 'tcpAckMs']);
   allowed(config.quality, [
     'profile',
@@ -620,6 +727,7 @@ function connectionPayload(
     minimumTls: config.security?.minimumTls === '1.3' ? 3 : 2,
     connectMs: config.timeouts?.connectMs ?? 10000,
     tcpAckMs: config.timeouts?.tcpAckMs ?? 10000,
+    ...(config.display?.dynamicResolution ? { dynamicResolution: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),
   });
 }

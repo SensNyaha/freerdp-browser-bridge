@@ -1,15 +1,16 @@
-# Native Display Control foundation
+# Native Display Control and private IPC
 
 Implements the native channel/request-state slice of SPECIFICATION §2.3 / §2.10,
 MEDIA_PIPELINE §10 and accepted ADR-003 / ADR-008 / ADR-009. The authority for
 the ABI is FreeRDP 3.32.1 public `client/disp.h` and `channels/disp.h`, pinned
 commit `bf217a504e54cc719880c228e82353382cd7d4fa`.
 
-This is a native foundation, not completed browser dynamic resolution.
-The public settings mapper still rejects dynamic resolution and the control WS
-does not yet implement `display.resize.request`. No new HELLO capability or IPC
-record is advertised, and usable `rdp` remains false. Initial display sizing
-and existing media negotiation retain their current contracts.
+The native foundation is now connected through bounded private IPC to Node's
+`WorkerProcess`; this is not completed browser dynamic resolution. The settings
+mapper accepts explicit `display.dynamicResolution=true` on workers advertising
+the experimental `displayControl` capability. The control WS does not yet implement
+`display.resize.request`, and usable `rdp` remains false. Initial sizing and media
+negotiation retain their current contracts.
 
 ## Ownership and negotiation
 
@@ -73,9 +74,32 @@ Invalid dimensions preserve the current framebuffer and dirty metadata.
 After a successful resize, the worker records the actual GDI dimensions and
 discards lazy JPEG/H.264 encoders. This also handles a same-size GFX reset:
 the next AVC capture starts a fresh predictive chain with an IDR. The existing
-encoded-media dimension/config mechanism remains in place. Completion events,
-public `display.resize`, scale metadata and command/result correlation await
-the IPC/Node/browser slice; this foundation does not claim those contracts.
+encoded-media dimension/config mechanism remains in place. Private display metadata
+and request correlation now use the [IPC contract](IPC_FOUNDATION.md#display-control-payloads).
+Public `display.resize`, browser scale metadata and media/ACK ownership integration
+remain open.
+
+## Private IPC and supervisor
+
+HELLO bit 9 reports compiled experimental Display Control IPC, independently of
+remote caps and session opt-in. CONFIGURE v3 adds the opt-in flag while keeping
+v1/v2 disabled and readable; false/absent opt-in can still use older workers.
+Unknown payload flags are rejected; envelope lengths are checked before payload allocation.
+
+IPC places at most one request in the native fixed slot. The RDP thread releases
+tracked input, sends the bounded layout, and keeps its request ID until observation,
+five-second timeout, caps loss or disconnect. Non-reset input is rejected while
+queued/active; reset and lifecycle IPC remain available. Server-observed display
+generation/revision and caps are published before successful result/media delivery.
+Same-size resets increment generation. Caps updates do not invent framebuffer changes.
+
+Node caches a copyable display state and emits `display`; `resizeDisplay` bounds
+one in-flight request and returns typed outcomes. It requires opt-in, rejects
+changed geometry with a reused generation, and rejects applied results without a
+matching newer observation. A 6.5-second IPC deadline permits the native timeout
+to arrive without triggering the ordinary two-second deadline. Timed-out commands
+do not change cached geometry, but later remote observations remain authoritative.
+These host APIs do not grant public browser/controller authority.
 
 ## Evidence and remaining acceptance
 
@@ -87,8 +111,13 @@ tests use public GDI objects with actual gdi_resize allocation, not full gdi_ini
 or an RDP server. Incoming DVC reassembly/parser allocation remains upstream
 and still needs the retained resource audit.
 
-Next: explicit per-session opt-in/capability negotiation, bounded IPC requests
-and server-observed result events, control-lease authority and deadlines in Node,
+The actual authorized XRDP lab negotiated Display Control, accepted 1920×1080 →
+1280×720 → 1920×1080, and produced new AVC IDRs and a resized JPEG through private
+IPC. [Iteration 18](ITERATION_018.md) records this separately from fake IPC and
+linked native fixtures. This does not establish browser rendering across resize,
+Windows-server acceptance, full DVC parser/resource limits or soak stability.
+
+Next: control-lease authority in the session manager,
 display state replay on attachment, browser `display.resize.request` and real
-XRDP/Windows resize/recovery checks, including in-flight input/cursor coordinates
+XRDP/Windows browser resize/recovery checks, including in-flight input/cursor coordinates
 and media/ACK ownership. The 30-minute desktop gate remains open.

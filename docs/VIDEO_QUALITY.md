@@ -45,7 +45,7 @@ based; hardware/provider selection is retained work.
 ## Scheduling and transport
 
 The manager retains only resolved non-secret quality values. The native settings
-use [CONFIGURE v2](IPC_FOUNDATION.md), capability gated; credentials still travel
+use [CONFIGURE v2/v3](IPC_FOUNDATION.md), capability gated (v3 for dynamic-resolution opt-in); credentials still travel
 separately through private IPC. Legacy v1 settings keep historical defaults.
 Both native capture pacing and Node pull pacing use the selected cap. No raw
 frame queue is introduced. Render credit remains one frame, and only the latest

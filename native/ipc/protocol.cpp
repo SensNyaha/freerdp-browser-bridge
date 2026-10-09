@@ -1,5 +1,6 @@
 #include "protocol.hpp"
 #include "cursor.hpp"
+#include "display.hpp"
 #include <algorithm>
 #include <limits>
 
@@ -37,7 +38,11 @@ static std::uint32_t limit(Kind kind) {
   case Kind::pipeline_stats:
     return 0;
   case Kind::error:
+  case Kind::display_resize:
+  case Kind::display_resize_result:
     return 4;
+  case Kind::display_update:
+    return display_update_bytes;
   case Kind::pipeline_stats_ack:
     return 64;
   case Kind::cursor_update:

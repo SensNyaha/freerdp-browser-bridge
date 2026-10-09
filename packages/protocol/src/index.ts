@@ -1,6 +1,8 @@
 export * from './media.js';
 export * from './input.js';
 export * from './cursor.js';
+export * from './display.js';
+import { DISPLAY_UPDATE_BYTES } from './display.js';
 import { CURSOR_METADATA_BYTES, MAX_CURSOR_BYTES } from './cursor.js';
 export const IPC_VERSION = 1;
 export const HEADER_BYTES = 24;
@@ -34,6 +36,9 @@ export enum Kind {
   PipelineStats = 24,
   PipelineStatsAck = 25,
   CursorUpdate = 26,
+  DisplayUpdate = 27,
+  DisplayResize = 28,
+  DisplayResizeResult = 29,
 }
 
 export interface Packet {
@@ -68,7 +73,11 @@ function payloadLimit(kind: number): number {
     case Kind.PipelineStats:
       return 0;
     case Kind.Error:
+    case Kind.DisplayResize:
+    case Kind.DisplayResizeResult:
       return 4;
+    case Kind.DisplayUpdate:
+      return DISPLAY_UPDATE_BYTES;
     case Kind.PipelineStatsAck:
       return 64;
     case Kind.CursorUpdate:
@@ -223,6 +232,7 @@ export interface WorkerBuild {
     pipelineStats: boolean;
     cursor: boolean;
     videoQuality: boolean;
+    displayControl: boolean;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -238,9 +248,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~511) !== 0 ||
+    (capabilities & ~1023) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 504) !== 0 && (capabilities & 4) === 0)
+    ((capabilities & 1016) !== 0 && (capabilities & 4) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -280,6 +290,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       pipelineStats: Boolean(capabilities & 64),
       cursor: Boolean(capabilities & 128),
       videoQuality: Boolean(capabilities & 256),
+      displayControl: Boolean(capabilities & 512),
     },
     bridgeVersion,
     gitCommit,
@@ -382,6 +393,7 @@ export interface ConnectionSettings {
   minimumTls: 2 | 3;
   connectMs: number;
   tcpAckMs: number;
+  dynamicResolution?: boolean;
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -392,7 +404,13 @@ export interface ConnectionSettings {
 }
 /** Versioned non-secret connection settings. Passwords use a separate message class. */
 export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
-  const parts: Buffer[] = [Buffer.from([0, c.videoQuality ? 2 : 1])];
+  if (
+    c.dynamicResolution !== undefined &&
+    typeof c.dynamicResolution !== 'boolean'
+  )
+    throw new ProtocolError();
+  const schema = c.dynamicResolution ? 3 : c.videoQuality ? 2 : 1;
+  const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
     [c.username, 256],
@@ -444,8 +462,14 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   fixed.writeUInt32BE(c.connectMs, 12);
   fixed.writeUInt32BE(c.tcpAckMs, 16);
   parts.push(fixed);
-  if (c.videoQuality) {
-    const q = c.videoQuality;
+  if (c.videoQuality || schema === 3) {
+    const q = c.videoQuality ?? {
+      h264Fps: 30,
+      jpegFps: 20,
+      jpegQuality: 80,
+      targetBitrate: 4000000,
+      maxBitrate: 4000000,
+    };
     if (
       !Number.isInteger(q.h264Fps) ||
       q.h264Fps < 1 ||
@@ -472,6 +496,7 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     media.writeUInt32BE(q.maxBitrate, 8);
     parts.push(media);
   }
+  if (schema === 3) parts.push(Buffer.from([0, 0, 0, 1]));
   return Buffer.concat(parts);
 }
 

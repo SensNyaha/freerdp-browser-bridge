@@ -19,6 +19,7 @@
 #ifdef BRIDGE_WITH_FREERDP
 #include "connection.hpp"
 #include <freerdp/client.h>
+#include <freerdp/config.h>
 #include <freerdp/freerdp.h>
 #include <winpr/wlog.h>
 #endif
@@ -81,7 +82,11 @@ std::vector<std::uint8_t> build_payload() {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
-  append_be(bytes, 509, 2); // Lifecycle, connect, JPEG/AVC, input, diagnostics, cursor, quality.
+#ifdef CHANNEL_DISP_CLIENT
+  append_be(bytes, 1021, 2);
+#else
+  append_be(bytes, 509, 2);
+#endif
 #else
   append_be(bytes, 1, 2);
 #endif
@@ -176,6 +181,8 @@ int run() {
         error(header.request_id, code);
     } else if (header.kind == Kind::pipeline_stats && ready) {
       send({Kind::pipeline_stats_ack, header.request_id, connection.pipeline_stats()});
+    } else if (header.kind == Kind::display_resize && ready) {
+      connection.enqueue_resize(header.request_id, payload);
 #endif
     } else {
       error(header.request_id, 3);
@@ -209,10 +216,16 @@ int main(int argc, char **argv) {
                  "\"rdp\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
-                 "\"pipelineStats\":true,\"cursor\":true,\"videoQuality\":true},"
+                 "\"pipelineStats\":true,\"cursor\":true,\"videoQuality\":true,"
+#ifdef CHANNEL_DISP_CLIENT
+                 "\"displayControl\":true},"
+#else
+                 "\"displayControl\":false},"
+#endif
 #else
                  "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
-                 "\"pipelineStats\":false,\"cursor\":false,\"videoQuality\":false},"
+                 "\"pipelineStats\":false,\"cursor\":false,\"videoQuality\":false,"
+                 "\"displayControl\":false},"
 #endif
               << "\"os\":\"" << platform << "\",\"arch\":\"" << arch
               << "\",\"transport\":\"framed-pipes\"}\n";
