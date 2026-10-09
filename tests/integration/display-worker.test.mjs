@@ -41,6 +41,37 @@ async function connect(worker, configuration) {
     await eventually(() => Boolean(worker.display));
 }
 
+test('fake Unicode IPC: bounded UTF16BE text, remote rejection and old-peer capability gating', async () => {
+  await fixture(async (worker) => {
+    await connect(worker, config('unicode-vector'));
+    assert.equal(worker.build.capabilities.unicodeInput, true);
+    await worker.sendInput({ type: 'text', text: 'Ж中😀' });
+    await worker.ping();
+    const resize = worker.resizeDisplay(1280, 720);
+    await assert.rejects(worker.sendInput({ type: 'text', text: 'Ж中😀' }), {
+      code: 'INPUT_DISPLAY_TRANSITION',
+    });
+    await worker.sendInput({ type: 'reset' });
+    assert.equal(await resize, 'applied');
+  });
+  await fixture(async (worker) => {
+    await connect(worker, config('unicode-unavailable'));
+    await assert.rejects(worker.sendInput({ type: 'text', text: 'Ж' }), {
+      code: 'INPUT_NOT_IMPLEMENTED',
+    });
+    await worker.sendInput({ type: 'move', x: 1, y: 2 });
+    await worker.ping();
+  });
+  await fixture(async (worker) => {
+    await connect(worker, config('applied', false));
+    assert.equal(worker.build.capabilities.unicodeInput, false);
+    await assert.rejects(worker.sendInput({ type: 'text', text: 'Ж' }), {
+      code: 'INPUT_NOT_IMPLEMENTED',
+    });
+    await worker.sendInput({ type: 'move', x: 1, y: 2 });
+  }, true);
+});
+
 test(
   'fake display IPC: observation precedes applied; one pending request, heartbeat and immutable replay',
   { timeout: 12000 },

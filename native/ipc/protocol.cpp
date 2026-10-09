@@ -64,6 +64,8 @@ static std::uint32_t limit(Kind kind) {
   case Kind::capture_avc:
   case Kind::input:
     return 12;
+  case Kind::input_text:
+    return 512;
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);
   }
@@ -79,11 +81,12 @@ Header decode_header(std::span<const std::uint8_t> bytes) {
   const auto maximum = limit(kind);
   const bool variable = kind == Kind::hello_ack || kind == Kind::configure ||
                         kind == Kind::secret || kind == Kind::frame || kind == Kind::frame_avc ||
-                        kind == Kind::cursor_update;
+                        kind == Kind::cursor_update || kind == Kind::input_text;
   if (length > maximum || (!variable && length != maximum) ||
       (kind == Kind::frame && length < frame_metadata_bytes) ||
       (kind == Kind::frame_avc && length < avc_metadata_bytes) ||
-      (kind == Kind::cursor_update && length < cursor::metadata_bytes))
+      (kind == Kind::cursor_update && length < cursor::metadata_bytes) ||
+      (kind == Kind::input_text && (length == 0 || length % 2)))
     throw ProtocolError();
   return {kind, read_be(bytes.subspan(12, 8)), length};
 }

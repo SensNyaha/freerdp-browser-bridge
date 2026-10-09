@@ -321,12 +321,17 @@ export function installSessionWebSockets(
           if (
             [
               'input.key',
+              'input.text',
               'input.pointer',
               'input.wheel',
               'input.reset',
               'input.sync',
             ].includes(data.type)
           ) {
+            if (data.type === 'input.text' && ++commands > 32) {
+              ws.close(1008, 'message rate limit');
+              return;
+            }
             const input = normalizeInput(data.type, data.data);
             if (!input) {
               send(ws, 'session.error', {
@@ -336,16 +341,44 @@ export function installSessionWebSockets(
               });
               ws.close(1008, 'invalid input');
             } else {
-              void lease.sendInput(input).catch((error: unknown) => {
-                if (ws.readyState !== WebSocket.OPEN) return;
-                const failure = publicSessionError(error).failure;
-                if (failure.code === 'INPUT_DISPLAY_TRANSITION') {
-                  send(ws, 'input.paused', failure);
-                  return;
-                }
-                send(ws, 'session.error', failure);
-                ws.close(1008, 'input unavailable');
-              });
+              const requestSeq = data.seq;
+              void lease
+                .sendInput(input)
+                .then(() => {
+                  if (input.type === 'text')
+                    send(ws, 'input.text.result', {
+                      requestSeq,
+                      status: 'sent',
+                    });
+                })
+                .catch((error: unknown) => {
+                  if (ws.readyState !== WebSocket.OPEN) return;
+                  const failure = publicSessionError(error).failure;
+                  if (input.type === 'text') {
+                    send(ws, 'input.text.result', {
+                      requestSeq,
+                      status:
+                        failure.code === 'INPUT_DISPLAY_TRANSITION'
+                          ? 'paused'
+                          : failure.code === 'INPUT_NOT_IMPLEMENTED'
+                            ? 'unavailable'
+                            : 'failed',
+                    });
+                    if (
+                      [
+                        'INPUT_DISPLAY_TRANSITION',
+                        'INPUT_NOT_IMPLEMENTED',
+                      ].includes(failure.code)
+                    )
+                      return;
+                  }
+                  if (failure.code === 'INPUT_DISPLAY_TRANSITION') {
+                    send(ws, 'input.paused', failure);
+                    return;
+                  }
+                  send(ws, 'session.error', failure);
+                  ws.close(1008, 'input unavailable');
+                });
             }
             return;
           }

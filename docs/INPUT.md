@@ -8,7 +8,9 @@ The linked Windows worker advertises `basicInput` (HELLO bit 5); the foundation
 worker does not. This capability covers physical set-1 keyboard events, absolute
 mouse coordinates, five buttons, vertical/horizontal wheel, toggle synchronization
 and release of tracked pressed input. It does not imply Unicode/IME, RDPEI touch,
-pen or complete remote keyboard-layout acceptance. Browser focus/modifier and
+pen or complete remote keyboard-layout acceptance. A separate experimental
+`unicodeInput` (HELLO bit 10) implements committed text as described below, without
+claiming remote Unicode acceptance. Browser focus/modifier and
 toggle reconciliation is implemented as described below; `rdp` remains false.
 
 ## Control channel
@@ -25,6 +27,7 @@ are rejected. Input belongs only to the current connected control lease.
 | `input.wheel` | `{delta: integer, horizontal: boolean}` |
 | `input.sync` | `{toggles: integer}` |
 | `input.reset` | `{}` |
+| `input.text` | `{text: string}`; bounded committed Unicode batch below |
 
 Coordinates are desktop pixels: x 0..7679, y 0..4319. The native thread clamps them
 to the current desktop dimensions. Button numbers follow DOM: 0 left, 1 middle,
@@ -42,13 +45,15 @@ layout. The accepted table is in `packages/protocol/src/input.ts`. Pause,
 international keys beyond IntlBackslash and consumer/media keys remain unsupported.
 The harness ignores unsupported physical text keys and composing character events;
 modifier transitions/reconciliation remain active during composition. Remote
-keyboard layout selection, Unicode text and IME require subsequent work.
+keyboard layout selection and full remote IME/layout acceptance require subsequent
+work. An explicit committed Unicode/IME fallback is available below.
 
-No positive application-level ACK is emitted on the browser control channel.
+No positive application-level ACK is emitted for physical input on the browser
+control channel. Committed text has a correlated transport/API result below.
 The native ACK confirms that the FreeRDP input API returned success, not that the
 remote application consumed the event. Failure closes the control attachment
 with a fixed error. Control payloads remain at most 4 KiB, with a total limit of
-256 messages/second, including at most 32 non-input commands/second.
+256 messages/second, including at most 32 text/non-input commands/second.
 
 ## Bounded delivery and cleanup
 
@@ -144,3 +149,52 @@ No new WS/IPC input type or capability bit is added: the existing bounded
 `input.key`, `input.sync`, `input.reset` and HELLO basicInput are used.
 [Iteration 20](ITERATION_020.md) separates pure reconciliation, fake control/Edge
 and native state fixtures from actual XRDP movement/reset-only regression.
+
+## Committed Unicode text
+
+This Stage 5 slice adds kind 30 INPUT_TEXT and separate HELLO bit 10 `unicodeInput`.
+Legacy kind 22 remains exactly 12 bytes and does not accept text/internal Unicode
+event types. New Node peers decode absent capability false and refuse kind 30 for
+older workers. The foundation build advertises false. The linked worker checks
+the server-negotiated public `FreeRDP_UnicodeInput` setting after post-connect;
+unsupported servers return nonfatal ERROR 9 without sending any Unicode events.
+The [Microsoft Input Capability Set](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpbcgr/b3bc76ae-9ee5-454f-b197-ede845ca69cc)
+defines server Unicode support; pinned FreeRDP input.h and input.c are authoritative
+for the send API and return values.
+
+INPUT_TEXT is 1..256 UTF-16 units in network byte order (2..512 bytes, no BOM).
+Empty, odd and oversized lengths are rejected before body allocation. Native and
+Node validate surrogate pairing before dispatch, rejecting NUL and C0/C1 controls
+except tab/LF/CR. Combining marks, supplementary pairs and exact line endings are
+retained without Unicode normalization. Behavior of line endings, supplementary
+characters and IME output in actual remote applications still requires acceptance.
+
+One batch occupies one existing queue slot, using a fixed 256-unit owned array;
+there is no new text queue or per-unit IPC round trip. The RDP thread first releases
+tracked physical keys/buttons, then sends each UTF-16 unit down/up via public
+`freerdp_input_send_unicode_keyboard_event`, checking every BOOL. Failure stops the
+batch immediately. One accepted Unicode down whose release failed is retained for
+teardown/reset retry; no following units are sent. Partial batches cannot be undone.
+Detach invalidates queued lease work; a batch already dispatched can finish. Resize
+rejects text with nonfatal input pause and does not replay it.
+
+The public control extension is [specified here](../PROTOCOL.md#experimental-committed-unicode-text-v1-additive-extension).
+Result contains only sequence and `sent/unavailable/paused/failed`, never text.
+Unavailable support does not fail the session; a later physical command still works.
+Native read and Node encode/write IPC buffers are cleared when released;
+native queued/state copies and immutable JS/upstream copies
+are not claimed to be securely erased. No text is persisted in files, history,
+metrics, logs or errors.
+
+The harness provides a labeled textarea for explicit Unicode/IME entry. Browser
+composition edits stay local until the user completes IME and submits; native
+candidate windows/preedit are not mirrored. Only one submission can wait for a
+result. The field is bounded and disabled during that wait, a draft clears on sent
+or detach, and unavailable/paused retains it. Reset cancels a not-yet-dispatched
+submission and disposal removes listeners. Ordinary canvas physical input stays
+separate for shortcuts. [W3C composition/input events](https://www.w3.org/TR/input-events-2/)
+are the browser-side contract; actual OS IME and remote application acceptance
+remain separate from synthetic composition DOM tests.
+
+[Iteration 21](ITERATION_021.md) records native, pure, fake-IPC/control and Edge
+fixture evidence. Operational XRDP automation remains movement/reset only.

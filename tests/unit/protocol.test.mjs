@@ -200,7 +200,9 @@ test('build IPC: video quality capability preserves old peers and requires the n
   assert.equal(decodeBuild(build(509)).capabilities.videoQuality, true);
   assert.equal(decodeBuild(build(509)).capabilities.displayControl, false);
   assert.equal(decodeBuild(build(1021)).capabilities.displayControl, true);
-  for (const flags of [257, 513, 1025])
+  assert.equal(decodeBuild(build(1021)).capabilities.unicodeInput, false);
+  assert.equal(decodeBuild(build(2045)).capabilities.unicodeInput, true);
+  for (const flags of [257, 513, 1025, 1029, 2049])
     assert.throws(() => decodeBuild(build(flags)), ProtocolError);
 });
 

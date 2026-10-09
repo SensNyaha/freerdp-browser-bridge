@@ -81,6 +81,33 @@ Required client commands include:
 
 Every command has a size limit. Unknown `type` is rejected with a protocol error but must not crash the session.
 
+### Experimental committed Unicode text (v1 additive extension)
+
+`input.text` has exactly `data: { "text": "Ж中😀" }`, with 1..256 UTF-16 code
+units, well-formed surrogate pairs and no NUL/C0/C1 controls except tab, LF and CR.
+Text is transmitted exactly without normalization or layout translation. The
+4096-byte control envelope remains. Text counts towards both the 256 total messages
+and the shared 32 text/non-input commands per second. Invalid text/schema closes
+the control attachment with a fixed error, without echoing input.
+
+Only the current connected control lease can enqueue text. Each batch occupies one
+of the existing 64 input queue slots; stale queued leases cannot send it. It resets
+tracked physical input before Unicode units, and requires compiled `unicodeInput`
+plus the server's negotiated Unicode Input capability. Resize pauses text without
+replay. The additive server event `input.text.result` carries only
+`{ "requestSeq": 481, "status": "sent" }`; status is `sent`, `unavailable`,
+`paused` or `failed`. Sent confirms the worker input API returned success for the
+whole batch, not consumption by the remote application. Unavailable/paused leave
+the attachment and session alive. Other failures may close the attachment/session;
+partial delivery is possible and text must never be automatically retried.
+
+The reference harness exposes an explicit Unicode/IME text field with one pending
+submission and a seven-second result deadline. Preedit stays local; submit is
+disabled during composition, disconnect and display transition. The draft clears
+only on sent or detach, remains on unavailable/paused, and is never echoed in events,
+logs or metrics. A timed-out viewer detaches; its outcome is uncertain. Physical
+canvas input remains available for shortcuts. See [input contract](docs/INPUT.md).
+
 ### Experimental Display Control (v1 additive extension)
 
 Session creation must explicitly set `display.dynamicResolution=true`. A compiled

@@ -1,6 +1,112 @@
 #include "input.hpp"
 #include <catch2/catch_test_macros.hpp>
 using namespace bridge;
+TEST_CASE("Unicode text has independent UTF16BE vectors and rejects malformed bodies and lengths") {
+  const std::vector<std::uint8_t> bytes{0x04, 0x16, 0x4e, 0x2d, 0xd8, 0x3d, 0xde, 0x00};
+  const auto text = input::decode_text(bytes);
+  REQUIRE(text.type == input::Type::text);
+  REQUIRE(text.a == 4);
+  REQUIRE(text.text[0] == 0x0416);
+  REQUIRE(text.text[1] == 0x4e2d);
+  REQUIRE(text.text[2] == 0xd83d);
+  REQUIRE(text.text[3] == 0xde00);
+  const auto record = ipc::encode({ipc::Kind::input_text, 42, bytes});
+  REQUIRE(record[7] == 30);
+  REQUIRE(ipc::decode_header(std::span(record).first(24)).length == 8);
+  for (const auto &bad : std::vector<std::vector<std::uint8_t>>{{},
+                                                                {0},
+                                                                {0, 0},
+                                                                {0, 0x1b},
+                                                                {0, 0x7f},
+                                                                {0, 0x85},
+                                                                {0xd8, 0},
+                                                                {0xdc, 0},
+                                                                {0xd8, 0, 0, 65},
+                                                                {0xdc, 0, 0xd8, 0}})
+    REQUIRE_THROWS_AS(input::decode_text(bad), ipc::ProtocolError);
+  std::vector<std::uint8_t> maximum;
+  for (std::size_t i = 0; i < input::max_text_units; ++i)
+    maximum.insert(maximum.end(), {0, 65});
+  REQUIRE(input::decode_text(maximum).a == 256);
+  REQUIRE_NOTHROW(ipc::encode({ipc::Kind::input_text, 1, maximum}));
+  maximum.insert(maximum.end(), {0, 65});
+  REQUIRE_THROWS_AS(input::decode_text(maximum), ipc::ProtocolError);
+  REQUIRE_THROWS_AS(ipc::encode({ipc::Kind::input_text, 1, maximum}), ipc::ProtocolError);
+  for (const auto length : {0U, 1U, 3U, 511U, 513U}) {
+    auto header = record;
+    header.resize(24);
+    header[20] = header[21] = 0;
+    header[22] = static_cast<std::uint8_t>(length >> 8);
+    header[23] = static_cast<std::uint8_t>(length);
+    REQUIRE_THROWS_AS(ipc::decode_header(header), ipc::ProtocolError);
+  }
+  REQUIRE_NOTHROW(input::decode_text(std::vector<std::uint8_t>{0, 9, 0, 10, 0, 13}));
+}
+TEST_CASE("Unicode text releases physical input then emits ordered paired units including "
+          "supplementary text") {
+  input::State state;
+  std::vector<input::Event> sent;
+  const input::State::Sink sink = [&](const auto &e) {
+    sent.push_back(e);
+    return true;
+  };
+  REQUIRE(state.apply({input::Type::key, 1, 0x1d}, sink, 100, 100));
+  REQUIRE(state.apply({input::Type::button, 1, 1, 2, 0}, sink, 100, 100));
+  const auto text = input::decode_text(std::vector<std::uint8_t>{0x04, 0x16, 0xd8, 0x3d, 0xde, 0});
+  REQUIRE(state.apply(text, sink, 100, 100));
+  REQUIRE(sent.size() == 10);
+  REQUIRE(sent[2].type == input::Type::key);
+  REQUIRE(sent[2].flags == 0);
+  REQUIRE(sent[3].type == input::Type::button);
+  REQUIRE(sent[3].flags == 0);
+  for (std::size_t i = 0; i < 3; ++i) {
+    REQUIRE(sent[4 + i * 2].type == input::Type::unicode);
+    REQUIRE(sent[4 + i * 2].flags == 1);
+    REQUIRE(sent[4 + i * 2].a == text.text[i]);
+    REQUIRE(sent[5 + i * 2].type == input::Type::unicode);
+    REQUIRE(sent[5 + i * 2].flags == 0);
+    REQUIRE(sent[5 + i * 2].a == text.text[i]);
+  }
+  REQUIRE(state.release(sink));
+  REQUIRE(sent.size() == 10);
+}
+TEST_CASE("Unicode send failure stops text and retains only an accepted down for release retry") {
+  input::State state;
+  const auto text = input::decode_text(std::vector<std::uint8_t>{0, 65, 0, 66});
+  unsigned calls = 0;
+  REQUIRE_FALSE(state.apply(
+      text,
+      [&](const auto &) {
+        ++calls;
+        return false;
+      },
+      1, 1));
+  REQUIRE(calls == 1);
+  REQUIRE(state.release([&](const auto &) {
+    ++calls;
+    return true;
+  }));
+  REQUIRE(calls == 1);
+  REQUIRE_FALSE(state.apply(text, [&](const auto &) { return ++calls == 2; }, 1, 1));
+  REQUIRE(calls == 3);
+  REQUIRE_FALSE(state.release([&](const auto &e) {
+    REQUIRE(e.type == input::Type::unicode);
+    REQUIRE(e.flags == 0);
+    REQUIRE(e.a == 65);
+    ++calls;
+    return false;
+  }));
+  REQUIRE_FALSE(state.apply(text, [](const auto &) { return true; }, 1, 1));
+  REQUIRE(state.release([&](const auto &e) {
+    REQUIRE(e.type == input::Type::unicode);
+    REQUIRE(e.flags == 0);
+    REQUIRE(e.a == 65);
+    ++calls;
+    return true;
+  }));
+  REQUIRE(calls == 5);
+  REQUIRE(state.release([](const auto &) { return false; }));
+}
 TEST_CASE("Input records are bounded and validate flags before dispatch") {
   std::vector<std::uint8_t> p{1, 1, 1, 0x1d, 0, 0, 0, 0, 0, 0, 0, 0};
   REQUIRE(input::decode(p).a == 0x11d);

@@ -6,7 +6,27 @@ export type InputEvent =
   | { type: 'button'; x: number; y: number; button: number; down: boolean }
   | { type: 'wheel'; delta: number; horizontal: boolean }
   | { type: 'sync'; toggles: number }
+  | { type: 'text'; text: string }
   | { type: 'reset' };
+
+export const MAX_TEXT_UNITS = 256;
+/** Well-formed UTF-16; no NUL/C0/C1 controls except tab and line endings. */
+export function validInputText(text: unknown): text is string {
+  return (
+    typeof text === 'string' &&
+    text.length > 0 &&
+    text.length <= MAX_TEXT_UNITS &&
+    !/[\ud800-\udfff]/u.test(text) &&
+    !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(text)
+  );
+}
+export function encodeInputText(text: string): Buffer {
+  if (!validInputText(text)) throw new ProtocolError();
+  const p = Buffer.alloc(text.length * 2);
+  for (let i = 0; i < text.length; i++)
+    p.writeUInt16BE(text.charCodeAt(i), i * 2);
+  return p;
+}
 
 /** Physical browser codes map to set-1 RDP scancodes, extended keys retain bit 8. */
 const codes: Record<string, number> = {

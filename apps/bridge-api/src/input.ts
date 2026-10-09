@@ -1,6 +1,10 @@
 import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
-import { physicalScancode, type InputEvent } from '@freerdp-bridge/protocol';
+import {
+  physicalScancode,
+  validInputText,
+  type InputEvent,
+} from '@freerdp-bridge/protocol';
 
 const object = { additionalProperties: false };
 const coordinate = (maximum: number) => Type.Integer({ minimum: 0, maximum });
@@ -49,11 +53,16 @@ const empty = TypeCompiler.Compile(Type.Object({}, object));
 const sync = TypeCompiler.Compile(
   Type.Object({ toggles: coordinate(7) }, object),
 );
+const text = TypeCompiler.Compile(
+  Type.Object({ text: Type.String({ minLength: 1, maxLength: 256 }) }, object),
+);
 
 export function normalizeInput(
   type: string,
   data: unknown,
 ): InputEvent | undefined {
+  if (type === 'input.text' && text.Check(data) && validInputText(data.text))
+    return { type: 'text', text: data.text };
   if (type === 'input.key' && key.Check(data)) {
     const scancode = physicalScancode(data.code);
     if (scancode !== undefined && (data.down || !data.repeat))

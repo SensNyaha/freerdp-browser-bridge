@@ -43,6 +43,22 @@
       освобождаются.
     </p>
     <canvas id="desktop" tabindex="0" aria-label="Рабочий стол RDP"></canvas>
+    <form id="text-input" autocomplete="off">
+      <label for="unicode-text">Текст Unicode / IME</label>
+      <textarea
+        id="unicode-text"
+        maxlength="256"
+        rows="2"
+        autocomplete="off"
+        spellcheck="false"
+      ></textarea>
+      <button disabled>Отправить текст</button>
+      <span role="status"></span>
+      <p>
+        Введите текст здесь, завершите IME и отправьте его в активное поле
+        удалённого рабочего стола.
+      </p>
+    </form>
     <form id="resize">
       <label
         >Ширина

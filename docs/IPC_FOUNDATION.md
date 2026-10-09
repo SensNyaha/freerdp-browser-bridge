@@ -14,7 +14,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | HEARTBEAT_ACK | 4 | empty |
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
-| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue full, 8 input paused during display transition |
+| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue full, 8 input paused during display transition, 9 Unicode input not negotiated |
 | CONFIGURE | 8 | connection schema v1/v2/v3 below; maximum 2048 bytes |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
@@ -30,24 +30,30 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | CAPTURE_AVC | 20 | u64 last revision, u8 force-IDR (0/1), three reserved zero bytes |
 | FRAME_AVC | 21 | 28-byte metadata + AVC config + access unit; echoes CAPTURE_AVC requestId |
 | INPUT | 22 | exactly 12 bytes; [input layout](INPUT.md) |
-| INPUT_ACK | 23 | empty; FreeRDP input API succeeded; echoes INPUT requestId |
+| INPUT_ACK | 23 | empty; FreeRDP input API succeeded; echoes INPUT or INPUT_TEXT requestId |
 | PIPELINE_STATS | 24 | empty; requires diagnostics capability |
 | PIPELINE_STATS_ACK | 25 | exactly eight u64 counters/timings (64 bytes), described below |
 | CURSOR_UPDATE | 26 | 40-byte metadata + optional RGBA8, maximum 589,864 bytes; requestId=0; [cursor layout](CURSOR.md) |
 | DISPLAY_UPDATE | 27 | exactly 32 bytes, server-observed display/reset and negotiated limits; requestId=0 |
 | DISPLAY_RESIZE | 28 | exactly u16 width, u16 height; one pending request per worker |
 | DISPLAY_RESIZE_RESULT | 29 | u16 result, u16 reserved=0; echoes DISPLAY_RESIZE requestId |
+| INPUT_TEXT | 30 | 2..512 bytes, even length, UTF-16BE without BOM; [text contract](INPUT.md#committed-unicode-text) |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
 bit 5 experimental basic input, bit 6 pipeline diagnostics, bit 7 experimental cursor,
-bit 8 experimental configurable video quality, bit 9 experimental Display Control IPC).
+bit 8 experimental configurable video quality, bit 9 experimental Display Control IPC,
+bit 10 experimental Unicode text input).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
-set the usable RDP bit. Bundled builds set bits 2/3/4/5/6/7/8 and bit 9 when DISP is compiled,
-not bit 1. Bits 3/4/5/6/7/8/9 require bit 2. Bit 9 is a private IPC implementation claim,
+set the usable RDP bit. Bundled builds set bits 2/3/4/5/6/7/8/10 and bit 9 when DISP is compiled,
+not bit 1. Bits 3/4/5/6/7/8/9/10 require bit 2; bit 10 also requires bit 5.
+Bit 9 is a private IPC implementation claim,
 not remote negotiation or completed browser resize acceptance.
+Bit 10 likewise does not establish server Unicode negotiation or text acceptance.
+Node sends kind 30 only with bit 10; absent bits decode false for older peers.
+Readers rejecting unknown HELLO bits must be upgraded together with the worker.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers

@@ -44,7 +44,7 @@ int main() {
         validate_hello(payload);
         std::vector<std::uint8_t> report;
         append_be(report, 1, 2);
-        append_be(report, FIXTURE_LEGACY ? 509 : 1021, 2);
+        append_be(report, FIXTURE_LEGACY ? 509 : 2045, 2);
         for (const auto *text :
              {"0.1.0", "fake-display", "3.32.1", "3.32.1", "fake", "x64", "framed-pipes"}) {
           const std::string value(text);
@@ -77,13 +77,18 @@ int main() {
         send({Kind::state, 0, {0, 3, 0, 0, 0, 0, 0, 0}});
         if constexpr (FIXTURE_LEGACY == 0)
           send({Kind::display_update, 0, encode_display_update(display)});
-      } else if (header.kind == Kind::input) {
-        const auto event = bridge::input::decode(payload);
-        if (busy && event.type != bridge::input::Type::reset) {
+      } else if (header.kind == Kind::input || header.kind == Kind::input_text) {
+        const auto event = header.kind == Kind::input_text ? bridge::input::decode_text(payload)
+                                                           : bridge::input::decode(payload);
+        if ((busy && event.type != bridge::input::Type::reset) ||
+            (header.kind == Kind::input_text && config->host == "unicode-unavailable")) {
           std::vector<std::uint8_t> error;
-          append_be(error, 8, 4);
+          append_be(error, busy ? 8 : 9, 4);
           send({Kind::error, header.request_id, error});
         } else {
+          if (header.kind == Kind::input_text && config->host == "unicode-vector" &&
+              payload != std::vector<std::uint8_t>{0x04, 0x16, 0x4e, 0x2d, 0xd8, 0x3d, 0xde, 0})
+            throw ProtocolError();
           send({Kind::input_ack, header.request_id, {}});
         }
       } else if (header.kind == Kind::display_resize && config) {

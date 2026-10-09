@@ -83,9 +83,9 @@ std::vector<std::uint8_t> build_payload() {
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
 #ifdef CHANNEL_DISP_CLIENT
-  append_be(bytes, 1021, 2);
+  append_be(bytes, 2045, 2);
 #else
-  append_be(bytes, 509, 2);
+  append_be(bytes, 1533, 2);
 #endif
 #else
   append_be(bytes, 1, 2);
@@ -140,7 +140,7 @@ int run() {
         if (secret)
           wipe(bytes);
       }
-    } wiper{payload, header.kind == Kind::secret};
+    } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text};
     (void)read_exact(payload);
     if (header.kind == Kind::hello && !ready) {
       try {
@@ -175,8 +175,9 @@ int run() {
     } else if ((header.kind == Kind::capture || header.kind == Kind::capture_avc) && ready) {
       if (!connection.capture(header.request_id, payload, header.kind == Kind::capture_avc))
         error(header.request_id, 5);
-    } else if (header.kind == Kind::input && ready) {
-      const auto code = connection.enqueue_input(header.request_id, payload);
+    } else if ((header.kind == Kind::input || header.kind == Kind::input_text) && ready) {
+      const auto code =
+          connection.enqueue_input(header.request_id, payload, header.kind == Kind::input_text);
       if (code != 0)
         error(header.request_id, code);
     } else if (header.kind == Kind::pipeline_stats && ready) {
@@ -216,6 +217,7 @@ int main(int argc, char **argv) {
                  "\"rdp\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
+                 "\"unicodeInput\":true,"
                  "\"pipelineStats\":true,\"cursor\":true,\"videoQuality\":true,"
 #ifdef CHANNEL_DISP_CLIENT
                  "\"displayControl\":true},"
@@ -224,6 +226,7 @@ int main(int argc, char **argv) {
 #endif
 #else
                  "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
+                 "\"unicodeInput\":false,"
                  "\"pipelineStats\":false,\"cursor\":false,\"videoQuality\":false,"
                  "\"displayControl\":false},"
 #endif

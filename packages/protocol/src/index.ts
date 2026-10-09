@@ -39,6 +39,7 @@ export enum Kind {
   DisplayUpdate = 27,
   DisplayResize = 28,
   DisplayResizeResult = 29,
+  InputText = 30,
 }
 
 export interface Packet {
@@ -99,6 +100,8 @@ function payloadLimit(kind: number): number {
     case Kind.CaptureAvc:
     case Kind.Input:
       return 12;
+    case Kind.InputText:
+      return 512;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:
@@ -130,11 +133,13 @@ export function decodeHeader(header: Buffer): {
       Kind.Frame,
       Kind.FrameAvc,
       Kind.CursorUpdate,
+      Kind.InputText,
     ].includes(kind) &&
       length !== payloadLimit(kind)) ||
     (kind === Kind.Frame && length < 24) ||
     (kind === Kind.FrameAvc && length < 28) ||
-    (kind === Kind.CursorUpdate && length < CURSOR_METADATA_BYTES)
+    (kind === Kind.CursorUpdate && length < CURSOR_METADATA_BYTES) ||
+    (kind === Kind.InputText && (length === 0 || length % 2 !== 0))
   ) {
     throw new ProtocolError();
   }
@@ -229,6 +234,7 @@ export interface WorkerBuild {
     jpegCapture: boolean;
     h264Capture: boolean;
     basicInput: boolean;
+    unicodeInput: boolean;
     pipelineStats: boolean;
     cursor: boolean;
     videoQuality: boolean;
@@ -248,9 +254,10 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~1023) !== 0 ||
+    (capabilities & ~2047) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 1016) !== 0 && (capabilities & 4) === 0)
+    ((capabilities & 2040) !== 0 && (capabilities & 4) === 0) ||
+    ((capabilities & 1024) !== 0 && (capabilities & 32) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -287,6 +294,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       jpegCapture: Boolean(capabilities & 8),
       h264Capture: Boolean(capabilities & 16),
       basicInput: Boolean(capabilities & 32),
+      unicodeInput: Boolean(capabilities & 1024),
       pipelineStats: Boolean(capabilities & 64),
       cursor: Boolean(capabilities & 128),
       videoQuality: Boolean(capabilities & 256),

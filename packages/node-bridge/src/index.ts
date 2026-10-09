@@ -19,6 +19,7 @@ import {
   decodeCapturedFrame,
   decodeAvcFrame,
   encodeInput,
+  encodeInputText,
   decodePipelineStats,
   decodeCursorUpdate,
   decodeDisplayState,
@@ -354,7 +355,7 @@ export class WorkerProcess extends EventEmitter {
     const pending = this.pending.get(packet.requestId);
     if (pending?.expected === Kind.InputAck && packet.kind === Kind.Error) {
       const code = packet.payload.readUInt32BE(0);
-      if (code !== 5 && code !== 6 && code !== 8)
+      if (code !== 5 && code !== 6 && code !== 8 && code !== 9)
         throw new WorkerError('IPC_UNEXPECTED_REPLY');
       clearTimeout(pending.timer);
       this.pending.delete(packet.requestId);
@@ -364,7 +365,9 @@ export class WorkerProcess extends EventEmitter {
             ? 'INPUT_NOT_CONNECTED'
             : code === 6
               ? 'INPUT_QUEUE_FULL'
-              : 'INPUT_DISPLAY_TRANSITION',
+              : code === 8
+                ? 'INPUT_DISPLAY_TRANSITION'
+                : 'INPUT_NOT_IMPLEMENTED',
         ),
       );
       return;
@@ -442,7 +445,7 @@ export class WorkerProcess extends EventEmitter {
       );
       this.pending.set(requestId, { expected, resolve: done, reject, timer });
       child.stdin.write(bytes, (error) => {
-        if (kind === Kind.Secret) bytes.fill(0);
+        if (kind === Kind.Secret || kind === Kind.InputText) bytes.fill(0);
         if (error) this.fail('IPC_WRITE_FAILED');
       });
     });
@@ -454,12 +457,24 @@ export class WorkerProcess extends EventEmitter {
   }
 
   async sendInput(event: InputEvent): Promise<void> {
-    const payload = encodeInput(event);
-    if (!this.report?.capabilities.basicInput)
-      throw new WorkerError('INPUT_NOT_IMPLEMENTED');
-    if (!this.rdpConnected || this.status !== 'ready')
-      throw new WorkerError('INPUT_NOT_CONNECTED');
-    await this.request(Kind.Input, Kind.InputAck, payload);
+    const text = event.type === 'text';
+    const payload = text ? encodeInputText(event.text) : encodeInput(event);
+    try {
+      if (
+        !this.report?.capabilities.basicInput ||
+        (text && !this.report.capabilities.unicodeInput)
+      )
+        throw new WorkerError('INPUT_NOT_IMPLEMENTED');
+      if (!this.rdpConnected || this.status !== 'ready')
+        throw new WorkerError('INPUT_NOT_CONNECTED');
+      await this.request(
+        text ? Kind.InputText : Kind.Input,
+        Kind.InputAck,
+        payload,
+      );
+    } finally {
+      if (text) payload.fill(0);
+    }
   }
   async pipelineStats(): Promise<PipelineStats> {
     if (!this.report?.capabilities.pipelineStats || this.status !== 'ready')

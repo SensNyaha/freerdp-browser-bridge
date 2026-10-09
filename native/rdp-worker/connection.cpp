@@ -254,6 +254,8 @@ BOOL Connection::pointer_position(rdpContext *context, UINT32 x, UINT32 y) {
   }
 }
 BOOL Connection::post_connect(freerdp *instance) {
+  owner(instance).unicode_input_ =
+      freerdp_settings_get_bool(instance->context->settings, FreeRDP_UnicodeInput) != FALSE;
   // Decode and encode on the same RDP thread; no queue or copy of raw desktops.
   const auto width = freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopWidth);
   const auto height =
@@ -425,13 +427,16 @@ void Connection::post_disconnect(freerdp *instance) {
   }
   gdi_free(instance);
 }
-unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload) {
-  const auto event = input::decode(payload);
+unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload,
+                                   bool text) {
+  const auto event = text ? input::decode_text(payload) : input::decode(payload);
   std::lock_guard lock(input_mutex_);
   if (!connected_ || stopping_)
     return 5;
   if (resizing_ && event.type != input::Type::reset)
     return 8;
+  if (text && !unicode_input_)
+    return 9;
   if (input_queue_.size() >= 64 || input_overflow_) {
     input_overflow_ = true;
     if (!SetEvent(media_event_))
@@ -472,6 +477,10 @@ bool Connection::send_input(const input::Event &e) {
                0, 0) != FALSE;
   case input::Type::sync:
     return freerdp_input_send_synchronize_event(in, e.a) != FALSE;
+  case input::Type::unicode:
+    return freerdp_input_send_unicode_keyboard_event(
+               in, e.flags ? KBD_FLAGS_DOWN : KBD_FLAGS_RELEASE, e.a) != FALSE;
+  case input::Type::text:
   case input::Type::reset:
     return false; // Expanded to tracked releases by State, never sent directly.
   }

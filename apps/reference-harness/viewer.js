@@ -1,4 +1,5 @@
 import { installInput } from './input.js';
+import { installText, validText } from './text.js';
 import { installCursor } from './cursor.js';
 import { displayState, resizeResult, displayInputReady } from './display.js';
 const status = document.querySelector('#status');
@@ -9,6 +10,17 @@ const resizeForm = document.querySelector('#resize');
 const resizeButton = document.querySelector('#resize-button');
 const resizeStatus = document.querySelector('#resize-status');
 let current;
+const textInput = installText(
+  document.querySelector('#text-input'),
+  sendText,
+  () =>
+    Boolean(
+      current &&
+        !current.closed &&
+        current.connected &&
+        displayInputReady(current),
+    ),
+);
 const stats = {
   closed: true,
   frames: 0,
@@ -40,6 +52,12 @@ function detach() {
   current.disposeInput?.();
   current.cursor?.dispose();
   current.closed = true;
+  if (current.textRequest) {
+    clearTimeout(current.textRequest.timer);
+    current.textRequest.reject(new Error('Viewer detached'));
+    current.textRequest = undefined;
+  }
+  textInput.reset();
   if (current.resizeRequest) {
     clearTimeout(current.resizeRequest.timer);
     current.resizeRequest.reject(new Error('Viewer detached'));
@@ -55,6 +73,7 @@ function detach() {
   updateResize();
 }
 function updateResize() {
+  textInput.refresh();
   const state = current?.display;
   resizeButton.disabled =
     !current?.connected ||
@@ -65,6 +84,40 @@ function updateResize() {
   resizeStatus.textContent = state
     ? `${state.width} × ${state.height}${current.resizeRequest || state.resizing ? ' — изменение размера' : ''}${stats.resizeStatus ? ' · ' + stats.resizeStatus : ''}`
     : 'Ожидание параметров дисплея';
+}
+function sendText(text) {
+  const session = current;
+  if (
+    !validText(text) ||
+    !session ||
+    session.closed ||
+    !session.connected ||
+    !displayInputReady(session) ||
+    session.control.readyState !== WebSocket.OPEN ||
+    session.control.bufferedAmount > 16384
+  )
+    return Promise.reject(new Error('Text input unavailable'));
+  if (session.textRequest) return Promise.reject(new Error('Text input busy'));
+  session.disposeInput.reset();
+  const seq = session.controlSequence++;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (session.textRequest?.seq !== seq) return;
+      session.textRequest = undefined;
+      reject(new Error('Text input timed out'));
+      detach(); // Outcome is uncertain: never automatically retry committed text.
+    }, 7000);
+    session.textRequest = { seq, timer, resolve, reject };
+    session.control.send(
+      JSON.stringify({
+        v: 1,
+        type: 'input.text',
+        seq,
+        ts: Date.now(),
+        data: { text },
+      }),
+    );
+  });
 }
 function resize(width, height, deviceScale = 1) {
   const session = current;
@@ -270,6 +323,19 @@ function attach(created, options = {}) {
           updateResize();
           pending.resolve(result);
         }
+      } else if (message.type === 'input.text.result') {
+        const data = message.data;
+        if (
+          !Number.isInteger(data.requestSeq) ||
+          !['sent', 'unavailable', 'paused', 'failed'].includes(data.status)
+        )
+          throw new Error();
+        if (session.textRequest?.seq === data.requestSeq) {
+          const request = session.textRequest;
+          clearTimeout(request.timer);
+          session.textRequest = undefined;
+          request.resolve(data.status);
+        }
       } else if (message.type === 'input.paused') {
         status.textContent = 'Ввод приостановлен на время изменения дисплея';
       } else if (message.type === 'cursor.position')
@@ -369,6 +435,7 @@ function attach(created, options = {}) {
       session.configuredGeneration;
     session.renderedWidth = width;
     session.renderedHeight = height;
+    textInput.refresh();
   }
   async function configureAvc(description) {
     closeDecoder(session);

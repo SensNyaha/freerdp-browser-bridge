@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
+import { SessionError } from '../../packages/node-bridge/dist/index.js';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
 )('ws');
@@ -39,6 +40,17 @@ async function fixture(run) {
   );
   server.get('/input.js', (_req, reply) =>
     reply.type('text/javascript').send(module),
+  );
+  const textModule = await readFile('apps/reference-harness/text.js', 'utf8');
+  server.get('/text.js', (_req, reply) =>
+    reply.type('text/javascript').send(textModule),
+  );
+  server.get('/text-fixture', (_req, reply) =>
+    reply
+      .type('text/html')
+      .send(
+        '<form><textarea maxlength="256"></textarea><button>Send</button><span role="status"></span></form>',
+      ),
   );
   server.get('/fixture', (_req, reply) =>
     reply
@@ -85,6 +97,207 @@ async function fixture(run) {
     await server.close();
   }
 }
+test('Unicode control: correlated text completion, unavailable backend stays connected and invalid data is rejected', async () => {
+  await fixture(async ({ ws, sent, worker }) => {
+    let sequence = 0;
+    async function request(text) {
+      const seq = sequence++;
+      const reply = once(ws, 'message');
+      ws.send(
+        JSON.stringify({
+          v: 1,
+          type: 'input.text',
+          seq,
+          ts: Date.now(),
+          data: { text },
+        }),
+      );
+      return JSON.parse((await reply)[0]);
+    }
+    const received = await request('Ж中😀');
+    assert.equal(received.type, 'input.text.result');
+    assert.deepEqual(received.data, { requestSeq: 0, status: 'sent' });
+    assert.deepEqual(sent, [{ type: 'text', text: 'Ж中😀' }]);
+    const send = worker.sendInput;
+    worker.sendInput = async (event) => {
+      if (event.type === 'text')
+        throw new SessionError('INPUT_NOT_IMPLEMENTED');
+      return send(event);
+    };
+    assert.deepEqual((await request('next')).data, {
+      requestSeq: 1,
+      status: 'unavailable',
+    });
+    worker.sendInput = send;
+    assert.deepEqual((await request('still connected')).data, {
+      requestSeq: 2,
+      status: 'sent',
+    });
+    const close = once(ws, 'close');
+    const error = await request('\ud800');
+    assert.equal(error.data.code, 'CONTROL_PROTOCOL_ERROR');
+    assert.equal((await close)[0], 1008);
+    assert.ok(!JSON.stringify(error).includes('text'));
+  });
+});
+test('Unicode control batches share the bounded 32-command budget', async () => {
+  await fixture(async ({ ws }) => {
+    const close = once(ws, 'close');
+    for (let seq = 0; seq < 33; seq++)
+      ws.send(
+        JSON.stringify({
+          v: 1,
+          type: 'input.text',
+          seq,
+          ts: Date.now(),
+          data: { text: 'bounded' },
+        }),
+      );
+    const [code, reason] = await close;
+    assert.equal(code, 1008);
+    assert.equal(reason.toString(), 'message rate limit');
+  });
+});
+test(
+  'Edge Unicode form: preedit stays local, explicit commit is sent once, bounded drafts survive unavailable/pause and reset removes text',
+  { skip: process.platform !== 'win32', timeout: 45000 },
+  async () => {
+    await fixture(async ({ ws, sent, origin, worker }) => {
+      const browser = await chromium.launch({
+        channel: 'msedge',
+        headless: true,
+      });
+      try {
+        const page = await browser.newPage();
+        await page.goto(origin + '/text-fixture');
+        let sequence = 0;
+        await page.exposeFunction('sendText', async (text) => {
+          const reply = once(ws, 'message');
+          ws.send(
+            JSON.stringify({
+              v: 1,
+              type: 'input.text',
+              seq: sequence++,
+              ts: Date.now(),
+              data: { text },
+            }),
+          );
+          return JSON.parse((await reply)[0]).data.status;
+        });
+        await page.evaluate(async () => {
+          const { installText } = await import('/text.js');
+          window.ready = true;
+          window.text = installText(
+            document.querySelector('form'),
+            window.sendText,
+            () => window.ready,
+          );
+          const field = document.querySelector('textarea');
+          field.dispatchEvent(
+            new CompositionEvent('compositionstart', { bubbles: true }),
+          );
+          field.value = 'に';
+          field.dispatchEvent(
+            new InputEvent('input', { bubbles: true, isComposing: true }),
+          );
+          document.querySelector('form').requestSubmit();
+        });
+        assert.equal(sent.length, 0);
+        assert.equal(await page.locator('button').isDisabled(), true);
+        let release;
+        const deliver = worker.sendInput;
+        worker.sendInput = async (event) => {
+          await deliver(event);
+          if (event.type === 'text')
+            await new Promise((resolve) => {
+              release = resolve;
+            });
+        };
+        await page.evaluate(() => {
+          const field = document.querySelector('textarea');
+          field.value = '日本語 Ж😀';
+          field.dispatchEvent(
+            new CompositionEvent('compositionend', { bubbles: true }),
+          );
+          document.querySelector('form').requestSubmit();
+          document.querySelector('form').requestSubmit();
+        });
+        await eventually(() => Boolean(release));
+        assert.deepEqual(sent, [{ type: 'text', text: '日本語 Ж😀' }]);
+        assert.equal(await page.locator('textarea').isDisabled(), true);
+        release();
+        await page.waitForFunction(
+          () => document.querySelector('textarea').value === '',
+        );
+        assert.equal(
+          await page.locator('[role="status"]').textContent(),
+          'Текст отправлен',
+        );
+        worker.sendInput = async (event) => {
+          if (event.type === 'text')
+            throw new SessionError('INPUT_NOT_IMPLEMENTED');
+          return deliver(event);
+        };
+        await page.locator('textarea').fill('сохранить черновик');
+        await page.locator('button').click();
+        await page.waitForFunction(() =>
+          document
+            .querySelector('[role="status"]')
+            .textContent.includes('не поддерживает'),
+        );
+        assert.equal(
+          await page.locator('textarea').inputValue(),
+          'сохранить черновик',
+        );
+        worker.sendInput = async (event) => {
+          if (event.type === 'text')
+            throw new SessionError('INPUT_DISPLAY_TRANSITION');
+          return deliver(event);
+        };
+        await page.locator('button').click();
+        await page.waitForFunction(() =>
+          document
+            .querySelector('[role="status"]')
+            .textContent.includes('окончания'),
+        );
+        assert.equal(
+          await page.locator('textarea').inputValue(),
+          'сохранить черновик',
+        );
+        await page.evaluate(() => {
+          window.ready = false;
+          window.text.refresh();
+          document.querySelector('form').requestSubmit();
+        });
+        assert.equal(sent.length, 1);
+        await page.evaluate(() => {
+          window.ready = true;
+          const field = document.querySelector('textarea');
+          field.value = 'x'.repeat(257);
+          field.dispatchEvent(new Event('input', { bubbles: true }));
+          document.querySelector('form').requestSubmit();
+        });
+        assert.equal(sent.length, 1);
+        assert.equal(await page.locator('button').isDisabled(), true);
+        await page.evaluate(() => {
+          const field = document.querySelector('textarea');
+          field.value = 'cancelled';
+          field.dispatchEvent(new Event('input', { bubbles: true }));
+          document.querySelector('form').requestSubmit();
+          window.text.reset();
+        });
+        assert.equal(sent.length, 1);
+        await page.evaluate(() => {
+          window.text.dispose();
+        });
+        assert.equal(await page.locator('textarea').inputValue(), '');
+        assert.equal(ws.readyState, WebSocket.OPEN);
+      } finally {
+        await browser.close();
+      }
+    });
+  },
+);
 test('control WS validates input, sends it in order and releases on transport loss', async () => {
   await fixture(async ({ ws, sent }) => {
     let seq = 0;

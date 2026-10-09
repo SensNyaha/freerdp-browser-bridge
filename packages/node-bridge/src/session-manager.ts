@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import {
   validateCursorState,
   validateDisplayState,
+  validInputText,
 } from '@freerdp-bridge/protocol';
 import {
   ConfigError,
@@ -25,6 +26,7 @@ import type {
 } from '@freerdp-bridge/protocol';
 
 const failures = {
+  INPUT_INVALID: [400, 'Input record is invalid', false],
   DISPLAY_NOT_IMPLEMENTED: [
     501,
     'Display Control is unavailable in this build',
@@ -754,6 +756,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
           return Promise.reject(new SessionError('INPUT_NOT_CONNECTED'));
         if (entry.resize && event.type !== 'reset')
           return Promise.reject(new SessionError('INPUT_DISPLAY_TRANSITION'));
+        if (event.type === 'text' && !validInputText(event.text))
+          return Promise.reject(new SessionError('INPUT_INVALID'));
         if (entry.inputPending >= 64)
           return Promise.reject(new SessionError('INPUT_QUEUE_FULL'));
         // Queued commands lose authority immediately when this lease is released.
@@ -973,7 +977,11 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     }
     entry.inputPending++;
     const delivery = entry.inputTail.then(async () => {
-      if (entry.released || entry.snapshot.state !== 'connected') return;
+      if (entry.released || entry.snapshot.state !== 'connected') {
+        if (event.type === 'text')
+          throw new SessionError('INPUT_NOT_CONNECTED');
+        return;
+      }
       if (!authorized()) throw new SessionError('ATTACH_INVALID');
       await entry.worker.sendInput!(event);
     });
@@ -982,7 +990,11 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         if (
           !(
             error instanceof SessionError &&
-            ['ATTACH_INVALID', 'INPUT_DISPLAY_TRANSITION'].includes(error.code)
+            [
+              'ATTACH_INVALID',
+              'INPUT_DISPLAY_TRANSITION',
+              'INPUT_NOT_IMPLEMENTED',
+            ].includes(error.code)
           )
         )
           this.fail(entry, 'INPUT_FAILED');

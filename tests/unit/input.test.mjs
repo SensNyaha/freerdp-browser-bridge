@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   encodeInput,
   physicalScancode,
@@ -7,8 +8,99 @@ import {
   encodePacket,
   decodeHeader,
   ProtocolError,
+  encodeInputText,
+  validInputText,
 } from '../../packages/protocol/dist/index.js';
 import { normalizeInput } from '../../apps/bridge-api/dist/input.js';
+const { validText } = await import(
+  'data:text/javascript;base64,' +
+    (await readFile('apps/reference-harness/text.js')).toString('base64')
+);
+
+test('Unicode browser and Node validation agree on every BMP unit and supplementary boundaries', () => {
+  for (let unit = 0; unit <= 0xffff; unit++) {
+    const text = String.fromCharCode(unit);
+    const expected =
+      (unit >= 32 || [9, 10, 13].includes(unit)) &&
+      !(unit >= 127 && unit <= 159) &&
+      !(unit >= 0xd800 && unit <= 0xdfff);
+    assert.equal(validText(text), expected);
+    assert.equal(validInputText(text), expected);
+  }
+  for (const text of [
+    '😀'.repeat(128),
+    'a'.repeat(255) + '😀',
+    '\ud800a',
+    'Ж中😀',
+    'a\u0301',
+  ])
+    assert.equal(validText(text), validInputText(text));
+});
+
+test('Unicode text: bounded UTF16BE vectors preserve combining and supplementary characters', () => {
+  const text = 'Ж中😀';
+  const payload = encodeInputText(text);
+  assert.equal(payload.toString('hex'), '04164e2dd83dde00');
+  const record = encodePacket({
+    kind: Kind.InputText,
+    requestId: 42n,
+    payload,
+  });
+  assert.equal(
+    record.subarray(0, 24).toString('hex'),
+    '525749310001001e00000000000000000000002a00000008',
+  );
+  assert.deepEqual(normalizeInput('input.text', { text }), {
+    type: 'text',
+    text,
+  });
+  for (const value of [
+    'a'.repeat(256),
+    '😀'.repeat(128),
+    'e\u0301',
+    '\t\r\n',
+  ]) {
+    assert.equal(validInputText(value), true);
+    assert.equal(encodeInputText(value).length, value.length * 2);
+  }
+});
+test('Unicode text: malformed surrogate/control/oversize records never allocate or echo text', () => {
+  for (const value of [
+    '',
+    'x'.repeat(257),
+    '😀'.repeat(129),
+    '\ud800',
+    '\udc00',
+    '\ud800a',
+    '\udc00\ud800',
+    '\0',
+    '\x1b',
+    '\x7f',
+    '\x85',
+    123,
+    null,
+  ]) {
+    assert.equal(validInputText(value), false);
+    assert.equal(normalizeInput('input.text', { text: value }), undefined);
+    assert.throws(() => encodeInputText(value), {
+      message: 'Invalid worker IPC record',
+    });
+  }
+  assert.equal(
+    normalizeInput('input.text', { text: 'ok', extra: true }),
+    undefined,
+  );
+  for (const size of [0, 1, 3, 511, 513, 65536])
+    assert.throws(
+      () =>
+        encodePacket({
+          kind: Kind.InputText,
+          requestId: 1n,
+          payload: Buffer.alloc(size),
+        }),
+      ProtocolError,
+    );
+});
 
 test('physical input golden vectors match pinned FreeRDP set-1 and preserve right modifiers', () => {
   for (const [code, scan] of [

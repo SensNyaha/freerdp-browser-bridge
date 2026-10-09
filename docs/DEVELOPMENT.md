@@ -19,6 +19,15 @@ focus; mouse buttons and wheel are enabled in this explicit manual mode. Changin
 close the session and clean up the worker. Automatic mode without `--manual`
 retains its movement/reset-only lab guard and finishes after its smoke checks.
 
+For explicit Unicode/IME fallback, first focus the desired field on the remote
+desktop, then enter text in **Текст Unicode / IME** below the canvas, complete IME
+and press **Отправить текст**. Physical canvas keys remain the shortcut path.
+The field accepts at most 256 UTF-16 units, with one pending submission. A sent
+result clears it; unavailable/resize pause retains the draft. Timeout detaches the
+viewer without retrying text because delivery may already be partial/complete.
+Server Unicode support and real remote application/OS IME behavior still require
+acceptance; automated lab checks do not send text. [Contract](INPUT.md#committed-unicode-text).
+
 The lab files are `.local-tests/xrdp-lab.json` and
 `.local-tests/xrdp-lab.secrets.json`; the existing user-authorized development
 exception permits the latter locally. Neither file is published or packaged.
