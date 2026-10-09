@@ -3,6 +3,7 @@
 Date: 2026-10-09. Implements the isolated native contact/drain part of SPECIFICATION
 §2.5, ARCHITECTURE §7 and Stage 5 under ADR-008 / ADR-009 / ADR-011. FreeRDP 3.32.1
 and its pinned source commit are unchanged.
+Implementation commit: `d38afe1`.
 
 ## Delivered
 

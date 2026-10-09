@@ -98,6 +98,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   RDPEI has 51 cases / 12,314 assertions, including twenty-three actual-addin/fake
   transport cases. Timestamp-remoting/v1.0 compatibility and worker/IPC/browser
   activation remain open.
+  Terminal contact drain implementation commit: `d38afe1`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
