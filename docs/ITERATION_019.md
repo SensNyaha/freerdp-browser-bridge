@@ -4,6 +4,7 @@ Date: 2026-10-09. Implements SPECIFICATION §2.3 / §2.10, PROTOCOL §3–5,
 MEDIA_PIPELINE §10, ARCHITECTURE §4 and accepted ADR-003 / ADR-008 / ADR-009.
 Original requirements remain retained. Scope is the experimental single-primary,
 100%-scale Display Control path; global usable `rdp` remains false.
+Implementation commit: `78fbb67`.
 
 ## Delivered
 

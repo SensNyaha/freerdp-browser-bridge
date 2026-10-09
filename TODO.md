@@ -48,6 +48,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   same-size reset and stale unsent-frame rejection pass native/fake/Edge checks.
   Actual XRDP browser resize/restoration passes in H.264 and JPEG; Windows-server,
   broader layouts and soak acceptance remain open.
+  Public Display Control/browser implementation commit: `78fbb67`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
