@@ -3,6 +3,7 @@
 Date: 2026-10-09. Implements the native contact-state part of SPECIFICATION §2.5,
 ARCHITECTURE §7 and Stage 5 under accepted ADR-008 / ADR-009 / ADR-011.
 The original requirements and pinned FreeRDP commit are preserved.
+Implementation commit: `69e1717`.
 
 ## Delivered
 

@@ -78,6 +78,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   370 assertions. Five RDPEI cases use the actual linked addin with fake DVC
   transport; they are not remote touch acceptance. Readiness/suspension, IPC/control,
   browser capture and real touch integration remain open.
+  Native touch foundation implementation commit: `69e1717`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
