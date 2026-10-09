@@ -62,6 +62,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   lock ordering, composition and reset during a resize pause. Native tracking
   preserves both modifier sides across synchronize calls. Actual remote keyboard /
   layouts remain unverified; no broader input acceptance is claimed.
+  Modifier/focus synchronization implementation commit: `236f1a1`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,

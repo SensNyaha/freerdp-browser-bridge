@@ -5,6 +5,7 @@ MEDIA_PIPELINE §10 and accepted ADR-008 / ADR-009. Accepted ADR-011 separately
 fixes current required display scope at one primary monitor, orientation 0 and
 100% desktop/device scale; its scope commit is `adcc9de`.
 Global usable `rdp` remains false. No WS/IPC type or capability bit is added.
+Implementation commit: `236f1a1`.
 
 ## Delivered
 
