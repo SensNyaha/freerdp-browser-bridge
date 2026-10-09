@@ -4,6 +4,9 @@ This implements part of SPECIFICATION.md §2.5 and supports the interactive desk
 gate of Stage 4. Stage 5 remains open until keyboard layouts and mouse/wheel
 behavior are verified on a controlled remote desktop.
 
+An isolated [native touch foundation](#native-touch-foundation) is also tested.
+It is not connected to worker IPC or browser input and does not advertise RDPEI support.
+
 The linked Windows worker advertises `basicInput` (HELLO bit 5); the foundation
 worker does not. This capability covers physical set-1 keyboard events, absolute
 mouse coordinates, five buttons, vertical/horizontal wheel, toggle synchronization
@@ -234,3 +237,61 @@ before wheel processing, even below a notch threshold. Input rate/lease/resize
 limits still apply. Deterministic pure and Edge/fake-control evidence is in
 [Iteration 22](ITERATION_022.md); actual remote wheel/physical trackpad acceptance
 remains separate from the movement/reset-only operational XRDP regression.
+
+## Native touch foundation
+
+`native/input/touch.*` is an isolated, RDP-thread-owned contact state machine with
+ten fixed slots, matching the pinned public common-client
+`FREERDP_MAX_TOUCH_CONTACTS`. It adds no queue, timer, parser, capability bit or
+public command. The worker does not yet link/use it, enable MultiTouchInput or
+accept `input.touch`; the existing unknown-command handling still applies.
+
+Internal events contain begin/update/end/cancel, an external ID 0..INT32_MAX and
+desktop coordinates x 0..7679 / y 0..4319. Invalid records/dimensions, duplicate
+begins and updates/ends/cancels without an owned contact fail before dispatch.
+Coordinates are clamped to an observed nonzero desktop no larger than 7680×4320.
+An eleventh begin returns full without changing any contact. IDs can be reused
+only after a successful terminal transition or cleanup; state cannot be copied.
+
+The [MS-RDPEI contact state contract](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpei/797930c0-d5ca-4da5-a801-97813d3b750e)
+forbids a position change on the transition out of engagement. An end with a new
+position therefore emits UPDATE before UP at that same position. Cancellation
+uses the last attempted contact position, without introducing another engagement
+update. The projection uses only DOWN/UPDATE + INRANGE + INCONTACT, UP, or
+UP + CANCELED, as defined by the
+[touch contact flags](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpei/fd7a6696-fe0a-493d-95f4-5b8c1e71b503).
+
+An API failure or sink exception retains the uncertain contact, including a failed
+begin, and latches cleanup-required: no further input is replayed. Release tries
+all owned contacts once and retains only unsuccessful cancellations for explicit
+cleanup retry. An already failed write makes the remote position/outcome uncertain;
+retained coordinates are best-effort cleanup metadata, not proof of remote state.
+`abandon()` drops local ownership only after channel destruction/loss and does not
+claim remote release. The future channel owner must release before resize/detach
+and establish synchronous-thread/lifetime/suspension ownership.
+
+`native/input/rdpei.*` projects validated internal events through the pinned public
+`RdpeiClientContext::TouchRawEvent`, with no private upstream structures or raw
+`AddContact` indexing. It checks both the status and returned contact ID. Pinned
+FreeRDP can return CHANNEL_RC_OK with contact ID -1 when its pool is exhausted;
+that is treated as failure. Pressure/orientation/hover and pen are not implemented
+by this foundation. Upstream encodes its own contact rectangle; the helper requests
+no optional fields and does not implement another RDPEI encoder.
+
+### Open handshake and suspension integration
+
+RDPEI enters its running phase only after the server/client readiness exchange,
+and can be suspended/resumed by the server; see the
+[MS-RDPEI overview](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpei/eff22485-b00b-4483-95c4-9253cfa36dd8).
+The pinned public client context has no SC_READY/CS_READY completion callback.
+Its GetVersion is initialized to v3 before server negotiation, and the real addin
+returns success for a contact before SC_READY. DVC ChannelConnected also precedes
+that exchange. None of these is a valid negotiated-readiness gate.
+
+Consequently the foundation does not activate touch in Connection or infer support
+from the compiled channel inventory. Before enabling it, implement an observable
+readiness gate, suspend/resume handling including upstream periodic contact frames,
+bounded/versioned private IPC, current-control-lease delivery and browser contact
+capture/cancellation. Actual Windows/XRDP touch and physical-device acceptance
+remain open. [Iteration 23](ITERATION_023.md) separates pure state tests, mocked
+public calls and actual linked-addin PDU fixtures from remote RDP integration.
