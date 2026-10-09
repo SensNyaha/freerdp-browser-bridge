@@ -28,6 +28,11 @@ The modern GFX binding feeds these same GDI callbacks in synchronous DVC mode;
 [GFX.md](GFX.md) records native fixture coverage, allocation guards and retained
 decoder/scaling gaps. Actual negotiated GFX, dynamic resize and the complete
 media gate remain pending.
+The [native Display Control foundation](DISPLAY_CONTROL.md) now binds public
+server caps and distinguishes sent layouts from actual desktop observations.
+Browser resize opt-in, IPC/control requests and actual server acceptance remain
+pending. Successful DesktopResize resets lazy encoders, including same-size
+GFX resets, so the next AVC capture starts a fresh IDR chain.
 AutoLogon is enabled for supplied credentials.
 
 ## Secrets and trust

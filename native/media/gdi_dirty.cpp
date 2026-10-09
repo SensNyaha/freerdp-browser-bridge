@@ -1,6 +1,27 @@
 #include "gdi_dirty.hpp"
+#include <freerdp/freerdp.h>
+#include <freerdp/settings.h>
 
 namespace bridge::media {
+bool resize_gdi_desktop(rdpContext *context, DirtyRegions &dirty) noexcept {
+  if (!context || !context->settings || !context->gdi)
+    return false;
+  const auto width = freerdp_settings_get_uint32(context->settings, FreeRDP_DesktopWidth);
+  const auto height = freerdp_settings_get_uint32(context->settings, FreeRDP_DesktopHeight);
+  if (!width || !height || width > 7680 || height > 4320)
+    return false;
+  try {
+    if (dirty.revision() == (std::numeric_limits<std::uint64_t>::max)())
+      return false;
+    if (!gdi_resize(context->gdi, width, height))
+      return false;
+    // gdi_resize can flush EndPaint. Advance from that latest revision, not a saved copy.
+    dirty.resize(width, height);
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
 static HGDI_WND window(rdpGdi *gdi) {
   if (!gdi || !gdi->primary || !gdi->primary->hdc)
     return nullptr;

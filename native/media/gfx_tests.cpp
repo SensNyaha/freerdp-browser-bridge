@@ -23,7 +23,7 @@ void release_dc(GDI_DC *dc) {
 struct Fixture {
   std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)> context{
       nullptr, freerdp_client_context_free};
-  std::unique_ptr<GDI_DC, decltype(&release_dc)> dc{gdi_CreateDC(PIXEL_FORMAT_BGRA32), release_dc};
+  std::unique_ptr<GDI_DC, decltype(&release_dc)> dc{gdi_GetDC(), release_dc};
   rdpGdi gdi{};
   gdiBitmap primary{};
   RdpgfxClientContext channel{};
@@ -61,6 +61,7 @@ struct Fixture {
     boolean(FreeRDP_GfxSmallCache, TRUE);
     boolean(FreeRDP_SoftwareGdi, TRUE);
     REQUIRE(dc);
+    dc->format = PIXEL_FORMAT_BGRA32;
     dc->hwnd = static_cast<HGDI_WND>(std::calloc(1, sizeof(GDI_WND)));
     REQUIRE(dc->hwnd);
     dc->hwnd->invalid = gdi_CreateRectRgn(0, 0, 0, 0);

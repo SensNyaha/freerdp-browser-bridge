@@ -1,6 +1,7 @@
 #pragma once
 #include "certificate.hpp"
 #include "connection_config.hpp"
+#include "control.hpp"
 #include "cursor.hpp"
 #include "dirty_regions.hpp"
 #include "gfx.hpp"
@@ -55,6 +56,7 @@ class Connection {
   std::uint64_t frame_request_ = 0, requested_revision_ = 0;
   media::DirtyRegions dirty_;
   std::unique_ptr<media::Gfx> gfx_ = std::make_unique<media::Gfx>();
+  display::Control display_;
   bool subscribed_connected_ = false, subscribed_disconnected_ = false;
   std::chrono::steady_clock::time_point next_frame_{};
   std::unique_ptr<media::JpegEncoder> encoder_;

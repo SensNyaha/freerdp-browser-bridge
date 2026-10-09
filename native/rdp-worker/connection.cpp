@@ -111,6 +111,13 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_RedirectSmartCards, FALSE);
   boolean(FreeRDP_AudioPlayback, FALSE);
   boolean(FreeRDP_AudioCapture, FALSE);
+#ifdef CHANNEL_DISP_CLIENT
+  boolean(FreeRDP_SupportDisplayControl, TRUE);
+#else
+  boolean(FreeRDP_SupportDisplayControl, FALSE);
+#endif
+  // Browser-driven requests remain capability-gated until the public IPC/API slice exists.
+  boolean(FreeRDP_DynamicResolutionUpdate, FALSE);
 #ifdef CHANNEL_RDPGFX_CLIENT
   boolean(FreeRDP_SupportGraphicsPipeline, c.color_depth == 32);
 #else
@@ -170,21 +177,28 @@ BOOL Connection::pre_connect(freerdp *instance) {
 }
 void Connection::channel_connected(void *context, const ChannelConnectedEventArgs *event) {
   auto *base = static_cast<rdpContext *>(context);
-  if (!event || !event->name || std::strcmp(event->name, RDPGFX_DVC_CHANNEL_NAME) != 0)
+  if (!event || !event->name)
     return;
   auto &self = owner(base->instance);
-  if (!self.gfx_->bind(reinterpret_cast<Context *>(base)->base,
-                       static_cast<RdpgfxClientContext *>(event->pInterface))) {
+  if (std::strcmp(event->name, DISP_DVC_CHANNEL_NAME) == 0) {
+    if (!self.display_.bind(*base, static_cast<DispClientContext *>(event->pInterface))) {
+      self.reason_ = RdpError::protocol;
+      setChannelError(base, ERROR_BAD_CONFIGURATION, "Bridge display initialization failed");
+    }
+  } else if (std::strcmp(event->name, RDPGFX_DVC_CHANNEL_NAME) == 0 &&
+             !self.gfx_->bind(reinterpret_cast<Context *>(base)->base,
+                              static_cast<RdpgfxClientContext *>(event->pInterface))) {
     self.reason_ = RdpError::protocol;
     setChannelError(base, ERROR_BAD_CONFIGURATION, "Bridge GFX initialization failed");
   }
 }
 void Connection::channel_disconnected(void *context, const ChannelDisconnectedEventArgs *event) {
   auto *base = static_cast<rdpContext *>(context);
-  if (!event || !event->name || std::strcmp(event->name, RDPGFX_DVC_CHANNEL_NAME) != 0)
+  if (!event || !event->name)
     return;
   auto &self = owner(base->instance);
-  if (!self.gfx_->unbind())
+  if ((std::strcmp(event->name, DISP_DVC_CHANNEL_NAME) == 0 && !self.display_.unbind()) ||
+      (std::strcmp(event->name, RDPGFX_DVC_CHANNEL_NAME) == 0 && !self.gfx_->unbind()))
     self.reason_ = RdpError::protocol;
 }
 namespace {
@@ -262,24 +276,24 @@ BOOL Connection::post_connect(freerdp *instance) {
   try {
     owner(instance).cursor_.initialize();
     owner(instance).dirty_.resize(width, height);
+    if (!owner(instance).display_.observe({width, height}))
+      return FALSE;
   } catch (...) {
     return FALSE;
   }
   return TRUE;
 }
 BOOL Connection::resize(rdpContext *context) {
-  const auto width = freerdp_settings_get_uint32(context->settings, FreeRDP_DesktopWidth);
-  const auto height = freerdp_settings_get_uint32(context->settings, FreeRDP_DesktopHeight);
-  if (width == 0 || width > 7680 || height == 0 || height > 4320)
+  auto &self = owner(context->instance);
+  if (!media::resize_gdi_desktop(context, self.dirty_))
     return FALSE;
-  if (!gdi_resize(context->gdi, width, height))
+  if (!self.display_.observe(
+          {static_cast<UINT32>(context->gdi->width), static_cast<UINT32>(context->gdi->height)}))
     return FALSE;
-  try {
-    owner(context->instance).dirty_.resize(width, height);
-    return TRUE;
-  } catch (...) {
-    return FALSE;
-  }
+  // A same-size graphics reset also invalidates a predictive chain. Encoders are lazy.
+  self.encoder_.reset();
+  self.avc_encoder_.reset();
+  return TRUE;
 }
 BOOL Connection::begin_paint(rdpContext *context) {
   return media::begin_gdi_paint(context->gdi) ? TRUE : FALSE;
@@ -391,6 +405,8 @@ void Connection::capture_pending(bool ending) {
 }
 void Connection::post_disconnect(freerdp *instance) {
   auto &self = owner(instance);
+  if (!self.display_.unbind())
+    self.reason_ = RdpError::protocol;
   if (!self.gfx_->unbind())
     self.reason_ = RdpError::protocol;
   if (self.subscribed_connected_) {
@@ -642,6 +658,7 @@ void Connection::run() noexcept {
         if (stopping_ || freerdp_shall_disconnect_context(context_.get()))
           break;
         input_pending();
+        (void)display_.expire(std::chrono::steady_clock::now());
         capture_pending();
       }
       connected_ = false;
@@ -664,6 +681,9 @@ void Connection::run() noexcept {
     erase_password();
     state(RdpState::failed, RdpError::protocol);
   }
+  // Also covers connect failures before PostDisconnect; clear callbacks while context lives.
+  if (!display_.unbind())
+    reason_ = RdpError::protocol;
   finished_ = true;
   condition_.notify_all();
 }

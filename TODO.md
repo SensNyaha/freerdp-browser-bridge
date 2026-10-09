@@ -22,8 +22,8 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   CTest/Catch2: 18 IPC/input/state cases / 266 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
-  public GDI integration adds 3 cases / 9,111 assertions; GFX public callback fixtures
-  add 7 cases / 27,160 assertions (combined GDI/GFX: 10 / 36,271), including
+  public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
+  add 7 cases / 27,160 assertions (combined GDI/GFX: 12 / 36,359), including
   actual incoming AVC420 decoder callbacks and malformed-command guards.
   [Cursor block evidence](docs/ITERATION_012.md), [dirty tracking evidence](docs/ITERATION_013.md),
   [GFX binding evidence](docs/ITERATION_014.md), [incoming AVC420 evidence](docs/ITERATION_015.md).
@@ -33,6 +33,10 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   and JPEG report a configured 5 FPS cap; direct native capture intervals stay
   above 200 ms independently of Node pacing. Broader performance/soak gates remain open.
   Quality/FPS implementation commit: `bd8659b`.
+  [Native Display Control foundation](docs/ITERATION_017.md): 8 cases / 280 assertions
+  cover caps, layout bounds, pending/observed state, timeout and teardown. Actual public
+  GDI realloc and resized AVC/JPEG decoding pass; browser requests and actual server
+  resize acceptance remain open. Windows foundation helper correction: `d295264`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
@@ -114,6 +118,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 - [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
+- [~] IN PROGRESS — Native Display Control binds public negotiated caps, validates one bounded layout request, separates sent/observed dimensions and expires pending state. Real public GDI resize and resized AVC/JPEG decoding pass native fixtures. Browser opt-in, IPC/control requests/results, scale metadata, state replay and actual server layout acceptance remain open. [Contract](docs/DISPLAY_CONTROL.md), [evidence](docs/ITERATION_017.md).
 - [~] IN PROGRESS — Rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI/GFX callback tests pass; actual XRDP regression is recorded in [iteration 13](docs/ITERATION_013.md) and [iteration 14](docs/ITERATION_014.md). Partial-region encoding and actual negotiated GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
 - [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/ITERATION_012.md). Exact mono inversion and broader server/platform cases remain retained gaps.
 - [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture with render credit. Configurable FPS caps and quality/bitrate profiles reach native encoders; effective ceilings remain 20 JPEG / 30 AVC FPS. Native/fake and actual XRDP cap checks pass. Provider selection and adaptive congestion remain pending. [Contract](docs/VIDEO_QUALITY.md), [evidence](docs/ITERATION_016.md).

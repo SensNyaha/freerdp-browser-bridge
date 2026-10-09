@@ -101,4 +101,10 @@ XRDP negotiated GFX. A Windows/GFX server, AVC444/other compressed-codec fixture
 SPS/codec working-memory limits, actual server resize and the 30-minute desktop
 soak remain open.
 
-Evidence: [iteration 14](ITERATION_014.md), [iteration 15](ITERATION_015.md).
+Successful worker DesktopResize now drops lazy encoders even when dimensions
+are unchanged, so a same-size graphics reset begins a fresh AVC IDR chain.
+The [Display Control foundation](DISPLAY_CONTROL.md) observes dimensions only
+after GDI success; browser layout requests and actual server resize remain open.
+
+Evidence: [iteration 14](ITERATION_014.md), [iteration 15](ITERATION_015.md),
+[resize foundation](ITERATION_017.md).
