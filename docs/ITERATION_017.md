@@ -4,6 +4,7 @@ Date: 2026-10-09. Scope: SPECIFICATION §2.3 / §2.10, MEDIA_PIPELINE §10,
 ARCHITECTURE §4 and accepted ADR-003 / ADR-008 / ADR-009. Original requirements
 retained. This completes a native foundation block, not end-to-end dynamic
 resolution acceptance.
+Native implementation commit: `4cc44d2`.
 
 ## Delivered
 

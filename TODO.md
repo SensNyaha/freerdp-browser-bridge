@@ -37,6 +37,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   cover caps, layout bounds, pending/observed state, timeout and teardown. Actual public
   GDI realloc and resized AVC/JPEG decoding pass; browser requests and actual server
   resize acceptance remain open. Windows foundation helper correction: `d295264`.
+  Native Display Control/resize implementation commit: `4cc44d2`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
