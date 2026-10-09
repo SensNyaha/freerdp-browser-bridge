@@ -2,6 +2,7 @@
 
 Date: 2026-10-09. Scope: SPECIFICATION §2.3 / §2.10, ARCHITECTURE §4,
 MEDIA_PIPELINE §3–4 and accepted ADR-003. Original requirements retained.
+Implementation commit: `bd8659b`.
 
 ## Delivered
 

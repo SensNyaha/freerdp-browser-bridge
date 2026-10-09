@@ -32,6 +32,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   [Quality/FPS profile evidence](docs/ITERATION_016.md): actual XRDP H.264/reset
   and JPEG report a configured 5 FPS cap; direct native capture intervals stay
   above 200 ms independently of Node pacing. Broader performance/soak gates remain open.
+  Quality/FPS implementation commit: `bd8659b`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
