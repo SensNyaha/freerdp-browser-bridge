@@ -3,6 +3,7 @@
 Date: 2026-10-09. Implements the next native transport part of SPECIFICATION §2.5,
 ARCHITECTURE §7 and Stage 5 under accepted ADR-008 / ADR-009 / ADR-011.
 The original scope, one-monitor decision and FreeRDP 3.32.1 pin are preserved.
+Implementation commit: `fb8643f`.
 
 ## Delivered
 

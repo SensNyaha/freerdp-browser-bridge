@@ -84,6 +84,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   tests. RDPEI suite now has 23 cases / 9,789 assertions, including ten actual-addin
   cases with fake transport. Transport resume is separate from contact/lease
   readiness; plugin/worker activation and end-to-end touch remain open.
+  RDPEI transport gate implementation commit: `fb8643f`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
