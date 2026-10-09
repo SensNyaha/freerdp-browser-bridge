@@ -90,6 +90,7 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   tests pass. RDPEI now has 34 cases / 10,127 assertions, including fourteen
   actual-addin/fake-DVC cases. Connection/contact drain, private IPC/browser and
   actual remote/physical touch remain open; no touch capability is advertised.
+  Public RDPEI registration implementation commit: `af8b99e`.
   The 100 sequential worker test passes with no processes or
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,

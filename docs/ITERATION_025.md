@@ -3,6 +3,7 @@
 Date: 2026-10-09. Implements the isolated native plugin/listener lifecycle part of
 SPECIFICATION §2.5, ARCHITECTURE §7 and Stage 5 under ADR-008 / ADR-009 / ADR-011.
 FreeRDP 3.32.1 stays pinned to `bf217a504e54cc719880c228e82353382cd7d4fa`.
+Implementation commit: `af8b99e`.
 
 ## Delivered
 
