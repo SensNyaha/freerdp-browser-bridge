@@ -158,6 +158,14 @@ can be blocked by endpoint protection. The target and host overlay triplets set
 `VCPKG_LOAD_VCVARS_ENV=OFF` and pass only build-tool environment variables, so
 private vcpkg does not repeat the full Visual Studio shell initialization.
 Compiler tracking remains enabled and environment values participate in ABI hashes.
+`native-build.ps1` discovers the installed Git executable and passes its directory
+as the second argument to `msvc-env.cmd`. Before SDK setup the disposable cmd shell
+sets PATH to that directory and standard Windows executable directories; the SDK,
+C++ and CMake extensions then append their own tool paths. Node is invoked by its
+explicit local executable path. Transient caller/automation directories therefore
+do not invalidate every vcpkg ABI key between helper calls. PATH remains tracked;
+compiler and SDK checks are not disabled. Direct `msvc-env.cmd` calls without the
+second argument retain their existing inherited PATH behavior.
 The supported variables are described in [Microsoft's vcpkg documentation](https://learn.microsoft.com/en-us/vcpkg/users/triplets#vcpkg_load_vcvars_env).
 This requires an initialized MSVC environment; use the helper from a regular terminal.
 No antivirus settings, exclusions, execution policy or Visual Studio installation files

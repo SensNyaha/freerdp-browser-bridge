@@ -280,7 +280,10 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   invalid input. Real SDK stereo decode/reset/boundary tests and private DLL relocation
   pass. Worker/publisher/framing, browser decode/priming, Linux/resource and audible
   acceptance remain open; public Opus selection is still explicitly unsupported.
-  [Contract](docs/AUDIO_OPUS.md), [evidence](docs/ITERATION_073.md).
+  [Contract](docs/AUDIO_OPUS.md), [evidence](docs/ITERATION_073.md). Encoder: `6cc179b`.
+  [Stable Windows build environment evidence](docs/ITERATION_074.md) verifies repeat
+  dependency builds without transient caller PATH invalidation; fresh-checkout/Linux
+  gates remain open.
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.

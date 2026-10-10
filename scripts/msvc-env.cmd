@@ -1,6 +1,9 @@
 @echo off
 rem Called inside a disposable cmd.exe; configure SDK and C++ without vcpkg shell hooks.
 if "%~1"=="" exit /b 2
+rem Native helpers pass the discovered Git directory. Keep transient caller/tool
+rem directories out of vcpkg's tracked PATH; SDK/VC/CMake append their own paths.
+if not "%~2"=="" set "PATH=%~2;%SystemRoot%\System32;%SystemRoot%;%SystemRoot%\System32\Wbem;%SystemRoot%\System32\WindowsPowerShell\v1.0"
 set "VSCMD_DEBUG="
 call "%~1\Common7\Tools\VsDevCmd.bat" -no_logo -no_ext -arch=x64 -host_arch=x64 -startdir=none >nul
 if errorlevel 1 exit /b 1
