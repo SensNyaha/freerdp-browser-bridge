@@ -555,3 +555,17 @@ touch capture cancels that contact. Global focus/visibility/dispose/readiness/ep
 loss clears local state and sends reset when active. Physical input is unchanged.
 Semantic unavailable/stale/invalid-transition errors preserve the session and
 request local reset without replay. Device and remote application gates remain.
+
+### Explicit unsupported pen capability
+
+[Iteration 32](ITERATION_032.md) exposes penInput=false consistently through
+HELLO decoding, worker CLI and capability REST. The pinned addin defaults its
+public clientFeaturesMask to all bits; the owned registration now removes
+ENABLE_MULTIPEN_INJECTION before initialization. A server offering multi-pen gets
+a touch-only CS_READY; touch visuals/timestamp profile and other mask bits remain.
+Standalone upstream behavior is distinct from the bridge's owned registration.
+
+Browser pen Pointer Events remain ignored without mouse/touch fallback. This is
+the Stage 5 unsupported placeholder, not pen support or a change to optional pen
+requirements. A future implementation requires a bounded pen owner, pressure/
+orientation validation, lease/generation dispatch and actual device acceptance.

@@ -151,6 +151,15 @@ struct Fixture {
   }
 };
 } // namespace
+TEST_CASE("RDPEI registration masks unsupported multi-pen without changing touch features") {
+  Fixture f;
+  f.client.clientFeaturesMask = UINT32_MAX;
+  REQUIRE(f.install() == CHANNEL_RC_OK);
+  REQUIRE((f.client.clientFeaturesMask & CS_READY_FLAGS_ENABLE_MULTIPEN_INJECTION) == 0);
+  REQUIRE(f.client.clientFeaturesMask ==
+          (UINT32_MAX & ~static_cast<UINT32>(CS_READY_FLAGS_ENABLE_MULTIPEN_INJECTION)));
+  REQUIRE(f.registration.client() == &f.client);
+}
 TEST_CASE("RDPEI registration checks host and synchronous policy before invoking an entry") {
   for (const auto key :
        {FreeRDP_SynchronousDynamicChannels, FreeRDP_AsyncChannels, FreeRDP_AsyncUpdate}) {

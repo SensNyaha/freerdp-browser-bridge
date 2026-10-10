@@ -46,7 +46,8 @@ public:
   PluginRegistration &operator=(const PluginRegistration &) = delete;
   ~PluginRegistration();
   // Default loads the pinned static RDPEI entry. Explicit entry is native test injection.
-  // An injected entry must preserve the pinned entry's cleanup-on-error contract.
+  // An injected entry must expose RdpeiClientContext and preserve the pinned
+  // entry's cleanup-on-error contract. Multi-pen injection is disabled by this owner.
   UINT install(IDRDYNVC_ENTRY_POINTS *, PDVC_PLUGIN_ENTRY entry = nullptr) noexcept;
   // End all delegated resources on the RDP thread, before joining it. The wrapper
   // remains alive for the host's later Terminated call on the context-free thread.

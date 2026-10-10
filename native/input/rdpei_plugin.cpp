@@ -154,6 +154,10 @@ UINT PluginRegistration::install(IDRDYNVC_ENTRY_POINTS *host, PDVC_PLUGIN_ENTRY 
   }
   if (!delegate_)
     return ERROR_INVALID_DATA;
+  // The bridge owns touch only. Do not negotiate upstream's default multi-pen
+  // injection before a bounded pen owner and public/browser dispatch exist.
+  static_cast<RdpeiClientContext *>(delegate_->pInterface)->clientFeaturesMask &=
+      ~static_cast<UINT32>(CS_READY_FLAGS_ENABLE_MULTIPEN_INJECTION);
   plugin_.api.pInterface = delegate_->pInterface;
   busy_ = true;
   result =

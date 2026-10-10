@@ -14,7 +14,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | HEARTBEAT_ACK | 4 | empty |
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
-| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue full, 8 input paused during display transition, 9 Unicode input not negotiated |
+| ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue/contact capacity full, 8 input paused during display transition, 9 Unicode input not negotiated, 10 touch unavailable, 11 invalid touch transition |
 | CONFIGURE | 8 | connection schema v1/v2/v3/v4 below; maximum 2048 bytes |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
@@ -58,6 +58,9 @@ Node sends kind 30 only with bit 10; absent bits decode false for older peers.
 Readers rejecting unknown HELLO bits must be upgraded together with the worker.
 Bit 11 requires bits 2 and 5 and is set only with CHANNEL_RDPEI_CLIENT. It claims
 private dispatch implementation, not actual server/device acceptance or usable RDP.
+`penInput` is an explicit false placeholder in decoded/build/capability reports,
+including legacy peers. No pen wire bit or command is introduced. Owned RDPEI
+clears the public multi-pen client feature mask before server negotiation.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers

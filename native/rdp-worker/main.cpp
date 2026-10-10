@@ -221,7 +221,7 @@ int main(int argc, char **argv) {
     else
       std::cout << "null";
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
-                 "\"rdp\":false,\"connectCore\":"
+                 "\"rdp\":false,\"penInput\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"

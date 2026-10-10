@@ -142,6 +142,9 @@ backlog, and cancels on pointercancel/lost capture. Blur/visibility/dispose or a
 unavailable/new-generation event clears local ownership and resets server input.
 Pen remains unsupported. Physical device and actual application acceptance remain
 open; Edge emulated pointer/fake-control tests are not those acceptance tests.
+Build/CLI/capability reports expose `penInput: false`. No pen HELLO bit or payload
+is allocated. The owned RDPEI registration clears ENABLE_MULTIPEN_INJECTION before
+channel initialization, even if the server offers it; touch features are preserved.
 
 ### Experimental Display Control (v1 additive extension)
 

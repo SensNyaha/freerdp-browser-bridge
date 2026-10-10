@@ -394,6 +394,21 @@ TEST_CASE("DVC gate observes real v1.1 v2 v3 and future-server version negotiati
     REQUIRE(f.close());
   }
 }
+TEST_CASE("Owned RDPEI refuses multi-pen negotiation while keeping touch ready") {
+  for (const bool provided : {false, true}) {
+    ChannelFixture f(true, CHANNEL_RC_OK, true, provided);
+    Contacts contacts(f.registration);
+    REQUIRE(f.open());
+    std::array<BYTE, 14> bytes{1, 0, 14, 0, 0, 0, 0, 0, 3, 0, SC_READY_MULTIPEN_INJECTION_SUPPORTED,
+                               0, 0, 0};
+    REQUIRE(f.receive(bytes) == CHANNEL_RC_OK);
+    REQUIRE(f.count == 1);
+    REQUIRE((f.packet(0)[6] & CS_READY_FLAGS_ENABLE_MULTIPEN_INJECTION) == 0);
+    REQUIRE((f.packet(0)[6] & CS_READY_FLAGS_DISABLE_TIMESTAMP_INJECTION) != 0);
+    REQUIRE(contacts.service() == Drain::idle);
+    REQUIRE(contacts.ready());
+  }
+}
 TEST_CASE("DVC gate blocks upstream periodic contact frames during server suspension") {
   ChannelFixture f;
   REQUIRE(f.open(true));

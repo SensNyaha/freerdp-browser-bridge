@@ -250,6 +250,7 @@ export interface WorkerBuild {
     videoQuality: boolean;
     displayControl: boolean;
     touchInput: boolean;
+    penInput: false;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -311,6 +312,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       videoQuality: Boolean(capabilities & 256),
       displayControl: Boolean(capabilities & 512),
       touchInput: Boolean(capabilities & 2048),
+      penInput: false,
     },
     bridgeVersion,
     gitCommit,

@@ -223,6 +223,21 @@ test(
           });
           const cdp = await page.context().newCDPSession(page);
           const rect = await page.locator('canvas').boundingBox();
+          await page.evaluate(() => {
+            const canvas = document.querySelector('canvas');
+            for (const type of ['pointerdown', 'pointermove', 'pointerup'])
+              canvas.dispatchEvent(
+                new PointerEvent(type, {
+                  pointerType: 'pen',
+                  pointerId: 40,
+                  clientX: 100,
+                  clientY: 100,
+                  button: 0,
+                  bubbles: true,
+                }),
+              );
+          });
+          assert.equal(sent.length, 0);
           const points = [
             { id: 1, x: rect.x + 100, y: rect.y + 100 },
             { id: 2, x: rect.x + 200, y: rect.y + 150 },
