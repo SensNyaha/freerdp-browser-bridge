@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Implements SPECIFICATION §2.5's layout-independent physical
 mapping and Stage 5 under ADR-008 / ADR-009 / ADR-011.
+Implementation commit: `e9c12fb`.
 
 The browser and strict control normalizer now recognize IntlRo, IntlYen, KanaMode,
 Convert, NonConvert, Lang1, Lang2 and NumpadComma. The eight set-1 positions are

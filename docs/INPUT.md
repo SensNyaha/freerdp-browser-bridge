@@ -583,6 +583,10 @@ request local reset without replay. Device and remote application gates remain.
 
 ### Explicit unsupported pen capability
 
+The separate [upstream resource/transport audit](RDPEI_UPSTREAM_AUDIT.md) records
+remaining host reassembly allocations before this public gate and transport return
+semantics. Current bridge bounds do not close those actual-host acceptance gates.
+
 [Iteration 32](ITERATION_032.md) exposes penInput=false consistently through
 HELLO decoding, worker CLI and capability REST. The pinned addin defaults its
 public clientFeaturesMask to all bits; the owned registration now removes

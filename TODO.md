@@ -215,6 +215,13 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 ## Stage 5 — keyboard, mouse, wheel and touch
 
+Current integration evidence: [private/native touch](docs/ITERATION_029.md),
+[public lease/browser](docs/ITERATION_030.md), [actual XRDP readiness/replay](docs/ITERATION_031.md),
+[pen placeholder](docs/ITERATION_032.md), [terminal cleanup](docs/ITERATION_033.md),
+[international keyboard positions](docs/ITERATION_034.md). The historical foundation
+records above do not describe today's activation state. Actual touch/application
+and other remote acceptance gates remain open.
+
 Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 [Launch commands](docs/DEVELOPMENT.md#manual-windowsxrdp-viewer).
 
@@ -332,6 +339,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [ ] No unbounded queue introduced.
 - [ ] Public protocol change is versioned/documented.
 - [ ] Native parser change has boundary tests/fuzz coverage where relevant.
+- [ ] Actual drdynvc host preallocation/decompression limits and lost-transport terminal release acceptance. The source audit identifies allocations before the public RDPEI gate and a NOT_CONNECTED-to-OK write path; current bridge bounds do not establish upstream bounds or remote release. [Audit and required follow-up](docs/RDPEI_UPSTREAM_AUDIT.md).
 - [ ] FreeRDP return values checked.
 - [ ] Unsupported feature is explicit capability state, not a crash.
 - [ ] Documentation and schema match actual code.
