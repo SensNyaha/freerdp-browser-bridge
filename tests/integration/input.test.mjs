@@ -526,6 +526,100 @@ test(
     });
   },
 );
+test(
+  'Edge international keys: physical code ignores locale symbols; composition stays local and held keys reset on blur',
+  { skip: process.platform !== 'win32', timeout: 45000 },
+  async () => {
+    await fixture(async ({ sent, ws, origin }) => {
+      const browser = await chromium.launch({
+        channel: 'msedge',
+        headless: true,
+      });
+      try {
+        const page = await browser.newPage();
+        await page.goto(origin + '/fixture');
+        let seq = 0;
+        await page.exposeFunction('sendInternationalInput', (type, data) =>
+          ws.send(
+            JSON.stringify({ v: 1, type, seq: seq++, ts: Date.now(), data }),
+          ),
+        );
+        await page.evaluate(async () => {
+          const { installInput } = await import('/input.js');
+          const canvas = document.querySelector('canvas');
+          window.disposeInternational = installInput(
+            canvas,
+            (type, data) => {
+              void window.sendInternationalInput(type, data);
+              return true;
+            },
+            () => true,
+            () => {
+              throw new Error('Fixture input failed');
+            },
+          );
+          canvas.focus();
+          for (const [code, key] of [
+            ['IntlRo', 'ろ'],
+            ['IntlYen', '¥'],
+            ['KanaMode', 'KanaMode'],
+            ['Convert', '変換'],
+            ['NonConvert', '無変換'],
+            ['Lang1', '한/영'],
+            ['Lang2', '한자'],
+            ['NumpadComma', '.'],
+          ]) {
+            for (const type of ['keydown', 'keyup'])
+              canvas.dispatchEvent(
+                new KeyboardEvent(type, { code, key, bubbles: true }),
+              );
+          }
+        });
+        await eventually(
+          () => sent.filter((e) => e.type === 'key').length === 16,
+        );
+        assert.deepEqual(
+          sent.filter((e) => e.type === 'key').map((e) => [e.scancode, e.down]),
+          [0x73, 0x7d, 0x70, 0x79, 0x7b, 0x72, 0x71, 0x7e].flatMap((scan) => [
+            [scan, true],
+            [scan, false],
+          ]),
+        );
+        const before = sent.length;
+        await page.evaluate(() => {
+          const canvas = document.querySelector('canvas');
+          for (const type of ['keydown', 'keyup'])
+            canvas.dispatchEvent(
+              new KeyboardEvent(type, {
+                code: 'Convert',
+                key: '変換',
+                isComposing: true,
+                bubbles: true,
+              }),
+            );
+          canvas.dispatchEvent(
+            new KeyboardEvent('keydown', {
+              code: 'IntlYen',
+              key: '¥',
+              bubbles: true,
+            }),
+          );
+          window.dispatchEvent(new Event('blur'));
+        });
+        await eventually(() => sent.length === before + 2);
+        assert.deepEqual(sent.slice(before), [
+          { type: 'key', scancode: 0x7d, down: true, repeat: false },
+          { type: 'reset' },
+        ]);
+        assert.equal(ws.readyState, WebSocket.OPEN);
+        await page.evaluate(() => window.disposeInternational());
+      } finally {
+        await browser.close();
+      }
+    });
+  },
+);
+
 test('control WS validates input, sends it in order and releases on transport loss', async () => {
   await fixture(async ({ ws, sent }) => {
     let seq = 0;

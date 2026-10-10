@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Traces SPECIFICATION §3.1, ARCHITECTURE worker ownership and
 Stage 3/5 lifecycle requirements under ADR-008 / ADR-009.
+Implementation commit: `ff5fcdf`.
 
 Connection previously published closed/failed before display/addin retirement.
 If provider close then failed, it emitted a second failed state, creating an

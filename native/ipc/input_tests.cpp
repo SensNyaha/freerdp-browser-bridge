@@ -1,6 +1,33 @@
 #include "input.hpp"
 #include <catch2/catch_test_macros.hpp>
 using namespace bridge;
+TEST_CASE(
+    "International set-1 key records retain physical positions and reset releases every held key") {
+  constexpr std::array<std::uint8_t, 8> scans{0x70, 0x71, 0x72, 0x73, 0x79, 0x7b, 0x7d, 0x7e};
+  input::State state;
+  std::vector<input::Event> sent;
+  const input::State::Sink sink = [&](const auto &event) {
+    sent.push_back(event);
+    return true;
+  };
+  for (const auto scan : scans) {
+    const std::array<std::uint8_t, 12> bytes{1, 1, 0, scan, 0, 0, 0, 0, 0, 0, 0, 0};
+    const auto event = input::decode(bytes);
+    REQUIRE(event.type == input::Type::key);
+    REQUIRE(event.a == scan);
+    REQUIRE(state.apply(event, sink, 1920, 1080));
+  }
+  REQUIRE(sent.size() == scans.size());
+  REQUIRE(state.apply({input::Type::reset}, sink, 1920, 1080));
+  REQUIRE(sent.size() == scans.size() * 2);
+  for (std::size_t i = 0; i < scans.size(); ++i) {
+    REQUIRE(sent[scans.size() + i].type == input::Type::key);
+    REQUIRE(sent[scans.size() + i].a == scans[i]);
+    REQUIRE(sent[scans.size() + i].flags == 0);
+  }
+  REQUIRE(state.release(sink));
+  REQUIRE(sent.size() == scans.size() * 2);
+}
 TEST_CASE("Unicode text has independent UTF16BE vectors and rejects malformed bodies and lengths") {
   const std::vector<std::uint8_t> bytes{0x04, 0x16, 0x4e, 0x2d, 0xd8, 0x3d, 0xde, 0x00};
   const auto text = input::decode_text(bytes);

@@ -156,6 +156,33 @@ test('physical input golden vectors match pinned FreeRDP set-1 and preserve righ
     ProtocolError,
   );
 });
+test('international physical codes use set-1 positions without accepting logical character aliases', () => {
+  for (const [code, scan] of [
+    ['IntlRo', 0x73],
+    ['IntlYen', 0x7d],
+    ['KanaMode', 0x70],
+    ['Convert', 0x79],
+    ['NonConvert', 0x7b],
+    ['Lang1', 0x72],
+    ['Lang2', 0x71],
+    ['NumpadComma', 0x7e],
+  ]) {
+    assert.equal(physicalScancode(code), scan);
+    const e = normalizeInput('input.key', { code, down: true, repeat: false });
+    assert.deepEqual(e, {
+      type: 'key',
+      scancode: scan,
+      down: true,
+      repeat: false,
+    });
+    assert.equal(
+      encodeInput(e).toString('hex'),
+      '010100' + scan.toString(16) + '0000000000000000',
+    );
+  }
+  for (const code of ['¥', 'ろ', 'HangulMode', '無変換', 'Lang3', 'Lang4'])
+    assert.equal(physicalScancode(code), undefined);
+});
 test('input schema rejects arbitrary flags, unknown physical codes and out-of-range coordinates', () => {
   assert.deepEqual(
     normalizeInput('input.key', { code: 'KeyA', down: true, repeat: false }),

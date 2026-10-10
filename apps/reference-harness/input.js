@@ -10,7 +10,7 @@ export function installInput(
   touchReady = () => undefined,
 ) {
   const namedKeys = new Set(
-    'Escape Minus Equal Backspace Tab BracketLeft BracketRight Enter ControlLeft ControlRight Semicolon Quote Backquote ShiftLeft ShiftRight Backslash Comma Period Slash AltLeft AltRight Space CapsLock NumLock ScrollLock IntlBackslash PrintScreen Home ArrowUp PageUp ArrowLeft ArrowRight End ArrowDown PageDown Insert Delete MetaLeft MetaRight ContextMenu'.split(
+    'Escape Minus Equal Backspace Tab BracketLeft BracketRight Enter ControlLeft ControlRight Semicolon Quote Backquote ShiftLeft ShiftRight Backslash Comma Period Slash AltLeft AltRight Space CapsLock NumLock ScrollLock IntlBackslash IntlRo IntlYen KanaMode Convert NonConvert Lang1 Lang2 NumpadComma PrintScreen Home ArrowUp PageUp ArrowLeft ArrowRight End ArrowDown PageDown Insert Delete MetaLeft MetaRight ContextMenu'.split(
       ' ',
     ),
   );

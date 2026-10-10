@@ -11,6 +11,7 @@
 #include <freerdp/error.h>
 #include <freerdp/gdi/gdi.h>
 #include <freerdp/input.h>
+#include <freerdp/scancode.h>
 #include <freerdp/settings.h>
 #include <limits>
 #include <winpr/synch.h>
@@ -20,6 +21,11 @@
 
 namespace bridge {
 using namespace ipc;
+// Keep the physical international-key wire table aligned with pinned public API.
+static_assert(RDP_SCANCODE_ABNT_C1 == 0x73 && RDP_SCANCODE_BACKSLASH_JP == 0x7d &&
+              RDP_SCANCODE_HIRAGANA == 0x70 && RDP_SCANCODE_CONVERT_JP == 0x79 &&
+              RDP_SCANCODE_NONCONVERT_JP == 0x7b && RDP_SCANCODE_HANGUL == 0x72 &&
+              RDP_SCANCODE_HANJA == 0x71 && RDP_SCANCODE_ABNT_C2 == 0x7e);
 #ifdef _WIN32
 static BOOL network_init() {
   WSADATA data{};

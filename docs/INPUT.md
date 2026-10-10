@@ -59,6 +59,31 @@ remote application consumed the event. Failure closes the control attachment
 with a fixed error. Control payloads remain at most 4 KiB, with a total limit of
 256 messages/second, including at most 32 text/non-input commands/second.
 
+### International physical positions
+
+The physical table additionally recognizes these codes without using locale
+characters or translating text. Code names follow [W3C UI Events code values](https://www.w3.org/TR/uievents-code/);
+the set-1 values agree with the Windows column of [Chromium's mapping table](https://raw.githubusercontent.com/chromium/chromium/main/ui/events/keycodes/dom/dom_code_data.inc)
+and [pinned FreeRDP public scancodes](https://github.com/FreeRDP/FreeRDP/blob/bf217a504e54cc719880c228e82353382cd7d4fa/include/freerdp/scancode.h).
+
+| Browser code | Set-1 | Pinned public constant |
+|---|---:|---|
+| IntlRo | 0x73 | RDP_SCANCODE_ABNT_C1 |
+| IntlYen | 0x7D | RDP_SCANCODE_BACKSLASH_JP |
+| KanaMode | 0x70 | RDP_SCANCODE_HIRAGANA |
+| Convert | 0x79 | RDP_SCANCODE_CONVERT_JP |
+| NonConvert | 0x7B | RDP_SCANCODE_NONCONVERT_JP |
+| Lang1 | 0x72 | RDP_SCANCODE_HANGUL |
+| Lang2 | 0x71 | RDP_SCANCODE_HANJA |
+| NumpadComma | 0x7E | RDP_SCANCODE_ABNT_C2 |
+
+The native worker asserts this agreement at compile time. Existing 12-byte INPUT
+and input.key shapes are unchanged. Composing non-modifier events stay local;
+Unicode text uses its separate explicit commit path. Native tracking releases all
+held positions on reset. This does not select the server keyboard layout or prove
+Japanese/Korean/Brazilian hardware or remote IME behavior. Unsupported physical
+codes remain explicit; broader layout acceptance is retained. [Iteration 34](ITERATION_034.md).
+
 ## Bounded delivery and cleanup
 
 Node serializes input for each session, with at most 64 pending user commands and

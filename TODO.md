@@ -25,8 +25,8 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 139/139 Node tests;
-  CTest/Catch2: 25 IPC/input/state cases / 478 assertions, 2 AVC cases / 19 assertions,
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 141/141 Node tests;
+  CTest/Catch2: 26 IPC/input/state cases / 531 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -118,6 +118,9 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   runtime directories leaked. MSVC /analyze, /W4 /WX and clang-format checks pass.
 - **Commits:** `9517003` build, `1672590` IPC/native lifecycle, `3610524` configuration,
   `316cdc0` Node supervisor/API/integration. Original blueprint is preserved in `3065f2d`.
+- **Recent input commits:** private touch dispatch `6a34e2f`, public controller/browser `06b2527`, actual
+  readiness/replay `1f73a98`, honest pen placeholder `26688c5`, terminal cleanup
+  ordering `ff5fcdf`. [Current touch evidence](docs/ITERATION_031.md).
 - **DONE on Windows:** exact FreeRDP/WinPR 3.32.1, local ZLIB 1.3.2, OpenSSL 3.6.5 and libusb
   1.0.30 build and link. Private native ZIP contains runtime DLLs, release CRT, licenses and
   dependency metadata. Relocation test checks actual loaded ZLIB/FreeRDP paths and static
@@ -215,7 +218,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 [Launch commands](docs/DEVELOPMENT.md#manual-windowsxrdp-viewer).
 
-- [~] IN PROGRESS — Physical set-1 mapping and extended left/right/numpad events implemented; native/Node/Edge fixture tests pass. Remote keyboard-layout gate pending. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_008.md).
+- [~] IN PROGRESS — Physical set-1 mapping, extended left/right/numpad and eight international physical positions implemented; native/Node/Edge fixtures pass. Symbols are not used for mapping, composition stays local and reset releases held positions. Remote keyboard-layout/IME/hardware gate remains pending. [Contract](docs/INPUT.md), [initial evidence](docs/ITERATION_008.md), [international positions](docs/ITERATION_034.md).
 - [~] IN PROGRESS — Browser modifiers reconcile before focused input; observed left/right sides survive canvas focus/resize pauses, missed releases are repaired, and Caps/Num/Scroll Lock synchronize after physical lock edges. Bounded pure/native and Edge/fake-control fixtures pass; actual remote layouts, AltGraph portability and no-stuck-key acceptance remain open. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_020.md).
 - [~] IN PROGRESS — Explicit committed Unicode/IME textarea, bounded UTF-16BE private IPC and FreeRDP Unicode events implemented; native, pure, fake IPC/control and Edge composition fixtures pass. Server Unicode negotiation is required; no automatic retry of partial/uncertain delivery. Actual remote application text/OS IME, supplementary/line-ending behavior and direct canvas IME remain unverified. [Contract](docs/INPUT.md#committed-unicode-text), [evidence](docs/ITERATION_021.md).
 - [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK verified; actual remote buttons pending.
