@@ -66,3 +66,37 @@ exact size. No parser retains a sample queue or decoder state.
 The libFuzzer target is extended with both Opus payload parsers before the
 PCM-only queue rejects them. This prepares fuzz coverage, but Clang/Linux fuzz and
 sanitizer runs are not available locally and are not counted as passed gates.
+
+## Source state and RWB1 preparation (Iteration 76)
+
+Opus source state reuses kind 35 / the fixed 40-byte schema-1 source-clock and
+availability grammar from PCM. Enabled descriptors carry codec **1**, channels
+**2**, format **0**, decoded rate 48,000 and 960 frames. Disabled descriptors stay
+all-zero and are shared across modes. Native/TypeScript adapters preserve the
+incoming channel/reserved/rate/clock fields during fixed metadata translation;
+they never normalize malformed descriptors into valid ones or mutate input.
+The active PCM-only output queue still refuses enabled Opus state.
+
+Preparatory RWB1 uses version 1 / stream **3**, with one uint32 sequence shared
+by state/config/packet and unchanged capture PTS in the 28-byte header:
+
+| Type | Flags | Payload | Total record bytes |
+|---|---|---|---|
+| 0x09 AUDIO_STATE | 2 | 40-byte Opus source state; body/header time must match | 68 |
+| 0x03 AUDIO_CONFIG | 2 | 20-byte codec-1 config | 48 |
+| 0x04 AUDIO_PACKET | 0 or 2 | only 2..1,275 complete encoded bytes | 30..1,303 |
+
+Private packet frame/silence/epoch metadata is not repeated in public packet
+payload; the future receiver owns the configured epoch and sequence. Each record
+encoder validates time/sequence and bounded payload before construction. The
+isolated browser `opus-wire.js` parser checks framing, profiles, TOC duration and
+source semantics, and returns encoded bytes borrowing the record ArrayBuffer.
+It does not maintain progress, instantiate AudioDecoder/AudioContext, send ACKs or
+retain any packet queue. The reference viewer does not import this module yet.
+
+The intended decoder input is raw Opus packets without an OpusHead description;
+the lookahead field is retained for the later explicit priming/scheduling policy.
+The [WebCodecs Opus registration](https://www.w3.org/TR/webcodecs-opus-codec-registration/)
+distinguishes raw packets from description-based setup. Actual browser decode,
+priming behavior, resource ownership, source/lease progress and public negotiation
+remain future acceptance gates, not consequences of pure parser tests.

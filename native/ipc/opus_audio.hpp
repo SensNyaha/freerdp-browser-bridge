@@ -31,4 +31,6 @@ Config decode_config(std::span<const std::uint8_t>);
 std::array<std::uint8_t, config_bytes> encode_config(Config);
 Packet decode_packet(std::span<const std::uint8_t>);
 EncodedPacket encode_packet(const Packet &);
+State decode_state(std::span<const std::uint8_t>);
+std::array<std::uint8_t, state_bytes> encode_state(const State &);
 } // namespace bridge::ipc::audio::opus

@@ -88,4 +88,26 @@ EncodedPacket encode_packet(const Packet &packet) {
   std::copy(packet.encoded.begin(), packet.encoded.end(), bytes.begin() + metadata_bytes);
   return output;
 }
+State decode_state(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() != state_bytes || bytes[2] > 1 || bytes[28] != (bytes[2] ? 1 : 0) ||
+      bytes[30] != 0)
+    throw ProtocolError();
+  // Reuse the common source-clock/availability grammar through bounded metadata
+  // translation. No sample copy or incoming-buffer mutation.
+  std::array<std::uint8_t, state_bytes> normalized{};
+  std::copy(bytes.begin(), bytes.end(), normalized.begin());
+  if (bytes[2]) {
+    normalized[28] = 2;
+    normalized[30] = 1;
+  }
+  return audio::decode_state(normalized);
+}
+std::array<std::uint8_t, state_bytes> encode_state(const State &state) {
+  auto bytes = audio::encode_state(state); // Validates common semantics first.
+  if (state.enabled) {
+    bytes[28] = 1;
+    bytes[30] = 0;
+  }
+  return bytes;
+}
 } // namespace bridge::ipc::audio::opus

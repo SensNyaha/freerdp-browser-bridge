@@ -26,6 +26,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)audio::opus::decode_config(payload);
           return 0;
         }
+        if (header.kind == Kind::audio_state && payload[28] == 1) {
+          (void)audio::opus::decode_state(payload);
+          return 0;
+        }
         OutputQueue output;
         (void)output.push(header.kind, header.request_id, payload);
         (void)output.take();

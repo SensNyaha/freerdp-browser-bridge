@@ -29,8 +29,8 @@ Actual audible RDP, microphone/Opus and latency/resource/platform acceptance rem
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 217/217 Node tests;
-  CTest/Catch2: 49 IPC/input/state/audio-codec/output cases / 6,356 assertions, 2 AVC cases / 19 assertions,
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 220/220 Node tests;
+  CTest/Catch2: 51 IPC/input/state/audio-codec/output cases / 6,939 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -291,6 +291,11 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   settings, publisher, public media or browser path is activated; those gates and
   actual audible/platform/resource acceptance remain open. [Payload contract](docs/AUDIO_OPUS_WIRE.md),
   [evidence](docs/ITERATION_075.md). Opus SDK: 6 cases / 990 assertions.
+- [~] IN PROGRESS — Fixed Opus source state and bounded RWB1 state/config/packet
+  encoders plus an isolated browser parser pass independent vectors and malformed
+  profile/TOC/clock/sequence checks. The viewer does not import the parser yet;
+  decoder, publisher, negotiation and audible acceptance remain open.
+  [Wire evidence](docs/ITERATION_076.md).
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.

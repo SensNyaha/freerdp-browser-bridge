@@ -269,6 +269,12 @@ The preparatory private Opus payload schema is specified in
 negotiation, source-state mode or browser activation is introduced by that codec
 preparation; current public Opus selection remains explicitly unsupported.
 
+Additional preparatory RWB1 Opus records use stream 3: codec-1 AUDIO_CONFIG is
+48 bytes, raw AUDIO_PACKET is 30..1,303 bytes, and codec-1 AUDIO_STATE is 68 bytes
+with matched body/header time. The isolated browser parser checks these layouts;
+no Opus viewer, public selection or ACK owner is activated. See the
+[source/RWB1 preparation contract](docs/AUDIO_OPUS_WIRE.md#source-state-and-rwb1-preparation-iteration-76).
+
 The first PCM schema is specified in [AUDIO_PCM.md](docs/AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation).
 It uses audio stream ID 3, separate from video 1 and cursor 2: AUDIO_CONFIG has
 20 bytes describing schema 1, PCM codec 2, S16LE stereo 48 kHz, 960-frame packets

@@ -150,3 +150,69 @@ TEST_CASE("Opus IPC envelope refuses length and correlation claims before body a
   REQUIRE(output.push(Kind::audio_opus, 0, packet) == EnqueueStatus::invalid);
   REQUIRE_FALSE(output.take()); // Preparation does not activate a transport lane.
 }
+
+TEST_CASE("Opus source state preserves common clocks and uses a separate encoded profile") {
+  using namespace bridge::ipc;
+  const std::array<std::uint8_t, 40> ready{
+      0, 1, 1, 2, 0, 0,    0,    0,    0, 0, 0, 1, 0, 0, 0,    0,    0, 0,    0, 9,
+      0, 0, 0, 0, 0, 0x0f, 0x42, 0x40, 1, 2, 0, 0, 0, 0, 0xbb, 0x80, 3, 0xc0, 0, 0};
+  const auto original = ready;
+  const auto state = opus::decode_state(ready);
+  REQUIRE(state.enabled);
+  REQUIRE(state.availability == audio::Availability::ready);
+  REQUIRE(state.revision == 1);
+  REQUIRE(state.epoch == 9);
+  REQUIRE(state.timestamp_us == 1000000);
+  REQUIRE(opus::encode_state(state) == ready);
+  REQUIRE(ready == original);
+  REQUIRE_THROWS_AS(audio::decode_state(ready), ProtocolError);
+  for (const auto availability :
+       {audio::Availability::unavailable, audio::Availability::waiting, audio::Availability::ready,
+        audio::Availability::suspended, audio::Availability::closed, audio::Availability::failed}) {
+    auto changed = state;
+    changed.availability = availability;
+    REQUIRE(opus::decode_state(opus::encode_state(changed)).availability == availability);
+  }
+  const audio::State disabled{false, audio::Availability::unavailable, 1, 0, 0};
+  const auto bytes = opus::encode_state(disabled);
+  REQUIRE_FALSE(opus::decode_state(bytes).enabled);
+  REQUIRE_FALSE(audio::decode_state(bytes).enabled); // Disabled profile is shared zero metadata.
+  OutputQueue output;
+  REQUIRE(output.push(Kind::audio_state, 0, ready) == EnqueueStatus::invalid);
+  REQUIRE_FALSE(output.take());
+}
+
+TEST_CASE("Opus source state rejects descriptor corruption before common semantic normalization") {
+  using namespace bridge::ipc;
+  const auto ready = opus::encode_state({true, audio::Availability::ready, 1, 9, 1000000});
+  for (std::size_t size = 0; size < ready.size(); ++size)
+    REQUIRE_THROWS_AS(opus::decode_state(std::span(ready).first(size)), ProtocolError);
+  auto extra = std::vector<std::uint8_t>(ready.begin(), ready.end());
+  extra.push_back(0);
+  REQUIRE_THROWS_AS(opus::decode_state(extra), ProtocolError);
+  for (const auto at : {0U, 1U, 28U, 29U, 30U, 31U, 32U, 33U, 34U, 35U, 36U, 37U, 38U, 39U}) {
+    auto bad = ready;
+    bad[at] ^= 1;
+    REQUIRE_THROWS_AS(opus::decode_state(bad), ProtocolError);
+  }
+  for (unsigned enabled = 2; enabled <= 255; ++enabled) {
+    auto bad = ready;
+    bad[2] = static_cast<std::uint8_t>(enabled);
+    REQUIRE_THROWS_AS(opus::decode_state(bad), ProtocolError);
+  }
+  for (unsigned availability = 6; availability <= 255; ++availability) {
+    auto bad = ready;
+    bad[3] = static_cast<std::uint8_t>(availability);
+    REQUIRE_THROWS_AS(opus::decode_state(bad), ProtocolError);
+  }
+  REQUIRE_THROWS_AS(opus::encode_state({true, audio::Availability::ready, 0, 9, 0}), ProtocolError);
+  REQUIRE_THROWS_AS(opus::encode_state({true, audio::Availability::ready, 1, 0, 0}), ProtocolError);
+  REQUIRE_THROWS_AS(opus::encode_state({false, audio::Availability::ready, 1, 9, 0}),
+                    ProtocolError);
+  REQUIRE_THROWS_AS(opus::encode_state({false, audio::Availability::unavailable, 1, 1, 0}),
+                    ProtocolError);
+  REQUIRE_THROWS_AS(opus::encode_state({true, audio::Availability::waiting, 1, 0, UINT64_MAX}),
+                    ProtocolError);
+  REQUIRE_NOTHROW(opus::encode_state({true, audio::Availability::failed, UINT64_MAX, UINT64_MAX,
+                                      UINT64_MAX - audio::interval_us}));
+}
