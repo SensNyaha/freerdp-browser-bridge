@@ -3,11 +3,13 @@
 #include "output_queue.hpp"
 #include "publisher.hpp"
 #include "rdpsnd_provider.hpp"
+#include "session.hpp"
 #include "static_gate.hpp"
 #include <algorithm>
 #include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
+#include <freerdp/channels/channels.h>
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
 #include <freerdp/svc.h>
@@ -238,11 +240,11 @@ struct StaticHost {
     init(plugin, this, CHANNEL_EVENT_ATTACHED, nullptr, 0);
     REQUIRE(opened);
   }
-  void complete() {
+  void complete(UINT event = CHANNEL_EVENT_WRITE_COMPLETE) {
     while (!pending.empty()) {
       const auto value = pending.back();
       pending.pop_back();
-      opened(plugin, 1, CHANNEL_EVENT_WRITE_COMPLETE, value, 0, 0, 0);
+      opened(plugin, 1, event, value, 0, 0, 0);
     }
   }
   void raw(std::span<const BYTE> bytes, UINT total, UINT flags = CHANNEL_FLAG_ONLY) {
@@ -1391,4 +1393,232 @@ TEST_CASE("Actual RDPSND source status orders suspend Close recovery and retired
   REQUIRE(publisher.pump(1021000, send) == PublishStatus::sent);
   take_state(A::closed, 7, 3);
   REQUIRE_FALSE(output.take());
+}
+
+TEST_CASE("Audio session owner publishes Close while cancelled confirmations drain") {
+  Fixture fixture;
+  const auto previous = freerdp_get_current_addin_provider();
+  bridge::ipc::OutputQueue output;
+  StaticHost *transport = nullptr;
+  AudioSession owner(
+      *fixture.context,
+      [&](auto kind, auto bytes) {
+        return output.push(kind, 0, bytes) == bridge::ipc::EnqueueStatus::accepted;
+      },
+      [&] {
+        output.discard_audio();
+        return true;
+      },
+      [&] {
+        transport->complete(CHANNEL_EVENT_WRITE_CANCELLED);
+        return false; // Core closed-handle drain can cancel then report failure.
+      });
+  StaticHost host(fixture.context.get());
+  transport = &host;
+  host.load(nullptr, true);
+  host.connect();
+  host.defer_writes = true;
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  emit_pcm(host, 100, 1, {0, 128, 255, 127});
+  REQUIRE(owner.pump(1000) == PublishStatus::sent);
+  const auto ready = output.take();
+  REQUIRE(bridge::ipc::audio::decode_state(ready->payload).availability ==
+          bridge::ipc::audio::Availability::ready);
+  REQUIRE(output.stats().records == 2);
+  REQUIRE_FALSE(host.pending.empty());
+  REQUIRE(owner.retire(2000) == RetireStatus::pending);
+  REQUIRE(host.pending.empty());
+  REQUIRE_FALSE(owner.stats()->resources_retired);
+  REQUIRE(owner.stats()->drain_failures == 1);
+  const auto closed = output.take();
+  const auto state = bridge::ipc::audio::decode_state(closed->payload);
+  REQUIRE(state.availability == bridge::ipc::audio::Availability::closed);
+  REQUIRE(state.epoch == 2);
+  REQUIRE(state.revision == 2);
+  REQUIRE_FALSE(output.take());
+  REQUIRE(output.stats().discarded_audio == 1);
+  REQUIRE(owner.retire(3000) == RetireStatus::done);
+  REQUIRE(owner.stats()->resources_retired);
+  REQUIRE(owner.stats()->close_attempts == 2);
+  REQUIRE(owner.stats()->drain_calls == 1);
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
+  REQUIRE_FALSE(output.take()); // Device Free already marked closed during Disconnect.
+  REQUIRE(owner.stats()->publisher.sent_states == 2);
+  REQUIRE(owner.retire(0) == RetireStatus::done); // Terminal ownership is idempotent.
+  REQUIRE(owner.pump(4000) == PublishStatus::invalid);
+}
+
+TEST_CASE("Audio session retirement bounds retries missing completions and blocked stop output") {
+  Fixture fixture;
+  bool credit = true;
+  std::size_t drains = 0;
+  AudioSession owner(
+      *fixture.context, [&](auto, auto) { return credit; }, [] { return true; },
+      [&] {
+        ++drains;
+        return false;
+      },
+      20000);
+  StaticHost host(fixture.context.get());
+  struct ResetCloseFault {
+    StaticHost &host;
+    ~ResetCloseFault() { host.close_failures = 0; }
+  } reset_close_fault{host};
+  host.load(nullptr, true);
+  host.connect();
+  const auto configuration = formats();
+  SECTION("host close failures retry only on later owner calls") {
+    host.close_failures = 2;
+    REQUIRE(owner.retire(1000) == RetireStatus::pending);
+    REQUIRE(host.closes == 1);
+    REQUIRE(owner.stats()->close_status == ERROR_ACCESS_DENIED);
+    REQUIRE(owner.retire(2000) == RetireStatus::pending);
+    REQUIRE(host.closes == 2);
+    REQUIRE(owner.retire(3000) == RetireStatus::done);
+    REQUIRE(host.closes == 3);
+    REQUIRE(drains == 2);
+    REQUIRE(owner.stats()->resources_retired);
+  }
+  SECTION("missing confirmations expire before further close or drain calls") {
+    host.defer_writes = true;
+    host.raw(configuration, static_cast<UINT>(configuration.size()));
+    REQUIRE(owner.retire(1000) == RetireStatus::pending);
+    REQUIRE(owner.retire(2000) == RetireStatus::pending);
+    REQUIRE(drains == 2);
+    REQUIRE(owner.retire(21000) == RetireStatus::expired);
+    REQUIRE(owner.retire(22000) == RetireStatus::expired);
+    REQUIRE(owner.stats()->close_attempts == 2);
+    REQUIRE(drains == 2);
+    REQUIRE_FALSE(owner.stats()->resources_retired);
+    // Fake host destructor completes/cancels lifetime after this policy failure.
+    // An actual worker must retain the wrapper or terminate its owned process.
+  }
+  SECTION("native resources retire even when output status has no credit") {
+    credit = false;
+    REQUIRE(owner.retire(1000) == RetireStatus::pending);
+    REQUIRE(owner.stats()->resources_retired);
+    REQUIRE(owner.stats()->publisher.state_pending);
+    REQUIRE(drains == 0);
+    REQUIRE(owner.retire(20999) == RetireStatus::pending);
+    credit = true;
+    REQUIRE(owner.retire(21000) == RetireStatus::expired);
+    REQUIRE(host.closes == 1);
+    REQUIRE(drains == 0);
+  }
+}
+
+TEST_CASE("Audio session publication faults still drain ownership and reject nested retirement") {
+  Fixture fixture;
+  AudioSession *session = nullptr;
+  StaticHost *transport = nullptr;
+  RetireStatus nested = RetireStatus::active;
+  PublishStatus nested_pump = PublishStatus::sent;
+  AudioSession owner(
+      *fixture.context, [](auto, auto) -> bool { throw std::runtime_error("fixture"); },
+      [] { return true; },
+      [&]() -> bool {
+        nested = session->retire(2001);
+        nested_pump = session->pump(2001);
+        transport->complete(CHANNEL_EVENT_WRITE_CANCELLED);
+        throw std::runtime_error("fixture drain");
+      });
+  session = &owner;
+  StaticHost host(fixture.context.get());
+  transport = &host;
+  host.load(nullptr, true);
+  host.connect();
+  host.defer_writes = true;
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(owner.pump(1000) == PublishStatus::failed);
+  REQUIRE(owner.stats()->publication_failed);
+  REQUIRE(owner.retire(2000) == RetireStatus::pending);
+  REQUIRE(nested == RetireStatus::invalid);
+  REQUIRE(nested_pump == PublishStatus::invalid);
+  REQUIRE(owner.stats()->drain_failures == 1);
+  REQUIRE(owner.retire(3000) == RetireStatus::failed);
+  REQUIRE(owner.stats()->resources_retired);
+  REQUIRE(owner.stats()->publisher.failed);
+}
+
+TEST_CASE(
+    "Audio session owner refuses foreign clocks callbacks and invalid policy without mutation") {
+  Fixture fixture;
+  REQUIRE_THROWS_AS(AudioSession(*fixture.context, {}, [] { return true; }), std::invalid_argument);
+  REQUIRE_THROWS_AS(AudioSession(*fixture.context, [](auto, auto) { return true; }, {}),
+                    std::invalid_argument);
+  REQUIRE_THROWS_AS(
+      AudioSession(
+          *fixture.context, [](auto, auto) { return true; }, [] { return true; }, {}, 1000001),
+      std::invalid_argument);
+  AudioSession owner(*fixture.context, [](auto, auto) { return true; }, [] { return true; });
+  PublishStatus foreign_pump = PublishStatus::sent;
+  RetireStatus foreign_retire = RetireStatus::active;
+  bool foreign_stats = true;
+  std::thread foreign([&] {
+    foreign_pump = owner.pump(1000);
+    foreign_retire = owner.retire(1000);
+    foreign_stats = owner.stats().has_value();
+  });
+  foreign.join();
+  REQUIRE(foreign_pump == PublishStatus::invalid);
+  REQUIRE(foreign_retire == RetireStatus::invalid);
+  REQUIRE_FALSE(foreign_stats);
+  REQUIRE(owner.pump(1000) == PublishStatus::sent);
+  REQUIRE(owner.pump(999) == PublishStatus::invalid);
+  REQUIRE(owner.retire(UINT64_MAX) == RetireStatus::invalid);
+  REQUIRE(owner.stats()->invalid_calls == 2);
+  REQUIRE(owner.stats()->publisher.sent_states == 1);
+  REQUIRE(owner.retire(1001) == RetireStatus::done);
+  REQUIRE(owner.stats()->publisher.sent_states == 2);
+}
+
+TEST_CASE("Actual FreeRDP core registers guarded audio and disconnects after owner retirement") {
+  Fixture fixture;
+  bridge::ipc::OutputQueue output;
+  AudioSession owner(
+      *fixture.context,
+      [&](auto kind, auto bytes) {
+        return output.push(kind, 0, bytes) == bridge::ipc::EnqueueStatus::accepted;
+      },
+      [&] {
+        output.discard_audio();
+        return true;
+      });
+  struct ContextReset {
+    decltype(fixture.context) &context;
+    ~ContextReset() {
+      if (context) {
+        const auto disconnected = freerdp_disconnect(context->instance);
+        context.reset();
+        if (!disconnected)
+          std::terminate();
+      }
+    }
+  } final_host{fixture.context};
+  const auto entry = freerdp_load_channel_addin_entry("rdpsnd", nullptr, nullptr, static_abi);
+  REQUIRE(entry);
+  REQUIRE(freerdp_channels_client_load_ex(fixture.context->channels, fixture.context->settings,
+                                          std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry),
+                                          nullptr) == 0);
+  std::unique_ptr<StaticClientChannelStats, decltype(&freerdp_channel_client_stats_free)> inventory{
+      freerdp_channels_client_stats(fixture.context->channels), freerdp_channel_client_stats_free};
+  REQUIRE(inventory);
+  REQUIRE(inventory->count == 1);
+  REQUIRE(std::strcmp(inventory->stats[0].channelName, "rdpsnd") == 0);
+  REQUIRE(freerdp_channels_process_pending_messages(fixture.context->instance) == 1);
+  REQUIRE(owner.pump(0) == PublishStatus::sent);
+  REQUIRE(owner.retire(1) == RetireStatus::done);
+  REQUIRE(owner.stats()->resources_retired);
+  auto *context = fixture.context.release();
+  BOOL disconnected = FALSE;
+  std::thread terminated([context, &disconnected] {
+    disconnected = freerdp_disconnect(context->instance);
+    freerdp_client_context_free(context);
+  });
+  terminated.join(); // Actual core Terminated callback comes from Disconnect, before Free.
+  REQUIRE(disconnected);
+  REQUIRE(owner.stats()->source.availability == SourceAvailability::closed);
+  REQUIRE(owner.retire(2) == RetireStatus::done);
 }

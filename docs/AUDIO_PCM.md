@@ -408,6 +408,42 @@ remain open.
 
 ## Public RDPSND device adapter
 
+### Serialized session and retirement owner
+
+[Iteration 65](ITERATION_065.md) adds isolated `AudioSession`: one RDP-thread sink,
+static gate, scoped provider and status-aware publisher, with no additional sample
+queue. Construct after context creation, before addin loading; fixed backend/PCM
+policy and nested scope rules still apply. Output/discard targets and context must
+outlive the owner. Its small wrappers must outlive final host TERMINATED, including
+when context teardown runs on a later thread. No worker selects it yet.
+
+Pump uses one monotonic worker clock and existing nonblocking publication credit.
+Retirement closes source metadata/backlog immediately, attempts provider close once
+per owner call, and may pump native completions once per call. Default drain uses
+the public pinned `freerdp_channels_process_pending_messages`; a false/error or
+exception is counted, then ownership is rechecked on the next call. Closed-handle
+cancellation can free confirmations before that API reports failure. Publication
+failure does not prevent remaining native ownership from draining.
+
+Retirement window is fixed at construction, 20..1,000 ms (default 1,000 ms).
+Backward/overflow clocks, foreign/reentrant calls and invalid policy are refused.
+At the deadline the owner refuses further close/drain/publication attempts and
+reports expired; it never claims released resources when callbacks still own them.
+Native resource retirement proceeds even if stop output lacks credit. Completion
+requires retired resources plus accepted stop state, or reports publication failure
+after resources retire. Done/failed/expired policy results are sticky. External
+callbacks must not block; the policy cannot interrupt them or OS transport calls.
+An expired owner with live callback resources requires an outer process failure,
+not detach/free of its wrapper. Existing provider/gate destructors retain that
+fail-closed lifetime rule; no hidden retry loop or sleeping thread is introduced.
+
+Actual core lifetime checks found that public disconnect, not ContextFree alone,
+emits final TERMINATED. Stop an activated RDP transport before retirement; an
+unactivated registration may retire first, but public disconnect is still required
+before freeing its context. [Pinned source audit](RDPSND_UPSTREAM_AUDIT.md) distinguishes
+static pre-assembler placement and completion semantics from unverified broader
+transport/resource acceptance. Actual remote audio and worker selection remain open.
+
 `native/audio/rdpsnd_sink.hpp` implements the pinned public
 `rdpsndDevicePlugin` callback ABI over the normalizer and queue. It is compiled
 only with FreeRDP and is not yet registered by the worker. `AudioPlayback` remains
