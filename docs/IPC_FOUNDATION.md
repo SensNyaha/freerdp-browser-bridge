@@ -358,3 +358,33 @@ allocator/container overhead. There is no second full-record serialization
 buffer here. The external owner must supply the writer thread, wakeups, bounded/
 cancellable I/O and shutdown deadlines, and outlive all callback invocations.
 Current worker still uses its previous stdout writer. [Evidence](ITERATION_055.md).
+
+## Windows pipe writer preparation (Iteration 57)
+
+`WindowsPipeOutput` supplies a writer thread, event wakeups and a watchdog for the
+dispatcher. It borrows a trusted synchronous byte-pipe handle; validation checks
+handle family, not asynchronous/message mode. The caller must provide the stated
+mode and retain the handle through all callbacks. No arbitrary handle is accepted
+from public/session configuration. This driver is not selected by the worker yet.
+
+One complete record receives a monotonic 1,000 ms default write deadline. The
+writer emits fixed header/body in at most 64 KiB WriteFile chunks, preserving
+record order with no full-record copy. Timeout aborts queued output and cancels
+only the owned writer thread. Admission remains independent of pipe completion.
+Partial/failed writes are fatal and are never replayed or counted as completed.
+The driver retains borrowed record storage until the callback returns.
+
+Owner-thread finish refuses admission and drains for 1,500 ms by default. On
+timeout it requests cancellation and waits 250 ms more. Watchdog cancellation
+retries cover the boundary before a synchronous call starts. Watchdog joins before
+writer, preserving its target native handle. Creation/destruction own four private
+events; the borrowed pipe stays caller-owned. Sequential actual-pipe fixtures
+verify both threads retire with unchanged process handle count.
+
+Microsoft documents that [CancelSynchronousIo](https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-cancelsynchronousio)
+requests cancellation without waiting for completion. [Cancellation guidance](https://learn.microsoft.com/en-us/windows/win32/fileio/canceling-pending-i-o-operations)
+also explains driver support/races. A failed cancellation deadline cannot justify
+freeing live spans or detaching owner threads. Destruction therefore fails the
+owned process if threads could not join; Node crash cleanup remains necessary.
+This does not prove abnormal OS-driver or simultaneous-hard-kill reclamation.
+[Evidence](ITERATION_057.md). Linux driver and actual worker activation remain open.
