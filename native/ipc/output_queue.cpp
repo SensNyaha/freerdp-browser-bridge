@@ -1,6 +1,7 @@
 #include "output_queue.hpp"
 #include "audio.hpp"
 #include "cursor.hpp"
+#include "opus_audio.hpp"
 #include <limits>
 
 namespace bridge::ipc {
@@ -64,6 +65,10 @@ CursorInfo cursor_info(std::span<const std::uint8_t> bytes) {
   return info;
 }
 } // namespace
+OutputQueue::OutputQueue(OutputAudioCodec codec) : audio_codec_(codec) {
+  if (codec != OutputAudioCodec::pcm && codec != OutputAudioCodec::opus)
+    throw ProtocolError();
+}
 EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
                                 std::span<const std::uint8_t> bytes) {
   // Validate the envelope and typed media before constructing owned storage.
@@ -72,7 +77,10 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
   try {
     validate_header({kind, request_id, static_cast<std::uint32_t>(bytes.size())});
     if (kind == Kind::audio_state) {
-      (void)audio::decode_state(bytes);
+      if (audio_codec_ == OutputAudioCodec::opus)
+        (void)audio::opus::decode_state(bytes);
+      else
+        (void)audio::decode_state(bytes);
       if (request_id)
         return EnqueueStatus::invalid;
     }
@@ -87,30 +95,51 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
         return EnqueueStatus::full; // Correlated captures must not be silently replaced.
       video_ = Packet{kind, request_id, {bytes.begin(), bytes.end()}};
     } else if (kind == Kind::audio_config) {
-      const auto config = audio::decode_config(bytes);
-      if (request_id || config.epoch <= audio_epoch_)
+      const auto epoch = audio_codec_ == OutputAudioCodec::opus
+                             ? audio::opus::decode_config(bytes).epoch
+                             : audio::decode_config(bytes).epoch;
+      if (request_id || epoch <= audio_epoch_)
         return EnqueueStatus::invalid;
       Packet packet{kind, 0, {bytes.begin(), bytes.end()}};
       if (audio_pcm_)
         increment(stats_.discarded_audio);
       audio_pcm_.reset();
       audio_config_ = std::move(packet);
-      audio_epoch_ = config.epoch;
+      audio_epoch_ = epoch;
       first_audio_ = true;
-    } else if (kind == Kind::audio_pcm) {
-      const auto pcm = audio::decode_packet(bytes);
-      if (request_id || pcm.epoch != audio_epoch_ || (first_audio_ && !pcm.discontinuity) ||
-          (audio_observed_ &&
-           (pcm.timestamp_us <= audio_pts_ ||
-            (!pcm.discontinuity && pcm.timestamp_us - audio_pts_ != audio::interval_us))))
+    } else if (kind == Kind::audio_pcm || kind == Kind::audio_opus) {
+      const bool opus = audio_codec_ == OutputAudioCodec::opus;
+      if (kind != (opus ? Kind::audio_opus : Kind::audio_pcm))
         return EnqueueStatus::invalid;
+      std::uint64_t epoch, timestamp;
+      bool discontinuity;
+      if (opus) {
+        const auto packet = audio::opus::decode_packet(bytes);
+        epoch = packet.epoch;
+        timestamp = packet.timestamp_us;
+        discontinuity = packet.discontinuity;
+      } else {
+        const auto packet = audio::decode_packet(bytes);
+        epoch = packet.epoch;
+        timestamp = packet.timestamp_us;
+        discontinuity = packet.discontinuity;
+      }
+      if (request_id || epoch != audio_epoch_ || (first_audio_ && !discontinuity) ||
+          (audio_observed_ && (timestamp <= audio_pts_ ||
+                               (!discontinuity && timestamp - audio_pts_ != audio::interval_us))))
+        return EnqueueStatus::invalid;
+      // Compressed prediction cannot be repaired by rewriting its metadata.
+      // Preserve one accepted packet; publisher retains/replaces its retry and
+      // resets prediction before a fresh discontinuous capture is encoded.
+      if (opus && audio_pcm_)
+        return EnqueueStatus::full;
       Packet packet{kind, 0, {bytes.begin(), bytes.end()}};
       if (audio_pcm_) {
         packet.payload[1] = 2;
         increment(stats_.replaced_audio);
       }
       audio_pcm_ = std::move(packet);
-      audio_pts_ = pcm.timestamp_us;
+      audio_pts_ = timestamp;
       audio_observed_ = true;
       first_audio_ = false;
     } else if (kind == Kind::cursor_update) {

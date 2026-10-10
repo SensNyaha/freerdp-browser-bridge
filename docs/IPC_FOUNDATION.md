@@ -301,6 +301,11 @@ experimental APIs; public control/browser wiring follows in the next block.
 
 ## Output scheduling foundation (Iteration 54)
 
+The default PCM behavior below is retained. An explicit isolated Opus queue and
+dispatcher mode is prepared in [Iteration 79](AUDIO_OPUS_OUTPUT.md), using the same
+bounded slots and full admission for an occupied compressed packet slot.
+Production worker codec selection remains unchanged.
+
 `native/ipc/output_queue.*` prepares bounded worker-to-Node priority lanes, without
 changing the current worker writer or wire formats. Callers must serialize all
 queue operations and use one consumer, preserving the order of taken records.

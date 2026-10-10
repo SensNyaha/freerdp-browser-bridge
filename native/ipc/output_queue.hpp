@@ -4,6 +4,7 @@
 
 namespace bridge::ipc {
 enum class EnqueueStatus { accepted, full, invalid };
+enum class OutputAudioCodec { pcm, opus };
 struct OutputStats {
   std::size_t records = 0, bytes = 0, high_water_bytes = 0;
   std::uint64_t replaced_audio = 0, replaced_cursor = 0, discarded_audio = 0;
@@ -14,6 +15,8 @@ class OutputQueue {
 public:
   static constexpr std::size_t control_capacity = 64;
   static constexpr std::size_t max_records = control_capacity + 5;
+  OutputQueue() = default;
+  explicit OutputQueue(OutputAudioCodec codec);
   EnqueueStatus push(Kind, std::uint64_t request_id, std::span<const std::uint8_t>);
   std::optional<Packet> take();
   void discard_audio() noexcept;
@@ -21,6 +24,7 @@ public:
   OutputStats stats() const noexcept;
 
 private:
+  const OutputAudioCodec audio_codec_ = OutputAudioCodec::pcm;
   std::array<std::optional<Packet>, control_capacity> control_{};
   std::size_t head_ = 0, count_ = 0;
   std::optional<Packet> audio_config_, audio_pcm_, cursor_shape_, cursor_meta_, video_;

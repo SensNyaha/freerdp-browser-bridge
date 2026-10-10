@@ -21,6 +21,8 @@ public:
   // Return true only after the complete record has been written in order.
   // The external driver must supply bounded/cancellable I/O and one writer.
   using Write = std::function<bool(std::span<const std::uint8_t>, std::span<const std::uint8_t>)>;
+  OutputDispatcher() = default;
+  explicit OutputDispatcher(OutputAudioCodec codec) : queue_(codec) {}
   DispatchAdmission try_send(Kind, std::uint64_t request_id, std::span<const std::uint8_t>);
   DispatchResult write_next(const Write &) noexcept;
   // Refuse new producers, retain pending records for the external driver to drain.

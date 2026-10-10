@@ -9,7 +9,7 @@ instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/a
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
-## Implementation status — 2026-10-10
+## Implementation status — 2026-10-11
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
@@ -30,7 +30,7 @@ Actual audible RDP, microphone/Opus and latency/resource/platform acceptance rem
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
   [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 225/225 Node tests;
-  CTest/Catch2: 51 IPC/input/state/audio-codec/output cases / 6,939 assertions, 2 AVC cases / 19 assertions,
+  CTest/Catch2: 55 IPC/input/state/audio-codec/output cases / 7,136 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -308,6 +308,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   state/config and reset barriers. Worker/queue/public selection and audible
   acceptance remain open. [Publisher contract](docs/AUDIO_OPUS_PUBLISHER.md),
   [evidence](docs/ITERATION_078.md).
+- [~] IN PROGRESS — Explicit immutable Opus queue/dispatcher mode shares bounded
+  slots and refuses a second pending encoded packet. Portable output and actual
+  source/SDK publisher-to-queue tests verify copied ownership, profile refusal,
+  clock/reset/priority and fresh prediction recovery. Production mode remains
+  PCM; codec selection, public negotiation and audible acceptance remain open.
+  [Output contract](docs/AUDIO_OPUS_OUTPUT.md), [evidence](docs/ITERATION_079.md).
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.

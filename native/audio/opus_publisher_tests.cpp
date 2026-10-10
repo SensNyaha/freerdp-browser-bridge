@@ -1,4 +1,6 @@
 #include "opus_publisher.hpp"
+#include "output_queue.hpp"
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
 #include <opus/opus.h>
@@ -13,10 +15,13 @@ struct Fixture {
   RdpsndSink sink;
   bool discard_credit = true, state_credit = true, config_credit = true, packet_credit = true;
   std::size_t discards = 0;
+  ipc::OutputQueue *output = nullptr;
   OpusPublisher owner{sink, [this] {
                         if (!discard_credit)
                           return false;
                         ++discards;
+                        if (output)
+                          output->discard_audio();
                         return true;
                       }};
   std::vector<ipc::Packet> records;
@@ -219,4 +224,44 @@ TEST_CASE("Opus publisher callback failure clears cache and cannot resume or wra
   REQUIRE(exhausted.pump(0, f.send) == PublishStatus::failed);
   REQUIRE(exhausted.stats()->encoded_packets == 0);
   REQUIRE_THROWS_AS((OpusPublisher{sink, {}}), std::invalid_argument);
+}
+
+TEST_CASE(
+    "Actual Opus publisher and queue bound slow transport and recover with fresh prediction") {
+  Fixture f;
+  ipc::OutputQueue output{ipc::OutputAudioCodec::opus};
+  f.output = &output;
+  const OpusPublisher::TrySend consumer = [&](auto kind, auto bytes) {
+    const auto status = output.push(kind, 0, bytes);
+    REQUIRE(status != ipc::EnqueueStatus::invalid);
+    return status == ipc::EnqueueStatus::accepted;
+  };
+  f.open();
+  f.play(1920);
+  REQUIRE(f.owner.pump(0, consumer) == PublishStatus::sent);
+  REQUIRE(output.stats().records == 3);
+  REQUIRE(f.owner.pump(20000, consumer) == PublishStatus::blocked);
+  REQUIRE(f.owner.pump(40000, consumer) == PublishStatus::blocked);
+  REQUIRE(output.stats().records == 3);
+  REQUIRE(output.stats().replaced_audio == 0);
+  REQUIRE(f.owner.stats()->source.replaced_packets == 1);
+  REQUIRE(f.owner.stats()->encoded_packets == 3);
+  REQUIRE(output.take()->kind == ipc::Kind::audio_state);
+  REQUIRE(output.take()->kind == ipc::Kind::audio_config);
+  REQUIRE(ipc::audio::opus::decode_packet(output.take()->payload).timestamp_us == 0);
+  REQUIRE(f.owner.pump(40001, consumer) == PublishStatus::sent);
+  REQUIRE(f.owner.stats()->encoded_packets == 3);
+  const auto record = output.take();
+  const auto latest = ipc::audio::opus::decode_packet(record->payload);
+  REQUIRE(latest.timestamp_us == 40000);
+  REQUIRE(latest.discontinuity);
+  REQUIRE(latest.frames == 0);
+  REQUIRE(latest.silence_frames == 960);
+  SoftwareOpusEncoder fresh;
+  std::array<std::uint8_t, SoftwareOpusEncoder::pcm_bytes> silence{};
+  const auto independent = fresh.encode({silence, 40000, true});
+  REQUIRE(std::equal(latest.encoded.begin(), latest.encoded.end(), independent.bytes.begin(),
+                     independent.bytes.end()));
+  REQUIRE(f.owner.stats()->cached_bytes == 0);
+  REQUIRE(f.owner.stats()->source.sent_packets == 2);
 }
