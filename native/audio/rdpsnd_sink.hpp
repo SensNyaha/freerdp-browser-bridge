@@ -46,6 +46,7 @@ public:
   rdpsndDevicePlugin &device() noexcept { return device_; }
   QueueRead read(std::span<std::uint8_t>) noexcept;
   std::optional<SinkStats> stats() const noexcept;
+  bool reset_stream() noexcept; // Discard history/backlog while keeping an open device usable.
   bool retire() noexcept;
   bool retired() const noexcept { return retired_.load(std::memory_order_acquire); }
 };

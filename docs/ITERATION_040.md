@@ -4,6 +4,7 @@ Date: 2026-10-10. Continues SPECIFICATION §2.6 and resource-limit requirements 
 fixed 64 KiB SVC assembly, fragment-count/ordering checks, and bounded RDPSND PDU
 validation before upstream parser entry. [Contract](AUDIO_PCM.md#bounded-audio-ingress-foundation).
 Worker playback and guard installation remain disabled.
+Implementation commit: `a2a62e8`.
 
 Portable tests cover advertised size before copying, exact capacity, ordering,
 total/last mismatch, empty fragment flooding, randomized splits, bounded format

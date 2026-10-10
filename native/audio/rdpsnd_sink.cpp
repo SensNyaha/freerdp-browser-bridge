@@ -145,6 +145,12 @@ std::optional<SinkStats> RdpsndSink::stats() const noexcept {
     result.queue = pipeline_->queue.stats();
   return result;
 }
+bool RdpsndSink::reset_stream() noexcept {
+  if (!usable())
+    return false;
+  discontinuity();
+  return true;
+}
 bool RdpsndSink::retire() noexcept {
   if (retired())
     return true;

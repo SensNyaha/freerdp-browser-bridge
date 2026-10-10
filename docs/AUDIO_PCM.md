@@ -191,3 +191,54 @@ upstream. This proves the primitives and test-host placement. A production publi
 SVC callback adapter is still needed: the worker does not install this guard, and
 earlier RDP/core or compressed DSP allocations are not protected by it. The audit
 gaps above remain open until placement/format policy and real integration pass.
+
+## Public static-channel callback adapter
+
+`native/audio/static_gate.hpp` wraps the pinned public static channel entry points
+and event callbacks. It translates opaque init handles and callback user data;
+only its own wrapper pointers are cast, never an upstream private struct. The
+public context/magic/size, complete host functions, synchronous static profile and
+single owner are checked before installation. The native library is not selected
+by the worker or the process-wide provider's top-level RDPSND entry yet.
+
+Incoming DATA events are assembled/validated within the limits above before
+calling the actual RDPSND callback, as one bounded complete record. FIRST/LAST and
+SHOW_PROTOCOL are supported; other raw flags are refused. Suspend/resume must be
+isolated empty transitions at a complete record boundary, with no legacy raw Wave
+pending. A split-record/pair transition fails explicitly rather than desynchronizing
+the downstream parser. Accepted transitions reset PCM history/backlog while keeping
+an open sink usable. Validated SNDC_CLOSE similarly resets the sink before upstream
+sees the PDU. This resolves the previously observed no-Close-callback boundary for
+this adapter, not for unwrapped channels or timestamp gaps without Close.
+
+Unknown/malformed records and reentrant data/lifecycle calls fail the channel with
+a fixed diagnostic. No bytes/identity are logged. Known native write completions
+can be processed during dispatch; nested data or retirement cannot replace borrowed
+buffers or destroy active delegates. Foreign-thread data is ignored. Callback
+ownership is serialized; concurrent destruction/callbacks are forbidden.
+
+The adapter tracks at most 64 outgoing opaque write-completion tokens. The host
+owns those streams until its completion/cancellation callback. Unknown tokens or
+wrong handles are rejected without forwarding/dereferencing them. A host write
+failure after an already-delivered completion is reported without returning a
+second-free status to upstream. A failed write before completion removes its token
+so upstream can free its rejected stream. No host-owned stream is freed directly.
+
+Retire requests upstream disconnect/close on the owner. Outstanding completions
+return `ERROR_IO_PENDING`; the future worker must keep pumping within a bounded
+deadline, then retry or terminate the session process on unresolved host failure.
+An unclosed host handle cannot imply detachment or successful retirement. After
+the host has completed its bounded writes, retirement terminates delegated resources
+on the owner and publishes a terminal state. The wrapper must remain alive until
+the host's eventual Terminated event; after owner retirement/join that callback is
+an atomic no-op and may arrive on the context-free thread. Premature wrapper
+destruction is a lifecycle violation and terminates rather than leaving callbacks
+pointing into freed memory.
+
+[Iteration 41](ITERATION_041.md) tests actual linked RDPSND through this public
+adapter: fragmented PCM, Close/recovery, pre-parser limits/flags, transition
+boundaries, bounded deferred confirmations, unknown tokens, reentrancy and delayed
+Terminated. Production entry selection/worker loop integration, close-fault handling,
+earlier RDP/core allocation audit, compressed format policy, packet-clock gaps and
+actual remote/browser audio remain open. The adapter is static-only; dynamic RDPSND
+requires a separate public DVC boundary and is not activated.

@@ -1,5 +1,6 @@
 #include "ingress.hpp"
 #include "rdpsnd_provider.hpp"
+#include "static_gate.hpp"
 #include <algorithm>
 #include <bit>
 #include <catch2/catch_test_macros.hpp>
@@ -80,6 +81,11 @@ struct StaticHost {
   AudioAssembler assembler;
   AudioPduValidator validator;
   unsigned deliveries = 0;
+  bool defer_writes = false;
+  std::vector<LPVOID> pending;
+  AudioStaticGate *nested_retire = nullptr;
+  UINT nested_result = CHANNEL_RC_OK;
+  bool nested_data = false;
   explicit StaticHost(rdpContext *context) {
     points.cbSize = sizeof(points);
     points.protocolVersion = VIRTUAL_CHANNEL_VERSION_WIN2000;
@@ -116,9 +122,23 @@ struct StaticHost {
       auto &host = *static_cast<StaticHost *>(handle);
       if (channel != 1 || !data || !host.opened || size > 65536)
         return ERROR_INVALID_PARAMETER;
+      if (host.nested_retire) {
+        auto *gate = host.nested_retire;
+        host.nested_retire = nullptr;
+        host.nested_result = gate->retire();
+      }
+      if (host.nested_data) {
+        host.nested_data = false;
+        const std::array<BYTE, 4> close{SNDC_CLOSE, 0, 0, 0};
+        host.raw(close, 4);
+      }
       try {
         const auto *bytes = static_cast<const BYTE *>(data);
         host.writes.emplace_back(bytes, bytes + size);
+        if (host.defer_writes) {
+          host.pending.push_back(completion);
+          return CHANNEL_RC_OK;
+        }
       } catch (...) {
         return ERROR_NOT_ENOUGH_MEMORY;
       }
@@ -128,17 +148,21 @@ struct StaticHost {
   }
   ~StaticHost() {
     if (plugin) {
+      complete();
       if (connected)
         init(plugin, this, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);
       init(plugin, this, CHANNEL_EVENT_TERMINATED, nullptr, 0);
     }
   }
-  void load() {
+  void load(AudioStaticGate *gate = nullptr) {
     const auto entry =
         freerdp_channels_load_static_addin_entry("rdpsnd", nullptr, nullptr, static_abi);
     REQUIRE(entry);
-    REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry)(
-        reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&points), this));
+    const auto callback = std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry);
+    if (gate)
+      REQUIRE(gate->install(&points, this, callback));
+    else
+      REQUIRE(callback(reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&points), this));
     REQUIRE(plugin);
     REQUIRE(init);
   }
@@ -151,6 +175,17 @@ struct StaticHost {
     REQUIRE(getChannelError(points.context) == CHANNEL_RC_OK);
     init(plugin, this, CHANNEL_EVENT_ATTACHED, nullptr, 0);
     REQUIRE(opened);
+  }
+  void complete() {
+    while (!pending.empty()) {
+      const auto value = pending.back();
+      pending.pop_back();
+      opened(plugin, 1, CHANNEL_EVENT_WRITE_COMPLETE, value, 0, 0, 0);
+    }
+  }
+  void raw(std::span<const BYTE> bytes, UINT total, UINT flags = CHANNEL_FLAG_ONLY) {
+    opened(plugin, 1, CHANNEL_EVENT_DATA_RECEIVED, const_cast<BYTE *>(bytes.data()),
+           static_cast<UINT>(bytes.size()), total, flags);
   }
   bool ingest(std::span<const BYTE> bytes, std::size_t total, bool first, bool last) {
     const auto joined = assembler.push(bytes, total, first, last);
@@ -350,4 +385,198 @@ TEST_CASE("Actual RDPSND fake-SVC ingress validates and dispatches legacy Wave p
   REQUIRE(host.deliveries == 3);
   REQUIRE(host.writes.size() == 4);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Public static audio gate bounds actual RDPSND ingress and handles stream Close") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  auto configuration = formats();
+  host.raw(std::span(configuration).first(5), static_cast<UINT>(configuration.size()),
+           CHANNEL_FLAG_FIRST);
+  REQUIRE(host.writes.empty());
+  host.raw(std::span(configuration).subspan(5), static_cast<UINT>(configuration.size()),
+           CHANNEL_FLAG_LAST);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.writes.size() == 2);
+  const std::vector<BYTE> wave{SNDC_WAVE2, 0, 20, 0, 100, 0,   0,   0,   1, 0, 0,   0,
+                               100,        0, 0,  0, 0,   128, 255, 127, 1, 0, 254, 255};
+  host.raw(wave, static_cast<UINT>(wave.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 2);
+  const std::array<BYTE, 4> close{SNDC_CLOSE, 0, 0, 0};
+  host.raw(close, 4);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 0);
+  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == 2);
+  host.raw(wave, static_cast<UINT>(wave.size()));
+  std::vector<BYTE> output(8);
+  const auto result = fixture.sink.read(output);
+  REQUIRE(result.frames == 2);
+  REQUIRE(result.discontinuity);
+  REQUIRE(output == std::vector<BYTE>{0, 128, 255, 127, 1, 0, 254, 255});
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(gate.retired());
+  REQUIRE(fixture.sink.retired());
+  REQUIRE(host.closes == 1);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Public static audio gate rejects limits and flags before actual RDPSND dispatch") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  const std::array<BYTE, 4> tiny{1, 0, 0, 0};
+  SECTION("record size") { host.raw(tiny, 0xffffffffU, CHANNEL_FLAG_FIRST); }
+  SECTION("format count") {
+    std::vector<BYTE> malicious(24);
+    malicious[0] = SNDC_FORMATS;
+    malicious[2] = 20;
+    malicious[18] = malicious[19] = 255;
+    host.raw(malicious, 24);
+  }
+  SECTION("unsupported flags") {
+    host.raw(tiny, 4, CHANNEL_FLAG_ONLY | CHANNEL_FLAG_SHADOW_PERSISTENT);
+  }
+  SECTION("contradictory suspend") { host.raw({}, 0, CHANNEL_FLAG_SUSPEND | CHANNEL_FLAG_RESUME); }
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_INVALID_DATA);
+  auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(host.writes.empty());
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == 0);
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Public static audio gate drains bounded write completions before retirement") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  host.defer_writes = true;
+  auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.pending.size() == 2);
+  REQUIRE(gate.retire() == ERROR_IO_PENDING);
+  REQUIRE_FALSE(gate.retired());
+  REQUIRE(host.closes == 1);
+  host.complete();
+  REQUIRE(host.pending.empty());
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(gate.retired());
+  REQUIRE(host.closes == 1);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE(
+    "Public static audio gate resets idle suspend/resume and rejects a split Wave transition") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  host.raw({}, 0, CHANNEL_FLAG_SUSPEND);
+  host.raw({}, 0, CHANNEL_FLAG_RESUME);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  const std::array<BYTE, 16> info{SNDC_WAVE, 0, 16, 0, 100, 0, 0, 0, 1, 0, 0, 0, 0, 128, 255, 127};
+  host.raw(info, 16);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  host.raw({}, 0, CHANNEL_FLAG_SUSPEND);
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_INVALID_DATA);
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE(
+    "Public static audio gate bounds pending confirmations without freeing host-owned streams") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  host.defer_writes = true;
+  const std::array<BYTE, 8> training{SNDC_TRAINING, 0, 4, 0, 1, 0, 4, 0};
+  for (unsigned i = 0; i < 64; ++i)
+    host.raw(training, 8);
+  REQUIRE(host.pending.size() == 64);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  host.raw(training, 8);
+  REQUIRE(host.pending.size() == 64);
+  REQUIRE(host.writes.size() == 64);
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_NOT_ENOUGH_MEMORY);
+  REQUIRE(gate.retire() == ERROR_IO_PENDING);
+  host.complete();
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Public static audio gate refuses unknown completions without dereferencing them") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  unsigned token = 42;
+  host.opened(host.plugin, 1, CHANNEL_EVENT_WRITE_COMPLETE, &token, 0, 0, 0);
+  REQUIRE(token == 42);
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_INVALID_DATA);
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Public static audio gate refuses reentrant data and retirement during channel writes") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  SECTION("retirement") {
+    host.nested_retire = &gate;
+    auto configuration = formats();
+    host.raw(configuration, static_cast<UINT>(configuration.size()));
+    REQUIRE(host.nested_result == ERROR_INVALID_STATE);
+    REQUIRE_FALSE(gate.retired());
+    REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+    REQUIRE(host.writes.size() == 2);
+  }
+  SECTION("data") {
+    host.nested_data = true;
+    auto configuration = formats();
+    host.raw(configuration, static_cast<UINT>(configuration.size()));
+    REQUIRE(getChannelError(fixture.context.get()) != CHANNEL_RC_OK);
+    REQUIRE(host.writes.size() == 1);
+  }
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE(
+    "Public static audio gate final host Terminated is safe after owner retirement and join") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  AudioStaticGate gate(*fixture.context, fixture.sink);
+  StaticHost host(fixture.context.get());
+  host.load(&gate);
+  host.connect();
+  REQUIRE(gate.retire() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  std::thread foreign([&] { host.init(host.plugin, &host, CHANNEL_EVENT_TERMINATED, nullptr, 0); });
+  foreign.join();
+  REQUIRE(gate.retired());
+  REQUIRE(fixture.sink.retired());
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
 }

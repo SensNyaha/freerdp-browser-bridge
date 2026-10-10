@@ -21,6 +21,7 @@ public:
                       bool last) noexcept;
   void reset() noexcept;
   bool failed() const noexcept { return failed_; }
+  bool assembling() const noexcept { return active_; }
 
 private:
   std::unique_ptr<std::array<std::uint8_t, max_bytes>> bytes_;
@@ -45,6 +46,7 @@ public:
   std::optional<AudioPdu> validate(std::span<const std::uint8_t>) noexcept;
   void reset() noexcept;
   bool failed() const noexcept { return failed_; }
+  bool awaiting_wave() const noexcept { return pending_wave_ != 0; }
 
 private:
   bool failed_ = false;
