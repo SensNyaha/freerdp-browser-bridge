@@ -267,6 +267,25 @@ larger source bursts, earlier core allocations and latency acceptance remain ope
 Windows workers now have bounded priority output ownership in
 [iteration 58](ITERATION_058.md); the publisher is not wired to it yet.
 
+### Source-to-consumer discard barrier
+
+The publisher constructor requires `TryDiscard`, a nonblocking callback whose
+target outlives the publisher. Initial ownership, source revision changes and
+explicit reset mark consumer discard pending. Pump retries that callback before
+reading samples or offering any config/PCM; false preserves the barrier and the
+source queue. Accepted discard clears unsent consumer audio config/PCM and counts
+one consumer reset. Source Close/no fresh samples still drives this barrier,
+while ordinary idle calls do not repeatedly clear the consumer.
+
+The callback shares the RDP-thread/reentry guard; absent binding is refused and
+exceptions fail with fixed state. Stats add `reset_pending`/`consumer_resets`.
+`reset()` schedules the barrier for the next valid pump; it is not a synchronous
+pipe/browser flush. No callback can retract an in-flight record. Fatal callback
+or exhaustion still requires outer connection/output retirement. Browser buffer
+reset when a source stops without fresh PCM remains an activation prerequisite.
+[Iteration 59](ITERATION_059.md) combines this barrier with actual linked RDPSND /
+simulated SVC and the bounded output queue. Worker selection remains disabled.
+
 ## Public RDPSND device adapter
 
 `native/audio/rdpsnd_sink.hpp` implements the pinned public

@@ -9,10 +9,12 @@ void increment(std::uint64_t &counter) noexcept {
     ++counter;
 }
 } // namespace
-PcmPublisher::PcmPublisher(RdpsndSink &source, std::uint64_t previous_epoch)
-    : source_(source), bytes_(std::make_unique<Storage>()), thread_(std::this_thread::get_id()),
+PcmPublisher::PcmPublisher(RdpsndSink &source, TryDiscard discard_output,
+                           std::uint64_t previous_epoch)
+    : source_(source), discard_output_(std::move(discard_output)),
+      bytes_(std::make_unique<Storage>()), thread_(std::this_thread::get_id()),
       epoch_(previous_epoch) {
-  if (!source_.stats() || source_.retired())
+  if (!source_.stats() || source_.retired() || !discard_output_)
     throw std::invalid_argument("Invalid PCM source owner");
 }
 bool PcmPublisher::on_thread() const noexcept { return thread_ == std::this_thread::get_id(); }
@@ -53,14 +55,26 @@ PublishStatus PcmPublisher::pump(std::uint64_t now, const TrySend &send) noexcep
   if (*revision != source_revision_) {
     discard();
     source_revision_ = *revision;
-  }
-  if (!source_.ready()) {
-    discard();
-    return PublishStatus::idle;
+    reset_required_ = true;
   }
   busy_ = true;
   PublishStatus result = PublishStatus::idle;
   try {
+    if (reset_required_) {
+      if (discard_output_()) {
+        reset_required_ = false;
+        increment(stats_.consumer_resets);
+      } else {
+        increment(stats_.blocked_calls);
+        busy_ = false;
+        return PublishStatus::blocked;
+      }
+    }
+    if (!source_.ready()) {
+      discard();
+      busy_ = false;
+      return PublishStatus::idle;
+    }
     // Capture before flushing so a blocked old packet cannot precede fresh state.
     const auto captured = source_.packet(now);
     if (captured.status == PacketStatus::invalid)
@@ -106,6 +120,7 @@ PublishStatus PcmPublisher::pump(std::uint64_t now, const TrySend &send) noexcep
   } catch (...) {
     failed_ = true;
     discard();
+    reset_required_ = true;
     result = PublishStatus::failed;
   }
   busy_ = false;
@@ -115,6 +130,7 @@ bool PcmPublisher::reset() noexcept {
   if (!on_thread() || busy_ || failed_)
     return false;
   discard();
+  reset_required_ = true;
   return source_.reset_stream();
 }
 std::optional<PublisherStats> PcmPublisher::stats() const noexcept {
@@ -122,6 +138,7 @@ std::optional<PublisherStats> PcmPublisher::stats() const noexcept {
     return {};
   auto result = stats_;
   result.pending = pending_;
+  result.reset_pending = reset_required_;
   result.failed = failed_;
   return result;
 }

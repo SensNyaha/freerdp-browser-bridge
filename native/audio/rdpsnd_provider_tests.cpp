@@ -1,5 +1,6 @@
 #include "addin_provider.hpp"
 #include "ingress.hpp"
+#include "output_queue.hpp"
 #include "publisher.hpp"
 #include "rdpsnd_provider.hpp"
 #include "static_gate.hpp"
@@ -1243,7 +1244,7 @@ TEST_CASE("Actual RDPSND Close discards blocked publisher PCM before a fresh str
   StaticHost host(fixture.context.get());
   host.load(nullptr, true);
   host.connect();
-  PcmPublisher publisher(fixture.sink);
+  PcmPublisher publisher(fixture.sink, [] { return true; });
   std::vector<bridge::ipc::Packet> records;
   bool credit = false;
   const PcmPublisher::TrySend send = [&](auto kind, auto bytes) {
@@ -1281,4 +1282,40 @@ TEST_CASE("Actual RDPSND Close discards blocked publisher PCM before a fresh str
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
   REQUIRE(publisher.pump(1060000, send) == PublishStatus::idle);
   REQUIRE(records.size() == 3);
+}
+TEST_CASE("Actual RDPSND Close clears accepted unsent consumer PCM before a new epoch") {
+  Fixture fixture;
+  GateScope audio(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  bridge::ipc::OutputQueue output;
+  PcmPublisher publisher(fixture.sink, [&] {
+    output.discard_audio();
+    return true;
+  });
+  const PcmPublisher::TrySend send = [&](auto kind, auto bytes) {
+    return output.push(kind, 0, bytes) == bridge::ipc::EnqueueStatus::accepted;
+  };
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  emit_pcm(host, 100, 1, {0, 128, 255, 127});
+  REQUIRE(publisher.pump(1000000, send) == PublishStatus::sent);
+  REQUIRE(output.stats().records == 2);
+  const std::array<BYTE, 4> close{SNDC_CLOSE, 0, 0, 0};
+  host.raw(close, 4);
+  REQUIRE(publisher.pump(1020000, send) == PublishStatus::idle);
+  REQUIRE(output.stats().records == 0);
+  REQUIRE(output.stats().discarded_audio == 1);
+  emit_pcm(host, 120, 2, {1, 0, 254, 255});
+  REQUIRE(publisher.pump(1040000, send) == PublishStatus::sent);
+  REQUIRE(bridge::ipc::audio::decode_config(output.take()->payload).epoch == 2);
+  auto packet = output.take();
+  const auto pcm = bridge::ipc::audio::decode_packet(packet->payload);
+  REQUIRE(pcm.discontinuity);
+  REQUIRE(pcm.pcm[0] == 1);
+  REQUIRE(pcm.pcm[2] == 254);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(publisher.pump(1060000, send) == PublishStatus::idle);
+  REQUIRE(output.stats().records == 0);
 }

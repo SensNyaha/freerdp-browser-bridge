@@ -1,3 +1,4 @@
+#include "output_queue.hpp"
 #include "publisher.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -8,7 +9,8 @@ using namespace bridge::audio;
 namespace {
 struct Fixture {
   RdpsndSink sink;
-  PcmPublisher publisher{sink};
+  // Recorder consumes immediately; it owns no unsent consumer queue.
+  PcmPublisher publisher{sink, [] { return true; }};
   std::vector<bridge::ipc::Packet> records;
   bool config_credit = true, packet_credit = true;
   PcmPublisher::TrySend send = [this](auto kind, auto bytes) {
@@ -156,8 +158,74 @@ TEST_CASE("PCM publisher callback failures and epoch exhaustion retire prepared 
   Fixture other;
   other.open();
   other.play();
-  PcmPublisher exhausted(other.sink, UINT64_MAX);
+  PcmPublisher exhausted(other.sink, [] { return true; }, UINT64_MAX);
   REQUIRE(exhausted.pump(0, other.send) == PublishStatus::failed);
   REQUIRE(other.sink.stats()->queue.queued_frames == 960);
   REQUIRE(other.records.empty());
+}
+TEST_CASE("PCM source revision requires consumer discard credit before reading fresh samples") {
+  Fixture source;
+  bridge::ipc::OutputQueue output;
+  bool credit = true;
+  PcmPublisher publisher(source.sink, [&] {
+    if (!credit)
+      return false;
+    output.discard_audio();
+    return true;
+  });
+  const PcmPublisher::TrySend send = [&](auto kind, auto bytes) {
+    return output.push(kind, 0, bytes) == bridge::ipc::EnqueueStatus::accepted;
+  };
+  source.open();
+  source.play();
+  REQUIRE(publisher.pump(0, send) == PublishStatus::sent);
+  REQUIRE(output.stats().records == 2);
+  REQUIRE(source.sink.reset_stream());
+  source.play(960, 33);
+  credit = false;
+  REQUIRE(publisher.pump(20000, send) == PublishStatus::blocked);
+  REQUIRE(publisher.stats()->reset_pending);
+  REQUIRE(output.stats().records == 2);
+  REQUIRE(source.sink.stats()->queue.queued_frames == 960);
+  REQUIRE(source.sink.stats()->packets.packets == 1);
+  credit = true;
+  REQUIRE(publisher.pump(21000, send) == PublishStatus::sent);
+  REQUIRE_FALSE(publisher.stats()->reset_pending);
+  REQUIRE(output.stats().discarded_audio == 1);
+  REQUIRE(output.stats().records == 2);
+  REQUIRE(bridge::ipc::audio::decode_config(output.take()->payload).epoch == 2);
+  auto packet = output.take();
+  REQUIRE(bridge::ipc::audio::decode_packet(packet->payload).pcm[0] == 33);
+  REQUIRE(publisher.stats()->consumer_resets == 2);
+  REQUIRE(publisher.reset());
+  REQUIRE(publisher.stats()->reset_pending);
+  REQUIRE(publisher.pump(22000, send) == PublishStatus::idle);
+  REQUIRE_FALSE(publisher.stats()->reset_pending);
+  REQUIRE(publisher.stats()->consumer_resets == 3);
+  REQUIRE(publisher.pump(23000, send) == PublishStatus::idle);
+  REQUIRE(publisher.stats()->consumer_resets == 3); // No repeated reset on an idle source.
+}
+TEST_CASE("PCM consumer discard refuses empty binding and catches callback faults and reentry") {
+  Fixture source;
+  REQUIRE_THROWS_AS(PcmPublisher(source.sink, {}), std::invalid_argument);
+  source.open();
+  source.play();
+  PcmPublisher fault(source.sink, []() -> bool { throw std::runtime_error("fixture"); });
+  REQUIRE(fault.pump(0, source.send) == PublishStatus::failed);
+  REQUIRE(fault.stats()->failed);
+  REQUIRE(fault.stats()->reset_pending);
+  REQUIRE(source.sink.stats()->queue.queued_frames == 960);
+  PcmPublisher *owner = nullptr;
+  PublishStatus nested = PublishStatus::sent;
+  bool reset = true;
+  PcmPublisher recursive(source.sink, [&] {
+    nested = owner->pump(0, source.send);
+    reset = owner->reset();
+    return true;
+  });
+  owner = &recursive;
+  REQUIRE(recursive.pump(0, source.send) == PublishStatus::sent);
+  REQUIRE(nested == PublishStatus::invalid);
+  REQUIRE_FALSE(reset);
+  REQUIRE(recursive.stats()->consumer_resets == 1);
 }

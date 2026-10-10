@@ -9,7 +9,8 @@ struct PublisherStats {
   std::uint64_t captured_packets = 0, sent_packets = 0, sent_configs = 0;
   std::uint64_t replaced_packets = 0, reset_discarded_packets = 0;
   std::uint64_t blocked_calls = 0, invalid_clocks = 0;
-  bool pending = false, failed = false;
+  std::uint64_t consumer_resets = 0;
+  bool pending = false, reset_pending = false, failed = false;
 };
 // One RDP-thread source. TrySend must not block; true means a bounded consumer
 // copied the borrowed bytes. False preserves credit for a later call.
@@ -17,7 +18,10 @@ struct PublisherStats {
 class PcmPublisher {
 public:
   using TrySend = std::function<bool(ipc::Kind, std::span<const std::uint8_t>)>;
-  explicit PcmPublisher(RdpsndSink &, std::uint64_t previous_epoch = 0);
+  // Clear only unsent consumer audio; false retains the barrier for a later pump.
+  // Both source and callback targets must outlive this owner.
+  using TryDiscard = std::function<bool()>;
+  PcmPublisher(RdpsndSink &, TryDiscard, std::uint64_t previous_epoch = 0);
   PublishStatus pump(std::uint64_t worker_time_us, const TrySend &) noexcept;
   bool reset() noexcept;
   std::optional<PublisherStats> stats() const noexcept;
@@ -28,11 +32,13 @@ private:
     std::array<std::uint8_t, ipc::audio::config_bytes> config{};
   };
   RdpsndSink &source_;
+  TryDiscard discard_output_;
   std::unique_ptr<Storage> bytes_;
   const std::thread::id thread_;
   std::uint64_t epoch_, observed_us_ = 0, source_revision_ = 0;
   bool observed_ = false, new_epoch_ = true, config_required_ = false, pending_ = false;
   bool busy_ = false, failed_ = false;
+  bool reset_required_ = true;
   PublisherStats stats_;
   bool on_thread() const noexcept;
   void discard() noexcept;
