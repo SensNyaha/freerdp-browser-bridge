@@ -96,3 +96,10 @@ fingerprint, checks activation/heartbeat after three seconds, and closes.
 tests/integration/connection.test.mjs uses actual workers with a synthetic
 RDP-negotiation/TLS endpoint, not a fake desktop. Actual XRDP evidence is separate
 in ITERATION_004.md.
+
+Connection publishes one terminal outcome after display callback unbind and owned
+input/addin retirement. Cleanup failure promotes the selected outcome to protocol
+failure before publication; it cannot produce closed followed by failed.
+Ownership still retires on the RDP thread before context destruction. See
+[Iteration 33](ITERATION_033.md) for lifecycle regression evidence and fault-injection
+limits. This changes ordering/cleanup reporting, not the RWI1 wire layout.

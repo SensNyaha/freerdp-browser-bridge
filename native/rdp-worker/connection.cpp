@@ -857,6 +857,8 @@ void Connection::stop() noexcept {
     reason_ = RdpError::protocol;
 }
 void Connection::run() noexcept {
+  auto terminal_state = RdpState::failed;
+  auto terminal_error = RdpError::protocol;
 #ifdef CHANNEL_RDPEI_CLIENT
   touch::AddinProvider touch_provider;
 #endif
@@ -902,7 +904,8 @@ void Connection::run() noexcept {
                     ? RdpError::authentication
                     : RdpError::connection;
       }
-      state(stopping_ ? RdpState::closed : RdpState::failed, stopping_ ? RdpError::none : error);
+      terminal_state = stopping_ ? RdpState::closed : RdpState::failed;
+      terminal_error = stopping_ ? RdpError::none : error;
     } else {
       connected_ = true;
       state(RdpState::connected);
@@ -962,8 +965,8 @@ void Connection::run() noexcept {
       input_pending(true);
       capture_pending(true);
       const auto disconnected = freerdp_disconnect(context_->instance);
-      state(stopping_ || (healthy && disconnected) ? RdpState::closed : RdpState::failed,
-            stopping_ || (healthy && disconnected) ? RdpError::none : RdpError::disconnect);
+      terminal_state = stopping_ || (healthy && disconnected) ? RdpState::closed : RdpState::failed;
+      terminal_error = terminal_state == RdpState::closed ? RdpError::none : RdpError::disconnect;
     }
   } catch (...) {
     connected_ = false;
@@ -981,20 +984,28 @@ void Connection::run() noexcept {
       (void)freerdp_disconnect(context_->instance);
     }
     erase_password();
-    state(RdpState::failed, RdpError::protocol);
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
   }
   // Also covers connect failures before PostDisconnect; clear callbacks while context lives.
-  if (!display_.unbind())
+  if (!display_.unbind()) {
     reason_ = RdpError::protocol;
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
+  }
 #ifdef CHANNEL_RDPEI_CLIENT
   // Retire delegated input resources before the RDP thread exits. Context may be
   // freed later on the owner thread; only the wrapper's published no-op survives.
   touch_contacts_.reset();
   if (touch_provider.close() != CHANNEL_RC_OK) {
     reason_ = RdpError::protocol;
-    state(RdpState::failed, RdpError::protocol);
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
   }
 #endif
+  // Publish one terminal outcome only after all owned callback resources retire.
+  // A cleanup error must not produce the invalid public transition closed -> failed.
+  state(terminal_state, terminal_error);
   finished_ = true;
   condition_.notify_all();
 }

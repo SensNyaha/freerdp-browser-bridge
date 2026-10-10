@@ -164,9 +164,20 @@ async function withWorker(run) {
     runtimeRoot,
     heartbeatIntervalMs: 100,
   });
+  const terminalStates = [];
+  worker.on('rdp-state', (value) => {
+    if (['closed', 'failed'].includes(value.state)) terminalStates.push(value);
+  });
   try {
     await worker.start();
     await run(worker);
+    if (worker.state === 'ready') await worker.ping();
+    assert.ok(
+      terminalStates.length <= 1,
+      'Connection publishes at most one terminal outcome',
+    );
+    for (const value of terminalStates)
+      assert.equal(value.error === 'NONE', value.state === 'closed');
   } finally {
     await worker.close();
     assert.deepEqual(await readdir(runtimeRoot), []);

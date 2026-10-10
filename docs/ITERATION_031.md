@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Verifies the public path from SPECIFICATION §2.5 / PROTOCOL §3
 under ADR-008 / ADR-009 / ADR-011; no new remote touch acceptance claim.
+Implementation commit: `1f73a98`.
 
 The local viewer helper has an explicit --touch-inventory mode, and the harness
 exposes a copy of current readiness plus rendered-input eligibility for checking.

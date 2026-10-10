@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Implements the Stage 5 pen placeholder from SPECIFICATION §2.5,
 with capability honesty under ADR-008 / ADR-009 and unchanged ADR-011 scope.
+Implementation commit: `26688c5`.
 
 The public capability/CLI/decoded HELLO reports now explicitly say penInput=false,
 including legacy peers. No new wire bit, pen command or synthetic mouse fallback
