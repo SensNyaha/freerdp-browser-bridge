@@ -30,6 +30,7 @@ class AudioStaticGate {
   UINT close_status_ = CHANNEL_RC_OK;
   bool attempted_ = false, registered_ = false, connected_ = false, disconnected_ = false;
   bool failed_ = false;
+  bool negotiated_ = false;
   bool busy_ = false, writing_ = false;
   std::atomic<bool> retired_{false}, host_terminated_{false};
   bool on_thread() const noexcept;

@@ -999,3 +999,89 @@ TEST_CASE("Guarded RDPSND validates PCM packet alignment and duration before dev
   REQUIRE(output == std::vector<BYTE>(4, 77));
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
+
+TEST_CASE("Guarded RDPSND refuses replacement format tables before upstream state mutation") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  bool played = false;
+  SECTION("identical table before Open") {}
+  SECTION("changed table after Open") {
+    emit_pcm(host, 100, 1, {0, 128, 255, 127});
+    REQUIRE(fixture.sink.stats()->queue.queued_frames == 960);
+    played = true;
+    configuration[28] = 0x40;
+    configuration[29] = 0x1f;
+    configuration[32] = 0x00;
+    configuration[33] = 0x7d;
+    configuration[34] = 0;
+  }
+  const auto writes = host.writes.size();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_NOT_SUPPORTED);
+  REQUIRE(host.writes.size() == writes);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 0);
+  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == (played ? 960U : 0U));
+  const auto accepted = fixture.sink.stats()->queue.accepted_frames;
+  emit_pcm(host, 120, 2, {1, 0, 1, 0});
+  REQUIRE(host.writes.size() == writes);
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == accepted);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Guarded RDPSND switches source rate layout and width within its initial table") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  bool unsigned_pcm = false;
+  SECTION("PCM16 mono 8 kHz") {}
+  SECTION("PCM8 mono 8 kHz") { unsigned_pcm = true; }
+  auto configuration = formats();
+  configuration[2] = 56;
+  configuration[18] = 2;
+  word(configuration, WAVE_FORMAT_PCM);
+  word(configuration, 1);
+  dword(configuration, 8000);
+  dword(configuration, unsigned_pcm ? 8000 : 16000);
+  word(configuration, unsigned_pcm ? 1 : 2);
+  word(configuration, unsigned_pcm ? 8 : 16);
+  word(configuration, 0);
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.writes[0].size() == 60);
+  REQUIRE(host.writes[0][18] == 2);
+  emit_pcm(host, 100, 1, {0, 128, 255, 127});
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 960);
+  std::vector<BYTE> packet{SNDC_WAVE2, 0};
+  word(packet, unsigned_pcm ? 172 : 332);
+  word(packet, 120);
+  word(packet, 1);
+  packet.insert(packet.end(), {2, 0, 0, 0});
+  dword(packet, 120);
+  for (unsigned sample = 0; sample < 160; ++sample) {
+    packet.push_back(unsigned_pcm ? BYTE{255} : BYTE{1});
+    if (!unsigned_pcm)
+      packet.push_back(0);
+  }
+  host.raw(packet, static_cast<UINT>(packet.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 955);
+  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == 960);
+  std::vector<BYTE> output(955 * 4), expected;
+  const std::array<BYTE, 4> sample =
+      unsigned_pcm ? std::array<BYTE, 4>{0, 127, 0, 127} : std::array<BYTE, 4>{1, 0, 1, 0};
+  for (unsigned frame = 0; frame < 955; ++frame)
+    expected.insert(expected.end(), sample.begin(), sample.end());
+  const auto read = fixture.sink.read(output);
+  REQUIRE(read.frames == 955);
+  REQUIRE(read.discontinuity);
+  REQUIRE(output == expected);
+  REQUIRE(host.writes.size() == 6);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}

@@ -383,8 +383,28 @@ suspend/resume and retirement clear clock history. Queue reset markers carry los
 to a future consumer; counters retain discarded PCM frame totals.
 
 [Iteration 46](ITERATION_046.md) checks pure clocks and actual linked RDPSND with
-fake SVC. Server format-table renegotiation remains an explicit gap: upstream may
-keep an already-open format at the same index. It must not be activated until that
-case is resolved or explicitly refused. Native overrun heuristics, burst splitting,
+fake SVC. Server format-table replacement is explicitly refused by the baseline
+policy below, preventing upstream reuse of an incompatible already-open index.
+Native overrun heuristics, burst splitting,
 earlier RDP core allocation bounds, worker shutdown/IPC, browser PTS/playback and
 actual audio/microphone acceptance remain open.
+
+## Connection format-table policy
+
+The guarded baseline accepts exactly one valid Server Formats exchange per
+connection, including a zero-common-format response. Later valid table replacements
+or repetitions fail with `ERROR_NOT_SUPPORTED`, reset queued PCM and never reach
+upstream or mutate selected descriptors. Close and suspend/resume keep the initial
+negotiated table. A new connection gets a fresh gate. This is an explicit bridge
+profile restriction; broader server renegotiation support remains future work.
+It prevents the pinned channel from keeping the old Open format at an unchanged
+index while interpreting a replacement descriptor differently.
+
+Switching `wFormatNo` among entries in the original table remains supported. The
+gate detects the source change and upstream opens the selected descriptor; the
+normalizer starts a fresh phase and old PCM is discarded. Microsoft's
+[format-list contract](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpea/7df64d93-7594-4035-978d-229f2b15f1bc)
+defines client indices into the exchanged list. [Iteration 47](ITERATION_047.md)
+checks 48 kHz stereo PCM16 to 8 kHz mono PCM8/PCM16 conversion through actual linked
+RDPSND/fake SVC, plus replacement rejection before and after Open. Queue and source
+packet budgets are unchanged. This is not actual remote/browser audible acceptance.

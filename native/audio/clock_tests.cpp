@@ -111,3 +111,21 @@ TEST_CASE("Audio continuity uses overflow-safe arrival subtraction near uint64 m
   stamp = next(next(stamp)); // Unsigned wrap starts another local clock epoch.
   REQUIRE(clock.observe(stamp) == true);
 }
+
+TEST_CASE("Audio continuity accepts exact duration caps across supported source rates") {
+  for (const auto rate : {8000U, 44100U, 48000U}) {
+    AudioClock clock;
+    auto stamp = first();
+    stamp.rate = rate;
+    stamp.frames = rate / 10;
+    REQUIRE(clock.observe(stamp) == true);
+    stamp.timestamp += 220;
+    stamp.arrival_ms += 220;
+    stamp.block = 0;
+    REQUIRE(clock.observe(stamp) == false);
+    stamp.timestamp += 221;
+    stamp.arrival_ms += 221;
+    stamp.block = 1;
+    REQUIRE(clock.observe(stamp) == true);
+  }
+}

@@ -273,11 +273,21 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
     data = const_cast<BYTE *>(joined.bytes.data());
     size = total = static_cast<UINT>(joined.bytes.size());
     if (pdu->kind == AudioPduKind::formats) {
+      if (gate->negotiated_) {
+        // Same-index upstream reopen is not reliable for a replacement table.
+        // The baseline profile keeps one negotiated table for the connection.
+        gate->failed_ = true;
+        (void)gate->sink_.reset_stream();
+        setChannelError(gate->context_, ERROR_NOT_SUPPORTED,
+                        "Audio format table renegotiation is unsupported");
+        return;
+      }
       const auto selected = select_pcm_offers(joined.bytes, gate->offers_);
       if (!selected) {
         gate->fail();
         return;
       }
+      gate->negotiated_ = true;
       gate->selected_count_ = selected->count;
       gate->clock_.reset();
       (void)gate->sink_.reset_stream();

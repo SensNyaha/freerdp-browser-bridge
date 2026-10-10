@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Continues SPECIFICATION §2.6 / §3.3 bounded audio/discontinuity
 handling and ARCHITECTURE §5. [Continuity contract](AUDIO_PCM.md#packet-continuity).
+Implementation commit: `e8fe7b4`.
 
 Fixed selected-format metadata permits source frame/alignment checks before
 upstream Open/Play. An allocation-free owner clock distinguishes counter wraps
@@ -21,7 +22,9 @@ The current preparation profile caps a source PDU at 100 ms, matching conversion
 capacity. Larger valid RDP bursts need bounded splitting before activation. A
 separate gap was found in server table renegotiation: an upstream already-open
 index may retain its old device format. This must be resolved/refused before audio
-is activated. Earlier core bounds, upstream overrun behavior, worker/media/browser
+is activated. [Iteration 47](ITERATION_047.md) subsequently refuses replacement
+tables explicitly in the baseline profile and checks source-format switching
+within the initial table. Earlier core bounds, upstream overrun behavior, worker/media/browser
 clock/scheduling, microphone and actual Stage 5/6 acceptance remain open.
 
 Verification:
