@@ -250,6 +250,7 @@ Record types:
 0x06 FILE_CHUNK_RESERVED
 0x07 MIC_PACKET              # client -> server
 0x08 STATS_BINARY_RESERVED
+0x09 AUDIO_STATE             # server -> client; prepared, not activated yet
 ```
 
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
@@ -271,7 +272,15 @@ or attachment. Private metadata is not prepended to the public sample payload.
 This codec is implemented as an isolated native/TypeScript foundation; current
 workers and the harness do not yet activate audio output. Opus remains open.
 Private source status schema 1 is now prepared as RWI1 AUDIO_STATE kind 35 with
-40 bytes; it does not add a public control event or change RWB1 payloads yet.
+40 bytes. Its public preparatory counterpart is RWB1 AUDIO_STATE type 0x09,
+stream 3, DISCONTINUITY 0x0002, exact 40-byte payload. Payload repeats the worker
+timestamp and must match the header timestamp. Revision, epoch, availability,
+immutable opt-in and fixed requested profile follow the private status schema.
+It shares the attachment's audio sequence with config/PCM, never cursor/video
+sequences. Stop/reset status must use the same ordered media socket as PCM;
+cross-socket ordering is not assumed. No public JSON control event is added.
+Current worker/API do not emit this extension. Packet-only browser ownership
+refuses it until status-aware playback/negotiation is implemented.
 [Status codec contract](docs/AUDIO_PCM.md#pcm-source-status-codec-preparation).
 
 ## 5. Attach semantics

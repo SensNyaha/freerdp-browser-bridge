@@ -105,6 +105,47 @@ export function validatePcmAudioStateProgress(
   }
 }
 
+/** Preparatory RWB1 AUDIO_STATE type 9, stream 3; no worker/media activation. */
+export function encodePcmAudioStateRecord(
+  state: PcmAudioState,
+  sequence: number,
+): Buffer {
+  validateState(state);
+  if (!Number.isInteger(sequence) || sequence < 0 || sequence > 0xffffffff)
+    throw new ProtocolError();
+  const payload = encodePcmAudioState(state);
+  const header = Buffer.alloc(28);
+  header.write('RWB1');
+  header[4] = 1;
+  header[5] = 9;
+  header.writeUInt16BE(2, 6);
+  header.writeUInt32BE(3, 8);
+  header.writeUInt32BE(sequence, 12);
+  header.writeBigUInt64BE(state.timestampUs, 16);
+  header.writeUInt32BE(PCM_AUDIO_STATE_BYTES, 24);
+  return Buffer.concat([header, payload]);
+}
+export function decodePcmAudioStateRecord(bytes: Buffer): {
+  state: PcmAudioState;
+  sequence: number;
+} {
+  if (
+    !Buffer.isBuffer(bytes) ||
+    bytes.length !== 28 + PCM_AUDIO_STATE_BYTES ||
+    bytes.readUInt32BE(0) !== 0x52574231 ||
+    bytes[4] !== 1 ||
+    bytes[5] !== 9 ||
+    bytes.readUInt16BE(6) !== 2 ||
+    bytes.readUInt32BE(8) !== 3 ||
+    bytes.readUInt32BE(24) !== PCM_AUDIO_STATE_BYTES
+  )
+    throw new ProtocolError();
+  const state = decodePcmAudioState(bytes.subarray(28));
+  if (state.timestampUs !== bytes.readBigUInt64BE(16))
+    throw new ProtocolError();
+  return { state, sequence: bytes.readUInt32BE(12) };
+}
+
 export interface PcmAudioConfig {
   epoch: bigint;
   codec: 'pcm';

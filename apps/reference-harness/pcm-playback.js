@@ -1,4 +1,12 @@
 const MAX_TIMESTAMP = 0xffffffffffffffffn - 20000n;
+const AVAILABILITY = [
+  'unavailable',
+  'waiting',
+  'ready',
+  'suspended',
+  'closed',
+  'failed',
+];
 const STATS_FIELDS = [
   'configurations',
   'packets',
@@ -18,7 +26,10 @@ function add(counters, name, amount = 1) {
 }
 /** Isolated RWB1 parser; sample bytes borrow the validated input until copied. */
 export function parsePcmAudioRecord(bytes) {
-  if (!(bytes instanceof ArrayBuffer) || ![48, 3868].includes(bytes.byteLength))
+  if (
+    !(bytes instanceof ArrayBuffer) ||
+    ![48, 68, 3868].includes(bytes.byteLength)
+  )
     throw invalid();
   const view = new DataView(bytes),
     type = view.getUint8(5),
@@ -33,6 +44,39 @@ export function parsePcmAudioRecord(bytes) {
     timestampUs > MAX_TIMESTAMP
   )
     throw invalid();
+  if (type === 9) {
+    if (bytes.byteLength !== 68 || flags !== 2) throw invalid();
+    const enabled = view.getUint8(30),
+      availability = AVAILABILITY[view.getUint8(31)],
+      revision = view.getBigUint64(32),
+      epoch = view.getBigUint64(40);
+    if (
+      view.getUint16(28) !== 1 ||
+      enabled > 1 ||
+      availability === undefined ||
+      revision === 0n ||
+      (enabled === 0 && (availability !== 'unavailable' || epoch !== 0n)) ||
+      (availability === 'ready' && epoch === 0n) ||
+      view.getBigUint64(48) !== timestampUs ||
+      view.getUint8(56) !== (enabled ? 2 : 0) ||
+      view.getUint8(57) !== (enabled ? 2 : 0) ||
+      view.getUint8(58) !== (enabled ? 1 : 0) ||
+      view.getUint8(59) !== 0 ||
+      view.getUint32(60) !== (enabled ? 48000 : 0) ||
+      view.getUint16(64) !== (enabled ? 960 : 0) ||
+      view.getUint16(66) !== 0
+    )
+      throw invalid();
+    return {
+      type: 'state',
+      enabled: enabled === 1,
+      availability,
+      revision,
+      epoch,
+      timestampUs,
+      sequence,
+    };
+  }
   if (type === 3) {
     if (
       bytes.byteLength !== 48 ||
@@ -102,6 +146,8 @@ export class PcmPortSender {
       const record = parsePcmAudioRecord(bytes);
       if (record.sequence !== this.sequence || this.sequence > 0xffffffff)
         throw invalid();
+      // Codec preparation only; status-aware playback ownership is a later block.
+      if (record.type === 'state') throw invalid();
       if (record.type === 'config') {
         if (
           (this.epoch !== undefined && record.epoch < this.epoch) ||

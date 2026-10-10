@@ -189,9 +189,10 @@ validates body/request ID 0 before ownership allocation and uses control priorit
 
 Current worker does not publish status or activate audio. An incoming status is
 not a command. No new HELLO bit/config selector/public control event is introduced.
-Source ownership must reserve matching epochs, clear unsent native data before
-new status, preserve already taken record order, and teach Node/browser to flush
-stale audio even when no fresh PCM arrives. Those policies remain next steps.
+The isolated [source owner](#source-status-and-epoch-ownership) now reserves matching
+epochs and clears unsent native data before status while preserving already taken
+record order. Worker selection and Node/browser flush even without fresh PCM
+remain next steps.
 [Iteration 60](ITERATION_060.md) records codec, parser and queue evidence.
 
 ## Isolated browser PCM queue and AudioWorklet
@@ -354,6 +355,24 @@ the publisher and require outer connection/output retirement. Fixed control FIFO
 capacity still applies; no unbounded status backlog or sample replay is introduced.
 Public media status framing, Node listeners/replay, browser reset, negotiated
 worker selection and audible remote acceptance remain open.
+
+### Ordered public source status codec
+
+[Iteration 63](ITERATION_063.md) prepares RWB1 AUDIO_STATE type **0x09** on audio
+stream 3. Type 0x05 remains cursor shape. The header is the existing 28-byte v1
+layout, flags exactly DISCONTINUITY 0x0002, payload exactly the 40-byte private
+source status schema; total 68 bytes. Header and payload worker timestamps must
+match. Sequence uses the same per-attachment audio counter as config/PCM and
+refuses values outside uint32; no wrap is permitted. Config/PCM bytes are unchanged.
+
+TypeScript encoder/decoder and the isolated browser parser validate exact storage,
+header, descriptor, reserved bytes and all mode/range rules before reading fields.
+This can carry a stop with no samples. It is designed for the same ordered media
+WebSocket as PCM; an independent control socket cannot establish flush ordering.
+The fixed descriptor describes the requested normalized profile, not negotiated
+server format or audible delivery. Current worker/API emit no public status and
+the packet-only browser owner explicitly refuses it. Status-aware bounded
+playback/reset ownership, negotiation/listeners/replay and actual audio remain open.
 
 ## Public RDPSND device adapter
 
