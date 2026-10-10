@@ -159,6 +159,44 @@ silence accounting, epoch mismatch, RWB1 sequences and owned output copies.
 The fuzz dispatcher/corpus includes these classes; local Clang/sanitizer/fuzzer
 execution remains unavailable and is not counted as acceptance.
 
+## Isolated browser PCM queue and AudioWorklet
+
+`apps/reference-harness/pcm-queue.js` copies fixed 960-frame S16LE stereo packets
+into one 5,760-frame / 23,040-byte ring. A 1,920-frame (40 ms) prebuffer starts
+playback. Rendering converts signed samples to planar float with division by
+32,768; short reads produce counted zero silence and return to prebuffering.
+Render calls use the provided channel lengths, bounded to 1..4,800 equal frames.
+Overflow skips enough old complete 960-frame intervals to retain the newest
+bounded FIFO; counters separate playback, startup silence, underflow, overflow
+skips and reset discards. Safe integer counters saturate instead of wrapping.
+
+Configuration requires a nonzero unsigned 64-bit epoch; an active configuration
+refuses an older epoch. Packet storage is exactly one 3,840-byte ArrayBuffer,
+timestamp is bounded unsigned 64-bit microseconds, and continuous timestamps
+advance exactly 20,000 µs. Explicit discontinuity permits a forward reanchor,
+clears old queued samples and starts prebuffering. Duplicate/backward PTS, wrong
+epoch/length/types and unsupported render shapes fail without consuming samples.
+
+`pcm-worklet.js` registers `bridge-pcm-s16le`, requires an actual 48 kHz context
+and two output channels, and processes the engine-supplied block size. Its optional
+initial handoff has at most two validated packets. Private config/packet/reset/
+stats/dispose commands receive one bounded acknowledgment; invalid data closes
+the processor with silence. No process-loop telemetry timer or automatic message
+stream is introduced. Node/port disconnect, port close and context close remain
+the browser owner's responsibility.
+
+The render contract follows [AudioWorklet process](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor/process):
+output block lengths are read per callback, and a stopped source returns false.
+A future live owner must verify the [requested context rate](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/AudioContext)
+and use explicit user activation. Other device/browser rates remain unsupported
+in this isolated baseline, rather than silently interpreting 48 kHz as 44.1 kHz.
+
+[Iteration 51](ITERATION_051.md) checks pure FIFO/samples/reset/refusal and actual
+Edge OfflineAudioContext output plus live AudioWorklet port acknowledgments.
+Fixtures keep one command in flight. This block is not attached to the production
+viewer or server: a bounded production MessagePort owner, RWB1 browser parser,
+worker/Node delivery and actual audible RDP/microphone/latency gates remain open.
+
 ## Public RDPSND device adapter
 
 `native/audio/rdpsnd_sink.hpp` implements the pinned public
