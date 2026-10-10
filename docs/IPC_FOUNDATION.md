@@ -329,3 +329,32 @@ container overhead. Stats expose current records/bytes, byte high water and audi
 cursor replacements/audio reset discards. A future writer additionally owns one
 in-flight record. Pipe deadlines/cancellation, drain/failure policy and activation
 are not supplied by this pure component. [Evidence](ITERATION_054.md).
+
+## Producer/writer ownership foundation (Iteration 55)
+
+`OutputDispatcher` shares the queue between producers and one external consumer.
+`try_send` uses a try-lock and returns accepted/full/invalid/busy/closed. Full or
+busy is credit refusal; producers must retain/retry or apply their documented
+failure policy. Accepted data is copied into queue ownership. No producer mutex
+is held across the external write. Concurrent/reentrant `write_next` is refused.
+
+The consumer moves one record out of the queue, builds its fixed 24-byte header
+and passes separate borrowed header/body spans to the external callback. That
+callback must write the complete record in order or fail the connection; partial
+failure cannot be replayed. Callback exceptions are converted to fixed failure
+state. Failure/abort drops pending records and refuses admission while preserving
+queue lifetime high-water/drop counters. A currently executing callback retains
+its record until return; abort cannot cancel an OS write by itself.
+
+`finish` refuses new records and lets the driver drain pending records. It marks
+closed after the last successful callback or an empty drain. `try_discard_audio`
+clears only unsent audio with try-lock credit; source owners must preserve the
+invalidation barrier until accepted. An already taken PCM record cannot be
+retracted. Snapshots expose queue stats, in-flight wire bytes, completed records
+and accepting/failed/closed state.
+
+At most 70 records / 17,639,002 wire bytes are owned by queue plus writer, excluding
+allocator/container overhead. There is no second full-record serialization
+buffer here. The external owner must supply the writer thread, wakeups, bounded/
+cancellable I/O and shutdown deadlines, and outlive all callback invocations.
+Current worker still uses its previous stdout writer. [Evidence](ITERATION_055.md).

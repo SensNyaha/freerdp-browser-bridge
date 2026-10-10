@@ -17,6 +17,7 @@ public:
   EnqueueStatus push(Kind, std::uint64_t request_id, std::span<const std::uint8_t>);
   std::optional<Packet> take();
   void discard_audio() noexcept;
+  void discard_all() noexcept;
   OutputStats stats() const noexcept;
 
 private:

@@ -171,6 +171,16 @@ void OutputQueue::discard_audio() noexcept {
   first_audio_ = true;
   refresh();
 }
+void OutputQueue::discard_all() noexcept {
+  discard_audio();
+  for (auto &slot : control_)
+    slot.reset();
+  head_ = count_ = 0;
+  cursor_shape_.reset();
+  cursor_meta_.reset();
+  video_.reset();
+  refresh();
+}
 void OutputQueue::refresh() noexcept {
   stats_.records = 0;
   stats_.bytes = 0;

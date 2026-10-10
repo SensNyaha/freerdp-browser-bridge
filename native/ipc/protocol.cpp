@@ -106,16 +106,27 @@ void validate_header(const Header &header) {
       (kind == Kind::input_touch && length != 16 && length != 24))
     throw ProtocolError();
 }
+std::array<std::uint8_t, header_bytes> encode_header(const Header &header) {
+  validate_header(header);
+  std::array<std::uint8_t, header_bytes> bytes{'R', 'W', 'I', '1'};
+  const auto put = [&bytes](std::size_t at, std::uint64_t value, std::size_t count) {
+    for (std::size_t i = 0; i < count; ++i)
+      bytes[at + i] = static_cast<std::uint8_t>(value >> ((count - i - 1) * 8));
+  };
+  put(4, version, 2);
+  put(6, static_cast<std::uint16_t>(header.kind), 2);
+  put(12, header.request_id, 8);
+  put(20, header.length, 4);
+  return bytes;
+}
 std::vector<std::uint8_t> encode(const Packet &packet) {
   if (packet.payload.size() > std::numeric_limits<std::uint32_t>::max())
     throw ProtocolError();
-  std::vector<std::uint8_t> bytes{'R', 'W', 'I', '1'};
-  append_be(bytes, version, 2);
-  append_be(bytes, static_cast<std::uint16_t>(packet.kind), 2);
-  append_be(bytes, 0, 4);
-  append_be(bytes, packet.request_id, 8);
-  append_be(bytes, packet.payload.size(), 4);
-  (void)decode_header(bytes);
+  const auto header = encode_header(
+      {packet.kind, packet.request_id, static_cast<std::uint32_t>(packet.payload.size())});
+  std::vector<std::uint8_t> bytes;
+  bytes.reserve(header_bytes + packet.payload.size());
+  bytes.insert(bytes.end(), header.begin(), header.end());
   bytes.insert(bytes.end(), packet.payload.begin(), packet.payload.end());
   return bytes;
 }

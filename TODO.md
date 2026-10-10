@@ -29,7 +29,7 @@ activation, production ingress placement and audible/browser acceptance remain o
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
   [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 159/159 Node tests;
-  CTest/Catch2: 36 IPC/input/state/audio-codec/output cases / 5,216 assertions, 2 AVC cases / 19 assertions,
+  CTest/Catch2: 41 IPC/input/state/audio-codec/output cases / 5,310 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -273,6 +273,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Browser PCM RWB1 parser and exclusive AudioContext/MessagePort owner now bound one posted command and one latest pending packet, force discontinuity on drops and retire on ACK/deadline/context loss. Pure fault/burst tests and actual Edge credit/epoch/cleanup fixtures pass; reference-viewer activation, worker/Node streaming, audible remote audio/microphone and latency gates remain open. [Evidence](docs/ITERATION_052.md). AudioWorklet foundation: `4563327`.
 - [~] IN PROGRESS — Native PCM publisher now offers one fixed latest IPC packet/config through nonblocking credit, with epoch/config ordering and sink revision checks that discard prepared PCM on Close/reset before fresh samples. Pure owner/fault tests and actual linked RDPSND/fake-SVC Close/restart pass. Prioritized native writer, worker/Node activation and real audio gates remain open. [Evidence](docs/ITERATION_053.md). Browser port ownership: `7f44b97`.
 - [~] IN PROGRESS — Native output queue foundation now bounds 64 control FIFO slots, one audio config/latest PCM, cursor shape/latest metadata and one correlated video response. Typed admission, epoch discard, discontinuity, exact maxima and ownership fixtures pass; writer thread, source invalidation, pipe shutdown/fairness and worker/Node activation remain open. [Evidence](docs/ITERATION_054.md). PCM publisher: `a30e9a9`.
+- [~] IN PROGRESS — Shared native producer/writer dispatcher now offers try-lock credit, one owned in-flight record and separate fixed-header/body writing outside the queue mutex. Stalled-writer, reentry, drain, abort and callback-fault fixtures pass; OS writer thread/cancellation/wakeups, worker/Node activation and actual audio remain open. [Evidence](docs/ITERATION_055.md). Bounded lanes: `76c66fd`.
 
 **Gate:** remote audio audible and microphone usable with bounded <150 ms queue target in LAN test.
 
@@ -374,4 +375,5 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Separate bounded config/secret IPC classes now deliver credentials after HELLO; transport copies and the active FreeRDP password setting are overwritten. Upstream/immutable JS copies and future secret classes remain open. [Contract](docs/CONNECTION_CORE.md).
 - [ ] TODO — Explicit restricted Windows runtime ACLs and multi-user isolation acceptance. Traces to ARCHITECTURE §2 and SECURITY §2/6.
 - [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
+- [ ] TODO — Registry cleanup deadline can return after forced termination but before native child close/runtime removal; iteration 55 observed one full-suite failure, isolated/full repeats pass without establishing a fix. Add bounded termination-completion ownership before returning to pipe activation. [Evidence](docs/ITERATION_055.md).
 - [~] IN PROGRESS — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Windows native ZIP and relocation are verified; [manual bundled CI](.github/workflows/bundled-native.yml) is prepared, not run. Linux, Node.js distribution, MSI/EXE/DEB/RPM installer integration and clean-machine tests remain open.
