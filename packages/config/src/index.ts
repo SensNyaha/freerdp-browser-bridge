@@ -101,6 +101,7 @@ export const SessionCreateSchema = object({
       orientation: Type.Optional(choice(0, 90, 180, 270)),
     }),
   ),
+  input: Type.Optional(object({ touch: bool() })),
   quality: Type.Optional(
     object({
       profile: Type.Optional(

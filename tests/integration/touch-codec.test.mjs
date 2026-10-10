@@ -55,14 +55,20 @@ test(
               y: 0,
             }),
           }),
+          encodePacket({
+            kind: Kind.Shutdown,
+            requestId: 3n,
+            payload: Buffer.alloc(0),
+          }),
         ]),
       );
       const [code, signal] = await closed;
-      assert.equal(code, 2);
+      const core = decodeBuild(packets[0].payload).capabilities.connectCore;
+      assert.equal(code, core ? 0 : 2);
       assert.equal(signal, null);
       assert.equal(invalid, false);
       decoder.finish();
-      assert.equal(packets.length, 2);
+      assert.equal(packets.length, core ? 3 : 2);
       assert.equal(packets[0].kind, Kind.HelloAck);
       assert.equal(packets[0].requestId, 1n);
       assert.equal(
@@ -71,7 +77,7 @@ test(
       );
       assert.equal(packets[1].kind, Kind.Error);
       assert.equal(packets[1].requestId, 2n);
-      assert.equal(packets[1].payload.readUInt32BE(0), 3);
+      assert.equal(packets[1].payload.readUInt32BE(0), core ? 10 : 3);
     } finally {
       if (child.exitCode === null && child.signalCode === null) child.kill();
       await closed.catch(() => {});

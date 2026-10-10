@@ -1,12 +1,66 @@
+#include "dispatch_queue.hpp"
 #include "touch_ipc.hpp"
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <memory>
 using namespace bridge::touch;
 using bridge::ipc::ProtocolError;
 namespace {
 constexpr std::array<std::uint8_t, 16> canonical{0, 1, 1,    0,    1, 2, 3, 4,
                                                  0, 0, 0x12, 0x34, 0, 0, 5, 0x67};
+}
+TEST_CASE("Touch v2 generation token and availability records are independently bounded") {
+  std::vector<std::uint8_t> p(canonical.begin(), canonical.end());
+  p[1] = 2;
+  p.insert(p.end(), {0, 0, 0, 0, 0, 0, 0, 3});
+  REQUIRE(decode_request(p).generation == 3);
+  REQUIRE(decode_request(p).event == Event{Action::begin, 0x01020304, 0x1234, 0x567});
+  for (std::size_t n = 0; n < p.size(); ++n)
+    REQUIRE_THROWS_AS(decode_request(std::span(p).first(n)), ProtocolError);
+  p.back() = 0;
+  REQUIRE_THROWS_AS(decode_request(p), ProtocolError);
+  const Update u{1, 3, 1920, 1080, 10, true, Availability::ready};
+  const auto bytes = encode_update(u);
+  REQUIRE(bytes.size() == 32);
+  REQUIRE(bridge::ipc::read_be(std::span(bytes).subspan(12, 8)) == 3);
+  REQUIRE(bytes[24] == 0);
+  REQUIRE(bytes[25] == 10);
+  for (const auto invalid : {Update{0, 3, 1920, 1080, 10, true, Availability::ready},
+                             Update{1, 0, 1920, 1080, 10, true, Availability::ready},
+                             Update{1, 3, 7681, 1080, 10, true, Availability::ready},
+                             Update{1, 3, 1920, 1080, 11, true, Availability::ready},
+                             Update{1, 3, 1920, 1080, 0, true, Availability::ready},
+                             Update{1, 3, 1920, 1080, 10, false, Availability::ready},
+                             Update{1, 3, 1920, 1080, 10, true, Availability::suspended}})
+    REQUIRE_THROWS_AS(encode_update(invalid), ProtocolError);
+}
+TEST_CASE(
+    "Mixed input queue preserves touch, reset and key ordering across fixed-ring wrap/overflow") {
+  auto queue = std::make_unique<bridge::input::Queue>();
+  REQUIRE_FALSE(queue->pop());
+  for (unsigned cycle = 0; cycle < 4; ++cycle) {
+    for (unsigned i = 0; i < 64; ++i) {
+      const bool touch = (i % 3) == 0;
+      if (touch)
+        REQUIRE(queue->push(i, Request{{Action::begin, i, 100, 200}, 9}));
+      else
+        REQUIRE(queue->push(i, bridge::input::Event{i % 3 == 1 ? bridge::input::Type::reset
+                                                               : bridge::input::Type::key}));
+    }
+    REQUIRE_FALSE(queue->push(64, Request{{Action::begin, 64, 100, 200}, 9}));
+    for (unsigned i = 0; i < 64; ++i) {
+      const auto record = queue->pop();
+      REQUIRE(record);
+      REQUIRE(record->request == i);
+      if (i % 3 == 0)
+        REQUIRE(std::get<Request>(record->event).generation == 9);
+      else
+        REQUIRE(std::get<bridge::input::Event>(record->event).type ==
+                (i % 3 == 1 ? bridge::input::Type::reset : bridge::input::Type::key));
+    }
+    REQUIRE_FALSE(queue->pop());
+  }
 }
 TEST_CASE("Touch IPC v1 independent big-endian contact/action vectors") {
   REQUIRE(decode_ipc(canonical) == Event{Action::begin, 0x01020304, 0x1234, 0x567});

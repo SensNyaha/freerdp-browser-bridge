@@ -1,9 +1,11 @@
 #pragma once
 #include "certificate.hpp"
 #include "connection_config.hpp"
+#include "contacts.hpp"
 #include "control.hpp"
 #include "cursor.hpp"
 #include "dirty_regions.hpp"
+#include "dispatch_queue.hpp"
 #include "display.hpp"
 #include "gfx.hpp"
 #include "input.hpp"
@@ -44,6 +46,7 @@ class Connection {
 #ifdef CHANNEL_RDPEI_CLIENT
   // Declared before context_: the host's final plugin callback must see this wrapper.
   touch::PluginRegistration touch_registration_;
+  std::unique_ptr<touch::Contacts> touch_contacts_;
 #endif
   ContextPtr context_;
   std::function<void(const ipc::Packet &)> send_;
@@ -81,7 +84,14 @@ class Connection {
   std::unique_ptr<media::SoftwareH264Encoder> avc_encoder_;
   bool requested_avc_ = false, force_idr_ = false;
   std::mutex input_mutex_;
-  std::deque<std::pair<std::uint64_t, input::Event>> input_queue_;
+  std::unique_ptr<input::Queue> input_queue_ = std::make_unique<input::Queue>();
+  std::optional<std::uint64_t> pending_reset_;
+  std::chrono::steady_clock::time_point reset_deadline_{};
+  std::atomic<bool> touch_ready_{false};
+  std::optional<touch::Update> last_touch_;
+  void service_touch();
+  void publish_touch();
+  bool reset_touch();
   bool input_overflow_ = false;
   input::State input_state_;
   std::atomic<bool> unicode_input_{false};
@@ -123,6 +133,7 @@ public:
   bool capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc);
   unsigned enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload,
                          bool text = false);
+  unsigned enqueue_touch(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload);
   std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;

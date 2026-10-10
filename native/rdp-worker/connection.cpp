@@ -112,8 +112,13 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_RedirectSmartCards, FALSE);
   boolean(FreeRDP_AudioPlayback, FALSE);
   boolean(FreeRDP_AudioCapture, FALSE);
-  // No touch IPC/control contract is exposed yet. Do not load a raw unmanaged addin.
+#ifdef CHANNEL_RDPEI_CLIENT
+  boolean(FreeRDP_MultiTouchInput, c.touch);
+#else
+  if (c.touch)
+    throw ProtocolError();
   boolean(FreeRDP_MultiTouchInput, FALSE);
+#endif
 #ifdef CHANNEL_DISP_CLIENT
   boolean(FreeRDP_SupportDisplayControl, TRUE);
 #else
@@ -292,6 +297,7 @@ BOOL Connection::post_connect(freerdp *instance) {
 }
 BOOL Connection::resize(rdpContext *context) {
   auto &self = owner(context->instance);
+  (void)self.reset_touch();
   if (self.display_generation_ == (std::numeric_limits<std::uint64_t>::max)())
     return FALSE;
   if (!media::resize_gdi_desktop(context, self.dirty_))
@@ -440,16 +446,100 @@ unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::u
     return 8;
   if (text && !unicode_input_)
     return 9;
-  if (input_queue_.size() >= 64 || input_overflow_) {
+  if (input_overflow_ || !input_queue_->push(request, event)) {
     input_overflow_ = true;
     if (!SetEvent(media_event_))
       throw ProtocolError();
     return 6;
   }
-  input_queue_.emplace_back(request, event);
   if (!SetEvent(media_event_))
     throw ProtocolError();
   return 0;
+}
+unsigned Connection::enqueue_touch(std::uint64_t request, std::span<const std::uint8_t> payload) {
+  // v1 is retained for codec compatibility, but has no geometry ownership token.
+  if (payload.size() == 16) {
+    (void)touch::decode_ipc(payload);
+    return 10;
+  }
+  const auto event = touch::decode_request(payload);
+  std::lock_guard lock(input_mutex_);
+  if (!connected_ || stopping_)
+    return 5;
+  if (!config_->touch || !touch_ready_)
+    return 10;
+  if (resizing_)
+    return 8;
+  if (input_overflow_ || !input_queue_->push(request, event)) {
+    input_overflow_ = true;
+    if (!SetEvent(media_event_))
+      throw ProtocolError();
+    return 6;
+  }
+  if (!SetEvent(media_event_))
+    throw ProtocolError();
+  return 0;
+}
+bool Connection::reset_touch() {
+  touch_ready_ = false;
+#ifdef CHANNEL_RDPEI_CLIENT
+  if (touch_contacts_) {
+    touch_contacts_->reset();
+    const auto drain = touch_contacts_->service();
+    if (drain == touch::Drain::failed)
+      throw ProtocolError();
+    return touch_contacts_->owned() == 0;
+  }
+#endif
+  return true;
+}
+void Connection::service_touch() {
+#ifdef CHANNEL_RDPEI_CLIENT
+  if (touch_contacts_ && touch_contacts_->service() == touch::Drain::failed)
+    throw ProtocolError();
+#endif
+  publish_touch();
+}
+void Connection::publish_touch() {
+#ifdef CHANNEL_RDPEI_CLIENT
+  if (!connected_ || !context_->gdi || !display_generation_)
+    return;
+  auto availability = touch::Availability::unavailable;
+  std::uint16_t contacts = 0;
+  if (touch_contacts_) {
+    const auto &gate = touch_registration_.gate();
+    if (gate.phase() == touch::Phase::handshake)
+      availability = touch::Availability::handshake;
+    else if (gate.phase() == touch::Phase::suspended)
+      availability = touch::Availability::suspended;
+    else if (gate.ready()) {
+      if (!gate.timestamps_disabled() || !gate.negotiated() ||
+          gate.negotiated()->version <= RDPINPUT_PROTOCOL_V10)
+        availability = touch::Availability::incompatible;
+      else if (touch_contacts_->ready() && !resizing_ && !pending_reset_) {
+        availability = touch::Availability::ready;
+        contacts =
+            static_cast<std::uint16_t>(std::min<std::uint16_t>(10, gate.negotiated()->contacts));
+      } else
+        availability = touch::Availability::draining;
+    }
+  }
+  touch_ready_ = availability == touch::Availability::ready;
+  touch::Update update{last_touch_ ? last_touch_->revision : 0,
+                       display_generation_,
+                       static_cast<std::uint16_t>(context_->gdi->width),
+                       static_cast<std::uint16_t>(context_->gdi->height),
+                       contacts,
+                       config_->touch,
+                       availability};
+  if (last_touch_ && update == *last_touch_)
+    return;
+  if (update.revision == UINT64_MAX)
+    throw ProtocolError();
+  ++update.revision;
+  send_({Kind::touch_update, 0, touch::encode_update(update)});
+  last_touch_ = update;
+#endif
 }
 bool Connection::send_input(const input::Event &e) {
   auto *in = context_->input;
@@ -492,26 +582,94 @@ bool Connection::send_input(const input::Event &e) {
 void Connection::input_pending(bool ending) {
   std::lock_guard lock(input_mutex_);
   const input::State::Sink sink = [this](const auto &e) { return send_input(e); };
-  while (!input_queue_.empty()) {
-    const auto [request, event] = input_queue_.front();
-    input_queue_.pop_front();
-    if (ending || (resizing_ && event.type != input::Type::reset)) {
-      std::vector<std::uint8_t> p;
-      append_be(p, ending ? 5 : 8, 4);
-      send_({Kind::error, request, std::move(p)});
-    } else {
-      const auto *gdi = context_->gdi;
-      if (!gdi || !input_state_.apply(event, sink, static_cast<std::uint16_t>(gdi->width),
-                                      static_cast<std::uint16_t>(gdi->height)))
-        throw ProtocolError();
-      send_({Kind::input_ack, request, {}});
-    }
-  }
+  const auto reject = [&](std::uint64_t request, unsigned code) {
+    std::vector<std::uint8_t> p;
+    append_be(p, code, 4);
+    send_({Kind::error, request, std::move(p)});
+  };
   if (ending || input_overflow_) {
+    while (const auto record = input_queue_->pop())
+      reject(record->request, ending ? 5 : 6);
+    if (pending_reset_ && *pending_reset_)
+      reject(*pending_reset_, ending ? 5 : 6);
+    pending_reset_.reset();
     input_overflow_ = false;
     if (!input_state_.release(sink) && !ending)
       throw ProtocolError();
+    const bool empty = reset_touch();
+    if (ending)
+      return;
+    if (!empty) {
+      pending_reset_ = 0; // Internal overflow cleanup has no request acknowledgement.
+      reset_deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    }
   }
+  service_touch();
+  if (pending_reset_) {
+    bool empty = true;
+#ifdef CHANNEL_RDPEI_CLIENT
+    empty = !touch_contacts_ || touch_contacts_->owned() == 0;
+#endif
+    if (!empty) {
+      if (std::chrono::steady_clock::now() >= reset_deadline_)
+        throw ProtocolError();
+      return;
+    }
+    const auto request = *pending_reset_;
+    pending_reset_.reset();
+    publish_touch();
+    if (request)
+      send_({Kind::input_ack, request, {}});
+  }
+  while (const auto record = input_queue_->pop()) {
+    const auto request = record->request;
+    const auto *gdi = context_->gdi;
+    if (!gdi)
+      throw ProtocolError();
+    if (const auto *event = std::get_if<input::Event>(&record->event)) {
+      if (resizing_ && event->type != input::Type::reset) {
+        reject(request, 8);
+        continue;
+      }
+      if (!input_state_.apply(*event, sink, static_cast<std::uint16_t>(gdi->width),
+                              static_cast<std::uint16_t>(gdi->height)))
+        throw ProtocolError();
+      if (event->type == input::Type::reset && !reset_touch()) {
+        pending_reset_ = request;
+        reset_deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        publish_touch();
+        return;
+      }
+    } else {
+      const auto &touch = std::get<touch::Request>(record->event);
+      if (resizing_ || touch.generation != display_generation_) {
+        reject(request, 8);
+        continue;
+      }
+#ifdef CHANNEL_RDPEI_CLIENT
+      if (!touch_contacts_ || !touch_contacts_->ready()) {
+        reject(request, 10);
+        continue;
+      }
+      const auto result =
+          touch_contacts_->apply(touch.event, static_cast<std::uint32_t>(gdi->width),
+                                 static_cast<std::uint32_t>(gdi->height));
+      if (result == touch::Result::failed)
+        throw ProtocolError();
+      if (result != touch::Result::accepted) {
+        reject(request, result == touch::Result::invalid ? 11
+                        : result == touch::Result::full  ? 6
+                                                         : 10);
+        continue;
+      }
+#else
+      reject(request, 10);
+      continue;
+#endif
+    }
+    send_({Kind::input_ack, request, {}});
+  }
+  publish_touch();
 }
 void Connection::publish_display() {
 #ifndef CHANNEL_DISP_CLIENT
@@ -585,6 +743,8 @@ void Connection::resize_pending(bool ending) {
       reply(queued_resize_, ResizeResult::disconnected);
     } else {
       // Releases complete before sending layout; paused input is never replayed afterwards.
+      if (!reset_touch() || pending_reset_)
+        return;
       if (!input_state_.release([this](const auto &event) { return send_input(event); }))
         throw ProtocolError();
       queued_resize_->generation = display_generation_;
@@ -706,6 +866,8 @@ void Connection::run() noexcept {
     // after context creation/configuration, on the synchronous RDP dispatch thread.
     if (touch_provider.bind(*context_, touch_registration_) != CHANNEL_RC_OK)
       throw ProtocolError();
+    if (config_->touch)
+      touch_contacts_ = std::make_unique<touch::Contacts>(touch_registration_);
 #endif
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
@@ -745,6 +907,7 @@ void Connection::run() noexcept {
       connected_ = true;
       state(RdpState::connected);
       publish_display();
+      service_touch();
       bool healthy = true;
       while (!stopping_ && !freerdp_shall_disconnect_context(context_.get())) {
         std::array<HANDLE, 64> events{};
@@ -806,6 +969,7 @@ void Connection::run() noexcept {
     connected_ = false;
     try {
       resize_pending(true);
+      input_pending(true);
     } catch (...) {
     }
     if (context_->gdi) {
@@ -825,6 +989,7 @@ void Connection::run() noexcept {
 #ifdef CHANNEL_RDPEI_CLIENT
   // Retire delegated input resources before the RDP thread exits. Context may be
   // freed later on the owner thread; only the wrapper's published no-op survives.
+  touch_contacts_.reset();
   if (touch_provider.close() != CHANNEL_RC_OK) {
     reason_ = RdpError::protocol;
     state(RdpState::failed, RdpError::protocol);

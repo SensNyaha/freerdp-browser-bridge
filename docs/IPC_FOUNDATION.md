@@ -15,7 +15,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
 | ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue full, 8 input paused during display transition, 9 Unicode input not negotiated |
-| CONFIGURE | 8 | connection schema v1/v2/v3 below; maximum 2048 bytes |
+| CONFIGURE | 8 | connection schema v1/v2/v3/v4 below; maximum 2048 bytes |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
 | SECRET_ACK | 11 | empty |
@@ -38,13 +38,14 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | DISPLAY_RESIZE | 28 | exactly u16 width, u16 height; one pending request per worker |
 | DISPLAY_RESIZE_RESULT | 29 | u16 result, u16 reserved=0; echoes DISPLAY_RESIZE requestId |
 | INPUT_TEXT | 30 | 2..512 bytes, even length, UTF-16BE without BOM; [text contract](INPUT.md#committed-unicode-text) |
-| INPUT_TOUCH | 31 | exactly 16 bytes; codec/framing foundation only, dispatch unsupported; [touch layout](#touch-input-codec-foundation) |
+| INPUT_TOUCH | 31 | 16-byte v1 codec or 24-byte v2 generation-bound request; [touch layout](#touch-input-codec-foundation) |
+| TOUCH_UPDATE | 32 | exactly 32 bytes; unsolicited readiness metadata, requestId=0 |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
 bit 5 experimental basic input, bit 6 pipeline diagnostics, bit 7 experimental cursor,
 bit 8 experimental configurable video quality, bit 9 experimental Display Control IPC,
-bit 10 experimental Unicode text input).
+bit 10 experimental Unicode text input, bit 11 experimental private touch input).
 Then seven strings: bridgeVersion, gitCommit, freeRdpVersion, targetFreeRdpVersion, os, arch,
 transport. Each string has u16 byte length followed by UTF-8 bytes, maximum 256 bytes.
 Empty freeRdpVersion means the worker is not linked to FreeRDP. Linked libraries alone never
@@ -55,6 +56,8 @@ not remote negotiation or completed browser resize acceptance.
 Bit 10 likewise does not establish server Unicode negotiation or text acceptance.
 Node sends kind 30 only with bit 10; absent bits decode false for older peers.
 Readers rejecting unknown HELLO bits must be upgraded together with the worker.
+Bit 11 requires bits 2 and 5 and is set only with CHANNEL_RDPEI_CLIENT. It claims
+private dispatch implementation, not actual server/device acceptance or usable RDP.
 No trailing bytes or unknown mandatory bits are permitted.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers
@@ -93,15 +96,13 @@ experimental connection slice, distinct from full usable browser RDP.
 
 ## Touch input codec foundation
 
-The additional `INPUT_TOUCH` record (kind **31**) has a fixed **16-byte** payload;
-its header rejects every other length before allocation. This is an isolated
-codec/framing foundation. Current workers do not advertise touch support or
-dispatch this request: sending it is rejected as unsupported lifecycle state
-(ERROR 3, worker exits), not silently mapped to mouse input. No current Node worker
-API or browser control command sends it. Older readers reject this kind; future
-dispatch must be separately capability gated before any request is transmitted.
+`INPUT_TOUCH` (kind **31**) accepts exactly **16 or 24 bytes**, checked before
+allocation. The historical 16-byte v1 codec below remains valid for parsing but
+is refused by connection-core dispatch with nonfatal ERROR 10. Foundation workers
+still refuse it with lifecycle ERROR 3 and exit. Dispatch requires HELLO bit 11,
+session opt-in, current generation and negotiated contact-owner readiness.
 
-Touch payload offsets, network byte order:
+Version 1 touch payload offsets, network byte order:
 
 | Offset | Bytes | Meaning |
 |---:|---:|---|
@@ -255,3 +256,34 @@ One expensive FreeRDP check can exceed the time budget. Media/input wakeups are 
 from the ready test; input is serviced before and after the bounded batch. Capture then
 samples the latest GDI state. This coalesces already received tiles without waiting for
 network packets that have not arrived, and does not drop transmitted predictive units.
+
+## Generation-bound touch dispatch (Iteration 29)
+
+CONFIGURE v4 retains v3's quality fields and u32 flags; bit 0 is dynamic resolution,
+bit 1 is input.touch. No other flags are accepted. v3 still permits only bit 0.
+Node sends v4 only for explicit touch=true and HELLO bit 11; absent opt-in preserves
+v1/v2/v3 compatibility. Opt-in against an older worker fails before secrets.
+
+INPUT_TOUCH v2 is exactly 24 bytes: the v1 fields above, schema=2, and nonzero u64
+display generation at offset 16. Its generation must match current GDI state.
+Legacy v1 never causes contact dispatch. ERROR 10 means touch unavailable, ERROR 11
+means invalid contact transition, ERROR 6 means full, ERROR 8 means stale display.
+These semantic failures preserve the worker; malformed framing remains fatal.
+
+TOUCH_UPDATE is exactly 32 bytes: u16 schema=1 at 0, u8 enabled at 2, zero byte at 3,
+u64 nonzero revision at 4, u64 nonzero generation at 12, u16 width at 20, u16 height
+at 22, u16 maxContacts at 24, u16 availability at 26, u32 zero at 28. Dimensions
+are 1..7680 by 1..4320. Availability: 0 unavailable, 1 ready, 2 suspended,
+3 draining, 4 handshake, 5 incompatible. maxContacts is 1..10 only when ready and
+zero otherwise. Disabled implies unavailable. Revisions strictly increase;
+generation cannot decrease and geometry cannot change within a generation.
+
+The RDP thread owns contact transitions and a mixed FIFO of 64 fixed records;
+queue storage is allocated once, not from a peer-specified size. Physical reset
+is a contact terminal-drain barrier. Failure tears down instead of replaying
+uncertain input. Opt-in Node reset requests have a minimum 3.5-second IPC deadline
+covering the owner's two-second reset deadline. Resize drains old contacts before
+layout; a GDI resize immediately holds gestures. Graceful teardown attempts cancel
+before disconnect, without claiming remote application release acknowledgement.
+WorkerProcess.touch, its touch event and sendTouch(event,generation) are private
+experimental APIs; public control/browser wiring follows in the next block.

@@ -43,6 +43,7 @@ export enum Kind {
   DisplayResizeResult = 29,
   InputText = 30,
   InputTouch = 31,
+  TouchUpdate = 32,
 }
 
 export interface Packet {
@@ -106,7 +107,9 @@ function payloadLimit(kind: number): number {
     case Kind.InputText:
       return 512;
     case Kind.InputTouch:
-      return TOUCH_INPUT_BYTES;
+      return 24;
+    case Kind.TouchUpdate:
+      return 32;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:
@@ -139,12 +142,14 @@ export function decodeHeader(header: Buffer): {
       Kind.FrameAvc,
       Kind.CursorUpdate,
       Kind.InputText,
+      Kind.InputTouch,
     ].includes(kind) &&
       length !== payloadLimit(kind)) ||
     (kind === Kind.Frame && length < 24) ||
     (kind === Kind.FrameAvc && length < 28) ||
     (kind === Kind.CursorUpdate && length < CURSOR_METADATA_BYTES) ||
-    (kind === Kind.InputText && (length === 0 || length % 2 !== 0))
+    (kind === Kind.InputText && (length === 0 || length % 2 !== 0)) ||
+    (kind === Kind.InputTouch && length !== TOUCH_INPUT_BYTES && length !== 24)
   ) {
     throw new ProtocolError();
   }
@@ -244,6 +249,7 @@ export interface WorkerBuild {
     cursor: boolean;
     videoQuality: boolean;
     displayControl: boolean;
+    touchInput: boolean;
   };
   bridgeVersion: string;
   gitCommit: string;
@@ -259,10 +265,10 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~2047) !== 0 ||
+    (capabilities & ~4095) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 2040) !== 0 && (capabilities & 4) === 0) ||
-    ((capabilities & 1024) !== 0 && (capabilities & 32) === 0)
+    ((capabilities & 4088) !== 0 && (capabilities & 4) === 0) ||
+    ((capabilities & 3072) !== 0 && (capabilities & 32) === 0)
   )
     throw new ProtocolError();
   let offset = 4;
@@ -304,6 +310,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       cursor: Boolean(capabilities & 128),
       videoQuality: Boolean(capabilities & 256),
       displayControl: Boolean(capabilities & 512),
+      touchInput: Boolean(capabilities & 2048),
     },
     bridgeVersion,
     gitCommit,
@@ -407,6 +414,7 @@ export interface ConnectionSettings {
   connectMs: number;
   tcpAckMs: number;
   dynamicResolution?: boolean;
+  touch?: boolean;
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -418,11 +426,12 @@ export interface ConnectionSettings {
 /** Versioned non-secret connection settings. Passwords use a separate message class. */
 export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   if (
-    c.dynamicResolution !== undefined &&
-    typeof c.dynamicResolution !== 'boolean'
+    (c.dynamicResolution !== undefined &&
+      typeof c.dynamicResolution !== 'boolean') ||
+    (c.touch !== undefined && typeof c.touch !== 'boolean')
   )
     throw new ProtocolError();
-  const schema = c.dynamicResolution ? 3 : c.videoQuality ? 2 : 1;
+  const schema = c.touch ? 4 : c.dynamicResolution ? 3 : c.videoQuality ? 2 : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -475,7 +484,7 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   fixed.writeUInt32BE(c.connectMs, 12);
   fixed.writeUInt32BE(c.tcpAckMs, 16);
   parts.push(fixed);
-  if (c.videoQuality || schema === 3) {
+  if (c.videoQuality || schema >= 3) {
     const q = c.videoQuality ?? {
       h264Fps: 30,
       jpegFps: 20,
@@ -509,7 +518,10 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     media.writeUInt32BE(q.maxBitrate, 8);
     parts.push(media);
   }
-  if (schema === 3) parts.push(Buffer.from([0, 0, 0, 1]));
+  if (schema >= 3)
+    parts.push(
+      Buffer.from([0, 0, 0, (c.dynamicResolution ? 1 : 0) | (c.touch ? 2 : 0)]),
+    );
   return Buffer.concat(parts);
 }
 

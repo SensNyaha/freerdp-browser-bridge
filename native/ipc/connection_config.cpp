@@ -64,7 +64,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema != 1 && schema != 2 && schema != 3)
+  if (schema < 1 || schema > 4)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -93,11 +93,12 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
         config.max_bitrate < config.target_bitrate || config.max_bitrate > 20000000)
       throw ProtocolError();
   }
-  if (schema == 3) {
+  if (schema >= 3) {
     const auto flags = number(4);
-    if (flags > 1)
+    if (flags > (schema == 3 ? 1U : 3U))
       throw ProtocolError();
-    config.dynamic_resolution = flags != 0;
+    config.dynamic_resolution = (flags & 1U) != 0;
+    config.touch = (flags & 2U) != 0;
   }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),

@@ -82,11 +82,14 @@ std::vector<std::uint8_t> build_payload() {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
+  unsigned capabilities = 1533;
 #ifdef CHANNEL_DISP_CLIENT
-  append_be(bytes, 2045, 2);
-#else
-  append_be(bytes, 1533, 2);
+  capabilities |= 512;
 #endif
+#ifdef CHANNEL_RDPEI_CLIENT
+  capabilities |= 2048;
+#endif
+  append_be(bytes, capabilities, 2);
 #else
   append_be(bytes, 1, 2);
 #endif
@@ -180,6 +183,10 @@ int run() {
           connection.enqueue_input(header.request_id, payload, header.kind == Kind::input_text);
       if (code != 0)
         error(header.request_id, code);
+    } else if (header.kind == Kind::input_touch && ready) {
+      const auto code = connection.enqueue_touch(header.request_id, payload);
+      if (code != 0)
+        error(header.request_id, code);
     } else if (header.kind == Kind::pipeline_stats && ready) {
       send({Kind::pipeline_stats_ack, header.request_id, connection.pipeline_stats()});
     } else if (header.kind == Kind::display_resize && ready) {
@@ -218,6 +225,11 @@ int main(int argc, char **argv) {
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"
+#ifdef CHANNEL_RDPEI_CLIENT
+                 "\"touchInput\":true,"
+#else
+                 "\"touchInput\":false,"
+#endif
                  "\"pipelineStats\":true,\"cursor\":true,\"videoQuality\":true,"
 #ifdef CHANNEL_DISP_CLIENT
                  "\"displayControl\":true},"
@@ -227,6 +239,7 @@ int main(int argc, char **argv) {
 #else
                  "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
                  "\"unicodeInput\":false,"
+                 "\"touchInput\":false,"
                  "\"pipelineStats\":false,\"cursor\":false,\"videoQuality\":false,"
                  "\"displayControl\":false},"
 #endif

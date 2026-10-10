@@ -59,6 +59,9 @@ type SessionCreate = {
     deviceScalePercent?: 100 | 140 | 180;
     orientation?: 0 | 90 | 180 | 270;
   };
+  input?: {
+    touch?: boolean;           // default false; experimental RDPEI opt-in, not readiness
+  };
   quality?: {
     profile?: 'low-bandwidth' | 'balanced' | 'lan' | 'custom';
     maxFps?: number;            // 1..60

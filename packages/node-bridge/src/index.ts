@@ -23,6 +23,10 @@ import {
   decodePipelineStats,
   decodeCursorUpdate,
   decodeDisplayState,
+  decodeTouchState,
+  encodeTouchRequest,
+  type TouchState,
+  type TouchInput,
   encodeDisplayResize,
   decodeDisplayResizeResult,
   type DisplayState,
@@ -105,6 +109,8 @@ export class WorkerProcess extends EventEmitter {
     | { width: number; height: number; generation: bigint }
     | undefined;
   private dynamicResolution = false;
+  private touchEnabled = false;
+  private touchState: TouchState | undefined;
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
@@ -280,6 +286,10 @@ export class WorkerProcess extends EventEmitter {
         decodeDisplayState(packet.payload);
         return;
       }
+      if (packet.kind === Kind.TouchUpdate) {
+        decodeTouchState(packet.payload);
+        return;
+      }
     }
     if (
       packet.requestId === 0n &&
@@ -291,6 +301,8 @@ export class WorkerProcess extends EventEmitter {
         this.rdpConnected = value.state === 'connected';
         if (['failed', 'closed'].includes(value.state))
           this.displayState = undefined;
+        if (['failed', 'closed'].includes(value.state))
+          this.touchState = undefined;
         if (value.state !== 'awaiting-user') this.certificatePrompt = undefined;
         this.emit('rdp-state', value);
         return;
@@ -327,6 +339,27 @@ export class WorkerProcess extends EventEmitter {
         return;
       }
       if (
+        packet.kind === Kind.TouchUpdate &&
+        this.report?.capabilities.touchInput &&
+        this.rdpConnected
+      ) {
+        const update = decodeTouchState(packet.payload);
+        const previous = this.touchState;
+        if (
+          update.enabled !== this.touchEnabled ||
+          (previous &&
+            (update.revision <= previous.revision ||
+              update.generation < previous.generation ||
+              (update.generation === previous.generation &&
+                (update.width !== previous.width ||
+                  update.height !== previous.height))))
+        )
+          throw new WorkerError('IPC_UNEXPECTED_EVENT');
+        this.touchState = update;
+        this.emit('touch', { ...update });
+        return;
+      }
+      if (
         packet.kind === Kind.CursorUpdate &&
         this.report?.capabilities.cursor
       ) {
@@ -355,7 +388,7 @@ export class WorkerProcess extends EventEmitter {
     const pending = this.pending.get(packet.requestId);
     if (pending?.expected === Kind.InputAck && packet.kind === Kind.Error) {
       const code = packet.payload.readUInt32BE(0);
-      if (code !== 5 && code !== 6 && code !== 8 && code !== 9)
+      if (![5, 6, 8, 9, 10, 11].includes(code))
         throw new WorkerError('IPC_UNEXPECTED_REPLY');
       clearTimeout(pending.timer);
       this.pending.delete(packet.requestId);
@@ -367,7 +400,11 @@ export class WorkerProcess extends EventEmitter {
               ? 'INPUT_QUEUE_FULL'
               : code === 8
                 ? 'INPUT_DISPLAY_TRANSITION'
-                : 'INPUT_NOT_IMPLEMENTED',
+                : code === 10
+                  ? 'TOUCH_UNAVAILABLE'
+                  : code === 11
+                    ? 'TOUCH_INVALID_TRANSITION'
+                    : 'INPUT_NOT_IMPLEMENTED',
         ),
       );
       return;
@@ -471,6 +508,9 @@ export class WorkerProcess extends EventEmitter {
         text ? Kind.InputText : Kind.Input,
         Kind.InputAck,
         payload,
+        event.type === 'reset' && this.touchEnabled
+          ? Math.max(3500, this.options.requestTimeoutMs)
+          : this.options.requestTimeoutMs,
       );
     } finally {
       if (text) payload.fill(0);
@@ -481,6 +521,22 @@ export class WorkerProcess extends EventEmitter {
       throw new WorkerError('DIAGNOSTICS_NOT_IMPLEMENTED');
     const reply = await this.request(Kind.PipelineStats, Kind.PipelineStatsAck);
     return decodePipelineStats(reply.payload);
+  }
+  get touch(): TouchState | undefined {
+    return this.touchState ? { ...this.touchState } : undefined;
+  }
+  async sendTouch(event: TouchInput, generation: bigint): Promise<void> {
+    const payload = encodeTouchRequest(event, generation);
+    if (!this.report?.capabilities.touchInput)
+      throw new WorkerError('INPUT_NOT_IMPLEMENTED');
+    if (!this.rdpConnected || this.status !== 'ready')
+      throw new WorkerError('INPUT_NOT_CONNECTED');
+    const state = this.touchState;
+    if (!state?.enabled || state.availability !== 'ready')
+      throw new WorkerError('TOUCH_UNAVAILABLE');
+    if (generation !== state.generation)
+      throw new WorkerError('INPUT_DISPLAY_TRANSITION');
+    await this.request(Kind.InputTouch, Kind.InputAck, payload);
   }
 
   /** A copy of the last server-observed desktop. No browser attachment authority is implied. */
@@ -577,6 +633,7 @@ export class WorkerProcess extends EventEmitter {
         config,
         this.report.capabilities.videoQuality,
         this.report.capabilities.displayControl,
+        this.report.capabilities.touchInput,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -594,6 +651,7 @@ export class WorkerProcess extends EventEmitter {
       }
       this.connectionRequested = true;
       this.dynamicResolution = config.display?.dynamicResolution === true;
+      this.touchEnabled = config.input?.touch === true;
       await this.request(Kind.Connect, Kind.ConnectAck);
     } finally {
       delete config.auth.password;
@@ -660,6 +718,7 @@ export class WorkerProcess extends EventEmitter {
   private async cleanup(): Promise<void> {
     this.cursorState = undefined;
     this.displayState = undefined;
+    this.touchState = undefined;
     if (this.directory) {
       await rm(this.directory, {
         recursive: true,
@@ -676,6 +735,7 @@ function connectionPayload(
   config: SessionCreate,
   videoQuality: boolean,
   displayControl: boolean,
+  touchInput: boolean,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -688,6 +748,7 @@ function connectionPayload(
     'display',
     'timeouts',
     'quality',
+    'input',
   ]);
   allowed(config.target, ['host', 'port']);
   allowed(config.auth, ['username', 'domain', 'password', 'mode']);
@@ -698,6 +759,9 @@ function connectionPayload(
     'colorDepth',
     'dynamicResolution',
   ]);
+  allowed(config.input, ['touch']);
+  if (config.input?.touch && !touchInput)
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   if (config.display?.dynamicResolution && !displayControl)
     throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   allowed(config.timeouts, ['connectMs', 'tcpAckMs']);
@@ -743,6 +807,7 @@ function connectionPayload(
     connectMs: config.timeouts?.connectMs ?? 10000,
     tcpAckMs: config.timeouts?.tcpAckMs ?? 10000,
     ...(config.display?.dynamicResolution ? { dynamicResolution: true } : {}),
+    ...(config.input?.touch ? { touch: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),
   });
 }

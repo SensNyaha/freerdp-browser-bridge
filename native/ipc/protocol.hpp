@@ -40,7 +40,8 @@ enum class Kind : std::uint16_t {
   display_resize = 28,
   display_resize_result = 29,
   input_text = 30,
-  input_touch = 31
+  input_touch = 31,
+  touch_update = 32
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

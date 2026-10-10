@@ -517,3 +517,24 @@ the request; no Node worker method or browser command sends it. Future dispatch
 must check session opt-in, current lease/display generation and negotiated owner
 readiness before touching FreeRDP, and reset/drain on lease/resize/focus loss.
 Actual remote/physical touch remains open.
+
+### Opt-in worker touch dispatch
+
+[Iteration 29](ITERATION_029.md) activates the preceding isolated components under
+CHANNEL_RDPEI_CLIENT and input.touch=true. HELLO advertises an experimental private
+capability, distinct from negotiated readiness. Versioned IPC carries the observed
+display generation; the RDP thread alone validates and dispatches contacts through
+the bounded owner. Legacy 16-byte requests are refused without dispatch.
+
+Physical and touch input share a fixed 64-record FIFO. Reset waits for terminal
+ownership to drain; stale generations and unavailable/suspended channels cannot
+submit gestures. Layout submission waits for old contact cleanup. Spontaneous GDI
+resize holds input until cleanup completes. Drain/write/API failure closes the
+connection without gesture replay. The owner is destroyed on the RDP thread before
+addin retirement, and the wrapper survives subsequent context destruction.
+
+This supersedes the historical no-capability statements in Iterations 27/28.
+Actual XRDP reported RDPEI ready with ten contacts after handshake; no contact was
+sent by that inventory probe. Public lease/browser capture, physical touch and
+remote application acceptance remain separate gates. Timestamp-remoting/v1.0,
+same-plugin reopening and resource/reassembly audits remain open.

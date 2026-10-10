@@ -58,3 +58,78 @@ export function decodeTouchInput(payload: Buffer): TouchInput {
   if (!validTouchInput(event)) throw new ProtocolError();
   return event;
 }
+export function encodeTouchRequest(
+  event: TouchInput,
+  generation: bigint,
+): Buffer {
+  if (
+    typeof generation !== 'bigint' ||
+    generation <= 0n ||
+    generation > 0xffffffffffffffffn
+  )
+    throw new ProtocolError();
+  const record = encodeTouchInput(event);
+  const p = Buffer.alloc(24);
+  record.copy(p);
+  p.writeUInt16BE(2, 0);
+  p.writeBigUInt64BE(generation, 16);
+  return p;
+}
+export interface TouchState {
+  revision: bigint;
+  generation: bigint;
+  width: number;
+  height: number;
+  maxContacts: number;
+  enabled: boolean;
+  availability:
+    | 'unavailable'
+    | 'ready'
+    | 'suspended'
+    | 'draining'
+    | 'handshake'
+    | 'incompatible';
+}
+export function decodeTouchState(p: Buffer): TouchState {
+  if (
+    p.length !== 32 ||
+    p.readUInt16BE(0) !== 1 ||
+    p[2]! > 1 ||
+    p[3] !== 0 ||
+    p.readUInt32BE(28) !== 0
+  )
+    throw new ProtocolError();
+  const availability = (
+    [
+      'unavailable',
+      'ready',
+      'suspended',
+      'draining',
+      'handshake',
+      'incompatible',
+    ] as const
+  )[p.readUInt16BE(26)];
+  const state = {
+    revision: p.readBigUInt64BE(4),
+    generation: p.readBigUInt64BE(12),
+    width: p.readUInt16BE(20),
+    height: p.readUInt16BE(22),
+    maxContacts: p.readUInt16BE(24),
+    enabled: p[2] === 1,
+  };
+  if (
+    !availability ||
+    !state.revision ||
+    !state.generation ||
+    !state.width ||
+    state.width > 7680 ||
+    !state.height ||
+    state.height > 4320 ||
+    (!state.enabled && availability !== 'unavailable') ||
+    (availability === 'ready'
+      ? state.maxContacts < 1 || state.maxContacts > 10
+      : state.maxContacts !== 0)
+  )
+    throw new ProtocolError();
+  return { ...state, availability };
+}

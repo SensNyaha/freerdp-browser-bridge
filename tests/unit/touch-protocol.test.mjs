@@ -10,6 +10,8 @@ import {
   decodeHeader,
   PacketDecoder,
   ProtocolError,
+  encodeTouchRequest,
+  decodeTouchState,
 } from '../../packages/protocol/dist/index.js';
 
 const canonical = Buffer.from('00010100010203040000123400000567', 'hex');
@@ -38,6 +40,38 @@ test('touch: independent fixed v1 network-order vectors and four action values',
   const literal = Buffer.from('000104007fffffff00001dff000010df', 'hex');
   assert.deepEqual(encodeTouchInput(high), literal);
   assert.deepEqual(decodeTouchInput(literal), high);
+});
+test('touch v2: generation ownership and readiness metadata use independent vectors', () => {
+  assert.equal(
+    encodeTouchRequest(event, 3n).toString('hex'),
+    '000201000102030400001234000005670000000000000003',
+  );
+  for (const generation of [0n, -1n, 0x10000000000000000n, 3])
+    assert.throws(() => encodeTouchRequest(event, generation), ProtocolError);
+  const p = Buffer.from(
+    '000101000000000000000001000000000000000307800438000a000100000000',
+    'hex',
+  );
+  assert.deepEqual(decodeTouchState(p), {
+    revision: 1n,
+    generation: 3n,
+    width: 1920,
+    height: 1080,
+    maxContacts: 10,
+    enabled: true,
+    availability: 'ready',
+  });
+  for (const offset of [0, 2, 3, 20, 22, 24, 26, 28]) {
+    const bad = Buffer.from(p);
+    bad[offset] = 255;
+    assert.throws(() => decodeTouchState(bad), ProtocolError);
+  }
+  for (let n = 0; n < 32; n++)
+    assert.throws(() => decodeTouchState(p.subarray(0, n)), ProtocolError);
+  const suspended = Buffer.from(p);
+  suspended.writeUInt16BE(0, 24);
+  suspended.writeUInt16BE(2, 26);
+  assert.equal(decodeTouchState(suspended).availability, 'suspended');
 });
 
 test('touch: invalid types, shape, signed IDs and coordinates fail before record allocation', () => {

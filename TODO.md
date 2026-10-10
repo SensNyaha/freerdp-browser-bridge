@@ -9,7 +9,7 @@ instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/a
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
-## Implementation status — 2026-10-09
+## Implementation status — 2026-10-10
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
@@ -25,8 +25,8 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 129/129 Node tests;
-  CTest/Catch2: 24 IPC/input/state cases / 473 assertions, 2 AVC cases / 19 assertions,
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 133/133 Node tests;
+  CTest/Catch2: 25 IPC/input/state cases / 478 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -223,6 +223,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Independent remote cursor display now passes XRDP/Edge; measured latency and desktop soak gates remain open.
 - [~] IN PROGRESS — Native pressed-state reset and retry, blur/disposal, transport loss and stale lease cancellation verified. Graceful close resets input; actual remote no-stuck-key gate pending.
 - [~] IN PROGRESS — Native state, public RDPEI projection/registration and observable handshake gate implemented. Terminal IDs remain owned through transport writes; suspended native UP records drain before readiness in the RDPEI 1.0.1+/disabled-timestamp profile. Scoped public provider/retirement now follows Connection's RDP-thread lifecycle. Pure/public-call and actual-addin/fake-DVC tests pass. Contact dispatch/reset/resize/control wiring, timestamp-remoting/v1.0 compatibility, bounded IPC, browser capture and actual remote/physical touch remain open. Same-plugin DVC reopening is unimplemented. No touch capability is advertised. [Contract](docs/INPUT.md#terminal-contact-ownership-and-drain), [state](docs/ITERATION_023.md), [transport](docs/ITERATION_024.md), [registration](docs/ITERATION_025.md), [drain](docs/ITERATION_026.md), [provider/lifetime](docs/ITERATION_027.md).
+- [~] IN PROGRESS — Opt-in worker/private Node touch dispatch, generation/readiness checks, fixed mixed FIFO and reset/resize drain are implemented. Native, codec and fake-worker tests pass; actual XRDP reports RDPEI ready with ten contacts, without sending touch. This supersedes the historical no-capability statement above. Public control/browser wiring, physical/remote acceptance and compatibility/resource audits remain open. [Evidence](docs/ITERATION_029.md), [contract](docs/IPC_FOUNDATION.md#generation-bound-touch-dispatch-iteration-29).
 - [ ] Pen capability placeholder/implementation if supported.
 
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.

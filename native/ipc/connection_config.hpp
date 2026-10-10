@@ -11,6 +11,7 @@ struct ConnectionConfig {
   std::uint8_t h264_fps = 30, jpeg_fps = 20, jpeg_quality = 80;
   std::uint32_t target_bitrate = 4000000, max_bitrate = 4000000;
   bool dynamic_resolution = false;
+  bool touch = false;
 };
 ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes);
 void validate_secret(std::span<const std::uint8_t> bytes);

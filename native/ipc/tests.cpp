@@ -142,6 +142,20 @@ TEST_CASE("connection v3 explicit dynamic-resolution flag with strict legacy com
   bytes.push_back(0);
   REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
 }
+TEST_CASE("connection v4 explicit touch opt-in preserves legacy flags and rejects unknown bits") {
+  auto bytes = connection;
+  bytes[1] = 4;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 2});
+  REQUIRE(decode_connection_config(bytes).touch);
+  REQUIRE_FALSE(decode_connection_config(bytes).dynamic_resolution);
+  bytes.back() = 3;
+  REQUIRE(decode_connection_config(bytes).dynamic_resolution);
+  bytes.back() = 4;
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  bytes.back() = 2;
+  bytes[1] = 3;
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+}
 TEST_CASE("display IPC independent vectors and exact class bounds before allocation") {
   const DisplayUpdate update{1, 2, {1920, 1080}, true, true, {3840, 2160}, 3840U * 2160U};
   const std::vector<std::uint8_t> expected{0,    0, 0, 0,    0, 0, 0,    1,    0,    0, 0,
