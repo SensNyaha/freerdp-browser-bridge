@@ -1,3 +1,4 @@
+#include "audio.hpp"
 #include "connection_config.hpp"
 #include "display.hpp"
 #include "input.hpp"
@@ -21,6 +22,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           validate_secret(payload);
         else if (header.kind == Kind::input)
           (void)bridge::input::decode(payload);
+        else if (header.kind == Kind::audio_config)
+          (void)audio::decode_config(payload);
+        else if (header.kind == Kind::audio_pcm)
+          (void)audio::decode_packet(payload);
         else if (header.kind == Kind::input_text)
           (void)bridge::input::decode_text(payload);
         else if (header.kind == Kind::input_touch) {

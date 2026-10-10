@@ -1,4 +1,5 @@
 #include "protocol.hpp"
+#include "audio.hpp"
 #include "cursor.hpp"
 #include "display.hpp"
 #include <algorithm>
@@ -70,6 +71,10 @@ static std::uint32_t limit(Kind kind) {
     return 24;
   case Kind::touch_update:
     return 32;
+  case Kind::audio_config:
+    return static_cast<std::uint32_t>(audio::config_bytes);
+  case Kind::audio_pcm:
+    return static_cast<std::uint32_t>(audio::packet_bytes);
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);
   }

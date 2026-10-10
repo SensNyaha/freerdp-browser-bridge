@@ -40,6 +40,8 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | INPUT_TEXT | 30 | 2..512 bytes, even length, UTF-16BE without BOM; [text contract](INPUT.md#committed-unicode-text) |
 | INPUT_TOUCH | 31 | 16-byte v1 codec or 24-byte v2 generation-bound request; [touch layout](#touch-input-codec-foundation) |
 | TOUCH_UPDATE | 32 | exactly 32 bytes; unsolicited readiness metadata, requestId=0 |
+| AUDIO_CONFIG | 33 | exactly 20 bytes; PCM codec foundation, not emitted by current workers |
+| AUDIO_PCM | 34 | exactly 3864 bytes; PCM metadata + samples, not emitted by current workers |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
@@ -62,6 +64,12 @@ private dispatch implementation, not actual server/device acceptance or usable R
 including legacy peers. No pen wire bit or command is introduced. Owned RDPEI
 clears the public multi-pen client feature mask before server negotiation.
 No trailing bytes or unknown mandatory bits are permitted.
+
+Kinds 33/34 add the isolated [PCM codec foundation](AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation):
+fixed 20-byte AUDIO_CONFIG and 3,864-byte AUDIO_PCM with schema/epoch/frame/clock
+validation. Headers enforce exact lengths before allocation. They introduce no
+HELLO bit and are not emitted or accepted as client requests by current workers;
+worker/Node activation and explicit peer capability gating remain future work.
 
 Worker accepts HELLO exactly once, then HEARTBEAT and SHUTDOWN. Connection-core workers
 also accept CONFIGURE once, SECRET once after configuration, and CONNECT once after SECRET.

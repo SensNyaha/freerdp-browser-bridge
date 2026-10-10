@@ -262,6 +262,15 @@ Define one format and do not mix Annex-B/AVCC silently. Recommendation: `VIDEO_C
 
 Opus mode uses complete Opus packets with timestamps. PCM mode uses interleaved signed 16-bit little-endian frames and explicit sample-rate/channel config.
 
+The first PCM schema is specified in [AUDIO_PCM.md](docs/AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation).
+It uses audio stream ID 3, separate from video 1 and cursor 2: AUDIO_CONFIG has
+20 bytes describing schema 1, PCM codec 2, S16LE stereo 48 kHz, 960-frame packets
+and a nonzero stream epoch. AUDIO_PACKET has exactly 3,840 sample bytes (20 ms),
+with timestampUs unchanged from the worker and DISCONTINUITY flag 0x0002 on reset
+or attachment. Private metadata is not prepended to the public sample payload.
+This codec is implemented as an isolated native/TypeScript foundation; current
+workers and the harness do not yet activate audio output. Opus remains open.
+
 ## 5. Attach semantics
 
 One session may support multiple read-only viewers later, but v1 has one controlling browser attachment by default. A second attachment is rejected or marked view-only according to policy. Input authority is explicit.

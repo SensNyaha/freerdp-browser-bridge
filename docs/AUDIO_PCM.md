@@ -103,6 +103,62 @@ missed intervals, wrap, monotonic/overflow rejection, reset and a virtual-minute
 drift test, plus actual linked RDPSND with simulated SVC feeding the packetizer.
 Audible browser/server audio, microphone and <150 ms LAN acceptance remain open.
 
+## PCM IPC/RWB1 codec foundation
+
+`native/ipc/audio.*` and `packages/protocol/src/audio.ts` define the same bounded
+schema. Integers are network order except raw interleaved S16LE samples. This is
+codec preparation: no new HELLO capability, configuration flag, worker dispatch,
+public server streaming or harness playback is enabled. Current workers reject
+these incoming worker-to-parent classes and do not emit them. Future activation
+must explicitly negotiate support; older peers cannot receive unadvertised audio.
+
+RWI1 AUDIO_CONFIG (kind 33) is exactly 20 bytes:
+
+| Offset | Bytes | Value |
+| --- | --- | --- |
+| 0 | 1 | schema 1 |
+| 1 | 1 | codec 2, PCM; codec 1 reserved for Opus |
+| 2 | 1 | channels 2 |
+| 3 | 1 | sample format 1, S16LE |
+| 4 | 4 | sample rate 48,000 |
+| 8 | 2 | frames per packet 960 |
+| 10 | 2 | reserved zero |
+| 12 | 8 | nonzero stream epoch |
+
+RWI1 AUDIO_PCM (kind 34) is exactly 3,864 bytes:
+
+| Offset | Bytes | Value |
+| --- | --- | --- |
+| 0 | 1 | schema 1 |
+| 1 | 1 | flags 0 or 2 (discontinuity) |
+| 2 | 2 | real frames 0..960 |
+| 4 | 2 | silence frames 0..960; sum with real frames exactly 960 |
+| 6 | 2 | reserved zero |
+| 8 | 8 | nonzero stream epoch matching the current config |
+| 16 | 8 | worker timestampUs, at most UINT64_MAX − 20,000 |
+| 24 | 3,840 | stereo S16LE, real frames followed by exactly zero silence |
+
+Exact class lengths are checked in native/Node envelope parsers before body
+allocation. Body decoders reject profile/version/reserved/epoch/count/clock and
+silence-tail inconsistencies, borrow validated PCM storage and allocate no sample
+conversion buffer. Encoders validate before copying into fixed-size output.
+
+RWB1 AUDIO_CONFIG type 3 uses the same 20-byte config payload, streamId 3,
+DISCONTINUITY flag 2 and the next packet's worker timestamp. AUDIO_PACKET type 4
+uses only the 3,840 sample bytes, streamId 3 and flags 0/2. Sequences are unsigned
+32-bit, independent of video/cursor; a config+packet pair requires room for both.
+TypeScript encoding checks matching epochs before creating any records, copies
+borrowed bytes and preserves timestamps. Attachment adds discontinuity even when
+the source stream remains continuous. Future sending must drop old unsent epochs
+and preserve WebSocket order; browser config/attachment resets must clear scheduled
+old PCM. No implemented delivery/ACK/backpressure ownership is claimed yet.
+
+[Iteration 50](ITERATION_050.md) checks independent identical native/TypeScript
+vectors, all truncations, parser allocation limits, signed sample byte order,
+silence accounting, epoch mismatch, RWB1 sequences and owned output copies.
+The fuzz dispatcher/corpus includes these classes; local Clang/sanitizer/fuzzer
+execution remains unavailable and is not counted as acceptance.
+
 ## Public RDPSND device adapter
 
 `native/audio/rdpsnd_sink.hpp` implements the pinned public
