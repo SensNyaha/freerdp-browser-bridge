@@ -243,6 +243,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 - [ ] Implement custom `rdpsnd-browser` virtual sink.
 - [ ] PCM normalization/resampling layer.
+- [~] IN PROGRESS — Isolated native PCM8/PCM16 mono/stereo 8..48 kHz normalization to S16LE 48 kHz stereo, rational phase, fixed output capacity and atomic rejection are implemented. Wider/higher-rate formats, pipeline/backend integration and actual audio acceptance remain open. [Contract](docs/AUDIO_PCM.md), [evidence](docs/ITERATION_036.md). Stage 5 hardware/remote gates remain open.
 - [ ] PCM media transport + AudioWorklet playback.
 - [ ] Opus encoder + browser decode path.
 - [ ] Audio queue/jitter/backpressure metrics.
