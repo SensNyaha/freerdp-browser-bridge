@@ -58,6 +58,19 @@ QueueRead PcmQueue::read(std::span<std::uint8_t> output) noexcept {
     discontinuity_ = false;
   return {QueueStatus::accepted, frames, silence, discontinuity};
 }
+std::size_t PcmQueue::discard(std::size_t frames) noexcept {
+  if (frames > capacity_frames) {
+    add(stats_.invalid_calls, 1);
+    return 0;
+  }
+  const auto skipped = (std::min)(frames, stats_.queued_frames);
+  head_ = (head_ + skipped * 4) % capacity_bytes;
+  stats_.queued_frames -= skipped;
+  add(stats_.playback_skipped_frames, skipped);
+  if (skipped)
+    discontinuity_ = true;
+  return skipped;
+}
 void PcmQueue::reset() noexcept {
   add(stats_.reset_discarded_frames, stats_.queued_frames);
   stats_.queued_frames = 0;

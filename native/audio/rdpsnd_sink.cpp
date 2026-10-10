@@ -42,6 +42,7 @@ bool RdpsndSink::usable() const noexcept {
 void RdpsndSink::discontinuity() noexcept {
   pipeline_->pcm.reset();
   pipeline_->queue.reset();
+  pipeline_->packets.reset();
 }
 BOOL RdpsndSink::supported(rdpsndDevicePlugin *device, const AUDIO_FORMAT *format) noexcept {
   auto *sink = owner(device);
@@ -53,6 +54,7 @@ BOOL RdpsndSink::open(rdpsndDevicePlugin *device, const AUDIO_FORMAT *format, UI
   if (!sink || !sink->usable() || !pcm || !sink->pipeline_->pcm.configure(*pcm))
     return FALSE;
   sink->pipeline_->queue.reset();
+  sink->pipeline_->packets.reset();
   sink->opened_ = true;
   return TRUE;
 }
@@ -140,9 +142,16 @@ std::optional<SinkStats> RdpsndSink::stats() const noexcept {
   if (thread_ != std::this_thread::get_id())
     return {};
   auto result = stats_;
-  if (pipeline_)
+  if (pipeline_) {
     result.queue = pipeline_->queue.stats();
+    result.packets = pipeline_->packets.stats();
+  }
   return result;
+}
+PcmPacket RdpsndSink::packet(std::uint64_t now) noexcept {
+  if (!usable() || !opened_)
+    return {PacketStatus::invalid, {}};
+  return pipeline_->packets.read(pipeline_->queue, now);
 }
 bool RdpsndSink::reset_stream() noexcept {
   if (!usable())
@@ -158,6 +167,7 @@ bool RdpsndSink::retire() noexcept {
   opened_ = false;
   discontinuity();
   stats_.queue = pipeline_->queue.stats();
+  stats_.packets = pipeline_->packets.stats();
   pipeline_.reset();
   retired_.store(true, std::memory_order_release);
   return true;

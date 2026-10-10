@@ -7,6 +7,7 @@ struct QueueStats {
   std::uint64_t accepted_frames = 0, consumed_frames = 0, silence_frames = 0;
   std::uint64_t dropped_packets = 0, dropped_frames = 0, reset_discarded_frames = 0;
   std::uint64_t underflows = 0, invalid_calls = 0;
+  std::uint64_t playback_skipped_frames = 0;
   std::size_t queued_frames = 0, high_water_frames = 0;
 };
 struct QueueRead {
@@ -25,6 +26,9 @@ public:
   QueueStatus push(std::span<const std::uint8_t>) noexcept;
   // Fills all valid destination frames, padding shortages with silence.
   QueueRead read(std::span<std::uint8_t>) noexcept;
+  // Discard up to this many old frames without synthesizing/consuming silence.
+  // Request is bounded by capacity; a nonempty discard marks discontinuity.
+  std::size_t discard(std::size_t frames) noexcept;
   void reset() noexcept;
   QueueStats stats() const noexcept { return stats_; }
 

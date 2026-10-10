@@ -69,6 +69,40 @@ public session metrics are yet published. [Iteration 37](ITERATION_037.md) verif
 ring wrap, atomic overflow, silence, reset, randomized FIFO equivalence and copying
 the normalizer's borrowed output before reuse.
 
+## Paced PCM packets and worker-clock timeline
+
+`native/audio/packetizer.*` reads the handoff ring into fixed 3,840-byte storage:
+960 S16LE stereo frames at 48 kHz, exactly 20 ms. It starts only when real frames
+are available. After starting, short reads pad silence and preserve the queue's
+separate real/silence counters. No sleep, allocation or queue is introduced.
+Results borrow storage until the next ready read, reset or destruction. Use one
+consumer mode: paced packets or the low-level diagnostic read, not both together.
+
+The caller supplies the same monotonic worker microsecond clock used for video.
+The first packet anchors to that clock; subsequent due timestamps advance by
+20,000 µs without floating-point drift. Early reads are idle and consume nothing.
+Late reads emit at most one packet: each wholly missed interval skips 960 old FIFO
+frames, bounded by the current backlog, and marks the packet discontinuous. Large
+stalls do not loop or emit a catch-up burst. Subinterval jitter keeps the existing
+sample clock. This is local presentation timing, not synchronization to a remote
+server's boot clock or an end-to-end A/V latency guarantee.
+
+Backward clocks and next-timestamp overflow fail before queue consumption. Reset
+starts a new anchor but preserves monotonic checks and lifetime counters; an epoch
+cannot replay an already emitted timestamp. Sink Open/Close/loss/source reset also
+reset packetization. A fresh source starts at the next real packet boundary.
+
+Queue `discard` removes up to a bounded frame request, preserves the remaining
+FIFO including wrap, and counts `playback_skipped_frames` separately from consumed,
+overflow-dropped and reset-discarded frames. Packet snapshots count output packets,
+missed intervals, discontinuities and invalid clocks. These counters remain native;
+no public metrics or audio wire path is activated by this block.
+
+[Iteration 49](ITERATION_049.md) checks independent PCM/timestamp vectors, silence,
+missed intervals, wrap, monotonic/overflow rejection, reset and a virtual-minute
+drift test, plus actual linked RDPSND with simulated SVC feeding the packetizer.
+Audible browser/server audio, microphone and <150 ms LAN acceptance remain open.
+
 ## Public RDPSND device adapter
 
 `native/audio/rdpsnd_sink.hpp` implements the pinned public

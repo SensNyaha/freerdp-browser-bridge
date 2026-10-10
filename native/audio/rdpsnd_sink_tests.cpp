@@ -19,6 +19,43 @@ UINT play(rdpsndDevicePlugin &device, std::span<const std::uint8_t> bytes) {
 }
 } // namespace
 
+TEST_CASE("RDPSND PCM packetization applies volume and resets epochs before borrowed playback") {
+  RdpsndSink sink;
+  auto &device = sink.device();
+  const auto pcm = format(8000, 1, 8);
+  REQUIRE(sink.packet(0).status == PacketStatus::invalid);
+  REQUIRE(device.Open(&device, &pcm, 0));
+  REQUIRE(sink.packet(0).status == PacketStatus::idle);
+  REQUIRE(device.SetVolume(&device, 0x0000ffffU));
+  const std::vector<std::uint8_t> input(160, 255);
+  REQUIRE(play(device, input) == 20);
+  const auto first = sink.packet(1000000);
+  REQUIRE(first.status == PacketStatus::ready);
+  REQUIRE(first.frames == 955);
+  REQUIRE(first.silence_frames == 5);
+  REQUIRE(first.discontinuity);
+  REQUIRE(first.timestamp_us == 1000000);
+  for (std::size_t at = 0; at < first.frames * 4; at += 4) {
+    REQUIRE(first.bytes[at] == 0);
+    REQUIRE(first.bytes[at + 1] == 127);
+    REQUIRE(first.bytes[at + 2] == 0);
+    REQUIRE(first.bytes[at + 3] == 0);
+  }
+  REQUIRE(sink.packet(1019999).status == PacketStatus::idle);
+  REQUIRE(sink.packet(1020000).silence_frames == 960);
+  REQUIRE(sink.reset_stream());
+  REQUIRE(sink.packet(1040000).status == PacketStatus::idle);
+  REQUIRE(play(device, input) == 20);
+  REQUIRE(sink.packet(1040000).discontinuity);
+  REQUIRE(sink.stats()->packets.packets == 3);
+  REQUIRE(sink.stats()->packets.discontinuities == 2);
+  device.Close(&device);
+  REQUIRE(sink.packet(1060000).status == PacketStatus::invalid);
+  REQUIRE(sink.retire());
+  REQUIRE(sink.stats()->packets.packets == 3);
+  REQUIRE(sink.packet(1060000).status == PacketStatus::invalid);
+}
+
 TEST_CASE("RDPSND public device validates PCM descriptors without mutating formats") {
   RdpsndSink sink;
   auto &device = sink.device();
@@ -213,6 +250,7 @@ TEST_CASE("RDPSND callbacks refuse foreign threads and retire before delayed hos
   BOOL foreign_open = TRUE, foreign_volume = TRUE, foreign_supported = TRUE;
   UINT foreign_play = 99;
   QueueStatus foreign_read = QueueStatus::accepted;
+  PacketStatus foreign_packet = PacketStatus::ready;
   bool foreign_stats = true, foreign_retire = true;
   std::vector<std::uint8_t> output(4, 77);
   std::thread foreign([&] {
@@ -221,6 +259,7 @@ TEST_CASE("RDPSND callbacks refuse foreign threads and retire before delayed hos
     foreign_supported = device.FormatSupported(&device, &pcm);
     foreign_play = play(device, input);
     foreign_read = sink.read(output).status;
+    foreign_packet = sink.packet(0).status;
     foreign_stats = sink.stats().has_value();
     foreign_retire = sink.retire();
     device.Close(&device);
@@ -232,6 +271,7 @@ TEST_CASE("RDPSND callbacks refuse foreign threads and retire before delayed hos
   REQUIRE_FALSE(foreign_supported);
   REQUIRE(foreign_play == 0);
   REQUIRE(foreign_read == QueueStatus::invalid);
+  REQUIRE(foreign_packet == PacketStatus::invalid);
   REQUIRE_FALSE(foreign_stats);
   REQUIRE_FALSE(foreign_retire);
   REQUIRE_FALSE(sink.retired());

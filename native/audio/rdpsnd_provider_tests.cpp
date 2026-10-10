@@ -1199,3 +1199,39 @@ TEST_CASE("Touch nested over audio delegates static entry and backend before LIF
   REQUIRE(fixture.sink.retired());
   REQUIRE(freerdp_get_current_addin_provider() == original);
 }
+
+TEST_CASE("Actual linked RDPSND produces paced PCM packets and reanchors on source discontinuity") {
+  Fixture fixture;
+  GateScope audio(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  const std::array<BYTE, 4> first_sample{0, 128, 255, 127}, second_sample{1, 0, 254, 255};
+  emit_pcm(host, 100, 1, first_sample);
+  const auto first = fixture.sink.packet(1000000);
+  REQUIRE(first.status == PacketStatus::ready);
+  REQUIRE(first.timestamp_us == 1000000);
+  REQUIRE(first.frames == 960);
+  REQUIRE(first.discontinuity);
+  for (std::size_t at = 0; at < first.bytes.size(); at += 4)
+    REQUIRE(std::equal(first_sample.begin(), first_sample.end(), first.bytes.begin() + at));
+  REQUIRE(fixture.sink.packet(1019999).status == PacketStatus::idle);
+  emit_pcm(host, 5000, 2, second_sample);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  const auto second = fixture.sink.packet(5000000);
+  REQUIRE(second.status == PacketStatus::ready);
+  REQUIRE(second.timestamp_us == 5000000);
+  REQUIRE(second.frames == 960);
+  REQUIRE(second.discontinuity);
+  for (std::size_t at = 0; at < second.bytes.size(); at += 4)
+    REQUIRE(std::equal(second_sample.begin(), second_sample.end(), second.bytes.begin() + at));
+  REQUIRE(fixture.sink.stats()->packets.skipped_intervals == 0);
+  REQUIRE(fixture.sink.stats()->packets.discontinuities == 2);
+  REQUIRE(fixture.sink.stats()->packets.packets == 2);
+  const std::array<BYTE, 4> close{SNDC_CLOSE, 0, 0, 0};
+  host.raw(close, 4);
+  REQUIRE(fixture.sink.packet(5020000).status == PacketStatus::idle);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}

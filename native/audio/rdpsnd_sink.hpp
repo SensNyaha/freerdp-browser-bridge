@@ -1,5 +1,5 @@
 #pragma once
-#include "queue.hpp"
+#include "packetizer.hpp"
 #include "volume.hpp"
 #include <atomic>
 #include <freerdp/client/rdpsnd.h>
@@ -8,6 +8,7 @@
 namespace bridge::audio {
 struct SinkStats {
   QueueStats queue;
+  PacketStats packets;
   std::uint64_t rejected_packets = 0, overflow_resets = 0;
 };
 // Public device ABI adapter, not an installed addin. One serialized RDP owner.
@@ -20,6 +21,7 @@ class RdpsndSink {
   struct Pipeline {
     PcmNormalizer pcm;
     PcmQueue queue;
+    PcmPacketizer packets;
     std::array<std::uint8_t, PcmNormalizer::max_output_bytes> volume{};
   };
   std::unique_ptr<Pipeline> pipeline_;
@@ -46,6 +48,7 @@ public:
   RdpsndSink &operator=(const RdpsndSink &) = delete;
   rdpsndDevicePlugin &device() noexcept { return device_; }
   QueueRead read(std::span<std::uint8_t>) noexcept;
+  PcmPacket packet(std::uint64_t worker_time_us) noexcept;
   std::optional<SinkStats> stats() const noexcept;
   bool reset_stream() noexcept; // Discard history/backlog while keeping an open device usable.
   bool retire() noexcept;

@@ -183,3 +183,32 @@ TEST_CASE("Bounded PCM handoff copies borrowed normalizer output before reuse") 
   REQUIRE(result.silence_frames == 0);
   REQUIRE(output == expected);
 }
+
+TEST_CASE("PCM playback discard preserves the newest wrapped FIFO and counts loss separately") {
+  PcmQueue queue;
+  REQUIRE(queue.push(packet(4800)) == QueueStatus::accepted);
+  std::vector<std::uint8_t> output(16000);
+  REQUIRE(queue.read(output).frames == 4000);
+  REQUIRE(queue.push(packet(4000, 4800)) == QueueStatus::accepted);
+  REQUIRE(queue.discard(0) == 0);
+  REQUIRE(queue.discard(5761) == 0);
+  REQUIRE(queue.stats().invalid_calls == 1);
+  REQUIRE(queue.stats().queued_frames == 4800);
+  REQUIRE(queue.discard(2000) == 2000);
+  output.resize(11200);
+  const auto read = queue.read(output);
+  REQUIRE(read.frames == 2800);
+  REQUIRE(read.discontinuity);
+  REQUIRE(output == packet(2800, 6000));
+  REQUIRE(queue.stats().playback_skipped_frames == 2000);
+  REQUIRE(queue.stats().consumed_frames == 6800);
+  REQUIRE(queue.stats().dropped_frames == 0);
+  REQUIRE(queue.stats().reset_discarded_frames == 0);
+  REQUIRE(queue.discard(5760) == 0);
+  REQUIRE(queue.push(packet(10, 9000)) == QueueStatus::accepted);
+  REQUIRE(queue.discard(100) == 10);
+  REQUIRE(queue.stats().queued_frames == 0);
+  REQUIRE(queue.stats().playback_skipped_frames == 2010);
+  queue.reset();
+  REQUIRE(queue.stats().playback_skipped_frames == 2010);
+}
