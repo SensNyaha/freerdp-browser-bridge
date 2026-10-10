@@ -113,3 +113,47 @@ cannot retire live owner resources.
 These are native ABI/lifecycle fixtures, not actual RDPSND channel, server or
 browser integration. Worker registration, IPC scheduling and end-to-end audio
 remain open.
+
+## Scoped RDPSND backend loading
+
+`native/audio/rdpsnd_provider.hpp` scopes the exact `rdpsnd` / `browser` device
+entry ABI. It accepts the pinned static ENTRYEX or dynamic device entry selector,
+refuses other ABI/type requests with a non-null rejection entry, and delegates
+other addins to the previously installed provider. This is not an allowlist for
+all channel classes or a general plugin security policy. The worker does not yet
+select this backend or enable audio.
+
+Bind requires an existing context, the sink owner thread, synchronous static and
+dynamic channels, and disabled async channels/update. Create contexts before
+binding: the pinned client context constructor replaces the process-wide provider.
+One audio provider scope is allowed per process, with no concurrent provider/context
+changes. If composed over another scoped provider, close in reverse binding order.
+
+Entry resolves the actual opaque plugin's context through public
+`freerdp_rdpsnd_get_context`, requires the bound context, and calls public device
+registration once. The host registration callback returns void. The adapter checks
+the assigned public device `rdpsnd` pointer but cannot prove arbitrary host behavior.
+An uncertain/refused/throwing registration is never retried. No private plugin
+layout is inspected. The scope closes by retiring sink resources before restoring
+the previous loader. A foreign replacement is preserved and reported as a broken
+scope contract. Sink/context lifetimes must cover the host's final callbacks.
+
+[Iteration 39](ITERATION_039.md) uses the actual pinned static RDPSND entry with a
+fake public SVC transport. It negotiates PCM, dispatches Wave2 through upstream to
+the sink, checks exact PCM and wave confirmations, and exercises teardown. This is
+actual linked channel integration with simulated transport, not actual remote RDP
+or browser audio. Dynamic RDPSND dispatch remains unverified.
+
+Two pinned upstream boundaries remain open before worker audio activation:
+
+- Static channel fragment reassembly uses StreamPool/stream growth before backend
+  Play limits; compressed decode can allocate before Play too. A backend size cap
+  does not protect those allocations. No oversized malicious allocation test is
+  run and no dependency source/pin is changed in this block.
+- SNDC_CLOSE only logs in the pinned implementation; it does not invoke device
+  Close. Play has no server timestamp argument. The actual-channel fixture records
+  that queued PCM remains after this PDU. Packet-clock/discontinuity handling must
+  cover gaps/close explicitly before claiming reset behavior for remote streams.
+
+These gaps, compressed format negotiation, attach/reconnect, end-to-end queue
+budget and audible playback are not resolved by a successful PCM callback fixture.

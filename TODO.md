@@ -243,6 +243,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 - [ ] Implement custom `rdpsnd-browser` virtual sink.
 - [~] IN PROGRESS — Public pinned RDPSND device callback adapter feeds the bounded PCM pipeline, applies stereo volume, resets on loss and retires owner resources before delayed host Free. Native ABI/lifecycle fixtures pass; worker registration, upstream resource audit and actual server/browser audio remain open. [Contract](docs/AUDIO_PCM.md#public-rdpsnd-device-adapter), [evidence](docs/ITERATION_038.md).
+- [~] IN PROGRESS — Scoped public rdpsnd/browser loader binds one synchronous context and preserves other addins. Actual pinned static RDPSND with fake SVC registers the backend, negotiates PCM and dispatches Wave2 into the sink. Upstream reassembly/DSP limits and Close/timestamp gaps are recorded; worker activation and actual remote/browser audio remain open. [Evidence](docs/ITERATION_039.md), [audit](docs/AUDIO_PCM.md#scoped-rdpsnd-backend-loading).
 - [ ] PCM normalization/resampling layer.
 - [~] IN PROGRESS — Isolated native PCM8/PCM16 mono/stereo 8..48 kHz normalization to S16LE 48 kHz stereo, rational phase, fixed output capacity and atomic rejection are implemented. Wider/higher-rate formats, pipeline/backend integration and actual audio acceptance remain open. [Contract](docs/AUDIO_PCM.md), [evidence](docs/ITERATION_036.md). Stage 5 hardware/remote gates remain open.
 - [ ] PCM media transport + AudioWorklet playback.
