@@ -69,9 +69,6 @@ export class NativeSessionWorker implements SessionWorker {
     const abort = () => this.worker.terminate();
     try {
       if (signal.aborted) throw new SessionError('WORKER_START_FAILED');
-      // Private WorkerProcess PCM exists; public ordered media negotiation follows.
-      if (config.media?.audioOutput === 'pcm')
-        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       signal.addEventListener('abort', abort, { once: true });
       await this.worker.start();
       if (signal.aborted || this.closing)

@@ -10,6 +10,9 @@ const fingerprint = document.querySelector('#fingerprint');
 const resizeForm = document.querySelector('#resize');
 const resizeButton = document.querySelector('#resize-button');
 const resizeStatus = document.querySelector('#resize-status');
+const audioButton = document.querySelector('#audio-start');
+const audioStatus = document.querySelector('#audio-status');
+let audioRequest;
 let current;
 const textInput = installText(
   document.querySelector('#text-input'),
@@ -39,6 +42,7 @@ const stats = {
   renderedGeneration: undefined,
   resizeStatus: undefined,
   stage: 'waiting',
+  audio: undefined,
 };
 let decodeTimes = [];
 class DecodeFailure extends Error {}
@@ -48,11 +52,21 @@ function closeDecoder(session) {
   if (decoder && decoder.state !== 'closed') decoder.close();
 }
 function detach() {
+  const pending = audioRequest;
+  audioRequest = undefined;
+  audioButton.hidden = true;
+  audioButton.disabled = false;
+  if (pending?.context && pending.context.state !== 'closed')
+    void pending.context.close().catch(() => {});
+  audioStatus.textContent = 'Звук выключен';
+  stats.closed = true;
   if (!current || current.detaching) return;
   current.detaching = true;
   current.disposeInput?.();
   current.cursor?.dispose();
   current.closed = true;
+  void current.playback?.close();
+  stats.audio = current.playback?.snapshot();
   if (current.textRequest) {
     clearTimeout(current.textRequest.timer);
     current.textRequest.reject(new Error('Viewer detached'));
@@ -191,9 +205,7 @@ document
   .querySelector('#reject')
   .addEventListener('click', () => decide(false));
 
-/** Same-origin reference consumer. The host application supplies fresh single-use attach tokens. */
-function attach(created, options = {}) {
-  detach();
+function validateAttachment(created) {
   if (
     !/^[0-9a-f]{32}$/.test(created.sessionId) ||
     !['control', 'media'].every((channel) =>
@@ -201,6 +213,97 @@ function attach(created, options = {}) {
     )
   )
     throw new Error('Invalid attachment');
+}
+/** PCM sockets open only after the user activates the exclusive AudioContext. */
+function attach(created, options = {}) {
+  detach();
+  validateAttachment(created);
+  if (![undefined, 'off', 'pcm'].includes(options.audioOutput))
+    throw new Error('Unsupported audio output');
+  resetStats();
+  if (options.audioOutput === 'pcm') {
+    audioRequest = { created, options: { ...options }, preparing: false };
+    audioButton.hidden = false;
+    audioStatus.textContent = 'Нажмите кнопку для включения звука';
+    status.textContent = 'Ожидание включения звука';
+    stats.stage = 'audio-gesture';
+    return;
+  }
+  attachSession(created, options);
+}
+audioButton.addEventListener('click', () => {
+  const request = audioRequest;
+  if (!request || request.preparing) return;
+  request.preparing = true;
+  audioButton.disabled = true;
+  stats.stage = 'audio-prepare';
+  const failed = () => {
+    if (
+      audioRequest === request ||
+      (request.session && current === request.session)
+    ) {
+      detach();
+      stats.error = 'AUDIO_FAILED';
+      status.textContent = 'Не удалось включить звук';
+    }
+  };
+  try {
+    const context = new AudioContext({
+      sampleRate: 48000,
+      latencyHint: 'interactive',
+    });
+    request.context = context;
+    const resumed = context.resume();
+    void (async () => {
+      await resumed;
+      const { createPcmPlayback } = await import('./pcm-playback.js');
+      const playback = await createPcmPlayback(context, {
+        sourceStatus: true,
+        recordCredit: true,
+        onFailure: failed,
+        onRecordAck(sequence) {
+          const session = request.session;
+          if (
+            !session ||
+            session !== current ||
+            session.closed ||
+            !session.audioNegotiated ||
+            session.media.readyState !== WebSocket.OPEN ||
+            session.media.bufferedAmount > 16384
+          )
+            throw new Error('Audio acknowledgement unavailable');
+          session.media.send(
+            JSON.stringify({ v: 1, type: 'audio.ack', data: { sequence } }),
+          );
+        },
+      });
+      if (audioRequest !== request) {
+        await playback.close();
+        return;
+      }
+      audioRequest = undefined;
+      request.context = undefined;
+      try {
+        request.session = attachSession(
+          request.created,
+          request.options,
+          playback,
+        );
+      } catch {
+        await playback.close();
+        throw new Error('Audio attachment failed');
+      }
+      audioButton.hidden = true;
+      audioStatus.textContent = 'Ожидание аудиоисточника';
+    })().catch(() => {
+      failed();
+      if (context.state !== 'closed') void context.close().catch(() => {});
+    });
+  } catch {
+    failed();
+  }
+});
+function resetStats() {
   Object.assign(stats, {
     closed: false,
     frames: 0,
@@ -218,8 +321,13 @@ function attach(created, options = {}) {
     renderedGeneration: undefined,
     resizeStatus: undefined,
     stage: 'waiting',
+    audio: undefined,
   });
   decodeTimes = [];
+}
+/** Same-origin reference consumer. The host application supplies fresh single-use attach tokens. */
+function attachSession(created, options, playback) {
+  validateAttachment(created);
   const socket = (channel) => {
     const url = new URL(
       '/v1/sessions/' + created.sessionId + '/' + channel,
@@ -247,6 +355,8 @@ function attach(created, options = {}) {
     queued: 0,
     queuedBytes: 0,
     cursor: installCursor(canvas),
+    playback,
+    audioNegotiated: false,
   };
   current = session;
   session.disposeInput = installInput(
@@ -391,7 +501,12 @@ function attach(created, options = {}) {
       JSON.stringify({
         v: 1,
         type: 'media.hello',
-        data: { codecs: offered, cursor: true, display: true },
+        data: {
+          codecs: offered,
+          cursor: true,
+          display: true,
+          ...(playback ? { audio: { codec: 'pcm', sourceStatus: true } } : {}),
+        },
       }),
     );
   }
@@ -399,6 +514,37 @@ function attach(created, options = {}) {
   let rendering = Promise.resolve();
   session.media.addEventListener('message', (event) => {
     if (session.closed) return;
+    if (typeof event.data === 'string') {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'media.ready') {
+          ready(message);
+          return;
+        }
+      } catch {
+        fail();
+        return;
+      }
+    }
+    if (
+      event.data instanceof ArrayBuffer &&
+      event.data.byteLength >= 12 &&
+      new DataView(event.data).getUint32(8) === 3
+    ) {
+      if (!session.audioNegotiated || !playback?.record(event.data)) fail();
+      else
+        audioStatus.textContent =
+          {
+            ready: 'Вывод PCM включён',
+            waiting: 'Ожидание аудиоисточника',
+            suspended: 'Аудиоисточник приостановлен',
+            closed: 'Аудиоисточник закрыт',
+            failed: 'Ошибка аудиоисточника',
+            unavailable: 'Аудиоисточник недоступен',
+          }[playback.snapshot().source?.availability] ??
+          'Ожидание аудиоисточника';
+      return;
+    }
     if (
       event.data instanceof ArrayBuffer &&
       event.data.byteLength >= 6 &&
@@ -531,6 +677,39 @@ function attach(created, options = {}) {
       });
     session.needKeyframe = true;
   }
+  function ready(message) {
+    if (
+      message.v !== 1 ||
+      message.type !== 'media.ready' ||
+      session.codec ||
+      !offered?.includes(message.data.codec) ||
+      message.data.maxInFlight !== 1
+    )
+      throw new Error();
+    if (
+      !Number.isInteger(message.data.maxFps) ||
+      message.data.maxFps < 1 ||
+      message.data.maxFps > (message.data.codec === 'h264' ? 30 : 20)
+    )
+      throw new Error();
+    session.codec = stats.codec = message.data.codec;
+    stats.maxFps = message.data.maxFps;
+    const audio = message.data.audio;
+    if (
+      playback
+        ? !audio ||
+          Object.keys(audio).length !== 5 ||
+          audio.codec !== 'pcm' ||
+          audio.sourceStatus !== true ||
+          audio.streamId !== 3 ||
+          audio.maxInFlight !== 1 ||
+          audio.ackTimeoutMs !== 2000
+        : audio !== undefined
+    )
+      throw new Error('Audio negotiation mismatch');
+    session.audioNegotiated = Boolean(audio);
+    stats.stage = 'ready';
+  }
   async function render(bytes) {
     if (session.closed) return;
     if (typeof bytes === 'string') {
@@ -545,24 +724,7 @@ function attach(created, options = {}) {
         );
         return;
       }
-      if (
-        message.v !== 1 ||
-        message.type !== 'media.ready' ||
-        session.codec ||
-        !offered?.includes(message.data.codec) ||
-        message.data.maxInFlight !== 1
-      )
-        throw new Error();
-      if (
-        !Number.isInteger(message.data.maxFps) ||
-        message.data.maxFps < 1 ||
-        message.data.maxFps > (message.data.codec === 'h264' ? 30 : 20)
-      )
-        throw new Error();
-      session.codec = stats.codec = message.data.codec;
-      stats.maxFps = message.data.maxFps;
-      stats.stage = 'ready';
-      return;
+      throw new Error('Unexpected media metadata');
     }
     if (
       !session.codec ||
@@ -692,11 +854,13 @@ function attach(created, options = {}) {
       session.decoding = false;
     }
   }
+  return session;
 }
 window.bridgeViewer = {
   attach,
   detach,
   resize,
+  requestAudioStats: () => current?.playback?.requestStats() ?? false,
   get touch() {
     return current?.touch
       ? { ...current.touch, inputReady: Boolean(touchInputReady(current)) }
@@ -706,6 +870,7 @@ window.bridgeViewer = {
     const times = [...decodeTimes].sort((a, b) => a - b);
     return {
       ...stats,
+      audio: current?.playback?.snapshot() ?? stats.audio,
       decodeMeanMs: times.length
         ? times.reduce((a, b) => a + b, 0) / times.length
         : 0,

@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import {
   WorkerProcess,
   NativeSessionWorker,
+  SessionManager,
 } from '../../packages/node-bridge/dist/index.js';
 import { eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
@@ -103,22 +104,83 @@ test('fake PCM peer: premature status, missing config barrier, replay, PTS gaps 
     });
   }
 });
-test('native public adapter refuses private-only PCM until ordered public negotiation is installed', async () => {
+test('fake PCM native adapter forwards opt-in source/config/samples and refuses legacy peers before connect', async () => {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'bridge-audio-public-'));
   const worker = new NativeSessionWorker({
     workerPath: resolve(directory, 'fixture-audio-0' + suffix),
     runtimeRoot,
   });
+  const events = [];
+  worker.onAudio((event) => events.push(event));
+  let legacy;
   try {
+    await worker.start(configuration('valid'), new AbortController().signal);
+    await eventually(() => events.length === 3);
+    assert.deepEqual(
+      events.map((event) => event.type),
+      ['state', 'config', 'packet'],
+    );
+    assert.equal(events[2].packet.pcm.length, 3840);
+    await worker.close();
+    legacy = new NativeSessionWorker({
+      workerPath: resolve(directory, 'fixture-audio-1' + suffix),
+      runtimeRoot,
+    });
     await assert.rejects(
-      worker.start(configuration('valid'), new AbortController().signal),
+      legacy.start(configuration('valid'), new AbortController().signal),
       { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
     );
   } finally {
     await worker.close();
+    await legacy?.close();
+    assert.deepEqual(await readdir(runtimeRoot), []);
     await rm(runtimeRoot, { recursive: true, force: true });
   }
 });
+
+test(
+  'actual native PCM session manager preserves strict TLS refusal and retires public native selection before GDI',
+  { skip: !nativePcm, timeout: 15000 },
+  async () => {
+    const endpoint = await createRdpTlsFixture();
+    const runtimeRoot = await mkdtemp(join(tmpdir(), 'bridge-audio-registry-'));
+    const principal = { id: 'audio-registry-fixture' };
+    const manager = new SessionManager({
+      workerFactory: () =>
+        new NativeSessionWorker({
+          workerPath: resolve(directory, 'rdp-worker' + suffix),
+          runtimeRoot,
+        }),
+    });
+    try {
+      const created = manager.create(
+        {
+          target: { host: '127.0.0.1', port: endpoint.port },
+          auth: { username: 'synthetic', password: 'synthetic-IPC-sentinel' },
+          security: { protocol: 'tls', certificatePolicy: 'strict' },
+          media: { audioOutput: 'pcm' },
+          timeouts: { connectMs: 5000 },
+        },
+        principal,
+        '127.0.0.1',
+      );
+      await eventually(
+        () => manager.get(created.sessionId, principal).state === 'failed',
+      );
+      assert.equal(
+        manager.get(created.sessionId, principal).error.code,
+        'RDP_CERTIFICATE_REJECTED',
+      );
+      assert.equal(endpoint.applicationBytes, 0);
+      await manager.shutdown();
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    } finally {
+      await manager.shutdown();
+      await endpoint.close();
+      await rm(runtimeRoot, { recursive: true, force: true });
+    }
+  },
+);
 test(
   'actual native PCM worker retires registered static channel on strict TLS rejection before GDI',
   { skip: !nativePcm, timeout: 15000 },

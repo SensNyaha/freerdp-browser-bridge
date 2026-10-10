@@ -114,9 +114,10 @@ tests/integration/session-api.test.mjs; eight tests each.
 ## Typed PCM backend/media lease preparation
 
 SessionWorker optionally exposes `onAudio(PcmSourceEvent)`; NativeSessionWorker
-forwards private source events, while still rejecting public PCM creation until
-ordered media negotiation/forwarding is implemented. This changes the trusted SDK
-boundary only. No JSON control event, media.hello field or audio WS route is enabled.
+forwards private source events and accepts opt-in public PCM where advertised.
+The lease foundation below was introduced before socket/browser activation;
+the current public route is described under PCM media negotiation. No JSON audio
+control event is introduced.
 
 An explicit `media.audioOutput: 'pcm'` requires the backend listener before startup.
 The manager uses the same bounded source/config/packet progress validation as
@@ -130,7 +131,7 @@ Only the current media lease can read `audio` (copied state/config metadata), re
 allowed. Registration delivers future events only: detached PCM is validated and
 discarded, never buffered/replayed. Consumers must copy borrowed sample bytes into
 their own bounded handoff storage before returning if needed. A new attachment
-will need status/config replay and an initial discontinuity in its future wire owner.
+uses status/config replay and an initial discontinuity in its wire owner.
 
 Detach removes the subscriber immediately. Old unsubscribe/release cannot remove
 a replacement registration, including replacement during a callback. A throwing
@@ -148,6 +149,7 @@ extension in [PROTOCOL](../PROTOCOL.md#opt-in-pcm-media-socket-iteration-69).
 The media route owns one record credit and one latest pending sample, unsubscribes
 on close/fault and preserves RDP/control when only the consumer fails. No audio
 records are sent to legacy viewers. The socket uses ordered binary stream 3, with
-source stop/reset preceding fresh config/samples. Public native creation and the
-reference harness remain disabled pending browser admission/gesture integration.
-[Socket evidence](ITERATION_069.md) uses a fake backend, not remote audio.
+source stop/reset preceding fresh config/samples. Native PCM creation and the
+reference harness gesture/Worklet admission path are implemented; audible RDP
+acceptance remains open. [Socket evidence](ITERATION_069.md) uses a fake backend;
+[public viewer evidence](ITERATION_071.md) distinguishes synthetic and actual tests.

@@ -19,6 +19,21 @@ focus; mouse buttons and wheel are enabled in this explicit manual mode. Changin
 close the session and clean up the worker. Automatic mode without `--manual`
 retains its movement/reset-only lab guard and finishes after its smoke checks.
 
+For explicit PCM output use `--audio-manual` instead of `--manual`:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint h264 --audio-manual
+```
+
+Click **Включить звук и подключиться** before attachment: the harness creates
+the AudioContext/Worklet from that gesture, then opens sockets. The host must
+provide fresh single-use tokens; delaying activation beyond their TTL requires
+a fresh attachment. Waiting status with no PCM is not audible acceptance.
+The helper reads only ignored local credentials and uses private IPC as before.
+Automatic `--audio-test` exercises gesture, media/source status and reattachment
+with the existing motion/reset-only guard; it never generates remote sound.
+Opus/microphone and audible/latency acceptance remain open.
+
 For explicit Unicode/IME fallback, first focus the desired field on the remote
 desktop, then enter text in **Текст Unicode / IME** below the canvas, complete IME
 and press **Отправить текст**. Physical canvas keys remain the shortcut path.

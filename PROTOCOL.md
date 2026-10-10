@@ -269,9 +269,11 @@ It uses audio stream ID 3, separate from video 1 and cursor 2: AUDIO_CONFIG has
 and a nonzero stream epoch. AUDIO_PACKET has exactly 3,840 sample bytes (20 ms),
 with timestampUs unchanged from the worker and DISCONTINUITY flag 0x0002 on reset
 or attachment. Private metadata is not prepended to the public sample payload.
-Windows bundled workers now activate opt-in PCM on private IPC, with typed Node
-source/config/packet listeners. Public session/media negotiation and the harness
-do not yet activate audio output. Opus remains open. [Private activation](docs/IPC_FOUNDATION.md#private-pcm-worker-activation-iteration-66).
+Windows bundled workers activate opt-in PCM on private IPC with typed Node
+source/config/packet listeners, public session/media negotiation and explicit
+reference harness gesture activation. Actual audible RDP remains unverified;
+Opus is open. [Private activation](docs/IPC_FOUNDATION.md#private-pcm-worker-activation-iteration-66),
+[public viewer](docs/ITERATION_071.md).
 Private source status schema 1 is now prepared as RWI1 AUDIO_STATE kind 35 with
 40 bytes. Its public preparatory counterpart is RWB1 AUDIO_STATE type 0x09,
 stream 3, DISCONTINUITY 0x0002, exact 40-byte payload. Payload repeats the worker
@@ -280,13 +282,15 @@ immutable opt-in and fixed requested profile follow the private status schema.
 It shares the attachment's audio sequence with config/PCM, never cursor/video
 sequences. Stop/reset status must use the same ordered media socket as PCM;
 cross-socket ordering is not assumed. No public JSON control event is added.
-The opt-in worker emits private status; API does not emit the public extension.
+The opt-in worker emits private status; API emits the public extension only after
+explicit PCM/source-status media negotiation.
 Default packet-only browser
 ownership refuses it. Isolated `sourceStatus: true` ownership requires increasing
 status revision, nondecreasing epoch/clock and immutable opt-in. Status clears
 pending config/samples and schedules Worklet reset before fresh config/PCM; ready
-and its matching config are required before samples. No public media negotiation
-is activated yet. [Browser ownership](docs/AUDIO_PCM.md#browser-source-status-ownership).
+and its matching config are required before samples. The reference harness
+selects source status and one-record Worklet admission credit only after a user
+gesture. [Browser ownership](docs/AUDIO_PCM.md#browser-source-status-ownership).
 [Status codec contract](docs/AUDIO_PCM.md#pcm-source-status-codec-preparation).
 
 ### Opt-in PCM media socket (iteration 69)
@@ -296,8 +300,9 @@ The additive v1 `media.hello.data.audio` extension is exactly
 protocol. A selected backend must expose PCM media lease ownership; otherwise
 negotiation fails with MEDIA_NOT_IMPLEMENTED. `media.ready.data.audio` confirms
 `codec: "pcm"`, `sourceStatus: true`, `streamId: 3`, `maxInFlight: 1` and
-`ackTimeoutMs: 2000`. This route is available to typed PCM backends; public native
-creation remains refused until browser admission is connected.
+`ackTimeoutMs: 2000`. This route is available to typed PCM backends, including
+the opt-in Windows native adapter. Browser creation/playback requires explicit
+user activation; source waiting is not audible acceptance.
 
 Every stream-3 RWB1 record (status, config and samples) consumes one shared audio
 credit. The client sends exactly `{"v":1,"type":"audio.ack","data":{"sequence":N}}`

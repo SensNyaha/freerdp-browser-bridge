@@ -18,9 +18,10 @@ Stages 0/1/3/4/5/6 remain **IN PROGRESS**. Physical input and release ownership 
 implemented and tested with native/fake/Edge fixtures; actual XRDP input is verified
 for motion only. Independent cursor extraction/overlay and XRDP shape replay are
 verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain open.
-Stage 6 has isolated PCM, bounded queue, public RDPSND backend/provider and ingress
-foundations; actual linked channel tests use simulated SVC transport. Worker audio
-activation, production ingress placement and audible/browser acceptance remain open.
+Stage 6 has guarded static RDPSND/PCM worker activation, public media negotiation
+and gesture/Worklet admission ownership on Windows. Actual linked audio data tests
+use simulated SVC transport, and browser PCM fixtures use synthetic samples.
+Actual audible RDP, microphone/Opus and latency/resource/platform acceptance remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -257,7 +258,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   captures a desktop and closes, with no audio packets observed. Public media,
   audible/browser and transport/latency/resource gates remain open. [Evidence](docs/ITERATION_066.md).
 
-- [ ] Implement custom `rdpsnd-browser` virtual sink.
+- [~] IN PROGRESS — Guarded static browser/PCM sink is selected by opt-in Windows worker/public settings, with bounded production ingress and serialized teardown. Actual native TLS cleanup and synthetic linked channel fixtures pass. Actual remote samples/negotiation and audible output remain open. [Private activation](docs/ITERATION_066.md), [public viewer](docs/ITERATION_071.md).
 - [~] IN PROGRESS — Public pinned RDPSND device callback adapter feeds the bounded PCM pipeline, applies stereo volume, resets on loss and retires owner resources before delayed host Free. Native ABI/lifecycle fixtures pass; worker registration, upstream resource audit and actual server/browser audio remain open. [Contract](docs/AUDIO_PCM.md#public-rdpsnd-device-adapter), [evidence](docs/ITERATION_038.md).
 - [~] IN PROGRESS — Scoped public rdpsnd/browser loader binds one synchronous context and preserves other addins. Actual pinned static RDPSND with fake SVC registers the backend, negotiates PCM and dispatches Wave2 into the sink. Upstream reassembly/DSP limits and Close/timestamp gaps are recorded; worker activation and actual remote/browser audio remain open. [Evidence](docs/ITERATION_039.md), [audit](docs/AUDIO_PCM.md#scoped-rdpsnd-backend-loading).
 - [~] IN PROGRESS — Fixed 64 KiB SVC assembly and bounded RDPSND PDU validation run ahead of the actual static channel in fake-SVC fixtures, including legacy Wave. Oversized advertised record/count claims are refused before upstream dispatch. Production callback placement, earlier core/DSP limits, raw flags and stream-clock/reset remain open. [Evidence](docs/ITERATION_040.md).
@@ -273,6 +274,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Typed backend/media lease ownership and one-record PCM delivery credit are implemented. Status/config/samples share one exact ACK, scalar metadata and one copied latest 3,840-byte sample packet; stop/reset clears unsent samples and attachment starts discontinuously. Pure/fake-backend fixtures pass. Public WS selection, browser admission ACK, gesture activation and actual audible/latency acceptance remain open. [Lease evidence](docs/ITERATION_067.md), [record credit](docs/ITERATION_068.md).
 - [~] IN PROGRESS — Opt-in PCM hello/ready, ordered stream-3 forwarding and independent audio ACK are implemented for typed backends. Real local WebSocket/fake-backend tests verify credit, latest/stop/recovery, bounded ACK/rate deadlines and listener cleanup. Public native selection, browser Worklet admission/gesture integration and actual audible RDP remain open. [Socket evidence](docs/ITERATION_069.md).
 - [~] IN PROGRESS — Browser PCM record-credit mode acknowledges status/config/samples only after the corresponding accepted Worklet command. Pure and real Edge synthetic PCM fixtures verify exact deferred ACK, stats independence, Close clearing and context-loss cleanup. Harness gesture/routing, public native selection and actual audible RDP remain open. [Worklet evidence](docs/ITERATION_070.md).
+- [~] IN PROGRESS — Reference harness PCM opt-in stages attachment until an explicit user gesture prepares AudioContext/Worklet, then routes ordered stream 3 independently of video decode and sends only admission ACKs. Public NativeSessionWorker selection is activated. Actual Edge/socket/Worklet synthetic fixtures, native strict TLS/cleanup and fake legacy refusal pass. Actual audible RDP and broader gates remain open. [Current viewer evidence](docs/ITERATION_071.md).
 - [ ] Opus encoder + browser decode path.
 - [ ] Audio queue/jitter/backpressure metrics.
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).

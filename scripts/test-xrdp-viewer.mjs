@@ -11,7 +11,10 @@ import { waitForViewerClose } from './viewer-window.mjs';
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
 const mode = process.argv[3] ?? 'jpeg';
-const manual = process.argv[4] === '--manual';
+const audioManual = process.argv[4] === '--audio-manual';
+const audioTest = process.argv[4] === '--audio-test';
+const audioOutput = audioManual || audioTest ? 'pcm' : 'off';
+const manual = process.argv[4] === '--manual' || audioManual;
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
 const touchInventory = process.argv[4] === '--touch-inventory';
@@ -30,7 +33,8 @@ if (
     !manual &&
     !qualityTest &&
     !resizeTest &&
-    !touchInventory) ||
+    !touchInventory &&
+    !audioTest) ||
   (manual && mode === 'h264-reset') ||
   !['jpeg', 'h264', 'h264-reset'].includes(mode) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
@@ -91,6 +95,9 @@ for (const [url, name, type] of [
   ['/harness/cursor.js', 'cursor.js', 'text/javascript'],
   ['/harness/display.js', 'display.js', 'text/javascript'],
   ['/harness/touch.js', 'touch.js', 'text/javascript'],
+  ['/harness/pcm-playback.js', 'pcm-playback.js', 'text/javascript'],
+  ['/harness/pcm-worklet.js', 'pcm-worklet.js', 'text/javascript'],
+  ['/harness/pcm-queue.js', 'pcm-queue.js', 'text/javascript'],
 ]) {
   const bytes = await readFile(resolve('apps/reference-harness', name));
   server.get(url, (_request, reply) =>
@@ -125,8 +132,9 @@ try {
         dynamicResolution: resizeTest || manual,
       },
       input: { touch: manual || touchInventory },
+      media: { audioOutput },
       security: { certificatePolicy: 'prompt' },
-      timeouts: { connectMs: 20000, tcpAckMs: 10000 },
+      timeouts: { connectMs: audioManual ? 120000 : 20000, tcpAckMs: 10000 },
       ...(quality ? { quality } : {}),
     },
   });
@@ -159,14 +167,18 @@ try {
   phase = 'attach';
   await page.waitForFunction(() => Boolean(window.bridgeViewer));
   await page.evaluate(
-    ({ created, codecs }) => window.bridgeViewer.attach(created, { codecs }),
-    { created: attachment, codecs },
+    ({ created, codecs, audioOutput }) =>
+      window.bridgeViewer.attach(created, { codecs, audioOutput }),
+    { created: attachment, codecs, audioOutput },
   );
+  if (audioTest) await page.click('#audio-start');
+  if (audioManual)
+    console.log('Нажмите «Включить звук и подключиться» в окне Edge.');
   phase = 'certificate';
   await page.waitForFunction(
     () => !document.querySelector('#certificate').hidden,
     undefined,
-    { timeout: 20000 },
+    { timeout: audioManual ? 120000 : 20000 },
   );
   const accepted = await page.evaluate(
     (verified) => window.bridgeViewer.acceptCertificate(verified),
@@ -179,6 +191,19 @@ try {
     undefined,
     { timeout: 20000 },
   );
+  if (audioTest) {
+    await page.waitForFunction(
+      () =>
+        Boolean(window.bridgeViewer.stats.audio?.source) &&
+        !window.bridgeViewer.stats.audio.recordInFlight,
+    );
+    await page.evaluate(() => window.bridgeViewer.requestAudioStats());
+    await page.waitForFunction(
+      () =>
+        Boolean(window.bridgeViewer.stats.audio.remote) &&
+        !window.bridgeViewer.stats.audio.inFlight,
+    );
+  }
   if (manual) {
     phase = 'manual';
     console.log(
@@ -383,9 +408,11 @@ try {
       nextAttach[channel] = response.json();
     }
     await page.evaluate(
-      ({ created, codecs }) => window.bridgeViewer.attach(created, { codecs }),
-      { created: { sessionId, attach: nextAttach }, codecs },
+      ({ created, codecs, audioOutput }) =>
+        window.bridgeViewer.attach(created, { codecs, audioOutput }),
+      { created: { sessionId, attach: nextAttach }, codecs, audioOutput },
     );
+    if (audioTest) await page.click('#audio-start');
     await page.waitForFunction(
       () =>
         window.bridgeViewer.stats.frames > 0 &&
@@ -447,6 +474,13 @@ try {
         nativeCursorShapes,
         cursorReplayed: true,
         reattach: true,
+        ...(audioTest
+          ? {
+              browserAudioActivated: true,
+              audibleAcceptance: false,
+              remoteAudioGenerated: false,
+            }
+          : {}),
         ...(touchInventory
           ? { touchEvidence, touchReplayed: true, remoteTouchSent: false }
           : {}),
