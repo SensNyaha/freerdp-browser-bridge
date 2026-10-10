@@ -1030,6 +1030,153 @@ test('fake PCM WS: negotiated ordered source/config/sample credit is independent
   );
 });
 
+test('fake PCM metrics: exact admitted records/bytes, latest/reset discards and independent credit return to zero on detach', async () => {
+  await setup(
+    async ({ ws, messages, worker, server }) => {
+      worker.emit('audio', pcmState());
+      worker.emit('audio', pcmConfig());
+      pcmHello(ws);
+      await eventually(() => pcmRecords(messages).length === 1);
+      worker.emit('audio', pcmPacket());
+      worker.emit('audio', pcmPacket(1));
+      let body = await mediaMetrics(server);
+      const value = (name, extra = {}) =>
+        sample(body, name, { codec: 'pcm', ...extra });
+      assert.equal(value('bridge_audio_records_in_flight'), 1);
+      assert.equal(value('bridge_audio_record_bytes_in_flight'), 68);
+      assert.equal(value('bridge_audio_pending_sample_bytes'), 3840);
+      assert.equal(
+        value('bridge_audio_packets_discarded_total', {
+          reason: 'replacement',
+        }),
+        1,
+      );
+      pcmAck(ws, 0);
+      await eventually(() => pcmRecords(messages).length === 2);
+      pcmAck(ws, 1);
+      await eventually(() => pcmRecords(messages).length === 3);
+      body = await mediaMetrics(server);
+      assert.equal(value('bridge_audio_record_bytes_in_flight'), 3868);
+      assert.equal(value('bridge_audio_pending_sample_bytes'), 0);
+      assert.equal(
+        value('bridge_audio_records_queued_total', { record: 'state' }),
+        1,
+      );
+      assert.equal(
+        value('bridge_audio_records_queued_total', { record: 'config' }),
+        1,
+      );
+      assert.equal(
+        value('bridge_audio_records_queued_total', { record: 'packet' }),
+        1,
+      );
+      for (const [record, bytes] of [
+        ['state', 68],
+        ['config', 48],
+        ['packet', 3868],
+      ])
+        assert.equal(
+          value('bridge_audio_bytes_queued_total', { record }),
+          bytes,
+        );
+      assert.equal(
+        value('bridge_audio_stage_duration_seconds_count', {
+          stage: 'receiver_credit',
+        }),
+        2,
+      );
+      worker.emit('audio', pcmPacket(2));
+      worker.emit('audio', pcmState(2n, 'closed'));
+      body = await mediaMetrics(server);
+      assert.equal(
+        value('bridge_audio_packets_discarded_total', {
+          reason: 'source_reset',
+        }),
+        1,
+      );
+      assert.equal(value('bridge_audio_pending_sample_bytes'), 0);
+      assert.equal(value('bridge_audio_records_in_flight'), 1);
+      pcmAck(ws, 2);
+      await eventually(() => pcmRecords(messages).length === 4);
+      const closed = once(ws, 'close');
+      ws.close();
+      await closed;
+      await releasedCredit(server, 'jpeg');
+      body = await mediaMetrics(server);
+      assert.equal(value('bridge_audio_records_in_flight'), 0);
+      assert.equal(value('bridge_audio_record_bytes_in_flight'), 0);
+      assert.equal(value('bridge_audio_pending_sample_bytes'), 0);
+      assert.equal(
+        value('bridge_audio_stage_duration_seconds_count', {
+          stage: 'receiver_credit',
+        }),
+        3,
+      );
+      assert.ok(
+        value('bridge_audio_stage_duration_seconds_count', {
+          stage: 'forward',
+        }) >= 3,
+      );
+      assert.ok(
+        !/fake\.example|fixture-owner|sessionId|epoch=|revision=/.test(body),
+      );
+    },
+    undefined,
+    false,
+    'pcm',
+  );
+});
+
+test('fake PCM metrics: wrong ACK and receiver deadline retire credit/pending bytes without successful credit observation', async () => {
+  for (const reason of ['ack', 'receiver_deadline'])
+    await setup(
+      async ({ ws, messages, worker, server }) => {
+        worker.emit('audio', pcmState());
+        worker.emit('audio', pcmConfig());
+        pcmHello(ws);
+        await eventually(() => pcmRecords(messages).length === 1);
+        worker.emit('audio', pcmPacket());
+        const closed = once(ws, 'close');
+        if (reason === 'ack') pcmAck(ws, 123);
+        await closed;
+        await releasedCredit(server, 'jpeg');
+        const body = await mediaMetrics(server),
+          labels = { codec: 'pcm' };
+        for (const name of [
+          'bridge_audio_records_in_flight',
+          'bridge_audio_record_bytes_in_flight',
+          'bridge_audio_pending_sample_bytes',
+        ])
+          assert.equal(sample(body, name, labels), 0);
+        assert.equal(
+          sample(body, 'bridge_audio_consumers_failed_total', {
+            ...labels,
+            reason,
+          }),
+          1,
+        );
+        assert.equal(
+          sample(body, 'bridge_audio_packets_discarded_total', {
+            ...labels,
+            reason: 'retirement',
+          }),
+          1,
+        );
+        assert.equal(
+          sample(body, 'bridge_audio_stage_duration_seconds_count', {
+            ...labels,
+            stage: 'receiver_credit',
+          }),
+          0,
+        );
+        assert.equal(worker.closed, 0);
+      },
+      undefined,
+      false,
+      'pcm',
+    );
+});
+
 test('fake PCM WS: latest samples coalesce under old credit; Close clears unsent data and recovery uses fresh epoch', async () => {
   await setup(
     async ({ ws, messages, worker }) => {

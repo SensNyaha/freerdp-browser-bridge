@@ -153,3 +153,31 @@ source stop/reset preceding fresh config/samples. Native PCM creation and the
 reference harness gesture/Worklet admission path are implemented; audible RDP
 acceptance remains open. [Socket evidence](ITERATION_069.md) uses a fake backend;
 [public viewer evidence](ITERATION_071.md) distinguishes synthetic and actual tests.
+
+## PCM media metrics
+
+The existing authenticated `/metrics` endpoint aggregates fixed `codec="pcm"`
+series. `bridge_audio_records_queued_total` and `bridge_audio_bytes_queued_total`
+have `record=state|config|packet` and count local socket admission, not playback.
+`bridge_audio_records_in_flight` and `bridge_audio_record_bytes_in_flight` describe
+unacknowledged records; each attachment owns at most one (maximum 3,868 bytes).
+`bridge_audio_pending_sample_bytes` describes the copied latest unsent packet
+(maximum 3,840 bytes per attachment). These gauges sum across current consumers
+and return to zero on ACK where applicable and on detach/fault.
+
+`bridge_audio_packets_discarded_total` has fixed
+`reason=replacement|source_reset|retirement`. It excludes already admitted bytes
+which cannot be retracted. `bridge_audio_consumers_failed_total` has fixed
+`reason=ack|protocol|receiver_deadline|admission_deadline|consumer`; shared socket
+rate/session/transport failures retain their existing behavior and are not all
+classified by this audio counter.
+
+`bridge_audio_stage_duration_seconds` has `stage=forward|receiver_credit` and
+eleven fixed finite buckets plus infinity. Forward measures successful active
+local socket write callbacks; receiver credit measures valid exact ACK return.
+Wrong/expired/abandoned ACKs do not count as successful credit observations.
+The intervals overlap and must not be summed. Client ACKs indicate admission,
+not audible completion or proof of actual Worklet behavior by an arbitrary client.
+No identity, target, credential, revision/epoch/PTS or sample payload is a label.
+Native/browser jitter and underflow metrics and measured LAN audio acceptance
+remain open. [Evidence](ITERATION_072.md).

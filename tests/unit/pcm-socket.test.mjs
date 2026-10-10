@@ -97,3 +97,81 @@ test('PCM socket owner: writable recovery sends state before video and consumer 
     route.close();
   }
 });
+
+test('PCM socket metrics: admission deadline, consumer loss and throwing local write balance storage and count retirement once', (t) => {
+  let now = 0;
+  t.mock.method(performance, 'now', () => now);
+  for (const mode of ['admission_deadline', 'consumer', 'write']) {
+    now = 0;
+    const f = fixture(),
+      failures = [],
+      retired = [],
+      observations = [];
+    const held = { credit: 0, pending: 0, flight: 0 };
+    f.lease.audio.state.availability = 'ready';
+    f.lease.audio.config = {
+      epoch: 1n,
+      codec: 'pcm',
+      sampleRate: 48000,
+      channels: 2,
+      sampleFormat: 's16le',
+      packetFrames: 960,
+    };
+    if (mode !== 'admission_deadline') f.ws.bufferedAmount = 0;
+    if (mode === 'write')
+      f.ws.send = () => {
+        throw new Error('local write');
+      };
+    const route = installPcmMedia(f.ws, f.lease, () => {}, {
+      storage(credit, pending, flight) {
+        held.credit += credit;
+        held.pending += pending;
+        held.flight += flight;
+      },
+      queued() {},
+      observe(stage) {
+        observations.push(stage);
+      },
+      discarded(reason, packets) {
+        if (reason === 'retirement') retired.push(packets);
+      },
+      failure(reason) {
+        failures.push(reason);
+      },
+    });
+    try {
+      f.emit({
+        type: 'packet',
+        packet: {
+          epoch: 1n,
+          timestampUs: 0n,
+          frames: 960,
+          silenceFrames: 0,
+          discontinuity: true,
+          pcm: Buffer.alloc(3840),
+        },
+      });
+      assert.equal(held.pending, 3840);
+      route.start();
+      if (mode === 'admission_deadline') {
+        now = 2000;
+        route.canSendVideo();
+      }
+      if (mode === 'consumer') {
+        f.lease.audioFailed = true;
+        route.canSendVideo();
+      }
+      assert.deepEqual(failures, [mode === 'write' ? 'consumer' : mode]);
+      assert.deepEqual(held, { credit: 0, pending: 0, flight: 0 });
+      assert.deepEqual(retired, [1]);
+      assert.equal(observations.includes('receiver_credit'), false);
+      assert.equal(f.unsubscribed, 1);
+      route.close();
+      route.close();
+      assert.deepEqual(retired, [1]);
+      assert.deepEqual(held, { credit: 0, pending: 0, flight: 0 });
+    } finally {
+      route.close();
+    }
+  }
+});

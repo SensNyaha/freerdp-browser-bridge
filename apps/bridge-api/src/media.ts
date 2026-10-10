@@ -287,7 +287,7 @@ export function installMedia(
       }
       codec = choices[selected]!;
       maxFps = lease.maxFps(codec);
-      if (audioOffered) audio = installPcmMedia(ws, lease, fail);
+      if (audioOffered) audio = installPcmMedia(ws, lease, fail, metrics.audio);
       clearTimeout(deadline);
       send('media.ready', {
         codec,

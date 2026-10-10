@@ -29,6 +29,9 @@ native/harness cases pass **8/8**; the corrected counter-reset fixture passes
 separately. Full `pnpm check` passes **210/210**. Strict TypeScript, lint, format
 and `git diff --check` pass; final viewer lint/format are also checked after its
 counter-reset correction. Native code/layout is unchanged from iteration 66.
+Clean `31bbfd6` bundled/foundation rebuilds pass CTest **14/14** and **6/6**;
+REST/CLI/HELLO probes pass **1/1** in each profile. Private ZIP relocation passes
+**1/1**, including local ZLIB/FreeRDP loading without dependency PATH.
 
 The first lab helper attempt incorrectly waited for audio before accepting the
 previously authorized certificate. Correcting that order allowed XRDP activation

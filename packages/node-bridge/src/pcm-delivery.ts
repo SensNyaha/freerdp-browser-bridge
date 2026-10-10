@@ -45,6 +45,7 @@ export class PcmMediaSender {
     acknowledgements: 0,
     replacedPackets: 0,
     discardedPackets: 0,
+    retiredPackets: 0,
     invalidCalls: 0,
   };
   constructor(
@@ -235,6 +236,7 @@ export class PcmMediaSender {
   }
   close() {
     this.closed = true;
+    if (this.pendingPacket) this.count('retiredPackets');
     this.discardPacket();
     this.pendingState = this.pendingConfig = this.wireConfig = undefined;
     this.flight = undefined;
