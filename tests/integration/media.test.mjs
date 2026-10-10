@@ -17,6 +17,10 @@ const origin = 'https://media.example.test';
 
 /** Explicit transport fixture, not an RDP desktop or valid JPEG decoder test. */
 class MediaWorker extends FakeSessionWorker {
+  onAudio(listener) {
+    this.on('audio', listener);
+    return () => this.off('audio', listener);
+  }
   revision = 1n;
   requests = 0;
   captureDelay = 10;
@@ -57,7 +61,12 @@ class MediaWorker extends FakeSessionWorker {
     return frame;
   }
 }
-async function setup(run, quality, dynamicResolution = false) {
+async function setup(
+  run,
+  quality,
+  dynamicResolution = false,
+  audioOutput = 'off',
+) {
   const root = await mkdtemp(join(tmpdir(), 'bridge-media-'));
   const worker = new MediaWorker();
   const server = await createSessionServer({
@@ -81,6 +90,7 @@ async function setup(run, quality, dynamicResolution = false) {
       payload: {
         target: { host: 'fake.example.test' },
         auth: { username: 'fixture' },
+        media: { audioOutput },
         ...(dynamicResolution ? { display: { dynamicResolution: true } } : {}),
         ...(quality ? { quality } : {}),
       },
@@ -924,3 +934,262 @@ test(
     });
   },
 );
+
+const pcmState = (revision = 1n, availability = 'ready', epoch = 1n) => ({
+  type: 'state',
+  state: {
+    enabled: true,
+    revision,
+    availability,
+    epoch,
+    timestampUs: 5000000n,
+  },
+});
+const pcmConfig = (epoch = 1n) => ({
+  type: 'config',
+  config: {
+    epoch,
+    codec: 'pcm',
+    sampleRate: 48000,
+    channels: 2,
+    sampleFormat: 's16le',
+    packetFrames: 960,
+  },
+});
+const pcmPacket = (index = 0, epoch = 1n) => ({
+  type: 'packet',
+  packet: {
+    epoch,
+    timestampUs: BigInt(index) * 20000n,
+    frames: 960,
+    silenceFrames: 0,
+    discontinuity: index === 0,
+    pcm: Buffer.alloc(3840, index & 0xff),
+  },
+});
+const pcmHello = (ws, audio = { codec: 'pcm', sourceStatus: true }) =>
+  ws.send(
+    JSON.stringify({
+      v: 1,
+      type: 'media.hello',
+      data: { codecs: ['jpeg'], audio },
+    }),
+  );
+const pcmRecords = (messages) =>
+  binary(messages).filter((b) => b.readUInt32BE(8) === 3);
+const pcmAck = (ws, sequence) =>
+  ws.send(JSON.stringify({ v: 1, type: 'audio.ack', data: { sequence } }));
+
+test('fake PCM WS: negotiated ordered source/config/sample credit is independent of video; snapshot replays no old samples', async () => {
+  await setup(
+    async ({ ws, messages, worker }) => {
+      worker.emit('audio', pcmState());
+      worker.emit('audio', pcmConfig());
+      for (let i = 0; i < 20; i++) worker.emit('audio', pcmPacket(i));
+      pcmHello(ws);
+      await eventually(
+        () =>
+          pcmRecords(messages).length === 1 &&
+          binary(messages).some((b) => b[5] === 2),
+      );
+      assert.deepEqual(messages[0].data.audio, {
+        codec: 'pcm',
+        sourceStatus: true,
+        streamId: 3,
+        maxInFlight: 1,
+        ackTimeoutMs: 2000,
+      });
+      assert.equal(pcmRecords(messages)[0][5], 9);
+      assert.equal(pcmRecords(messages)[0].readUInt32BE(12), 0);
+      worker.emit('audio', pcmPacket(20));
+      await delay(40);
+      assert.equal(pcmRecords(messages).length, 1);
+      pcmAck(ws, 0);
+      await eventually(() => pcmRecords(messages).length === 2);
+      assert.equal(pcmRecords(messages)[1][5], 3);
+      assert.equal(pcmRecords(messages)[1].readBigUInt64BE(16), 400000n);
+      await delay(40);
+      assert.equal(pcmRecords(messages).length, 2);
+      pcmAck(ws, 1);
+      await eventually(() => pcmRecords(messages).length === 3);
+      const sample = pcmRecords(messages)[2];
+      assert.equal(sample[5], 4);
+      assert.equal(sample.readUInt16BE(6), 2);
+      assert.equal(sample[28], 20);
+      pcmAck(ws, 2);
+      await delay(60);
+      assert.equal(pcmRecords(messages).length, 3);
+      assert.equal(worker.requests, 1); // Video ACK was never released by audio ACK.
+      acknowledge(ws, 1);
+      await eventually(() => worker.requests > 1);
+      assert.equal(ws.readyState, WebSocket.OPEN);
+    },
+    undefined,
+    false,
+    'pcm',
+  );
+});
+
+test('fake PCM WS: latest samples coalesce under old credit; Close clears unsent data and recovery uses fresh epoch', async () => {
+  await setup(
+    async ({ ws, messages, worker }) => {
+      worker.emit('audio', pcmState());
+      worker.emit('audio', pcmConfig());
+      pcmHello(ws);
+      await eventually(() => pcmRecords(messages).length === 1);
+      worker.emit('audio', pcmPacket());
+      pcmAck(ws, 0);
+      await eventually(() => pcmRecords(messages).length === 2);
+      pcmAck(ws, 1);
+      await eventually(() => pcmRecords(messages).length === 3);
+      for (let i = 1; i <= 100; i++) worker.emit('audio', pcmPacket(i));
+      pcmAck(ws, 2);
+      await eventually(() => pcmRecords(messages).length === 4);
+      const latest = pcmRecords(messages)[3];
+      assert.equal(latest.readBigUInt64BE(16), 2000000n);
+      assert.equal(latest.readUInt16BE(6), 2);
+      assert.equal(latest[28], 100);
+      worker.emit('audio', pcmPacket(101));
+      worker.emit('audio', pcmState(2n, 'closed'));
+      await delay(40);
+      assert.equal(pcmRecords(messages).length, 4);
+      pcmAck(ws, 3);
+      await eventually(() => pcmRecords(messages).length === 5);
+      assert.equal(pcmRecords(messages)[4][5], 9);
+      assert.equal(pcmRecords(messages)[4][31], 4);
+      pcmAck(ws, 4);
+      await delay(40);
+      assert.equal(pcmRecords(messages).length, 5);
+      worker.emit('audio', pcmState(3n, 'ready', 2n));
+      worker.emit('audio', pcmConfig(2n));
+      const resumed = pcmPacket(102, 2n);
+      resumed.packet.discontinuity = true;
+      worker.emit('audio', resumed);
+      await eventually(() => pcmRecords(messages).length === 6);
+      pcmAck(ws, 5);
+      await eventually(() => pcmRecords(messages).length === 7);
+      assert.equal(pcmRecords(messages)[6].readBigUInt64BE(40), 2n);
+      pcmAck(ws, 6);
+      await eventually(() => pcmRecords(messages).length === 8);
+      assert.equal(pcmRecords(messages)[7].readUInt16BE(6), 2);
+      pcmAck(ws, 7);
+      assert.equal(worker.closed, 0);
+    },
+    undefined,
+    false,
+    'pcm',
+  );
+});
+
+test('fake PCM WS: optional negotiation refuses missing backend and incomplete/unknown profile; legacy viewers receive no audio', async () => {
+  for (const offer of [
+    { codec: 'pcm' },
+    { codec: 'opus', sourceStatus: true },
+    { codec: 'pcm', sourceStatus: false },
+    { codec: 'pcm', sourceStatus: true, arbitrary: true },
+  ])
+    await setup(
+      async ({ ws }) => {
+        const closed = once(ws, 'close');
+        pcmHello(ws, offer);
+        assert.equal((await closed)[0], 1008);
+      },
+      undefined,
+      false,
+      'pcm',
+    );
+  await setup(async ({ ws, messages, worker }) => {
+    const closed = once(ws, 'close');
+    pcmHello(ws);
+    assert.equal((await closed)[0], 1008);
+    assert.equal(messages[0].data.code, 'MEDIA_NOT_IMPLEMENTED');
+    assert.equal(worker.closed, 0);
+  });
+  await setup(
+    async ({ ws, messages, worker }) => {
+      hello(ws);
+      worker.emit('audio', pcmState());
+      worker.emit('audio', pcmConfig());
+      worker.emit('audio', pcmPacket());
+      await eventually(() => binary(messages).length === 2);
+      assert.equal(messages[0].data.audio, undefined);
+      assert.equal(pcmRecords(messages).length, 0);
+      assert.equal(worker.listenerCount('audio'), 1); // Manager only, no media subscriber.
+    },
+    undefined,
+    false,
+    'pcm',
+  );
+});
+
+test('fake PCM WS: wrong/duplicate ACK and missing receiver progress close only media, retiring its listener', async () => {
+  for (const mode of ['wrong', 'duplicate', 'deadline', 'video-ack'])
+    await setup(
+      async ({ ws, messages, worker }) => {
+        worker.emit('audio', pcmState(1n, 'waiting'));
+        pcmHello(ws);
+        await eventually(() => pcmRecords(messages).length === 1);
+        const closed = once(ws, 'close');
+        if (mode === 'wrong') pcmAck(ws, 1);
+        if (mode === 'duplicate') {
+          pcmAck(ws, 0);
+          pcmAck(ws, 0);
+        }
+        if (mode === 'video-ack') acknowledge(ws, 0);
+        assert.equal((await closed)[0], 1008);
+        assert.equal(worker.closed, 0);
+        assert.equal(worker.listenerCount('audio'), 1);
+        assert.ok(
+          !JSON.stringify(messages.filter((m) => !Buffer.isBuffer(m))).includes(
+            'sensitive',
+          ),
+        );
+      },
+      undefined,
+      false,
+      'pcm',
+    );
+});
+
+test('fake PCM WS: bounded negotiated command budget supports 50 PCM ACKs/sec without granting video credit', async () => {
+  await setup(
+    async ({ ws, messages, worker }) => {
+      worker.emit('audio', pcmState());
+      worker.emit('audio', pcmConfig());
+      pcmHello(ws);
+      await eventually(() => pcmRecords(messages).length === 1);
+      worker.emit('audio', pcmPacket());
+      pcmAck(ws, 0);
+      await eventually(() => pcmRecords(messages).length === 2);
+      pcmAck(ws, 1);
+      await eventually(() => pcmRecords(messages).length === 3);
+      pcmAck(ws, 2);
+      for (let i = 1; i <= 50; i++) {
+        worker.emit('audio', pcmPacket(i));
+        await eventually(() => pcmRecords(messages).length === i + 3);
+        pcmAck(ws, i + 2);
+      }
+      await delay(30);
+      assert.equal(ws.readyState, WebSocket.OPEN);
+      assert.equal(worker.requests, 1);
+      const closed = once(ws, 'close');
+      let next = 52;
+      ws.on('message', (bytes, isBinary) => {
+        if (!isBinary || bytes.readUInt32BE(8) !== 3 || bytes[5] !== 4) return;
+        pcmAck(ws, bytes.readUInt32BE(12));
+        if (next <= 250) worker.emit('audio', pcmPacket(next++));
+      });
+      worker.emit('audio', pcmPacket(51));
+      assert.equal((await closed)[0], 1008);
+      assert.ok(
+        messages.some(
+          (m) => m.type === 'media.error' && m.data.code === 'MEDIA_RATE_LIMIT',
+        ),
+      );
+      assert.equal(worker.closed, 0);
+    },
+    undefined,
+    false,
+    'pcm',
+  );
+});

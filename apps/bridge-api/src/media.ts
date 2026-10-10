@@ -14,6 +14,7 @@ import {
 import { publicSessionError, type SessionManager } from '@freerdp-bridge/node';
 import type { MediaMetrics } from './metrics.js';
 import { displayData } from './display.js';
+import { installPcmMedia } from './audio.js';
 
 const hello = TypeCompiler.Compile(
   Type.Object(
@@ -32,6 +33,12 @@ const hello = TypeCompiler.Compile(
           ),
           cursor: Type.Optional(Type.Boolean()),
           display: Type.Optional(Type.Boolean()),
+          audio: Type.Optional(
+            Type.Object(
+              { codec: Type.Literal('pcm'), sourceStatus: Type.Literal(true) },
+              { additionalProperties: false },
+            ),
+          ),
         },
         { additionalProperties: false },
       ),
@@ -57,6 +64,19 @@ const reset = TypeCompiler.Compile(
     {
       v: Type.Literal(1),
       type: Type.Literal('media.reset'),
+      data: Type.Object(
+        { sequence: Type.Integer({ minimum: 0, maximum: 0xffffffff }) },
+        { additionalProperties: false },
+      ),
+    },
+    { additionalProperties: false },
+  ),
+);
+const audioAck = TypeCompiler.Compile(
+  Type.Object(
+    {
+      v: Type.Literal(1),
+      type: Type.Literal('audio.ack'),
       data: Type.Object(
         { sequence: Type.Integer({ minimum: 0, maximum: 0xffffffff }) },
         { additionalProperties: false },
@@ -99,6 +119,8 @@ export function installMedia(
     cursorSequence = 0,
     sentShapeId = 0n;
   let displayOffered = false;
+  let audioOffered = false;
+  let audio: ReturnType<typeof installPcmMedia> | undefined;
   let latestCursor = lease.cursor;
   let latestDisplay = lease.display;
   let cursorBusy = false;
@@ -143,6 +165,7 @@ export function installMedia(
     creditStarted = undefined;
   };
   const fail = (code: string) => {
+    audio?.close();
     send('media.error', { code });
     ws.close(1008, 'media unavailable');
   };
@@ -204,6 +227,12 @@ export function installMedia(
           ? encodeAvcRecords(frame, sequence, reconfigure)
           : encodeJpegRecords(frame, sequence, reconfigure);
       const bytes = records.reduce((sum, record) => sum + record.length, 0);
+      if (audio && !audio.canSendVideo()) {
+        // The encoder already advanced: recover a discarded AVC unit with IDR.
+        forceKeyframe = true;
+        schedule();
+        return;
+      }
       if (ws.bufferedAmount + bytes > limit) {
         ws.close(1008, 'media backlog limit');
         return;
@@ -258,6 +287,7 @@ export function installMedia(
       }
       codec = choices[selected]!;
       maxFps = lease.maxFps(codec);
+      if (audioOffered) audio = installPcmMedia(ws, lease, fail);
       clearTimeout(deadline);
       send('media.ready', {
         codec,
@@ -266,10 +296,22 @@ export function installMedia(
         maxPayloadBytes: MAX_JPEG_BYTES,
         cursor: cursorOffered,
         display: displayOffered,
+        ...(audio
+          ? {
+              audio: {
+                codec: 'pcm',
+                sourceStatus: true,
+                streamId: 3,
+                maxInFlight: 1,
+                ackTimeoutMs: 2000,
+              },
+            }
+          : {}),
       });
       if (displayOffered && latestDisplay)
         send('display.info', displayData(latestDisplay, lease.resizing));
       if (latestCursor) cursor(latestCursor);
+      audio?.start();
       void pull();
     } catch (error) {
       fail(publicSessionError(error).code);
@@ -298,6 +340,7 @@ export function installMedia(
     5000,
   );
   ws.once('close', () => {
+    audio?.close();
     latestCursor = undefined;
     delete lease.cursor;
     releaseCredit(false);
@@ -310,7 +353,7 @@ export function installMedia(
       window = Date.now();
       received = 0;
     }
-    if (++received > 32) {
+    if (++received > (audio ? 128 : 32)) {
       fail('MEDIA_RATE_LIMIT');
       return;
     }
@@ -330,7 +373,10 @@ export function installMedia(
       offered = value.data.codecs;
       cursorOffered = value.data.cursor ?? false;
       displayOffered = value.data.display ?? false;
+      audioOffered = Boolean(value.data.audio);
       negotiate();
+    } else if (audio && audioAck.Check(value)) {
+      audio.acknowledge(value.data.sequence);
     } else if (
       codec === 'h264' &&
       reset.Check(value) &&

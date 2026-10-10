@@ -140,3 +140,14 @@ returns MEDIA_FAILED. No exception is propagated into the native parser callback
 Control, stale, terminal or closing leases return ATTACH_INVALID. No packet queue,
 new timer/thread, public metrics, audible or browser acceptance is added.
 [Fixture evidence](ITERATION_067.md).
+
+## PCM media negotiation
+
+Typed PCM backends can select the additive media hello/ready and `audio.ack`
+extension in [PROTOCOL](../PROTOCOL.md#opt-in-pcm-media-socket-iteration-69).
+The media route owns one record credit and one latest pending sample, unsubscribes
+on close/fault and preserves RDP/control when only the consumer fails. No audio
+records are sent to legacy viewers. The socket uses ordered binary stream 3, with
+source stop/reset preceding fresh config/samples. Public native creation and the
+reference harness remain disabled pending browser admission/gesture integration.
+[Socket evidence](ITERATION_069.md) uses a fake backend, not remote audio.

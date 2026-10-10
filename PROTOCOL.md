@@ -289,6 +289,35 @@ and its matching config are required before samples. No public media negotiation
 is activated yet. [Browser ownership](docs/AUDIO_PCM.md#browser-source-status-ownership).
 [Status codec contract](docs/AUDIO_PCM.md#pcm-source-status-codec-preparation).
 
+### Opt-in PCM media socket (iteration 69)
+
+The additive v1 `media.hello.data.audio` extension is exactly
+`{"codec":"pcm","sourceStatus":true}`. Omission preserves the legacy video/cursor
+protocol. A selected backend must expose PCM media lease ownership; otherwise
+negotiation fails with MEDIA_NOT_IMPLEMENTED. `media.ready.data.audio` confirms
+`codec: "pcm"`, `sourceStatus: true`, `streamId: 3`, `maxInFlight: 1` and
+`ackTimeoutMs: 2000`. This route is available to typed PCM backends; public native
+creation remains refused until browser admission is connected.
+
+Every stream-3 RWB1 record (status, config and samples) consumes one shared audio
+credit. The client sends exactly `{"v":1,"type":"audio.ack","data":{"sequence":N}}`
+on the media socket after its Worklet has accepted the corresponding command.
+This acknowledges bounded receiver admission, not audible completion. Sequence N
+must match the single outstanding record. It is independent of video `media.ack`,
+cursor sequence and JSON envelope sequence; neither ACK releases another stream.
+No audio ACK is accepted without PCM negotiation. Wrong/duplicate/expired ACK
+closes media, preserving RDP/control ownership. Negotiated PCM permits at most 128
+incoming commands/sec; legacy media keeps 32/sec. No Opus/microphone selector exists.
+
+Attachment replays only source/config metadata and joins the next fresh sample
+with discontinuity. Config waits for a sample and uses its captured timestamp,
+which can precede the status observation clock. One copied latest pending sample
+is replaced with discontinuity when behind. Stop/reset discards unsent samples;
+an already admitted record keeps its credit until ACK. Ordered status reaches the
+same Worklet before fresh config/samples. Both receiver ACK and blocked local
+socket admission have a two-second deadline. Local queue bounds do not establish
+end-to-end latency or audible RDP acceptance. [Evidence](docs/ITERATION_069.md).
+
 ## 5. Attach semantics
 
 One session may support multiple read-only viewers later, but v1 has one controlling browser attachment by default. A second attachment is rejected or marked view-only according to policy. Input authority is explicit.
