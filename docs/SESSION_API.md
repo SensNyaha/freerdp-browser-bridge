@@ -110,3 +110,33 @@ Fake transport regression evidence is in `tests/integration/media.test.mjs`.
 
 Evidence: tests/unit/session-manager.test.mjs and
 tests/integration/session-api.test.mjs; eight tests each.
+
+## Typed PCM backend/media lease preparation
+
+SessionWorker optionally exposes `onAudio(PcmSourceEvent)`; NativeSessionWorker
+forwards private source events, while still rejecting public PCM creation until
+ordered media negotiation/forwarding is implemented. This changes the trusted SDK
+boundary only. No JSON control event, media.hello field or audio WS route is enabled.
+
+An explicit `media.audioOutput: 'pcm'` requires the backend listener before startup.
+The manager uses the same bounded source/config/packet progress validation as
+private WorkerProcess. Ready/config/samples require connected state; waiting/stop
+metadata may describe a connecting source. Malformed/unselected/replayed output
+fails that session with fixed WORKER_INVALID_STATE. Cleanup unsubscribes the backend
+and clears metadata/listener ownership before asynchronous native close.
+
+Only the current media lease can read `audio` (copied state/config metadata), read
+`audioFailed`, or register `onAudio`. One subscriber per session/media lease is
+allowed. Registration delivers future events only: detached PCM is validated and
+discarded, never buffered/replayed. Consumers must copy borrowed sample bytes into
+their own bounded handoff storage before returning if needed. A new attachment
+will need status/config replay and an initial discontinuity in its future wire owner.
+
+Detach removes the subscriber immediately. Old unsubscribe/release cannot remove
+a replacement registration, including replacement during a callback. A throwing
+subscriber is removed and `audioFailed` becomes true for that lease; source/RDP
+progress continues, and a new lease can recover. Resubscription on that failed lease
+returns MEDIA_FAILED. No exception is propagated into the native parser callback.
+Control, stale, terminal or closing leases return ATTACH_INVALID. No packet queue,
+new timer/thread, public metrics, audible or browser acceptance is added.
+[Fixture evidence](ITERATION_067.md).

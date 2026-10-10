@@ -244,6 +244,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Stage 6 — audio output and microphone
 
+- [~] IN PROGRESS — Typed PCM backend events now pass scalar manager validation
+  to one current media lease subscriber; detached samples are discarded, metadata
+  is copied, and cleanup/stale unsubscribe/consumer faults preserve ownership.
+  Fake backend SDK fixtures pass; no public audio negotiation/WS route or audible
+  acceptance is added. [Evidence](docs/ITERATION_067.md).
+
 - [~] IN PROGRESS — Windows guarded static PCM selection is opt-in through private
   settings v5/HELLO and typed Node source/config/sample events. LoadChannels runs
   after actual core channel replacement; pre-GDI TLS rejection/cancellation and

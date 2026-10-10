@@ -1,5 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { createHash, randomBytes } from 'node:crypto';
+import { PcmSource, type PcmSourceEvent } from './pcm-source.js';
+import type { PcmAudioState, PcmAudioConfig } from '@freerdp-bridge/protocol';
 import {
   validateCursorState,
   validateDisplayState,
@@ -175,6 +177,7 @@ export interface SessionWorker {
   onCursor?(listener: (cursor: CursorState) => void): () => void;
   onDisplay?(listener: (display: DisplayState) => void): () => void;
   onTouch?(listener: (touch: TouchState) => void): () => void;
+  onAudio?(listener: (event: PcmSourceEvent) => void): () => void;
   resizeDisplay?(width: number, height: number): Promise<DisplayResizeResult>;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
   captureFrame?(
@@ -205,6 +208,9 @@ type Entry = {
   videoQuality: VideoQuality;
   dynamicResolution: boolean;
   touchEnabled: boolean;
+  audioEnabled: boolean;
+  audio?: PcmSource;
+  audioListener?: { lease: symbol; sink: (event: PcmSourceEvent) => void };
   touch?: TouchState;
   display?: DisplayState;
   resize?: symbol;
@@ -374,6 +380,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         videoQuality: resolveVideoQuality(config.quality),
         dynamicResolution: config.display?.dynamicResolution === true,
         touchEnabled: config.input?.touch === true,
+        audioEnabled: config.media?.audioOutput === 'pcm',
+        ...(config.media?.audioOutput === 'pcm'
+          ? { audio: new PcmSource() }
+          : {}),
         owner,
         worker,
         abort: new AbortController(),
@@ -547,10 +557,50 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
               });
             }),
           );
+        if (entry.audioEnabled && !worker.onAudio) {
+          this.fail(entry, 'RDP_SETTING_NOT_IMPLEMENTED');
+          throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+        }
+        if (worker.onAudio)
+          entry.unsubscribers.push(
+            worker.onAudio((event) => {
+              if (
+                entry.released ||
+                terminal(entry.snapshot.state) ||
+                entry.snapshot.state === 'closing'
+              )
+                return;
+              let accepted: PcmSourceEvent;
+              try {
+                if (
+                  !entry.audio ||
+                  (entry.snapshot.state !== 'connected' &&
+                    (event?.type !== 'state' ||
+                      event.state?.availability === 'ready'))
+                )
+                  throw new Error('Invalid audio source');
+                accepted = entry.audio.acceptEvent(event);
+              } catch {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+                return;
+              }
+              const subscriber = entry.audioListener;
+              if (
+                subscriber &&
+                entry.attachments.get('media') === subscriber.lease
+              )
+                subscriber.sink(accepted);
+            }),
+          );
         if (terminal(entry.snapshot.state))
           throw new SessionError('WORKER_START_FAILED');
-      } catch {
+      } catch (error) {
         this.fail(entry, 'WORKER_START_FAILED');
+        if (
+          error instanceof SessionError &&
+          error.code === 'RDP_SETTING_NOT_IMPLEMENTED'
+        )
+          throw error;
         throw new SessionError('WORKER_START_FAILED');
       }
       this.transition(entry, 'starting');
@@ -643,6 +693,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     delete entry.cursor;
     delete entry.display;
     delete entry.touch;
+    delete entry.audio;
+    delete entry.audioListener;
     entry.abort.abort();
     this.totals.failed++;
     this.transition(entry, 'failed');
@@ -660,6 +712,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     delete entry.cursor;
     delete entry.display;
     delete entry.touch;
+    delete entry.audio;
+    delete entry.audioListener;
     for (const unsubscribe of entry.unsubscribers.splice(0)) {
       try {
         unsubscribe();
@@ -756,6 +810,11 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     readonly display: DisplayState | undefined;
     readonly touch: TouchState | undefined;
     readonly resizing: boolean;
+    readonly audio:
+      | { state: PcmAudioState | undefined; config: PcmAudioConfig | undefined }
+      | undefined;
+    readonly audioFailed: boolean;
+    onAudio: (listener: (event: PcmSourceEvent) => void) => () => void;
     resizeDisplay: (
       request: DisplayResizeRequest,
     ) => Promise<DisplayResizeResult>;
@@ -788,6 +847,17 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     const lease = Symbol();
     entry.attachments.set(channel, lease);
     let capturing = false;
+    let audioFailed = false;
+    const requireAudioLease = () => {
+      if (
+        channel !== 'media' ||
+        entry.attachments.get(channel) !== lease ||
+        entry.released ||
+        terminal(entry.snapshot.state) ||
+        entry.snapshot.state === 'closing'
+      )
+        throw new SessionError('ATTACH_INVALID');
+    };
     return {
       session: structuredClone(entry.snapshot),
       get display() {
@@ -798,6 +868,42 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       },
       get resizing() {
         return Boolean(entry.resize);
+      },
+      get audio() {
+        requireAudioLease();
+        return (
+          entry.audio && {
+            state: entry.audio.current,
+            config: entry.audio.configuration,
+          }
+        );
+      },
+      get audioFailed() {
+        requireAudioLease();
+        return audioFailed;
+      },
+      onAudio: (listener) => {
+        requireAudioLease();
+        if (!entry.audio || typeof listener !== 'function')
+          throw new SessionError('MEDIA_NOT_IMPLEMENTED');
+        if (entry.audioListener || audioFailed)
+          throw new SessionError('MEDIA_FAILED');
+        const registration = {
+          lease,
+          sink: (event: PcmSourceEvent) => {
+            try {
+              listener(event);
+            } catch {
+              audioFailed = true;
+              if (entry.audioListener === registration)
+                delete entry.audioListener;
+            }
+          },
+        };
+        entry.audioListener = registration;
+        return () => {
+          if (entry.audioListener === registration) delete entry.audioListener;
+        };
       },
       resizeDisplay: (request) =>
         this.resizeDisplay(entry, channel, lease, request),
@@ -921,6 +1027,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       release: () => {
         if (entry.attachments.get(channel) === lease) {
           entry.attachments.delete(channel);
+          if (channel === 'media' && entry.audioListener?.lease === lease)
+            delete entry.audioListener;
           if (
             channel === 'control' &&
             entry.worker.sendInput &&

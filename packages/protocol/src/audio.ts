@@ -201,6 +201,10 @@ function validatePacket(packet: PcmAudioPacket): void {
   for (let at = packet.frames * 4; at < packet.pcm.length; at++)
     if (packet.pcm[at] !== 0) throw new ProtocolError();
 }
+export {
+  validateConfig as validatePcmAudioConfig,
+  validatePacket as validatePcmAudioPacket,
+};
 export function encodePcmAudioConfig(config: PcmAudioConfig): Buffer {
   validateConfig(config);
   const bytes = Buffer.alloc(PCM_AUDIO_CONFIG_BYTES);

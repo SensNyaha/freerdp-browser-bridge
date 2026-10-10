@@ -46,6 +46,12 @@ export class NativeSessionWorker implements SessionWorker {
     this.worker.on('touch', (touch: TouchState) => {
       if (!this.closing) this.events.emit('touch', touch);
     });
+    this.worker.on(
+      'audio',
+      (event: import('./pcm-source.js').PcmSourceEvent) => {
+        if (!this.closing) this.events.emit('audio', event);
+      },
+    );
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
     });
@@ -120,6 +126,14 @@ export class NativeSessionWorker implements SessionWorker {
     this.events.on('certificate', listener);
     return () => {
       this.events.off('certificate', listener);
+    };
+  }
+  onAudio(
+    listener: (event: import('./pcm-source.js').PcmSourceEvent) => void,
+  ): () => void {
+    this.events.on('audio', listener);
+    return () => {
+      this.events.off('audio', listener);
     };
   }
   onCursor(listener: (cursor: CursorState) => void): () => void {
