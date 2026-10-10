@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { randomInt } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -65,7 +66,19 @@ async function fixture(run, input) {
   );
   let ws;
   try {
-    await server.listen({ host: '127.0.0.1', port: 0 });
+    // Windows may assign a Chromium-restricted port (for example 6665) for
+    // port 0. Use a browser-safe range and retry only occupied candidates.
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await server.listen({
+          host: '127.0.0.1',
+          port: randomInt(20000, 60000),
+        });
+        break;
+      } catch (error) {
+        if (error.code !== 'EADDRINUSE' || attempt === 15) throw error;
+      }
+    }
     const origin = 'http://127.0.0.1:' + server.server.address().port;
     const created = (
       await server.inject({
