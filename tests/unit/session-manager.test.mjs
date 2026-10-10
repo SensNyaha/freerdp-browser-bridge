@@ -170,6 +170,62 @@ async function withManager(options, run) {
   }
 }
 
+test('fake-backend manager: forced cleanup owns capacity until termination completion and bounds faulty promises', async () => {
+  const factory = fakeFactory('close-hang');
+  let release;
+  let finished = false;
+  await withManager(
+    { ...factory, shutdownTimeoutMs: 10, terminationTimeoutMs: 1000 },
+    async (manager) => {
+      const session = manager.create(config(), a, 'force-one');
+      await eventually(
+        () => manager.get(session.sessionId, a).state === 'connected',
+      );
+      const worker = factory.workers[0];
+      worker.terminate = () => {
+        worker.terminated++;
+        return new Promise((resolve) => {
+          release = resolve;
+        });
+      };
+      const closing = manager.close(session.sessionId, a).then(() => {
+        finished = true;
+      });
+      await eventually(() => worker.terminated === 1);
+      assert.equal(manager.statistics().active, 1);
+      assert.equal(finished, false);
+      release();
+      await closing;
+      assert.equal(manager.statistics().active, 0);
+      assert.equal(worker.closed, 1);
+      assert.equal(worker.terminated, 1);
+    },
+  );
+  for (const mode of ['reject', 'hang']) {
+    const faulty = fakeFactory('close-hang');
+    await withManager(
+      { ...faulty, shutdownTimeoutMs: 10, terminationTimeoutMs: 20 },
+      async (manager) => {
+        const session = manager.create(config(), a, `force-${mode}`);
+        const worker = faulty.workers[0];
+        worker.terminate = () => {
+          worker.terminated++;
+          return mode === 'reject'
+            ? Promise.reject(new Error('untrusted termination diagnostic'))
+            : new Promise(() => {});
+        };
+        const start = performance.now();
+        const closed = await manager.close(session.sessionId, a);
+        assert.ok(performance.now() - start < 1000);
+        assert.equal(closed.state, 'closed');
+        assert.equal(worker.terminated, 1);
+        assert.equal(manager.statistics().active, 0);
+        assert.ok(!JSON.stringify(closed).includes('untrusted'));
+      },
+    );
+  }
+});
+
 test('fake-backend manager: opaque IDs, ownership, state transitions and short credential lifetime', async () => {
   const factory = fakeFactory();
   await withManager({ ...factory }, async (manager) => {

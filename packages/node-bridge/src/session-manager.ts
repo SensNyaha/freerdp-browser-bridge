@@ -167,7 +167,8 @@ export interface CertificateResponse {
 export interface SessionWorker {
   start(config: SessionCreate, signal: AbortSignal): Promise<void>;
   close(): Promise<void>;
-  terminate(): void;
+  /** A returned promise resolves after forced termination/resource retirement. */
+  terminate(): void | Promise<void>;
   onState(listener: (state: SessionState) => void): () => void;
   onFailure(listener: (code?: SessionErrorCode) => void): () => void;
   onCertificate?(listener: (prompt: CertificatePrompt) => void): () => void;
@@ -191,6 +192,7 @@ export interface SessionManagerOptions {
   retentionMs?: number;
   startupTimeoutMs?: number;
   shutdownTimeoutMs?: number;
+  terminationTimeoutMs?: number;
   tokenTtlMs?: number;
   maxTokensPerSession?: number;
   createBurst?: number;
@@ -280,6 +282,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       retentionMs: options.retentionMs ?? 300000,
       startupTimeoutMs: options.startupTimeoutMs ?? 10000,
       shutdownTimeoutMs: options.shutdownTimeoutMs ?? 2000,
+      terminationTimeoutMs: options.terminationTimeoutMs ?? 2000,
       tokenTtlMs: options.tokenTtlMs ?? 60000,
       maxTokensPerSession: options.maxTokensPerSession ?? 4,
       createBurst: options.createBurst ?? 5,
@@ -678,9 +681,21 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         ]);
       } catch {
         try {
-          entry.worker.terminate();
+          const termination = entry.worker.terminate();
+          if (termination) {
+            if (timer) clearTimeout(timer);
+            await Promise.race([
+              termination,
+              new Promise<never>((_, reject) => {
+                timer = setTimeout(
+                  () => reject(new Error()),
+                  this.options.terminationTimeoutMs,
+                );
+              }),
+            ]);
+          }
         } catch {
-          /* Trusted backend termination must be best effort. */
+          /* Forced cleanup remains bounded even for a faulty trusted backend. */
         }
       } finally {
         if (timer) clearTimeout(timer);

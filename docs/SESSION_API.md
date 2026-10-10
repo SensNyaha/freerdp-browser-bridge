@@ -34,8 +34,15 @@ session. One attachment per channel is supported. Detach does not close the sess
 
 Default active limits are 32 globally and four per principal. Creation rate is five
 per minute per principal and IP, with at most 1024 rate keys. Terminal retention is
-bounded at 64 snapshots/five minutes. Worker startup/cleanup deadlines are 10 seconds/
-two seconds. HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
+bounded at 64 snapshots/five minutes. Worker startup/graceful-cleanup deadlines are
+10 seconds/two seconds. After graceful failure/timeout the registry calls forced
+termination. A trusted backend may return a termination-completion promise; the
+registry retains active capacity while awaiting it for a separate bounded
+`terminationTimeoutMs` (default two seconds). Thus cleanup has at most two phases
+of two seconds, excluding event-loop scheduling. Legacy void termination gives
+no completion guarantee. Rejected/hung termination is bounded and cannot expose
+backend diagnostics; that fallback does not prove physical resource retirement.
+HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
 backlog to 64 KiB and all messages to 256 per second, with at most 32 non-input
 commands per second. Socket/upgrade counts are bounded. Experimental connected
 control input and its queue/release contract are documented in [INPUT.md](INPUT.md).
@@ -65,6 +72,12 @@ settles or is aborted; this is not guaranteed zeroization of JS strings.
 Failure/shutdown revoke tokens and attachments and bound cleanup time.
 Stage 3 now supplies the opt-in NativeSessionWorker backend and private config/state
 IPC; see CONNECTION_CORE.md. The default server still has no connection backend.
+Native forced termination returns completion after pending startup settles and
+worker child-close/runtime-directory cleanup. Startup checks cancellation after
+filesystem awaits and HELLO, so termination before spawning cannot create a late
+child. This does not establish simultaneous hard-kill/orphan reclamation, arbitrary
+filesystem failure handling or forced cleanup beyond its deadline.
+[Termination ownership evidence](ITERATION_056.md).
 
 Pino omits URLs, bodies and headers and recursively redacts secret keys.
 Public failures have fixed messages and do not forward backend diagnostics.

@@ -95,9 +95,11 @@ export class NativeSessionWorker implements SessionWorker {
       await this.worker.sendInput({ type: 'reset' }).catch(() => {});
     await this.worker.close();
   }
-  terminate(): void {
+  async terminate(): Promise<void> {
     this.closing = true;
     this.worker.terminate();
+    await this.startup?.catch(() => {});
+    await this.worker.close();
   }
   onState(listener: (state: SessionState) => void): () => void {
     this.events.on('state', listener);

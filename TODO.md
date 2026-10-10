@@ -28,7 +28,7 @@ activation, production ingress placement and audible/browser acceptance remain o
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 159/159 Node tests;
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 162/162 Node tests;
   CTest/Catch2: 41 IPC/input/state/audio-codec/output cases / 5,310 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -375,5 +375,5 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Separate bounded config/secret IPC classes now deliver credentials after HELLO; transport copies and the active FreeRDP password setting are overwritten. Upstream/immutable JS copies and future secret classes remain open. [Contract](docs/CONNECTION_CORE.md).
 - [ ] TODO — Explicit restricted Windows runtime ACLs and multi-user isolation acceptance. Traces to ARCHITECTURE §2 and SECURITY §2/6.
 - [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
-- [ ] TODO — Registry cleanup deadline can return after forced termination but before native child close/runtime removal; iteration 55 observed one full-suite failure, isolated/full repeats pass without establishing a fix. Add bounded termination-completion ownership before returning to pipe activation. [Evidence](docs/ITERATION_055.md).
+- [~] IN PROGRESS — Registry now retains capacity through native forced-termination completion with a separate bounded deadline; filesystem/HELLO cancellation guards prevent late spawn/readiness. Pure completion/fault tests, compiled fake-worker/native-adapter join and actual linked unsupported-config cleanup pass. Forced-deadline expiry, legacy void backends, OS/filesystem failures and orphan acceptance remain open. [Evidence](docs/ITERATION_056.md). Observed race: [iteration 55](docs/ITERATION_055.md), `46245b2`.
 - [~] IN PROGRESS — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Windows native ZIP and relocation are verified; [manual bundled CI](.github/workflows/bundled-native.yml) is prepared, not run. Linux, Node.js distribution, MSI/EXE/DEB/RPM installer integration and clean-machine tests remain open.

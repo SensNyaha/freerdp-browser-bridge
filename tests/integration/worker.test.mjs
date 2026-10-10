@@ -7,9 +7,12 @@ import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
+import { eventually } from '../fixtures/session-worker.mjs';
 import {
   WorkerProcess,
   probeWorkerBuild,
+  NativeSessionWorker,
+  SessionManager,
 } from '../../packages/node-bridge/dist/index.js';
 import { createBuildServer } from '../../apps/bridge-api/dist/index.js';
 import {
@@ -97,6 +100,22 @@ test(
     });
   },
 );
+
+test('native lifecycle: cancellation during async startup cannot spawn a late child', async () => {
+  await withRoot(async (runtimeRoot) => {
+    const worker = new WorkerProcess({ workerPath, runtimeRoot });
+    const startup = worker.start();
+    worker.terminate();
+    await assert.rejects(
+      startup,
+      (error) => error.code === 'WORKER_TERMINATED',
+    );
+    await worker.close();
+    assert.equal(worker.pid, undefined);
+    assert.equal(worker.state, 'failed');
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  });
+});
 
 test('native integration: worker crash is isolated and a replacement starts', async () => {
   await withRoot(async (runtimeRoot) => {
@@ -233,6 +252,49 @@ test('fake-worker integration: handshake timeout, wrong reply and shutdown deadl
     assert.deepEqual(await readdir(runtimeRoot), []);
   });
 });
+
+test(
+  'fake-worker native registry: forced termination joins child close and runtime removal',
+  { timeout: 10000 },
+  async () => {
+    await withRoot(async (runtimeRoot) => {
+      let forced = 0;
+      const manager = new SessionManager({
+        shutdownTimeoutMs: 20,
+        terminationTimeoutMs: 2000,
+        workerFactory: () => {
+          const worker = new NativeSessionWorker({
+            workerPath: fixture(3),
+            runtimeRoot,
+            requestTimeoutMs: 5000,
+            shutdownTimeoutMs: 5000,
+          });
+          const terminate = worker.terminate.bind(worker);
+          worker.terminate = () => {
+            forced++;
+            return terminate();
+          };
+          return worker;
+        },
+      });
+      try {
+        manager.create(
+          {
+            target: { host: 'unused.example.test' },
+            auth: { username: 'synthetic-user', password: 'synthetic-only' },
+          },
+          { id: 'synthetic-owner' },
+          '127.0.0.1',
+        );
+        await eventually(() => manager.statistics().active === 0);
+        assert.equal(forced, 1);
+        assert.deepEqual(await readdir(runtimeRoot), []);
+      } finally {
+        await manager.shutdown();
+      }
+    });
+  },
+);
 
 test('fake-worker integration: bounded pending requests reject overload without growing queues', async () => {
   await withRoot(async (runtimeRoot) => {

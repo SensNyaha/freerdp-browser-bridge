@@ -169,16 +169,23 @@ export class WorkerProcess extends EventEmitter {
     this.emit('failure', error);
   }
 
+  private requireStarting(): void {
+    if (this.status !== 'starting') throw new WorkerError('WORKER_TERMINATED');
+  }
+
   async start(): Promise<WorkerBuild> {
     if (this.status !== 'created') throw new WorkerError('INVALID_STATE');
     this.setState('starting');
     try {
       await mkdir(this.options.runtimeRoot, { recursive: true, mode: 0o700 });
+      this.requireStarting();
       this.directory = await mkdtemp(join(this.options.runtimeRoot, 'worker-'));
+      this.requireStarting();
       await writeFile(join(this.directory, '.rdp-worker-owned'), 'runtime-v1', {
         flag: 'wx',
         mode: 0o600,
       });
+      this.requireStarting();
       const env = Object.fromEntries(
         ['SystemRoot', 'WINDIR', 'PATH', 'LD_LIBRARY_PATH'].flatMap((key) =>
           process.env[key] === undefined ? [] : [[key, process.env[key]!]],
@@ -238,6 +245,7 @@ export class WorkerProcess extends EventEmitter {
         Kind.HelloAck,
         helloPayload(),
       );
+      this.requireStarting();
       this.report = decodeBuild(hello.payload);
       this.setState('ready');
       let busy = false;
