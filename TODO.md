@@ -265,6 +265,8 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).
+- [~] IN PROGRESS — The initial PCM table is fixed for one connection; replacement tables fail before upstream mutation. Source rate/layout/width changes within that table pass actual linked channel/fake-SVC tests. [Evidence](docs/ITERATION_047.md); `2713056`. Broader renegotiation remains open.
+- [~] IN PROGRESS — RDPEI and guarded RDPSND now compose in either binding order through a fixed eight-record owner/context scope stack. Cached public entries and delayed confirmation ownership pass actual linked addin/simulated transport tests; outer close fails before retiring resources beneath an attached child. Worker audio activation and real transport/audio acceptance remain open. [Evidence](docs/ITERATION_048.md).
 
 **Gate:** remote audio audible and microphone usable with bounded <150 ms queue target in LAN test.
 

@@ -128,7 +128,17 @@ Bind requires an existing context, the sink owner thread, synchronous static and
 dynamic channels, and disabled async channels/update. Create contexts before
 binding: the pinned client context constructor replaces the process-wide provider.
 One audio provider scope is allowed per process, with no concurrent provider/context
-changes. If composed over another scoped provider, close in reverse binding order.
+changes. Known bridge providers compose through `native/channels/addin_scope.*`:
+one context and owner, at most eight fixed scope records, unique callbacks and
+reverse binding order for close. RDPEI and RDPSND each retain their single-instance
+restriction. Cached entries remain valid beneath a known active child provider;
+an unknown replacement disables dispatch and is preserved during teardown.
+Out-of-order close fails before retiring any sink/gate resources. Outstanding audio
+completions keep the inner scope attached and prevent outer retirement.
+
+[Iteration 48](ITERATION_048.md) verifies both RDPEI/RDPSND binding orders with the
+actual linked addins and simulated public transports. This is provider composition,
+not remote touch or audible audio acceptance; worker audio remains disabled.
 
 Entry resolves the actual opaque plugin's context through public
 `freerdp_rdpsnd_get_context`, requires the bound context, and calls public device

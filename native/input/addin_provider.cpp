@@ -25,21 +25,14 @@ UINT AddinProvider::bind(rdpContext &context, PluginRegistration &registration) 
   AddinProvider *empty = nullptr;
   if (!active_.compare_exchange_strong(empty, this))
     return ERROR_INVALID_STATE;
-  previous_ = freerdp_get_current_addin_provider();
-  if (previous_ == load) {
+  const auto scoped = scope_.bind(context, load);
+  if (scoped != CHANNEL_RC_OK) {
     active_.store(nullptr);
-    return ERROR_INVALID_STATE;
+    return scoped;
   }
   context_ = &context;
   registration_ = &registration;
   thread_ = std::this_thread::get_id();
-  // The pinned API only assigns the provider; it does not invoke callbacks here.
-  if (freerdp_register_addin_provider(load, 0) != 0) {
-    context_ = nullptr;
-    registration_ = nullptr;
-    active_.store(nullptr);
-    return ERROR_INTERNAL_ERROR;
-  }
   bound_ = true;
   return CHANNEL_RC_OK;
 }
@@ -52,17 +45,17 @@ PVIRTUALCHANNELENTRY AddinProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR t
       flags == FREERDP_ADDIN_CHANNEL_DYNAMIC) {
     const auto allowed = scope && scope->bound_ && scope->on_thread() && !scope->loading_ &&
                          !scope->entering_ && !subsystem && !type &&
-                         !scope->registration_->retired();
+                         !scope->registration_->retired() && scope->scope_.active();
     return std::bit_cast<PVIRTUALCHANNELENTRY>(
         static_cast<PDVC_PLUGIN_ENTRY>(allowed ? entry : denied));
   }
   if (!scope || !scope->bound_ || !scope->on_thread() || scope->loading_ || scope->entering_ ||
-      !scope->previous_)
+      !scope->scope_.active() || !scope->scope_.previous())
     return nullptr;
   scope->loading_ = true;
   PVIRTUALCHANNELENTRY result = nullptr;
   try {
-    result = scope->previous_(name, subsystem, type, flags);
+    result = scope->scope_.previous()(name, subsystem, type, flags);
   } catch (...) {
     // No exception may cross the public C API boundary.
   }
@@ -77,7 +70,7 @@ UINT VCAPITYPE AddinProvider::denied(IDRDYNVC_ENTRY_POINTS *) noexcept {
 UINT VCAPITYPE AddinProvider::entry(IDRDYNVC_ENTRY_POINTS *points) noexcept {
   auto *scope = active_.load();
   if (!scope || !scope->bound_ || !scope->on_thread() || scope->entering_ || scope->loading_ ||
-      freerdp_get_current_addin_provider() != load || scope->registration_->retired())
+      !scope->scope_.active() || scope->registration_->retired())
     return ERROR_INVALID_STATE;
   if (!points || !points->GetRdpContext)
     return ERROR_INVALID_PARAMETER;
@@ -95,21 +88,20 @@ UINT VCAPITYPE AddinProvider::entry(IDRDYNVC_ENTRY_POINTS *points) noexcept {
 UINT AddinProvider::close() noexcept {
   if (!bound_)
     return CHANNEL_RC_OK;
-  if (!on_thread() || loading_ || entering_ || active_.load() != this)
+  if (!on_thread() || loading_ || entering_ || active_.load() != this || !scope_.top())
     return ERROR_INVALID_STATE;
   const auto retired = registration_->retire();
   if (!registration_->retired())
     return retired;
-  const bool owned = freerdp_get_current_addin_provider() == load;
-  if (owned && freerdp_register_addin_provider(previous_, 0) != 0)
-    return ERROR_INTERNAL_ERROR;
+  const auto detached = scope_.close();
+  if (scope_.bound())
+    return detached;
   // A foreign replacement must not be overwritten. Report the broken scope
   // contract, but detach safely after delegated resources have been retired.
   bound_ = false;
   context_ = nullptr;
   registration_ = nullptr;
-  previous_ = nullptr;
   active_.store(nullptr);
-  return !owned ? ERROR_INVALID_STATE : retired;
+  return detached != CHANNEL_RC_OK ? detached : retired;
 }
 } // namespace bridge::touch

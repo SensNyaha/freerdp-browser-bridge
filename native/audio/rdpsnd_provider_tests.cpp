@@ -1,3 +1,4 @@
+#include "addin_provider.hpp"
 #include "ingress.hpp"
 #include "rdpsnd_provider.hpp"
 #include "static_gate.hpp"
@@ -47,6 +48,45 @@ struct GateScope {
     REQUIRE(fixture.provider.bind(*fixture.context, fixture.sink, &gate) == CHANNEL_RC_OK);
   }
   ~GateScope() { (void)fixture.provider.close(); }
+};
+struct TouchScope {
+  bridge::touch::PluginRegistration registration;
+  bridge::touch::AddinProvider provider;
+  explicit TouchScope(rdpContext &context) {
+    REQUIRE(provider.bind(context, registration) == CHANNEL_RC_OK);
+  }
+  ~TouchScope() { (void)provider.close(); }
+};
+struct DynamicHost {
+  IDRDYNVC_ENTRY_POINTS api{};
+  rdpContext *context;
+  IWTSPlugin *plugin = nullptr;
+  unsigned registrations = 0;
+  static DynamicHost &get(IDRDYNVC_ENTRY_POINTS *points) {
+    return *reinterpret_cast<DynamicHost *>(points);
+  }
+  explicit DynamicHost(rdpContext *value) : context(value) {
+    api.GetRdpContext = [](IDRDYNVC_ENTRY_POINTS *points) { return get(points).context; };
+    api.GetRdpSettings = [](IDRDYNVC_ENTRY_POINTS *points) {
+      return get(points).context->settings;
+    };
+    api.GetPlugin = [](IDRDYNVC_ENTRY_POINTS *points, const char *) { return get(points).plugin; };
+    api.RegisterPlugin = [](IDRDYNVC_ENTRY_POINTS *points, const char *, IWTSPlugin *plugin) {
+      auto &host = get(points);
+      host.plugin = plugin;
+      ++host.registrations;
+      return UINT{CHANNEL_RC_OK};
+    };
+  }
+  ~DynamicHost() {
+    if (plugin)
+      (void)plugin->Terminated(plugin);
+  }
+  void enter(PVIRTUALCHANNELENTRY entry) {
+    REQUIRE(entry);
+    REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&api) == CHANNEL_RC_OK);
+    REQUIRE(registrations == 1);
+  }
 };
 void word(std::vector<BYTE> &bytes, unsigned value) {
   bytes.push_back(static_cast<BYTE>(value));
@@ -1084,4 +1124,78 @@ TEST_CASE("Guarded RDPSND switches source rate layout and width within its initi
   REQUIRE(output == expected);
   REQUIRE(host.writes.size() == 6);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Audio nested over touch preserves cached RDPEI entry and pending teardown ownership") {
+  Fixture fixture;
+  const auto original = freerdp_get_current_addin_provider();
+  TouchScope touch(*fixture.context);
+  const auto touch_loader = freerdp_get_current_addin_provider();
+  const auto cached_touch = freerdp_load_channel_addin_entry(RDPEI_CHANNEL_NAME, nullptr, nullptr,
+                                                             FREERDP_ADDIN_CHANNEL_DYNAMIC);
+  GateScope audio(fixture);
+  const auto audio_loader = freerdp_get_current_addin_provider();
+  DynamicHost dynamic(fixture.context.get());
+  dynamic.enter(cached_touch);
+  REQUIRE(dynamic.plugin->pInterface == touch.registration.client());
+  REQUIRE(freerdp_load_channel_addin_entry(RDPEI_CHANNEL_NAME, nullptr, nullptr,
+                                           FREERDP_ADDIN_CHANNEL_DYNAMIC) == cached_touch);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  host.defer_writes = true;
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  emit_pcm(host, 100, 1, {1, 0, 254, 255});
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 960);
+  std::array<BYTE, 4> output{};
+  REQUIRE(fixture.sink.read(output).frames == 1);
+  REQUIRE(output == std::array<BYTE, 4>{1, 0, 254, 255});
+  REQUIRE(touch.provider.close() == ERROR_INVALID_STATE);
+  REQUIRE_FALSE(touch.registration.retired());
+  REQUIRE_FALSE(fixture.sink.retired());
+  REQUIRE(fixture.provider.close() == ERROR_IO_PENDING);
+  REQUIRE_FALSE(touch.registration.retired());
+  REQUIRE(freerdp_get_current_addin_provider() == audio_loader);
+  host.complete();
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(freerdp_get_current_addin_provider() == touch_loader);
+  REQUIRE(touch.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(touch.registration.retired());
+  REQUIRE(freerdp_get_current_addin_provider() == original);
+}
+
+TEST_CASE("Touch nested over audio delegates static entry and backend before LIFO retirement") {
+  Fixture fixture;
+  const auto original = freerdp_get_current_addin_provider();
+  GateScope audio(fixture);
+  const auto audio_loader = freerdp_get_current_addin_provider();
+  const auto cached_audio =
+      freerdp_load_channel_addin_entry("rdpsnd", nullptr, nullptr, static_abi);
+  TouchScope touch(*fixture.context);
+  DynamicHost dynamic(fixture.context.get());
+  dynamic.enter(freerdp_load_channel_addin_entry(RDPEI_CHANNEL_NAME, nullptr, nullptr,
+                                                 FREERDP_ADDIN_CHANNEL_DYNAMIC));
+  StaticHost host(fixture.context.get());
+  REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(cached_audio)(
+      reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&host.points), &host));
+  host.connect();
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  emit_pcm(host, 100, 1, {0, 128, 255, 127});
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 960);
+  REQUIRE(fixture.provider.close() == ERROR_INVALID_STATE);
+  REQUIRE_FALSE(fixture.sink.retired());
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 960);
+  REQUIRE_FALSE(touch.registration.retired());
+  REQUIRE(touch.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(freerdp_get_current_addin_provider() == audio_loader);
+  std::array<BYTE, 4> output{};
+  REQUIRE(fixture.sink.read(output).frames == 1);
+  REQUIRE(output == std::array<BYTE, 4>{0, 128, 255, 127});
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.retired());
+  REQUIRE(freerdp_get_current_addin_provider() == original);
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "addin_scope.hpp"
 #include "rdpsnd_sink.hpp"
 #include <freerdp/addin.h>
 #include <freerdp/client/drdynvc.h>
@@ -13,7 +14,7 @@ class RdpsndProvider {
   RdpsndSink *sink_ = nullptr;
   AudioStaticGate *gate_ = nullptr;
   PVIRTUALCHANNELENTRYEX channel_delegate_ = nullptr;
-  FREERDP_LOAD_CHANNEL_ADDIN_ENTRY_FN previous_ = nullptr;
+  channels::AddinScope scope_;
   std::thread::id thread_;
   bool bound_ = false, loading_ = false, entering_ = false, attempted_ = false, used_ = false;
   bool channel_attempted_ = false;

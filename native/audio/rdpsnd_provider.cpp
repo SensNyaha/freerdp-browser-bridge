@@ -28,24 +28,15 @@ UINT RdpsndProvider::bind(rdpContext &context, RdpsndSink &sink, AudioStaticGate
   RdpsndProvider *empty = nullptr;
   if (!active_.compare_exchange_strong(empty, this))
     return ERROR_INVALID_STATE;
-  previous_ = freerdp_get_current_addin_provider();
-  if (previous_ == load) {
-    previous_ = nullptr;
+  const auto scoped = scope_.bind(context, load);
+  if (scoped != CHANNEL_RC_OK) {
     active_.store(nullptr);
-    return ERROR_INVALID_STATE;
+    return scoped;
   }
   thread_ = std::this_thread::get_id();
   context_ = &context;
   sink_ = &sink;
   gate_ = gate;
-  if (freerdp_register_addin_provider(load, 0) != 0) {
-    context_ = nullptr;
-    sink_ = nullptr;
-    gate_ = nullptr;
-    previous_ = nullptr;
-    active_.store(nullptr);
-    return ERROR_INTERNAL_ERROR;
-  }
   bound_ = true;
   used_ = true;
   return CHANNEL_RC_OK;
@@ -61,14 +52,15 @@ PVIRTUALCHANNELENTRY RdpsndProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR 
     const bool allowed = scope->bound_ && scope->on_thread() && !scope->loading_ &&
                          !scope->entering_ && !scope->channel_attempted_ &&
                          !scope->sink_->retired() && !type &&
-                         flags == (FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
-    if (!allowed || !scope->previous_)
+                         flags == (FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX) &&
+                         scope->scope_.active();
+    if (!allowed || !scope->scope_.previous())
       return std::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PVIRTUALCHANNELENTRYEX>(channel_denied));
     scope->loading_ = true;
     PVIRTUALCHANNELENTRY delegated = nullptr;
     try {
-      delegated = scope->previous_(name, nullptr, nullptr, flags);
+      delegated = scope->scope_.previous()(name, nullptr, nullptr, flags);
     } catch (...) {
     }
     scope->loading_ = false;
@@ -84,17 +76,17 @@ PVIRTUALCHANNELENTRY RdpsndProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR 
                      (scope && !scope->gate_ && flags == FREERDP_ADDIN_CHANNEL_DYNAMIC);
     const bool allowed = scope && scope->bound_ && scope->on_thread() && !scope->loading_ &&
                          !scope->entering_ && !scope->attempted_ && !type && abi &&
-                         !scope->sink_->retired();
+                         !scope->sink_->retired() && scope->scope_.active();
     return std::bit_cast<PVIRTUALCHANNELENTRY>(
         static_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(allowed ? entry : denied));
   }
   if (!scope || !scope->bound_ || !scope->on_thread() || scope->loading_ || scope->entering_ ||
-      !scope->previous_)
+      !scope->scope_.active() || !scope->scope_.previous())
     return nullptr;
   scope->loading_ = true;
   PVIRTUALCHANNELENTRY result = nullptr;
   try {
-    result = scope->previous_(name, subsystem, type, flags);
+    result = scope->scope_.previous()(name, subsystem, type, flags);
   } catch (...) {
   }
   scope->loading_ = false;
@@ -115,7 +107,7 @@ BOOL VCAPITYPE RdpsndProvider::channel_entry(PCHANNEL_ENTRY_POINTS_EX points,
   auto *scope = active_.load();
   if (!scope || !scope->bound_ || !scope->on_thread() || scope->loading_ || scope->entering_ ||
       scope->channel_attempted_ || !scope->gate_ || !scope->channel_delegate_ ||
-      scope->sink_->retired() || freerdp_get_current_addin_provider() != load || !points ||
+      scope->sink_->retired() || !scope->scope_.active() || !points ||
       points->cbSize != sizeof(CHANNEL_ENTRY_POINTS_FREERDP_EX))
     return FALSE;
   scope->channel_attempted_ = true;
@@ -129,7 +121,7 @@ BOOL VCAPITYPE RdpsndProvider::channel_entry(PCHANNEL_ENTRY_POINTS_EX points,
 UINT VCAPITYPE RdpsndProvider::entry(PFREERDP_RDPSND_DEVICE_ENTRY_POINTS points) noexcept {
   auto *scope = active_.load();
   if (!scope || !scope->bound_ || !scope->on_thread() || scope->loading_ || scope->entering_ ||
-      scope->attempted_ || scope->sink_->retired() || freerdp_get_current_addin_provider() != load)
+      scope->attempted_ || scope->sink_->retired() || !scope->scope_.active())
     return ERROR_INVALID_STATE;
   if (!points || !points->rdpsnd || !points->pRegisterRdpsndDevice)
     return ERROR_INVALID_PARAMETER;
@@ -152,7 +144,7 @@ UINT VCAPITYPE RdpsndProvider::entry(PFREERDP_RDPSND_DEVICE_ENTRY_POINTS points)
 UINT RdpsndProvider::close() noexcept {
   if (!bound_)
     return CHANNEL_RC_OK;
-  if (!on_thread() || loading_ || entering_ || active_.load() != this)
+  if (!on_thread() || loading_ || entering_ || active_.load() != this || !scope_.top())
     return ERROR_INVALID_STATE;
   if (gate_) {
     const auto result = gate_->retire();
@@ -161,16 +153,15 @@ UINT RdpsndProvider::close() noexcept {
   }
   if (!sink_->retire())
     return ERROR_INVALID_STATE;
-  const bool owned = freerdp_get_current_addin_provider() == load;
-  if (owned && freerdp_register_addin_provider(previous_, 0) != 0)
-    return ERROR_INTERNAL_ERROR;
+  const auto detached = scope_.close();
+  if (scope_.bound())
+    return detached;
   bound_ = false;
   context_ = nullptr;
   sink_ = nullptr;
   gate_ = nullptr;
   channel_delegate_ = nullptr;
-  previous_ = nullptr;
   active_.store(nullptr);
-  return owned ? CHANNEL_RC_OK : ERROR_INVALID_STATE;
+  return detached;
 }
 } // namespace bridge::audio

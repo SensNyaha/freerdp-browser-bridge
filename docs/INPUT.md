@@ -489,7 +489,10 @@ open. No worker capability or channel is enabled by this isolated component.
 `native/input/addin_provider.*` uses the pinned public provider APIs. FreeRDP's
 client-context creation installs its default process-wide provider, so Connection
 binds the bridge scope **after** context creation/configuration, on its RDP thread,
-before connect. A second active scope is rejected. Provider/context changes and
+before connect. A second active RDPEI scope is rejected. Known bridge channel
+providers compose through a fixed eight-record scope stack on the same context
+and owner thread; cached RDPEI entries work under a known RDPSND child, and the
+reverse binding order also delegates correctly. Provider/context changes and
 scope destruction must be serialized; no callbacks may run concurrently with
 close. This matches one worker process/context per session, not a shared Node host.
 
@@ -511,6 +514,10 @@ restores the previous provider, including null. A foreign provider replacement i
 reported as an error and is not overwritten. Reentry/foreign close cannot retire
 active resources. Destruction with a still-bound scope violates its lifetime
 contract and terminates instead of leaving a global dangling callback.
+Closing an outer scope while a known child remains attached fails before addin
+retirement. A child waiting for transport completions remains attached until its
+own cleanup succeeds. [Composition evidence](ITERATION_048.md) uses actual linked
+RDPEI/RDPSND addins with simulated transports, without changing worker audio policy.
 
 Registration retirement publishes its completed result with release/acquire. Its
 wrapper survives until after context destruction; a later host Terminated reads

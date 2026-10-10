@@ -1,4 +1,5 @@
 #pragma once
+#include "addin_scope.hpp"
 #include "rdpei_plugin.hpp"
 #include <freerdp/addin.h>
 
@@ -11,7 +12,7 @@ class AddinProvider {
   static std::atomic<AddinProvider *> active_;
   PluginRegistration *registration_ = nullptr;
   rdpContext *context_ = nullptr;
-  FREERDP_LOAD_CHANNEL_ADDIN_ENTRY_FN previous_ = nullptr;
+  channels::AddinScope scope_;
   std::thread::id thread_;
   bool bound_ = false, loading_ = false, entering_ = false;
   bool on_thread() const noexcept;
