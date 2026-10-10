@@ -1,5 +1,6 @@
 #pragma once
 #include "ingress.hpp"
+#include "pcm_offer.hpp"
 #include "rdpsnd_sink.hpp"
 #include <freerdp/svc.h>
 
@@ -13,6 +14,8 @@ class AudioStaticGate {
   std::thread::id thread_;
   AudioAssembler assembler_;
   AudioPduValidator validator_;
+  std::array<BYTE, max_pcm_offer_bytes> offers_{};
+  std::uint16_t selected_count_ = 0;
   LPVOID handle_ = nullptr, delegate_user_ = nullptr;
   PCHANNEL_INIT_EVENT_EX_FN delegate_init_ = nullptr;
   PCHANNEL_OPEN_EVENT_EX_FN delegate_open_ = nullptr;

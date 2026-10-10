@@ -228,10 +228,32 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       gate->fail();
       return;
     }
+    if ((pdu->kind == AudioPduKind::wave_info || pdu->kind == AudioPduKind::wave ||
+         pdu->kind == AudioPduKind::wave2) &&
+        pdu->format_index >= gate->selected_count_) {
+      gate->fail();
+      return;
+    }
     if (pdu->kind == AudioPduKind::close)
       (void)gate->sink_.reset_stream();
     data = const_cast<BYTE *>(joined.bytes.data());
     size = total = static_cast<UINT>(joined.bytes.size());
+    if (pdu->kind == AudioPduKind::formats) {
+      const auto selected = select_pcm_offers(joined.bytes, gate->offers_);
+      if (!selected) {
+        gate->fail();
+        return;
+      }
+      gate->selected_count_ = selected->count;
+      data = const_cast<BYTE *>(selected->bytes.data());
+      size = total = static_cast<UINT>(selected->bytes.size());
+      if (selected->count == 0) {
+        // Pinned rdpsnd requires 30 bytes for the 20-byte fixed Formats body.
+        // Pad only internal dispatch; no synthetic format reaches negotiation.
+        std::fill_n(gate->offers_.begin() + 24, 10, BYTE{0});
+        size = total = 34;
+      }
+    }
     flags = CHANNEL_FLAG_FIRST | CHANNEL_FLAG_LAST;
   }
   gate->busy_ = true;

@@ -272,3 +272,45 @@ previous ABI fixture behavior and do not claim guarded ingress.
 channel, wrapper and PCM sink together with a fake SVC host, including a supplied
 `sys:fake` argument replaced by the fixed browser selection. No Node/worker runtime
 links this provider yet; AudioPlayback and audioOutput capability remain disabled.
+
+## Supported PCM offer policy
+
+The guarded static path now filters a validated server Formats record before
+upstream sees it. `native/audio/pcm_offer.hpp` retains only PCM tag 1, unsigned
+8-bit/signed 16-bit, mono/stereo, 8..48 kHz, consistent block alignment and average
+byte rate, and zero extra data. The original metadata and supported descriptors
+stay in stable order; count/body length are rewritten. The original record is not
+modified. One fixed 1,176-byte destination covers 64 supported descriptors; complete
+input and output capacity are checked before writing. The helper allocates nothing
+and borrows caller output; source/destination must not overlap.
+
+This policy is necessary because the pinned DSP support predicate accepts PCM tag
+without constraining widths/rates/layouts, and its PCM decode path copies source
+bytes rather than converting them to the fallback Open format. Unsupported PCM24
+must not be interpreted as PCM16. Compressed formats are excluded before negotiation
+and the fixed internal channel policy also selects PCM tag; the wrapped baseline
+path therefore does not rely on the compressed DSP fallback. Broader codecs/formats
+remain future work, explicitly unadvertised.
+
+All retained descriptors match the sink's support predicate. The negotiated client
+table has this stable order; Wave/Wave2 indices are checked against its selected
+count before dispatch. An empty supported list is a valid no-common-format exchange
+and never opens the sink. The bridge does not imply usable audio in that case.
+Other RDP channels can continue; a Wave sent with an invalid/no negotiated index
+is an explicit channel failure.
+
+The pinned parser requires 30 remaining bytes even though the fixed Formats body
+is 20 bytes. For a zero-count offer only, the adapter appends ten zero bytes to
+internal dispatch storage; the original wire record, body length and count remain
+unchanged. The actual client reply is exactly 24 bytes with no descriptors. No
+synthetic format is negotiated and the pinned dependency source is unchanged.
+The fixed layout follows the Microsoft
+[server](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpea/53e45199-5629-4352-8617-3dd0347964ee)
+and [client Formats](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpea/d58d4d57-cb36-453a-866f-86beacc6d79b)
+definitions.
+
+[Iteration 43](ITERATION_043.md) checks independent offer vectors, output rejection
+atomicity, mixed PCM24/PCM16, client-index dispatch and zero-common-format behavior
+through the actual linked guarded RDPSND path with fake SVC transport. No remote or
+browser playback acceptance is inferred. Earlier RDP/core allocations, close
+faults, stream clocks/gaps and worker/browser transport remain open.

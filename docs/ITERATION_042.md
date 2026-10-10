@@ -6,6 +6,7 @@ the prior linked entry runs through guarded public callbacks. Internal fixed
 browser/PCM arguments replace caller backend/device argv. Unsupported dynamic and
 legacy paths are explicitly refused in this profile.
 [Contract](AUDIO_PCM.md#guarded-top-level-loader-selection).
+Implementation commit: `7cabb98`.
 
 Actual linked RDPSND + fake SVC fixtures cover general loader selection through
 the wrapper into PCM, caller backend override, cached-entry replay refusal,

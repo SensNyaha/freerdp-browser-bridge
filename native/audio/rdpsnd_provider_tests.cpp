@@ -675,3 +675,66 @@ TEST_CASE("Guarded RDPSND provider requires matching context and sink ownership"
   REQUIRE(fixture.provider.bind(*fixture.context, fixture.sink, &wrong) == ERROR_INVALID_PARAMETER);
   REQUIRE(freerdp_get_current_addin_provider() == previous);
 }
+
+TEST_CASE("Guarded RDPSND negotiates only supported PCM and uses negotiated client indices") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  auto configuration = formats();
+  auto unsupported = std::vector<BYTE>(configuration.begin() + 24, configuration.end());
+  unsupported[14] = 24;
+  unsupported[12] = 6;
+  unsupported[8] = 0;
+  unsupported[9] = 101;
+  unsupported[10] = 4;
+  configuration.insert(configuration.begin() + 24, unsupported.begin(), unsupported.end());
+  configuration[2] = 56;
+  configuration[18] = 2;
+  const auto original = configuration;
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(configuration == original);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.writes.size() == 2);
+  REQUIRE(host.writes[0].size() == 42);
+  REQUIRE(host.writes[0][18] == 1);
+  REQUIRE(host.writes[0][38] == 16);
+  std::vector<BYTE> wave{SNDC_WAVE2, 0, 20, 0, 100, 0,   0,   0,   1, 0, 0,   0,
+                         100,        0, 0,  0, 0,   128, 255, 127, 1, 0, 254, 255};
+  SECTION("selected client index") {
+    host.raw(wave, static_cast<UINT>(wave.size()));
+    REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+    std::vector<BYTE> output(8);
+    REQUIRE(fixture.sink.read(output).frames == 2);
+    REQUIRE(output == std::vector<BYTE>{0, 128, 255, 127, 1, 0, 254, 255});
+  }
+  SECTION("rejected index") {
+    wave[6] = 1;
+    host.raw(wave, static_cast<UINT>(wave.size()));
+    REQUIRE(getChannelError(fixture.context.get()) == ERROR_INVALID_DATA);
+    REQUIRE(host.writes.size() == 2);
+    REQUIRE(fixture.sink.stats()->queue.accepted_frames == 0);
+  }
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Guarded RDPSND no-common-PCM list never opens or decodes an unsupported sink format") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  auto configuration = formats();
+  configuration[38] = 24;
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.writes.size() == 2);
+  REQUIRE(host.writes[0].size() == 24);
+  REQUIRE(host.writes[0][18] == 0);
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == 0);
+  std::vector<BYTE> output(4, 77);
+  REQUIRE(fixture.sink.read(output).status == QueueStatus::invalid);
+  REQUIRE(output == std::vector<BYTE>(4, 77));
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
