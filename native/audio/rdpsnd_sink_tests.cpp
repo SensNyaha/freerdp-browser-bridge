@@ -19,6 +19,52 @@ UINT play(rdpsndDevicePlugin &device, std::span<const std::uint8_t> bytes) {
 }
 } // namespace
 
+TEST_CASE("RDPSND availability separates source samples from open device ownership") {
+  RdpsndSink sink;
+  auto &device = sink.device();
+  const auto pcm = format();
+  const std::array<std::uint8_t, 4> input{0, 128, 255, 127};
+  REQUIRE(sink.stats()->availability == SourceAvailability::waiting);
+  REQUIRE_FALSE(sink.ready());
+  REQUIRE(device.Open(&device, &pcm, 0));
+  REQUIRE(sink.ready());
+  REQUIRE(sink.stats()->availability == SourceAvailability::waiting);
+  const auto opened_revision = sink.stats()->stream_revision;
+  REQUIRE(play(device, input) == 1);
+  REQUIRE(sink.stats()->availability == SourceAvailability::ready);
+  REQUIRE(sink.stats()->stream_revision == opened_revision);
+  const auto invalid = format(96000);
+  REQUIRE_FALSE(device.Open(&device, &invalid, 0));
+  REQUIRE(sink.stats()->availability == SourceAvailability::ready);
+  REQUIRE_FALSE(sink.reset_stream(SourceAvailability::ready));
+  REQUIRE_FALSE(sink.reset_stream(static_cast<SourceAvailability>(99)));
+  REQUIRE(sink.stats()->stream_revision == opened_revision);
+  REQUIRE(sink.stats()->queue.queued_frames == 1);
+  for (const auto state :
+       {SourceAvailability::suspended, SourceAvailability::closed, SourceAvailability::failed,
+        SourceAvailability::unavailable, SourceAvailability::waiting}) {
+    REQUIRE(sink.reset_stream(state));
+    REQUIRE(sink.stats()->availability == state);
+    REQUIRE(sink.ready());
+    REQUIRE(sink.stats()->queue.queued_frames == 0);
+    REQUIRE(sink.packet(1000000).status == PacketStatus::idle);
+    REQUIRE(play(device, input) == 1);
+    REQUIRE(sink.stats()->availability == SourceAvailability::ready);
+  }
+  REQUIRE(device.Play(&device, nullptr, 4) == 0);
+  REQUIRE(sink.stats()->availability == SourceAvailability::failed);
+  REQUIRE(play(device, input) == 1);
+  REQUIRE(sink.stats()->availability == SourceAvailability::ready);
+  device.Close(&device);
+  REQUIRE(sink.stats()->availability == SourceAvailability::closed);
+  REQUIRE_FALSE(sink.ready());
+  REQUIRE(device.Open(&device, &pcm, 0));
+  REQUIRE(sink.stats()->availability == SourceAvailability::waiting);
+  REQUIRE(sink.retire());
+  REQUIRE(sink.stats()->availability == SourceAvailability::closed);
+  REQUIRE_FALSE(sink.reset_stream());
+}
+
 TEST_CASE("RDPSND PCM packetization applies volume and resets epochs before borrowed playback") {
   RdpsndSink sink;
   auto &device = sink.device();
@@ -182,7 +228,9 @@ TEST_CASE("RDPSND overflow clears stale PCM and marks recovery as discontinuous"
   REQUIRE(stats.queue.dropped_frames == 1);
   REQUIRE(stats.queue.reset_discarded_frames == 5760);
   REQUIRE(stats.queue.queued_frames == 0);
+  REQUIRE(stats.availability == SourceAvailability::waiting);
   REQUIRE(play(device, one) == 1);
+  REQUIRE(sink.stats()->availability == SourceAvailability::ready);
   std::vector<std::uint8_t> output(4);
   REQUIRE(sink.read(output).discontinuity);
   REQUIRE(output == one);
@@ -251,7 +299,7 @@ TEST_CASE("RDPSND callbacks refuse foreign threads and retire before delayed hos
   UINT foreign_play = 99;
   QueueStatus foreign_read = QueueStatus::accepted;
   PacketStatus foreign_packet = PacketStatus::ready;
-  bool foreign_stats = true, foreign_retire = true;
+  bool foreign_stats = true, foreign_retire = true, foreign_reset = true;
   std::vector<std::uint8_t> output(4, 77);
   std::thread foreign([&] {
     foreign_open = device.Open(&device, &pcm, 0);
@@ -262,6 +310,7 @@ TEST_CASE("RDPSND callbacks refuse foreign threads and retire before delayed hos
     foreign_packet = sink.packet(0).status;
     foreign_stats = sink.stats().has_value();
     foreign_retire = sink.retire();
+    foreign_reset = sink.reset_stream(SourceAvailability::closed);
     device.Close(&device);
     device.Free(&device);
   });
@@ -274,10 +323,12 @@ TEST_CASE("RDPSND callbacks refuse foreign threads and retire before delayed hos
   REQUIRE(foreign_packet == PacketStatus::invalid);
   REQUIRE_FALSE(foreign_stats);
   REQUIRE_FALSE(foreign_retire);
+  REQUIRE_FALSE(foreign_reset);
   REQUIRE_FALSE(sink.retired());
   REQUIRE(output == std::vector<std::uint8_t>(4, 77));
   REQUIRE(device.GetVolume(&device) == 0xffffffffU);
   REQUIRE(sink.stats()->queue.queued_frames == 1);
+  REQUIRE(sink.stats()->availability == SourceAvailability::ready);
   REQUIRE(sink.retire());
   REQUIRE(sink.retired());
   REQUIRE(sink.stats()->queue.queued_frames == 0);

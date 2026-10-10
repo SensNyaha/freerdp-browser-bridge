@@ -367,6 +367,32 @@ These are native ABI/lifecycle fixtures, not actual RDPSND channel, server or
 browser integration. Worker registration, IPC scheduling and end-to-end audio
 remain open.
 
+## Source availability snapshots
+
+[Iteration 61](ITERATION_061.md) adds owner-thread `SinkStats.availability` without
+changing device ownership. Initial/successfully opened sources are `waiting`;
+only accepted, nonempty normalized samples mark `ready`. Queue underflow silence
+does not establish or change source availability. A failed Open preserves the
+previous snapshot and queued data. Rejected Play clears history/backlog and marks
+`failed`; bounded overflow clears it and returns to `waiting`. Valid subsequent
+Play may recover either state. Device Close and owner retirement mark `closed`.
+
+The guarded static adapter marks raw SUSPEND `suspended`, RESUME `waiting`,
+SNDC_CLOSE/disconnect `closed`, invalid channel records/lifecycle `failed`, and a
+negotiated empty supported-format set `unavailable`. These resets increment the
+source revision even without fresh samples. Existing `ready()` describes usable
+open-device ownership, not server playback: pinned SNDC_CLOSE leaves that device
+open while the source snapshot is `closed`. Only fresh accepted Play restores
+source `ready`. This snapshot is not yet published to Node or browser; worker
+audio remains disabled. Availability is descriptive, not an additional transport
+gate: existing validated channel dispatch and owner lifecycle still govern calls.
+
+`reset_stream(next)` accepts only the five non-ready source states; invalid enum
+values/attempted ready resets are refused without mutation. Foreign-thread calls
+are refused before mutable source access. Snapshot queries after retirement retain
+terminal `closed` metadata. Availability changes on Play can occur without a new
+source revision, so a future status owner must compare both fields.
+
 ## Scoped RDPSND backend loading
 
 `native/audio/rdpsnd_provider.hpp` scopes the exact `rdpsnd` / `browser` device

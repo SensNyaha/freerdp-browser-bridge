@@ -491,10 +491,14 @@ TEST_CASE("Public static audio gate bounds actual RDPSND ingress and handles str
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
   REQUIRE(fixture.sink.stats()->queue.queued_frames == 2);
   const std::array<BYTE, 4> close{SNDC_CLOSE, 0, 0, 0};
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::ready);
   host.raw(close, 4);
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::closed);
+  REQUIRE(fixture.sink.ready()); // Pinned Close leaves the device open; source state does not.
   REQUIRE(fixture.sink.stats()->queue.queued_frames == 0);
   REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == 2);
   host.raw(wave, static_cast<UINT>(wave.size()));
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::ready);
   std::vector<BYTE> output(8);
   const auto result = fixture.sink.read(output);
   REQUIRE(result.frames == 2);
@@ -503,6 +507,7 @@ TEST_CASE("Public static audio gate bounds actual RDPSND ingress and handles str
   REQUIRE(gate.retire() == CHANNEL_RC_OK);
   REQUIRE(gate.retired());
   REQUIRE(fixture.sink.retired());
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::closed);
   REQUIRE(host.closes == 1);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
@@ -529,6 +534,7 @@ TEST_CASE("Public static audio gate rejects limits and flags before actual RDPSN
   SECTION("contradictory suspend") { host.raw({}, 0, CHANNEL_FLAG_SUSPEND | CHANNEL_FLAG_RESUME); }
   REQUIRE(getChannelError(fixture.context.get()) == ERROR_INVALID_DATA);
   auto configuration = formats();
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::failed);
   host.raw(configuration, static_cast<UINT>(configuration.size()));
   REQUIRE(host.writes.empty());
   REQUIRE(fixture.sink.stats()->queue.accepted_frames == 0);
@@ -570,13 +576,16 @@ TEST_CASE(
   auto configuration = formats();
   host.raw(configuration, static_cast<UINT>(configuration.size()));
   host.raw({}, 0, CHANNEL_FLAG_SUSPEND);
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::suspended);
   host.raw({}, 0, CHANNEL_FLAG_RESUME);
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::waiting);
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
   const std::array<BYTE, 16> info{SNDC_WAVE, 0, 16, 0, 100, 0, 0, 0, 1, 0, 0, 0, 0, 128, 255, 127};
   host.raw(info, 16);
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
   host.raw({}, 0, CHANNEL_FLAG_SUSPEND);
   REQUIRE(getChannelError(fixture.context.get()) == ERROR_INVALID_DATA);
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::failed);
   REQUIRE(gate.retire() == CHANNEL_RC_OK);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
@@ -805,6 +814,7 @@ TEST_CASE("Guarded RDPSND no-common-PCM list never opens or decodes an unsupport
   REQUIRE(host.writes.size() == 2);
   REQUIRE(host.writes[0].size() == 24);
   REQUIRE(host.writes[0][18] == 0);
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::unavailable);
   REQUIRE(fixture.sink.stats()->queue.accepted_frames == 0);
   std::vector<BYTE> output(4, 77);
   REQUIRE(fixture.sink.read(output).status == QueueStatus::invalid);

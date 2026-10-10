@@ -29,6 +29,7 @@ bool AudioStaticGate::ready_for(const rdpContext &context, const RdpsndSink &sin
 }
 void AudioStaticGate::fail() noexcept {
   failed_ = true;
+  (void)sink_.reset_stream(SourceAvailability::failed);
   if (context_)
     setChannelError(context_, ERROR_INVALID_DATA, "Invalid audio channel record or lifecycle");
 }
@@ -175,6 +176,7 @@ void VCAPITYPE AudioStaticGate::init_event(LPVOID opaque, LPVOID handle, UINT ev
     if (gate->disconnected_)
       return; // Only owner retirement may finish a failed close/cleanup.
     gate->disconnected_ = true;
+    (void)gate->sink_.reset_stream(SourceAvailability::closed);
   }
   gate->busy_ = true;
   try {
@@ -221,7 +223,9 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       gate->assembler_.reset();
       gate->validator_.reset();
       gate->clock_.reset();
-      (void)gate->sink_.reset_stream();
+      (void)gate->sink_.reset_stream(transition == CHANNEL_FLAG_SUSPEND
+                                         ? SourceAvailability::suspended
+                                         : SourceAvailability::waiting);
       return;
     }
     if ((flags & ~(CHANNEL_FLAG_FIRST | CHANNEL_FLAG_LAST | CHANNEL_FLAG_SHOW_PROTOCOL)) ||
@@ -251,7 +255,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
     }
     if (pdu->kind == AudioPduKind::close) {
       gate->clock_.reset();
-      (void)gate->sink_.reset_stream();
+      (void)gate->sink_.reset_stream(SourceAvailability::closed);
     }
     if (pdu->kind == AudioPduKind::wave_info || pdu->kind == AudioPduKind::wave2) {
       const auto &format = gate->selected_formats_[pdu->format_index];
@@ -277,7 +281,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
         // Same-index upstream reopen is not reliable for a replacement table.
         // The baseline profile keeps one negotiated table for the connection.
         gate->failed_ = true;
-        (void)gate->sink_.reset_stream();
+        (void)gate->sink_.reset_stream(SourceAvailability::failed);
         setChannelError(gate->context_, ERROR_NOT_SUPPORTED,
                         "Audio format table renegotiation is unsupported");
         return;
@@ -290,7 +294,8 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       gate->negotiated_ = true;
       gate->selected_count_ = selected->count;
       gate->clock_.reset();
-      (void)gate->sink_.reset_stream();
+      (void)gate->sink_.reset_stream(selected->count ? SourceAvailability::waiting
+                                                     : SourceAvailability::unavailable);
       for (std::size_t at = 0; at < selected->count; ++at) {
         const auto offset = 24 + 18 * at;
         gate->selected_formats_[at] = {u32(selected->bytes, offset + 4),
@@ -325,6 +330,7 @@ UINT AudioStaticGate::retire() noexcept {
   if (delegate_init_ && connected_ && !disconnected_) {
     requested_disconnect = true;
     disconnected_ = true;
+    (void)sink_.reset_stream(SourceAvailability::closed);
     busy_ = true;
     try {
       delegate_init_(delegate_user_, this, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);

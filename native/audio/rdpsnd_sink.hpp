@@ -6,10 +6,12 @@
 #include <thread>
 
 namespace bridge::audio {
+enum class SourceAvailability { waiting, ready, suspended, closed, failed, unavailable };
 struct SinkStats {
   QueueStats queue;
   PacketStats packets;
   std::uint64_t rejected_packets = 0, overflow_resets = 0, stream_revision = 0;
+  SourceAvailability availability = SourceAvailability::waiting;
 };
 // Public device ABI adapter, not an installed addin. One serialized RDP owner.
 // Retire on that thread before joining; keep this wrapper alive through host Free.
@@ -32,7 +34,7 @@ class RdpsndSink {
   SinkStats stats_;
   static RdpsndSink *owner(rdpsndDevicePlugin *) noexcept;
   bool usable() const noexcept;
-  void discontinuity() noexcept;
+  void discontinuity(SourceAvailability) noexcept;
   static BOOL supported(rdpsndDevicePlugin *, const AUDIO_FORMAT *) noexcept;
   static BOOL open(rdpsndDevicePlugin *, const AUDIO_FORMAT *, UINT32) noexcept;
   static UINT32 get_volume(rdpsndDevicePlugin *) noexcept;
@@ -50,7 +52,8 @@ public:
   QueueRead read(std::span<std::uint8_t>) noexcept;
   PcmPacket packet(std::uint64_t worker_time_us) noexcept;
   std::optional<SinkStats> stats() const noexcept;
-  bool reset_stream() noexcept; // Discard history/backlog while keeping an open device usable.
+  // Discard history/backlog while keeping an open device usable. Only Play marks ready.
+  bool reset_stream(SourceAvailability next = SourceAvailability::waiting) noexcept;
   bool ready() const noexcept;
   std::optional<std::uint64_t> stream_revision() const noexcept;
   bool retire() noexcept;

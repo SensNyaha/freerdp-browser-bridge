@@ -39,8 +39,9 @@ RdpsndSink *RdpsndSink::owner(rdpsndDevicePlugin *device) noexcept {
 bool RdpsndSink::usable() const noexcept {
   return thread_ == std::this_thread::get_id() && !retired() && pipeline_;
 }
-void RdpsndSink::discontinuity() noexcept {
+void RdpsndSink::discontinuity(SourceAvailability next) noexcept {
   increment(stats_.stream_revision);
+  stats_.availability = next;
   pipeline_->pcm.reset();
   pipeline_->queue.reset();
   pipeline_->packets.reset();
@@ -57,6 +58,7 @@ BOOL RdpsndSink::open(rdpsndDevicePlugin *device, const AUDIO_FORMAT *format, UI
   sink->pipeline_->queue.reset();
   sink->pipeline_->packets.reset();
   increment(sink->stats_.stream_revision);
+  sink->stats_.availability = SourceAvailability::waiting;
   sink->opened_ = true;
   return TRUE;
 }
@@ -78,13 +80,13 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
   auto &pipeline = *sink->pipeline_;
   if (!data || size == 0 || size > PcmNormalizer::max_input_bytes) {
     increment(sink->stats_.rejected_packets);
-    sink->discontinuity();
+    sink->discontinuity(SourceAvailability::failed);
     return 0;
   }
   const auto normalized = pipeline.pcm.process(std::span(data, size));
   if (normalized.status != PcmStatus::accepted) {
     increment(sink->stats_.rejected_packets);
-    sink->discontinuity();
+    sink->discontinuity(SourceAvailability::failed);
     return 0;
   }
   for (std::size_t at = 0; at < normalized.bytes.size(); at += 2) {
@@ -100,9 +102,11 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
   if (pipeline.queue.push(std::span(pipeline.volume).first(normalized.bytes.size())) !=
       QueueStatus::accepted) {
     increment(sink->stats_.overflow_resets);
-    sink->discontinuity();
+    sink->discontinuity(SourceAvailability::waiting);
     return 0;
   }
+  if (!normalized.bytes.empty())
+    sink->stats_.availability = SourceAvailability::ready;
   // The public Play return value is queued latency in milliseconds, not a Win32 status.
   const auto frames = pipeline.queue.stats().queued_frames;
   return static_cast<UINT>((frames * 1000 + PcmNormalizer::output_rate - 1) /
@@ -112,7 +116,7 @@ void RdpsndSink::close(rdpsndDevicePlugin *device) noexcept {
   auto *sink = owner(device);
   if (sink && sink->usable()) {
     sink->opened_ = false;
-    sink->discontinuity();
+    sink->discontinuity(SourceAvailability::closed);
   }
 }
 void RdpsndSink::free(rdpsndDevicePlugin *device) noexcept {
@@ -155,10 +159,20 @@ PcmPacket RdpsndSink::packet(std::uint64_t now) noexcept {
     return {PacketStatus::invalid, {}};
   return pipeline_->packets.read(pipeline_->queue, now);
 }
-bool RdpsndSink::reset_stream() noexcept {
+bool RdpsndSink::reset_stream(SourceAvailability next) noexcept {
   if (!usable())
     return false;
-  discontinuity();
+  switch (next) {
+  case SourceAvailability::waiting:
+  case SourceAvailability::suspended:
+  case SourceAvailability::closed:
+  case SourceAvailability::failed:
+  case SourceAvailability::unavailable:
+    break;
+  default:
+    return false;
+  }
+  discontinuity(next);
   return true;
 }
 bool RdpsndSink::ready() const noexcept {
@@ -175,7 +189,7 @@ bool RdpsndSink::retire() noexcept {
   if (thread_ != std::this_thread::get_id())
     return false;
   opened_ = false;
-  discontinuity();
+  discontinuity(SourceAvailability::closed);
   stats_.queue = pipeline_->queue.stats();
   stats_.packets = pipeline_->packets.stats();
   pipeline_.reset();
