@@ -24,6 +24,7 @@ class AudioStaticGate {
   char *arg_values_[3]{channel_, subsystem_, format_};
   ADDIN_ARGV args_{3, arg_values_};
   DWORD open_handle_ = 0, completion_handle_ = 0;
+  UINT close_status_ = CHANNEL_RC_OK;
   bool attempted_ = false, registered_ = false, connected_ = false, disconnected_ = false;
   bool failed_ = false;
   bool busy_ = false, writing_ = false;

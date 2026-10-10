@@ -5,6 +5,7 @@ correctness in the virtual sink. Primary Microsoft protocol/API documents requir
 logarithmic interpretation. The previous linear amplitude law was a known gap
 found during the format audit; it was never activated in the worker and is now
 superseded. [Contract and policy](AUDIO_PCM.md#perceptual-volume).
+Implementation commit: `46c3e6a`.
 
 Nonzero left/right codes map uniformly over a documented -60..0 dB device range;
 zero mutes. The range is bridge policy, not a protocol-mandated value. Coefficients

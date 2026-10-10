@@ -228,8 +228,18 @@ so upstream can free its rejected stream. No host-owned stream is freed directly
 Retire requests upstream disconnect/close on the owner. Outstanding completions
 return `ERROR_IO_PENDING`; the future worker must keep pumping within a bounded
 deadline, then retry or terminate the session process on unresolved host failure.
-An unclosed host handle cannot imply detachment or successful retirement. After
-the host has completed its bounded writes, retirement terminates delegated resources
+An unclosed host handle cannot imply detachment or successful retirement. Following
+an unsuccessful host close, the gate retains the original handle and status.
+Once outstanding confirmations drain, each later owner retirement attempts one
+host close. Success re-enters the pinned public Disconnected callback to finish
+its skipped cleanup: pinned rdpsnd cleared its own handle before the failed
+CloseEx and returned before freeing formats/device. No private plugin fields are
+read or changed. Duplicate host Disconnected events are ignored; only this owner
+recovery path may replay cleanup. Failed/throwing close cannot retire the sink or
+restore the provider. The original channel error remains after successful cleanup;
+cleanup does not turn a failed session into a healthy audio stream.
+
+After the host has completed its bounded writes, retirement terminates delegated resources
 on the owner and publishes a terminal state. The wrapper must remain alive until
 the host's eventual Terminated event; after owner retirement/join that callback is
 an atomic no-op and may arrive on the context-free thread. Premature wrapper
@@ -243,6 +253,11 @@ Terminated. Production entry selection/worker loop integration, close-fault hand
 earlier RDP/core allocation audit, compressed format policy, packet-clock gaps and
 actual remote/browser audio remain open. The adapter is static-only; dynamic RDPSND
 requires a separate public DVC boundary and is not activated.
+
+[Iteration 45](ITERATION_045.md) adds actual linked channel/fake-SVC close-status,
+exception, repeated failure, duplicate event, completion-drain and owner recovery
+fixtures. Real transport failure/cancellation behavior and a worker's bounded
+shutdown deadline remain unverified and must precede activation.
 
 ## Guarded top-level loader selection
 

@@ -8,6 +8,7 @@
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
 #include <freerdp/svc.h>
+#include <stdexcept>
 #include <vector>
 #include <winpr/error.h>
 
@@ -81,6 +82,8 @@ struct StaticHost {
   PCHANNEL_INIT_EVENT_EX_FN init = nullptr;
   PCHANNEL_OPEN_EVENT_EX_FN opened = nullptr;
   unsigned closes = 0;
+  unsigned close_failures = 0;
+  bool close_throws = false;
   bool initialized = false, connected = false;
   char name[7] = "rdpsnd", selection[12] = "sys:browser";
   char *values[2]{name, selection};
@@ -122,7 +125,14 @@ struct StaticHost {
     points.pVirtualChannelCloseEx = [](LPVOID handle, DWORD channel) -> UINT {
       if (channel != 1)
         return ERROR_INVALID_PARAMETER;
-      ++static_cast<StaticHost *>(handle)->closes;
+      auto &host = *static_cast<StaticHost *>(handle);
+      ++host.closes;
+      if (host.close_failures) {
+        --host.close_failures;
+        if (host.close_throws)
+          throw std::runtime_error("fixture close failure");
+        return ERROR_ACCESS_DENIED;
+      }
       return CHANNEL_RC_OK;
     };
     points.pVirtualChannelWriteEx = [](LPVOID handle, DWORD channel, LPVOID data, ULONG size,
@@ -767,4 +777,104 @@ TEST_CASE("Guarded RDPSND volume PDU applies perceptual gains through the actual
   REQUIRE(fixture.sink.read(output).frames == 2);
   REQUIRE(output == expected);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Guarded RDPSND retains ownership across bounded close failure retries") {
+  Fixture fixture;
+  const auto previous = freerdp_get_current_addin_provider();
+  GateScope scope(fixture);
+  const auto active = freerdp_get_current_addin_provider();
+  StaticHost host(fixture.context.get());
+  struct ResetFault {
+    StaticHost &host;
+    ~ResetFault() { host.close_failures = 0; }
+  } reset{host};
+  host.load(nullptr, true);
+  host.connect();
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  const std::vector<BYTE> wave{SNDC_WAVE2, 0, 20, 0, 100, 0,   0,   0,   1, 0, 0,   0,
+                               100,        0, 0,  0, 0,   128, 255, 127, 1, 0, 254, 255};
+  host.raw(wave, static_cast<UINT>(wave.size()));
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 2);
+  host.close_failures = 3;
+  UINT expected = ERROR_ACCESS_DENIED;
+  SECTION("host status refusal") {}
+  SECTION("host exception") {
+    host.close_throws = true;
+    expected = ERROR_INTERNAL_ERROR;
+  }
+  for (unsigned attempt = 1; attempt <= 3; ++attempt) {
+    REQUIRE(fixture.provider.close() == expected);
+    REQUIRE(host.closes == attempt);
+    REQUIRE_FALSE(scope.gate.retired());
+    REQUIRE_FALSE(fixture.sink.retired());
+    REQUIRE(freerdp_get_current_addin_provider() == active);
+    REQUIRE(getChannelError(fixture.context.get()) == expected);
+    // Duplicate host events cannot replay the delegate's partial cleanup.
+    host.init(host.plugin, &host, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);
+    REQUIRE(host.closes == attempt);
+  }
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 0);
+  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == 2);
+  std::vector<BYTE> output(4, 77);
+  REQUIRE(fixture.sink.read(output).status == QueueStatus::invalid);
+  REQUIRE(output == std::vector<BYTE>(4, 77));
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.closes == 4);
+  REQUIRE(scope.gate.retired());
+  REQUIRE(fixture.sink.retired());
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
+  REQUIRE(getChannelError(fixture.context.get()) == expected);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.closes == 4);
+}
+
+TEST_CASE("Guarded RDPSND drains host completions before retrying a failed close") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  const auto active = freerdp_get_current_addin_provider();
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  host.defer_writes = true;
+  host.close_failures = 1;
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(host.pending.size() == 2);
+  REQUIRE(fixture.provider.close() == ERROR_IO_PENDING);
+  REQUIRE(host.closes == 1);
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_ACCESS_DENIED);
+  REQUIRE(fixture.provider.close() == ERROR_IO_PENDING);
+  REQUIRE(host.closes == 1);
+  REQUIRE(freerdp_get_current_addin_provider() == active);
+  REQUIRE_FALSE(fixture.sink.retired());
+  host.complete();
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.closes == 2);
+  REQUIRE(scope.gate.retired());
+  REQUIRE(fixture.sink.retired());
+}
+
+TEST_CASE("Guarded RDPSND owner finishes a host-initiated failed disconnect") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  host.close_failures = 1;
+  host.init(host.plugin, &host, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);
+  REQUIRE(host.closes == 1);
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_ACCESS_DENIED);
+  REQUIRE_FALSE(fixture.sink.retired());
+  UINT foreign = CHANNEL_RC_OK;
+  std::thread thread([&] { foreign = fixture.provider.close(); });
+  thread.join();
+  REQUIRE(foreign == ERROR_INVALID_STATE);
+  REQUIRE(host.closes == 1);
+  REQUIRE_FALSE(scope.gate.retired());
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.closes == 2);
+  REQUIRE(scope.gate.retired());
+  REQUIRE(fixture.sink.retired());
 }

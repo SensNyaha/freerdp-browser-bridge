@@ -107,6 +107,7 @@ UINT VCAPITYPE AudioStaticGate::close(LPVOID opaque, DWORD handle) noexcept {
     status = gate->host_.pVirtualChannelCloseEx(gate->handle_, handle);
   } catch (...) {
   }
+  gate->close_status_ = status;
   if (status == CHANNEL_RC_OK)
     gate->open_handle_ = 0;
   return status;
@@ -160,8 +161,11 @@ void VCAPITYPE AudioStaticGate::init_event(LPVOID opaque, LPVOID handle, UINT ev
   }
   if (event == CHANNEL_EVENT_CONNECTED)
     gate->connected_ = true;
-  if (event == CHANNEL_EVENT_DISCONNECTED)
+  if (event == CHANNEL_EVENT_DISCONNECTED) {
+    if (gate->disconnected_)
+      return; // Only owner retirement may finish a failed close/cleanup.
     gate->disconnected_ = true;
+  }
   gate->busy_ = true;
   try {
     gate->delegate_init_(gate->delegate_user_, gate, event, data, size);
@@ -269,7 +273,9 @@ UINT AudioStaticGate::retire() noexcept {
     return CHANNEL_RC_OK;
   if (!on_thread() || busy_ || writing_)
     return ERROR_INVALID_STATE;
+  bool requested_disconnect = false;
   if (delegate_init_ && connected_ && !disconnected_) {
+    requested_disconnect = true;
     disconnected_ = true;
     busy_ = true;
     try {
@@ -283,8 +289,32 @@ UINT AudioStaticGate::retire() noexcept {
   }
   if (std::any_of(writes_.begin(), writes_.end(), [](auto value) { return value != nullptr; }))
     return ERROR_IO_PENDING;
-  if (open_handle_)
-    return ERROR_INVALID_HANDLE; // Host close failure cannot imply callback detachment.
+  if (open_handle_) {
+    const auto callback = delegate_init_;
+    if (!callback || !delegate_user_)
+      return ERROR_INVALID_STATE;
+    // Pinned rdpsnd clears its own OpenHandle before calling CloseEx and skips
+    // cleanup on failure. Retain ours, retry once per later owner call, then
+    // re-enter its public Disconnected callback to finish cleanup with handle 0.
+    if (requested_disconnect)
+      return close_status_ != CHANNEL_RC_OK ? close_status_ : ERROR_INVALID_HANDLE;
+    busy_ = true;
+    const auto status = close(this, open_handle_);
+    busy_ = false;
+    if (status != CHANNEL_RC_OK)
+      return status;
+    busy_ = true;
+    try {
+      callback(delegate_user_, this, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);
+    } catch (...) {
+      busy_ = false;
+      fail();
+      return ERROR_INTERNAL_ERROR;
+    }
+    busy_ = false;
+    if (std::any_of(writes_.begin(), writes_.end(), [](auto value) { return value != nullptr; }))
+      return ERROR_IO_PENDING;
+  }
   if (delegate_init_) {
     busy_ = true;
     try {
