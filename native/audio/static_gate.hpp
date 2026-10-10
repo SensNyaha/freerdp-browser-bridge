@@ -1,4 +1,5 @@
 #pragma once
+#include "clock.hpp"
 #include "ingress.hpp"
 #include "pcm_offer.hpp"
 #include "rdpsnd_sink.hpp"
@@ -14,7 +15,9 @@ class AudioStaticGate {
   std::thread::id thread_;
   AudioAssembler assembler_;
   AudioPduValidator validator_;
+  AudioClock clock_;
   std::array<BYTE, max_pcm_offer_bytes> offers_{};
+  std::array<PcmFormat, AudioPduValidator::max_formats> selected_formats_{};
   std::uint16_t selected_count_ = 0;
   LPVOID handle_ = nullptr, delegate_user_ = nullptr;
   PCHANNEL_INIT_EVENT_EX_FN delegate_init_ = nullptr;

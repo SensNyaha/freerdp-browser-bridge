@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Continues SPECIFICATION §2.6 / §3.1 bounded resource lifetime
 and ARCHITECTURE worker/channel ownership. [Retirement contract](AUDIO_PCM.md#public-static-channel-callback-adapter).
+Implementation commit: `7ccce74`.
 
 Pinned rdpsnd sets its private OpenHandle to zero before CloseEx. A close failure
 returns before format/device cleanup, so the prior adapter retained a host handle

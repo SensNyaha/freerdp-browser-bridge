@@ -4,8 +4,18 @@
 #include <exception>
 #include <freerdp/freerdp.h>
 #include <winpr/error.h>
+#include <winpr/sysinfo.h>
 
 namespace bridge::audio {
+namespace {
+std::uint16_t u16(std::span<const BYTE> bytes, std::size_t at) noexcept {
+  return static_cast<std::uint16_t>(bytes[at] | static_cast<unsigned>(bytes[at + 1]) << 8);
+}
+std::uint32_t u32(std::span<const BYTE> bytes, std::size_t at) noexcept {
+  return static_cast<std::uint32_t>(u16(bytes, at)) | static_cast<std::uint32_t>(u16(bytes, at + 2))
+                                                          << 16;
+}
+} // namespace
 AudioStaticGate::AudioStaticGate(rdpContext &context, RdpsndSink &sink)
     : context_(&context), sink_(sink), thread_(std::this_thread::get_id()) {}
 AudioStaticGate::~AudioStaticGate() {
@@ -210,6 +220,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       }
       gate->assembler_.reset();
       gate->validator_.reset();
+      gate->clock_.reset();
       (void)gate->sink_.reset_stream();
       return;
     }
@@ -238,8 +249,27 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       gate->fail();
       return;
     }
-    if (pdu->kind == AudioPduKind::close)
+    if (pdu->kind == AudioPduKind::close) {
+      gate->clock_.reset();
       (void)gate->sink_.reset_stream();
+    }
+    if (pdu->kind == AudioPduKind::wave_info || pdu->kind == AudioPduKind::wave2) {
+      const auto &format = gate->selected_formats_[pdu->format_index];
+      const auto align = format.channels * (format.bits / 8U);
+      if (!align || pdu->sample_bytes % align) {
+        gate->fail();
+        return;
+      }
+      const auto reset = gate->clock_.observe(
+          {pdu->timestamp, format.rate, static_cast<std::uint32_t>(pdu->sample_bytes / align),
+           pdu->format_index, pdu->timestamp_bits, pdu->block, GetTickCount64()});
+      if (!reset) {
+        gate->fail();
+        return;
+      }
+      if (*reset)
+        (void)gate->sink_.reset_stream();
+    }
     data = const_cast<BYTE *>(joined.bytes.data());
     size = total = static_cast<UINT>(joined.bytes.size());
     if (pdu->kind == AudioPduKind::formats) {
@@ -249,6 +279,14 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
         return;
       }
       gate->selected_count_ = selected->count;
+      gate->clock_.reset();
+      (void)gate->sink_.reset_stream();
+      for (std::size_t at = 0; at < selected->count; ++at) {
+        const auto offset = 24 + 18 * at;
+        gate->selected_formats_[at] = {u32(selected->bytes, offset + 4),
+                                       u16(selected->bytes, offset + 2),
+                                       u16(selected->bytes, offset + 14)};
+      }
       data = const_cast<BYTE *>(selected->bytes.data());
       size = total = static_cast<UINT>(selected->bytes.size());
       if (selected->count == 0) {
@@ -333,6 +371,7 @@ UINT AudioStaticGate::retire() noexcept {
     return ERROR_INVALID_STATE;
   assembler_.reset();
   validator_.reset();
+  clock_.reset();
   retired_.store(true, std::memory_order_release);
   return CHANNEL_RC_OK;
 }

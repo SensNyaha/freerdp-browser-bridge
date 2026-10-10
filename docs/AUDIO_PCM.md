@@ -353,3 +353,38 @@ the exact packed code. Already queued samples retain their previous gain.
 independent golden attenuation vectors, equal dB steps, mute and actual linked
 RDPSND Volume PDU dispatch using fake SVC transport. It does not demonstrate
 audible remote/browser volume or activate worker audio.
+
+## Packet continuity
+
+The guarded PCM path checks whole source frames and its current 100 ms per-PDU
+conversion budget before upstream device Open/Play. Selected descriptors are kept
+in a fixed 64-entry table. A bounded `AudioClock` receives source rate/frame count,
+negotiated index, block number, timestamp width/value and owner monotonic arrival
+milliseconds. Invalid metadata leaves history unchanged and fails the channel.
+Larger valid server bursts still require bounded splitting before worker activation;
+this profile limit does not mean the complete RDP protocol limits packets to 100 ms.
+
+The first packet requests a sink reset. Subsequent packets reset interpolation and
+queued PCM on a format/rate/clock-type change, a missing/repeated block, backward
+clock epoch, or a source/arrival interval greater than the previous packet's rounded
+duration plus 120 ms. Both accepted decisions establish the next baseline. These
+are bridge continuity heuristics; normal source timestamp and 8-bit block wraps
+remain continuous. Serial deltas at or above half the timestamp range are ambiguous
+and start a new epoch. Arrival subtraction is overflow safe; equal source timestamps
+and batched arrivals are allowed when blocks are consecutive. No wait/allocation.
+
+WaveInfo establishes continuity once, before Open; its following raw Wave does not
+advance history again. Wave2 uses its 32-bit source timestamp in milliseconds, as
+specified by [Microsoft](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpea/25cebccb-d679-4302-8dd0-df7fb9a4f9b5).
+Legacy Wave's 16-bit build-time stamp is a continuity hint; it is not treated as an
+equivalent source presentation timestamp. This helper detects epochs/gaps without
+mapping server time to browser PTS or claiming AV sync. Formats, Close, accepted
+suspend/resume and retirement clear clock history. Queue reset markers carry loss
+to a future consumer; counters retain discarded PCM frame totals.
+
+[Iteration 46](ITERATION_046.md) checks pure clocks and actual linked RDPSND with
+fake SVC. Server format-table renegotiation remains an explicit gap: upstream may
+keep an already-open format at the same index. It must not be activated until that
+case is resolved or explicitly refused. Native overrun heuristics, burst splitting,
+earlier RDP core allocation bounds, worker shutdown/IPC, browser PTS/playback and
+actual audio/microphone acceptance remain open.

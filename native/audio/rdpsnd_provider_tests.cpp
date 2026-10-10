@@ -227,6 +227,27 @@ struct StaticHost {
     REQUIRE(getChannelError(points.context) == CHANNEL_RC_OK);
   }
 };
+void emit_pcm(StaticHost &host, UINT32 timestamp, BYTE block, const std::array<BYTE, 4> &sample,
+              bool legacy = false, std::size_t frames = 960) {
+  std::vector<BYTE> pcm;
+  for (std::size_t frame = 0; frame < frames; ++frame)
+    pcm.insert(pcm.end(), sample.begin(), sample.end());
+  std::vector<BYTE> packet{static_cast<BYTE>(legacy ? SNDC_WAVE : SNDC_WAVE2), 0};
+  word(packet, static_cast<unsigned>(pcm.size() + (legacy ? 8 : 12)));
+  word(packet, timestamp & 65535);
+  word(packet, 0);
+  packet.insert(packet.end(), {block, 0, 0, 0});
+  if (legacy) {
+    packet.insert(packet.end(), sample.begin(), sample.end());
+    host.raw(packet, static_cast<UINT>(packet.size()));
+    std::fill_n(pcm.begin(), 4, BYTE{0});
+    host.raw(pcm, static_cast<UINT>(pcm.size()));
+  } else {
+    dword(packet, timestamp);
+    packet.insert(packet.end(), pcm.begin(), pcm.end());
+    host.raw(packet, static_cast<UINT>(packet.size()));
+  }
+}
 } // namespace
 
 TEST_CASE("RDPSND scoped provider enforces synchronous ownership and exact device ABI") {
@@ -877,4 +898,104 @@ TEST_CASE("Guarded RDPSND owner finishes a host-initiated failed disconnect") {
   REQUIRE(host.closes == 2);
   REQUIRE(scope.gate.retired());
   REQUIRE(fixture.sink.retired());
+}
+
+TEST_CASE("Guarded RDPSND resets stale PCM on packet gaps and preserves counter wraps") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  UINT32 first_stamp = 100, second_stamp = 120;
+  BYTE first_block = 254, second_block = 255;
+  bool reset = false, legacy_first = false, legacy_second = false;
+  SECTION("continuous") {}
+  SECTION("source forward gap") {
+    second_stamp = 241;
+    reset = true;
+  }
+  SECTION("source backward epoch") {
+    second_stamp = 99;
+    reset = true;
+  }
+  SECTION("lost block") {
+    second_block = 0;
+    reset = true;
+  }
+  SECTION("duplicate block") {
+    second_block = first_block;
+    reset = true;
+  }
+  SECTION("source 32-bit and block wrap") {
+    first_stamp = 0xfffffff0U;
+    second_stamp = 4;
+    first_block = 255;
+    second_block = 0;
+  }
+  SECTION("legacy 16-bit and block wrap") {
+    first_stamp = 65530;
+    second_stamp = 14;
+    first_block = 255;
+    second_block = 0;
+    legacy_first = legacy_second = true;
+  }
+  SECTION("clock type switch") {
+    legacy_second = true;
+    reset = true;
+  }
+  const std::array<BYTE, 4> old_sample{1, 0, 254, 255}, new_sample{0, 128, 255, 127};
+  emit_pcm(host, first_stamp, first_block, old_sample, legacy_first);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 960);
+  std::array<BYTE, 4> consumed{};
+  const auto initial = fixture.sink.read(consumed);
+  REQUIRE(initial.frames == 1);
+  REQUIRE(initial.discontinuity);
+  REQUIRE(consumed == old_sample);
+  emit_pcm(host, second_stamp, second_block, new_sample, legacy_second);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  const auto frames = reset ? 960U : 1919U;
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == frames);
+  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == (reset ? 959U : 0U));
+  std::vector<BYTE> output(frames * 4), expected;
+  if (!reset)
+    for (unsigned frame = 0; frame < 959; ++frame)
+      expected.insert(expected.end(), old_sample.begin(), old_sample.end());
+  for (unsigned frame = 0; frame < 960; ++frame)
+    expected.insert(expected.end(), new_sample.begin(), new_sample.end());
+  const auto read = fixture.sink.read(output);
+  REQUIRE(read.frames == frames);
+  REQUIRE(read.discontinuity == reset);
+  REQUIRE(output == expected);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Guarded RDPSND validates PCM packet alignment and duration before device Open") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  SECTION("over 100 ms Wave2") { emit_pcm(host, 100, 1, {0, 0, 0, 0}, false, 4801); }
+  SECTION("unaligned Wave2") {
+    const std::vector<BYTE> packet{SNDC_WAVE2, 0, 19, 0, 100, 0, 0, 0, 1, 0, 0, 0,
+                                   100,        0, 0,  0, 1,   2, 3, 4, 5, 6, 7};
+    host.raw(packet, static_cast<UINT>(packet.size()));
+  }
+  SECTION("unaligned legacy WaveInfo") {
+    const std::array<BYTE, 16> info{SNDC_WAVE, 0, 15, 0, 100, 0, 0, 0, 1, 0, 0, 0, 1, 2, 3, 4};
+    host.raw(info, 16);
+  }
+  REQUIRE(getChannelError(fixture.context.get()) == ERROR_INVALID_DATA);
+  REQUIRE(host.writes.size() == 2);
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == 0);
+  REQUIRE(fixture.sink.stats()->rejected_packets == 0);
+  std::vector<BYTE> output(4, 77);
+  REQUIRE(fixture.sink.read(output).status == QueueStatus::invalid);
+  REQUIRE(output == std::vector<BYTE>(4, 77));
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
