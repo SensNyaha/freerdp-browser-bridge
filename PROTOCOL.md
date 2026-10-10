@@ -263,6 +263,12 @@ Define one format and do not mix Annex-B/AVCC silently. Recommendation: `VIDEO_C
 
 Opus mode uses complete Opus packets with timestamps. PCM mode uses interleaved signed 16-bit little-endian frames and explicit sample-rate/channel config.
 
+The preparatory private Opus payload schema is specified in
+[AUDIO_OPUS_WIRE.md](docs/AUDIO_OPUS_WIRE.md): RWI1 kind 36, zero request ID,
+26..1,299-byte bounded body and one stereo 20 ms frame. No public Opus media
+negotiation, source-state mode or browser activation is introduced by that codec
+preparation; current public Opus selection remains explicitly unsupported.
+
 The first PCM schema is specified in [AUDIO_PCM.md](docs/AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation).
 It uses audio stream ID 3, separate from video 1 and cursor 2: AUDIO_CONFIG has
 20 bytes describing schema 1, PCM codec 2, S16LE stereo 48 kHz, 960-frame packets

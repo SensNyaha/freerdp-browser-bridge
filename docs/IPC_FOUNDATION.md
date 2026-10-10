@@ -426,6 +426,19 @@ before status; packetizer skips also clear older unsent audio before their new
 epoch. No worker selects this owner mode yet. [Evidence](ITERATION_062.md),
 [ownership contract](AUDIO_PCM.md#source-status-and-epoch-ownership).
 
+## Preparatory Opus payloads (Iteration 75)
+
+RWI1 kind **36** prepares AUDIO_OPUS with request ID zero and body bounds
+**26..1,299 bytes** checked before allocation. The fixed AUDIO_CONFIG kind 33
+also has a separate codec-1/schema-1 parser for 48 kHz stereo / 20 ms, including
+queried encoder lookahead. PCM's codec-2 contract is unchanged. Payloads require
+one stereo 20 ms frame and refuse other TOC durations/packing modes before SDK
+decode. [Payload layouts](AUDIO_OPUS_WIRE.md).
+
+No worker Opus selection, HELLO bit, settings flag, source-status mode or output
+lane is activated. WorkerProcess continues to refuse Opus settings explicitly.
+Generic framing/parser tests do not imply transport, browser or audible acceptance.
+
 ## Private PCM worker activation (Iteration 66)
 
 Connection settings schema **5** extends the existing four-byte flags field:

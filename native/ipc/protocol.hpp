@@ -44,7 +44,8 @@ enum class Kind : std::uint16_t {
   touch_update = 32,
   audio_config = 33,
   audio_pcm = 34,
-  audio_state = 35
+  audio_state = 35,
+  audio_opus = 36 // Prepared codec only; no worker selection/capability yet.
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

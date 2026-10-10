@@ -2,6 +2,7 @@
 #include "connection_config.hpp"
 #include "display.hpp"
 #include "input.hpp"
+#include "opus_audio.hpp"
 #include "output_queue.hpp"
 #include "protocol.hpp"
 #include "touch_ipc.hpp"
@@ -15,6 +16,16 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
       const auto header = decode_header(bytes.first(header_bytes));
       if (size == header_bytes + header.length) {
         const auto payload = bytes.subspan(header_bytes);
+        // Opus payload preparation has no output-lane activation. Exercise its
+        // parsers before the current PCM-only queue can refuse these records.
+        if (header.kind == Kind::audio_opus) {
+          (void)audio::opus::decode_packet(payload);
+          return 0;
+        }
+        if (header.kind == Kind::audio_config && payload[1] == 1) {
+          (void)audio::opus::decode_config(payload);
+          return 0;
+        }
         OutputQueue output;
         (void)output.push(header.kind, header.request_id, payload);
         (void)output.take();

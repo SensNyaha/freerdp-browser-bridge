@@ -1,3 +1,4 @@
+#include "opus_audio.hpp"
 #include "opus_encoder.hpp"
 #include <algorithm>
 #include <bit>
@@ -162,4 +163,30 @@ TEST_CASE("Opus timestamp upper boundary cannot wrap into a fresh clock") {
   REQUIRE(encoder.encoded_packets() == 1);
   encoder.reset();
   REQUIRE(encoder.encode({source, 0}).discontinuity);
+}
+
+TEST_CASE("Real private Opus packets satisfy the bounded IPC stereo frame profile") {
+  namespace wire = bridge::ipc::audio::opus;
+  for (const auto bitrate : {16000, 64000, 128000}) {
+    SoftwareOpusEncoder encoder({bitrate});
+    const auto config = wire::decode_config(wire::encode_config({1, encoder.lookahead_frames()}));
+    REQUIRE(config.lookahead_frames == encoder.lookahead_frames());
+    for (std::uint64_t index = 0; index < 20; ++index) {
+      auto input = pcm(static_cast<std::size_t>(index) * SoftwareOpusEncoder::packet_frames);
+      if (index % 2)
+        std::ranges::fill(input, 0);
+      const auto unit = encoder.encode({input, index * 20000});
+      REQUIRE_NOTHROW(wire::validate_payload(unit.bytes));
+      REQUIRE(opus_packet_get_nb_frames(unit.bytes.data(),
+                                        static_cast<opus_int32>(unit.bytes.size())) == 1);
+      REQUIRE(opus_packet_get_nb_channels(unit.bytes.data()) == 2);
+      REQUIRE(opus_packet_get_samples_per_frame(unit.bytes.data(), 48000) == 960);
+      const auto owner =
+          wire::encode_packet({1, unit.timestamp_us, 960, 0, unit.discontinuity, unit.bytes});
+      const auto packet = wire::decode_packet(owner.bytes());
+      REQUIRE(std::ranges::equal(packet.encoded, unit.bytes));
+      REQUIRE(packet.timestamp_us == unit.timestamp_us);
+      REQUIRE(packet.discontinuity == unit.discontinuity);
+    }
+  }
 }

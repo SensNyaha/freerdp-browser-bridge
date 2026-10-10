@@ -4,6 +4,11 @@ export * from './cursor.js';
 export * from './display.js';
 export * from './touch.js';
 export * from './audio.js';
+export * from './opus.js';
+import {
+  OPUS_AUDIO_MIN_PACKET_BYTES,
+  OPUS_AUDIO_MAX_PACKET_BYTES,
+} from './opus.js';
 import {
   PCM_AUDIO_CONFIG_BYTES,
   PCM_AUDIO_PACKET_BYTES,
@@ -53,6 +58,7 @@ export enum Kind {
   AudioConfig = 33,
   AudioPcm = 34,
   AudioState = 35,
+  AudioOpus = 36, // Prepared codec; no worker/browser capability is activated.
 }
 
 export interface Packet {
@@ -125,6 +131,8 @@ function payloadLimit(kind: number): number {
       return PCM_AUDIO_PACKET_BYTES;
     case Kind.AudioState:
       return PCM_AUDIO_STATE_BYTES;
+    case Kind.AudioOpus:
+      return OPUS_AUDIO_MAX_PACKET_BYTES;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:
@@ -158,13 +166,19 @@ export function decodeHeader(header: Buffer): {
       Kind.CursorUpdate,
       Kind.InputText,
       Kind.InputTouch,
+      Kind.AudioOpus,
     ].includes(kind) &&
       length !== payloadLimit(kind)) ||
     (kind === Kind.Frame && length < 24) ||
     (kind === Kind.FrameAvc && length < 28) ||
     (kind === Kind.CursorUpdate && length < CURSOR_METADATA_BYTES) ||
     (kind === Kind.InputText && (length === 0 || length % 2 !== 0)) ||
-    (kind === Kind.InputTouch && length !== TOUCH_INPUT_BYTES && length !== 24)
+    (kind === Kind.InputTouch &&
+      length !== TOUCH_INPUT_BYTES &&
+      length !== 24) ||
+    (kind === Kind.AudioOpus &&
+      (length < OPUS_AUDIO_MIN_PACKET_BYTES ||
+        header.readBigUInt64BE(12) !== 0n))
   ) {
     throw new ProtocolError();
   }
