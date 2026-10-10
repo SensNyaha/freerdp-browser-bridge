@@ -99,4 +99,6 @@ the lookahead field is retained for the later explicit priming/scheduling policy
 The [WebCodecs Opus registration](https://www.w3.org/TR/webcodecs-opus-codec-registration/)
 distinguishes raw packets from description-based setup. Actual browser decode,
 priming behavior, resource ownership, source/lease progress and public negotiation
-remain future acceptance gates, not consequences of pure parser tests.
+are not consequences of pure parser tests. The isolated decoder/Worklet owner is
+subsequently verified in [Iteration 77](AUDIO_OPUS_BROWSER.md); publisher and public
+negotiation remain open.
