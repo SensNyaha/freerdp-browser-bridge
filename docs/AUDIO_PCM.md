@@ -197,6 +197,40 @@ Fixtures keep one command in flight. This block is not attached to the productio
 viewer or server: a bounded production MessagePort owner, RWB1 browser parser,
 worker/Node delivery and actual audible RDP/microphone/latency gates remain open.
 
+## Bounded browser port owner and RWB1 parsing
+
+`pcm-playback.js` now provides the isolated production-shaped owner, superseding
+iteration 51's missing port/parser foundation. RWB1 records must be exactly 48
+bytes (config) or 3,868 bytes (packet), with the fixed schema/rate/layout, stream
+ID 3, flags, payload lengths, nonzero config epoch and bounded microsecond PTS.
+Per-attachment sequence starts at zero without wrap. Config precedes a marked
+first packet; packet timestamps are strictly increasing and advance 20 ms unless
+explicitly discontinuous. New configs cannot retreat behind an active epoch/PTS.
+PCM is copied only after validation, so retaining/transferring it cannot depend
+on subsequent mutation of the incoming record.
+
+`PcmPortSender` owns at most one posted command, one pending config, one owned
+3,840-byte pending PCM packet and one stats-request flag. New PCM replaces an
+unsent pending packet and forces discontinuity; new configuration discards old
+pending PCM. Config/control precede the next audio command. Acknowledgments must
+match the single outstanding ID and succeed; snapshots have a fixed bounded
+counter shape. A single bounded deadline retires missing/faulted commands. No
+Promise list or arbitrary MessagePort backlog is created.
+
+`createPcmPlayback` accepts an already user-activated, running 48 kHz AudioContext
+and takes exclusive ownership of its worklet node, port and context. Context loss,
+processor error, invalid records/ACKs or explicit close clear pending PCM/timer,
+close the port, disconnect the node and close the context. Cleanup is idempotent;
+late ACKs cannot revive the sender. External callers must not reuse the transferred
+context. The factory is not called by today's reference viewer or public API.
+
+[Iteration 52](ITERATION_052.md) covers parser limits, a 100-packet burst with one
+posted command/one latest packet, config ordering, stale ACK/PTS/sequence refusal,
+deadlines, fixed statistics and cleanup faults. Actual Edge exercises TypeScript
+RWB1 bytes through the owner and real AudioWorklet, checks bounded credits/epoch
+discard, then suspends the context and verifies automatic resource closure. This
+is synthetic PCM processing, not audible RDP output or <150 ms LAN acceptance.
+
 ## Public RDPSND device adapter
 
 `native/audio/rdpsnd_sink.hpp` implements the pinned public

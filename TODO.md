@@ -28,8 +28,8 @@ activation, production ingress placement and audible/browser acceptance remain o
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 141/141 Node tests;
-  CTest/Catch2: 26 IPC/input/state cases / 531 assertions, 2 AVC cases / 19 assertions,
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 159/159 Node tests;
+  CTest/Catch2: 31 IPC/input/state/audio-codec cases / 4,479 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -270,6 +270,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Fixed 20 ms PCM packetization now uses the common worker-clock input, counts underflow silence, skips expired FIFO intervals without catch-up bursts, and preserves monotonic PTS across source resets. Pure and actual linked RDPSND/fake-SVC fixtures pass; worker scheduling, transport, AudioWorklet and actual audible/latency acceptance remain open. [Evidence](docs/ITERATION_049.md). Provider composition: `7842b32`.
 - [~] IN PROGRESS — Fixed versioned PCM config/packet codecs now agree in native/TypeScript, with envelope limits before allocation, epoch/silence/PTS validation and raw-sample RWB1 stream 3 encoding. This is codec preparation, with no new advertised audio capability or worker/browser activation. [Evidence](docs/ITERATION_050.md). PCM packetization: `ff49604`.
 - [~] IN PROGRESS — Isolated browser S16LE stereo queue and AudioWorklet now use fixed 120 ms capacity, 40 ms prebuffer, counted silence and newest-data overflow policy. Pure fixtures and actual Edge offline sample rendering/live port acknowledgments pass. Production port ownership/parser, worker/Node delivery and audible RDP/microphone/latency acceptance remain open. [Evidence](docs/ITERATION_051.md). PCM codecs: `655ef81`.
+- [~] IN PROGRESS — Browser PCM RWB1 parser and exclusive AudioContext/MessagePort owner now bound one posted command and one latest pending packet, force discontinuity on drops and retire on ACK/deadline/context loss. Pure fault/burst tests and actual Edge credit/epoch/cleanup fixtures pass; reference-viewer activation, worker/Node streaming, audible remote audio/microphone and latency gates remain open. [Evidence](docs/ITERATION_052.md). AudioWorklet foundation: `4563327`.
 
 **Gate:** remote audio audible and microphone usable with bounded <150 ms queue target in LAN test.
 
