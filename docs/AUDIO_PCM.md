@@ -296,7 +296,7 @@ callback duration.
 [Iteration 53](ITERATION_053.md) covers credit, config ordering, exact IPC samples,
 source reset before fresh PCM, owner/clock/callback/exhaustion faults and actual
 linked RDPSND with simulated SVC Close/restart. Remaining activation work includes
-source-reset-to-output invalidation, worker configuration/capability/
+worker configuration/capability/
 scheduling/shutdown and Node/browser integration. Actual audible RDP/microphone,
 larger source bursts, earlier core allocations and latency acceptance remain open.
 Windows workers now have bounded priority output ownership in
@@ -320,6 +320,40 @@ or exhaustion still requires outer connection/output retirement. Browser buffer
 reset when a source stops without fresh PCM remains an activation prerequisite.
 [Iteration 59](ITERATION_059.md) combines this barrier with actual linked RDPSND /
 simulated SVC and the bounded output queue. Worker selection remains disabled.
+
+### Source status and epoch ownership
+
+[Iteration 62](ITERATION_062.md) extends the same serialized publisher with an
+optional previous status revision. Omission preserves the packet-only foundation
+mode; supplying zero enables the immutable enabled-PCM status profile. No worker
+selects this mode yet. It adds one fixed 40-byte status buffer (total publisher
+payload storage 3,924 bytes), not another sample queue. Callback targets must not
+mutate the source or publisher while borrowed records are offered.
+
+After a successful consumer discard, the owner compares source availability,
+source revision and epoch with its last accepted status. Changed metadata is
+offered as AUDIO_STATE before any config/PCM. The initial waiting source reserves
+epoch 1; a reset after epoch N reserves N+1 without consuming it. Repeated resets
+without samples keep that epoch and advance accepted status revisions. The next
+fresh capture consumes the reserved epoch exactly once. Ready status can describe
+queued samples before a config is accepted; it is not acknowledgement of audible
+delivery. Metadata-only pump returns `sent`; unchanged metadata remains idle.
+
+Status refusal retains one latest desired state and prevents config/PCM offers.
+Unaccepted replacements retain the next revision; only accepted status increments
+it. Source changes discard the owner's prepared samples and clear old unsent
+consumer audio before the next status, even when Close yields no samples.
+Packetizer skips also require consumer discard before a new epoch's status,
+because control priority could otherwise overtake old queued PCM. Refused discard
+retains its barrier and stops further capture; already taken records keep the
+one-writer order and cannot be retracted.
+
+Stats add accepted `sent_states` and local `state_pending`. Status revision,
+epoch/source revision and clock exhaustion never wrap; callback exceptions fail
+the publisher and require outer connection/output retirement. Fixed control FIFO
+capacity still applies; no unbounded status backlog or sample replay is introduced.
+Public media status framing, Node listeners/replay, browser reset, negotiated
+worker selection and audible remote acceptance remain open.
 
 ## Public RDPSND device adapter
 

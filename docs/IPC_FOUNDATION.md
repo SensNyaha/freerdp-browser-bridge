@@ -418,3 +418,10 @@ Status has request ID 0 and typed validation in the control FIFO, preceding queu
 media. No worker emitter, HELLO capability, configuration selector or public event
 is enabled yet. Incoming status is not a worker command; current worker refuses it.
 RWB1 audio config/sample layouts remain unchanged. [Evidence](ITERATION_060.md).
+
+The native publisher's optional source-status owner now prepares this event before
+config/PCM and can report Close without samples. It reserves the next epoch until
+fresh capture, advances accepted revisions and preserves consumer discard credit
+before status; packetizer skips also clear older unsent audio before their new
+epoch. No worker selects this owner mode yet. [Evidence](ITERATION_062.md),
+[ownership contract](AUDIO_PCM.md#source-status-and-epoch-ownership).

@@ -1329,3 +1329,66 @@ TEST_CASE("Actual RDPSND Close clears accepted unsent consumer PCM before a new 
   REQUIRE(publisher.pump(1060000, send) == PublishStatus::idle);
   REQUIRE(output.stats().records == 0);
 }
+
+TEST_CASE("Actual RDPSND source status orders suspend Close recovery and retired epochs") {
+  Fixture fixture;
+  GateScope audio(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  bridge::ipc::OutputQueue output;
+  PcmPublisher publisher(
+      fixture.sink,
+      [&] {
+        output.discard_audio();
+        return true;
+      },
+      0, 0);
+  const PcmPublisher::TrySend send = [&](auto kind, auto bytes) {
+    return output.push(kind, 0, bytes) == bridge::ipc::EnqueueStatus::accepted;
+  };
+  using A = bridge::ipc::audio::Availability;
+  const auto take_state = [&](A availability, std::uint64_t revision, std::uint64_t epoch) {
+    const auto packet = output.take();
+    REQUIRE(packet);
+    REQUIRE(packet->kind == bridge::ipc::Kind::audio_state);
+    const auto state = bridge::ipc::audio::decode_state(packet->payload);
+    REQUIRE(state.enabled);
+    REQUIRE(state.availability == availability);
+    REQUIRE(state.revision == revision);
+    REQUIRE(state.epoch == epoch);
+  };
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(publisher.pump(1000000, send) == PublishStatus::sent);
+  take_state(A::waiting, 1, 1);
+  emit_pcm(host, 100, 1, {0, 128, 255, 127});
+  REQUIRE(publisher.pump(1000000, send) == PublishStatus::sent);
+  take_state(A::ready, 2, 1);
+  REQUIRE(output.stats().records == 2);
+  host.raw({}, 0, CHANNEL_FLAG_SUSPEND);
+  REQUIRE(publisher.pump(1001000, send) == PublishStatus::sent);
+  take_state(A::suspended, 3, 2);
+  REQUIRE_FALSE(output.take()); // Accepted old config/PCM were cleared before status.
+  host.raw({}, 0, CHANNEL_FLAG_RESUME);
+  REQUIRE(publisher.pump(1002000, send) == PublishStatus::sent);
+  take_state(A::waiting, 4, 2);
+  const std::array<BYTE, 4> close{SNDC_CLOSE, 0, 0, 0};
+  host.raw(close, 4);
+  REQUIRE(publisher.pump(1003000, send) == PublishStatus::sent);
+  take_state(A::closed, 5, 2);
+  REQUIRE_FALSE(output.take());
+  emit_pcm(host, 120, 2, {1, 0, 254, 255});
+  REQUIRE(publisher.pump(1020000, send) == PublishStatus::sent);
+  take_state(A::ready, 6, 2);
+  REQUIRE(bridge::ipc::audio::decode_config(output.take()->payload).epoch == 2);
+  const auto record = output.take();
+  const auto pcm = bridge::ipc::audio::decode_packet(record->payload);
+  REQUIRE(pcm.discontinuity);
+  REQUIRE(pcm.pcm[0] == 1);
+  REQUIRE(pcm.pcm[2] == 254);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(publisher.pump(1021000, send) == PublishStatus::sent);
+  take_state(A::closed, 7, 3);
+  REQUIRE_FALSE(output.take());
+}
