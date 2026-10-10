@@ -17,6 +17,9 @@ class AudioStaticGate {
   PCHANNEL_INIT_EVENT_EX_FN delegate_init_ = nullptr;
   PCHANNEL_OPEN_EVENT_EX_FN delegate_open_ = nullptr;
   std::array<LPVOID, 64> writes_{};
+  char channel_[7] = "rdpsnd", subsystem_[12] = "sys:browser", format_[9] = "format:1";
+  char *arg_values_[3]{channel_, subsystem_, format_};
+  ADDIN_ARGV args_{3, arg_values_};
   DWORD open_handle_ = 0, completion_handle_ = 0;
   bool attempted_ = false, registered_ = false, connected_ = false, disconnected_ = false;
   bool failed_ = false;
@@ -39,6 +42,7 @@ public:
   AudioStaticGate &operator=(const AudioStaticGate &) = delete;
   BOOL install(CHANNEL_ENTRY_POINTS_FREERDP_EX *, LPVOID, PVIRTUALCHANNELENTRYEX) noexcept;
   UINT retire() noexcept;
+  bool ready_for(const rdpContext &, const RdpsndSink &) const noexcept;
   bool retired() const noexcept { return retired_.load(std::memory_order_acquire); }
 };
 } // namespace bridge::audio

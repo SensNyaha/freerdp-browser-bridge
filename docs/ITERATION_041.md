@@ -5,6 +5,7 @@ The native public SVC adapter validates bounded ingress before the actual RDPSND
 callback, resets open PCM streams on Close and idle suspend/resume, refuses split
 Wave transitions and reentrant dispatch, and tracks bounded outgoing completions.
 [Exact contract](AUDIO_PCM.md#public-static-channel-callback-adapter).
+Implementation commit: `d390cc7`.
 
 Verification:
 

@@ -242,3 +242,33 @@ Terminated. Production entry selection/worker loop integration, close-fault hand
 earlier RDP/core allocation audit, compressed format policy, packet-clock gaps and
 actual remote/browser audio remain open. The adapter is static-only; dynamic RDPSND
 requires a separate public DVC boundary and is not activated.
+
+## Guarded top-level loader selection
+
+`RdpsndProvider::bind` can now take a matching, unused `AudioStaticGate`. In this
+profile the general public addin loader resolves the prior linked static RDPSND
+entry and returns the guarded ENTRYEX wrapper. The actual opaque context/device
+checks above still apply. One top-level channel attempt is allowed, and cached
+entries cannot replay registration. Dynamic top-level RDPSND, its dynamic device
+entry, legacy static ABI, invalid type/flags and foreign threads receive explicit
+non-null rejection entries, preventing an unguarded dynamic-library fallback for
+those intercepted requests. Other channel names keep prior provider behavior.
+
+The static adapter supplies only internal fixed arguments: `rdpsnd`, `sys:browser`,
+`format:1` (PCM tag). It does not forward a caller-supplied backend, device or argv
+to RDPSND. The pinned parser accepts these internal options, selects the explicit
+browser subsystem and fails loading errors without trying a host sound backend.
+Only PCM-tag negotiation is constrained here; PCM widths/rates/layout consistency
+still need a supported-offer policy before activation. The upstream DSP-supported
+format branch must not reinterpret unsupported PCM widths as PCM16.
+
+Closing a guarded provider retires its SVC adapter first. Outstanding native
+completions leave the provider bound and return ERROR_IO_PENDING; after completions
+drain, retry restores the previous loader. Gate/context/sink must outlive this
+scope and all final host callbacks. Backend-only scopes without a gate retain their
+previous ABI fixture behavior and do not claim guarded ingress.
+
+[Iteration 42](ITERATION_042.md) exercises the general loader, actual pinned static
+channel, wrapper and PCM sink together with a fake SVC host, including a supplied
+`sys:fake` argument replaced by the fixed browser selection. No Node/worker runtime
+links this provider yet; AudioPlayback and audioOutput capability remain disabled.

@@ -14,6 +14,9 @@ AudioStaticGate::~AudioStaticGate() {
     std::terminate();
 }
 bool AudioStaticGate::on_thread() const noexcept { return thread_ == std::this_thread::get_id(); }
+bool AudioStaticGate::ready_for(const rdpContext &context, const RdpsndSink &sink) const noexcept {
+  return on_thread() && context_ == &context && &sink_ == &sink && !attempted_ && !retired();
+}
 void AudioStaticGate::fail() noexcept {
   failed_ = true;
   if (context_)
@@ -33,6 +36,8 @@ BOOL AudioStaticGate::install(CHANNEL_ENTRY_POINTS_FREERDP_EX *host, LPVOID hand
   attempted_ = true;
   handle_ = handle;
   host_ = wrapped_ = *host;
+  // Internal, fixed baseline policy; never accept arbitrary caller backend/device argv.
+  wrapped_.pExtendedData = &args_;
   wrapped_.pVirtualChannelInitEx = init;
   wrapped_.pVirtualChannelOpenEx = open;
   wrapped_.pVirtualChannelCloseEx = close;

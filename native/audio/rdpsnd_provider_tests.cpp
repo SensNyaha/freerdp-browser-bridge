@@ -39,6 +39,14 @@ struct Fixture {
   }
   UINT bind() { return provider.bind(*context, sink); }
 };
+struct GateScope {
+  Fixture &fixture;
+  AudioStaticGate gate;
+  explicit GateScope(Fixture &value) : fixture(value), gate(*value.context, value.sink) {
+    REQUIRE(fixture.provider.bind(*fixture.context, fixture.sink, &gate) == CHANNEL_RC_OK);
+  }
+  ~GateScope() { (void)fixture.provider.close(); }
+};
 void word(std::vector<BYTE> &bytes, unsigned value) {
   bytes.push_back(static_cast<BYTE>(value));
   bytes.push_back(static_cast<BYTE>(value >> 8));
@@ -154,9 +162,11 @@ struct StaticHost {
       init(plugin, this, CHANNEL_EVENT_TERMINATED, nullptr, 0);
     }
   }
-  void load(AudioStaticGate *gate = nullptr) {
+  void load(AudioStaticGate *gate = nullptr, bool use_provider = false) {
     const auto entry =
-        freerdp_channels_load_static_addin_entry("rdpsnd", nullptr, nullptr, static_abi);
+        use_provider
+            ? freerdp_load_channel_addin_entry("rdpsnd", nullptr, nullptr, static_abi)
+            : freerdp_channels_load_static_addin_entry("rdpsnd", nullptr, nullptr, static_abi);
     REQUIRE(entry);
     const auto callback = std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry);
     if (gate)
@@ -579,4 +589,89 @@ TEST_CASE(
   REQUIRE(gate.retired());
   REQUIRE(fixture.sink.retired());
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+}
+
+TEST_CASE("RDPSND full public loader selects guarded static PCM browser backend") {
+  Fixture fixture;
+  const auto previous = freerdp_get_current_addin_provider();
+  GateScope scope(fixture);
+  const auto active = freerdp_get_current_addin_provider();
+  const auto cached = active("rdpsnd", nullptr, nullptr, static_abi);
+  REQUIRE(cached);
+  StaticHost host(fixture.context.get());
+  std::memcpy(host.selection, "sys:fake", sizeof("sys:fake"));
+  host.load(nullptr, true);
+  host.connect();
+  REQUIRE(fixture.sink.device().rdpsnd);
+  REQUIRE(freerdp_rdpsnd_get_context(fixture.sink.device().rdpsnd) == fixture.context.get());
+  REQUIRE_FALSE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(cached)(nullptr, nullptr));
+  auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  const std::vector<BYTE> wave{SNDC_WAVE2, 0, 20, 0, 100, 0,   0,   0,   1, 0, 0,   0,
+                               100,        0, 0,  0, 0,   128, 255, 127, 1, 0, 254, 255};
+  host.raw(wave, static_cast<UINT>(wave.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  std::vector<BYTE> output(8);
+  REQUIRE(fixture.sink.read(output).frames == 2);
+  REQUIRE(output == std::vector<BYTE>{0, 128, 255, 127, 1, 0, 254, 255});
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(scope.gate.retired());
+  REQUIRE(fixture.sink.retired());
+  REQUIRE(host.closes == 1);
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
+}
+
+TEST_CASE("Guarded RDPSND loader refuses unprotected dynamic and legacy channel ABIs") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  const auto loader = freerdp_get_current_addin_provider();
+  const auto dynamic = loader("rdpsnd", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
+  REQUIRE(dynamic);
+  REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(dynamic)(nullptr) == ERROR_NOT_SUPPORTED);
+  const auto device = loader("rdpsnd", "browser", nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
+  REQUIRE(device);
+  REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr) == ERROR_INVALID_STATE);
+  const auto legacy = loader("rdpsnd", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_STATIC);
+  REQUIRE(legacy);
+  REQUIRE_FALSE(legacy(nullptr));
+  const auto wrong = loader("rdpsnd", nullptr, "wrong", static_abi);
+  REQUIRE(wrong);
+  REQUIRE_FALSE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(wrong)(nullptr, nullptr));
+  BOOL foreign = TRUE;
+  std::thread thread([&] {
+    const auto entry = loader("rdpsnd", nullptr, nullptr, static_abi);
+    foreign = std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry)(nullptr, nullptr);
+  });
+  thread.join();
+  REQUIRE_FALSE(foreign);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Guarded RDPSND provider retains its scope until host write completions drain") {
+  Fixture fixture;
+  const auto previous = freerdp_get_current_addin_provider();
+  GateScope scope(fixture);
+  const auto active = freerdp_get_current_addin_provider();
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  host.defer_writes = true;
+  auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(host.pending.size() == 2);
+  REQUIRE(fixture.provider.close() == ERROR_IO_PENDING);
+  REQUIRE_FALSE(scope.gate.retired());
+  REQUIRE(freerdp_get_current_addin_provider() == active);
+  host.complete();
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(scope.gate.retired());
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
+}
+
+TEST_CASE("Guarded RDPSND provider requires matching context and sink ownership") {
+  Fixture fixture, foreign;
+  AudioStaticGate wrong(*foreign.context, foreign.sink);
+  const auto previous = freerdp_get_current_addin_provider();
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.sink, &wrong) == ERROR_INVALID_PARAMETER);
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
 }
