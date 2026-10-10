@@ -39,3 +39,32 @@ Portable tests cover independent sample vectors, signed extremes, packet
 fragmentation, a ten-second rational clock, bounds, rejection atomicity and reset.
 See [iteration 36](ITERATION_036.md). These tests do not prove RDPSND negotiation,
 remote audible output, browser playback, microphone support or LAN queue latency.
+
+## Bounded PCM handoff queue
+
+`native/audio/queue.hpp` stores normalized S16LE stereo in one fixed 23,040-byte
+ring: 5,760 frames, exactly 120 ms at 48 kHz. Push/read calls accept only nonempty
+whole frames and at most 4,800 frames each. Storage is allocated once. Calls have
+no waits, synchronization or allocations; one serialized owner must operate the
+queue. This is a local handoff primitive, not an end-to-end jitter/latency guarantee.
+
+Push copies borrowed normalizer output into owned storage. A full queue rejects
+the entire incoming packet, preserves prior samples and increments dropped packet
+and frame counters. Invalid input does not change the backlog. The future pipeline
+must explicitly handle this loss, including a discontinuity/reset policy; queue
+overflow does not silently splice timestamps or claim delivery. The queue carries
+no timestamps, sequence numbers, network retry or codec state.
+
+Read copies available FIFO frames into caller-owned storage and zero-fills a
+shortage. It reports actual frames and silence separately. Invalid destinations
+are unchanged. Silence never consumes source frames. The first nonempty read after
+construction/reset reports discontinuity; empty silence reads preserve this marker.
+An underflow alone does not reset interpolation or the queue. Reset discards queued
+frames, clears storage and restores the marker. Lifetime counters and high water
+are retained, with saturating 64-bit counters to avoid rollover.
+
+Local snapshots expose accepted/consumed/silence frames, discarded packets/frames,
+reset discards, invalid calls, underflow count, queued frames and high water. No
+public session metrics are yet published. [Iteration 37](ITERATION_037.md) verifies
+ring wrap, atomic overflow, silence, reset, randomized FIFO equivalence and copying
+the normalizer's borrowed output before reuse.

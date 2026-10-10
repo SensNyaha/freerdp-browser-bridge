@@ -3,6 +3,7 @@
 Date: 2026-10-10. Implements an isolated preparation block for SPECIFICATION §2.6,
 ARCHITECTURE §5 and Stage 6. Stage 5 physical/remote keyboard and touch acceptance
 gates remain open; no prerequisite is marked complete by this audio work.
+Implementation commit: `cad2086`.
 
 The native library normalizes PCM8/PCM16 mono/stereo at 8..48 kHz into S16LE
 48 kHz stereo with fixed output storage, complete preflight bounds and a rational
