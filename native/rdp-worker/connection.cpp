@@ -36,8 +36,11 @@ static void network_free() { (void)WSACleanup(); }
 Connection &Connection::owner(freerdp *instance) {
   return *reinterpret_cast<Context *>(instance->context)->owner;
 }
-Connection::Connection(std::function<void(const Packet &)> send)
-    : context_(nullptr, freerdp_client_context_free), send_(std::move(send)), cursor_(send_) {
+Connection::Connection(std::function<void(const Packet &)> send,
+                       bridge::audio::PcmPublisher::TrySend audio_send,
+                       bridge::audio::PcmPublisher::TryDiscard audio_discard)
+    : context_(nullptr, freerdp_client_context_free), send_(std::move(send)),
+      audio_send_(std::move(audio_send)), audio_discard_(std::move(audio_discard)), cursor_(send_) {
   RDP_CLIENT_ENTRY_POINTS entry{};
   entry.Size = sizeof(entry);
   entry.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -52,6 +55,7 @@ Connection::Connection(std::function<void(const Packet &)> send)
   reinterpret_cast<Context *>(context_.get())->owner = this;
   auto *instance = context_->instance;
   instance->PreConnect = pre_connect;
+  instance->LoadChannels = load_channels;
   instance->PostConnect = post_connect;
   instance->PostDisconnect = post_disconnect;
   instance->AuthenticateEx = authenticate;
@@ -77,6 +81,13 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
     throw ProtocolError();
   config_ = decode_connection_config(payload);
   const auto &c = *config_;
+#if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+  if (c.pcm_output && (!audio_send_ || !audio_discard_))
+    throw ProtocolError();
+#else
+  if (c.pcm_output)
+    throw ProtocolError();
+#endif
   auto *s = context_->settings;
   const auto boolean = [&](auto key, BOOL value) {
     if (!freerdp_settings_set_bool(s, key, value))
@@ -116,6 +127,8 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_RedirectDrives, FALSE);
   boolean(FreeRDP_RedirectPrinters, FALSE);
   boolean(FreeRDP_RedirectSmartCards, FALSE);
+  // Add the guarded static channel in PreConnect. TRUE here would let the
+  // pinned generic loader auto-add an unprotected dynamic rdpsnd channel.
   boolean(FreeRDP_AudioPlayback, FALSE);
   boolean(FreeRDP_AudioCapture, FALSE);
 #ifdef CHANNEL_RDPEI_CLIENT
@@ -138,6 +151,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_SupportGraphicsPipeline, FALSE);
 #endif
   boolean(FreeRDP_SynchronousDynamicChannels, TRUE);
+  boolean(FreeRDP_SynchronousStaticChannels, TRUE);
   boolean(FreeRDP_AsyncChannels, FALSE);
   boolean(FreeRDP_AsyncUpdate, FALSE);
   boolean(FreeRDP_RemoteApplicationMode, FALSE);
@@ -187,7 +201,19 @@ BOOL Connection::pre_connect(freerdp *instance) {
   if (PubSub_SubscribeChannelDisconnected(pubsub, channel_disconnected) < 0)
     return FALSE;
   self.subscribed_disconnected_ = true;
-  return freerdp_client_load_addins(instance->context->channels, instance->context->settings);
+  if (self.config_->pcm_output) {
+    const char *args[] = {"rdpsnd"}; // Provider supplies fixed browser/PCM arguments.
+    if (!freerdp_client_add_static_channel(instance->context->settings, 1, args))
+      return FALSE;
+  }
+  return TRUE; // The core replaces channels after PreConnect, then invokes LoadChannels.
+}
+BOOL Connection::load_channels(freerdp *instance) {
+  const auto loaded =
+      freerdp_client_load_addins(instance->context->channels, instance->context->settings);
+  if (!loaded)
+    owner(instance).reason_ = RdpError::protocol;
+  return loaded;
 }
 void Connection::channel_connected(void *context, const ChannelConnectedEventArgs *event) {
   auto *base = static_cast<rdpContext *>(context);
@@ -865,6 +891,12 @@ void Connection::stop() noexcept {
 void Connection::run() noexcept {
   auto terminal_state = RdpState::failed;
   auto terminal_error = RdpError::protocol;
+  bool explicitly_disconnected = false;
+  const auto audio_time = [] {
+    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                          std::chrono::steady_clock::now().time_since_epoch())
+                                          .count());
+  };
 #ifdef CHANNEL_RDPEI_CLIENT
   touch::AddinProvider touch_provider;
 #endif
@@ -877,6 +909,9 @@ void Connection::run() noexcept {
     if (config_->touch)
       touch_contacts_ = std::make_unique<touch::Contacts>(touch_registration_);
 #endif
+    if (config_->pcm_output)
+      audio_ =
+          std::make_unique<bridge::audio::AudioSession>(*context_, audio_send_, audio_discard_);
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
     std::jthread watchdog([this, deadline](std::stop_token token) {
@@ -928,7 +963,7 @@ void Connection::run() noexcept {
         }
         input_pending();
         events[count] = media_event_;
-        DWORD wait_ms = 50;
+        DWORD wait_ms = audio_ ? 20 : 50;
         {
           std::lock_guard lock(media_mutex_);
           if (frame_request_) {
@@ -937,6 +972,8 @@ void Connection::run() noexcept {
                                        .count() +
                                    1;
             wait_ms = static_cast<DWORD>(std::clamp<std::int64_t>(remaining, 1, 50));
+            if (audio_)
+              wait_ms = std::min<DWORD>(wait_ms, 20);
           }
         }
         const auto result = WaitForMultipleObjects(count + 1, events.data(), FALSE, wait_ms);
@@ -964,6 +1001,12 @@ void Connection::run() noexcept {
           break;
         input_pending();
         resize_pending();
+        if (audio_) {
+          const auto published = audio_->pump(audio_time());
+          if (published == bridge::audio::PublishStatus::failed ||
+              published == bridge::audio::PublishStatus::invalid)
+            throw ProtocolError();
+        }
         capture_pending();
       }
       connected_ = false;
@@ -971,7 +1014,8 @@ void Connection::run() noexcept {
       input_pending(true);
       capture_pending(true);
       const auto disconnected = freerdp_disconnect(context_->instance);
-      terminal_state = stopping_ || (healthy && disconnected) ? RdpState::closed : RdpState::failed;
+      explicitly_disconnected = true;
+      terminal_state = disconnected && (stopping_ || healthy) ? RdpState::closed : RdpState::failed;
       terminal_error = terminal_state == RdpState::closed ? RdpError::none : RdpError::disconnect;
     }
   } catch (...) {
@@ -987,11 +1031,30 @@ void Connection::run() noexcept {
         (void)input_state_.release([this](const auto &e) { return send_input(e); });
       } catch (...) {
       }
-      (void)freerdp_disconnect(context_->instance);
     }
     erase_password();
     terminal_state = RdpState::failed;
     terminal_error = RdpError::protocol;
+  }
+  // ContextFree does not synthesize host Terminated. Registered channels must
+  // receive public disconnect even if connect failed before GDI was initialized.
+  if (!explicitly_disconnected && !freerdp_disconnect(context_->instance)) {
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
+  }
+  if (audio_) {
+    auto retired = audio_->retire(audio_time());
+    while (retired == bridge::audio::RetireStatus::pending) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      retired = audio_->retire(audio_time());
+    }
+    const auto stats = audio_->stats();
+    if (!stats || !stats->resources_retired)
+      std::terminate(); // Owned worker fault; never free live host callback targets.
+    if (retired != bridge::audio::RetireStatus::done) {
+      terminal_state = RdpState::failed;
+      terminal_error = RdpError::protocol;
+    }
   }
   // Also covers connect failures before PostDisconnect; clear callbacks while context lives.
   if (!display_.unbind()) {

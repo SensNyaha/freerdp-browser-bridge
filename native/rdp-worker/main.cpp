@@ -93,6 +93,9 @@ std::vector<std::uint8_t> build_payload() {
 #ifdef CHANNEL_RDPEI_CLIENT
   capabilities |= 2048;
 #endif
+#if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+  capabilities |= 4096;
+#endif
   append_be(bytes, capabilities, 2);
 #else
   append_be(bytes, 1, 2);
@@ -151,7 +154,21 @@ int run() {
 #ifdef BRIDGE_WITH_FREERDP
     if (!WLog_SetLogLevel(WLog_GetRoot(), WLOG_OFF))
       throw std::runtime_error("FreeRDP logging initialization failed");
+#ifdef _WIN32
+    bridge::Connection connection(
+        send,
+        [&output](Kind kind, std::span<const std::uint8_t> bytes) {
+          const auto result = output.try_send(kind, 0, bytes);
+          if (result == DispatchAdmission::accepted)
+            return true;
+          if (result == DispatchAdmission::busy || result == DispatchAdmission::full)
+            return false;
+          throw ProtocolError();
+        },
+        [&output] { return output.try_discard_audio(); });
+#else
     bridge::Connection connection(send);
+#endif
 #endif
     bool ready = false;
     std::array<std::uint8_t, header_bytes> buffer{};
@@ -256,6 +273,11 @@ int main(int argc, char **argv) {
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"
+#if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+                 "\"pcmOutput\":true,"
+#else
+                 "\"pcmOutput\":false,"
+#endif
 #ifdef CHANNEL_RDPEI_CLIENT
                  "\"touchInput\":true,"
 #else
@@ -270,6 +292,7 @@ int main(int argc, char **argv) {
 #else
                  "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
                  "\"unicodeInput\":false,"
+                 "\"pcmOutput\":false,"
                  "\"touchInput\":false,"
                  "\"pipelineStats\":false,\"cursor\":false,\"videoQuality\":false,"
                  "\"displayControl\":false},"

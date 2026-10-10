@@ -1,5 +1,10 @@
 # Native PCM foundation
 
+Current activation: Windows bundled workers can select the guarded static PCM
+path through private WorkerProcess settings/listeners. Public session/browser
+negotiation remains unavailable; audible acceptance is open. Historical foundation
+sections below describe their original scope. [Iteration 66](ITERATION_066.md).
+
 Implements the first isolated part of SPECIFICATION §2.6, ARCHITECTURE §5 and
 Stage 6. The worker does not yet register an audio backend or advertise playback.
 No audio IPC or public wire layout changes in this block.

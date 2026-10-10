@@ -12,6 +12,7 @@ struct ConnectionConfig {
   std::uint32_t target_bitrate = 4000000, max_bitrate = 4000000;
   bool dynamic_resolution = false;
   bool touch = false;
+  bool pcm_output = false;
 };
 ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes);
 void validate_secret(std::span<const std::uint8_t> bytes);

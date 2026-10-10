@@ -156,6 +156,32 @@ TEST_CASE("connection v4 explicit touch opt-in preserves legacy flags and reject
   bytes[1] = 3;
   REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
 }
+TEST_CASE("connection v5 PCM opt-in preserves flags and refuses truncated and legacy claims") {
+  auto bytes = connection;
+  bytes[1] = 5;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 4});
+  for (unsigned flags = 0; flags < 8; ++flags) {
+    bytes.back() = static_cast<std::uint8_t>(flags);
+    const auto config = decode_connection_config(bytes);
+    REQUIRE(config.pcm_output == ((flags & 4) != 0));
+    REQUIRE(config.touch == ((flags & 2) != 0));
+    REQUIRE(config.dynamic_resolution == ((flags & 1) != 0));
+  }
+  bytes.back() = 4;
+  for (std::size_t length = 0; length < bytes.size(); ++length)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+  for (const unsigned flags : {8U, 128U, 255U}) {
+    bytes.back() = static_cast<std::uint8_t>(flags);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes.back() = 4;
+  bytes[1] = 4;
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  bytes[1] = 5;
+  bytes.push_back(0);
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  REQUIRE_FALSE(decode_connection_config(connection).pcm_output);
+}
 TEST_CASE("display IPC independent vectors and exact class bounds before allocation") {
   const DisplayUpdate update{1, 2, {1920, 1080}, true, true, {3840, 2160}, 3840U * 2160U};
   const std::vector<std::uint8_t> expected{0,    0, 0, 0,    0, 0, 0,    1,    0,    0, 0,

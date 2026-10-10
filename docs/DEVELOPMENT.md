@@ -226,3 +226,14 @@ Credentials stay in ignored lab files and private IPC; use the previously verifi
 fingerprint. Inventory is not physical touch or remote application acceptance.
 Manual --manual viewing also opts in and captures supported touch Pointer Events
 only after readiness and matching rendered geometry. It never maps pen to mouse.
+
+## Private Windows PCM readiness check
+
+After bundled native and Node builds, run `node scripts/test-xrdp-audio.mjs
+sha256:<verified-lab-fingerprint>` with the bundled Node 24 executable on PATH.
+The helper reads the authorized ignored lab files, opts in to private PCM,
+observes source metadata for three seconds, checks heartbeat/JPEG and closes.
+It sends no remote input/sound-generation commands and writes only a bounded
+non-secret `.local-tests/xrdp-audio-report.json`. Waiting with zero packets is an
+idle/source observation, not audio negotiation, audible/browser or latency
+acceptance. Public session PCM remains unavailable until ordered media routing.

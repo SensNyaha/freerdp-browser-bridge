@@ -444,7 +444,7 @@ test(
           { security: { protocol: 'rdp' } },
           { security: { certificatePolicy: 'tofu' } },
           { reconnect: { enabled: true } },
-          { media: { audioOutput: 'pcm' } },
+          { media: { audioOutput: 'opus' } },
           { target: { host: '127.0.0.1', preferIPv6: true } },
           { quality: { wallpaper: false } },
           { quality: { targetBitrateKbps: 99 } },

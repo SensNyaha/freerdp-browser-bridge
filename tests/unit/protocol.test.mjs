@@ -202,9 +202,11 @@ test('build IPC: video quality capability preserves old peers and requires the n
   assert.equal(decodeBuild(build(1021)).capabilities.displayControl, true);
   assert.equal(decodeBuild(build(1021)).capabilities.unicodeInput, false);
   assert.equal(decodeBuild(build(2045)).capabilities.unicodeInput, true);
+  assert.equal(decodeBuild(build(4093)).capabilities.pcmOutput, false);
+  assert.equal(decodeBuild(build(8189)).capabilities.pcmOutput, true);
   for (const flags of [1, 253, 2045, 4093])
     assert.equal(decodeBuild(build(flags)).capabilities.penInput, false);
-  for (const flags of [257, 513, 1025, 1029, 2049])
+  for (const flags of [257, 513, 1025, 1029, 2049, 4097, 8193])
     assert.throws(() => decodeBuild(build(flags)), ProtocolError);
 });
 
@@ -234,6 +236,29 @@ test('connection IPC: independent golden settings, byte limits and no legacy sec
     targetBitrate: 1000000,
     maxBitrate: 2000000,
   };
+  assert.equal(
+    encodeConnectionSettings({ ...settings, pcmOutput: true }).toString('hex'),
+    '000500096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e81e145000003d0900003d090000000004',
+  );
+  assert.equal(
+    encodeConnectionSettings({
+      ...settings,
+      pcmOutput: true,
+      touch: true,
+      dynamicResolution: true,
+    })
+      .subarray(-4)
+      .readUInt32BE(0),
+    7,
+  );
+  assert.deepEqual(
+    encodeConnectionSettings({ ...settings, pcmOutput: false }),
+    encodeConnectionSettings(settings),
+  );
+  assert.throws(
+    () => encodeConnectionSettings({ ...settings, pcmOutput: 'pcm' }),
+    ProtocolError,
+  );
   assert.equal(
     encodeConnectionSettings({ ...settings, videoQuality }).toString('hex'),
     '000200096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e80a0a3c00000f4240001e8480',

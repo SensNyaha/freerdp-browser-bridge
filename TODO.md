@@ -244,6 +244,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Stage 6 — audio output and microphone
 
+- [~] IN PROGRESS — Windows guarded static PCM selection is opt-in through private
+  settings v5/HELLO and typed Node source/config/sample events. LoadChannels runs
+  after actual core channel replacement; pre-GDI TLS rejection/cancellation and
+  bounded retirement/cleanup pass. Actual idle XRDP connects, reports waiting,
+  captures a desktop and closes, with no audio packets observed. Public media,
+  audible/browser and transport/latency/resource gates remain open. [Evidence](docs/ITERATION_066.md).
+
 - [ ] Implement custom `rdpsnd-browser` virtual sink.
 - [~] IN PROGRESS — Public pinned RDPSND device callback adapter feeds the bounded PCM pipeline, applies stereo volume, resets on loss and retires owner resources before delayed host Free. Native ABI/lifecycle fixtures pass; worker registration, upstream resource audit and actual server/browser audio remain open. [Contract](docs/AUDIO_PCM.md#public-rdpsnd-device-adapter), [evidence](docs/ITERATION_038.md).
 - [~] IN PROGRESS — Scoped public rdpsnd/browser loader binds one synchronous context and preserves other addins. Actual pinned static RDPSND with fake SVC registers the backend, negotiates PCM and dispatches Wave2 into the sink. Upstream reassembly/DSP limits and Close/timestamp gaps are recorded; worker activation and actual remote/browser audio remain open. [Evidence](docs/ITERATION_039.md), [audit](docs/AUDIO_PCM.md#scoped-rdpsnd-backend-loading).

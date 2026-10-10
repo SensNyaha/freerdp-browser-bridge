@@ -4,6 +4,8 @@ import { promisify } from 'node:util';
 export * from './session-manager.js';
 export * from './native-session.js';
 import { EventEmitter } from 'node:events';
+import { PcmSource } from './pcm-source.js';
+export type { PcmSourceEvent } from './pcm-source.js';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import {
@@ -111,6 +113,7 @@ export class WorkerProcess extends EventEmitter {
   private dynamicResolution = false;
   private touchEnabled = false;
   private touchState: TouchState | undefined;
+  private pcmSource: PcmSource | undefined;
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
@@ -148,6 +151,11 @@ export class WorkerProcess extends EventEmitter {
   }
   get build(): WorkerBuild | undefined {
     return this.report ? structuredClone(this.report) : undefined;
+  }
+
+  /** Latest private source status; this does not establish browser/audible support. */
+  get audioState() {
+    return this.pcmSource?.current;
   }
 
   private setState(state: Status): void {
@@ -273,6 +281,25 @@ export class WorkerProcess extends EventEmitter {
   }
 
   private receive(packet: Packet): void {
+    if (
+      packet.requestId === 0n &&
+      this.connectionRequested &&
+      ['ready', 'closing'].includes(this.status) &&
+      [Kind.AudioState, Kind.AudioConfig, Kind.AudioPcm].includes(packet.kind)
+    ) {
+      if (!this.pcmSource || !this.report?.capabilities.pcmOutput)
+        throw new WorkerError('IPC_UNEXPECTED_EVENT');
+      const event = this.pcmSource.accept(packet.kind, packet.payload);
+      if (this.status === 'ready') {
+        if (
+          !this.rdpConnected &&
+          (event.type !== 'state' || event.state.availability === 'ready')
+        )
+          throw new WorkerError('IPC_UNEXPECTED_EVENT');
+        this.emit('audio', event);
+      }
+      return;
+    }
     if (
       packet.requestId === 0n &&
       this.connectionRequested &&
@@ -646,6 +673,7 @@ export class WorkerProcess extends EventEmitter {
         this.report.capabilities.videoQuality,
         this.report.capabilities.displayControl,
         this.report.capabilities.touchInput,
+        this.report.capabilities.pcmOutput,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -664,6 +692,8 @@ export class WorkerProcess extends EventEmitter {
       this.connectionRequested = true;
       this.dynamicResolution = config.display?.dynamicResolution === true;
       this.touchEnabled = config.input?.touch === true;
+      this.pcmSource =
+        config.media?.audioOutput === 'pcm' ? new PcmSource() : undefined;
       await this.request(Kind.Connect, Kind.ConnectAck);
     } finally {
       delete config.auth.password;
@@ -748,6 +778,7 @@ function connectionPayload(
   videoQuality: boolean,
   displayControl: boolean,
   touchInput: boolean,
+  pcmOutput: boolean,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -761,6 +792,7 @@ function connectionPayload(
     'timeouts',
     'quality',
     'input',
+    'media',
   ]);
   allowed(config.target, ['host', 'port']);
   allowed(config.auth, ['username', 'domain', 'password', 'mode']);
@@ -772,6 +804,15 @@ function connectionPayload(
     'dynamicResolution',
   ]);
   allowed(config.input, ['touch']);
+  allowed(config.media, ['audioOutput', 'microphone', 'audioLatencyMs']);
+  if (
+    (config.media?.audioOutput &&
+      !['off', 'pcm'].includes(config.media.audioOutput)) ||
+    (config.media?.audioOutput === 'pcm' && !pcmOutput) ||
+    (config.media?.microphone && config.media.microphone !== 'off') ||
+    config.media?.audioLatencyMs !== undefined
+  )
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   if (config.input?.touch && !touchInput)
     throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   if (config.display?.dynamicResolution && !displayControl)
@@ -820,6 +861,7 @@ function connectionPayload(
     tcpAckMs: config.timeouts?.tcpAckMs ?? 10000,
     ...(config.display?.dynamicResolution ? { dynamicResolution: true } : {}),
     ...(config.input?.touch ? { touch: true } : {}),
+    ...(config.media?.audioOutput === 'pcm' ? { pcmOutput: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),
   });
 }

@@ -265,6 +265,7 @@ export interface WorkerBuild {
     videoQuality: boolean;
     displayControl: boolean;
     touchInput: boolean;
+    pcmOutput: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -281,9 +282,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~4095) !== 0 ||
+    (capabilities & ~8191) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 4088) !== 0 && (capabilities & 4) === 0) ||
+    ((capabilities & 8184) !== 0 && (capabilities & 4) === 0) ||
     ((capabilities & 3072) !== 0 && (capabilities & 32) === 0)
   )
     throw new ProtocolError();
@@ -327,6 +328,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       videoQuality: Boolean(capabilities & 256),
       displayControl: Boolean(capabilities & 512),
       touchInput: Boolean(capabilities & 2048),
+      pcmOutput: Boolean(capabilities & 4096),
       penInput: false,
     },
     bridgeVersion,
@@ -432,6 +434,7 @@ export interface ConnectionSettings {
   tcpAckMs: number;
   dynamicResolution?: boolean;
   touch?: boolean;
+  pcmOutput?: boolean;
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -445,10 +448,19 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   if (
     (c.dynamicResolution !== undefined &&
       typeof c.dynamicResolution !== 'boolean') ||
-    (c.touch !== undefined && typeof c.touch !== 'boolean')
+    (c.touch !== undefined && typeof c.touch !== 'boolean') ||
+    (c.pcmOutput !== undefined && typeof c.pcmOutput !== 'boolean')
   )
     throw new ProtocolError();
-  const schema = c.touch ? 4 : c.dynamicResolution ? 3 : c.videoQuality ? 2 : 1;
+  const schema = c.pcmOutput
+    ? 5
+    : c.touch
+      ? 4
+      : c.dynamicResolution
+        ? 3
+        : c.videoQuality
+          ? 2
+          : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -537,7 +549,14 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   }
   if (schema >= 3)
     parts.push(
-      Buffer.from([0, 0, 0, (c.dynamicResolution ? 1 : 0) | (c.touch ? 2 : 0)]),
+      Buffer.from([
+        0,
+        0,
+        0,
+        (c.dynamicResolution ? 1 : 0) |
+          (c.touch ? 2 : 0) |
+          (c.pcmOutput ? 4 : 0),
+      ]),
     );
   return Buffer.concat(parts);
 }

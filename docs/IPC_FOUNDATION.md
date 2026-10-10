@@ -425,3 +425,46 @@ fresh capture, advances accepted revisions and preserves consumer discard credit
 before status; packetizer skips also clear older unsent audio before their new
 epoch. No worker selects this owner mode yet. [Evidence](ITERATION_062.md),
 [ownership contract](AUDIO_PCM.md#source-status-and-epoch-ownership).
+
+## Private PCM worker activation (Iteration 66)
+
+Connection settings schema **5** extends the existing four-byte flags field:
+bit 0 dynamic resolution, bit 1 touch, bit 2 opt-in PCM output. Other bits, trailing
+bytes and truncated records are refused. Earlier schemas retain their masks and
+default audio off. HELLO bit **4096** (`pcmOutput`) requires connectCore and denotes
+the compiled experimental private PCM path, not remote/browser/audible acceptance.
+Only Windows bundled workers advertise it; foundation/Linux workers report false.
+
+WorkerProcess accepts `media.audioOutput: 'pcm'` only with that bit. Omitted/off
+output and omitted/off microphone remain disabled; Opus, enabled microphone and
+configured audioLatencyMs return `RDP_SETTING_NOT_IMPLEMENTED`. The fixed source
+ring/packetization profile is not silently substituted for a requested latency.
+NativeSessionWorker/public session creation still explicitly refuses PCM until
+ordered public media negotiation is installed.
+
+The RDP thread binds AudioSession after the touch provider, loads only the guarded
+static RDPSND through public LoadChannels and retires audio before the outer
+provider/join. PreConnect declares the static descriptor but does not load addins:
+the pinned core replaces its channel manager after PreConnect. AudioPlayback stays
+false until the generic loader sees that descriptor, preventing auto-added dynamic
+RDPSND. Synchronous static/dynamic callbacks remain enabled; no host sound backend
+or caller-supplied FreeRDP arguments are used. Failed pre-GDI connects also receive
+explicit public disconnect before context Free.
+
+RDP event waits are at most 20 ms with PCM enabled; source/status/config/PCM service
+precedes video capture. Native bounded output priority/admission and unsent discard
+barriers apply independently of video credit. AUDIO_STATE (35), AUDIO_CONFIG (33)
+and AUDIO_PCM (34) are unsolicited request-ID-zero events; they are not commands.
+The Node `audio` event is a typed state/config/packet union; `audioState` returns a
+copied scalar snapshot. Node retains no PCM packet queue. Stop status is accepted
+without a connected desktop, while ready/config/PCM requires connected state.
+Closing validates and discards ordered events before shutdown ACK.
+
+Each status strictly advances revision and nondecreasing epoch/time, clears prior
+configuration, and requires enabled PCM. Config requires ready/matching new epoch;
+samples require fresh config, first discontinuity and strictly increasing capture
+PTS (20 ms apart unless discontinuous). Status observation time is independent of
+capture time. Wrong mode/order/replay/epoch/clock fails private IPC. Pending native
+retirement retries once per later call within one second; unresolved callback
+ownership fails the owned worker rather than freeing live targets. Real transport
+fault/resource, audible/browser and latency gates remain open.

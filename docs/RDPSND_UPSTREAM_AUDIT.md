@@ -64,4 +64,12 @@ on a later thread. It does not connect a socket or exchange actual core audio
 fragments. Actual linked RDPSND with fake SVC covers cancelled confirmations,
 close faults, missing-completion deadlines and publication failure recovery.
 Real transport shutdown/cancellation, pre-authentication/core resource limits,
-worker selection and audible remote/browser integration remain open.
+audible remote/browser integration remain open. Private Windows worker selection
+and pre-GDI refusal/cancellation are added in [iteration 66](ITERATION_066.md).
+
+The same pinned `core/utils.c::utils_reload_channels` disconnects/closes/frees the
+old manager, allocates/registers a new manager and invokes public `LoadChannels`
+after PreConnect. Guarded channel registration belongs in LoadChannels; registering
+it in PreConnect immediately retires the single-use gate and prevents the fresh
+load. Static descriptors can be declared in PreConnect. Worker registration uses
+this ordering; unexpected reopening/reconnect remains unsupported.

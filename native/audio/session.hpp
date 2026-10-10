@@ -19,7 +19,7 @@ struct SessionStats {
 // Retire after RDP disconnect when activated; unactivated registrations may retire
 // before final disconnect. ContextFree alone does not deliver host Terminated.
 // Drain and output callbacks must not block.
-// Not selected by the worker yet. Failed/expired ownership is an outer process fault.
+// Failed/expired live ownership is an outer process fault.
 class AudioSession {
 public:
   using Drain = std::function<bool()>;

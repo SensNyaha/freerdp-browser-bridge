@@ -1,4 +1,5 @@
 #pragma once
+#include "../audio/session.hpp"
 #include "certificate.hpp"
 #include "connection_config.hpp"
 #include "contacts.hpp"
@@ -48,8 +49,12 @@ class Connection {
   touch::PluginRegistration touch_registration_;
   std::unique_ptr<touch::Contacts> touch_contacts_;
 #endif
+  // Host final callbacks must see this wrapper through context destruction.
+  std::unique_ptr<audio::AudioSession> audio_;
   ContextPtr context_;
   std::function<void(const ipc::Packet &)> send_;
+  audio::PcmPublisher::TrySend audio_send_;
+  audio::PcmPublisher::TryDiscard audio_discard_;
   std::optional<ipc::ConnectionConfig> config_;
   bool supplied_ = false, started_ = false;
   std::atomic<bool> stopping_{false}, timed_out_{false}, finished_{false};
@@ -111,6 +116,7 @@ class Connection {
   void erase_password() noexcept;
   static Connection &owner(freerdp *instance);
   static BOOL pre_connect(freerdp *instance);
+  static BOOL load_channels(freerdp *instance);
   static void channel_connected(void *context, const ChannelConnectedEventArgs *event);
   static void channel_disconnected(void *context, const ChannelDisconnectedEventArgs *event);
   static BOOL post_connect(freerdp *instance);
@@ -124,7 +130,9 @@ class Connection {
                     UINT16 port, DWORD flags);
 
 public:
-  explicit Connection(std::function<void(const ipc::Packet &)> send);
+  explicit Connection(std::function<void(const ipc::Packet &)> send,
+                      audio::PcmPublisher::TrySend audio_send = {},
+                      audio::PcmPublisher::TryDiscard audio_discard = {});
   ~Connection();
   void configure(std::span<const std::uint8_t> payload);
   void secret(std::span<const std::uint8_t> payload);

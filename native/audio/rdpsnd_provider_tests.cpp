@@ -1574,6 +1574,40 @@ TEST_CASE(
   REQUIRE(owner.stats()->publisher.sent_states == 2);
 }
 
+TEST_CASE(
+    "Actual generic FreeRDP addin loader selects only guarded static PCM with playback opt-in") {
+  Fixture fixture;
+  AudioSession owner(*fixture.context, [](auto, auto) { return true; }, [] { return true; });
+  struct ContextReset {
+    decltype(fixture.context) &context;
+    ~ContextReset() {
+      if (context) {
+        const auto disconnected = freerdp_disconnect(context->instance);
+        context.reset();
+        if (!disconnected)
+          std::terminate();
+      }
+    }
+  } final_host{fixture.context};
+  REQUIRE(freerdp_settings_set_bool(fixture.context->settings, FreeRDP_AudioPlayback, FALSE));
+  const char *args[] = {"rdpsnd"};
+  REQUIRE(freerdp_client_add_static_channel(fixture.context->settings, 1, args));
+  REQUIRE(freerdp_client_load_addins(fixture.context->channels, fixture.context->settings));
+  REQUIRE(freerdp_settings_get_bool(fixture.context->settings, FreeRDP_AudioPlayback));
+  REQUIRE_FALSE(freerdp_dynamic_channel_collection_find(fixture.context->settings, "rdpsnd"));
+  std::unique_ptr<StaticClientChannelStats, decltype(&freerdp_channel_client_stats_free)> inventory{
+      freerdp_channels_client_stats(fixture.context->channels), freerdp_channel_client_stats_free};
+  REQUIRE(inventory);
+  std::size_t count = 0;
+  for (UINT i = 0; i < inventory->count; ++i)
+    if (std::strcmp(inventory->stats[i].channelName, "rdpsnd") == 0)
+      ++count;
+  REQUIRE(count == 1);
+  REQUIRE(owner.pump(0) == PublishStatus::sent);
+  REQUIRE(owner.retire(1) == RetireStatus::done);
+  REQUIRE(owner.stats()->resources_retired);
+}
+
 TEST_CASE("Actual FreeRDP core registers guarded audio and disconnects after owner retirement") {
   Fixture fixture;
   bridge::ipc::OutputQueue output;

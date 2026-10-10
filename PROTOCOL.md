@@ -269,8 +269,9 @@ It uses audio stream ID 3, separate from video 1 and cursor 2: AUDIO_CONFIG has
 and a nonzero stream epoch. AUDIO_PACKET has exactly 3,840 sample bytes (20 ms),
 with timestampUs unchanged from the worker and DISCONTINUITY flag 0x0002 on reset
 or attachment. Private metadata is not prepended to the public sample payload.
-This codec is implemented as an isolated native/TypeScript foundation; current
-workers and the harness do not yet activate audio output. Opus remains open.
+Windows bundled workers now activate opt-in PCM on private IPC, with typed Node
+source/config/packet listeners. Public session/media negotiation and the harness
+do not yet activate audio output. Opus remains open. [Private activation](docs/IPC_FOUNDATION.md#private-pcm-worker-activation-iteration-66).
 Private source status schema 1 is now prepared as RWI1 AUDIO_STATE kind 35 with
 40 bytes. Its public preparatory counterpart is RWB1 AUDIO_STATE type 0x09,
 stream 3, DISCONTINUITY 0x0002, exact 40-byte payload. Payload repeats the worker
@@ -279,7 +280,8 @@ immutable opt-in and fixed requested profile follow the private status schema.
 It shares the attachment's audio sequence with config/PCM, never cursor/video
 sequences. Stop/reset status must use the same ordered media socket as PCM;
 cross-socket ordering is not assumed. No public JSON control event is added.
-Current worker/API do not emit this extension. Default packet-only browser
+The opt-in worker emits private status; API does not emit the public extension.
+Default packet-only browser
 ownership refuses it. Isolated `sourceStatus: true` ownership requires increasing
 status revision, nondecreasing epoch/clock and immutable opt-in. Status clears
 pending config/samples and schedules Worklet reset before fresh config/PCM; ready
