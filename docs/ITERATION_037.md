@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Continues SPECIFICATION §2.6 / ARCHITECTURE §5 preparation with
 a fixed 120 ms native S16LE ring. No waits or per-call allocations are introduced.
+Implementation commit: `6f0a7a3`.
 Overflow refuses a whole incoming packet; underflow yields counted silence. Reset
 discards backlog and marks the next nonempty read as discontinuous. Lifetime
 metrics are bounded/saturating. [Exact contract](AUDIO_PCM.md#bounded-pcm-handoff-queue).

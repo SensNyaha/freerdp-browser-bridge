@@ -68,3 +68,48 @@ reset discards, invalid calls, underflow count, queued frames and high water. No
 public session metrics are yet published. [Iteration 37](ITERATION_037.md) verifies
 ring wrap, atomic overflow, silence, reset, randomized FIFO equivalence and copying
 the normalizer's borrowed output before reuse.
+
+## Public RDPSND device adapter
+
+`native/audio/rdpsnd_sink.hpp` implements the pinned public
+`rdpsndDevicePlugin` callback ABI over the normalizer and queue. It is compiled
+only with FreeRDP and is not yet registered by the worker. `AudioPlayback` remains
+disabled and no browser/host playback capability is advertised. Nothing routes
+audio through a host sound server or physical audio device.
+
+FormatSupported/Open require consistent PCM tag, rate, channels, width, block
+alignment and average byte rate, without extra format data. Open resets the
+pipeline; failed Open leaves its existing state intact. DefaultFormat constructs
+PCM16 at the desired source rate/layout with no borrowed extra data. This tests
+the conversion descriptor only; compressed codec decoding/negotiation is not
+verified. Actual registration must enforce supported format negotiation and audit
+upstream buffers before enabling audio.
+
+The adapter uses legacy Play, interpreting bytes in the format supplied to Open.
+Pinned rdpsnd passes its original server format to PlayEx even after DSP decode;
+PlayEx is deliberately absent to avoid interpreting decoded bytes using compressed
+sample widths. Play's return value is queued latency in milliseconds, rounded up,
+bounded to 120 ms. It is not a Win32 status or evidence of audible delivery.
+
+Packed 16-bit left/right volume gains are applied to normalized signed samples
+before enqueue, using 64-bit multiplication and division by 65,535. Full gain is
+identity; zero is silence. This adds one fixed 19,200-byte scratch buffer to the
+pipeline. No callback allocates. Malformed/over-capacity input counts a rejection
+and resets interpolation/backlog. Queue overflow counts the drop, resets the
+pipeline and marks recovery as discontinuous. The adapter reports these events
+through local snapshots, not wire errors or public metrics.
+
+Callbacks and reads require the construction/RDP thread. Foreign-thread calls
+refuse without accessing the mutable pipeline. Registration must request
+synchronous static/dynamic channels as appropriate; this adapter does not configure
+an upstream channel itself. Close resets the stream and permits reopening. Retire
+must run on the owner before joining, frees all pipeline storage and atomically
+publishes a terminal state. The small device wrapper must outlive the host's Free;
+Free retires on the owner, or becomes an idempotent no-op after retirement on any
+thread. Concurrent destruction/callbacks are forbidden. A premature foreign Free
+cannot retire live owner resources.
+
+[Iteration 38](ITERATION_038.md) exercises callbacks through public API pointers.
+These are native ABI/lifecycle fixtures, not actual RDPSND channel, server or
+browser integration. Worker registration, IPC scheduling and end-to-end audio
+remain open.

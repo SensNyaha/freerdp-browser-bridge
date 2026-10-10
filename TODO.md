@@ -242,6 +242,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 ## Stage 6 — audio output and microphone
 
 - [ ] Implement custom `rdpsnd-browser` virtual sink.
+- [~] IN PROGRESS — Public pinned RDPSND device callback adapter feeds the bounded PCM pipeline, applies stereo volume, resets on loss and retires owner resources before delayed host Free. Native ABI/lifecycle fixtures pass; worker registration, upstream resource audit and actual server/browser audio remain open. [Contract](docs/AUDIO_PCM.md#public-rdpsnd-device-adapter), [evidence](docs/ITERATION_038.md).
 - [ ] PCM normalization/resampling layer.
 - [~] IN PROGRESS — Isolated native PCM8/PCM16 mono/stereo 8..48 kHz normalization to S16LE 48 kHz stereo, rational phase, fixed output capacity and atomic rejection are implemented. Wider/higher-rate formats, pipeline/backend integration and actual audio acceptance remain open. [Contract](docs/AUDIO_PCM.md), [evidence](docs/ITERATION_036.md). Stage 5 hardware/remote gates remain open.
 - [ ] PCM media transport + AudioWorklet playback.
