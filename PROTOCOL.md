@@ -279,8 +279,12 @@ immutable opt-in and fixed requested profile follow the private status schema.
 It shares the attachment's audio sequence with config/PCM, never cursor/video
 sequences. Stop/reset status must use the same ordered media socket as PCM;
 cross-socket ordering is not assumed. No public JSON control event is added.
-Current worker/API do not emit this extension. Packet-only browser ownership
-refuses it until status-aware playback/negotiation is implemented.
+Current worker/API do not emit this extension. Default packet-only browser
+ownership refuses it. Isolated `sourceStatus: true` ownership requires increasing
+status revision, nondecreasing epoch/clock and immutable opt-in. Status clears
+pending config/samples and schedules Worklet reset before fresh config/PCM; ready
+and its matching config are required before samples. No public media negotiation
+is activated yet. [Browser ownership](docs/AUDIO_PCM.md#browser-source-status-ownership).
 [Status codec contract](docs/AUDIO_PCM.md#pcm-source-status-codec-preparation).
 
 ## 5. Attach semantics

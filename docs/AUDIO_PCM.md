@@ -371,8 +371,40 @@ This can carry a stop with no samples. It is designed for the same ordered media
 WebSocket as PCM; an independent control socket cannot establish flush ordering.
 The fixed descriptor describes the requested normalized profile, not negotiated
 server format or audible delivery. Current worker/API emit no public status and
-the packet-only browser owner explicitly refuses it. Status-aware bounded
-playback/reset ownership, negotiation/listeners/replay and actual audio remain open.
+the default packet-only browser owner explicitly refuses it. The opt-in source
+playback mode below implements bounded reset ownership; negotiated worker/API
+selection/listeners/replay and actual audio remain open.
+
+### Browser source status ownership
+
+[Iteration 64](ITERATION_064.md) adds immutable `sourceStatus: true` to the isolated
+PCM sender/factory. Default false preserves packet-only fixtures and refuses
+status. This is preparation for media negotiation, not an active harness feature.
+Opt-in requires initial status before config/samples, increasing source revisions,
+nondecreasing source epoch/clock and immutable enabled state. Config requires
+enabled `ready` status and its exact epoch. Samples additionally require a fresh
+config and the existing discontinuity/monotonic PCM timestamp rules.
+
+Every accepted state clears local pending config/PCM, establishes a fresh-config
+boundary and schedules reset ahead of future config/PCM. One already posted
+command retains MessagePort order; reset clears actual Worklet storage after that
+command. The sender owns only one posted command, one coalesced pending reset,
+one config, one latest 3,840-byte sample copy and one stats flag. No metadata burst
+creates a MessagePort backlog. Close/suspend/failure/unavailable can reset without
+samples; later ready state and matching fresh config permit recovery. The existing
+ACK deadline also bounds reset completion; invalid progress closes the exclusively
+owned AudioContext/port and releases pending storage.
+
+State time describes observation and may follow the captured PCM timestamp;
+source-state progress and PCM progress have separate monotonic checks. All records
+share ordered audio sequence; state does not rewrite the media timestamp. Snapshots
+add `sourceStates`, successfully posted `resetCommands`, `pendingReset` and small
+source metadata with decimal revision/epoch. Existing Worklet stats remain fixed.
+An actual Edge fixture confirms Close discards a 960-frame prebuffer with no new
+samples and verifies suspend/wait/ready recovery plus replay cleanup. This is real
+Worklet integration with synthetic PCM, not audible RDP/browser or microphone
+acceptance. Worker selection, Node listeners/media negotiation and LAN latency
+remain open.
 
 ## Public RDPSND device adapter
 

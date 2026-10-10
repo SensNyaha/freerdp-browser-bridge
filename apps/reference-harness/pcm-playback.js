@@ -108,13 +108,17 @@ export function parsePcmAudioRecord(bytes) {
     pcm: new Uint8Array(bytes, 28),
   };
 }
-/** One posted command, one pending config, one pending PCM and one stats flag. */
+/** One posted command, pending reset/config, one latest PCM and one stats flag. */
 export class PcmPortSender {
-  constructor(port, { timeoutMs = 2000, onFailure, cleanup } = {}) {
+  constructor(
+    port,
+    { timeoutMs = 2000, sourceStatus = false, onFailure, cleanup } = {},
+  ) {
     if (
       !port ||
       typeof port.postMessage !== 'function' ||
       typeof port.close !== 'function' ||
+      typeof sourceStatus !== 'boolean' ||
       !Number.isInteger(timeoutMs) ||
       timeoutMs < 10 ||
       timeoutMs > 5000
@@ -124,6 +128,10 @@ export class PcmPortSender {
     this.timeoutMs = timeoutMs;
     this.onFailure = onFailure;
     this.cleanup = cleanup;
+    this.sourceStatus = sourceStatus;
+    this.sourceState = undefined;
+    this.awaitingConfig = sourceStatus;
+    this.pendingReset = false;
     this.sequence = this.id = 0;
     this.epoch = this.configTimestamp = this.timestamp = undefined;
     this.pendingConfig = this.pendingPacket = this.flight = undefined;
@@ -136,6 +144,8 @@ export class PcmPortSender {
       acknowledged: 0,
       replacedPackets: 0,
       resetDiscardedPackets: 0,
+      sourceStates: 0,
+      resetCommands: 0,
     };
     port.onmessage = ({ data }) => this.acknowledge(data);
     port.onmessageerror = () => this.fail('message');
@@ -146,10 +156,30 @@ export class PcmPortSender {
       const record = parsePcmAudioRecord(bytes);
       if (record.sequence !== this.sequence || this.sequence > 0xffffffff)
         throw invalid();
-      // Codec preparation only; status-aware playback ownership is a later block.
-      if (record.type === 'state') throw invalid();
-      if (record.type === 'config') {
+      if (record.type === 'state') {
+        const previous = this.sourceState;
         if (
+          !this.sourceStatus ||
+          (previous &&
+            (record.revision <= previous.revision ||
+              record.epoch < previous.epoch ||
+              record.timestampUs < previous.timestampUs ||
+              record.enabled !== previous.enabled)) ||
+          (this.epoch !== undefined && record.epoch < this.epoch)
+        )
+          throw invalid();
+        if (this.pendingPacket) add(this.counters, 'resetDiscardedPackets');
+        this.pendingConfig = this.pendingPacket = undefined;
+        this.sourceState = record;
+        this.pendingReset = this.awaitingConfig = true;
+        this.boundary = this.nextDiscontinuity = true;
+        add(this.counters, 'sourceStates');
+      } else if (record.type === 'config') {
+        if (
+          (this.sourceStatus &&
+            (!this.sourceState?.enabled ||
+              this.sourceState.availability !== 'ready' ||
+              record.epoch !== this.sourceState.epoch)) ||
           (this.epoch !== undefined && record.epoch < this.epoch) ||
           (this.timestamp !== undefined && record.timestampUs < this.timestamp)
         )
@@ -159,9 +189,14 @@ export class PcmPortSender {
         this.epoch = record.epoch;
         this.configTimestamp = record.timestampUs;
         this.pendingConfig = { type: 'config', epoch: record.epoch };
+        this.awaitingConfig = false;
         this.boundary = this.nextDiscontinuity = true;
       } else {
         if (
+          (this.sourceStatus &&
+            (!this.sourceState?.enabled ||
+              this.sourceState.availability !== 'ready' ||
+              this.awaitingConfig)) ||
           this.epoch === undefined ||
           record.timestampUs < this.configTimestamp ||
           (this.boundary && !record.discontinuity) ||
@@ -204,7 +239,10 @@ export class PcmPortSender {
     if (this.closed || this.flight) return;
     let command,
       transfer = [];
-    if (this.pendingConfig) {
+    if (this.pendingReset) {
+      command = { type: 'reset' };
+      this.pendingReset = false;
+    } else if (this.pendingConfig) {
       command = this.pendingConfig;
       this.pendingConfig = undefined;
     } else if (this.pendingStats) {
@@ -230,6 +268,7 @@ export class PcmPortSender {
     try {
       this.port.postMessage({ ...command, id }, transfer);
       add(this.counters, 'posted');
+      if (command.type === 'reset') add(this.counters, 'resetCommands');
     } catch {
       this.fail('message');
     }
@@ -275,6 +314,16 @@ export class PcmPortSender {
       inFlight: this.flight ? 1 : 0,
       pendingPacketBytes: this.pendingPacket ? 3840 : 0,
       pendingConfig: Boolean(this.pendingConfig),
+      pendingReset: this.pendingReset,
+      source: this.sourceState
+        ? {
+            enabled: this.sourceState.enabled,
+            availability: this.sourceState.availability,
+            revision: this.sourceState.revision.toString(),
+            epoch: this.sourceState.epoch.toString(),
+            awaitingConfig: this.awaitingConfig,
+          }
+        : undefined,
       remote: this.remoteStats ? { ...this.remoteStats } : undefined,
     };
   }
@@ -297,6 +346,7 @@ export class PcmPortSender {
       this.pendingPacket =
         undefined;
     this.pendingStats = false;
+    this.pendingReset = false;
     this.port.onmessage = this.port.onmessageerror = null;
     try {
       this.port.close();
@@ -341,6 +391,7 @@ export async function createPcmPlayback(context, options = {}) {
     });
     sender = new PcmPortSender(node.port, {
       timeoutMs: options.timeoutMs,
+      sourceStatus: options.sourceStatus,
       onFailure: options.onFailure,
       cleanup: async () => {
         context.removeEventListener('statechange', stateChanged);

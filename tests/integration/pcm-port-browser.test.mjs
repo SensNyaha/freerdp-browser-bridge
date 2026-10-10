@@ -3,31 +3,39 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
-import { encodePcmAudioRecords } from '../../packages/protocol/dist/index.js';
+import {
+  encodePcmAudioRecords,
+  encodePcmAudioStateRecord,
+} from '../../packages/protocol/dist/index.js';
+
+async function pcmServer() {
+  const names = ['pcm-playback.js', 'pcm-worklet.js', 'pcm-queue.js'];
+  const files = new Map(
+    await Promise.all(
+      names.map(async (name) => [
+        '/' + name,
+        await readFile('apps/reference-harness/' + name),
+      ]),
+    ),
+  );
+  const server = createServer((request, response) => {
+    response.setHeader(
+      'Content-Type',
+      files.has(request.url) ? 'text/javascript' : 'text/html',
+    );
+    response.end(
+      files.get(request.url) ?? '<button id="start">Start audio</button>',
+    );
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return server;
+}
 
 test(
   'Edge PCM port owner: actual RWB1 burst credit, epoch reset and context-loss cleanup',
   { skip: process.platform !== 'win32', timeout: 45000 },
   async () => {
-    const names = ['pcm-playback.js', 'pcm-worklet.js', 'pcm-queue.js'];
-    const files = new Map(
-      await Promise.all(
-        names.map(async (name) => [
-          '/' + name,
-          await readFile('apps/reference-harness/' + name),
-        ]),
-      ),
-    );
-    const server = createServer((request, response) => {
-      response.setHeader(
-        'Content-Type',
-        files.has(request.url) ? 'text/javascript' : 'text/html',
-      );
-      response.end(
-        files.get(request.url) ?? '<button id="start">Start audio</button>',
-      );
-    });
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const server = await pcmServer();
     let browser, page;
     try {
       browser = await chromium.launch({
@@ -140,6 +148,143 @@ test(
       assert.equal(closed.snapshot.pendingPacketBytes, 0);
       assert.equal(closed.snapshot.inFlight, 0);
       assert.deepEqual(closed.failures, ['context']);
+    } finally {
+      await page?.close();
+      server.closeAllConnections();
+      await browser?.close();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  },
+);
+
+test(
+  'Edge PCM source status: actual worklet flushes Close without samples and recovers the reserved epoch',
+  { skip: process.platform !== 'win32', timeout: 45000 },
+  async () => {
+    const server = await pcmServer();
+    let browser, page;
+    try {
+      browser = await chromium.launch({
+        channel: 'msedge',
+        headless: true,
+        timeout: 5000,
+      });
+      page = await browser.newPage();
+      page.setDefaultTimeout(3000);
+      await page.goto('http://127.0.0.1:' + server.address().port);
+      await page.evaluate(() => {
+        document.querySelector('#start').onclick = () => {
+          window.audio = new AudioContext({ sampleRate: 48000 });
+          window.resumed = window.audio.resume();
+        };
+      });
+      await page.click('#start');
+      await page.evaluate(async () => {
+        await window.resumed;
+        const { createPcmPlayback } = await import('/pcm-playback.js');
+        window.failures = [];
+        window.sender = await createPcmPlayback(window.audio, {
+          sourceStatus: true,
+          onFailure: (reason) => window.failures.push(reason),
+        });
+      });
+      const source = (sequence, availability, revision, epoch, timestampUs) =>
+        encodePcmAudioStateRecord(
+          { enabled: true, availability, revision, epoch, timestampUs },
+          sequence,
+        );
+      const audio = (sequence, index, epoch) =>
+        encodePcmAudioRecords(
+          {
+            epoch,
+            codec: 'pcm',
+            sampleRate: 48000,
+            channels: 2,
+            sampleFormat: 's16le',
+            packetFrames: 960,
+          },
+          {
+            epoch,
+            timestampUs: BigInt(index) * 20000n,
+            frames: 960,
+            silenceFrames: 0,
+            discontinuity: true,
+            pcm: Buffer.alloc(3840, index + 1),
+          },
+          sequence,
+          true,
+        );
+      const submit = async (records) => {
+        assert.equal(
+          await page.evaluate(
+            (records) =>
+              records.every((bytes) =>
+                window.sender.record(new Uint8Array(bytes).buffer),
+              ),
+            records.map((record) => Array.from(record)),
+          ),
+          true,
+        );
+        await page.waitForFunction(
+          () => window.sender.snapshot().inFlight === 0,
+        );
+      };
+      const snapshot = async () => {
+        assert.equal(
+          await page.evaluate(() => window.sender.requestStats()),
+          true,
+        );
+        await page.waitForFunction(
+          () => window.sender.snapshot().inFlight === 0,
+        );
+        return page.evaluate(() => window.sender.snapshot());
+      };
+      await submit([source(0, 'ready', 1n, 1n, 0n), ...audio(1, 0, 1n)]);
+      const first = await snapshot();
+      assert.equal(first.remote.queuedFrames, 960);
+      assert.equal(first.remote.packets, 1);
+      assert.equal(first.source.awaitingConfig, false);
+      await submit([source(3, 'closed', 2n, 2n, 1000n)]); // No new config/sample arrives.
+      const closed = await snapshot();
+      assert.equal(closed.remote.queuedFrames, 0);
+      assert.equal(closed.remote.resetDiscardedFrames, 960);
+      assert.equal(closed.remote.playedFrames, 0);
+      assert.equal(closed.source.availability, 'closed');
+      assert.equal(closed.source.awaitingConfig, true);
+      assert.equal(closed.closed, false);
+      await submit([
+        source(4, 'suspended', 3n, 2n, 2000n),
+        source(5, 'waiting', 4n, 2n, 3000n),
+        source(6, 'ready', 5n, 2n, 50000n),
+        ...audio(7, 1, 2n), // PCM capture precedes status observation, as in native ownership.
+      ]);
+      const recovered = await snapshot();
+      assert.equal(recovered.source.epoch, '2');
+      assert.equal(recovered.remote.configurations, 2);
+      assert.equal(recovered.remote.packets, 2);
+      assert.equal(recovered.remote.queuedFrames, 960);
+      assert.equal(recovered.remote.invalidCalls, 0);
+      assert.equal(recovered.remote.resetDiscardedFrames, 960);
+      assert.equal(recovered.pendingPacketBytes, 0);
+      assert.equal(
+        await page.evaluate(
+          (bytes) => window.sender.record(new Uint8Array(bytes).buffer),
+          Array.from(source(9, 'ready', 5n, 2n, 60000n)),
+        ),
+        false,
+      ); // Revision replay retires ownership.
+      const retired = await page.evaluate(async () => {
+        await window.sender.close();
+        return {
+          state: window.audio.state,
+          failures: window.failures,
+          snapshot: window.sender.snapshot(),
+        };
+      });
+      assert.equal(retired.state, 'closed');
+      assert.equal(retired.snapshot.pendingPacketBytes, 0);
+      assert.equal(retired.snapshot.inFlight, 0);
+      assert.deepEqual(retired.failures, ['protocol']);
     } finally {
       await page?.close();
       server.closeAllConnections();
