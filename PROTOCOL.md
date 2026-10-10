@@ -270,6 +270,9 @@ with timestampUs unchanged from the worker and DISCONTINUITY flag 0x0002 on rese
 or attachment. Private metadata is not prepended to the public sample payload.
 This codec is implemented as an isolated native/TypeScript foundation; current
 workers and the harness do not yet activate audio output. Opus remains open.
+Private source status schema 1 is now prepared as RWI1 AUDIO_STATE kind 35 with
+40 bytes; it does not add a public control event or change RWB1 payloads yet.
+[Status codec contract](docs/AUDIO_PCM.md#pcm-source-status-codec-preparation).
 
 ## 5. Attach semantics
 

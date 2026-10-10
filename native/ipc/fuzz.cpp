@@ -30,6 +30,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)audio::decode_config(payload);
         else if (header.kind == Kind::audio_pcm)
           (void)audio::decode_packet(payload);
+        else if (header.kind == Kind::audio_state)
+          (void)audio::decode_state(payload);
         else if (header.kind == Kind::input_text)
           (void)bridge::input::decode_text(payload);
         else if (header.kind == Kind::input_touch) {

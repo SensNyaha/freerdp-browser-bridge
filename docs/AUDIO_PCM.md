@@ -159,6 +159,41 @@ silence accounting, epoch mismatch, RWB1 sequences and owned output copies.
 The fuzz dispatcher/corpus includes these classes; local Clang/sanitizer/fuzzer
 execution remains unavailable and is not counted as acceptance.
 
+## PCM source status codec preparation
+
+Private `AUDIO_STATE` (RWI1 kind 35) schema 1 is exactly 40 bytes:
+
+| Offset | Bytes | Meaning |
+| --- | --- | --- |
+| 0 | 2 | schema 1, big endian |
+| 2 | 1 | immutable session output opt-in, 0/1 |
+| 3 | 1 | availability: 0 unavailable, 1 waiting, 2 ready, 3 suspended, 4 closed, 5 failed |
+| 4 | 8 | nonzero status revision |
+| 12 | 8 | stream epoch, zero permitted before a stream; ready requires nonzero |
+| 20 | 8 | monotonic worker timestampUs, at most u64 max minus 20,000 |
+| 28 | 1 | codec 2 PCM when enabled, otherwise zero |
+| 29 | 1 | channels 2 when enabled, otherwise zero |
+| 30 | 1 | S16LE format 1 when enabled, otherwise zero |
+| 31 | 1 | zero reserved byte |
+| 32 | 4 | normalized rate 48,000 when enabled, otherwise zero |
+| 36 | 2 | 960-frame interval when enabled, otherwise zero |
+| 38 | 2 | zero reserved bytes |
+
+Multibyte fields use network order. Disabled requires unavailable/epoch zero and
+zero normalized descriptor. Enabled describes the requested fixed output profile,
+not proof of server/device acceptance. Waiting/suspended/closed/failed can be
+reported without sample bytes. Revision must increase, epoch/time cannot decrease
+and opt-in remains immutable within one connection; a new session gets new state.
+The pure TypeScript progress helper enforces these refusal rules. The native queue
+validates body/request ID 0 before ownership allocation and uses control priority.
+
+Current worker does not publish status or activate audio. An incoming status is
+not a command. No new HELLO bit/config selector/public control event is introduced.
+Source ownership must reserve matching epochs, clear unsent native data before
+new status, preserve already taken record order, and teach Node/browser to flush
+stale audio even when no fresh PCM arrives. Those policies remain next steps.
+[Iteration 60](ITERATION_060.md) records codec, parser and queue evidence.
+
 ## Isolated browser PCM queue and AudioWorklet
 
 `apps/reference-harness/pcm-queue.js` copies fixed 960-frame S16LE stereo packets

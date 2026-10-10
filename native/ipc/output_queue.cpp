@@ -26,6 +26,7 @@ bool is_control(Kind kind) noexcept {
   case Kind::display_update:
   case Kind::display_resize_result:
   case Kind::touch_update:
+  case Kind::audio_state:
     return true;
   default:
     return false;
@@ -70,6 +71,11 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
     return EnqueueStatus::invalid;
   try {
     validate_header({kind, request_id, static_cast<std::uint32_t>(bytes.size())});
+    if (kind == Kind::audio_state) {
+      (void)audio::decode_state(bytes);
+      if (request_id)
+        return EnqueueStatus::invalid;
+    }
     if (is_control(kind)) {
       if (count_ == control_capacity)
         return EnqueueStatus::full;

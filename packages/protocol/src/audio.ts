@@ -1,12 +1,109 @@
 import { ProtocolError } from './index.js';
 
 export const PCM_AUDIO_CONFIG_BYTES = 20;
+export const PCM_AUDIO_STATE_BYTES = 40;
 export const PCM_AUDIO_METADATA_BYTES = 24;
 export const PCM_AUDIO_FRAMES = 960;
 export const PCM_AUDIO_BYTES = PCM_AUDIO_FRAMES * 4;
 export const PCM_AUDIO_PACKET_BYTES =
   PCM_AUDIO_METADATA_BYTES + PCM_AUDIO_BYTES;
 const MAX_TIMESTAMP_US = 0xffffffffffffffffn - 20000n;
+const availability = [
+  'unavailable',
+  'waiting',
+  'ready',
+  'suspended',
+  'closed',
+  'failed',
+] as const;
+export interface PcmAudioState {
+  enabled: boolean;
+  availability: (typeof availability)[number];
+  revision: bigint;
+  epoch: bigint;
+  timestampUs: bigint;
+}
+function validateState(state: PcmAudioState): void {
+  if (
+    !state ||
+    typeof state.enabled !== 'boolean' ||
+    !availability.includes(state.availability) ||
+    !epoch(state.revision) ||
+    typeof state.epoch !== 'bigint' ||
+    state.epoch < 0n ||
+    state.epoch > 0xffffffffffffffffn ||
+    typeof state.timestampUs !== 'bigint' ||
+    state.timestampUs < 0n ||
+    state.timestampUs > MAX_TIMESTAMP_US ||
+    (!state.enabled &&
+      (state.availability !== 'unavailable' || state.epoch !== 0n)) ||
+    (state.availability === 'ready' && state.epoch === 0n)
+  )
+    throw new ProtocolError();
+}
+export function encodePcmAudioState(state: PcmAudioState): Buffer {
+  validateState(state);
+  const bytes = Buffer.alloc(PCM_AUDIO_STATE_BYTES);
+  bytes.writeUInt16BE(1, 0);
+  bytes[2] = state.enabled ? 1 : 0;
+  bytes[3] = availability.indexOf(state.availability);
+  bytes.writeBigUInt64BE(state.revision, 4);
+  bytes.writeBigUInt64BE(state.epoch, 12);
+  bytes.writeBigUInt64BE(state.timestampUs, 20);
+  if (state.enabled) {
+    bytes.set([2, 2, 1], 28);
+    bytes.writeUInt32BE(48000, 32);
+    bytes.writeUInt16BE(960, 36);
+  }
+  return bytes;
+}
+export function decodePcmAudioState(bytes: Buffer): PcmAudioState {
+  if (
+    bytes.length !== PCM_AUDIO_STATE_BYTES ||
+    bytes.readUInt16BE(0) !== 1 ||
+    bytes[2]! > 1 ||
+    bytes[31] !== 0 ||
+    bytes.readUInt16BE(38) !== 0
+  )
+    throw new ProtocolError();
+  const enabled = bytes[2] === 1;
+  if (
+    bytes[28] !== (enabled ? 2 : 0) ||
+    bytes[29] !== (enabled ? 2 : 0) ||
+    bytes[30] !== (enabled ? 1 : 0) ||
+    bytes.readUInt32BE(32) !== (enabled ? 48000 : 0) ||
+    bytes.readUInt16BE(36) !== (enabled ? 960 : 0)
+  )
+    throw new ProtocolError();
+  const mode = availability[bytes[3]!];
+  if (!mode) throw new ProtocolError();
+  const state: PcmAudioState = {
+    enabled,
+    availability: mode,
+    revision: bytes.readBigUInt64BE(4),
+    epoch: bytes.readBigUInt64BE(12),
+    timestampUs: bytes.readBigUInt64BE(20),
+  };
+  validateState(state);
+  return state;
+}
+/** Pure refusal rule for future status listeners; no mutable listener/worker activation. */
+export function validatePcmAudioStateProgress(
+  previous: PcmAudioState | undefined,
+  state: PcmAudioState,
+): void {
+  validateState(state);
+  if (previous) {
+    validateState(previous);
+    if (
+      state.revision <= previous.revision ||
+      state.epoch < previous.epoch ||
+      state.timestampUs < previous.timestampUs ||
+      state.enabled !== previous.enabled
+    )
+      throw new ProtocolError();
+  }
+}
 
 export interface PcmAudioConfig {
   epoch: bigint;

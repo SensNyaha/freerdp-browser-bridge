@@ -75,6 +75,8 @@ static std::uint32_t limit(Kind kind) {
     return static_cast<std::uint32_t>(audio::config_bytes);
   case Kind::audio_pcm:
     return static_cast<std::uint32_t>(audio::packet_bytes);
+  case Kind::audio_state:
+    return static_cast<std::uint32_t>(audio::state_bytes);
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);
   }

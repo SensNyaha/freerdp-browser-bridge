@@ -408,3 +408,13 @@ priority/SEQPACKET integration remains open there. Actual Windows lifecycle,
 adversarial parent flood and XRDP H.264/JPEG reset/resize/replay checks pass.
 [Activation evidence](ITERATION_058.md). Wire kinds/version and advertised audio
 capabilities do not change; audio is still disabled.
+
+## PCM source status preparation (Iteration 60)
+
+RWI1 kind 35 AUDIO_STATE is a fixed 40-byte schema 1 event codec, independently
+bounded before body allocation in native/TypeScript parsers. Body layout and
+refusal rules are specified in [AUDIO_PCM.md](AUDIO_PCM.md#pcm-source-status-codec-preparation).
+Status has request ID 0 and typed validation in the control FIFO, preceding queued
+media. No worker emitter, HELLO capability, configuration selector or public event
+is enabled yet. Incoming status is not a worker command; current worker refuses it.
+RWB1 audio config/sample layouts remain unchanged. [Evidence](ITERATION_060.md).

@@ -4,7 +4,11 @@ export * from './cursor.js';
 export * from './display.js';
 export * from './touch.js';
 export * from './audio.js';
-import { PCM_AUDIO_CONFIG_BYTES, PCM_AUDIO_PACKET_BYTES } from './audio.js';
+import {
+  PCM_AUDIO_CONFIG_BYTES,
+  PCM_AUDIO_PACKET_BYTES,
+  PCM_AUDIO_STATE_BYTES,
+} from './audio.js';
 import { TOUCH_INPUT_BYTES } from './touch.js';
 import { DISPLAY_UPDATE_BYTES } from './display.js';
 import { CURSOR_METADATA_BYTES, MAX_CURSOR_BYTES } from './cursor.js';
@@ -48,6 +52,7 @@ export enum Kind {
   TouchUpdate = 32,
   AudioConfig = 33,
   AudioPcm = 34,
+  AudioState = 35,
 }
 
 export interface Packet {
@@ -118,6 +123,8 @@ function payloadLimit(kind: number): number {
       return PCM_AUDIO_CONFIG_BYTES;
     case Kind.AudioPcm:
       return PCM_AUDIO_PACKET_BYTES;
+    case Kind.AudioState:
+      return PCM_AUDIO_STATE_BYTES;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:

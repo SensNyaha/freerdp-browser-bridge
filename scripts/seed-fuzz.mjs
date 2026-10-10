@@ -5,6 +5,7 @@ import {
   helloPayload,
   encodePcmAudioConfig,
   encodePcmAudioPacket,
+  encodePcmAudioState,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
@@ -51,6 +52,20 @@ await writeFile(
   }),
 );
 const cursorShape = Buffer.alloc(44);
+await writeFile(
+  'build/fuzz/corpus/audio-state',
+  encodePacket({
+    kind: Kind.AudioState,
+    requestId: 0n,
+    payload: encodePcmAudioState({
+      enabled: true,
+      availability: 'closed',
+      revision: 2n,
+      epoch: 1n,
+      timestampUs: 1020000n,
+    }),
+  }),
+);
 cursorShape.writeUInt16BE(1, 0);
 cursorShape.writeUInt16BE(9, 2);
 cursorShape.writeBigUInt64BE(1n, 4);

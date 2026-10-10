@@ -28,8 +28,8 @@ activation, production ingress placement and audible/browser acceptance remain o
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 163/163 Node tests;
-  CTest/Catch2: 41 IPC/input/state/audio-codec/output cases / 5,310 assertions, 2 AVC cases / 19 assertions,
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 166/166 Node tests;
+  CTest/Catch2: 44 IPC/input/state/audio-codec/output cases / 5,895 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -277,6 +277,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Windows pipe driver now owns writer/watchdog threads, private event wakeups, whole-record deadlines and synchronous cancellation with retained in-flight spans. Actual anonymous-pipe stall/drain/broken-reader and twenty-driver handle-count fixtures pass. Worker selection/regression, Linux, unsupported OS cancellation/reclamation, source-reset barriers and actual audio remain open. [Evidence](docs/ITERATION_057.md). Dispatcher: `46245b2`; registry force completion: `120c5b1`.
 - [~] IN PROGRESS — Windows foundation/bundled workers now select bounded priority output, join connection producers before writer drain and refuse full/failed admission without blocking on pipe writes. Actual lifecycle/parent flood and XRDP H.264 reset/JPEG resize/restoration/replay pass. Audio source barriers/config/provider and Node/browser delivery remain open; audio stays disabled, Linux priority and resource/soak gates remain pending. [Evidence](docs/ITERATION_058.md). Windows driver: `6636e32`.
 - [~] IN PROGRESS — Native PCM publisher now requires consumer-discard credit on initial ownership/source revision/reset before fresh sample reads or sends. Pure credit/reentry/fault and actual linked RDPSND/fake-SVC Close tests clear accepted unsent PCM and resume with a new epoch. In-flight/browser reset/status, worker config/provider and Node/browser activation remain open; audio is still disabled. [Evidence](docs/ITERATION_059.md). Worker output: `604bd10`.
+- [~] IN PROGRESS — Versioned fixed PCM source-status IPC codec now represents opt-in/availability/revision/epoch/worker time without samples. Native/TypeScript vectors, invalid fields/ranges, fragmented framing and typed control-queue priority pass. Status owner/reservation, worker selection, Node/browser reset and actual audio remain open; workers emit no status/audio yet. [Evidence](docs/ITERATION_060.md). Source discard barrier: `844ee44`.
 
 **Gate:** remote audio audible and microphone usable with bounded <150 ms queue target in LAN test.
 

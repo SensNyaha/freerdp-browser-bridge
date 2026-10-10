@@ -64,4 +64,44 @@ std::array<std::uint8_t, packet_bytes> encode_packet(const PcmPacket &packet) {
   std::copy(packet.pcm.begin(), packet.pcm.end(), bytes.begin() + metadata_bytes);
   return bytes;
 }
+namespace {
+void validate_state(const State &state) {
+  if (!state.revision || static_cast<unsigned>(state.availability) > 5 ||
+      state.timestamp_us > (std::numeric_limits<std::uint64_t>::max)() - interval_us ||
+      (!state.enabled && (state.availability != Availability::unavailable || state.epoch)) ||
+      (state.availability == Availability::ready && !state.epoch))
+    throw ProtocolError();
+}
+} // namespace
+State decode_state(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() != state_bytes || read_be(bytes.first(2)) != 1 || bytes[2] > 1 ||
+      bytes[31] != 0 || read_be(bytes.subspan(38, 2)) != 0)
+    throw ProtocolError();
+  const bool enabled = bytes[2] == 1;
+  if (bytes[28] != (enabled ? 2 : 0) || bytes[29] != (enabled ? 2 : 0) ||
+      bytes[30] != (enabled ? 1 : 0) || read_be(bytes.subspan(32, 4)) != (enabled ? 48000U : 0U) ||
+      read_be(bytes.subspan(36, 2)) != (enabled ? packet_frames : 0))
+    throw ProtocolError();
+  State state{enabled, static_cast<Availability>(bytes[3]), read_be(bytes.subspan(4, 8)),
+              read_be(bytes.subspan(12, 8)), read_be(bytes.subspan(20, 8))};
+  validate_state(state);
+  return state;
+}
+std::array<std::uint8_t, state_bytes> encode_state(const State &state) {
+  validate_state(state);
+  std::array<std::uint8_t, state_bytes> bytes{};
+  put(bytes, 0, 1, 2);
+  bytes[2] = state.enabled ? 1 : 0;
+  bytes[3] = static_cast<std::uint8_t>(state.availability);
+  put(bytes, 4, state.revision, 8);
+  put(bytes, 12, state.epoch, 8);
+  put(bytes, 20, state.timestamp_us, 8);
+  if (state.enabled) {
+    bytes[28] = bytes[29] = 2;
+    bytes[30] = 1;
+    put(bytes, 32, 48000, 4);
+    put(bytes, 36, packet_frames, 2);
+  }
+  return bytes;
+}
 } // namespace bridge::ipc::audio
