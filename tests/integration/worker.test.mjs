@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -350,6 +350,61 @@ test('native integration: malformed/truncated records and pre-handshake commands
     assert.ok(!stderr.includes('SENTINEL'));
   }
 });
+
+test(
+  'native Windows IPC: paused output and raw parent flood fail within bounds and remove owned runtime',
+  {
+    skip: process.platform !== 'win32',
+    timeout: 10000,
+  },
+  async () => {
+    await withRoot(async (runtimeRoot) => {
+      const directory = await mkdtemp(join(runtimeRoot, 'worker-'));
+      await writeFile(join(directory, '.rdp-worker-owned'), 'runtime-v1', {
+        flag: 'wx',
+      });
+      const child = spawn(workerPath, [], {
+        cwd: directory,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+      child.stdin.on('error', () => {});
+      child.stderr.resume();
+      child.stdout.pause();
+      const exited = once(child, 'exit');
+      const closed = once(child, 'close');
+      const force = setTimeout(() => child.kill('SIGKILL'), 5000);
+      try {
+        const hello = encodePacket({
+          kind: Kind.Hello,
+          requestId: 1n,
+          payload: helloPayload(),
+        });
+        // Bounded adversarial parent fixture, outside the normal supervisor's 32-request cap.
+        const requests = Buffer.alloc(hello.length + 12000 * 24);
+        hello.copy(requests);
+        for (let i = 0; i < 12000; ++i)
+          encodePacket({
+            kind: Kind.Heartbeat,
+            requestId: BigInt(i + 2),
+            payload: Buffer.alloc(0),
+          }).copy(requests, hello.length + i * 24);
+        child.stdin.end(requests);
+        const [code] = await exited;
+        child.stdout.resume();
+        await closed;
+        assert.equal(code, 2);
+        assert.equal(alive(child.pid), false);
+        assert.deepEqual(await readdir(runtimeRoot), []);
+      } finally {
+        clearTimeout(force);
+        child.stdout.resume();
+        if (alive(child.pid)) child.kill('SIGKILL');
+        await closed;
+      }
+    });
+  },
+);
 
 test('missing executable fails with a sanitized error and cleans its private directory', async () => {
   await withRoot(async (runtimeRoot) => {

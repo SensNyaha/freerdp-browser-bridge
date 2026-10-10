@@ -261,9 +261,11 @@ callback duration.
 [Iteration 53](ITERATION_053.md) covers credit, config ordering, exact IPC samples,
 source reset before fresh PCM, owner/clock/callback/exhaustion faults and actual
 linked RDPSND with simulated SVC Close/restart. Remaining activation work includes
-bounded prioritized native output ownership, worker configuration/capability/
+source-reset-to-output invalidation, worker configuration/capability/
 scheduling/shutdown and Node/browser integration. Actual audible RDP/microphone,
 larger source bursts, earlier core allocations and latency acceptance remain open.
+Windows workers now have bounded priority output ownership in
+[iteration 58](ITERATION_058.md); the publisher is not wired to it yet.
 
 ## Public RDPSND device adapter
 

@@ -9,7 +9,9 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #ifdef _WIN32
+#include "windows_pipe.hpp"
 #include <fcntl.h>
 #include <io.h>
 #elif defined(__linux__)
@@ -26,7 +28,9 @@
 
 namespace {
 using namespace bridge::ipc;
+#ifndef _WIN32
 std::mutex output_mutex;
+#endif
 class RuntimeGuard {
   std::filesystem::path path_;
 
@@ -111,93 +115,120 @@ bool read_exact(std::span<std::uint8_t> bytes, bool allow_eof = false) {
   }
   return true;
 }
-void send(const Packet &packet) {
+#ifndef _WIN32
+void send_sync(const Packet &packet) {
   const std::lock_guard lock(output_mutex);
   const auto bytes = encode(packet);
   if (std::fwrite(bytes.data(), 1, bytes.size(), stdout) != bytes.size() ||
       std::fflush(stdout) != 0)
     throw ProtocolError();
 }
-void error(std::uint64_t request, std::uint32_t code) {
-  std::vector<std::uint8_t> payload;
-  append_be(payload, code, 4);
-  send({Kind::error, request, std::move(payload)});
-}
-int run() {
-#ifdef BRIDGE_WITH_FREERDP
-  if (!WLog_SetLogLevel(WLog_GetRoot(), WLOG_OFF))
-    throw std::runtime_error("FreeRDP logging initialization failed");
-  bridge::Connection connection(send);
 #endif
-  bool ready = false;
-  std::array<std::uint8_t, header_bytes> buffer{};
-  while (read_exact(buffer, true)) {
-    const auto header = decode_header(buffer); // Validate class limit before allocation.
-    if (header.request_id == 0)
-      throw ProtocolError();
-    std::vector<std::uint8_t> payload(header.length);
-    struct SecretWiper {
-      std::vector<std::uint8_t> &bytes;
-      bool secret;
-      ~SecretWiper() {
-        if (secret)
-          wipe(bytes);
-      }
-    } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text};
-    (void)read_exact(payload);
-    if (header.kind == Kind::hello && !ready) {
-      try {
-        validate_hello(payload);
-      } catch (const ProtocolError &) {
-        error(header.request_id, 2);
+int run() {
+#ifdef _WIN32
+  WindowsPipeOutput output(reinterpret_cast<void *>(_get_osfhandle(_fileno(stdout))));
+  const auto send = [&output](const Packet &packet) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
+    for (;;) {
+      const auto result = output.try_send(packet.kind, packet.request_id, packet.payload);
+      if (result == DispatchAdmission::accepted)
+        return;
+      if (result != DispatchAdmission::busy || std::chrono::steady_clock::now() >= deadline)
+        throw ProtocolError();
+      std::this_thread::yield();
+    }
+  };
+#else
+  const auto send = send_sync;
+#endif
+  const auto error = [&send](std::uint64_t request, std::uint32_t code) {
+    std::vector<std::uint8_t> payload;
+    append_be(payload, code, 4);
+    send({Kind::error, request, std::move(payload)});
+  };
+  // All connection producers retire before finishing/destroying output ownership.
+  const auto control = [&]() {
+#ifdef BRIDGE_WITH_FREERDP
+    if (!WLog_SetLogLevel(WLog_GetRoot(), WLOG_OFF))
+      throw std::runtime_error("FreeRDP logging initialization failed");
+    bridge::Connection connection(send);
+#endif
+    bool ready = false;
+    std::array<std::uint8_t, header_bytes> buffer{};
+    while (read_exact(buffer, true)) {
+      const auto header = decode_header(buffer); // Validate class limit before allocation.
+      if (header.request_id == 0)
+        throw ProtocolError();
+      std::vector<std::uint8_t> payload(header.length);
+      struct SecretWiper {
+        std::vector<std::uint8_t> &bytes;
+        bool secret;
+        ~SecretWiper() {
+          if (secret)
+            wipe(bytes);
+        }
+      } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text};
+      (void)read_exact(payload);
+      if (header.kind == Kind::hello && !ready) {
+        try {
+          validate_hello(payload);
+        } catch (const ProtocolError &) {
+          error(header.request_id, 2);
+          return 2;
+        }
+        ready = true;
+        send({Kind::hello_ack, header.request_id, build_payload()});
+      } else if (header.kind == Kind::heartbeat && ready) {
+        send({Kind::heartbeat_ack, header.request_id, {}});
+      } else if (header.kind == Kind::shutdown && ready) {
+#ifdef BRIDGE_WITH_FREERDP
+        connection.stop();
+#endif
+        send({Kind::shutdown_ack, header.request_id, {}});
+        return 0;
+#ifdef BRIDGE_WITH_FREERDP
+      } else if (header.kind == Kind::configure && ready) {
+        connection.configure(payload);
+        send({Kind::configure_ack, header.request_id, {}});
+      } else if (header.kind == Kind::secret && ready) {
+        connection.secret(payload);
+        send({Kind::secret_ack, header.request_id, {}});
+      } else if (header.kind == Kind::connect && ready) {
+        connection.start();
+        send({Kind::connect_ack, header.request_id, {}});
+      } else if (header.kind == Kind::certificate_decision && ready) {
+        connection.decide(payload);
+        send({Kind::certificate_decision_ack, header.request_id, {}});
+      } else if ((header.kind == Kind::capture || header.kind == Kind::capture_avc) && ready) {
+        if (!connection.capture(header.request_id, payload, header.kind == Kind::capture_avc))
+          error(header.request_id, 5);
+      } else if ((header.kind == Kind::input || header.kind == Kind::input_text) && ready) {
+        const auto code =
+            connection.enqueue_input(header.request_id, payload, header.kind == Kind::input_text);
+        if (code != 0)
+          error(header.request_id, code);
+      } else if (header.kind == Kind::input_touch && ready) {
+        const auto code = connection.enqueue_touch(header.request_id, payload);
+        if (code != 0)
+          error(header.request_id, code);
+      } else if (header.kind == Kind::pipeline_stats && ready) {
+        send({Kind::pipeline_stats_ack, header.request_id, connection.pipeline_stats()});
+      } else if (header.kind == Kind::display_resize && ready) {
+        connection.enqueue_resize(header.request_id, payload);
+#endif
+      } else {
+        error(header.request_id, 3);
         return 2;
       }
-      ready = true;
-      send({Kind::hello_ack, header.request_id, build_payload()});
-    } else if (header.kind == Kind::heartbeat && ready) {
-      send({Kind::heartbeat_ack, header.request_id, {}});
-    } else if (header.kind == Kind::shutdown && ready) {
-#ifdef BRIDGE_WITH_FREERDP
-      connection.stop();
-#endif
-      send({Kind::shutdown_ack, header.request_id, {}});
-      return 0;
-#ifdef BRIDGE_WITH_FREERDP
-    } else if (header.kind == Kind::configure && ready) {
-      connection.configure(payload);
-      send({Kind::configure_ack, header.request_id, {}});
-    } else if (header.kind == Kind::secret && ready) {
-      connection.secret(payload);
-      send({Kind::secret_ack, header.request_id, {}});
-    } else if (header.kind == Kind::connect && ready) {
-      connection.start();
-      send({Kind::connect_ack, header.request_id, {}});
-    } else if (header.kind == Kind::certificate_decision && ready) {
-      connection.decide(payload);
-      send({Kind::certificate_decision_ack, header.request_id, {}});
-    } else if ((header.kind == Kind::capture || header.kind == Kind::capture_avc) && ready) {
-      if (!connection.capture(header.request_id, payload, header.kind == Kind::capture_avc))
-        error(header.request_id, 5);
-    } else if ((header.kind == Kind::input || header.kind == Kind::input_text) && ready) {
-      const auto code =
-          connection.enqueue_input(header.request_id, payload, header.kind == Kind::input_text);
-      if (code != 0)
-        error(header.request_id, code);
-    } else if (header.kind == Kind::input_touch && ready) {
-      const auto code = connection.enqueue_touch(header.request_id, payload);
-      if (code != 0)
-        error(header.request_id, code);
-    } else if (header.kind == Kind::pipeline_stats && ready) {
-      send({Kind::pipeline_stats_ack, header.request_id, connection.pipeline_stats()});
-    } else if (header.kind == Kind::display_resize && ready) {
-      connection.enqueue_resize(header.request_id, payload);
-#endif
-    } else {
-      error(header.request_id, 3);
-      return 2;
     }
-  }
-  return 0; // Parent disappeared; inherited input EOF is the portable parent-death path.
+    return 0; // Parent disappeared; inherited input EOF is the portable parent-death path.
+  };
+  const auto result = control();
+#ifdef _WIN32
+  return output.finish() ? result : 2;
+#else
+  return result;
+#endif
 }
 } // namespace
 int main(int argc, char **argv) {

@@ -357,7 +357,8 @@ At most 70 records / 17,639,002 wire bytes are owned by queue plus writer, exclu
 allocator/container overhead. There is no second full-record serialization
 buffer here. The external owner must supply the writer thread, wakeups, bounded/
 cancellable I/O and shutdown deadlines, and outlive all callback invocations.
-Current worker still uses its previous stdout writer. [Evidence](ITERATION_055.md).
+At iteration 55 the worker retained its previous stdout writer; Windows selection
+is now implemented in iteration 58. [Foundation evidence](ITERATION_055.md).
 
 ## Windows pipe writer preparation (Iteration 57)
 
@@ -365,7 +366,7 @@ Current worker still uses its previous stdout writer. [Evidence](ITERATION_055.m
 dispatcher. It borrows a trusted synchronous byte-pipe handle; validation checks
 handle family, not asynchronous/message mode. The caller must provide the stated
 mode and retain the handle through all callbacks. No arbitrary handle is accepted
-from public/session configuration. This driver is not selected by the worker yet.
+from public/session configuration. Windows workers select it in iteration 58.
 
 One complete record receives a monotonic 1,000 ms default write deadline. The
 writer emits fixed header/body in at most 64 KiB WriteFile chunks, preserving
@@ -387,4 +388,23 @@ also explains driver support/races. A failed cancellation deadline cannot justif
 freeing live spans or detaching owner threads. Destruction therefore fails the
 owned process if threads could not join; Node crash cleanup remains necessary.
 This does not prove abnormal OS-driver or simultaneous-hard-kill reclamation.
-[Evidence](ITERATION_057.md). Linux driver and actual worker activation remain open.
+[Driver evidence](ITERATION_057.md). Linux driver acceptance remains open.
+
+## Windows worker priority output (Iteration 58)
+
+Foundation/bundled Windows workers now select this driver only for private IPC.
+CLI version/capability/feature output keeps its existing stdout path. The IPC owner
+borrows the inherited synchronous stdout pipe after CRT binary-mode setup. Control
+send retries queue-mutex contention for at most 50 ms; full/invalid/closed admission
+or expiry fails with the fixed IPC diagnostic. Pipe writes run separately with the
+iteration 57 bounds. Full audio activation has not been implemented.
+
+Connection destruction joins RDP producers before output finish/destruction.
+Shutdown ACK and other accepted output drain before normal exit; parent EOF uses
+the same scope cleanup. Failure drops unsent output and retains live callback spans
+through OS completion. Node heartbeat/request deadlines and forced termination
+remain the outer supervision boundary. Linux retains the prior framed stdio writer;
+priority/SEQPACKET integration remains open there. Actual Windows lifecycle,
+adversarial parent flood and XRDP H.264/JPEG reset/resize/replay checks pass.
+[Activation evidence](ITERATION_058.md). Wire kinds/version and advertised audio
+capabilities do not change; audio is still disabled.
