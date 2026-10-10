@@ -6,6 +6,7 @@ retaining supported PCM8/PCM16 mono/stereo 8..48 kHz descriptors. Unsupported/co
 offers are excluded before upstream's permissive DSP predicate can select them.
 Negotiated client indices are checked before Wave dispatch.
 [Policy and rationale](AUDIO_PCM.md#supported-pcm-offer-policy).
+Implementation commit: `bfe660a`.
 
 Portable fixtures verify independent PCM descriptors, stable filtering, full header
 metadata preservation, width/rate/layout/alignment/average/extra-data limits,

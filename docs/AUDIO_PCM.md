@@ -91,10 +91,11 @@ PlayEx is deliberately absent to avoid interpreting decoded bytes using compress
 sample widths. Play's return value is queued latency in milliseconds, rounded up,
 bounded to 120 ms. It is not a Win32 status or evidence of audible delivery.
 
-Packed 16-bit left/right volume gains are applied to normalized signed samples
-before enqueue, using 64-bit multiplication and division by 65,535. Full gain is
-identity; zero is silence. This adds one fixed 19,200-byte scratch buffer to the
-pipeline. No callback allocates. Malformed/over-capacity input counts a rejection
+Packed 16-bit left/right volume settings are applied to normalized signed samples
+before enqueue. Iteration 38's linear amplitude conversion is superseded by
+[perceptual volume](#perceptual-volume) below. Full gain is identity; zero is
+silence. This adds one fixed 19,200-byte scratch buffer to the pipeline. No
+callback allocates. Malformed/over-capacity input counts a rejection
 and resets interpolation/backlog. Queue overflow counts the drop, resets the
 pipeline and marks recovery as discontinuous. The adapter reports these events
 through local snapshots, not wire errors or public metrics.
@@ -314,3 +315,26 @@ atomicity, mixed PCM24/PCM16, client-index dispatch and zero-common-format behav
 through the actual linked guarded RDPSND path with fake SVC transport. No remote or
 browser playback acceptance is inferred. Earlier RDP/core allocations, close
 faults, stream clocks/gaps and worker/browser transport remain open.
+
+## Perceptual volume
+
+The RDPSND volume field has left in its low word and right in its high word,
+with full volume at 0xffff and silence at zero. Equal nonzero code increments
+must give equal perceptual increments, rather than equal amplitude increments.
+See Microsoft's [RDPSND volume definition](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpea/d58d4d57-cb36-453a-866f-86beacc6d79b)
+and [waveOutSetVolume contract](https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutsetvolume).
+
+The protocol does not specify a device attenuation range. This virtual sink
+chooses -60..0 dB for codes 1..65,535; code zero is exact mute. The amplitude gain
+is `10^(-3 * (65535 - code) / 65534)` for nonzero codes. This is a bridge policy,
+not a mandated Microsoft range. The midpoint code 0x8000 has -30 dB gain.
+`PcmVolume::set` computes two Q30 coefficients once per volume change. Play uses
+bounded signed 64-bit multiply/divide only, truncating toward zero; no per-sample
+transcendental operation or allocation. Full gain preserves all S16 samples;
+independent stereo controls also apply after mono normalization. GetVolume retains
+the exact packed code. Already queued samples retain their previous gain.
+
+[Iteration 44](ITERATION_044.md) covers exhaustive identity and monotonicity,
+independent golden attenuation vectors, equal dB steps, mute and actual linked
+RDPSND Volume PDU dispatch using fake SVC transport. It does not demonstrate
+audible remote/browser volume or activate worker audio.

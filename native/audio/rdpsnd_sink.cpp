@@ -58,13 +58,13 @@ BOOL RdpsndSink::open(rdpsndDevicePlugin *device, const AUDIO_FORMAT *format, UI
 }
 UINT32 RdpsndSink::get_volume(rdpsndDevicePlugin *device) noexcept {
   auto *sink = owner(device);
-  return sink && sink->usable() ? sink->volume_ : 0;
+  return sink && sink->usable() ? sink->volume_.packed() : 0;
 }
 BOOL RdpsndSink::set_volume(rdpsndDevicePlugin *device, UINT32 value) noexcept {
   auto *sink = owner(device);
   if (!sink || !sink->usable())
     return FALSE;
-  sink->volume_ = value;
+  sink->volume_.set(value);
   return TRUE;
 }
 UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t size) noexcept {
@@ -88,8 +88,7 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
         static_cast<std::uint16_t>(static_cast<unsigned>(normalized.bytes[at]) |
                                    (static_cast<unsigned>(normalized.bytes[at + 1]) << 8));
     const auto sample = std::bit_cast<std::int16_t>(word);
-    const auto gain = (sink->volume_ >> ((at / 2 % 2) * 16)) & 0xffffU;
-    const auto scaled = static_cast<std::int16_t>(static_cast<std::int64_t>(sample) * gain / 65535);
+    const auto scaled = sink->volume_.apply(sample, at / 2 % 2 != 0);
     const auto bits = static_cast<std::uint16_t>(scaled);
     pipeline.volume[at] = static_cast<std::uint8_t>(bits);
     pipeline.volume[at + 1] = static_cast<std::uint8_t>(bits >> 8);

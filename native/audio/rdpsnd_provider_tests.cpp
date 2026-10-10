@@ -738,3 +738,33 @@ TEST_CASE("Guarded RDPSND no-common-PCM list never opens or decodes an unsupport
   REQUIRE(output == std::vector<BYTE>(4, 77));
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
+
+TEST_CASE("Guarded RDPSND volume PDU applies perceptual gains through the actual channel") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  UINT32 value = 0xffff8000U;
+  std::vector<BYTE> expected{244, 251, 255, 127, 12, 4, 0, 128};
+  SECTION("independent mute") {
+    value = 0x0000ffffU;
+    expected = {0, 128, 0, 0, 255, 127, 0, 0};
+  }
+  SECTION("perceptual attenuation") {}
+  std::vector<BYTE> volume{SNDC_SETVOLUME, 0, 4, 0};
+  dword(volume, value);
+  host.raw(volume, 8);
+  const std::vector<BYTE> wave{SNDC_WAVE2, 0, 20, 0, 100, 0,   0,   0,   1,   0,   0, 0,
+                               100,        0, 0,  0, 0,   128, 255, 127, 255, 127, 0, 128};
+  host.raw(wave, static_cast<UINT>(wave.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  auto &device = fixture.sink.device();
+  REQUIRE(device.GetVolume(&device) == value);
+  std::vector<BYTE> output(8);
+  REQUIRE(fixture.sink.read(output).frames == 2);
+  REQUIRE(output == expected);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}

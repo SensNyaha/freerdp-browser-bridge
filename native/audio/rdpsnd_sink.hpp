@@ -1,5 +1,6 @@
 #pragma once
 #include "queue.hpp"
+#include "volume.hpp"
 #include <atomic>
 #include <freerdp/client/rdpsnd.h>
 #include <thread>
@@ -25,7 +26,7 @@ class RdpsndSink {
   std::thread::id thread_;
   std::atomic<bool> retired_{false};
   bool opened_ = false;
-  UINT32 volume_ = 0xffffffffU;
+  PcmVolume volume_;
   SinkStats stats_;
   static RdpsndSink *owner(rdpsndDevicePlugin *) noexcept;
   bool usable() const noexcept;

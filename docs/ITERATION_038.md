@@ -4,6 +4,8 @@ Date: 2026-10-10. Continues SPECIFICATION §2.6 / ARCHITECTURE §5 with an isola
 public `rdpsndDevicePlugin` adapter compiled against pinned FreeRDP 3.32.1.
 No private upstream struct casts, host audio or worker playback activation.
 Implementation commit: `62c0f68`.
+Historical volume law: linear amplitude scaling, superseded by the perceptual
+device policy in [Iteration 44](ITERATION_044.md) before worker activation.
 [Callback/ownership contract](AUDIO_PCM.md#public-rdpsnd-device-adapter).
 
 The callbacks validate PCM descriptors, normalize and apply independent stereo

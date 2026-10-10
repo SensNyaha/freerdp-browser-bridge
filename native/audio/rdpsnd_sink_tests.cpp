@@ -104,7 +104,7 @@ TEST_CASE("RDPSND volume scales signed stereo independently with full gain ident
   REQUIRE(play(device, input) == 1);
   std::vector<std::uint8_t> output(8);
   REQUIRE(sink.read(output).frames == 2);
-  const std::vector<std::uint8_t> expected{0, 192, 0, 128, 255, 63, 255, 127};
+  const std::vector<std::uint8_t> expected{244, 251, 0, 128, 12, 4, 255, 127};
   REQUIRE(output == expected);
   REQUIRE(device.SetVolume(&device, 0));
   REQUIRE(play(device, input) == 1);
