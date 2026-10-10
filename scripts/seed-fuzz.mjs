@@ -50,6 +50,22 @@ await writeFile(
     }),
   }),
 );
+const cursorShape = Buffer.alloc(44);
+cursorShape.writeUInt16BE(1, 0);
+cursorShape.writeUInt16BE(9, 2);
+cursorShape.writeBigUInt64BE(1n, 4);
+cursorShape.writeBigUInt64BE(1n, 12);
+cursorShape.writeUInt16BE(1, 32);
+cursorShape.writeUInt16BE(1, 34);
+cursorShape.set([255, 0, 0, 255], 40);
+await writeFile(
+  'build/fuzz/corpus/cursor-shape',
+  encodePacket({
+    kind: Kind.CursorUpdate,
+    requestId: 0n,
+    payload: cursorShape,
+  }),
+);
 await writeFile(
   'build/fuzz/corpus/connection',
   encodePacket({

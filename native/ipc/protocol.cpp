@@ -87,6 +87,12 @@ Header decode_header(std::span<const std::uint8_t> bytes) {
     throw ProtocolError();
   const auto kind = static_cast<Kind>(read_be(bytes.subspan(6, 2)));
   const auto length = static_cast<std::uint32_t>(read_be(bytes.subspan(20, 4)));
+  validate_header({kind, read_be(bytes.subspan(12, 8)), length});
+  return {kind, read_be(bytes.subspan(12, 8)), length};
+}
+void validate_header(const Header &header) {
+  const auto kind = header.kind;
+  const auto length = header.length;
   const auto maximum = limit(kind);
   const bool variable = kind == Kind::hello_ack || kind == Kind::configure ||
                         kind == Kind::secret || kind == Kind::frame || kind == Kind::frame_avc ||
@@ -99,7 +105,6 @@ Header decode_header(std::span<const std::uint8_t> bytes) {
       (kind == Kind::input_text && (length == 0 || length % 2)) ||
       (kind == Kind::input_touch && length != 16 && length != 24))
     throw ProtocolError();
-  return {kind, read_be(bytes.subspan(12, 8)), length};
 }
 std::vector<std::uint8_t> encode(const Packet &packet) {
   if (packet.payload.size() > std::numeric_limits<std::uint32_t>::max())

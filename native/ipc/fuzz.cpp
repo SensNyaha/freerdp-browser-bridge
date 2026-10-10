@@ -2,6 +2,7 @@
 #include "connection_config.hpp"
 #include "display.hpp"
 #include "input.hpp"
+#include "output_queue.hpp"
 #include "protocol.hpp"
 #include "touch_ipc.hpp"
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
@@ -14,6 +15,9 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
       const auto header = decode_header(bytes.first(header_bytes));
       if (size == header_bytes + header.length) {
         const auto payload = bytes.subspan(header_bytes);
+        OutputQueue output;
+        (void)output.push(header.kind, header.request_id, payload);
+        (void)output.take();
         if (header.kind == Kind::hello)
           validate_hello(payload);
         else if (header.kind == Kind::configure)

@@ -1,7 +1,7 @@
 # Iteration 53 — native PCM publisher and source-reset ownership
 
 Date: 2026-10-10. Implements SPECIFICATION §2.6, MEDIA_PIPELINE §6/8 and
-ARCHITECTURE §7 native producer ownership. Continues browser port ownership
+ARCHITECTURE §5/11 native audio producer ownership. Continues browser port ownership
 `7f44b97` (iteration 52); this block does not activate worker audio.
 
 The publisher keeps one fixed latest PCM IPC record/config and offers borrowed

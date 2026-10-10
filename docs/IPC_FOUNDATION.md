@@ -298,3 +298,34 @@ layout; a GDI resize immediately holds gestures. Graceful teardown attempts canc
 before disconnect, without claiming remote application release acknowledgement.
 WorkerProcess.touch, its touch event and sendTouch(event,generation) are private
 experimental APIs; public control/browser wiring follows in the next block.
+
+## Output scheduling foundation (Iteration 54)
+
+`native/ipc/output_queue.*` prepares bounded worker-to-Node priority lanes, without
+changing the current worker writer or wire formats. Callers must serialize all
+queue operations and use one consumer, preserving the order of taken records.
+Control responses/events use 64 FIFO slots; audio uses one config and one latest
+PCM packet; cursor uses one shape and one latest metadata record; correlated video
+uses one slot shared by JPEG/AVC. Take order is control, audio config, PCM, cursor
+shape, cursor metadata, video. This cannot preempt bytes of an in-flight record.
+
+Admission validates shared envelope bounds before copying spans. Audio/cursor
+also receive typed validation. Audio requires a strictly increasing config epoch,
+marked first packet and globally increasing PTS; unmarked packets advance exactly
+20 ms. Replacing pending PCM marks discontinuity, and accepting a new epoch clears
+old unsent PCM. `discard_audio()` clears pending audio on source reset while
+preserving lifetime epoch/PTS refusal history. Wiring that invalidation to actual
+source resets remains necessary before worker activation.
+
+Cursor revisions increase; metadata must describe a previously accepted shape or
+the default cursor. Latest metadata cannot replace its pending shape; new complete
+shape/default state discards obsolete pending cursor records. Correlated video and
+full control FIFO refuse admission instead of silently dropping request results.
+Incoming request/secret/config classes are refused. Typed control/video semantics
+still belong to their producers/receivers; this foundation validates their envelope.
+
+At most 69 records / 9,248,283 wire bytes are retained, excluding C++ allocator and
+container overhead. Stats expose current records/bytes, byte high water and audio/
+cursor replacements/audio reset discards. A future writer additionally owns one
+in-flight record. Pipe deadlines/cancellation, drain/failure policy and activation
+are not supplied by this pure component. [Evidence](ITERATION_054.md).
