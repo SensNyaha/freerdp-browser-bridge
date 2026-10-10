@@ -14,6 +14,7 @@ const mode = process.argv[3] ?? 'jpeg';
 const manual = process.argv[4] === '--manual';
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
+const touchInventory = process.argv[4] === '--touch-inventory';
 const quality = qualityTest
   ? {
       profile: 'low-bandwidth',
@@ -25,7 +26,11 @@ const quality = qualityTest
 const codecs = [mode === 'jpeg' ? 'jpeg' : 'h264'];
 if (
   ![3, 4, 5].includes(process.argv.length) ||
-  (process.argv.length === 5 && !manual && !qualityTest && !resizeTest) ||
+  (process.argv.length === 5 &&
+    !manual &&
+    !qualityTest &&
+    !resizeTest &&
+    !touchInventory) ||
   (manual && mode === 'h264-reset') ||
   !['jpeg', 'h264', 'h264-reset'].includes(mode) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
@@ -119,7 +124,7 @@ try {
         height: 1080,
         dynamicResolution: resizeTest || manual,
       },
-      input: { touch: manual },
+      input: { touch: manual || touchInventory },
       security: { certificatePolicy: 'prompt' },
       timeouts: { connectMs: 20000, tcpAckMs: 10000 },
       ...(quality ? { quality } : {}),
@@ -279,6 +284,22 @@ try {
       if (unchanged !== 'unchanged' || invalid !== 'invalid')
         throw new Error('LAB_RESIZE_RESULT_FAILED');
     }
+    let touchEvidence;
+    if (touchInventory) {
+      phase = 'touch-inventory';
+      await page.waitForFunction(
+        () => window.bridgeViewer.touch?.inputReady,
+        undefined,
+        { timeout: 10000 },
+      );
+      touchEvidence = await page.evaluate(() => window.bridgeViewer.touch);
+      if (
+        touchEvidence.width !== 1920 ||
+        touchEvidence.height !== 1080 ||
+        touchEvidence.maxContacts !== 10
+      )
+        throw new Error('LAB_TOUCH_READY_FAILED');
+    }
     const pipeline = await nativeWorker.pipelineStats();
     const telemetry = await server.inject({
       method: 'GET',
@@ -380,6 +401,23 @@ try {
       )
     )
       throw new Error('LAB_REATTACH_FAILED');
+    if (touchInventory) {
+      phase = 'touch-replay';
+      await page.waitForFunction(
+        () => window.bridgeViewer.touch?.inputReady,
+        undefined,
+        { timeout: 5000 },
+      );
+      const replay = await page.evaluate(() => window.bridgeViewer.touch);
+      if (
+        replay.generation !== touchEvidence.generation ||
+        replay.width !== touchEvidence.width ||
+        replay.height !== touchEvidence.height ||
+        replay.maxContacts !== touchEvidence.maxContacts ||
+        BigInt(replay.revision) < BigInt(touchEvidence.revision)
+      )
+        throw new Error('LAB_TOUCH_REPLAY_FAILED');
+    }
     if (
       resizeTest &&
       !(await page.evaluate(() => {
@@ -409,6 +447,9 @@ try {
         nativeCursorShapes,
         cursorReplayed: true,
         reattach: true,
+        ...(touchInventory
+          ? { touchEvidence, touchReplayed: true, remoteTouchSent: false }
+          : {}),
         ...(resizeTest ? { resizeEvidence, displayReplayed: true } : {}),
         pipeline,
         ...(qualityTest

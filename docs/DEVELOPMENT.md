@@ -209,3 +209,20 @@ restoration on failure before closing. Manual `--manual` viewing also opts in an
 shows width/height controls. Other session creators must explicitly set
 `display.dynamicResolution=true`; default remains disabled. This is one primary
 monitor at 100% scale, not automatic browser viewport or multimonitor support.
+
+## XRDP touch inventory and manual input
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-touch.mjs $fingerprint
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint h264 --touch-inventory
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-viewer.mjs $fingerprint jpeg --touch-inventory
+```
+
+The first checks private native readiness, heartbeat and JPEG. The browser modes
+explicitly opt in, validate matching rendered touch/display generations and
+control reattachment replay. They send no touch/key/button/wheel/text; the browser
+helper retains its authorized motion/reset checks. Run modes sequentially.
+Credentials stay in ignored lab files and private IPC; use the previously verified
+fingerprint. Inventory is not physical touch or remote application acceptance.
+Manual --manual viewing also opts in and captures supported touch Pointer Events
+only after readiness and matching rendered geometry. It never maps pen to mouse.

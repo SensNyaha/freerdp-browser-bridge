@@ -697,6 +697,11 @@ window.bridgeViewer = {
   attach,
   detach,
   resize,
+  get touch() {
+    return current?.touch
+      ? { ...current.touch, inputReady: Boolean(touchInputReady(current)) }
+      : undefined;
+  },
   get stats() {
     const times = [...decodeTimes].sort((a, b) => a - b);
     return {

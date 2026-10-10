@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Implements SPECIFICATION §2.5, PROTOCOL §3 and ARCHITECTURE §7
 under ADR-008 / ADR-009 / ADR-011. Experimental opt-in remains default false.
+Implementation commit: `06b2527`.
 
 Touch now uses the current control lease and existing 64-slot input serialization.
 Admission and delivery validate readiness and display generation; stale queued
