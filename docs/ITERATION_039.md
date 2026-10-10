@@ -4,6 +4,7 @@ Date: 2026-10-10. Continues SPECIFICATION §2.6 / ARCHITECTURE §5 preparation.
 The exact public rdpsnd/browser device entry is scoped to one synchronous owner
 context, preserving other addin loading and retiring resources before restoration.
 No worker audio activation or dependency source/pin change.
+Implementation commit: `79eb358`.
 [Contract and upstream audit](AUDIO_PCM.md#scoped-rdpsnd-backend-loading).
 
 The actual pinned static RDPSND plugin is loaded through its public entry with a

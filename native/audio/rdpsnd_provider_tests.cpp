@@ -1,4 +1,6 @@
+#include "ingress.hpp"
 #include "rdpsnd_provider.hpp"
+#include <algorithm>
 #include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
@@ -75,6 +77,9 @@ struct StaticHost {
   char *values[2]{name, selection};
   ADDIN_ARGV args{2, values};
   std::vector<std::vector<BYTE>> writes;
+  AudioAssembler assembler;
+  AudioPduValidator validator;
+  unsigned deliveries = 0;
   explicit StaticHost(rdpContext *context) {
     points.cbSize = sizeof(points);
     points.protocolVersion = VIRTUAL_CHANNEL_VERSION_WIN2000;
@@ -147,11 +152,23 @@ struct StaticHost {
     init(plugin, this, CHANNEL_EVENT_ATTACHED, nullptr, 0);
     REQUIRE(opened);
   }
+  bool ingest(std::span<const BYTE> bytes, std::size_t total, bool first, bool last) {
+    const auto joined = assembler.push(bytes, total, first, last);
+    if (joined.status == FragmentStatus::collecting)
+      return true;
+    if (joined.status == FragmentStatus::invalid || !validator.validate(joined.bytes))
+      return false;
+    const auto size = static_cast<UINT32>(joined.bytes.size());
+    ++deliveries;
+    opened(plugin, 1, CHANNEL_EVENT_DATA_RECEIVED, const_cast<BYTE *>(joined.bytes.data()), size,
+           size, CHANNEL_FLAG_FIRST | CHANNEL_FLAG_LAST);
+    return getChannelError(points.context) == CHANNEL_RC_OK;
+  }
   void send(std::vector<BYTE> &bytes) {
     REQUIRE(bytes.size() <= 65536);
-    const auto size = static_cast<UINT32>(bytes.size());
-    opened(plugin, 1, CHANNEL_EVENT_DATA_RECEIVED, bytes.data(), size, size,
-           CHANNEL_FLAG_FIRST | CHANNEL_FLAG_LAST);
+    const auto split = (std::min)(std::size_t{5}, bytes.size());
+    REQUIRE(ingest(std::span(bytes).first(split), bytes.size(), true, false));
+    REQUIRE(ingest(std::span(bytes).subspan(split), bytes.size(), false, true));
     REQUIRE(getChannelError(points.context) == CHANNEL_RC_OK);
   }
 };
@@ -286,5 +303,51 @@ TEST_CASE("RDPSND provider refuses uncertain void registration without retry") {
   REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_STATE);
   REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_STATE);
   REQUIRE(fixture.sink.device().rdpsnd == nullptr);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Actual RDPSND fake-SVC ingress rejects peer limits before upstream callback") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  StaticHost host(fixture.context.get());
+  host.load();
+  host.connect();
+  SECTION("advertised giant record") {
+    const std::array<BYTE, 4> tiny{1, 0, 0, 0};
+    REQUIRE_FALSE(host.ingest(tiny, 0xffffffffU, true, false));
+    REQUIRE(host.assembler.failed());
+  }
+  SECTION("advertised giant format count") {
+    std::vector<BYTE> malicious(24);
+    malicious[0] = SNDC_FORMATS;
+    malicious[2] = 20;
+    malicious[18] = malicious[19] = 255;
+    REQUIRE_FALSE(host.ingest(malicious, malicious.size(), true, true));
+    REQUIRE(host.validator.failed());
+  }
+  REQUIRE(host.deliveries == 0);
+  REQUIRE(host.writes.empty());
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == 0);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Actual RDPSND fake-SVC ingress validates and dispatches legacy Wave pair") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  StaticHost host(fixture.context.get());
+  host.load();
+  host.connect();
+  auto configuration = formats();
+  host.send(configuration);
+  std::vector<BYTE> info{SNDC_WAVE, 0, 16, 0, 100, 0, 0, 0, 1, 0, 0, 0, 0, 128, 255, 127};
+  std::vector<BYTE> raw{0, 0, 0, 0, 1, 0, 254, 255};
+  host.send(info);
+  host.send(raw);
+  std::vector<BYTE> output(8);
+  REQUIRE(fixture.sink.read(output).frames == 2);
+  REQUIRE(output == std::vector<BYTE>{0, 128, 255, 127, 1, 0, 254, 255});
+  REQUIRE(host.deliveries == 3);
+  REQUIRE(host.writes.size() == 4);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }

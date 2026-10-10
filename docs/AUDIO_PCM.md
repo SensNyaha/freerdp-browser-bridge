@@ -157,3 +157,37 @@ Two pinned upstream boundaries remain open before worker audio activation:
 
 These gaps, compressed format negotiation, attach/reconnect, end-to-end queue
 budget and audible playback are not resolved by a successful PCM callback fixture.
+
+## Bounded audio ingress foundation
+
+`native/audio/ingress.hpp` assembles an SVC record into one fixed 65,536-byte
+buffer. Advertised total size is checked before copying any fragment. It validates
+first/continuation ordering, identical totals, remaining capacity, exact last
+completion and at most 4,096 fragments (including empty ones). Empty final fragments
+are allowed when the record is already complete. Invalid input poisons assembly
+until explicit connection reset; no ambiguous record is retried. Completed bytes
+borrow storage until the next operation. One serialized owner maps transport flags;
+the primitive does not interpret suspend/compression/other SVC flags itself.
+
+The allocation-free PDU validator checks complete bounded records before upstream
+format allocation: at most 64 descriptors, each with at most 1,024 extra bytes,
+complete descriptor/extra bounds and no trailing bytes. It accepts baseline
+Formats, Training, SetVolume, Close, legacy WaveInfo/raw Wave pairs and Wave2.
+Other PDU types are explicitly unsupported; encrypted variants/pitch and further
+negotiated extensions remain open. It checks exact body length except legacy
+WaveInfo, where BodySize also describes the following raw Wave. A pending raw Wave
+must have exactly the declared size and arrives before another PDU.
+
+Metadata exposes format count/index, block, raw sample size and the original
+16-bit Wave or 32-bit Wave2 timestamp field. It does not unwrap clocks, interpret
+decoded sample widths, check negotiated format-index membership or reset the sink
+on Close. Invalid records poison validation until reset. No per-record allocation,
+codec decode, IPC or timestamp scheduling occurs here.
+
+[Iteration 40](ITERATION_040.md) places these primitives ahead of the actual
+linked RDPSND plugin in the fake SVC host. Normal fragmented Wave2 and legacy Wave
+dispatch pass; giant advertised record/count values are refused without calling
+upstream. This proves the primitives and test-host placement. A production public
+SVC callback adapter is still needed: the worker does not install this guard, and
+earlier RDP/core or compressed DSP allocations are not protected by it. The audit
+gaps above remain open until placement/format policy and real integration pass.

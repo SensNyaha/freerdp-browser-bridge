@@ -14,10 +14,13 @@ platforms, resource limits and soak verification, remain.
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
-Stages 0/1/3/4/5 remain **IN PROGRESS**. Physical input and release ownership are
+Stages 0/1/3/4/5/6 remain **IN PROGRESS**. Physical input and release ownership are
 implemented and tested with native/fake/Edge fixtures; actual XRDP input is verified
 for motion only. Independent cursor extraction/overlay and XRDP shape replay are
 verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain open.
+Stage 6 has isolated PCM, bounded queue, public RDPSND backend/provider and ingress
+foundations; actual linked channel tests use simulated SVC transport. Worker audio
+activation, production ingress placement and audible/browser acceptance remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -244,6 +247,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [ ] Implement custom `rdpsnd-browser` virtual sink.
 - [~] IN PROGRESS — Public pinned RDPSND device callback adapter feeds the bounded PCM pipeline, applies stereo volume, resets on loss and retires owner resources before delayed host Free. Native ABI/lifecycle fixtures pass; worker registration, upstream resource audit and actual server/browser audio remain open. [Contract](docs/AUDIO_PCM.md#public-rdpsnd-device-adapter), [evidence](docs/ITERATION_038.md).
 - [~] IN PROGRESS — Scoped public rdpsnd/browser loader binds one synchronous context and preserves other addins. Actual pinned static RDPSND with fake SVC registers the backend, negotiates PCM and dispatches Wave2 into the sink. Upstream reassembly/DSP limits and Close/timestamp gaps are recorded; worker activation and actual remote/browser audio remain open. [Evidence](docs/ITERATION_039.md), [audit](docs/AUDIO_PCM.md#scoped-rdpsnd-backend-loading).
+- [~] IN PROGRESS — Fixed 64 KiB SVC assembly and bounded RDPSND PDU validation run ahead of the actual static channel in fake-SVC fixtures, including legacy Wave. Oversized advertised record/count claims are refused before upstream dispatch. Production callback placement, earlier core/DSP limits, raw flags and stream-clock/reset remain open. [Evidence](docs/ITERATION_040.md).
 - [ ] PCM normalization/resampling layer.
 - [~] IN PROGRESS — Isolated native PCM8/PCM16 mono/stereo 8..48 kHz normalization to S16LE 48 kHz stereo, rational phase, fixed output capacity and atomic rejection are implemented. Wider/higher-rate formats, pipeline/backend integration and actual audio acceptance remain open. [Contract](docs/AUDIO_PCM.md), [evidence](docs/ITERATION_036.md). Stage 5 hardware/remote gates remain open.
 - [ ] PCM media transport + AudioWorklet playback.
