@@ -9,7 +9,7 @@ namespace bridge::audio {
 struct SinkStats {
   QueueStats queue;
   PacketStats packets;
-  std::uint64_t rejected_packets = 0, overflow_resets = 0;
+  std::uint64_t rejected_packets = 0, overflow_resets = 0, stream_revision = 0;
 };
 // Public device ABI adapter, not an installed addin. One serialized RDP owner.
 // Retire on that thread before joining; keep this wrapper alive through host Free.
@@ -51,6 +51,8 @@ public:
   PcmPacket packet(std::uint64_t worker_time_us) noexcept;
   std::optional<SinkStats> stats() const noexcept;
   bool reset_stream() noexcept; // Discard history/backlog while keeping an open device usable.
+  bool ready() const noexcept;
+  std::optional<std::uint64_t> stream_revision() const noexcept;
   bool retire() noexcept;
   bool retired() const noexcept { return retired_.load(std::memory_order_acquire); }
 };

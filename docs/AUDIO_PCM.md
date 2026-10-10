@@ -231,6 +231,40 @@ RWB1 bytes through the owner and real AudioWorklet, checks bounded credits/epoch
 discard, then suspends the context and verifies automatic resource closure. This
 is synthetic PCM processing, not audible RDP output or <150 ms LAN acceptance.
 
+## Native PCM publisher preparation
+
+`native/audio/publisher.*` joins the sink packetizer to the private audio codec.
+One serialized RDP-thread owner keeps one fixed 3,864-byte pending packet plus
+one 20-byte config. A `TrySend` callback must return without blocking: true means
+the consumer copied bytes into its own bounded storage; false leaves one pending
+record for a later attempt. This is not connected to today's blocking stdout
+writer or advertised as worker audio support.
+
+Capture runs before retrying an unsent packet, so fresh PCM replaces stale pending
+samples and forces discontinuity. At most one config and one PCM packet are offered
+per pump; accepted config is not replayed during packet backpressure. The first
+real packet or source discontinuity starts a fresh nonzero epoch; config precedes
+PCM. Sink source revision increments on successful Open and every queue/interpolator
+reset, including Close, ingress loss, malformed packet and overflow. The publisher
+checks revision before capture/send, so a source reset discards prepared IPC even
+when no fresh PCM exists and the pinned device remains Open.
+
+Source Close/retirement clears pending data. Explicit publisher reset also clears
+source history. Backward/overflow clocks, foreign/reentrant calls and empty send
+callbacks do not consume queued samples. Callback exceptions retire publisher
+data with a fixed failed status; source/channel retirement is still the connection
+owner's job. Epoch/source revision exhaustion never wraps or replays identifiers.
+Lifetime counters report captures/sends, accepted configs, replacement/reset
+discards, blocked calls and invalid clocks; spans remain borrowed only for the
+callback duration.
+
+[Iteration 53](ITERATION_053.md) covers credit, config ordering, exact IPC samples,
+source reset before fresh PCM, owner/clock/callback/exhaustion faults and actual
+linked RDPSND with simulated SVC Close/restart. Remaining activation work includes
+bounded prioritized native output ownership, worker configuration/capability/
+scheduling/shutdown and Node/browser integration. Actual audible RDP/microphone,
+larger source bursts, earlier core allocations and latency acceptance remain open.
+
 ## Public RDPSND device adapter
 
 `native/audio/rdpsnd_sink.hpp` implements the pinned public

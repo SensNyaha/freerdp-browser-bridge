@@ -40,6 +40,7 @@ bool RdpsndSink::usable() const noexcept {
   return thread_ == std::this_thread::get_id() && !retired() && pipeline_;
 }
 void RdpsndSink::discontinuity() noexcept {
+  increment(stats_.stream_revision);
   pipeline_->pcm.reset();
   pipeline_->queue.reset();
   pipeline_->packets.reset();
@@ -55,6 +56,7 @@ BOOL RdpsndSink::open(rdpsndDevicePlugin *device, const AUDIO_FORMAT *format, UI
     return FALSE;
   sink->pipeline_->queue.reset();
   sink->pipeline_->packets.reset();
+  increment(sink->stats_.stream_revision);
   sink->opened_ = true;
   return TRUE;
 }
@@ -158,6 +160,14 @@ bool RdpsndSink::reset_stream() noexcept {
     return false;
   discontinuity();
   return true;
+}
+bool RdpsndSink::ready() const noexcept {
+  return usable() && opened_ &&
+         stats_.stream_revision != (std::numeric_limits<std::uint64_t>::max)();
+}
+std::optional<std::uint64_t> RdpsndSink::stream_revision() const noexcept {
+  return thread_ == std::this_thread::get_id() ? std::optional{stats_.stream_revision}
+                                               : std::nullopt;
 }
 bool RdpsndSink::retire() noexcept {
   if (retired())

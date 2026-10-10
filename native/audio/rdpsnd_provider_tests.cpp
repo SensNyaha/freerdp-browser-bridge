@@ -1,5 +1,6 @@
 #include "addin_provider.hpp"
 #include "ingress.hpp"
+#include "publisher.hpp"
 #include "rdpsnd_provider.hpp"
 #include "static_gate.hpp"
 #include <algorithm>
@@ -1234,4 +1235,50 @@ TEST_CASE("Actual linked RDPSND produces paced PCM packets and reanchors on sour
   host.raw(close, 4);
   REQUIRE(fixture.sink.packet(5020000).status == PacketStatus::idle);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Actual RDPSND Close discards blocked publisher PCM before a fresh stream epoch") {
+  Fixture fixture;
+  GateScope audio(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  PcmPublisher publisher(fixture.sink);
+  std::vector<bridge::ipc::Packet> records;
+  bool credit = false;
+  const PcmPublisher::TrySend send = [&](auto kind, auto bytes) {
+    if (kind == bridge::ipc::Kind::audio_pcm && !credit)
+      return false;
+    records.push_back({kind, 0, {bytes.begin(), bytes.end()}});
+    return true;
+  };
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  emit_pcm(host, 100, 1, {0, 128, 255, 127});
+  REQUIRE(publisher.pump(1000000, send) == PublishStatus::blocked);
+  REQUIRE(records.size() == 1);
+  REQUIRE(publisher.stats()->pending);
+  const std::array<BYTE, 4> close{SNDC_CLOSE, 0, 0, 0};
+  host.raw(close, 4);
+  credit = true;
+  REQUIRE(publisher.pump(1020000, send) == PublishStatus::idle);
+  REQUIRE(records.size() == 1);
+  REQUIRE_FALSE(publisher.stats()->pending);
+  REQUIRE(publisher.stats()->reset_discarded_packets == 1);
+  emit_pcm(host, 120, 2, {1, 0, 254, 255});
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(publisher.pump(1040000, send) == PublishStatus::sent);
+  REQUIRE(records.size() == 3);
+  REQUIRE(bridge::ipc::audio::decode_config(records[1].payload).epoch == 2);
+  const auto packet = bridge::ipc::audio::decode_packet(records[2].payload);
+  REQUIRE(packet.epoch == 2);
+  REQUIRE(packet.timestamp_us == 1040000);
+  REQUIRE(packet.discontinuity);
+  REQUIRE(packet.frames == 960);
+  const std::array<BYTE, 4> sample{1, 0, 254, 255};
+  for (std::size_t at = 0; at < packet.pcm.size(); at += 4)
+    REQUIRE(std::equal(sample.begin(), sample.end(), packet.pcm.begin() + at));
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(publisher.pump(1060000, send) == PublishStatus::idle);
+  REQUIRE(records.size() == 3);
 }
