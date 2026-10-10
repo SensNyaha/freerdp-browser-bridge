@@ -112,13 +112,22 @@ export function parsePcmAudioRecord(bytes) {
 export class PcmPortSender {
   constructor(
     port,
-    { timeoutMs = 2000, sourceStatus = false, onFailure, cleanup } = {},
+    {
+      timeoutMs = 2000,
+      sourceStatus = false,
+      recordCredit = false,
+      onRecordAck,
+      onFailure,
+      cleanup,
+    } = {},
   ) {
     if (
       !port ||
       typeof port.postMessage !== 'function' ||
       typeof port.close !== 'function' ||
       typeof sourceStatus !== 'boolean' ||
+      typeof recordCredit !== 'boolean' ||
+      (recordCredit && (!sourceStatus || typeof onRecordAck !== 'function')) ||
       !Number.isInteger(timeoutMs) ||
       timeoutMs < 10 ||
       timeoutMs > 5000
@@ -129,6 +138,9 @@ export class PcmPortSender {
     this.onFailure = onFailure;
     this.cleanup = cleanup;
     this.sourceStatus = sourceStatus;
+    this.recordCredit = recordCredit;
+    this.onRecordAck = onRecordAck;
+    this.recordSequence = undefined;
     this.sourceState = undefined;
     this.awaitingConfig = sourceStatus;
     this.pendingReset = false;
@@ -154,7 +166,11 @@ export class PcmPortSender {
     if (this.closed) return false;
     try {
       const record = parsePcmAudioRecord(bytes);
-      if (record.sequence !== this.sequence || this.sequence > 0xffffffff)
+      if (
+        record.sequence !== this.sequence ||
+        this.sequence > 0xffffffff ||
+        (this.recordCredit && this.recordSequence !== undefined)
+      )
         throw invalid();
       if (record.type === 'state') {
         const previous = this.sourceState;
@@ -221,6 +237,7 @@ export class PcmPortSender {
         this.boundary = false;
       }
       this.sequence++;
+      if (this.recordCredit) this.recordSequence = record.sequence;
       add(this.counters, 'records');
       this.flush();
       return !this.closed;
@@ -261,7 +278,12 @@ export class PcmPortSender {
       return;
     }
     const id = ++this.id;
-    this.flight = { id, type: command.type };
+    this.flight = {
+      id,
+      type: command.type,
+      recordSequence:
+        command.type === 'stats' ? undefined : this.recordSequence,
+    };
     this.timer = setTimeout(() => {
       if (this.flight?.id === id) this.fail('deadline');
     }, this.timeoutMs);
@@ -302,9 +324,19 @@ export class PcmPortSender {
       }
       this.remoteStats = { ...stats };
     }
+    const recordSequence = this.flight.recordSequence;
     clearTimeout(this.timer);
     this.timer = this.flight = undefined;
     add(this.counters, 'acknowledged');
+    if (recordSequence !== undefined) {
+      this.recordSequence = undefined;
+      try {
+        this.onRecordAck(recordSequence);
+      } catch {
+        this.fail('acknowledgment');
+        return;
+      }
+    }
     this.flush();
   }
   snapshot() {
@@ -315,6 +347,8 @@ export class PcmPortSender {
       pendingPacketBytes: this.pendingPacket ? 3840 : 0,
       pendingConfig: Boolean(this.pendingConfig),
       pendingReset: this.pendingReset,
+      recordCredit: this.recordCredit,
+      recordInFlight: this.recordSequence === undefined ? 0 : 1,
       source: this.sourceState
         ? {
             enabled: this.sourceState.enabled,
@@ -347,6 +381,7 @@ export class PcmPortSender {
         undefined;
     this.pendingStats = false;
     this.pendingReset = false;
+    this.recordSequence = this.onRecordAck = undefined;
     this.port.onmessage = this.port.onmessageerror = null;
     try {
       this.port.close();
@@ -392,6 +427,8 @@ export async function createPcmPlayback(context, options = {}) {
     sender = new PcmPortSender(node.port, {
       timeoutMs: options.timeoutMs,
       sourceStatus: options.sourceStatus,
+      recordCredit: options.recordCredit,
+      onRecordAck: options.onRecordAck,
       onFailure: options.onFailure,
       cleanup: async () => {
         context.removeEventListener('statechange', stateChanged);

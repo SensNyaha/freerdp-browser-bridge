@@ -222,3 +222,132 @@ test('PCM source port: replay backward source metadata and immutable mode violat
   for (const sourceStatus of [null, 1, 'true'])
     assert.throws(() => new PcmPortSender(new Port(), { sourceStatus }));
 });
+
+test('PCM record credit: source/config/sample wire ACK waits for the corresponding Worklet command, including Close without PCM', async () => {
+  const port = new Port(),
+    acks = [];
+  const sender = new PcmPortSender(port, {
+    sourceStatus: true,
+    recordCredit: true,
+    onRecordAck: (sequence) => acks.push(sequence),
+  });
+  try {
+    const records = [state(0, 'ready'), ...packets(1), state(3, 'closed', 2n)];
+    for (let i = 0; i < records.length; i++) {
+      assert.equal(sender.record(records[i]), true);
+      assert.deepEqual(
+        acks,
+        Array.from({ length: i }, (_, n) => n),
+      );
+      assert.equal(sender.snapshot().recordInFlight, 1);
+      assert.equal(sender.snapshot().inFlight, 1);
+      port.ack(i + 1);
+      assert.deepEqual(
+        acks,
+        Array.from({ length: i + 1 }, (_, n) => n),
+      );
+      assert.equal(sender.snapshot().recordInFlight, 0);
+    }
+    assert.deepEqual(
+      port.sent.map((c) => c.type),
+      ['reset', 'config', 'packet', 'reset'],
+    );
+    assert.equal(sender.snapshot().replacedPackets, 0);
+    assert.equal(sender.snapshot().pendingPacketBytes, 0);
+  } finally {
+    await sender.close();
+  }
+});
+
+test('PCM record credit: a second unacknowledged record, invalid Worklet ACK or throwing receiver retires ownership without granting extra credit', async () => {
+  for (const mode of ['burst', 'wrong', 'rejected', 'throw', 'close']) {
+    const port = new Port(),
+      acks = [],
+      failures = [];
+    const sender = new PcmPortSender(port, {
+      sourceStatus: true,
+      recordCredit: true,
+      onRecordAck(sequence) {
+        acks.push(sequence);
+        if (mode === 'throw') throw new Error('observer');
+      },
+      onFailure: (reason) => failures.push(reason),
+    });
+    assert.equal(sender.record(state(0, 'ready')), true);
+    if (mode === 'burst') assert.equal(sender.record(packets(1)[0]), false);
+    if (mode === 'wrong') port.ack(2);
+    if (mode === 'rejected')
+      port.onmessage({ data: { type: 'ack', id: 1, accepted: false } });
+    if (mode === 'throw') port.ack(1);
+    if (mode === 'close') {
+      await sender.close();
+      port.ack(1);
+    }
+    assert.equal(sender.snapshot().closed, true);
+    assert.deepEqual(acks, mode === 'throw' ? [0] : []);
+    assert.equal(sender.snapshot().recordInFlight, 0);
+    assert.equal(sender.snapshot().inFlight, 0);
+    assert.equal(port.closed, true);
+    assert.equal(failures.length, mode === 'close' ? 0 : 1);
+    await sender.close();
+  }
+  for (const options of [
+    { recordCredit: true },
+    { recordCredit: true, sourceStatus: true },
+    { recordCredit: true, sourceStatus: true, onRecordAck: 1 },
+    { recordCredit: 'yes', sourceStatus: true, onRecordAck() {} },
+  ])
+    assert.throws(() => new PcmPortSender(new Port(), options));
+});
+
+test('PCM record credit: stats ACK cannot acknowledge a waiting record; receiver callback may synchronously admit its next record', async () => {
+  const port = new Port(),
+    acks = [];
+  let sender;
+  sender = new PcmPortSender(port, {
+    sourceStatus: true,
+    recordCredit: true,
+    onRecordAck(sequence) {
+      acks.push(sequence);
+      if (sequence === 0) assert.equal(sender.record(packets(1)[0]), true);
+    },
+  });
+  try {
+    sender.requestStats();
+    sender.record(state(0, 'ready'));
+    const stats = Object.fromEntries(
+      [
+        'configurations',
+        'packets',
+        'playedFrames',
+        'underflowFrames',
+        'underflows',
+        'bufferingSilenceFrames',
+        'overflowSkippedFrames',
+        'resetDiscardedFrames',
+        'invalidCalls',
+        'highWaterFrames',
+        'queuedFrames',
+      ].map((name) => [name, 0]),
+    );
+    port.onmessage({
+      data: {
+        type: 'ack',
+        id: 1,
+        accepted: true,
+        stats: { ...stats, buffering: true },
+      },
+    });
+    assert.deepEqual(acks, []);
+    assert.equal(port.sent[1].type, 'reset');
+    port.ack(2);
+    assert.deepEqual(acks, [0]);
+    assert.equal(port.sent[2].type, 'config');
+    assert.equal(sender.snapshot().recordInFlight, 1);
+    port.ack(3);
+    assert.deepEqual(acks, [0, 1]);
+    assert.equal(sender.snapshot().recordInFlight, 0);
+  } finally {
+    await sender.close();
+  }
+});

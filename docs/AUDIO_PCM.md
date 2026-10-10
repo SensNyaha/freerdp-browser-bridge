@@ -66,6 +66,22 @@ No socket/timer or public selection is installed yet. Local snapshots expose
 bounded storage and saturating counters; no public audio metrics are added.
 [Pure evidence](ITERATION_068.md).
 
+## Browser record-credit admission
+
+`PcmPortSender` / `createPcmPlayback` optionally select `recordCredit: true` with
+`sourceStatus: true` and `onRecordAck(sequence)`. Only one unacknowledged RWB1
+record is admitted; another record before its reply retires the owner. Status,
+config and samples map to reset, config and packet commands. The exact accepted
+Worklet reply invokes the wire callback; merely parsing or posting does not.
+Stats commands have no wire sequence and cannot release a pending record credit.
+The callback may synchronously admit its next record. A throwing callback retires
+the owner with no automatic retry. Bad/rejected replies and bounded command
+deadlines close the port and exclusive AudioContext. Context loss/explicit close
+does not acknowledge abandoned records. Default coalescing mode is unchanged.
+The outer media consumer must send `audio.ack` from this callback and negotiate
+the matching socket extension; the isolated factory does not select a socket.
+[Pure and actual Edge evidence](ITERATION_070.md).
+
 ## Bounded PCM handoff queue
 
 `native/audio/queue.hpp` stores normalized S16LE stereo in one fixed 23,040-byte

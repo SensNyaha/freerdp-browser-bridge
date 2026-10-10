@@ -32,6 +32,139 @@ async function pcmServer() {
 }
 
 test(
+  'Edge PCM record credit: actual Worklet admission grants each wire ACK; Close resets before ACK and context loss grants none',
+  { skip: process.platform !== 'win32', timeout: 45000 },
+  async () => {
+    const server = await pcmServer();
+    let browser, page;
+    try {
+      browser = await chromium.launch({
+        channel: 'msedge',
+        headless: true,
+        timeout: 5000,
+      });
+      page = await browser.newPage();
+      page.setDefaultTimeout(3000);
+      await page.goto('http://127.0.0.1:' + server.address().port);
+      await page.evaluate(() => {
+        document.querySelector('#start').onclick = () => {
+          window.audio = new AudioContext({ sampleRate: 48000 });
+          window.resumed = window.audio.resume();
+        };
+      });
+      await page.click('#start');
+      await page.evaluate(async () => {
+        await window.resumed;
+        const { createPcmPlayback } = await import('/pcm-playback.js');
+        window.acks = [];
+        window.failures = [];
+        window.sender = await createPcmPlayback(window.audio, {
+          sourceStatus: true,
+          recordCredit: true,
+          onRecordAck: (sequence) => window.acks.push(sequence),
+          onFailure: (reason) => window.failures.push(reason),
+        });
+      });
+      const cfg = {
+        epoch: 1n,
+        codec: 'pcm',
+        sampleRate: 48000,
+        channels: 2,
+        sampleFormat: 's16le',
+        packetFrames: 960,
+      };
+      const records = [
+        encodePcmAudioStateRecord(
+          {
+            enabled: true,
+            availability: 'ready',
+            revision: 1n,
+            epoch: 1n,
+            timestampUs: 5000000n,
+          },
+          0,
+        ),
+        ...encodePcmAudioRecords(
+          cfg,
+          {
+            epoch: 1n,
+            timestampUs: 0n,
+            frames: 960,
+            silenceFrames: 0,
+            discontinuity: true,
+            pcm: Buffer.alloc(3840),
+          },
+          1,
+          true,
+        ),
+        encodePcmAudioStateRecord(
+          {
+            enabled: true,
+            availability: 'closed',
+            revision: 2n,
+            epoch: 1n,
+            timestampUs: 5000001n,
+          },
+          3,
+        ),
+      ];
+      for (let i = 0; i < records.length; i++) {
+        const immediate = await page.evaluate(
+          (bytes) => ({
+            accepted: window.sender.record(new Uint8Array(bytes).buffer),
+            acks: [...window.acks],
+            snapshot: window.sender.snapshot(),
+          }),
+          Array.from(records[i]),
+        );
+        assert.equal(immediate.accepted, true);
+        assert.deepEqual(
+          immediate.acks,
+          Array.from({ length: i }, (_, n) => n),
+        );
+        assert.equal(immediate.snapshot.recordInFlight, 1);
+        await page.waitForFunction(
+          (count) => window.acks.length === count,
+          i + 1,
+        );
+      }
+      await page.evaluate(() => window.sender.requestStats());
+      await page.waitForFunction(
+        () =>
+          window.sender.snapshot().remote && !window.sender.snapshot().inFlight,
+      );
+      const stopped = await page.evaluate(() => ({
+        acks: window.acks,
+        snapshot: window.sender.snapshot(),
+      }));
+      assert.deepEqual(stopped.acks, [0, 1, 2, 3]);
+      assert.equal(stopped.snapshot.remote.queuedFrames, 0);
+      assert.equal(stopped.snapshot.remote.packets, 1);
+      assert.equal(stopped.snapshot.remote.invalidCalls, 0);
+      assert.equal(stopped.snapshot.source.availability, 'closed');
+      await page.evaluate(() => window.audio.suspend());
+      await page.waitForFunction(() => window.sender.snapshot().closed);
+      const retired = await page.evaluate(async () => {
+        await window.sender.close();
+        return {
+          acks: window.acks,
+          failures: window.failures,
+          state: window.audio.state,
+        };
+      });
+      assert.deepEqual(retired.acks, [0, 1, 2, 3]);
+      assert.deepEqual(retired.failures, ['context']);
+      assert.equal(retired.state, 'closed');
+    } finally {
+      await page?.close();
+      server.closeAllConnections();
+      await browser?.close();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  },
+);
+
+test(
   'Edge PCM port owner: actual RWB1 burst credit, epoch reset and context-loss cleanup',
   { skip: process.platform !== 'win32', timeout: 45000 },
   async () => {
