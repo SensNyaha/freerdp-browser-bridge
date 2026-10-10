@@ -89,6 +89,12 @@ Session migration between bridge instances is out of v1 scope because RDP client
 
 ## 7. Diagnostics
 
+The private bundle also includes pinned libopus 1.6.1 and its BSD copyright.
+Its isolated 20 ms encoder is a preparatory provider; public Opus audio remains
+unsupported. The relocation probe checks real Opus encode/decode and the loaded
+private DLL/version. The local version-fix overlay and hash ship alongside build
+metadata. See [Opus foundation](docs/AUDIO_OPUS.md).
+
 The current Windows native bundle includes private libjpeg-turbo/libspng and
 OpenH264 DLLs and licenses. The relocation test performs actual JPEG and AVC
 roundtrips, FreeRDP AVC420 decoding and checks the loaded module locations. The OpenH264 overlay and

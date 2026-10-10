@@ -38,6 +38,7 @@ for (const name of [
   'libjpeg-turbo',
   'libspng',
   'openh264',
+  'opus',
 ]) {
   const block = status
     .split(/\r?\n\r?\n/)
@@ -52,10 +53,28 @@ for (const name of [
     throw new Error(`Missing installed dependency receipt: ${name}`);
   dependencies[name] = version;
 }
+if (dependencies.opus !== lock.opus.version)
+  throw new Error('Installed Opus receipt does not match the pinned version');
+const opusPort = readFileSync(
+  resolve('native/vcpkg/ports/opus/portfile.cmake'),
+  'utf8',
+);
+if (!opusPort.includes(`SHA512 ${lock.opus.sourceSha512}`))
+  throw new Error('Opus port source hash does not match the dependency lock');
 const report = {
   enabledChannels,
-  codecProviders: ['libjpeg-turbo', 'openh264'],
+  codecProviders: ['libjpeg-turbo', 'openh264', 'libopus'],
   portOverlays: {
+    opus: {
+      basePort: '1.6.1',
+      versionPatchSha256: createHash('sha256')
+        .update(
+          readFileSync(
+            resolve('native/vcpkg/ports/opus/001-pinned-package-version.patch'),
+          ),
+        )
+        .digest('hex'),
+    },
     openh264: {
       basePort: '2.6.0#4',
       nasmPatchSha256: createHash('sha256')

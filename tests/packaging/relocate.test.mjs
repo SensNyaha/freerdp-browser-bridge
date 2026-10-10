@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { cp, mkdtemp, rm, readFile, readdir } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { resolve, join, relative } from 'node:path';
+import { resolve, join, relative, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
@@ -50,6 +50,12 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     assert.equal(lines.jpegRoundtrip, 'true');
     assert.equal(lines.h264Roundtrip, 'true');
     assert.equal(lines.freerdpAvc420Roundtrip, 'true');
+    assert.equal(lines.opusRoundtrip, 'true');
+    assert.equal(lines.opus, `libopus ${features.dependencies.opus}`);
+    assert.match(
+      basename(lines.opusRuntime),
+      windows ? /^opus\.dll$/i : /^libopus\.so(?:\..*)?$/,
+    );
     assert.equal(features.diagnostics.openH264, true);
     assert.equal(features.diagnostics.gfxH264, true);
     assert.equal(features.diagnostics.openH264DynamicLoading, false);
@@ -59,6 +65,7 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       lines.freerdpRuntime,
       lines.jpegRuntime,
       lines.openh264Runtime,
+      lines.opusRuntime,
     ]) {
       const loadedPath = relative(relocated, resolve(runtime));
       assert.ok(
@@ -83,6 +90,21 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     assert.equal(JSON.parse(cli.stdout).capabilities.basicInput, true);
     assert.ok(features.codecProviders.includes('libjpeg-turbo'));
     assert.ok(features.codecProviders.includes('openh264'));
+    assert.ok(features.codecProviders.includes('libopus'));
+    const opusVersionPatch = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'opus',
+        '001-pinned-package-version.patch',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(opusVersionPatch).digest('hex'),
+      features.portOverlays.opus.versionPatchSha256,
+    );
     const patch = await readFile(
       join(
         relocated,
@@ -119,6 +141,7 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       'libjpeg-turbo',
       'libspng',
       'openh264',
+      'opus',
     ]) {
       assert.ok(
         (

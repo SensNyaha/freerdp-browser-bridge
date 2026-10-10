@@ -6,6 +6,12 @@
     "commit": "bf217a504e54cc719880c228e82353382cd7d4fa"
   },
   "catch2": { "version": "3.8.1" },
+  "opus": {
+    "version": "1.6.1",
+    "repository": "https://github.com/xiph/opus",
+    "ref": "v1.6.1",
+    "sourceSha512": "b9a504f8576c977df57caee808412ab95e7424e9a64e3dd4045f05616c3ed58706bc3549195b61e25721e299547509d15206d246d96f1a307b82562b703b412c"
+  },
   "vcpkg": {
     "repository": "https://github.com/microsoft/vcpkg.git",
     "commit": "2750401336fb7c95f6619657a46a7e798661341c"

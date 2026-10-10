@@ -1,5 +1,6 @@
 #include "avc_decode_probe.hpp"
 #include "jpeg.hpp"
+#include "opus_encoder.hpp"
 #include "video_encoder.hpp"
 #include <array>
 #include <filesystem>
@@ -8,6 +9,7 @@
 #include <freerdp/freerdp.h>
 #include <iostream>
 #include <memory>
+#include <opus/opus.h>
 #include <set>
 #include <string>
 #include <turbojpeg.h>
@@ -76,6 +78,25 @@ bool h264_roundtrip() {
     return false;
   }
 }
+bool opus_roundtrip() {
+  try {
+    bridge::audio::SoftwareOpusEncoder encoder;
+    int error = OPUS_OK;
+    const std::unique_ptr<OpusDecoder, decltype(&opus_decoder_destroy)> decoder(
+        opus_decoder_create(48000, 2, &error), opus_decoder_destroy);
+    if (error != OPUS_OK || !decoder)
+      return false;
+    std::vector<std::uint8_t> pcm(bridge::audio::SoftwareOpusEncoder::pcm_bytes);
+    const auto unit = encoder.encode({pcm, 1000});
+    std::vector<opus_int16> samples(bridge::audio::SoftwareOpusEncoder::packet_frames * 2);
+    return unit.discontinuity && unit.timestamp_us == 1000 && !unit.bytes.empty() &&
+           unit.bytes.size() <= bridge::audio::SoftwareOpusEncoder::max_packet_bytes &&
+           opus_decode(decoder.get(), unit.bytes.data(), static_cast<opus_int32>(unit.bytes.size()),
+                       samples.data(), 960, 0) == 960;
+  } catch (...) {
+    return false;
+  }
+}
 bool freerdp_avc420_roundtrip() {
   try {
     bridge::media::SoftwareH264Encoder encoder;
@@ -119,7 +140,9 @@ int main() {
       module_path(reinterpret_cast<const void *>(&freerdp_get_version_string));
   const auto jpeg_path = module_path(reinterpret_cast<const void *>(&tj3InitVersion));
   const auto h264_path = module_path(reinterpret_cast<const void *>(&WelsGetCodecVersion));
-  if (zlib_path.empty() || freerdp_path.empty() || jpeg_path.empty() || h264_path.empty())
+  const auto opus_path = module_path(reinterpret_cast<const void *>(&opus_get_version_string));
+  if (zlib_path.empty() || freerdp_path.empty() || jpeg_path.empty() || h264_path.empty() ||
+      opus_path.empty())
     return 3;
   if (!jpeg_roundtrip())
     return 5;
@@ -127,6 +150,8 @@ int main() {
     return 6;
   if (!freerdp_avc420_roundtrip())
     return 7;
+  if (!opus_roundtrip())
+    return 8;
   const auto h264_version = WelsGetCodecVersion();
   const std::unique_ptr<FREERDP_ADDIN *, decltype(&freerdp_channels_addin_list_free)> addins(
       freerdp_channels_list_addins(nullptr, nullptr, nullptr,
@@ -146,7 +171,9 @@ int main() {
             << "\njpegRoundtrip=true\nopenh264=" << h264_version.uMajor << '.'
             << h264_version.uMinor << '.' << h264_version.uRevision
             << "\nopenh264Runtime=" << utf8(h264_path)
-            << "\nh264Roundtrip=true\nfreerdpAvc420Roundtrip=true\nchannels=";
+            << "\nh264Roundtrip=true\nfreerdpAvc420Roundtrip=true\nopus="
+            << opus_get_version_string() << "\nopusRuntime=" << utf8(opus_path)
+            << "\nopusRoundtrip=true\nchannels=";
   for (const auto &channel : channels)
     std::cout << channel << ',';
   std::cout << '\n';
