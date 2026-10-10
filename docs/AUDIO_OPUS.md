@@ -49,7 +49,10 @@ This is an isolated provider. `codecProviders: [.., "libopus"]` describes build
 inventory. It does not advertise usable Opus audio: worker selection, private/public
 Opus framing, source/publisher ownership, browser decode and audible acceptance
 remain open. Public `media.audioOutput: "opus"` is still explicitly unsupported;
-the existing negotiated PCM path is unchanged.
+the existing negotiated PCM path is unchanged. Subsequent isolated preparations
+are documented in [wire framing](AUDIO_OPUS_WIRE.md),
+[browser ownership](AUDIO_OPUS_BROWSER.md) and [native publishing](AUDIO_OPUS_PUBLISHER.md);
+they do not establish public Opus selection or audible RDP acceptance.
 
 Public SDK authority: [pinned Opus API](https://github.com/xiph/opus/blob/v1.6.1/include/opus.h)
 and [pinned controls](https://github.com/xiph/opus/blob/v1.6.1/include/opus_defines.h).

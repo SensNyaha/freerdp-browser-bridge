@@ -302,6 +302,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   malformed-output, late-callback and timeout fixtures pass. The reference viewer
   does not select it yet; publisher/negotiation, audible RDP and broader gates remain
   open. [Browser contract](docs/AUDIO_OPUS_BROWSER.md), [evidence](docs/ITERATION_077.md).
+- [~] IN PROGRESS — Isolated Opus publisher reuses PCM capture/epoch/reset ownership
+  and one fixed encoded retry cache. Actual SDK/native source fixtures verify
+  no re-encoding on blocked retry, latest discontinuous replacement, ordered
+  state/config and reset barriers. Worker/queue/public selection and audible
+  acceptance remain open. [Publisher contract](docs/AUDIO_OPUS_PUBLISHER.md),
+  [evidence](docs/ITERATION_078.md).
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.
