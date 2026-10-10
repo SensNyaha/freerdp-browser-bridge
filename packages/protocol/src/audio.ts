@@ -236,6 +236,33 @@ export function decodePcmAudioConfig(bytes: Buffer): PcmAudioConfig {
     packetFrames: 960,
   };
 }
+/** Standalone config for one-record audio credit. PTS belongs to its first sample packet. */
+export function encodePcmAudioConfigRecord(
+  config: PcmAudioConfig,
+  timestampUs: bigint,
+  sequence: number,
+): Buffer {
+  validateConfig(config);
+  if (
+    typeof timestampUs !== 'bigint' ||
+    timestampUs < 0n ||
+    timestampUs > MAX_TIMESTAMP_US ||
+    !Number.isInteger(sequence) ||
+    sequence < 0 ||
+    sequence > 0xffffffff
+  )
+    throw new ProtocolError();
+  const header = Buffer.alloc(28);
+  header.write('RWB1');
+  header[4] = 1;
+  header[5] = 3;
+  header.writeUInt16BE(2, 6);
+  header.writeUInt32BE(3, 8);
+  header.writeUInt32BE(sequence, 12);
+  header.writeBigUInt64BE(timestampUs, 16);
+  header.writeUInt32BE(PCM_AUDIO_CONFIG_BYTES, 24);
+  return Buffer.concat([header, encodePcmAudioConfig(config)]);
+}
 export function encodePcmAudioPacket(packet: PcmAudioPacket): Buffer {
   validatePacket(packet);
   const bytes = Buffer.alloc(PCM_AUDIO_PACKET_BYTES);

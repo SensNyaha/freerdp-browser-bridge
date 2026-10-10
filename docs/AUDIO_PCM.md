@@ -45,6 +45,27 @@ fragmentation, a ten-second rational clock, bounds, rejection atomicity and rese
 See [iteration 36](ITERATION_036.md). These tests do not prove RDPSND negotiation,
 remote audible output, browser playback, microphone support or LAN queue latency.
 
+## Node PCM record-credit preparation
+
+`PcmMediaSender` owns one receiver credit for ordered RWB1 stream 3 status,
+configuration and PCM records. One copied latest sample packet (3,840 bytes) and
+scalar pending metadata are the only unsent storage. Replacement forces
+discontinuity; source stop/reset clears unsent samples/configuration. Admitted
+records cannot be retracted and keep their credit until exact acknowledgement.
+Configuration waits for the first pending sample and uses its captured PTS;
+source observation timestamps do not rewrite sample time.
+
+Construction from a media lease snapshot replays only copied metadata. The first
+future sample is discontinuous even when joining an existing native source epoch.
+Each record has an independent sequence, with no wrap. A nonblocking consumer
+must copy an admitted record into bounded ordered storage; temporary refusal must
+retain nothing. The caller supplies monotonic integer milliseconds and progress.
+Wrong/duplicate/expired ACK, uncertain write and source protocol errors retire the
+owner. Deadline policy is 20..2,000 ms. Close clears owned samples and credit.
+No socket/timer or public selection is installed yet. Local snapshots expose
+bounded storage and saturating counters; no public audio metrics are added.
+[Pure evidence](ITERATION_068.md).
+
 ## Bounded PCM handoff queue
 
 `native/audio/queue.hpp` stores normalized S16LE stereo in one fixed 23,040-byte

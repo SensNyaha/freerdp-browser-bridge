@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 export * from './session-manager.js';
 export * from './native-session.js';
+export * from './pcm-delivery.js';
 import { EventEmitter } from 'node:events';
 import { PcmSource } from './pcm-source.js';
 export type { PcmSourceEvent } from './pcm-source.js';
