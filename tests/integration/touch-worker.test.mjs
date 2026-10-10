@@ -4,7 +4,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { once } from 'node:events';
-import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
+import {
+  WorkerProcess,
+  NativeSessionWorker,
+  SessionManager,
+} from '../../packages/node-bridge/dist/index.js';
 import { eventually } from '../fixtures/session-worker.mjs';
 const suffix = process.platform === 'win32' ? '.exe' : '';
 const directory = process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation';
@@ -28,6 +32,61 @@ async function run(host, body, path = 'fixture-touch') {
   }
 }
 const contact = (action, id = 1) => ({ action, contactId: id, x: 100, y: 110 });
+test('fake touch native adapter: public lease reaches private IPC, full/invalid contacts preserve session and release reset permits reuse', async () => {
+  const runtimeRoot = await mkdtemp(join(tmpdir(), 'bridge-touch-adapter-'));
+  const manager = new SessionManager({
+    workerFactory: () =>
+      new NativeSessionWorker({
+        workerPath: resolve(directory, 'fixture-touch' + suffix),
+        runtimeRoot,
+      }),
+  });
+  const owner = { id: 'touch-native-fixture' };
+  try {
+    const session = manager.create(
+      { target: { host: 'ready' }, auth: {}, input: { touch: true } },
+      owner,
+      'local',
+    );
+    await eventually(
+      () => manager.get(session.sessionId, owner).state === 'connected',
+    );
+    const attach = () =>
+      manager.attach(
+        session.sessionId,
+        manager.mintToken(session.sessionId, owner, 'control').token,
+        'control',
+      );
+    const lease = attach();
+    await eventually(() => lease.touch?.availability === 'ready');
+    const send = (id, action = 'begin') =>
+      lease.sendInput({
+        type: 'touch',
+        ...contact(action, id),
+        generation: 1n,
+      });
+    for (let id = 0; id < 10; id++) await send(id);
+    await assert.rejects(send(10), { code: 'INPUT_QUEUE_FULL' });
+    await assert.rejects(send(1), { code: 'INPUT_TOUCH_INVALID_TRANSITION' });
+    assert.equal(manager.get(session.sessionId, owner).state, 'connected');
+    lease.release();
+    const next = attach();
+    await next.sendInput({
+      type: 'touch',
+      ...contact('begin', 1),
+      generation: 1n,
+    });
+    await next.sendInput({
+      type: 'touch',
+      ...contact('end', 1),
+      generation: 1n,
+    });
+    next.release();
+  } finally {
+    await manager.shutdown();
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+});
 test('fake touch IPC: opt-in, generation, ten-contact ownership, reset and typed rejection preserve worker health', async () => {
   await run('ready', async (worker, config) => {
     assert.equal(worker.build.capabilities.touchInput, true);

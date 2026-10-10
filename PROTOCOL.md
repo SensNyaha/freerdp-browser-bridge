@@ -108,6 +108,41 @@ only on sent or detach, remains on unavailable/paused, and is never echoed in ev
 logs or metrics. A timed-out viewer detaches; its outcome is uncertain. Physical
 canvas input remains available for shortcuts. See [input contract](docs/INPUT.md).
 
+### Experimental touch input (v1 additive extension)
+
+Session creation explicitly sets `input.touch=true`. `touch.info` is an additive
+control-only readiness event with exactly `revision`, `generation` (nonzero u64
+decimal strings), `width`, `height`, `enabled`, `maxContacts` and `availability`.
+Availability is unavailable, handshake, ready, suspended, draining or incompatible.
+Only ready has 1..10 maxContacts; other states have zero. Compiled touch capability
+does not establish channel readiness, physical device support or remote acceptance.
+Metadata is replayed on control attachment. No coordinates/contact IDs are logged.
+
+`input.touch` data has exactly `{ "action": "begin", "contactId": 7, "x": 100,
+"y": 200, "generation": "1" }`. Actions are begin/update/end/cancel, external IDs
+are integers 0..2,147,483,647, x/y are bounded absolute coordinates 0..7679/4319.
+Generation must match observed readiness and current display. Unknown fields,
+invalid shapes and overflowing epochs are protocol errors; no mouse substitution.
+
+Only the current connected control lease may enqueue contacts. Touch shares the
+64-slot serialized input queue. Lease, readiness, generation and resize pause are
+rechecked immediately before dispatch; rejected gestures are never replayed.
+Reset is a terminal-contact barrier, also used on detach/resize/focus loss.
+`input.touch.paused` carries `{ "requestSeq": 482, "code": "INPUT_TOUCH_UNAVAILABLE" }`;
+codes also include INPUT_DISPLAY_TRANSITION, INPUT_TOUCH_INVALID_TRANSITION and
+INPUT_QUEUE_FULL (native contact capacity, as well as the bounded host queue).
+These semantic refusals leave the attachment/session alive; the harness clears
+its local contacts and sends one reset when input was active. Successful submission
+is API acceptance, not acknowledgement from the remote application.
+
+The harness captures only Pointer Events with pointerType=touch and at most ten
+contacts within negotiated limits. It uses the rendered display generation and
+geometry, captures each pointer, forwards ordered transitions without a gesture
+backlog, and cancels on pointercancel/lost capture. Blur/visibility/dispose or an
+unavailable/new-generation event clears local ownership and resets server input.
+Pen remains unsupported. Physical device and actual application acceptance remain
+open; Edge emulated pointer/fake-control tests are not those acceptance tests.
+
 ### Experimental Display Control (v1 additive extension)
 
 Session creation must explicitly set `display.dynamicResolution=true`. A compiled

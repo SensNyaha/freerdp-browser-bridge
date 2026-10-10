@@ -538,3 +538,20 @@ Actual XRDP reported RDPEI ready with ten contacts after handshake; no contact w
 sent by that inventory probe. Public lease/browser capture, physical touch and
 remote application acceptance remain separate gates. Timestamp-remoting/v1.0,
 same-plugin reopening and resource/reassembly audits remain open.
+
+### Public touch controller and browser capture
+
+[Iteration 30](ITERATION_030.md) connects touch to the existing control lease and
+bounded serialized input path. Readiness/geometry/generation are checked both at
+admission and delivery, including queued commands. Lease loss discards stale
+commands and queues reset before a replacement controller. TOUCH_UPDATE is
+forwarded as decimal-string `touch.info`, replayed only on control attachment.
+
+The reference harness uses rendered display ownership before capturing a touch
+pointer. At most ten active contacts are retained; there is no gesture queue or
+automatic touch-to-mouse conversion. Terminal events remove local ownership before
+releasing capture; subsequent lost capture cannot duplicate UP. A single lost
+touch capture cancels that contact. Global focus/visibility/dispose/readiness/epoch
+loss clears local state and sends reset when active. Physical input is unchanged.
+Semantic unavailable/stale/invalid-transition errors preserve the session and
+request local reset without replay. Device and remote application gates remain.

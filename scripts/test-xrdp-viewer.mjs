@@ -85,6 +85,7 @@ for (const [url, name, type] of [
   ['/harness/text.js', 'text.js', 'text/javascript'],
   ['/harness/cursor.js', 'cursor.js', 'text/javascript'],
   ['/harness/display.js', 'display.js', 'text/javascript'],
+  ['/harness/touch.js', 'touch.js', 'text/javascript'],
 ]) {
   const bytes = await readFile(resolve('apps/reference-harness', name));
   server.get(url, (_request, reply) =>
@@ -118,6 +119,7 @@ try {
         height: 1080,
         dynamicResolution: resizeTest || manual,
       },
+      input: { touch: manual },
       security: { certificatePolicy: 'prompt' },
       timeouts: { connectMs: 20000, tcpAckMs: 10000 },
       ...(quality ? { quality } : {}),

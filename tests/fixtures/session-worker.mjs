@@ -26,6 +26,10 @@ export class FakeSessionWorker extends EventEmitter {
     this.on('display', listener);
     return () => this.off('display', listener);
   }
+  onTouch(listener) {
+    this.on('touch', listener);
+    return () => this.off('touch', listener);
+  }
   async start(config, signal) {
     this.started++;
     this.received = config;

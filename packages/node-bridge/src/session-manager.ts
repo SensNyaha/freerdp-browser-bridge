@@ -4,6 +4,8 @@ import {
   validateCursorState,
   validateDisplayState,
   validInputText,
+  validTouchInput,
+  validateTouchState,
 } from '@freerdp-bridge/protocol';
 import {
   ConfigError,
@@ -23,9 +25,16 @@ import type {
   CursorState,
   DisplayState,
   DisplayResizeResult,
+  TouchState,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
+  INPUT_TOUCH_UNAVAILABLE: [409, 'Touch input is unavailable or paused', true],
+  INPUT_TOUCH_INVALID_TRANSITION: [
+    409,
+    'Touch contact transition is invalid',
+    false,
+  ],
   INPUT_INVALID: [400, 'Input record is invalid', false],
   DISPLAY_NOT_IMPLEMENTED: [
     501,
@@ -135,11 +144,13 @@ export interface SessionEvent {
     | 'certificate.prompt'
     | 'display.info'
     | 'display.resize'
+    | 'touch.info'
     | 'cursor.state';
   session: SessionSnapshot;
   certificate?: CertificatePrompt;
   cursor?: CursorState;
   display?: DisplayState;
+  touch?: TouchState;
   resizing?: boolean;
 }
 export interface DisplayResizeRequest {
@@ -162,6 +173,7 @@ export interface SessionWorker {
   onCertificate?(listener: (prompt: CertificatePrompt) => void): () => void;
   onCursor?(listener: (cursor: CursorState) => void): () => void;
   onDisplay?(listener: (display: DisplayState) => void): () => void;
+  onTouch?(listener: (touch: TouchState) => void): () => void;
   resizeDisplay?(width: number, height: number): Promise<DisplayResizeResult>;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
   captureFrame?(
@@ -190,6 +202,8 @@ type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
   videoQuality: VideoQuality;
   dynamicResolution: boolean;
+  touchEnabled: boolean;
+  touch?: TouchState;
   display?: DisplayState;
   resize?: symbol;
   cursor?: CursorState;
@@ -356,6 +370,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       const entry: Entry = {
         videoQuality: resolveVideoQuality(config.quality),
         dynamicResolution: config.display?.dynamicResolution === true,
+        touchEnabled: config.input?.touch === true,
         owner,
         worker,
         abort: new AbortController(),
@@ -494,6 +509,41 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
               );
             }),
           );
+        if (worker.onTouch)
+          entry.unsubscribers.push(
+            worker.onTouch((touch) => {
+              if (
+                entry.released ||
+                terminal(entry.snapshot.state) ||
+                entry.snapshot.state === 'closing'
+              )
+                return;
+              const previous = entry.touch;
+              try {
+                validateTouchState(touch);
+                if (
+                  entry.snapshot.state !== 'connected' ||
+                  touch.enabled !== entry.touchEnabled ||
+                  (previous &&
+                    (touch.revision <= previous.revision ||
+                      touch.generation < previous.generation ||
+                      (touch.generation === previous.generation &&
+                        (touch.width !== previous.width ||
+                          touch.height !== previous.height))))
+                )
+                  throw new Error('Invalid touch state');
+              } catch {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+                return;
+              }
+              entry.touch = { ...touch };
+              this.emit('event', {
+                type: 'touch.info',
+                session: structuredClone(entry.snapshot),
+                touch: { ...touch },
+              });
+            }),
+          );
         if (terminal(entry.snapshot.state))
           throw new SessionError('WORKER_START_FAILED');
       } catch {
@@ -589,6 +639,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     delete entry.certificate;
     delete entry.cursor;
     delete entry.display;
+    delete entry.touch;
     entry.abort.abort();
     this.totals.failed++;
     this.transition(entry, 'failed');
@@ -605,6 +656,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     delete entry.certificate;
     delete entry.cursor;
     delete entry.display;
+    delete entry.touch;
     for (const unsubscribe of entry.unsubscribers.splice(0)) {
       try {
         unsubscribe();
@@ -687,6 +739,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     certificate?: CertificatePrompt;
     cursor?: CursorState;
     readonly display: DisplayState | undefined;
+    readonly touch: TouchState | undefined;
     readonly resizing: boolean;
     resizeDisplay: (
       request: DisplayResizeRequest,
@@ -725,6 +778,9 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       get display() {
         return entry.display && { ...entry.display };
       },
+      get touch() {
+        return entry.touch && { ...entry.touch };
+      },
       get resizing() {
         return Boolean(entry.resize);
       },
@@ -758,6 +814,13 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
           return Promise.reject(new SessionError('INPUT_DISPLAY_TRANSITION'));
         if (event.type === 'text' && !validInputText(event.text))
           return Promise.reject(new SessionError('INPUT_INVALID'));
+        if (event.type === 'touch') {
+          try {
+            this.checkTouch(entry, event);
+          } catch (error) {
+            return Promise.reject(error);
+          }
+        }
         if (entry.inputPending >= 64)
           return Promise.reject(new SessionError('INPUT_QUEUE_FULL'));
         // Queued commands lose authority immediately when this lease is released.
@@ -966,6 +1029,36 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       this.displayEvent(entry);
     }
   }
+  private checkTouch(
+    entry: Entry,
+    event: Extract<InputEvent, { type: 'touch' }>,
+  ): void {
+    const { action, contactId, x, y, generation } = event;
+    if (
+      Object.keys(event).length !== 6 ||
+      !validTouchInput({ action, contactId, x, y }) ||
+      typeof generation !== 'bigint' ||
+      generation < 1n ||
+      generation > 0xffffffffffffffffn
+    )
+      throw new SessionError('INPUT_INVALID');
+    if (
+      !entry.touchEnabled ||
+      !entry.touch?.enabled ||
+      entry.touch.availability !== 'ready'
+    )
+      throw new SessionError('INPUT_TOUCH_UNAVAILABLE');
+    const state = entry.touch;
+    if (
+      entry.resize ||
+      generation !== state.generation ||
+      (entry.display &&
+        (entry.display.generation !== generation ||
+          entry.display.width !== state.width ||
+          entry.display.height !== state.height))
+    )
+      throw new SessionError('INPUT_DISPLAY_TRANSITION');
+  }
   private queueInput(
     entry: Entry,
     event: InputEvent,
@@ -978,22 +1071,30 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.inputPending++;
     const delivery = entry.inputTail.then(async () => {
       if (entry.released || entry.snapshot.state !== 'connected') {
-        if (event.type === 'text')
+        if (event.type === 'text' || event.type === 'touch')
           throw new SessionError('INPUT_NOT_CONNECTED');
         return;
       }
       if (!authorized()) throw new SessionError('ATTACH_INVALID');
+      if (event.type === 'touch') this.checkTouch(entry, event);
       await entry.worker.sendInput!(event);
     });
     entry.inputTail = delivery
       .catch((error: unknown) => {
         if (
           !(
+            event.type === 'touch' &&
+            error instanceof SessionError &&
+            error.code === 'INPUT_QUEUE_FULL'
+          ) &&
+          !(
             error instanceof SessionError &&
             [
               'ATTACH_INVALID',
               'INPUT_DISPLAY_TRANSITION',
               'INPUT_NOT_IMPLEMENTED',
+              'INPUT_TOUCH_UNAVAILABLE',
+              'INPUT_TOUCH_INVALID_TRANSITION',
             ].includes(error.code)
           )
         )

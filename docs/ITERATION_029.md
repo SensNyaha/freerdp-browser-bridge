@@ -2,6 +2,7 @@
 
 Date: 2026-10-10. Implements SPECIFICATION §2.5, ARCHITECTURE §7 and Stage 5
 under ADR-008 / ADR-009 / ADR-011. FreeRDP pin and single-display scope unchanged.
+Implementation commit: `6a34e2f`.
 
 The worker now creates the bounded Contacts owner on its RDP thread when opted in,
 publishes negotiated readiness, validates generation-bound requests and shares a

@@ -12,7 +12,7 @@ const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
 )('ws');
 
-async function fixture(run) {
+async function fixture(run, input) {
   const worker = new FakeSessionWorker();
   const sent = [];
   worker.sendInput = async (e) => {
@@ -74,6 +74,7 @@ async function fixture(run) {
         payload: {
           target: { host: 'fake.test' },
           auth: { username: 'fixture' },
+          ...(input ? { input } : {}),
         },
       })
     ).json();
@@ -101,6 +102,214 @@ async function fixture(run) {
     await server.close();
   }
 }
+test('Touch control: readiness replay, generation rejection and pause leave the attachment connected', async () => {
+  await fixture(
+    async ({ ws, worker, sent }) => {
+      const state = {
+        revision: 1n,
+        generation: 1n,
+        width: 1920,
+        height: 1080,
+        enabled: true,
+        maxContacts: 10,
+        availability: 'ready',
+      };
+      const ready = once(ws, 'message');
+      worker.emit('touch', state);
+      const report = JSON.parse((await ready)[0]);
+      assert.equal(report.type, 'touch.info');
+      assert.equal(report.data.generation, '1');
+      assert.equal(report.data.revision, '1');
+      let seq = 0;
+      const send = (generation) =>
+        ws.send(
+          JSON.stringify({
+            v: 1,
+            type: 'input.touch',
+            seq: seq++,
+            ts: Date.now(),
+            data: { action: 'begin', contactId: 3, x: 20, y: 30, generation },
+          }),
+        );
+      send('1');
+      await eventually(() => sent.length === 1);
+      assert.equal(sent[0].type, 'touch');
+      assert.equal(sent[0].generation, 1n);
+      const stale = once(ws, 'message');
+      send('2');
+      assert.equal(
+        JSON.parse((await stale)[0]).data.code,
+        'INPUT_DISPLAY_TRANSITION',
+      );
+      const paused = once(ws, 'message');
+      worker.emit('touch', {
+        ...state,
+        revision: 2n,
+        availability: 'suspended',
+        maxContacts: 0,
+      });
+      assert.equal(
+        JSON.parse((await paused)[0]).data.availability,
+        'suspended',
+      );
+      const unavailable = once(ws, 'message');
+      send('1');
+      assert.equal(
+        JSON.parse((await unavailable)[0]).data.code,
+        'INPUT_TOUCH_UNAVAILABLE',
+      );
+      assert.equal(ws.readyState, WebSocket.OPEN);
+      assert.equal(sent.length, 1);
+    },
+    { touch: true },
+  );
+});
+
+test(
+  'Edge touch fixture: two captured contacts preserve coordinates/order, cancel stays touch and blur resets ownership',
+  { skip: process.platform !== 'win32', timeout: 45000 },
+  async () => {
+    await fixture(
+      async ({ sent, ws, origin, worker }) => {
+        worker.emit('touch', {
+          revision: 1n,
+          generation: 1n,
+          width: 1920,
+          height: 1080,
+          enabled: true,
+          maxContacts: 10,
+          availability: 'ready',
+        });
+        const browser = await chromium.launch({
+          channel: 'msedge',
+          headless: true,
+        });
+        try {
+          const page = await browser.newPage({
+            hasTouch: true,
+            viewport: { width: 1200, height: 800 },
+          });
+          await page.goto(origin + '/fixture');
+          let sequence = 0;
+          await page.exposeFunction('sendTouchInput', (type, data) =>
+            ws.send(
+              JSON.stringify({
+                v: 1,
+                type,
+                seq: sequence++,
+                ts: Date.now(),
+                data,
+              }),
+            ),
+          );
+          await page.evaluate(async () => {
+            const { installInput } = await import('/input.js');
+            window.touchReady = { generation: '1', maxContacts: 10 };
+            const canvas = document.querySelector('canvas');
+            canvas.style.touchAction = 'none';
+            window.touchDispose = installInput(
+              canvas,
+              (type, data) => {
+                void window.sendTouchInput(type, data);
+                return true;
+              },
+              () => true,
+              () => {
+                throw new Error('Fixture send failed');
+              },
+              () => true,
+              () => window.touchReady,
+            );
+          });
+          const cdp = await page.context().newCDPSession(page);
+          const rect = await page.locator('canvas').boundingBox();
+          const points = [
+            { id: 1, x: rect.x + 100, y: rect.y + 100 },
+            { id: 2, x: rect.x + 200, y: rect.y + 150 },
+          ];
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: points,
+          });
+          await eventually(
+            () => sent.filter((e) => e.type === 'touch').length === 2,
+          );
+          const begins = sent.filter((e) => e.type === 'touch');
+          assert.deepEqual(
+            begins.map((e) => [e.action, e.x, e.y]),
+            [
+              ['begin', 200, 200],
+              ['begin', 400, 300],
+            ],
+          );
+          assert.notEqual(begins[0].contactId, begins[1].contactId);
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: points.map((p) => ({
+              ...p,
+              x: p.x + 20,
+              y: p.y + 10,
+            })),
+          });
+          await eventually(
+            () =>
+              sent.filter((e) => e.type === 'touch' && e.action === 'update')
+                .length === 2,
+          );
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchCancel',
+            touchPoints: [],
+          });
+          await eventually(
+            () =>
+              sent.filter((e) => e.type === 'touch' && e.action === 'cancel')
+                .length === 2,
+          );
+          assert.equal(sent.filter((e) => e.type === 'reset').length, 0);
+          assert.equal(
+            sent.some((e) => ['move', 'button', 'wheel'].includes(e.type)),
+            false,
+          );
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [points[0]],
+          });
+          await eventually(
+            () =>
+              sent.filter((e) => e.type === 'touch' && e.action === 'begin')
+                .length === 3,
+          );
+          await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+          await eventually(
+            () => sent.filter((e) => e.type === 'reset').length === 1,
+          );
+          const count = sent.length;
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchEnd',
+            touchPoints: [],
+          });
+          await page.evaluate(() => {
+            window.touchReady = undefined;
+          });
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [points[0]],
+          });
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchEnd',
+            touchPoints: [],
+          });
+          assert.equal(sent.length, count);
+          await page.evaluate(() => window.touchDispose());
+        } finally {
+          await browser.close();
+        }
+      },
+      { touch: true },
+    );
+  },
+);
+
 test('Unicode control: correlated text completion, unavailable backend stays connected and invalid data is rejected', async () => {
   await fixture(async ({ ws, sent, worker }) => {
     let sequence = 0;

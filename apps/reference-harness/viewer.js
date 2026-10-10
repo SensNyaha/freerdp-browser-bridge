@@ -2,6 +2,7 @@ import { installInput } from './input.js';
 import { installText, validText } from './text.js';
 import { installCursor } from './cursor.js';
 import { displayState, resizeResult, displayInputReady } from './display.js';
+import { touchState, touchInputReady } from './touch.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -274,6 +275,7 @@ function attach(created, options = {}) {
       displayInputReady(session),
     () => detach(),
     () => !session.closed && session.connected && session === current,
+    () => touchInputReady(session),
   );
   status.textContent = 'Подключение';
   const fail = () => {
@@ -313,6 +315,16 @@ function attach(created, options = {}) {
         session.display = observed;
         stats.displayGeneration = session.display.generation;
         updateResize();
+      } else if (message.type === 'touch.info') {
+        const observed = touchState(message.data, session.touch);
+        if (
+          observed.availability !== 'ready' ||
+          (session.touch && session.touch.generation !== observed.generation)
+        )
+          session.disposeInput.reset();
+        session.touch = observed;
+      } else if (message.type === 'input.touch.paused') {
+        session.disposeInput.reset();
       } else if (message.type === 'display.resize.result') {
         const result = resizeResult(message.data);
         if (session.resizeRequest?.seq === message.data.requestSeq) {

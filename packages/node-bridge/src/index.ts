@@ -494,6 +494,10 @@ export class WorkerProcess extends EventEmitter {
   }
 
   async sendInput(event: InputEvent): Promise<void> {
+    if (event.type === 'touch') {
+      const { action, contactId, x, y, generation } = event;
+      return this.sendTouch({ action, contactId, x, y }, generation);
+    }
     const text = event.type === 'text';
     const payload = text ? encodeInputText(event.text) : encodeInput(event);
     try {

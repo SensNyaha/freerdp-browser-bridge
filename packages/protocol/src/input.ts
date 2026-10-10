@@ -1,4 +1,5 @@
 import { ProtocolError } from './index.js';
+import type { TouchInput } from './touch.js';
 
 export type InputEvent =
   | { type: 'key'; scancode: number; down: boolean; repeat: boolean }
@@ -7,6 +8,7 @@ export type InputEvent =
   | { type: 'wheel'; delta: number; horizontal: boolean }
   | { type: 'sync'; toggles: number }
   | { type: 'text'; text: string }
+  | ({ type: 'touch'; generation: bigint } & TouchInput)
   | { type: 'reset' };
 
 export const MAX_TEXT_UNITS = 256;

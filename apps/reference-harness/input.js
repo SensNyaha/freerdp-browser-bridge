@@ -7,6 +7,7 @@ export function installInput(
   connected,
   failed,
   resetConnected = connected,
+  touchReady = () => undefined,
 ) {
   const namedKeys = new Set(
     'Escape Minus Equal Backspace Tab BracketLeft BracketRight Enter ControlLeft ControlRight Semicolon Quote Backquote ShiftLeft ShiftRight Backslash Comma Period Slash AltLeft AltRight Space CapsLock NumLock ScrollLock IntlBackslash PrintScreen Home ArrowUp PageUp ArrowLeft ArrowRight End ArrowDown PageDown Insert Delete MetaLeft MetaRight ContextMenu'.split(
@@ -26,6 +27,7 @@ export function installInput(
   const modifiers = createModifierState();
   const wheel = createWheelState();
   const listeners = [];
+  const contacts = new Map();
   function on(target, name, handler, options) {
     target.addEventListener(name, handler, options);
     listeners.push(() => target.removeEventListener(name, handler, options));
@@ -47,6 +49,15 @@ export function installInput(
     animation = undefined;
     const release = active;
     active = false;
+    const captured = [...contacts.keys()];
+    contacts.clear();
+    for (const id of captured) {
+      try {
+        if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+      } catch {
+        /* Capture may already have been released by the browser. */
+      }
+    }
     wheel.reset();
     modifiers.reset(
       (event?.type === 'blur' && event.currentTarget === win) ||
@@ -88,6 +99,67 @@ export function installInput(
     ['keyup', false],
   ])
     on(win, name, (event) => modifiers.observe(event, down), true);
+  for (const [name, action] of [
+    ['pointerdown', 'begin'],
+    ['pointermove', 'update'],
+    ['pointerup', 'end'],
+    ['pointercancel', 'cancel'],
+    ['lostpointercapture', 'cancel'],
+  ])
+    on(canvas, name, (event) => {
+      if (event.pointerType !== 'touch') return;
+      const previous = contacts.get(event.pointerId);
+      if (action !== 'begin' && !previous) return;
+      const state = connected() && touchReady();
+      if (!state || (previous && previous.generation !== state.generation)) {
+        reset();
+        return;
+      }
+      if (
+        !Number.isInteger(event.pointerId) ||
+        event.pointerId < 0 ||
+        event.pointerId > 0x7fffffff
+      )
+        return;
+      if (
+        action === 'begin' &&
+        (previous || contacts.size >= Math.min(10, state.maxContacts))
+      )
+        return;
+      const p = action === 'cancel' ? previous : position(event);
+      if (!p) return;
+      event.preventDefault();
+      wheel.reset();
+      if (action === 'begin') {
+        canvas.focus({ preventScroll: true });
+        try {
+          canvas.setPointerCapture(event.pointerId);
+        } catch {
+          return;
+        }
+      }
+      if (action === 'end' || action === 'cancel')
+        contacts.delete(event.pointerId);
+      else
+        contacts.set(event.pointerId, { ...p, generation: state.generation });
+      active = true;
+      flush();
+      emit('input.touch', {
+        action,
+        contactId: event.pointerId,
+        x: p.x,
+        y: p.y,
+        generation: state.generation,
+      });
+      if (action === 'end' || action === 'cancel') {
+        try {
+          if (canvas.hasPointerCapture(event.pointerId))
+            canvas.releasePointerCapture(event.pointerId);
+        } catch {
+          /* Terminal ownership is already removed before capture callbacks. */
+        }
+      }
+    });
   on(canvas, 'pointermove', (event) => {
     if (!connected() || event.pointerType !== 'mouse') return;
     if (doc.activeElement === canvas) reconcile(modifiers.snapshot(event));
@@ -162,8 +234,11 @@ export function installInput(
     { passive: false },
   );
   on(canvas, 'contextmenu', (event) => event.preventDefault());
-  for (const name of ['blur', 'pointercancel', 'lostpointercapture'])
-    on(canvas, name, reset);
+  on(canvas, 'blur', reset);
+  for (const name of ['pointercancel', 'lostpointercapture'])
+    on(canvas, name, (event) => {
+      if (event.pointerType !== 'touch') reset(event);
+    });
   on(win, 'blur', reset);
   on(doc, 'visibilitychange', () => {
     if (doc.hidden) reset({ type: 'visibilitychange' });

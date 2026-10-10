@@ -7,7 +7,11 @@ import { installMedia } from './media.js';
 import { displayData } from './display.js';
 import { normalizeInput } from './input.js';
 import type { MediaMetrics } from './metrics.js';
-import type { CursorState, DisplayState } from '@freerdp-bridge/protocol';
+import type {
+  CursorState,
+  DisplayState,
+  TouchState,
+} from '@freerdp-bridge/protocol';
 import {
   publicSessionError,
   type SessionManager,
@@ -42,6 +46,13 @@ const knownCommands = new Set([
   'media.request-keyframe',
   'session.detach',
 ]);
+function touchData(state: TouchState) {
+  return {
+    ...state,
+    revision: state.revision.toString(),
+    generation: state.generation.toString(),
+  };
+}
 const certificateResponse = TypeCompiler.Compile(
   Type.Object(
     {
@@ -134,6 +145,11 @@ export function installSessionWebSockets(
         if (entry.channel === 'control')
           send(ws, value.type, displayData(value.display, value.resizing));
         else entry.display?.(value.display, value.resizing ?? false);
+        continue;
+      }
+      if (value.touch) {
+        if (entry.channel === 'control')
+          send(ws, 'touch.info', touchData(value.touch));
         continue;
       }
       if (entry.channel === 'control')
@@ -278,6 +294,7 @@ export function installSessionWebSockets(
         if (lease.display)
           send(ws, 'display.info', displayData(lease.display, lease.resizing));
         if (lease.cursor) sendCursor(ws, lease.cursor);
+        if (lease.touch) send(ws, 'touch.info', touchData(lease.touch));
         if (lease.certificate)
           send(ws, 'certificate.prompt', lease.certificate);
         let lastSequence = -1;
@@ -326,6 +343,7 @@ export function installSessionWebSockets(
               'input.wheel',
               'input.reset',
               'input.sync',
+              'input.touch',
             ].includes(data.type)
           ) {
             if (data.type === 'input.text' && ++commands > 32) {
@@ -354,6 +372,21 @@ export function installSessionWebSockets(
                 .catch((error: unknown) => {
                   if (ws.readyState !== WebSocket.OPEN) return;
                   const failure = publicSessionError(error).failure;
+                  if (
+                    input.type === 'touch' &&
+                    [
+                      'INPUT_DISPLAY_TRANSITION',
+                      'INPUT_TOUCH_UNAVAILABLE',
+                      'INPUT_TOUCH_INVALID_TRANSITION',
+                      'INPUT_QUEUE_FULL',
+                    ].includes(failure.code)
+                  ) {
+                    send(ws, 'input.touch.paused', {
+                      requestSeq,
+                      code: failure.code,
+                    });
+                    return;
+                  }
                   if (input.type === 'text') {
                     send(ws, 'input.text.result', {
                       requestSeq,

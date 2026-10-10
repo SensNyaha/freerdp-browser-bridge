@@ -56,11 +56,33 @@ const sync = TypeCompiler.Compile(
 const text = TypeCompiler.Compile(
   Type.Object({ text: Type.String({ minLength: 1, maxLength: 256 }) }, object),
 );
+const touch = TypeCompiler.Compile(
+  Type.Object(
+    {
+      action: Type.Union(
+        (['begin', 'update', 'end', 'cancel'] as const).map((action) =>
+          Type.Literal(action),
+        ),
+      ),
+      contactId: coordinate(0x7fffffff),
+      x: coordinate(7679),
+      y: coordinate(4319),
+      generation: Type.String({ pattern: '^[1-9][0-9]{0,19}$' }),
+    },
+    object,
+  ),
+);
 
 export function normalizeInput(
   type: string,
   data: unknown,
 ): InputEvent | undefined {
+  if (
+    type === 'input.touch' &&
+    touch.Check(data) &&
+    BigInt(data.generation) <= 0xffffffffffffffffn
+  )
+    return { type: 'touch', ...data, generation: BigInt(data.generation) };
   if (type === 'input.text' && text.Check(data) && validInputText(data.text))
     return { type: 'text', text: data.text };
   if (type === 'input.key' && key.Check(data)) {

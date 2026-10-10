@@ -117,19 +117,36 @@ export function decodeTouchState(p: Buffer): TouchState {
     maxContacts: p.readUInt16BE(24),
     enabled: p[2] === 1,
   };
+  if (!availability) throw new ProtocolError();
+  const value = { ...state, availability };
+  validateTouchState(value);
+  return value;
+}
+/** Trusted backend metadata must satisfy the same bounds as native IPC. */
+export function validateTouchState(state: TouchState): void {
+  const u64 = (value: unknown) =>
+    typeof value === 'bigint' && value > 0n && value <= 0xffffffffffffffffn;
   if (
-    !availability ||
-    !state.revision ||
-    !state.generation ||
-    !state.width ||
-    state.width > 7680 ||
-    !state.height ||
-    state.height > 4320 ||
-    (!state.enabled && availability !== 'unavailable') ||
-    (availability === 'ready'
-      ? state.maxContacts < 1 || state.maxContacts > 10
+    !state ||
+    !u64(state.revision) ||
+    !u64(state.generation) ||
+    !integer(state.width, 7680) ||
+    state.width === 0 ||
+    !integer(state.height, 4320) ||
+    state.height === 0 ||
+    typeof state.enabled !== 'boolean' ||
+    ![
+      'unavailable',
+      'ready',
+      'suspended',
+      'draining',
+      'handshake',
+      'incompatible',
+    ].includes(state.availability) ||
+    (!state.enabled && state.availability !== 'unavailable') ||
+    (state.availability === 'ready'
+      ? !integer(state.maxContacts, 10) || state.maxContacts === 0
       : state.maxContacts !== 0)
   )
     throw new ProtocolError();
-  return { ...state, availability };
 }

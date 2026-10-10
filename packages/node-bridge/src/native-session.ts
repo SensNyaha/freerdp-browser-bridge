@@ -18,6 +18,7 @@ import type {
   PipelineStats,
   DisplayState,
   DisplayResizeResult,
+  TouchState,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -41,6 +42,9 @@ export class NativeSessionWorker implements SessionWorker {
     });
     this.worker.on('display', (display: DisplayState) => {
       if (!this.closing) this.events.emit('display', display);
+    });
+    this.worker.on('touch', (touch: TouchState) => {
+      if (!this.closing) this.events.emit('touch', touch);
     });
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
@@ -128,6 +132,12 @@ export class NativeSessionWorker implements SessionWorker {
       this.events.off('display', listener);
     };
   }
+  onTouch(listener: (state: TouchState) => void): () => void {
+    this.events.on('touch', listener);
+    return () => {
+      this.events.off('touch', listener);
+    };
+  }
   async resizeDisplay(
     width: number,
     height: number,
@@ -178,6 +188,21 @@ export class NativeSessionWorker implements SessionWorker {
       await this.worker.sendInput(event);
     } catch (error) {
       if (error instanceof SessionError) throw error;
+      if (
+        event.type === 'touch' &&
+        error instanceof WorkerError &&
+        error.code === 'INPUT_QUEUE_FULL'
+      )
+        throw new SessionError('INPUT_QUEUE_FULL');
+      if (
+        error instanceof WorkerError &&
+        ['TOUCH_UNAVAILABLE', 'TOUCH_INVALID_TRANSITION'].includes(error.code)
+      )
+        throw new SessionError(
+          error.code === 'TOUCH_UNAVAILABLE'
+            ? 'INPUT_TOUCH_UNAVAILABLE'
+            : 'INPUT_TOUCH_INVALID_TRANSITION',
+        );
       throw new SessionError(
         error instanceof WorkerError &&
         error.code === 'INPUT_DISPLAY_TRANSITION'
