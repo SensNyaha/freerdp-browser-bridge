@@ -13,6 +13,9 @@ reauthorize a locally revoked owner: a server grant removal must be observed
 before a new grant and explicit permission can create a new token. Old callbacks
 cannot submit or revoke a replacement owner.
 
+Iteration 121 adds the separate [capture Worklet](MICROPHONE_CAPTURE.md).
+Permission/device ownership and composition with this sender remain open.
+
 The sender owns one 3,840-byte latest unsent slot and one issued packet's scalar
 ACK correlation. It copies caller PCM, replaces rather than queues pending
 samples, and expires unsent candidates after 120 ms. The encoded record is the

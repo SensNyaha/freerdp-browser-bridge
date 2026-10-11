@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 354/354 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 363/363 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -593,6 +593,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   reentrant callbacks pass eight synthetic cases. Capture/device ownership,
   viewer/native selection and actual remote/physical/LAN acceptance remain open.
   [Contract](docs/MICROPHONE_SENDER.md), [evidence](docs/ITERATION_120.md).
+- [~] IN PROGRESS — Isolated 48 kHz microphone capture packetizer and AudioWorklet
+  have a fixed collector/latest block and one transferred packet awaiting port
+  ACK, sample-clock timestamps, age/deadline guards and silent local output.
+  Six pure, two simulated processor/parser and actual Edge synthetic offline/live
+  checks pass. No device permission is requested; permission/track/context owner,
+  sender/viewer/native composition and actual microphone acceptance remain open.
+  [Contract](docs/MICROPHONE_CAPTURE.md), [evidence](docs/ITERATION_121.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).
