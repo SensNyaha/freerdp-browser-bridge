@@ -17,6 +17,8 @@ import {
   decodeMicrophoneState,
   encodeMicrophonePcm,
   decodeMicrophoneResult,
+  encodeMicrophoneReset,
+  decodeMicrophoneResetResult,
 } from '../../packages/protocol/dist/index.js';
 
 const workerPath = resolve(
@@ -79,6 +81,13 @@ for (const output of ['off', 'pcm', 'opus'])
       };
       try {
         await request(Kind.Hello, Kind.HelloAck, 1n, helloPayload());
+        const reset = await request(
+          Kind.MicrophoneReset,
+          Kind.MicrophoneResetResult,
+          9n,
+          encodeMicrophoneReset(1n),
+        );
+        assert.equal(decodeMicrophoneResetResult(reset.payload), 'unavailable');
         await request(
           Kind.Configure,
           Kind.ConfigureAck,

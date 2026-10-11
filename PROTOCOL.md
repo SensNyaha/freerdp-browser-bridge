@@ -418,6 +418,11 @@ Iteration 109 adds experimental HELLO bit 15 (`pcmInput`) and private Node PCM
 selection/status/one-flight sending. Public microphone permission, lease and
 browser transport remain pending. [Node contract](docs/MICROPHONE_NODE.md).
 
+Iteration 110 prepares fixed input reset kinds 42/43 and one bounded versioned
+HELLO capability suffix. Missing suffix means microphoneReset=false; workers
+reply unavailable and do not advertise execution yet.
+[Reset contract](docs/MICROPHONE_RESET.md).
+
 
 Public error structure:
 

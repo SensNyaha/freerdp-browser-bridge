@@ -46,6 +46,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::display_resize_result:
   case Kind::audio_reset_result:
   case Kind::microphone_result:
+  case Kind::microphone_reset_result:
     return 4;
   case Kind::display_update:
     return display_update_bytes;
@@ -70,6 +71,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::capture_avc:
   case Kind::input:
   case Kind::audio_reset:
+  case Kind::microphone_reset:
     return 12;
   case Kind::input_text:
     return 512;
@@ -119,7 +121,8 @@ void validate_header(const Header &header) {
       (kind == Kind::input_touch && length != 16 && length != 24) ||
       (kind == Kind::audio_opus && (length < audio::opus::min_packet_bytes || header.request_id)) ||
       ((kind == Kind::audio_reset || kind == Kind::audio_reset_result ||
-        kind == Kind::microphone_pcm || kind == Kind::microphone_result) &&
+        kind == Kind::microphone_pcm || kind == Kind::microphone_result ||
+        kind == Kind::microphone_reset || kind == Kind::microphone_reset_result) &&
        !header.request_id))
     throw ProtocolError();
 }

@@ -1,4 +1,13 @@
 import { ProtocolError } from './index.js';
+export {
+  encodeAudioReset as encodeMicrophoneReset,
+  decodeAudioReset as decodeMicrophoneReset,
+  encodeAudioResetResult as encodeMicrophoneResetResult,
+  decodeAudioResetResult as decodeMicrophoneResetResult,
+  AUDIO_RESET_REQUEST_BYTES as MICROPHONE_RESET_REQUEST_BYTES,
+  AUDIO_RESET_RESULT_BYTES as MICROPHONE_RESET_RESULT_BYTES,
+} from './audio-reset.js';
+export type { AudioResetResult as MicrophoneResetResult } from './audio-reset.js';
 import {
   PCM_AUDIO_PACKET_BYTES,
   encodePcmAudioPacket,

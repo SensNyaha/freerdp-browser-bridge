@@ -33,6 +33,7 @@ bool is_control(Kind kind) noexcept {
   case Kind::audio_reset_result:
   case Kind::microphone_result:
   case Kind::microphone_state:
+  case Kind::microphone_reset_result:
     return true;
   default:
     return false;
@@ -94,6 +95,8 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
       (void)microphone::decode_result(bytes);
     if (kind == Kind::microphone_state)
       (void)microphone::decode_state(bytes);
+    if (kind == Kind::microphone_reset_result)
+      (void)microphone::decode_reset_result(bytes);
     if (kind == Kind::audio_state) {
       if (audio_codec_ == OutputAudioCodec::opus)
         (void)audio::opus::decode_state(bytes);

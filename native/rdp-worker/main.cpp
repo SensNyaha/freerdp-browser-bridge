@@ -218,6 +218,10 @@ int run() {
         const auto result = microphone::encode_result(microphone::Result::unavailable);
         send({Kind::microphone_result, header.request_id, {result.begin(), result.end()}});
 #endif
+      } else if (header.kind == Kind::microphone_reset && ready) {
+        (void)microphone::decode_reset(payload);
+        const auto result = microphone::encode_reset_result(microphone::ResetResult::unavailable);
+        send({Kind::microphone_reset_result, header.request_id, {result.begin(), result.end()}});
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.stop();
@@ -303,7 +307,7 @@ int main(int argc, char **argv) {
     else
       std::cout << "null";
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
-                 "\"rdp\":false,\"penInput\":false,\"connectCore\":"
+                 "\"rdp\":false,\"penInput\":false,\"microphoneReset\":false,\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"

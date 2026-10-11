@@ -15,6 +15,66 @@ std::vector<std::uint8_t> golden() {
   return bytes;
 }
 } // namespace
+TEST_CASE("Microphone reset reply is validated and admitted on bounded control lane") {
+  auto output = std::make_unique<OutputQueue>();
+  const auto unavailable = microphone::encode_reset_result(microphone::ResetResult::unavailable);
+  REQUIRE(output->push(Kind::microphone_reset_result, 9, unavailable) == EnqueueStatus::accepted);
+  const auto reply = output->take();
+  REQUIRE(reply);
+  REQUIRE(reply->kind == Kind::microphone_reset_result);
+  REQUIRE(reply->request_id == 9);
+  auto malformed = unavailable;
+  malformed[1] = 4;
+  REQUIRE(output->push(Kind::microphone_reset_result, 10, malformed) == EnqueueStatus::invalid);
+  REQUIRE_FALSE(output->take());
+  REQUIRE(output->push(Kind::microphone_reset, 10, microphone::encode_reset(1)) ==
+          EnqueueStatus::invalid);
+}
+TEST_CASE(
+    "Microphone reset codec uses independent epoch correlation and fixed preallocation bounds") {
+  constexpr std::array<std::uint8_t, 12> expected{1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
+  REQUIRE(microphone::encode_reset(0x0102030405060708ULL) == expected);
+  REQUIRE(microphone::decode_reset(expected) == 0x0102030405060708ULL);
+  REQUIRE(microphone::decode_reset(microphone::encode_reset(UINT64_MAX)) == UINT64_MAX);
+  REQUIRE_THROWS_AS(microphone::encode_reset(0), ProtocolError);
+  for (std::size_t length = 0; length < expected.size(); ++length)
+    REQUIRE_THROWS_AS(microphone::decode_reset(std::span(expected).first(length)), ProtocolError);
+  for (std::size_t at = 0; at < 4; ++at) {
+    auto bad = expected;
+    bad[at] ^= 1;
+    REQUIRE_THROWS_AS(microphone::decode_reset(bad), ProtocolError);
+  }
+  const std::array<std::uint8_t, 12> zero_epoch{1};
+  REQUIRE_THROWS_AS(microphone::decode_reset(zero_epoch), ProtocolError);
+  for (unsigned code = 0; code < 256; ++code) {
+    const std::array<std::uint8_t, 4> bytes{1, static_cast<std::uint8_t>(code), 0, 0};
+    if (code < 4) {
+      const auto result = static_cast<microphone::ResetResult>(code);
+      REQUIRE(microphone::decode_reset_result(bytes) == result);
+      REQUIRE(microphone::encode_reset_result(result) == bytes);
+    } else {
+      REQUIRE_THROWS_AS(microphone::decode_reset_result(bytes), ProtocolError);
+      REQUIRE_THROWS_AS(microphone::encode_reset_result(static_cast<microphone::ResetResult>(code)),
+                        ProtocolError);
+    }
+  }
+  for (const auto [kind, length] : {std::pair{Kind::microphone_reset, std::size_t{12}},
+                                    {Kind::microphone_reset_result, std::size_t{4}}}) {
+    auto bytes = encode({kind, UINT64_MAX, std::vector<std::uint8_t>(length)});
+    bytes.resize(header_bytes);
+    REQUIRE(decode_header(bytes).request_id == UINT64_MAX);
+    REQUIRE(decode_header(bytes).length == length);
+    for (const auto invalid : {std::uint64_t{0}, std::uint64_t{length - 1},
+                               std::uint64_t{length + 1}, std::uint64_t{UINT32_MAX}}) {
+      auto header = bytes;
+      header.resize(20);
+      append_be(header, invalid, 4);
+      REQUIRE_THROWS_AS(decode_header(header), ProtocolError);
+    }
+    std::fill(bytes.begin() + 12, bytes.begin() + 20, 0);
+    REQUIRE_THROWS_AS(decode_header(bytes), ProtocolError);
+  }
+}
 TEST_CASE("Microphone PCM codec validates independent golden fixed profile and borrowed samples") {
   const auto original_bytes = golden();
   auto bytes = original_bytes;

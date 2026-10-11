@@ -9,10 +9,28 @@ import {
   encodeMicrophonePcm,
   encodeMicrophoneResult,
   encodeMicrophoneState,
+  encodeMicrophoneReset,
+  encodeMicrophoneResetResult,
   encodeConnectionSettings,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+await writeFile(
+  'build/fuzz/corpus/microphone-reset',
+  encodePacket({
+    kind: Kind.MicrophoneReset,
+    requestId: 1n,
+    payload: encodeMicrophoneReset(1n),
+  }),
+);
+await writeFile(
+  'build/fuzz/corpus/microphone-reset-result',
+  encodePacket({
+    kind: Kind.MicrophoneResetResult,
+    requestId: 1n,
+    payload: encodeMicrophoneResetResult('unavailable'),
+  }),
+);
 await writeFile(
   'build/fuzz/corpus/configure-microphone',
   encodePacket({

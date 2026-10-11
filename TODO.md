@@ -512,6 +512,11 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   Reset, lease/permission/capture, resampling/Opus input, real remote/physical /
   LAN/platform acceptance remain open. [Contract](docs/MICROPHONE_NODE.md),
   [evidence](docs/ITERATION_109.md).
+- [~] IN PROGRESS — Private microphone reset has fixed epoch/result records and
+  bounded versioned HELLO extension decoding, preserving old peers as unsupported.
+  Worker validates and replies unavailable; owner execution and Node API remain
+  pending. Parser/native refusal evidence is separate from actual capture.
+  [Contract](docs/MICROPHONE_RESET.md), [evidence](docs/ITERATION_110.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

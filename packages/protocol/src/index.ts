@@ -75,6 +75,8 @@ export enum Kind {
   MicrophonePcm = 39,
   MicrophoneResult = 40,
   MicrophoneState = 41,
+  MicrophoneReset = 42,
+  MicrophoneResetResult = 43,
 }
 
 export interface Packet {
@@ -113,6 +115,7 @@ function payloadLimit(kind: number): number {
     case Kind.DisplayResizeResult:
       return 4;
     case Kind.AudioResetResult:
+    case Kind.MicrophoneResetResult:
       return AUDIO_RESET_RESULT_BYTES;
     case Kind.MicrophoneResult:
       return MICROPHONE_RESULT_BYTES;
@@ -144,6 +147,7 @@ function payloadLimit(kind: number): number {
     case Kind.Input:
       return 12;
     case Kind.AudioReset:
+    case Kind.MicrophoneReset:
       return AUDIO_RESET_REQUEST_BYTES;
     case Kind.InputText:
       return 512;
@@ -209,7 +213,9 @@ export function decodeHeader(header: Buffer): {
     ((kind === Kind.AudioReset ||
       kind === Kind.AudioResetResult ||
       kind === Kind.MicrophonePcm ||
-      kind === Kind.MicrophoneResult) &&
+      kind === Kind.MicrophoneResult ||
+      kind === Kind.MicrophoneReset ||
+      kind === Kind.MicrophoneResetResult) &&
       header.readBigUInt64BE(12) === 0n)
   ) {
     throw new ProtocolError();
@@ -315,6 +321,7 @@ export interface WorkerBuild {
     opusOutput: boolean;
     audioReset: boolean;
     pcmInput: boolean;
+    microphoneReset: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -358,6 +365,23 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
   const os = string();
   const arch = string();
   const transport = string();
+  // Optional fixed schema-1 extension; old peers have no trailing bytes.
+  let extensions = 0;
+  if (offset !== payload.length) {
+    if (
+      payload.length - offset !== 8 ||
+      payload.readUInt16BE(offset) !== 1 ||
+      payload.readUInt16BE(offset + 2) !== 0
+    )
+      throw new ProtocolError();
+    extensions = payload.readUInt32BE(offset + 4);
+    if (
+      (extensions & ~1) !== 0 ||
+      ((extensions & 1) !== 0 && !(capabilities & 32768))
+    )
+      throw new ProtocolError();
+    offset += 8;
+  }
   if (
     offset !== payload.length ||
     (Boolean(capabilities & 6) && !freeRdpVersion)
@@ -382,6 +406,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       opusOutput: Boolean(capabilities & 8192),
       audioReset: Boolean(capabilities & 16384),
       pcmInput: Boolean(capabilities & 32768),
+      microphoneReset: Boolean(extensions & 1),
       penInput: false,
     },
     bridgeVersion,

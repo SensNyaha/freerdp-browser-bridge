@@ -77,7 +77,8 @@ private dispatch implementation, not actual server/device acceptance or usable R
 `penInput` is an explicit false placeholder in decoded/build/capability reports,
 including legacy peers. No pen wire bit or command is introduced. Owned RDPEI
 clears the public multi-pen client feature mask before server negotiation.
-No trailing bytes or unknown mandatory bits are permitted.
+No unknown mandatory bits or trailing bytes beyond the explicitly versioned
+capability extension below are permitted.
 Bit 14 (16384) is experimental private `audioReset`, requiring connectCore and
 at least one PCM/Opus output bit. Old peers decode false. Guarded Windows builds
 now dispatch the fixed epoch-bound request through their RDP thread; this is not
@@ -88,6 +89,13 @@ set only for guarded Windows/AUDIN builds. Private WorkerProcess uses schema 7
 and input flag 16 for explicit PCM microphone selection; old peers decode false.
 Public permission/capture and remote microphone acceptance remain pending.
 All u16 capability bits are assigned. [Private Node contract](MICROPHONE_NODE.md).
+
+Iteration 110 permits one optional fixed eight-byte suffix after the seven
+HELLO strings: u16 schema 1, u16 zero, u32 feature mask. Bit 0 is microphoneReset
+and requires base pcmInput. Missing suffix means false; unknown mask bits,
+partial/repeated suffixes or extra bytes reject before configuration/secrets.
+Workers do not emit it or claim reset yet. Kinds 42/43 validate fixed input epoch
+reset/result and explicitly reply unavailable. [Reset contract](MICROPHONE_RESET.md).
 
 Kinds 33/34 add the isolated [PCM codec foundation](AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation):
 fixed 20-byte AUDIO_CONFIG and 3,864-byte AUDIO_PCM with schema/epoch/frame/clock
