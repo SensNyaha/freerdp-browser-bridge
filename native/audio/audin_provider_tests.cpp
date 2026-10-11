@@ -1,3 +1,4 @@
+#include "audin_ingress.hpp"
 #include "audin_provider.hpp"
 #include "rdpsnd_provider.hpp"
 #include <algorithm>
@@ -85,6 +86,8 @@ template <class Api> struct Interface {
 // loader deliberately remains refused until the future DVC gate exists.
 struct Host {
   Fixture &fixture;
+  AudinIngress ingress;
+  bool guarded = false;
   Interface<IDRDYNVC_ENTRY_POINTS> entries{this};
   Interface<IWTSVirtualChannelManager> manager{this};
   Interface<IWTSVirtualChannel> channel{this};
@@ -101,7 +104,7 @@ struct Host {
     static_assert(std::is_standard_layout_v<Interface<Api>>);
     return *static_cast<Host *>(reinterpret_cast<Interface<Api> *>(api)->owner);
   }
-  explicit Host(Fixture &value) : fixture(value) {
+  explicit Host(Fixture &value, bool filter = false) : fixture(value), guarded(filter) {
     entries.api.GetPlugin = [](IDRDYNVC_ENTRY_POINTS *api, const char *) {
       return get(api).plugin;
     };
@@ -170,10 +173,18 @@ struct Host {
     REQUIRE(callback);
   }
   UINT send(std::vector<BYTE> bytes) {
-    std::unique_ptr<wStream, void (*)(wStream *)> stream{Stream_New(bytes.data(), bytes.size()),
-                                                         [](wStream *s) { Stream_Free(s, FALSE); }};
-    REQUIRE(stream);
-    return callback->OnDataReceived(callback, stream.get());
+    std::span<const BYTE> forwarded = bytes;
+    if (guarded) {
+      const auto pdu = ingress.inspect(bytes);
+      if (!pdu)
+        return ERROR_INVALID_DATA;
+      if (!pdu->forward)
+        return ERROR_NOT_SUPPORTED;
+      forwarded = pdu->bytes;
+    }
+    wStream stream{};
+    REQUIRE(Stream_StaticConstInit(&stream, forwarded.data(), forwarded.size()));
+    return callback->OnDataReceived(callback, &stream);
   }
   UINT close() {
     UINT result = CHANNEL_RC_OK;
@@ -400,6 +411,69 @@ TEST_CASE("AUDIN linked channel projects virtual PCM and reopens fresh capture e
   late.join();
   REQUIRE(close == CHANNEL_RC_OK);
   REQUIRE(host.destroyed == 1);
+}
+TEST_CASE("AUDIN guarded fixture removes DSP offers before linked channel negotiation") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  REQUIRE(host.send({1, 2, 0, 0, 0}) == CHANNEL_RC_OK);
+  auto mixed = formats();
+  mixed[1] = 3;
+  std::vector<BYTE> unsupported(mixed.begin() + 9, mixed.begin() + 27);
+  unsupported[14] = 24;
+  mixed.insert(mixed.begin() + 9, unsupported.begin(), unsupported.end());
+  mixed.insert(mixed.end(), {0xde, 0xad, 0xbe, 0xef});
+  REQUIRE(host.send(mixed) == CHANNEL_RC_OK);
+  REQUIRE(host.writes.size() == 3);
+  REQUIRE(host.writes[2] == formats());
+  std::vector<BYTE> open{3, 0xc0, 3, 0, 0, 1, 0, 0, 0};
+  const auto offer = formats();
+  open.insert(open.end(), offer.begin() + 27, offer.end());
+  REQUIRE(host.send(open) == CHANNEL_RC_OK);
+  REQUIRE(fixture.source.pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.writes.back().size() == 1921);
+  REQUIRE(std::all_of(host.writes.back().begin() + 1, host.writes.back().end(),
+                      [](BYTE value) { return value == 0; }));
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE(
+    "AUDIN guarded fixture refuses oversized table or callback before linked parser mutation") {
+  SECTION("Oversized table has no upstream reply or open") {
+    Fixture fixture;
+    REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+    Host host(fixture, true);
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    REQUIRE(host.send({1, 2, 0, 0, 0}) == CHANNEL_RC_OK);
+    auto oversized = formats();
+    oversized[1] = 65;
+    REQUIRE(host.send(oversized) == ERROR_INVALID_DATA);
+    REQUIRE(host.writes.size() == 1);
+    REQUIRE_FALSE(fixture.source.stats()->opened);
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+  }
+  SECTION("Oversized FramesPerPacket never opens device") {
+    Fixture fixture;
+    REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+    Host host(fixture, true);
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    REQUIRE(host.send({1, 2, 0, 0, 0}) == CHANNEL_RC_OK);
+    REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
+    std::vector<BYTE> open{3, 0xc1, 0x12, 0, 0, 0, 0, 0, 0};
+    const auto offer = formats();
+    open.insert(open.end(), offer.begin() + 9, offer.begin() + 27);
+    REQUIRE(host.send(open) == ERROR_INVALID_DATA);
+    REQUIRE(host.writes.size() == 3);
+    REQUIRE_FALSE(fixture.source.stats()->opened);
+    REQUIRE(fixture.source.stats()->epoch == 0);
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+  }
 }
 TEST_CASE(
     "AUDIN linked channel rejects registration failure and stops after transport write error") {

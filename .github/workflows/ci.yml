@@ -36,3 +36,4 @@ jobs:
         env:
           BRIDGE_TEST_BINARY_DIR: build/sanitizers
       - run: cmake --preset fuzz && cmake --build --preset fuzz && node scripts/seed-fuzz.mjs && build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20
+      - run: node scripts/seed-audin-fuzz.mjs && build/fuzz/audin-fuzz build/fuzz/audin-corpus -max_total_time=20

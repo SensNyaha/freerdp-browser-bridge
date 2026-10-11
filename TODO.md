@@ -430,6 +430,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   stays refused pending ingress/lifetime guards; worker/browser microphone and
   actual acceptance remain open. [Contract](docs/AUDIO_AUDIN_PROVIDER.md),
   [evidence](docs/ITERATION_097.md).
+- [~] IN PROGRESS — Allocation-free AUDIN PDU/offer filtering bounds whole
+  records, format claims/extras, complete Open preference, selected indices and
+  100 ms callbacks. Pure and actual linked AUDIN/fake-DVC placement fixtures pass;
+  dedicated sanitizer/fuzzer CI is prepared but unrun. Production DVC lifetime /
+  non-forward refusal, worker/IPC/browser microphone and actual acceptance remain
+  open. [Contract](docs/AUDIO_AUDIN_INGRESS.md),
+  [evidence](docs/ITERATION_098.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
