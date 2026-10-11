@@ -524,6 +524,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   fixtures are separate from physical/remote acceptance. Public lease/permission /
   transport and measured connected-worker/LAN/platform gates remain open.
   [Contract](docs/MICROPHONE_RESET.md), [evidence](docs/ITERATION_111.md).
+- [~] IN PROGRESS — Browser/Node MIC_PACKET PCM codec has fixed direction /
+  stream, input epoch/sequence/time and exact 20 ms sample bounds. Independent
+  vectors and all-truncation/ownership fixtures pass; no public socket or capture
+  activation is claimed. Lease/reset/credit/permission/resampling/Opus input and
+  actual remote/physical/LAN/platform gates remain open.
+  [Contract](docs/MICROPHONE_WIRE.md), [evidence](docs/ITERATION_112.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

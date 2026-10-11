@@ -253,6 +253,11 @@ Record types:
 0x09 AUDIO_STATE             # server -> client; prepared, not activated yet
 ```
 
+Iteration 112 prepares a fixed PCM MIC_PACKET type 7/stream 4: nonzero sequence,
+captured timestamp, input epoch and exactly 960 stereo S16LE 48 kHz frames.
+Public negotiation, permission, lease and dispatch remain pending.
+[Wire contract](docs/MICROPHONE_WIRE.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

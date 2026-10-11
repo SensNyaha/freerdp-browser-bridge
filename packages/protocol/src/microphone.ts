@@ -16,12 +16,17 @@ import {
   encodePcmAudioState,
   decodePcmAudioState,
   validatePcmAudioStateProgress,
+  validatePcmAudioPacket,
   type PcmAudioState,
 } from './audio.js';
 
 export const MICROPHONE_PCM_BYTES = PCM_AUDIO_PACKET_BYTES;
 export const MICROPHONE_RESULT_BYTES = 4;
 export const MICROPHONE_STATE_BYTES = PCM_AUDIO_STATE_BYTES;
+export const MICROPHONE_RECORD_BYTES = 3876;
+export interface MicrophoneRecord extends MicrophonePcmPacket {
+  sequence: number;
+}
 export type MicrophoneState = PcmAudioState;
 export interface MicrophonePcmPacket {
   epoch: bigint;
@@ -87,4 +92,56 @@ export function validateMicrophoneStateProgress(
   state: MicrophoneState,
 ): void {
   validatePcmAudioStateProgress(previous, state);
+}
+
+/** Preparatory client-to-server RWB1 type 7, stream 4. No permission/lease activation. */
+export function encodeMicrophoneRecord(
+  packet: MicrophonePcmPacket,
+  sequence: number,
+): Buffer {
+  if (
+    !packet ||
+    !Number.isInteger(sequence) ||
+    sequence < 1 ||
+    sequence > 0xffffffff
+  )
+    throw new ProtocolError();
+  validatePcmAudioPacket({ ...packet, frames: 960, silenceFrames: 0 });
+  const bytes = Buffer.alloc(MICROPHONE_RECORD_BYTES);
+  bytes.write('RWB1');
+  bytes[4] = 1;
+  bytes[5] = 7;
+  bytes.writeUInt16BE(packet.discontinuity ? 2 : 0, 6);
+  bytes.writeUInt32BE(4, 8);
+  bytes.writeUInt32BE(sequence, 12);
+  bytes.writeBigUInt64BE(packet.timestampUs, 16);
+  bytes.writeUInt32BE(3848, 24);
+  bytes.writeBigUInt64BE(packet.epoch, 28);
+  packet.pcm.copy(bytes, 36);
+  return bytes;
+}
+
+/** Borrowed PCM after exact framing validation; authority/progress belong to the lease owner. */
+export function decodeMicrophoneRecord(bytes: Buffer): MicrophoneRecord {
+  if (
+    !Buffer.isBuffer(bytes) ||
+    bytes.length !== MICROPHONE_RECORD_BYTES ||
+    bytes.readUInt32BE(0) !== 0x52574231 ||
+    bytes[4] !== 1 ||
+    bytes[5] !== 7 ||
+    ![0, 2].includes(bytes.readUInt16BE(6)) ||
+    bytes.readUInt32BE(8) !== 4 ||
+    bytes.readUInt32BE(12) === 0 ||
+    bytes.readUInt32BE(24) !== 3848
+  )
+    throw new ProtocolError();
+  const packet = {
+    epoch: bytes.readBigUInt64BE(28),
+    timestampUs: bytes.readBigUInt64BE(16),
+    discontinuity: bytes.readUInt16BE(6) === 2,
+    pcm: bytes.subarray(36),
+    sequence: bytes.readUInt32BE(12),
+  };
+  validatePcmAudioPacket({ ...packet, frames: 960, silenceFrames: 0 });
+  return packet;
 }
