@@ -32,7 +32,7 @@ latency/resource/platform acceptance remain open.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
   [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 276/276 Node tests;
-  CTest/Catch2: 66 IPC/input/state/audio-codec/output cases / 9,679 assertions, 2 AVC cases / 19 assertions,
+  CTest/Catch2: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -417,6 +417,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   public AUDIN backend/provider, worker/IPC/browser permission/capture and actual
   microphone remain open. [Contract](docs/AUDIO_CAPTURE.md),
   [evidence](docs/ITERATION_095.md).
+- [~] IN PROGRESS — Public IAudinDevice adapter copies supported PCM16 48 kHz
+  mono/stereo formats, opens fresh capture epochs, emits bounded PCM/silence and
+  retires resources before delayed host Free. Owner-thread/reentrancy and callback
+  failure fixtures pass; channel/provider, worker/IPC/browser microphone and actual
+  remote acceptance remain open. [Contract](docs/AUDIO_AUDIN_ADAPTER.md),
+  [evidence](docs/ITERATION_096.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
