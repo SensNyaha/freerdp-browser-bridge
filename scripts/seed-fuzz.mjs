@@ -6,9 +6,32 @@ import {
   encodePcmAudioConfig,
   encodePcmAudioPacket,
   encodePcmAudioState,
+  encodeMicrophonePcm,
+  encodeMicrophoneResult,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+await writeFile(
+  'build/fuzz/corpus/microphone-pcm',
+  encodePacket({
+    kind: Kind.MicrophonePcm,
+    requestId: 1n,
+    payload: encodeMicrophonePcm({
+      epoch: 1n,
+      timestampUs: 0n,
+      discontinuity: true,
+      pcm: Buffer.alloc(3840),
+    }),
+  }),
+);
+await writeFile(
+  'build/fuzz/corpus/microphone-result',
+  encodePacket({
+    kind: Kind.MicrophoneResult,
+    requestId: 1n,
+    payload: encodeMicrophoneResult('unavailable'),
+  }),
+);
 await writeFile(
   'build/fuzz/corpus/hello',
   encodePacket({ kind: Kind.Hello, requestId: 1n, payload: helloPayload() }),

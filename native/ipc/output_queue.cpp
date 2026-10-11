@@ -2,6 +2,7 @@
 #include "audio.hpp"
 #include "audio_reset.hpp"
 #include "cursor.hpp"
+#include "microphone.hpp"
 #include "opus_audio.hpp"
 #include <limits>
 
@@ -30,6 +31,7 @@ bool is_control(Kind kind) noexcept {
   case Kind::touch_update:
   case Kind::audio_state:
   case Kind::audio_reset_result:
+  case Kind::microphone_result:
     return true;
   default:
     return false;
@@ -87,6 +89,8 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
     validate_header({kind, request_id, static_cast<std::uint32_t>(bytes.size())});
     if (kind == Kind::audio_reset_result)
       (void)audio::decode_reset_result(bytes);
+    if (kind == Kind::microphone_result)
+      (void)microphone::decode_result(bytes);
     if (kind == Kind::audio_state) {
       if (audio_codec_ == OutputAudioCodec::opus)
         (void)audio::opus::decode_state(bytes);

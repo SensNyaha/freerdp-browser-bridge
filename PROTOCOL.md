@@ -398,6 +398,11 @@ The additive private reset kinds 37/38 are fixed, correlated RWI1 messages;
 see [audio reset contract](docs/AUDIO_RESET.md). Iteration 87 prepares the codec
 and explicit unavailable worker response. It enables no public reset message.
 
+Iteration 103 adds private RWI1 microphone kinds 39/40 with fixed schema-1 PCM /
+result bodies and nonzero request correlation. Workers explicitly reply
+unavailable; microphone settings/capability, public MIC_PACKET, permission and
+capture remain unactivated. [Private input codec](docs/MICROPHONE_PCM_WIRE.md).
+
 ## 7. Error model
 
 Public error structure:

@@ -1,6 +1,7 @@
 #include "audio_reset.hpp"
 #include "build_features.hpp"
 #include "connection_config.hpp"
+#include "microphone.hpp"
 #include "protocol.hpp"
 #include <csignal>
 #include <cstdio>
@@ -206,6 +207,10 @@ int run() {
         const auto result = audio::encode_reset_result(audio::ResetResult::unavailable);
         send({Kind::audio_reset_result, header.request_id, {result.begin(), result.end()}});
 #endif
+      } else if (header.kind == Kind::microphone_pcm && ready) {
+        (void)microphone::decode_pcm(payload);
+        const auto result = microphone::encode_result(microphone::Result::unavailable);
+        send({Kind::microphone_result, header.request_id, {result.begin(), result.end()}});
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.stop();

@@ -1,5 +1,9 @@
 # RWI1 foundation wire contract
 
+Current update — iteration 103: additive private microphone kinds 39/40 have
+fixed schema-1 bounds and typed unavailable replies on real workers. Microphone
+activation/capability remains disabled. [Input codec](MICROPHONE_PCM_WIRE.md).
+
 This completes unspecified details of PROTOCOL.md §6 without changing its envelope.
 All multi-byte fields and all lifecycle payload integers use network byte order (big endian).
 The header is exactly 24 bytes: magic at 0, u16 version at 4, u16 kind at 6, u32 flags at 8,
@@ -44,6 +48,8 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | AUDIO_PCM | 34 | exactly 3864 bytes; PCM metadata + samples, not emitted by current workers |
 | AUDIO_RESET | 37 | exactly 12 bytes; nonzero requestId and expected epoch; [reset contract](AUDIO_RESET.md) |
 | AUDIO_RESET_RESULT | 38 | exactly 4 bytes; schema/result/reserved, echoes requestId; [reset contract](AUDIO_RESET.md) |
+| MICROPHONE_PCM | 39 | exactly 3864 bytes; captured PCM, nonzero requestId; [input codec](MICROPHONE_PCM_WIRE.md) |
+| MICROPHONE_RESULT | 40 | exactly 4 bytes; schema/result/reserved, echoes requestId; current worker replies unavailable |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,

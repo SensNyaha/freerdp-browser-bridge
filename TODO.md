@@ -464,6 +464,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   pass; worker/lease/permission/rate limits, IPC/browser and actual remote reset
   acceptance remain open. [Contract](docs/AUDIO_CAPTURE_RESET.md),
   [evidence](docs/ITERATION_102.md).
+- [~] IN PROGRESS — Fixed schema-1 microphone PCM codec and correlated RWI1
+  kinds 39/40 enforce exact captured-frame metadata and body bounds before
+  allocation. Native/TypeScript boundary/framing and real-worker unavailable /
+  heartbeat/shutdown fixtures pass; worker handoff/admission, capability, current
+  lease/permission, public browser transport and actual microphone remain open.
+  [Contract](docs/MICROPHONE_PCM_WIRE.md), [evidence](docs/ITERATION_103.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

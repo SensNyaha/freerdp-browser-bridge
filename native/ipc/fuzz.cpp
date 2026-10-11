@@ -3,6 +3,7 @@
 #include "connection_config.hpp"
 #include "display.hpp"
 #include "input.hpp"
+#include "microphone.hpp"
 #include "opus_audio.hpp"
 #include "output_queue.hpp"
 #include "protocol.hpp"
@@ -55,6 +56,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)audio::decode_reset(payload);
         else if (header.kind == Kind::audio_reset_result)
           (void)audio::decode_reset_result(payload);
+        else if (header.kind == Kind::microphone_pcm)
+          (void)microphone::decode_pcm(payload);
+        else if (header.kind == Kind::microphone_result)
+          (void)microphone::decode_result(payload);
         else if (header.kind == Kind::input_text)
           (void)bridge::input::decode_text(payload);
         else if (header.kind == Kind::input_touch) {

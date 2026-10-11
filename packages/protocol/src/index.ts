@@ -6,6 +6,8 @@ export * from './touch.js';
 export * from './audio.js';
 export * from './opus.js';
 export * from './audio-reset.js';
+export * from './microphone.js';
+import { MICROPHONE_PCM_BYTES, MICROPHONE_RESULT_BYTES } from './microphone.js';
 import {
   AUDIO_RESET_REQUEST_BYTES,
   AUDIO_RESET_RESULT_BYTES,
@@ -66,6 +68,8 @@ export enum Kind {
   AudioOpus = 36, // Experimental private profile; public media remains gated.
   AudioReset = 37,
   AudioResetResult = 38,
+  MicrophonePcm = 39,
+  MicrophoneResult = 40,
 }
 
 export interface Packet {
@@ -105,6 +109,10 @@ function payloadLimit(kind: number): number {
       return 4;
     case Kind.AudioResetResult:
       return AUDIO_RESET_RESULT_BYTES;
+    case Kind.MicrophoneResult:
+      return MICROPHONE_RESULT_BYTES;
+    case Kind.MicrophonePcm:
+      return MICROPHONE_PCM_BYTES;
     case Kind.DisplayUpdate:
       return DISPLAY_UPDATE_BYTES;
     case Kind.PipelineStatsAck:
@@ -190,7 +198,10 @@ export function decodeHeader(header: Buffer): {
     (kind === Kind.AudioOpus &&
       (length < OPUS_AUDIO_MIN_PACKET_BYTES ||
         header.readBigUInt64BE(12) !== 0n)) ||
-    ((kind === Kind.AudioReset || kind === Kind.AudioResetResult) &&
+    ((kind === Kind.AudioReset ||
+      kind === Kind.AudioResetResult ||
+      kind === Kind.MicrophonePcm ||
+      kind === Kind.MicrophoneResult) &&
       header.readBigUInt64BE(12) === 0n)
   ) {
     throw new ProtocolError();

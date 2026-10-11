@@ -3,6 +3,7 @@
 #include "audio_reset.hpp"
 #include "cursor.hpp"
 #include "display.hpp"
+#include "microphone.hpp"
 #include "opus_audio.hpp"
 #include <algorithm>
 #include <limits>
@@ -44,6 +45,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::display_resize:
   case Kind::display_resize_result:
   case Kind::audio_reset_result:
+  case Kind::microphone_result:
     return 4;
   case Kind::display_update:
     return display_update_bytes;
@@ -78,6 +80,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::audio_config:
     return static_cast<std::uint32_t>(audio::config_bytes);
   case Kind::audio_pcm:
+  case Kind::microphone_pcm:
     return static_cast<std::uint32_t>(audio::packet_bytes);
   case Kind::audio_state:
     return static_cast<std::uint32_t>(audio::state_bytes);
@@ -113,7 +116,9 @@ void validate_header(const Header &header) {
       (kind == Kind::input_text && (length == 0 || length % 2)) ||
       (kind == Kind::input_touch && length != 16 && length != 24) ||
       (kind == Kind::audio_opus && (length < audio::opus::min_packet_bytes || header.request_id)) ||
-      ((kind == Kind::audio_reset || kind == Kind::audio_reset_result) && !header.request_id))
+      ((kind == Kind::audio_reset || kind == Kind::audio_reset_result ||
+        kind == Kind::microphone_pcm || kind == Kind::microphone_result) &&
+       !header.request_id))
     throw ProtocolError();
 }
 std::array<std::uint8_t, header_bytes> encode_header(const Header &header) {
