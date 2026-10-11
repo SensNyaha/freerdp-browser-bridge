@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 406/406 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 414/414 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -658,6 +658,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   transport/browser encoder selection or capture is enabled. SDK failure /
   resource/sanitizer/platform and actual microphone gates remain open.
   [Contract](docs/AUDIO_OPUS_INPUT_DECODER.md), [evidence](docs/ITERATION_129.md).
+- [~] IN PROGRESS — Isolated browser AudioEncoder Opus input foundation owns
+  one unfinished 20 ms input, fixed scratch, bounded output/metadata and finite
+  deadline; discontinuity retires the old generation, stop sends no flush tail.
+  Seven pure cases and one actual Edge synthetic AudioData case pass. It obtains
+  no device/socket and is not selected by capture/media/native dispatch. Opus
+  input, complete codec/permission/AUDIN composition and actual recording remain
+  open. [Contract](docs/MICROPHONE_OPUS_ENCODER.md), [evidence](docs/ITERATION_130.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).
