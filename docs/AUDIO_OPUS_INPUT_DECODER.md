@@ -1,5 +1,10 @@
 # Isolated native microphone Opus decoder
 
+Current update — iteration 132: an isolated epoch-bound composition removes
+reported pre-skip and reblocks fixed PCM with the original capture timeline.
+Actual Edge/native synthetic codec composition passes; worker/AUDIN selection
+and recording remain open. [Contract](MICROPHONE_OPUS_CAPTURE.md).
+
 Iteration 129 implements the native decode foundation for SPECIFICATION §2.6 /
 MEDIA_PIPELINE §7 with the existing private Opus 1.6.1 dependency. This provider
 is not selected by worker settings, private/public transport or browser capture;
