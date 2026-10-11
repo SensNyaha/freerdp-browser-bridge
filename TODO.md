@@ -476,6 +476,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   RDP-owner fixtures pass; worker wakeup/completions/status, finite shutdown,
   Node/lease/permission/browser capture and actual LAN acceptance remain open.
   [Contract](docs/AUDIO_CAPTURE_HANDOFF.md), [evidence](docs/ITERATION_104.md).
+- [~] IN PROGRESS — Private microphone status codec/kind 41 and latest-candidate
+  publisher distinguish actual source state from transport-admitted input authority.
+  Native/Node and linked AUDIN/fake-DVC backpressure/reset fixtures pass; worker
+  emission/mutex/wakeup/deadlines, capability/lease/permission/browser/Opus input
+  and actual remote/LAN acceptance remain open. [Contract](docs/MICROPHONE_STATE.md),
+  [evidence](docs/ITERATION_105.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

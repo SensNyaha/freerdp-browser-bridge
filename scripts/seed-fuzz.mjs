@@ -8,9 +8,24 @@ import {
   encodePcmAudioState,
   encodeMicrophonePcm,
   encodeMicrophoneResult,
+  encodeMicrophoneState,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+await writeFile(
+  'build/fuzz/corpus/microphone-state',
+  encodePacket({
+    kind: Kind.MicrophoneState,
+    requestId: 0n,
+    payload: encodeMicrophoneState({
+      enabled: true,
+      availability: 'ready',
+      revision: 1n,
+      epoch: 1n,
+      timestampUs: 0n,
+    }),
+  }),
+);
 await writeFile(
   'build/fuzz/corpus/microphone-pcm',
   encodePacket({

@@ -7,7 +7,11 @@ export * from './audio.js';
 export * from './opus.js';
 export * from './audio-reset.js';
 export * from './microphone.js';
-import { MICROPHONE_PCM_BYTES, MICROPHONE_RESULT_BYTES } from './microphone.js';
+import {
+  MICROPHONE_PCM_BYTES,
+  MICROPHONE_RESULT_BYTES,
+  MICROPHONE_STATE_BYTES,
+} from './microphone.js';
 import {
   AUDIO_RESET_REQUEST_BYTES,
   AUDIO_RESET_RESULT_BYTES,
@@ -70,6 +74,7 @@ export enum Kind {
   AudioResetResult = 38,
   MicrophonePcm = 39,
   MicrophoneResult = 40,
+  MicrophoneState = 41,
 }
 
 export interface Packet {
@@ -113,6 +118,8 @@ function payloadLimit(kind: number): number {
       return MICROPHONE_RESULT_BYTES;
     case Kind.MicrophonePcm:
       return MICROPHONE_PCM_BYTES;
+    case Kind.MicrophoneState:
+      return MICROPHONE_STATE_BYTES;
     case Kind.DisplayUpdate:
       return DISPLAY_UPDATE_BYTES;
     case Kind.PipelineStatsAck:
@@ -176,6 +183,7 @@ export function decodeHeader(header: Buffer): {
   const length = header.readUInt32BE(20);
   if (
     length > payloadLimit(kind) ||
+    (kind === Kind.MicrophoneState && header.readBigUInt64BE(12) !== 0n) ||
     (![
       Kind.HelloAck,
       Kind.Configure,

@@ -21,4 +21,8 @@ std::array<std::uint8_t, result_bytes> encode_result(Result result) {
     throw ProtocolError();
   return {1, static_cast<std::uint8_t>(result), 0, 0};
 }
+State decode_state(std::span<const std::uint8_t> bytes) { return audio::decode_state(bytes); }
+std::array<std::uint8_t, state_bytes> encode_state(const State &state) {
+  return audio::encode_state(state);
+}
 } // namespace bridge::ipc::microphone

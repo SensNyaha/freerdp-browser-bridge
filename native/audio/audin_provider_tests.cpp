@@ -3,6 +3,7 @@
 #include "audin_plugin.hpp"
 #include "audin_provider.hpp"
 #include "capture_handoff.hpp"
+#include "capture_state.hpp"
 #include "rdpsnd_provider.hpp"
 #include <algorithm>
 #include <bit>
@@ -319,6 +320,66 @@ bridge::ipc::microphone::Result submit_capture(void *owner,
   return Result::invalid;
 }
 } // namespace
+TEST_CASE(
+    "AUDIN input authority follows admitted microphone status and rechecks actual reset epoch") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  CaptureStatePublisher publisher(true);
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+    REQUIRE(kind == bridge::ipc::Kind::microphone_state);
+    REQUIRE(bridge::ipc::microphone::decode_state(bytes).enabled);
+    return *static_cast<bool *>(owner);
+  };
+  using Availability = bridge::ipc::audio::Availability;
+  REQUIRE(publisher.observe(Availability::waiting, 0, 0));
+  REQUIRE(publisher.publish(send, &admitted) == CapturePublication::published);
+  negotiate(host);
+  auto &gate = registration.gate();
+  REQUIRE(gate.ready());
+  admitted = false;
+  REQUIRE(publisher.observe(Availability::ready, fixture.source.stats()->epoch, 100));
+  REQUIRE(publisher.publish(send, &admitted) == CapturePublication::busy);
+  CaptureHandoff handoff;
+  std::vector<BYTE> pcm(3840, 0x21);
+  const auto packet = bridge::ipc::microphone::encode_pcm({1, 0, true, pcm});
+  auto authority = *publisher.published();
+  REQUIRE(handoff.enqueue(1, packet, 100, authority.epoch,
+                          authority.availability == Availability::ready) ==
+          bridge::ipc::microphone::Result::unavailable);
+  admitted = true;
+  REQUIRE(publisher.publish(send, &admitted) == CapturePublication::published);
+  authority = *publisher.published();
+  REQUIRE_FALSE(handoff.enqueue(2, packet, 101, authority.epoch,
+                                authority.availability == Availability::ready));
+  REQUIRE(gate.reset_capture(1).status == AudinCaptureResetStatus::reset);
+  REQUIRE(handoff
+              .service(102, fixture.source.stats()->epoch, gate.ready(), submit_capture,
+                       &fixture.source)
+              ->result == bridge::ipc::microphone::Result::stale);
+  admitted = false;
+  REQUIRE(publisher.observe(Availability::ready, fixture.source.stats()->epoch, 103));
+  REQUIRE(publisher.publish(send, &admitted) == CapturePublication::busy);
+  const auto fresh = bridge::ipc::microphone::encode_pcm({2, 0, true, pcm});
+  REQUIRE(handoff.enqueue(3, fresh, 104, publisher.published()->epoch, true) ==
+          bridge::ipc::microphone::Result::stale);
+  admitted = true;
+  REQUIRE(publisher.publish(send, &admitted) == CapturePublication::published);
+  REQUIRE_FALSE(handoff.enqueue(4, fresh, 105, publisher.published()->epoch, true));
+  REQUIRE(handoff
+              .service(106, fixture.source.stats()->epoch, gate.ready(), submit_capture,
+                       &fixture.source)
+              ->result == bridge::ipc::microphone::Result::accepted);
+  REQUIRE(handoff.retire());
+  REQUIRE(publisher.retire());
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+
 TEST_CASE(
     "AUDIN capture handoff transfers bounded IPC PCM to the RDP owner and rejects reset races") {
   Fixture fixture;

@@ -403,6 +403,10 @@ result bodies and nonzero request correlation. Workers explicitly reply
 unavailable; microphone settings/capability, public MIC_PACKET, permission and
 capture remain unactivated. [Private input codec](docs/MICROPHONE_PCM_WIRE.md).
 
+Iteration 105 prepares private RWI1 MICROPHONE_STATE kind 41, fixed schema-1
+input readiness with zero unsolicited ID. No worker/public emission or capture
+activation is added. [Input status contract](docs/MICROPHONE_STATE.md).
+
 ## 7. Error model
 
 Public error structure:

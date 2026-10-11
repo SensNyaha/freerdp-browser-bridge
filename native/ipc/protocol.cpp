@@ -83,6 +83,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::microphone_pcm:
     return static_cast<std::uint32_t>(audio::packet_bytes);
   case Kind::audio_state:
+  case Kind::microphone_state:
     return static_cast<std::uint32_t>(audio::state_bytes);
   case Kind::audio_opus:
     return static_cast<std::uint32_t>(audio::opus::max_packet_bytes);
@@ -110,6 +111,7 @@ void validate_header(const Header &header) {
                         kind == Kind::cursor_update || kind == Kind::input_text ||
                         kind == Kind::input_touch || kind == Kind::audio_opus;
   if (length > maximum || (!variable && length != maximum) ||
+      (kind == Kind::microphone_state && header.request_id) ||
       (kind == Kind::frame && length < frame_metadata_bytes) ||
       (kind == Kind::frame_avc && length < avc_metadata_bytes) ||
       (kind == Kind::cursor_update && length < cursor::metadata_bytes) ||

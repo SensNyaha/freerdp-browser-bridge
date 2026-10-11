@@ -50,6 +50,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | AUDIO_RESET_RESULT | 38 | exactly 4 bytes; schema/result/reserved, echoes requestId; [reset contract](AUDIO_RESET.md) |
 | MICROPHONE_PCM | 39 | exactly 3864 bytes; captured PCM, nonzero requestId; [input codec](MICROPHONE_PCM_WIRE.md) |
 | MICROPHONE_RESULT | 40 | exactly 4 bytes; schema/result/reserved, echoes requestId; current worker replies unavailable |
+| MICROPHONE_STATE | 41 | exactly 40 bytes; input readiness/epoch, requestId=0; [status contract](MICROPHONE_STATE.md), not emitted yet |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,

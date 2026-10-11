@@ -3,10 +3,17 @@ import {
   PCM_AUDIO_PACKET_BYTES,
   encodePcmAudioPacket,
   decodePcmAudioPacket,
+  PCM_AUDIO_STATE_BYTES,
+  encodePcmAudioState,
+  decodePcmAudioState,
+  validatePcmAudioStateProgress,
+  type PcmAudioState,
 } from './audio.js';
 
 export const MICROPHONE_PCM_BYTES = PCM_AUDIO_PACKET_BYTES;
 export const MICROPHONE_RESULT_BYTES = 4;
+export const MICROPHONE_STATE_BYTES = PCM_AUDIO_STATE_BYTES;
+export type MicrophoneState = PcmAudioState;
 export interface MicrophonePcmPacket {
   epoch: bigint;
   timestampUs: bigint;
@@ -57,4 +64,18 @@ export function decodeMicrophoneResult(bytes: Buffer): MicrophoneResult {
   const result = results[bytes[1]!];
   if (!result) throw new ProtocolError();
   return result;
+}
+/** Input readiness, not output playback readiness. No worker emission yet. */
+export function encodeMicrophoneState(state: MicrophoneState): Buffer {
+  return encodePcmAudioState(state);
+}
+export function decodeMicrophoneState(bytes: Buffer): MicrophoneState {
+  if (!Buffer.isBuffer(bytes)) throw new ProtocolError();
+  return decodePcmAudioState(bytes);
+}
+export function validateMicrophoneStateProgress(
+  previous: MicrophoneState | undefined,
+  state: MicrophoneState,
+): void {
+  validatePcmAudioStateProgress(previous, state);
 }
