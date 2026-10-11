@@ -34,6 +34,9 @@ import {
   type TouchInput,
   encodeDisplayResize,
   decodeDisplayResizeResult,
+  encodeAudioReset,
+  decodeAudioResetResult,
+  type AudioResetResult,
   type DisplayState,
   type DisplayResizeResult,
   type CursorState,
@@ -61,6 +64,7 @@ export type {
   BridgeFailure,
   DeviceCapability,
   WorkerBuild,
+  AudioResetResult,
 } from '@freerdp-bridge/protocol';
 
 export class WorkerError extends Error {
@@ -118,6 +122,8 @@ export class WorkerProcess extends EventEmitter {
   private touchState: TouchState | undefined;
   private audioSource: PcmSource | OpusSource | undefined;
   private audioCodec: 'pcm' | 'opus' | undefined;
+  private audioResetting = false;
+  private scheduledAudioEpoch: bigint | undefined;
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
@@ -482,6 +488,8 @@ export class WorkerProcess extends EventEmitter {
     if (packet.kind === Kind.FrameAvc) decodeAvcFrame(packet.payload);
     if (packet.kind === Kind.PipelineStatsAck)
       decodePipelineStats(packet.payload);
+    if (packet.kind === Kind.AudioResetResult)
+      decodeAudioResetResult(packet.payload);
     if (packet.kind === Kind.DisplayResizeResult) {
       const result = decodeDisplayResizeResult(packet.payload);
       if (result === 'applied' || result === 'unchanged') {
@@ -627,6 +635,34 @@ export class WorkerProcess extends EventEmitter {
     } finally {
       this.resizing = false;
       this.resizeRequest = undefined;
+    }
+  }
+
+  /** Private recovery schedule; subsequent source status/config establishes completion. */
+  async resetAudio(expectedEpoch: bigint): Promise<AudioResetResult> {
+    const payload = encodeAudioReset(expectedEpoch);
+    if (!this.report?.capabilities.audioReset)
+      throw new WorkerError('AUDIO_RESET_NOT_IMPLEMENTED');
+    if (this.status !== 'ready' || !this.rdpConnected) return 'unavailable';
+    const state = this.audioSource?.current;
+    if (!state?.enabled) return 'unavailable';
+    if (state.epoch !== expectedEpoch) return 'stale';
+    if (state.availability !== 'ready') return 'unavailable';
+    if (this.audioResetting || this.scheduledAudioEpoch === expectedEpoch)
+      return 'busy';
+    this.audioResetting = true;
+    try {
+      const reply = await this.request(
+        Kind.AudioReset,
+        Kind.AudioResetResult,
+        payload,
+        Math.max(1500, this.options.requestTimeoutMs),
+      );
+      const result = decodeAudioResetResult(reply.payload);
+      if (result === 'scheduled') this.scheduledAudioEpoch = expectedEpoch;
+      return result;
+    } finally {
+      this.audioResetting = false;
     }
   }
 

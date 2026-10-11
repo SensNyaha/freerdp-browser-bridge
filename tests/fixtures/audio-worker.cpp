@@ -1,5 +1,6 @@
 // Fake private IPC peer. No FreeRDP, remote transport or audible audio.
 #include "audio.hpp"
+#include "audio_reset.hpp"
 #include "connection_config.hpp"
 #include "opus_audio.hpp"
 #include <cstdio>
@@ -25,6 +26,7 @@ int main() {
       throw ProtocolError();
   };
   std::optional<ConnectionConfig> config;
+  std::optional<std::uint64_t> pending_reset;
   const auto audio_record = [&](Kind kind, std::span<const std::uint8_t> body) {
     send({kind, 0, {body.begin(), body.end()}});
   };
@@ -37,7 +39,8 @@ int main() {
     if constexpr (opus_profile) {
       if (config->host != "pcm-packet") {
         constexpr std::array<std::uint8_t, 3> encoded{0xfc, 0xff, 0xfe};
-        auto packet = audio::opus::encode_packet({1, pts, 960, 0, discontinuity, encoded});
+        auto packet =
+            audio::opus::encode_packet({status.epoch, pts, 960, 0, discontinuity, encoded});
         if (config->host == "malformed")
           packet.storage[24] = 0xf8;
         audio_record(Kind::audio_opus, packet.bytes());
@@ -45,7 +48,8 @@ int main() {
       }
     }
     std::vector<std::uint8_t> pcm(audio::pcm_bytes, 0);
-    audio_record(Kind::audio_pcm, audio::encode_packet({1, pts, 960, 0, discontinuity, pcm}));
+    audio_record(Kind::audio_pcm,
+                 audio::encode_packet({status.epoch, pts, 960, 0, discontinuity, pcm}));
   };
   try {
     for (;;) {
@@ -63,6 +67,8 @@ int main() {
         append_be(report, 1, 2);
 #ifdef FIXTURE_AUDIO_LEGACY
         append_be(report, 5, 2);
+#elif defined(FIXTURE_AUDIO_RESET)
+        append_be(report, (opus_profile ? 8197 : 4101) | 16384, 2);
 #elif defined(FIXTURE_AUDIO_OPUS)
         append_be(report, 8197, 2);
 #else
@@ -111,12 +117,57 @@ int main() {
             state();
           }
         }
+      } else if (header.kind == Kind::audio_reset) {
+        (void)audio::decode_reset(bytes);
+        if (!config)
+          throw ProtocolError();
+        if (config->host == "reset-delay" || config->host == "reset-hold") {
+          pending_reset = header.request_id;
+          continue;
+        }
+        const auto result =
+            config->host == "reset-stale"  ? audio::ResetResult::stale
+            : config->host == "reset-busy" ? audio::ResetResult::busy
+            : config->host == "reset-unavailable" || config->host == "reset-duplicate"
+                ? audio::ResetResult::unavailable
+                : audio::ResetResult::scheduled;
+        auto body = audio::encode_reset_result(result);
+        if (config->host == "reset-malformed")
+          body[1] = 4;
+        const auto id = header.request_id + (config->host == "reset-wrong-id" ? 1U : 0U);
+        send({Kind::audio_reset_result, id, {body.begin(), body.end()}});
+        if (config->host == "reset-duplicate")
+          send({Kind::audio_reset_result, id, {body.begin(), body.end()}});
+        if (result == audio::ResetResult::scheduled && config->host != "reset-scheduled-only") {
+          ++status.epoch;
+          ++status.revision;
+          ++status.timestamp_us;
+          status.availability = audio::Availability::waiting;
+          state();
+          ++status.revision;
+          ++status.timestamp_us;
+          status.availability = audio::Availability::ready;
+          state();
+          audio_record(Kind::audio_config, opus_profile
+                                               ? audio::opus::encode_config({status.epoch, 312})
+                                               : audio::encode_config({status.epoch}));
+          samples((status.epoch - 1) * audio::interval_us, true);
+        }
       } else if (header.kind == Kind::heartbeat) {
         send({Kind::heartbeat_ack, header.request_id, {}});
+        if (pending_reset && config->host == "reset-delay") {
+          const auto body = audio::encode_reset_result(audio::ResetResult::unavailable);
+          send({Kind::audio_reset_result, *pending_reset, {body.begin(), body.end()}});
+          pending_reset.reset();
+        }
       } else if (header.kind == Kind::shutdown) {
         if (config && (opus_profile ? config->opus_output : config->pcm_output)) {
           ++status.revision;
+#ifdef FIXTURE_AUDIO_RESET
+          ++status.epoch;
+#else
           status.epoch = 2;
+#endif
           status.availability = audio::Availability::closed;
           state();
         }

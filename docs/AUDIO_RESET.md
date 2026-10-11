@@ -55,3 +55,27 @@ continues to mean scheduling only. Foundation still returns unavailable.
 HELLO reset capability and high-level Node/public selectors remain disabled in
 this raw native wiring block. Linked channel tests use simulated SVC; they do not
 establish actual transport, audible playback or the public recovery gate.
+
+## Private Node selection (Iteration 89)
+
+HELLO bit 16384 and CLI/build/capability `audioReset` now report experimental
+private scheduling on guarded Windows RDPSND builds. The bit requires connectCore
+and at least one PCM/Opus output bit; old peers decode false and unknown bits still
+fail. Foundation reports false. This flag describes implementation, not remote
+readiness, public attachment authority or audible acceptance.
+
+WorkerProcess.resetAudio(expectedEpoch) accepts a nonzero u64 bigint and returns
+the typed result. Missing capability throws AUDIO_RESET_NOT_IMPLEMENTED before
+wire dispatch. Disconnected/inactive audio returns unavailable, a local epoch
+mismatch returns stale and a concurrent request or already scheduled same epoch
+returns busy. One existing bounded request-map entry/timer provides correlation;
+no second reset queue or source packet copy is added. Its reply timeout is at least
+1500 ms (or the configured longer request timeout), allowing the native one-second
+service window. Timeout/malformed/duplicate/mismatched replies follow existing
+private IPC failure and cleanup rules.
+
+Scheduled does not establish the new epoch by itself: ordered source status/config
+and marked data do. PCM/Opus event parsing and payload ownership stay unchanged.
+Closing rejects any still pending request and clears its request timer. Public
+NativeSessionWorker/SessionManager still refuse Opus startup until public delivery
+and compressed recovery ownership are implemented.

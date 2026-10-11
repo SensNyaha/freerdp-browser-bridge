@@ -92,6 +92,8 @@ try {
   await worker.ping();
   report.heartbeat = true;
   if (!worker.audioState) throw new Error('LAB_AUDIO_STATE_MISSING');
+  if (worker.build.capabilities.audioReset)
+    report.resetResult = await worker.resetAudio(worker.audioState.epoch);
   const frame = await worker.captureFrame();
   if (!frame.jpeg) throw new Error('LAB_FRAME_MISSING');
   report.display = { width: frame.width, height: frame.height };

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <bit>
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <cstring>
 #include <freerdp/channels/channels.h>
 #include <freerdp/client.h>

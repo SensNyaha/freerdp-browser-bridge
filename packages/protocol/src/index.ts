@@ -294,6 +294,7 @@ export interface WorkerBuild {
     touchInput: boolean;
     pcmOutput: boolean;
     opusOutput: boolean;
+    audioReset: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -310,9 +311,10 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
     throw new ProtocolError();
   const capabilities = payload.readUInt16BE(2);
   if (
-    (capabilities & ~16383) !== 0 ||
+    (capabilities & ~32767) !== 0 ||
     !(capabilities & 1) ||
-    ((capabilities & 16376) !== 0 && (capabilities & 4) === 0) ||
+    ((capabilities & 32760) !== 0 && (capabilities & 4) === 0) ||
+    ((capabilities & 16384) !== 0 && (capabilities & 12288) === 0) ||
     ((capabilities & 3072) !== 0 && (capabilities & 32) === 0)
   )
     throw new ProtocolError();
@@ -358,6 +360,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       touchInput: Boolean(capabilities & 2048),
       pcmOutput: Boolean(capabilities & 4096),
       opusOutput: Boolean(capabilities & 8192),
+      audioReset: Boolean(capabilities & 16384),
       penInput: false,
     },
     bridgeVersion,

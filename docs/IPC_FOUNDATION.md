@@ -66,6 +66,10 @@ private dispatch implementation, not actual server/device acceptance or usable R
 including legacy peers. No pen wire bit or command is introduced. Owned RDPEI
 clears the public multi-pen client feature mask before server negotiation.
 No trailing bytes or unknown mandatory bits are permitted.
+Bit 14 (16384) is experimental private `audioReset`, requiring connectCore and
+at least one PCM/Opus output bit. Old peers decode false. Guarded Windows builds
+now dispatch the fixed epoch-bound request through their RDP thread; this is not
+public attachment or remote/audible acceptance. [Reset contract](AUDIO_RESET.md).
 
 Kinds 33/34 add the isolated [PCM codec foundation](AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation):
 fixed 20-byte AUDIO_CONFIG and 3,864-byte AUDIO_PCM with schema/epoch/frame/clock
