@@ -505,6 +505,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   HELLO/public selection, reset, connected-worker latency and real transport /
   microphone acceptance remain open. [Contract](docs/MICROPHONE_WORKER.md),
   [evidence](docs/ITERATION_108.md).
+- [~] IN PROGRESS — Guarded Windows/AUDIN advertises independent PCM input.
+  Private WorkerProcess selects schema 7, validates ordered authority and sends
+  one packet at a time without sample retry. Fake IPC and actual native TLS
+  refusal/lifetime fixtures pass; public creation still refuses non-off input.
+  Reset, lease/permission/capture, resampling/Opus input, real remote/physical /
+  LAN/platform acceptance remain open. [Contract](docs/MICROPHONE_NODE.md),
+  [evidence](docs/ITERATION_109.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

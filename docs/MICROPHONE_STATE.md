@@ -1,5 +1,9 @@
 # Preparatory microphone input status and publication
 
+Current update — iteration 109: private WorkerProcess validates and exposes
+input status for capability-gated PCM selection. Public permission/capture remains
+pending. [Node contract](MICROPHONE_NODE.md).
+
 Current update — iteration 108: guarded Windows workers emit input status for
 experimental raw schema-7 selection. Normal Node/public capability, permission
 and capture remain pending. [Worker contract](MICROPHONE_WORKER.md).

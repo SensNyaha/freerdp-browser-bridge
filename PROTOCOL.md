@@ -414,6 +414,10 @@ worker dispatch/status for explicit raw-IPC tests. It keeps microphone HELLO,
 normal Node/public creation, permission and capture unactivated.
 [Private worker contract](docs/MICROPHONE_WORKER.md).
 
+Iteration 109 adds experimental HELLO bit 15 (`pcmInput`) and private Node PCM
+selection/status/one-flight sending. Public microphone permission, lease and
+browser transport remain pending. [Node contract](docs/MICROPHONE_NODE.md).
+
 
 Public error structure:
 

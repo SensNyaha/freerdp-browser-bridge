@@ -30,7 +30,7 @@ const available =
       encoding: 'utf8',
       windowsHide: true,
     }),
-  ).capabilities.connectCore;
+  ).capabilities.pcmInput;
 
 for (const output of ['off', 'pcm', 'opus'])
   test(

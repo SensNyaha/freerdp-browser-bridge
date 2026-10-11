@@ -29,7 +29,7 @@ const results = [
 ] as const;
 export type MicrophoneResult = (typeof results)[number];
 
-/** Preparatory private codec. No worker/permission/capture activation. */
+/** Private PCM input codec. Does not grant device capture permission. */
 export function encodeMicrophonePcm(packet: MicrophonePcmPacket): Buffer {
   if (!packet) throw new ProtocolError();
   return encodePcmAudioPacket({ ...packet, frames: 960, silenceFrames: 0 });
@@ -65,7 +65,7 @@ export function decodeMicrophoneResult(bytes: Buffer): MicrophoneResult {
   if (!result) throw new ProtocolError();
   return result;
 }
-/** Input readiness, not output playback readiness. No worker emission yet. */
+/** Input readiness, independent of output playback and device permission. */
 export function encodeMicrophoneState(state: MicrophoneState): Buffer {
   return encodePcmAudioState(state);
 }

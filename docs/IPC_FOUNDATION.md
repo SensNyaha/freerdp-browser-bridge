@@ -83,6 +83,12 @@ at least one PCM/Opus output bit. Old peers decode false. Guarded Windows builds
 now dispatch the fixed epoch-bound request through their RDP thread; this is not
 public attachment or remote/audible acceptance. [Reset contract](AUDIO_RESET.md).
 
+Bit 15 (32768) is experimental private `pcmInput`, requiring connectCore. It is
+set only for guarded Windows/AUDIN builds. Private WorkerProcess uses schema 7
+and input flag 16 for explicit PCM microphone selection; old peers decode false.
+Public permission/capture and remote microphone acceptance remain pending.
+All u16 capability bits are assigned. [Private Node contract](MICROPHONE_NODE.md).
+
 Kinds 33/34 add the isolated [PCM codec foundation](AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation):
 fixed 20-byte AUDIO_CONFIG and 3,864-byte AUDIO_PCM with schema/epoch/frame/clock
 validation. Headers enforce exact lengths before allocation. They introduce no

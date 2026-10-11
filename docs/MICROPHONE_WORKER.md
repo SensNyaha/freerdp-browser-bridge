@@ -1,5 +1,10 @@
 # Experimental private microphone worker dispatch
 
+Current update — iteration 109: guarded Windows/AUDIN HELLO/CLI advertises
+`pcmInput`; private WorkerProcess can select PCM input and send bounded packets.
+Public creation, permission and capture remain pending. Historical activation
+statements below describe iteration 108. [Node contract](MICROPHONE_NODE.md).
+
 Iteration 108 implements SPECIFICATION §2.6 / ARCHITECTURE §5 /
 MEDIA_PIPELINE §7. Raw private CONFIGURE schema **7** can opt into the guarded
 Windows/AUDIN virtual source with flag **16**. The bounded body keeps schema 6's

@@ -98,6 +98,9 @@ std::vector<std::uint8_t> build_payload() {
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
   capabilities |= 4096 | 8192 | 16384;
 #endif
+#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+  capabilities |= 32768;
+#endif
   append_be(bytes, capabilities, 2);
 #else
   append_be(bytes, 1, 2);
@@ -304,6 +307,11 @@ int main(int argc, char **argv) {
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"
+#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+                 "\"pcmInput\":true,"
+#else
+                 "\"pcmInput\":false,"
+#endif
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
                  "\"pcmOutput\":true,\"opusOutput\":true,\"audioReset\":true,"
 #else
@@ -323,6 +331,7 @@ int main(int argc, char **argv) {
 #else
                  "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
                  "\"unicodeInput\":false,"
+                 "\"pcmInput\":false,"
                  "\"pcmOutput\":false,\"opusOutput\":false,\"audioReset\":false,"
                  "\"touchInput\":false,"
                  "\"pipelineStats\":false,\"cursor\":false,\"videoQuality\":false,"

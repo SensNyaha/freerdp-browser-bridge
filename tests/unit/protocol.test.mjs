@@ -212,6 +212,10 @@ test('build IPC: video quality capability preserves old peers and requires the n
   assert.equal(decodeBuild(build(24581)).capabilities.audioReset, true);
   assert.equal(decodeBuild(build(20485)).capabilities.audioReset, true);
   assert.equal(decodeBuild(build(32765)).capabilities.audioReset, true);
+  assert.equal(decodeBuild(build(32765)).capabilities.pcmInput, false);
+  assert.equal(decodeBuild(build(32773)).capabilities.pcmInput, true);
+  assert.equal(decodeBuild(build(32773)).capabilities.opusOutput, false);
+  assert.equal(decodeBuild(build(65533)).capabilities.pcmInput, true);
   for (const flags of [1, 253, 2045, 4093])
     assert.equal(decodeBuild(build(flags)).capabilities.penInput, false);
   for (const flags of [
