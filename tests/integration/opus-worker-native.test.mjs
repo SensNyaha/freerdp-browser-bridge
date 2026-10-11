@@ -28,7 +28,7 @@ const available =
       encoding: 'utf8',
       windowsHide: true,
     }),
-  ).capabilities.pcmOutput;
+  ).capabilities.opusOutput;
 
 test(
   'actual native Opus profile retires codec-1 source on strict TLS refusal and keeps control healthy',

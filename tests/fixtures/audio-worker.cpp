@@ -1,6 +1,7 @@
 // Fake private IPC peer. No FreeRDP, remote transport or audible audio.
 #include "audio.hpp"
 #include "connection_config.hpp"
+#include "opus_audio.hpp"
 #include <cstdio>
 #include <optional>
 #ifdef _WIN32
@@ -8,6 +9,11 @@
 #include <io.h>
 #endif
 using namespace bridge::ipc;
+#ifdef FIXTURE_AUDIO_OPUS
+constexpr bool opus_profile = true;
+#else
+constexpr bool opus_profile = false;
+#endif
 int main() {
 #ifdef _WIN32
   if (_setmode(_fileno(stdin), _O_BINARY) == -1 || _setmode(_fileno(stdout), _O_BINARY) == -1)
@@ -23,7 +29,24 @@ int main() {
     send({kind, 0, {body.begin(), body.end()}});
   };
   audio::State status{true, audio::Availability::ready, 1, 1, 100000};
-  const auto state = [&] { audio_record(Kind::audio_state, audio::encode_state(status)); };
+  const auto state = [&] {
+    audio_record(Kind::audio_state,
+                 opus_profile ? audio::opus::encode_state(status) : audio::encode_state(status));
+  };
+  const auto samples = [&](std::uint64_t pts, bool discontinuity) {
+    if constexpr (opus_profile) {
+      if (config->host != "pcm-packet") {
+        constexpr std::array<std::uint8_t, 3> encoded{0xfc, 0xff, 0xfe};
+        auto packet = audio::opus::encode_packet({1, pts, 960, 0, discontinuity, encoded});
+        if (config->host == "malformed")
+          packet.storage[24] = 0xf8;
+        audio_record(Kind::audio_opus, packet.bytes());
+        return;
+      }
+    }
+    std::vector<std::uint8_t> pcm(audio::pcm_bytes, 0);
+    audio_record(Kind::audio_pcm, audio::encode_packet({1, pts, 960, 0, discontinuity, pcm}));
+  };
   try {
     for (;;) {
       std::array<std::uint8_t, header_bytes> header_bytes_buffer{};
@@ -40,6 +63,8 @@ int main() {
         append_be(report, 1, 2);
 #ifdef FIXTURE_AUDIO_LEGACY
         append_be(report, 5, 2);
+#elif defined(FIXTURE_AUDIO_OPUS)
+        append_be(report, 8197, 2);
 #else
         append_be(report, 4101, 2);
 #endif
@@ -64,16 +89,21 @@ int main() {
         if (config->host == "early")
           state();
         send({Kind::state, 0, {0, 3, 0, 0, 0, 0, 0, 0}});
-        if (config->pcm_output || config->host == "unsolicited") {
+        if ((opus_profile ? config->opus_output : config->pcm_output) ||
+            config->host == "unsolicited") {
           if (config->host != "no-status")
             state();
-          audio_record(Kind::audio_config, audio::encode_config({1}));
-          std::vector<std::uint8_t> pcm(audio::pcm_bytes, 0);
-          audio_record(Kind::audio_pcm, audio::encode_packet({1, 0, 960, 0, true, pcm}));
+          auto descriptor = audio::encode_config({1});
+          if constexpr (opus_profile) {
+            if (config->host != "pcm-config")
+              descriptor = audio::opus::encode_config({1, 312});
+          }
+          audio_record(Kind::audio_config, descriptor);
+          samples(0, true);
           if (config->host == "replay")
             state();
           if (config->host == "clock")
-            audio_record(Kind::audio_pcm, audio::encode_packet({1, 20001, 960, 0, false, pcm}));
+            samples(20001, false);
           if (config->host == "close") {
             ++status.revision;
             status.epoch = 2;
@@ -84,7 +114,7 @@ int main() {
       } else if (header.kind == Kind::heartbeat) {
         send({Kind::heartbeat_ack, header.request_id, {}});
       } else if (header.kind == Kind::shutdown) {
-        if (config && config->pcm_output) {
+        if (config && (opus_profile ? config->opus_output : config->pcm_output)) {
           ++status.revision;
           status.epoch = 2;
           status.availability = audio::Availability::closed;

@@ -278,6 +278,11 @@ Iteration 84 activates that raw native flag on guarded Windows builds, fixing
 dispatcher/session ownership to the same codec. HELLO and high-level Node/public
 Opus selection remain unchanged. [Native wiring](docs/IPC_FOUNDATION.md#raw-native-opus-profile-wiring-iteration-84).
 
+Iteration 85 adds experimental private HELLO bit 8192 and typed WorkerProcess
+selection; old workers report false and are refused before secret delivery.
+Public sessions/media/viewer still reject Opus pending delivery/recovery ownership.
+[Private Node activation](docs/IPC_FOUNDATION.md#private-typed-opus-activation-iteration-85).
+
 Additional preparatory RWB1 Opus records use stream 3: codec-1 AUDIO_CONFIG is
 48 bytes, raw AUDIO_PACKET is 30..1,303 bytes, and codec-1 AUDIO_STATE is 68 bytes
 with matched body/header time. The isolated browser parser checks these layouts;

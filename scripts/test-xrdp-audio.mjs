@@ -4,9 +4,13 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 
 // Authorized local lab only. No remote input or sound-generation commands.
-const [fingerprint, ...extra] = process.argv.slice(2);
-if (extra.length || !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? ''))
-  throw new Error('Use sha256:<verified-lab-fingerprint>');
+const [fingerprint, audioOutput = 'pcm', ...extra] = process.argv.slice(2);
+if (
+  extra.length ||
+  !['pcm', 'opus'].includes(audioOutput) ||
+  !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
+)
+  throw new Error('Use sha256:<verified-lab-fingerprint> [pcm|opus]');
 async function localJson(path) {
   try {
     return JSON.parse(
@@ -24,6 +28,7 @@ const worker = new WorkerProcess({
 });
 const report = {
   actualRdp: true,
+  audioOutput,
   browserPlayback: false,
   audibleAcceptance: false,
   states: [],
@@ -77,7 +82,7 @@ try {
     target: { host: config.host, port: config.port },
     auth: { username: credentials.username, password: credentials.password },
     security: { certificatePolicy: 'prompt' },
-    media: { audioOutput: 'pcm' },
+    media: { audioOutput },
     timeouts: { connectMs: 20000, tcpAckMs: 10000 },
   });
   delete credentials.password;
@@ -95,13 +100,17 @@ try {
   report.terminalSource = worker.audioState?.availability;
   if (!report.closed) throw new Error('LAB_CLEANUP_FAILED');
   await writeFile(
-    resolve('.local-tests/xrdp-audio-report.json'),
+    resolve(
+      audioOutput === 'opus'
+        ? '.local-tests/xrdp-audio-opus-report.json'
+        : '.local-tests/xrdp-audio-report.json',
+    ),
     JSON.stringify(report, null, 2) + '\n',
   );
   console.log(JSON.stringify(report));
 } catch {
   console.error(
-    'XRDP PCM lab check failed; credentials and raw diagnostics omitted',
+    'XRDP audio lab check failed; credentials and raw diagnostics omitted',
   );
   process.exitCode = 1;
 } finally {

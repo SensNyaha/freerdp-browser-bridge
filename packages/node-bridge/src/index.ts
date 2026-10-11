@@ -6,7 +6,9 @@ export * from './native-session.js';
 export * from './pcm-delivery.js';
 import { EventEmitter } from 'node:events';
 import { PcmSource } from './pcm-source.js';
+import { OpusSource } from './opus-source.js';
 export type { PcmSourceEvent } from './pcm-source.js';
+export type { OpusSourceEvent } from './opus-source.js';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import {
@@ -114,7 +116,8 @@ export class WorkerProcess extends EventEmitter {
   private dynamicResolution = false;
   private touchEnabled = false;
   private touchState: TouchState | undefined;
-  private pcmSource: PcmSource | undefined;
+  private audioSource: PcmSource | OpusSource | undefined;
+  private audioCodec: 'pcm' | 'opus' | undefined;
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
@@ -156,7 +159,7 @@ export class WorkerProcess extends EventEmitter {
 
   /** Latest private source status; this does not establish browser/audible support. */
   get audioState() {
-    return this.pcmSource?.current;
+    return this.audioSource?.current;
   }
 
   private setState(state: Status): void {
@@ -286,11 +289,22 @@ export class WorkerProcess extends EventEmitter {
       packet.requestId === 0n &&
       this.connectionRequested &&
       ['ready', 'closing'].includes(this.status) &&
-      [Kind.AudioState, Kind.AudioConfig, Kind.AudioPcm].includes(packet.kind)
+      [
+        Kind.AudioState,
+        Kind.AudioConfig,
+        Kind.AudioPcm,
+        Kind.AudioOpus,
+      ].includes(packet.kind)
     ) {
-      if (!this.pcmSource || !this.report?.capabilities.pcmOutput)
+      if (
+        !this.audioSource ||
+        !this.audioCodec ||
+        !this.report?.capabilities[
+          this.audioCodec === 'opus' ? 'opusOutput' : 'pcmOutput'
+        ]
+      )
         throw new WorkerError('IPC_UNEXPECTED_EVENT');
-      const event = this.pcmSource.accept(packet.kind, packet.payload);
+      const event = this.audioSource.accept(packet.kind, packet.payload);
       if (this.status === 'ready') {
         if (
           !this.rdpConnected &&
@@ -675,6 +689,7 @@ export class WorkerProcess extends EventEmitter {
         this.report.capabilities.displayControl,
         this.report.capabilities.touchInput,
         this.report.capabilities.pcmOutput,
+        this.report.capabilities.opusOutput,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -693,8 +708,18 @@ export class WorkerProcess extends EventEmitter {
       this.connectionRequested = true;
       this.dynamicResolution = config.display?.dynamicResolution === true;
       this.touchEnabled = config.input?.touch === true;
-      this.pcmSource =
-        config.media?.audioOutput === 'pcm' ? new PcmSource() : undefined;
+      this.audioCodec =
+        config.media?.audioOutput === 'opus'
+          ? 'opus'
+          : config.media?.audioOutput === 'pcm'
+            ? 'pcm'
+            : undefined;
+      this.audioSource =
+        this.audioCodec === 'opus'
+          ? new OpusSource()
+          : this.audioCodec === 'pcm'
+            ? new PcmSource()
+            : undefined;
       await this.request(Kind.Connect, Kind.ConnectAck);
     } finally {
       delete config.auth.password;
@@ -780,6 +805,7 @@ function connectionPayload(
   displayControl: boolean,
   touchInput: boolean,
   pcmOutput: boolean,
+  opusOutput: boolean,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -808,8 +834,9 @@ function connectionPayload(
   allowed(config.media, ['audioOutput', 'microphone', 'audioLatencyMs']);
   if (
     (config.media?.audioOutput &&
-      !['off', 'pcm'].includes(config.media.audioOutput)) ||
+      !['off', 'pcm', 'opus'].includes(config.media.audioOutput)) ||
     (config.media?.audioOutput === 'pcm' && !pcmOutput) ||
+    (config.media?.audioOutput === 'opus' && !opusOutput) ||
     (config.media?.microphone && config.media.microphone !== 'off') ||
     config.media?.audioLatencyMs !== undefined
   )
@@ -863,6 +890,7 @@ function connectionPayload(
     ...(config.display?.dynamicResolution ? { dynamicResolution: true } : {}),
     ...(config.input?.touch ? { touch: true } : {}),
     ...(config.media?.audioOutput === 'pcm' ? { pcmOutput: true } : {}),
+    ...(config.media?.audioOutput === 'opus' ? { opusOutput: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),
   });
 }

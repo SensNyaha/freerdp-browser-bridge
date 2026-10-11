@@ -166,6 +166,10 @@ test('native integration: build REST is backed by actual handshake and CLI repor
       assert.equal(response.json().freeRdpVersion, build.freeRdpVersion);
       assert.equal(response.json().capabilities.rdp, false);
       assert.equal(response.json().capabilities.penInput, false);
+      assert.equal(
+        response.json().capabilities.opusOutput,
+        build.capabilities.opusOutput,
+      );
       assert.deepEqual(
         response.json().enabledChannels,
         features.enabledChannels,
@@ -184,6 +188,10 @@ test('native integration: build REST is backed by actual handshake and CLI repor
         ).stdout,
       );
       assert.equal(capabilityCli.capabilities.penInput, false);
+      assert.equal(
+        (await server.inject('/v1/capabilities')).json().opusOutput,
+        capabilityCli.capabilities.opusOutput,
+      );
     } finally {
       await server.close();
     }

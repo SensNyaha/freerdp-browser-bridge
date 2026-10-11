@@ -54,8 +54,8 @@ test(
       assert.equal(packets[0].kind, Kind.HelloAck);
       const capabilities = decodeBuild(packets[0].payload).capabilities;
       const core = capabilities.connectCore;
-      const selected = process.platform === 'win32' && capabilities.pcmOutput;
-      assert.equal(Object.hasOwn(capabilities, 'opusOutput'), false);
+      const selected = process.platform === 'win32' && capabilities.opusOutput;
+      assert.equal(typeof capabilities.opusOutput, 'boolean');
       child.stdin.end(
         Buffer.concat([
           encodePacket({

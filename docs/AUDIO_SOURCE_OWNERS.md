@@ -25,3 +25,7 @@ The Opus owner is isolated and is not imported by WorkerProcess or the public
 backend. Private worker selection, HELLO/settings gating, public negotiation,
 audible RDP and microphone, resource/platform/LAN latency/A/V scheduling and
 soak acceptance remain open. [Wire payloads](AUDIO_OPUS_WIRE.md).
+
+Iteration 85 imports the isolated Opus owner into private WorkerProcess with
+explicit capability/settings gating. Public NativeSessionWorker and SessionManager
+still refuse Opus until public compressed delivery/attachment recovery is ready.

@@ -94,7 +94,7 @@ std::vector<std::uint8_t> build_payload() {
   capabilities |= 2048;
 #endif
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
-  capabilities |= 4096;
+  capabilities |= 4096 | 8192;
 #endif
   append_be(bytes, capabilities, 2);
 #else
@@ -287,9 +287,9 @@ int main(int argc, char **argv) {
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
-                 "\"pcmOutput\":true,"
+                 "\"pcmOutput\":true,\"opusOutput\":true,"
 #else
-                 "\"pcmOutput\":false,"
+                 "\"pcmOutput\":false,\"opusOutput\":false,"
 #endif
 #ifdef CHANNEL_RDPEI_CLIENT
                  "\"touchInput\":true,"
@@ -305,7 +305,7 @@ int main(int argc, char **argv) {
 #else
                  "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
                  "\"unicodeInput\":false,"
-                 "\"pcmOutput\":false,"
+                 "\"pcmOutput\":false,\"opusOutput\":false,"
                  "\"touchInput\":false,"
                  "\"pipelineStats\":false,\"cursor\":false,\"videoQuality\":false,"
                  "\"displayControl\":false},"

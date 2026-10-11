@@ -356,6 +356,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       this.rate('principal:' + owner);
       this.rate('ip:' + remoteAddress);
       const config = validateSessionConfig(value);
+      if (config.media?.audioOutput === 'opus')
+        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (!this.factory) throw new SessionError('RDP_NOT_IMPLEMENTED');
       this.prune();
       const active = [...this.entries.values()].filter(

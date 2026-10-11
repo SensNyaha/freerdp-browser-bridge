@@ -260,3 +260,12 @@ It sends no remote input/sound-generation commands and writes only a bounded
 non-secret `.local-tests/xrdp-audio-report.json`. Waiting with zero packets is an
 idle/source observation, not audio negotiation, audible/browser or latency
 acceptance. Public session PCM remains unavailable until ordered media routing.
+
+Iteration 85 extends this private helper with an optional second argument:
+`node scripts/test-xrdp-audio.mjs sha256:<verified-lab-fingerprint> opus`.
+PCM remains the default. Opus writes its bounded metadata report to
+`.local-tests/xrdp-audio-opus-report.json`, separate from PCM. The same approved
+fingerprint check, private IPC credentials, heartbeat/frame/cleanup and no-input /
+no-sound-generation behavior apply. High-level public Opus remains unsupported;
+this helper does not test browser playback or audible acceptance. Current public
+PCM availability is documented in the later media/viewer contracts.

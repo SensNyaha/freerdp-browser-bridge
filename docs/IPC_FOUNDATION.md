@@ -522,3 +522,23 @@ yet and WorkerProcess/high-level public settings continue refusing Opus until
 typed selection/capability ownership is installed. No arbitrary arguments or
 additional channel formats are exposed.
 [Native lifecycle contract](AUDIO_SESSION_CODECS.md#native-worker-profile-wiring-iteration-84).
+
+## Private typed Opus activation (Iteration 85)
+
+HELLO bit **8192** (`opusOutput`) requires connectCore and reports the compiled
+experimental private Windows Opus path. Foundation/non-guarded workers report
+false. CLI, handshake and build/capability REST agree. Older worker flags decode
+as Opus false; requested Opus is refused before CONFIGURE/SECRET/CONNECT.
+
+WorkerProcess now accepts `media.audioOutput: 'opus'` only with that bit, emits
+schema 6 and selects the isolated OpusSource before CONNECT. Kind 36 is accepted
+only in that profile; PCM/Opus descriptor and packet mixing fails IPC. Shared
+readiness/epoch/capture-clock/Close ownership remains unchanged and retains no
+packet history. Omitted/off audio remains disabled. Microphone and audioLatencyMs
+remain explicit unsupported settings; no latency profile is substituted.
+
+The public NativeSessionWorker and SessionManager explicitly refuse Opus before
+private startup/backend allocation. Public media WebSocket and viewer routing
+remain PCM-only until compressed credit/discontinuity and attachment recovery
+are implemented and verified. This private flag does not establish audible RDP,
+browser/public Opus, microphone or measured latency acceptance.

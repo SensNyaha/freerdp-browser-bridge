@@ -3,6 +3,34 @@ import assert from 'node:assert/strict';
 import { SessionManager } from '../../packages/node-bridge/dist/index.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
 const principal = { id: 'audio-owner' };
+test('public audio manager refuses Opus before backend allocation until negotiation is implemented', async () => {
+  let allocated = 0;
+  const manager = new SessionManager({
+    workerFactory: () => {
+      allocated++;
+      return new FakeSessionWorker();
+    },
+  });
+  try {
+    assert.throws(
+      () =>
+        manager.create(
+          {
+            target: { host: 'fake.test' },
+            auth: {},
+            media: { audioOutput: 'opus' },
+          },
+          principal,
+          '127.0.0.1',
+        ),
+      { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
+    );
+    assert.equal(allocated, 0);
+    assert.equal(manager.statistics().active, 0);
+  } finally {
+    await manager.shutdown();
+  }
+});
 const state = (revision = 1n, availability = 'ready', epoch = 1n) => ({
   type: 'state',
   state: {
