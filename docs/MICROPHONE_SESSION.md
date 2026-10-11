@@ -7,6 +7,28 @@ Normal NativeSessionWorker creation still refuses non-off microphone before
 process startup. Its typed forwarding methods prepare the backend boundary;
 the new manager path is exercised with explicit fake backends only.
 
+Current update — iteration 117: the media lease additionally exposes copied
+`microphoneSnapshot` (`state`, `granted`, `retiring`), `microphoneFailed` and one
+future-only `onMicrophone` subscription. `granted` describes server admission
+ownership, never physical capture or browser permission. Consumers obtain
+initial replay from the getter; no sample/notification history is retained.
+
+Source progress, grant start, immediate revoke and retirement completion deliver
+immutable copied scalar snapshots to the current subscriber. Controller loss
+delivers granted=false synchronously before native reset starts. Retirement
+remains visible until fresh authority completes the barrier. Reentrant release
+during start prevents a successful start reply. Media detach and cleanup remove
+the subscriber; stale unregister/release cannot affect a replacement.
+
+Unregistering the current subscriber or a callback exception revokes its grant
+and initiates retirement. A throwing receiver is marked failed for that lease
+and cannot resubscribe/start/send. A fresh media attachment can recover only
+after proven native retirement. If the source is no longer ready at the attempted
+epoch and no newer authority proves cleanup, retirement fails the session;
+receiver isolation does not waive the privacy barrier. Fixed errors do not
+disclose callback diagnostics. Session lifecycle close remains the host's
+separate signal for stopping a physical capture owner.
+
 SessionWorker optionally supplies source callbacks, PCM submission and input
 reset. Explicit PCM selection requires all three functions before startup;
 Opus input remains unsupported. Unselected/disabled, malformed, replayed or

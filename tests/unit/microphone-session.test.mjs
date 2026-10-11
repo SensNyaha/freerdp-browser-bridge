@@ -297,3 +297,151 @@ test('microphone session: cleanup joins pending sample ownership and late comple
     assert.throws(() => media.startMicrophone(), { code: 'ATTACH_INVALID' });
   });
 });
+
+test('microphone status: one future-only subscriber, immutable event copies and immediate controller-loss authority', async () => {
+  await fixture(async ({ worker, control, media, attach }) => {
+    const events = [],
+      reset = deferred();
+    assert.throws(() => control.onMicrophone(() => {}), {
+      code: 'ATTACH_INVALID',
+    });
+    assert.throws(() => media.onMicrophone(null), { code: 'MEDIA_FAILED' });
+    const off = media.onMicrophone((snapshot) => {
+      assert.equal(Object.isFrozen(snapshot), true);
+      assert.equal(Object.isFrozen(snapshot.state), true);
+      events.push(snapshot);
+    });
+    assert.deepEqual(events, []);
+    const replay = media.microphoneSnapshot;
+    replay.state.epoch = 99n;
+    assert.equal(media.microphoneSnapshot.state.epoch, 1n);
+    assert.equal(media.microphoneSnapshot.granted, false);
+    assert.throws(() => media.onMicrophone(() => {}), { code: 'MEDIA_FAILED' });
+    assert.equal(media.startMicrophone(), true);
+    assert.equal(events.at(-1).granted, true);
+    await media.sendMicrophone(wire());
+    worker.resetMicrophone = () => {
+      ++worker.resetCalls;
+      return reset.promise;
+    };
+    control.release();
+    assert.equal(events.at(-1).granted, false); // Synchronous, before native reset dispatch.
+    assert.equal(events.at(-1).retiring, true);
+    assert.equal(worker.resetCalls, 0);
+    const replacement = attach('control');
+    await eventually(() => worker.resetCalls === 1);
+    reset.resolve('scheduled');
+    worker.publish({ epoch: 2n });
+    await eventually(() => !media.microphoneSnapshot.retiring);
+    assert.equal(events.at(-1).retiring, false);
+    assert.equal(events.at(-1).state.epoch, 2n);
+    assert.equal(media.startMicrophone(), true);
+    worker.resetMicrophone = MicrophoneWorker.prototype.resetMicrophone;
+    await media.stopMicrophone();
+    off();
+    replacement.release();
+  });
+});
+
+test('microphone status: removal retires active grant; stale unsubscribe cannot remove replacement subscription', async () => {
+  await fixture(async ({ worker, media, attach }) => {
+    const old = [];
+    const off = media.onMicrophone((snapshot) => old.push(snapshot));
+    media.startMicrophone();
+    await media.sendMicrophone(wire());
+    off();
+    assert.equal(media.microphoneSnapshot.granted, false);
+    assert.equal(media.microphoneSnapshot.retiring, true);
+    await eventually(() => !media.microphoneSnapshot.retiring);
+    media.release();
+    const next = attach('media'),
+      events = [];
+    const nextOff = next.onMicrophone((snapshot) => events.push(snapshot));
+    off();
+    media.release();
+    const oldCount = old.length;
+    worker.publish({ availability: 'waiting' });
+    assert.equal(events.length, 1);
+    assert.equal(old.length, oldCount);
+    assert.throws(() => media.onMicrophone(() => {}), {
+      code: 'ATTACH_INVALID',
+    });
+    nextOff();
+    worker.publish({ availability: 'ready' });
+    assert.equal(events.length, 1);
+  });
+});
+
+test('microphone status: receiver fault revokes capture and preserves source/session; fresh attachment recovers', async () => {
+  await fixture(async ({ worker, media, manager, created }) => {
+    let fail = false;
+    const off = media.onMicrophone(() => {
+      if (fail) throw new Error('untrusted receiver diagnostic');
+    });
+    assert.equal(media.startMicrophone(), true);
+    await media.sendMicrophone(wire());
+    fail = true;
+    worker.publish({ availability: 'waiting' });
+    assert.equal(media.microphoneFailed, true);
+    assert.equal(media.microphoneSnapshot.granted, false);
+    assert.throws(() => media.onMicrophone(() => {}), { code: 'MEDIA_FAILED' });
+    assert.throws(() => media.startMicrophone(), { code: 'MEDIA_FAILED' });
+    // A failed receiver while the current source is not ready cannot prove flush;
+    // the mandatory barrier therefore fails the session instead of transferring.
+    await eventually(
+      () => manager.get(created.sessionId, principal).state === 'failed',
+    );
+    assert.equal(
+      manager.get(created.sessionId, principal).error.code,
+      'WORKER_FAILED',
+    );
+    off();
+  });
+  await fixture(async ({ worker, media, attach, manager, created }) => {
+    let fail = false;
+    const off = media.onMicrophone(() => {
+      if (fail) throw new Error('untrusted receiver diagnostic');
+    });
+    media.startMicrophone();
+    await media.sendMicrophone(wire());
+    fail = true;
+    worker.publish();
+    await eventually(() => !media.microphoneSnapshot.retiring);
+    assert.equal(media.microphoneFailed, true);
+    assert.equal(manager.get(created.sessionId, principal).state, 'connected');
+    media.release();
+    const next = attach('media'),
+      events = [];
+    const nextOff = next.onMicrophone((snapshot) => events.push(snapshot));
+    off();
+    assert.equal(next.microphoneFailed, false);
+    assert.equal(next.startMicrophone(), true);
+    assert.equal(events.at(-1).granted, true);
+    assert.equal((await next.sendMicrophone(wire(2n))).result, 'accepted');
+    await next.stopMicrophone();
+    nextOff();
+  });
+});
+
+test('microphone status: reentrant media release and replacement during a callback do not inherit old receiver faults', async () => {
+  await fixture(async ({ worker, media, attach }) => {
+    let replacement, nextOff;
+    const events = [];
+    const off = media.onMicrophone(() => {
+      media.release();
+      replacement = attach('media');
+      nextOff = replacement.onMicrophone((snapshot) => events.push(snapshot));
+      throw new Error('old receiver fault');
+    });
+    assert.equal(media.startMicrophone(), false);
+    await eventually(() => !replacement.microphoneSnapshot.retiring);
+    assert.equal(replacement.microphoneFailed, false);
+    assert.equal(replacement.startMicrophone(), true);
+    assert.equal(events.at(-1).granted, true);
+    off();
+    worker.publish();
+    assert.equal(events.at(-1).state.revision, 2n);
+    await replacement.stopMicrophone();
+    nextOff();
+  });
+});

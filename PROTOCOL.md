@@ -274,6 +274,11 @@ bound to both attachment identities. Detach immediately revokes input and a
 fresh native epoch gates replacement. No public socket command or capture
 activation is introduced. [Session contract](docs/MICROPHONE_SESSION.md).
 
+Iteration 117 prepares one media-lease scalar status subscription with explicit
+server grant/retirement state. Control loss revokes and notifies synchronously;
+consumer removal/fault also requires native retirement. These are typed library
+events, not activated public JSON/binary messages or permission claims.
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

@@ -38,7 +38,7 @@ remain open. [Current session ownership](docs/MICROPHONE_SESSION.md),
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 329/329 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 333/333 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -563,6 +563,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   forwarding exists; normal native selection and socket/permission/capture stay
   gated. Actual remote/physical/LAN acceptance remains open.
   [Contract](docs/MICROPHONE_SESSION.md), [evidence](docs/ITERATION_116.md).
+- [~] IN PROGRESS — Media lease microphone snapshots/subscription now report
+  copied source state and explicit grant/retirement, with synchronous controller
+  loss notification. Unsubscribe/receiver faults revoke capture; stale and
+  reentrant callbacks cannot affect a replacement. Four fake-manager cases pass;
+  socket routing, browser permission/capture and actual acceptance remain open.
+  [Evidence](docs/ITERATION_117.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

@@ -148,6 +148,12 @@ export interface Principal {
   id: string;
 }
 export type SessionChannel = 'control' | 'media';
+/** Scalar server admission authority; never a physical capture/permission assertion. */
+export interface SessionMicrophoneSnapshot {
+  state?: MicrophoneState;
+  granted: boolean;
+  retiring: boolean;
+}
 export interface SessionSnapshot {
   sessionId: string;
   state: SessionState;
@@ -242,6 +248,10 @@ type Entry = {
     ingress: MicrophoneIngress;
   };
   microphoneRetirement?: { media: symbol; promise: Promise<boolean> };
+  microphoneListener?: {
+    lease: symbol;
+    sink: (snapshot: SessionMicrophoneSnapshot) => void;
+  };
   touch?: TouchState;
   display?: DisplayState;
   resize?: symbol;
@@ -259,6 +269,24 @@ type Entry = {
   inputPending: number;
   cleanup?: Promise<void>;
 };
+function microphoneSnapshot(
+  entry: Entry,
+  lease: symbol,
+): SessionMicrophoneSnapshot {
+  const grant = entry.microphoneGrant;
+  return {
+    ...(entry.microphone ? { state: { ...entry.microphone } } : {}),
+    granted: Boolean(
+      grant &&
+        grant.media === lease &&
+        entry.attachments.get('media') === lease &&
+        entry.attachments.get('control') === grant.control &&
+        !entry.released &&
+        entry.snapshot.state === 'connected',
+    ),
+    retiring: entry.microphoneOwnership?.status === 'retiring',
+  };
+}
 const transitions: Record<SessionState, readonly SessionState[]> = {
   created: ['starting', 'closing', 'failed'],
   starting: [
@@ -655,6 +683,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                   throw new Error('Invalid microphone source');
                 entry.microphone = state;
                 entry.microphoneSink?.({ ...state });
+                this.microphoneEvent(entry);
               } catch {
                 this.fail(entry, 'WORKER_INVALID_STATE');
               }
@@ -818,6 +847,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     const microphoneClose = entry.microphoneOwnership?.close();
     delete entry.microphoneGrant;
     delete entry.microphone;
+    delete entry.microphoneListener;
     delete entry.certificate;
     delete entry.cursor;
     delete entry.display;
@@ -928,6 +958,11 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     onAudio: (listener: (event: SessionAudioEvent) => void) => () => void;
     resetAudio: (expectedEpoch: bigint) => Promise<AudioResetResult>;
     readonly microphone: MicrophoneState | undefined;
+    readonly microphoneSnapshot: SessionMicrophoneSnapshot;
+    readonly microphoneFailed: boolean;
+    onMicrophone: (
+      listener: (snapshot: SessionMicrophoneSnapshot) => void,
+    ) => () => void;
     startMicrophone: () => boolean;
     stopMicrophone: () => Promise<boolean>;
     sendMicrophone: (bytes: Buffer) => Promise<MicrophoneAdmission>;
@@ -964,6 +999,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.attachments.set(channel, lease);
     let capturing = false;
     let audioFailed = false;
+    let microphoneFailed = false;
     const requireAudioLease = () => {
       if (
         channel !== 'media' ||
@@ -984,8 +1020,50 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         requireMicrophoneLease();
         return entry.microphone && { ...entry.microphone };
       },
+      get microphoneSnapshot() {
+        requireMicrophoneLease();
+        return microphoneSnapshot(entry, lease);
+      },
+      get microphoneFailed() {
+        requireMicrophoneLease();
+        return microphoneFailed;
+      },
+      onMicrophone: (listener) => {
+        requireMicrophoneLease();
+        if (
+          typeof listener !== 'function' ||
+          microphoneFailed ||
+          entry.microphoneListener
+        )
+          throw new SessionError('MEDIA_FAILED');
+        const registration = {
+          lease,
+          sink: (snapshot: SessionMicrophoneSnapshot) => {
+            try {
+              listener(snapshot);
+            } catch {
+              microphoneFailed = true;
+              if (entry.microphoneListener === registration)
+                delete entry.microphoneListener;
+              const grant = entry.microphoneGrant;
+              if (grant?.media === lease)
+                void this.retireMicrophone(entry, grant);
+            }
+          },
+        };
+        entry.microphoneListener = registration;
+        return () => {
+          if (entry.microphoneListener === registration) {
+            delete entry.microphoneListener;
+            const grant = entry.microphoneGrant;
+            if (grant?.media === lease)
+              void this.retireMicrophone(entry, grant);
+          }
+        };
+      },
       startMicrophone: () => {
         requireMicrophoneLease();
+        if (microphoneFailed) throw new SessionError('MEDIA_FAILED');
         if (entry.snapshot.state !== 'connected') return false;
         const control = entry.attachments.get('control');
         if (!control || entry.microphoneGrant) return false;
@@ -999,7 +1077,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         );
         if (!ingress) return false;
         entry.microphoneGrant = { control, media: lease, ingress };
-        return true;
+        this.microphoneEvent(entry);
+        return entry.microphoneGrant?.ingress === ingress;
       },
       stopMicrophone: () => {
         requireMicrophoneLease();
@@ -1012,6 +1091,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       sendMicrophone: (bytes) => {
         try {
           requireMicrophoneLease();
+          if (microphoneFailed) throw new SessionError('MEDIA_FAILED');
           const grant = entry.microphoneGrant;
           if (
             !grant ||
@@ -1198,6 +1278,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       release: () => {
         if (entry.attachments.get(channel) === lease) {
           entry.attachments.delete(channel);
+          if (channel === 'media' && entry.microphoneListener?.lease === lease)
+            delete entry.microphoneListener;
           const grant = entry.microphoneGrant;
           if (
             grant &&
@@ -1228,11 +1310,25 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       promise: entry.microphoneOwnership!.release(grant.ingress),
     };
     entry.microphoneRetirement = reservation;
+    this.microphoneEvent(entry);
     void reservation.promise.then(() => {
       if (entry.microphoneRetirement === reservation)
         delete entry.microphoneRetirement;
+      this.microphoneEvent(entry);
     });
     return reservation.promise;
+  }
+  private microphoneEvent(entry: Entry): void {
+    const subscriber = entry.microphoneListener;
+    if (
+      !subscriber ||
+      entry.attachments.get('media') !== subscriber.lease ||
+      entry.released
+    )
+      return;
+    const snapshot = microphoneSnapshot(entry, subscriber.lease);
+    if (snapshot.state) Object.freeze(snapshot.state);
+    subscriber.sink(Object.freeze(snapshot));
   }
   private displayEvent(
     entry: Entry,
