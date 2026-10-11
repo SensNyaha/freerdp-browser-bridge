@@ -423,6 +423,11 @@ HELLO capability suffix. Missing suffix means microphoneReset=false; workers
 reply unavailable and do not advertise execution yet.
 [Reset contract](docs/MICROPHONE_RESET.md).
 
+Current update — iteration 111: guarded Windows/AUDIN advertises and executes
+private microphone reset through the versioned HELLO suffix. Source epoch/reset
+and one-flight Node sender remain independent of output audio; public capture
+permission and lease remain pending. [Owner contract](docs/MICROPHONE_RESET.md).
+
 
 Public error structure:
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import {
   WorkerProcess,
   NativeSessionWorker,
@@ -27,8 +27,29 @@ async function run(body, peer = 'fixture-microphone') {
   const runtimeRoot = await mkdtemp(
     join(tmpdir(), 'bridge-microphone-worker-'),
   );
-  const worker = new WorkerProcess({
-    workerPath: resolve(directory, peer + suffix),
+  class SyntheticMicrophoneWorker extends WorkerProcess {
+    spawnWorker(cwd, env) {
+      return spawn(
+        process.execPath,
+        [resolve('tests/fixtures/microphone-worker.mjs')],
+        {
+          cwd,
+          env,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true,
+        },
+      );
+    }
+  }
+  const Worker =
+    peer === 'fixture-microphone-reset'
+      ? SyntheticMicrophoneWorker
+      : WorkerProcess;
+  const worker = new Worker({
+    workerPath:
+      peer === 'fixture-microphone-reset'
+        ? process.execPath
+        : resolve(directory, peer + suffix),
     runtimeRoot,
     heartbeatIntervalMs: 60000,
   });
@@ -175,6 +196,91 @@ const native = JSON.parse(
     windowsHide: true,
   }),
 ).capabilities.pcmInput;
+test('private microphone reset: old PCM peers refuse without dispatch; new epoch resumes only fresh PCM', async () => {
+  await run(async (worker) => {
+    assert.equal(worker.build.capabilities.microphoneReset, false);
+    await assert.rejects(worker.resetMicrophone(1n), {
+      code: 'MICROPHONE_RESET_NOT_IMPLEMENTED',
+    });
+    await worker.connect(configuration('valid'));
+    await worker.ping();
+  });
+  await run(async (worker) => {
+    assert.equal(worker.build.capabilities.microphoneReset, true);
+    assert.equal(await worker.resetMicrophone(1n), 'unavailable');
+    await worker.connect(configuration('valid'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    assert.equal(await worker.resetMicrophone(2n), 'stale');
+    assert.equal(await worker.resetMicrophone(1n), 'scheduled');
+    await eventually(() => worker.microphoneState?.epoch === 2n);
+    assert.equal(await worker.sendMicrophone(samples()), 'stale');
+    assert.equal(await worker.sendMicrophone(samples(2n)), 'accepted');
+    await assert.rejects(worker.resetMicrophone(0n));
+    await worker.ping();
+  }, 'fixture-microphone-reset');
+});
+test('fake microphone reset: one pending operation pauses PCM and shutdown drains correlation', async () => {
+  await run(async (worker) => {
+    await worker.connect(configuration('reset-hold'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    const pending = worker.resetMicrophone(1n);
+    assert.equal(await worker.resetMicrophone(1n), 'busy');
+    assert.equal(await worker.sendMicrophone(samples()), 'busy');
+    await worker.ping();
+    assert.equal(await pending, 'scheduled');
+    await eventually(() => worker.microphoneState?.epoch === 2n);
+    const second = worker.resetMicrophone(2n);
+    const closing = worker.close();
+    assert.equal(await second, 'unavailable');
+    await closing;
+    assert.equal(worker.state, 'closed');
+  }, 'fixture-microphone-reset');
+  await run(async (worker) => {
+    await worker.connect(configuration('hold'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    const pending = worker.sendMicrophone(samples());
+    assert.equal(await worker.resetMicrophone(1n), 'busy');
+    await worker.ping();
+    assert.equal(await pending, 'accepted');
+  }, 'fixture-microphone-reset');
+});
+test('fake microphone reset: scheduled old epoch remains paused; typed refusal does not replay or replace state', async () => {
+  await run(async (worker) => {
+    await worker.connect(configuration('reset-scheduled-only'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    assert.equal(await worker.resetMicrophone(1n), 'scheduled');
+    assert.equal(await worker.resetMicrophone(1n), 'busy');
+    assert.equal(await worker.sendMicrophone(samples()), 'unavailable');
+    await worker.ping();
+    assert.equal(worker.microphoneState.epoch, 1n);
+  }, 'fixture-microphone-reset');
+  for (const [host, result] of [
+    ['reset-stale', 'stale'],
+    ['reset-busy', 'busy'],
+    ['reset-unavailable', 'unavailable'],
+  ])
+    await run(async (worker) => {
+      await worker.connect(configuration(host));
+      await eventually(() => worker.microphoneState?.epoch === 1n);
+      assert.equal(await worker.resetMicrophone(1n), result);
+      await worker.ping();
+      assert.equal(worker.microphoneState.epoch, 1n);
+      assert.equal(await worker.sendMicrophone(samples()), 'accepted');
+    }, 'fixture-microphone-reset');
+});
+test('fake microphone reset: malformed and duplicate results terminate private IPC', async () => {
+  for (const host of ['reset-malformed', 'reset-duplicate'])
+    await run(async (worker) => {
+      const failures = [];
+      worker.on('failure', (error) => failures.push(error.code));
+      await worker.connect(configuration(host));
+      await eventually(() => worker.microphoneState?.epoch === 1n);
+      await worker.resetMicrophone(1n).catch(() => {});
+      await eventually(() => failures.length === 1);
+      assert.equal(failures[0], 'IPC_PROTOCOL_ERROR');
+      assert.equal(worker.state, 'failed');
+    }, 'fixture-microphone-reset');
+});
 test(
   'actual native private Node microphone: strict TLS refusal publishes closed input and cleans up',
   { skip: !native, timeout: 15000 },
@@ -199,6 +305,8 @@ test(
         assert.equal(terminal[0].error, 'RDP_CERTIFICATE_REJECTED');
         assert.equal(microphone.length, 1);
         assert.equal(worker.microphoneState.availability, 'closed');
+        assert.equal(worker.build.capabilities.microphoneReset, true);
+        assert.equal(await worker.resetMicrophone(1n), 'unavailable');
         assert.equal(await worker.sendMicrophone(samples()), 'unavailable');
         assert.equal(endpoint.applicationBytes, 0);
         await worker.ping();

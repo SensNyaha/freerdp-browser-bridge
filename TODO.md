@@ -517,6 +517,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   Worker validates and replies unavailable; owner execution and Node API remain
   pending. Parser/native refusal evidence is separate from actual capture.
   [Contract](docs/MICROPHONE_RESET.md), [evidence](docs/ITERATION_110.md).
+- [~] IN PROGRESS — Private microphone reset now runs on RDP owner ahead of PCM
+  handoff, with separate fixed deadline/correlation and fresh admitted authority.
+  Versioned capability gates private Node reset; one-flight and scheduled-epoch
+  pause prevent sending across reset. Synthetic linked/fake IPC and native TLS
+  fixtures are separate from physical/remote acceptance. Public lease/permission /
+  transport and measured connected-worker/LAN/platform gates remain open.
+  [Contract](docs/MICROPHONE_RESET.md), [evidence](docs/ITERATION_111.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

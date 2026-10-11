@@ -31,6 +31,10 @@ Packet audio_reset_reply(std::uint64_t id, ipc::audio::ResetResult result) {
   const auto body = ipc::audio::encode_reset_result(result);
   return {Kind::audio_reset_result, id, {body.begin(), body.end()}};
 }
+Packet microphone_reset_reply(std::uint64_t id, ipc::microphone::ResetResult result) {
+  const auto body = ipc::microphone::encode_reset_result(result);
+  return {Kind::microphone_reset_result, id, {body.begin(), body.end()}};
+}
 } // namespace
 // Keep the physical international-key wire table aligned with pinned public API.
 static_assert(RDP_SCANCODE_ABNT_C1 == 0x73 && RDP_SCANCODE_BACKSLASH_JP == 0x7d &&
@@ -848,6 +852,8 @@ bool Connection::publish_microphone(void *owner, Kind kind, std::span<const std:
   std::lock_guard lock(self.microphone_mutex_);
   if (!self.audio_send_(kind, bytes))
     return false;
+  if (!self.microphone_reset_.observe(state))
+    throw ProtocolError();
   self.microphone_state_ = state;
   return true;
 }
@@ -893,6 +899,37 @@ void Connection::service_microphone(bool ending) {
     const auto body = ipc::microphone::encode_result(completion->result);
     send_({Kind::microphone_result, completion->request_id, {body.begin(), body.end()}});
   }
+}
+void Connection::enqueue_microphone_reset(std::uint64_t request,
+                                          std::span<const std::uint8_t> payload) {
+  const auto epoch = ipc::microphone::decode_reset(payload);
+  std::optional<ipc::microphone::ResetResult> result;
+  {
+    std::lock_guard lock(microphone_mutex_);
+    result = microphone_reset_.enqueue(request, epoch, audio_time_us(), connected_ && !stopping_);
+    if (!result && !SetEvent(media_event_))
+      throw ProtocolError();
+  }
+  if (result)
+    send_(microphone_reset_reply(request, *result));
+}
+void Connection::service_microphone_reset(bool ending) {
+  std::optional<bridge::audio::ResetCompletion> completion;
+  {
+    std::lock_guard lock(microphone_mutex_);
+    completion =
+        microphone_reset_.service(audio_time_us(), !ending && connected_ && !stopping_, [this] {
+          const auto state = microphone_ ? microphone_->published_state() : std::nullopt;
+          const auto stats = microphone_ ? microphone_->stats() : std::nullopt;
+          return state && stats && stats->source.opened &&
+                 state->availability == ipc::audio::Availability::ready &&
+                 state->epoch == stats->source.epoch &&
+                 microphone_->reset_capture(state->epoch).status ==
+                     bridge::audio::AudinCaptureResetStatus::reset;
+        });
+  }
+  if (completion)
+    send_(microphone_reset_reply(completion->request_id, completion->result));
 }
 void Connection::service_audio_reset(bool ending) {
   std::optional<bridge::audio::ResetCompletion> completion;
@@ -1124,6 +1161,7 @@ void Connection::run() noexcept {
         input_pending();
         resize_pending();
         service_audio_reset();
+        service_microphone_reset();
         service_microphone();
         if (microphone_) {
           const auto microphone_publication = microphone_->pump(audio_time_us());
@@ -1169,6 +1207,12 @@ void Connection::run() noexcept {
   // ContextFree does not synthesize host Terminated. Registered channels must
   // receive public disconnect even if connect failed before GDI was initialized.
   if (!explicitly_disconnected && !freerdp_disconnect(context_->instance)) {
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
+  }
+  try {
+    service_microphone_reset(true);
+  } catch (...) {
     terminal_state = RdpState::failed;
     terminal_error = RdpError::protocol;
   }

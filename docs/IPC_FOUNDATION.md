@@ -97,6 +97,12 @@ partial/repeated suffixes or extra bytes reject before configuration/secrets.
 Workers do not emit it or claim reset yet. Kinds 42/43 validate fixed input epoch
 reset/result and explicitly reply unavailable. [Reset contract](MICROPHONE_RESET.md).
 
+Current update — iteration 111: guarded Windows/AUDIN now emits that suffix
+with bit 0 and CLI microphoneReset=true. Private Node gates reset on this feature;
+worker uses a distinct fixed owner-service reset slot ahead of PCM admission.
+Foundation/missing-AUDIN remains false/unavailable. Public permission/capture
+is still pending. [Owner/Node contract](MICROPHONE_RESET.md).
+
 Kinds 33/34 add the isolated [PCM codec foundation](AUDIO_PCM.md#pcm-ipcrwb1-codec-foundation):
 fixed 20-byte AUDIO_CONFIG and 3,864-byte AUDIO_PCM with schema/epoch/frame/clock
 validation. Headers enforce exact lengths before allocation. They introduce no

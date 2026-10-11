@@ -6,6 +6,7 @@
 #include "capture_state.hpp"
 #include "microphone_session.hpp"
 #include "rdpsnd_provider.hpp"
+#include "reset_control.hpp"
 #include <algorithm>
 #include <bit>
 #include <catch2/catch_test_macros.hpp>
@@ -329,6 +330,68 @@ bridge::ipc::microphone::Result submit_capture(void *owner,
   return Result::invalid;
 }
 } // namespace
+TEST_CASE("Microphone reset control clears actual source before fresh admitted authority") {
+  Fixture fixture;
+  struct Probe {
+    ResetControl reset;
+    bool admitted = true;
+  } probe;
+  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+    auto &value = *static_cast<Probe *>(owner);
+    REQUIRE(kind == bridge::ipc::Kind::microphone_state);
+    if (!value.admitted)
+      return false;
+    REQUIRE(value.reset.observe(bridge::ipc::microphone::decode_state(bytes)));
+    return true;
+  };
+  MicrophoneSession session(*fixture.context, send, &probe);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(session.pump(0) == MicrophonePump::idle);
+  REQUIRE(probe.reset.enqueue(1, 1, 0, true) == bridge::ipc::audio::ResetResult::stale);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(100) == MicrophonePump::delivered);
+  std::vector<BYTE> pcm(3840, 0x41);
+  REQUIRE(session.submit({1, 0, true, pcm}) == bridge::ipc::microphone::Result::accepted);
+  REQUIRE(session.submit({1, 20000, false, pcm}) == bridge::ipc::microphone::Result::accepted);
+  REQUIRE_FALSE(probe.reset.enqueue(2, 1, 200, true));
+  const auto reset = [&] {
+    const auto state = session.published_state();
+    const auto stats = session.stats();
+    return state && stats && state->epoch == stats->source.epoch && stats->source.opened &&
+           session.reset_capture(state->epoch).status == AudinCaptureResetStatus::reset;
+  };
+  const auto completed = probe.reset.service(201, true, reset);
+  REQUIRE(completed);
+  REQUIRE(completed->request_id == 2);
+  REQUIRE(completed->result == bridge::ipc::audio::ResetResult::scheduled);
+  REQUIRE(session.stats()->source.capture_resets == 1);
+  REQUIRE(session.stats()->source.capture.queue.queued_frames == 0);
+  REQUIRE(session.published_state()->epoch == 1);
+  REQUIRE(session.submit({1, 40000, false, pcm}) == bridge::ipc::microphone::Result::stale);
+  REQUIRE(session.submit({2, 0, true, pcm}) == bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(probe.reset.enqueue(3, 1, 202, true) == bridge::ipc::audio::ResetResult::busy);
+  probe.admitted = false;
+  REQUIRE(session.pump(300) == MicrophonePump::blocked);
+  REQUIRE(session.published_state()->epoch == 1);
+  probe.admitted = true;
+  REQUIRE(session.pump(400) == MicrophonePump::delivered);
+  REQUIRE(session.published_state()->epoch == 2);
+  REQUIRE(std::all_of(host.writes.back().begin() + 1, host.writes.back().end(),
+                      [](BYTE byte) { return byte == 0; }));
+  REQUIRE_FALSE(probe.reset.enqueue(4, 2, 500, true));
+  REQUIRE(probe.reset.service(500 + ResetControl::window_us, true, reset)->result ==
+          bridge::ipc::audio::ResetResult::busy);
+  REQUIRE(session.stats()->source.capture_resets == 1);
+  REQUIRE_FALSE(probe.reset.enqueue(5, 2, 1000600, true));
+  REQUIRE(probe.reset.service(1000601, false, reset)->result ==
+          bridge::ipc::audio::ResetResult::unavailable);
+  REQUIRE(session.stats()->source.capture_resets == 1);
+  REQUIRE(session.retire(1000700) == MicrophoneRetirement::done);
+}
 TEST_CASE("Microphone worker profile refuses tiny callbacks and accepts a later compatible Open") {
   Fixture fixture;
   bool admitted = true;

@@ -1,5 +1,35 @@
 # Private microphone reset foundation
 
+Current update — iteration 111: guarded Windows/AUDIN now emits the schema-1
+HELLO extension and microphoneReset=true. Private worker/Node reset is active;
+historical no-activation statements below describe iteration 110.
+
+The worker has a separate input ResetControl under the microphone mutex, with
+one pending request and a 1 s owner-service deadline. It observes only status
+already admitted to output. IPC wakes the RDP loop; root service runs before
+the PCM handoff, rechecks actual open source/epoch and invokes source reset
+without a transport write. Old queued PCM is cleared, input epoch advances,
+and replacement ready status must be admitted before new samples. The bounded
+handoff rechecks actual authority, so pending old samples cannot cross reset.
+Ending completes pending reset as unavailable before microphone retirement.
+Output reset/source and provider scopes remain independent.
+
+WorkerProcess.resetMicrophone(expectedEpoch) requires the extension capability.
+Old PCM-input peers throw MICROPHONE_RESET_NOT_IMPLEMENTED without dispatch.
+Inactive/off/not-ready input returns unavailable; old epoch returns stale;
+concurrent sample/reset or repeated scheduled epoch returns busy. A scheduled
+result pauses sending for that epoch until a fresh ready state. A new epoch may
+arrive before the correlated result; it remains authoritative. Typed result
+validation precedes correlation completion. No retry, sample history or host
+capture is introduced. Public lease/permission integration is still pending.
+
+The new reset-specific fake IPC peer is a readable bounded Node script. Tests
+explicitly subclass the protected process-creation seam to launch that script
+with the normal Node executable; production/native spawning continues to launch
+one native worker with an empty argv. This does not implement FreeRDP in Node.
+The separate actual-linked C++ AUDIN/fake-DVC fixture establishes native source
+clearing and delayed publication; actual native TLS tests retain real spawning.
+
 Iteration 110 implements the private reset contract for SPECIFICATION §2.6 /
 MEDIA_PIPELINE §7. RWI1 **42 MICROPHONE_RESET** has a fixed 12-byte body:
 schema byte 1, three zero reserved bytes, then a nonzero big-endian u64 expected

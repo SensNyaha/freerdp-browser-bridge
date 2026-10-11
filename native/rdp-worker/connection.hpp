@@ -64,10 +64,12 @@ class Connection {
   void service_audio_reset(bool ending = false);
   std::mutex microphone_mutex_;
   audio::CaptureHandoff microphone_handoff_;
+  audio::ResetControl microphone_reset_;
   std::optional<ipc::microphone::State> microphone_state_;
   static bool publish_microphone(void *, ipc::Kind, std::span<const std::uint8_t>);
   static ipc::microphone::Result submit_microphone(void *, const ipc::microphone::PcmPacket &);
   void service_microphone(bool ending = false);
+  void service_microphone_reset(bool ending = false);
   std::optional<ipc::ConnectionConfig> config_;
   bool supplied_ = false, started_ = false;
   std::atomic<bool> stopping_{false}, timed_out_{false}, finished_{false};
@@ -157,6 +159,7 @@ public:
   unsigned enqueue_touch(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_audio_reset(std::uint64_t request, std::span<const std::uint8_t> payload);
+  void enqueue_microphone_reset(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload);
   std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;

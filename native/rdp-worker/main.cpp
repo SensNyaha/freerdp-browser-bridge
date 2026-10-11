@@ -108,6 +108,12 @@ std::vector<std::uint8_t> build_payload() {
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
                             platform, arch, "framed-pipes"})
     append_string(bytes, value);
+#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+  // Fixed schema-1 extension: microphone reset, independent of output reset.
+  append_be(bytes, 1, 2);
+  append_be(bytes, 0, 2);
+  append_be(bytes, 1, 4);
+#endif
   return bytes;
 }
 bool read_exact(std::span<std::uint8_t> bytes, bool allow_eof = false) {
@@ -219,9 +225,13 @@ int run() {
         send({Kind::microphone_result, header.request_id, {result.begin(), result.end()}});
 #endif
       } else if (header.kind == Kind::microphone_reset && ready) {
+#ifdef BRIDGE_WITH_FREERDP
+        connection.enqueue_microphone_reset(header.request_id, payload);
+#else
         (void)microphone::decode_reset(payload);
         const auto result = microphone::encode_reset_result(microphone::ResetResult::unavailable);
         send({Kind::microphone_reset_result, header.request_id, {result.begin(), result.end()}});
+#endif
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.stop();
@@ -307,7 +317,13 @@ int main(int argc, char **argv) {
     else
       std::cout << "null";
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
-                 "\"rdp\":false,\"penInput\":false,\"microphoneReset\":false,\"connectCore\":"
+                 "\"rdp\":false,\"penInput\":false,"
+#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+                 "\"microphoneReset\":true,"
+#else
+                 "\"microphoneReset\":false,"
+#endif
+                 "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"

@@ -1,5 +1,9 @@
 # Experimental private Node PCM microphone
 
+Current update — iteration 111: private reset is negotiated through a versioned
+HELLO capability suffix and executed on the RDP owner. Sample sending pauses
+during reset/for the scheduled old epoch. [Reset contract](MICROPHONE_RESET.md).
+
 Iteration 109 implements SPECIFICATION §2.6 / ARCHITECTURE §5 /
 MEDIA_PIPELINE §7. HELLO bit 15 (32768), `pcmInput`, advertises the guarded
 Windows/AUDIN private PCM dispatch path. It requires connectCore; old peers

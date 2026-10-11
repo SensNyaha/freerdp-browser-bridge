@@ -42,6 +42,9 @@ import {
   validateMicrophoneStateProgress,
   encodeMicrophonePcm,
   decodeMicrophoneResult,
+  encodeMicrophoneReset,
+  decodeMicrophoneResetResult,
+  type MicrophoneResetResult,
   type MicrophoneState,
   type MicrophonePcmPacket,
   type MicrophoneResult,
@@ -77,6 +80,7 @@ export type {
   MicrophoneState,
   MicrophonePcmPacket,
   MicrophoneResult,
+  MicrophoneResetResult,
 } from '@freerdp-bridge/protocol';
 
 export class WorkerError extends Error {
@@ -139,6 +143,8 @@ export class WorkerProcess extends EventEmitter {
   private microphoneEnabled = false;
   private microphoneStatus: MicrophoneState | undefined;
   private microphoneSending = false;
+  private microphoneResetting = false;
+  private scheduledMicrophoneEpoch: bigint | undefined;
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
@@ -211,6 +217,20 @@ export class WorkerProcess extends EventEmitter {
     if (this.status !== 'starting') throw new WorkerError('WORKER_TERMINATED');
   }
 
+  /** Process seam for explicit synthetic peers; the native default takes no argv. */
+  protected spawnWorker(
+    directory: string,
+    env: Record<string, string>,
+  ): ChildProcessWithoutNullStreams {
+    return spawn(this.options.workerPath, [], {
+      cwd: directory,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+      detached: process.platform === 'win32',
+    });
+  }
+
   async start(): Promise<WorkerBuild> {
     if (this.status !== 'created') throw new WorkerError('INVALID_STATE');
     this.setState('starting');
@@ -229,13 +249,7 @@ export class WorkerProcess extends EventEmitter {
           process.env[key] === undefined ? [] : [[key, process.env[key]!]],
         ),
       );
-      const child = spawn(this.options.workerPath, [], {
-        cwd: this.directory,
-        env,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        windowsHide: true,
-        detached: process.platform === 'win32',
-      });
+      const child = this.spawnWorker(this.directory, env);
       this.child = child;
       this.closedPromise = new Promise<void>((done) =>
         child.once('close', () => {
@@ -535,6 +549,8 @@ export class WorkerProcess extends EventEmitter {
       decodeAudioResetResult(packet.payload);
     if (packet.kind === Kind.MicrophoneResult)
       decodeMicrophoneResult(packet.payload);
+    if (packet.kind === Kind.MicrophoneResetResult)
+      decodeMicrophoneResetResult(packet.payload);
     if (packet.kind === Kind.DisplayResizeResult) {
       const result = decodeDisplayResizeResult(packet.payload);
       if (result === 'applied' || result === 'unchanged') {
@@ -612,7 +628,9 @@ export class WorkerProcess extends EventEmitter {
       this.microphoneStatus?.availability !== 'ready'
     )
       return 'unavailable';
-    if (this.microphoneSending) return 'busy';
+    if (this.microphoneSending || this.microphoneResetting) return 'busy';
+    if (this.scheduledMicrophoneEpoch === this.microphoneStatus.epoch)
+      return 'unavailable';
     const bytes = encodeMicrophonePcm(packet);
     if (packet.epoch !== this.microphoneStatus.epoch) {
       bytes.fill(0);
@@ -629,6 +647,43 @@ export class WorkerProcess extends EventEmitter {
     } finally {
       bytes.fill(0);
       this.microphoneSending = false;
+    }
+  }
+
+  /** Clears input samples on the owner; fresh ready epoch authorizes subsequent PCM. */
+  async resetMicrophone(expectedEpoch: bigint): Promise<MicrophoneResetResult> {
+    const payload = encodeMicrophoneReset(expectedEpoch);
+    if (!this.report?.capabilities.microphoneReset)
+      throw new WorkerError('MICROPHONE_RESET_NOT_IMPLEMENTED');
+    if (
+      this.status !== 'ready' ||
+      !this.rdpConnected ||
+      !this.microphoneEnabled
+    )
+      return 'unavailable';
+    const state = this.microphoneStatus;
+    if (!state?.enabled) return 'unavailable';
+    if (state.epoch !== expectedEpoch) return 'stale';
+    if (state.availability !== 'ready') return 'unavailable';
+    if (
+      this.microphoneResetting ||
+      this.microphoneSending ||
+      this.scheduledMicrophoneEpoch === expectedEpoch
+    )
+      return 'busy';
+    this.microphoneResetting = true;
+    try {
+      const reply = await this.request(
+        Kind.MicrophoneReset,
+        Kind.MicrophoneResetResult,
+        payload,
+        Math.max(1500, this.options.requestTimeoutMs),
+      );
+      const result = decodeMicrophoneResetResult(reply.payload);
+      if (result === 'scheduled') this.scheduledMicrophoneEpoch = expectedEpoch;
+      return result;
+    } finally {
+      this.microphoneResetting = false;
     }
   }
 
