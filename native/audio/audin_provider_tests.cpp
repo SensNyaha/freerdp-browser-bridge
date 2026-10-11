@@ -1,3 +1,4 @@
+#include "audin_dvc.hpp"
 #include "audin_ingress.hpp"
 #include "audin_provider.hpp"
 #include "rdpsnd_provider.hpp"
@@ -87,7 +88,8 @@ template <class Api> struct Interface {
 struct Host {
   Fixture &fixture;
   AudinIngress ingress;
-  bool guarded = false;
+  AudinDvcGate gate;
+  bool guarded = false, via_gate = false;
   Interface<IDRDYNVC_ENTRY_POINTS> entries{this};
   Interface<IWTSVirtualChannelManager> manager{this};
   Interface<IWTSVirtualChannel> channel{this};
@@ -98,13 +100,16 @@ struct Host {
   std::vector<std::vector<BYTE>> writes;
   UINT write_status = CHANNEL_RC_OK, register_status = CHANNEL_RC_OK;
   UINT nested_close = CHANNEL_RC_OK;
-  bool close_during_write = false;
+  UINT nested_host_close = CHANNEL_RC_OK;
+  bool close_during_write = false, close_host_during_write = false, write_throws = false;
+  unsigned attempts = 0, fail_at = 0;
   unsigned destroyed = 0;
   template <class Api> static Host &get(Api *api) {
     static_assert(std::is_standard_layout_v<Interface<Api>>);
     return *static_cast<Host *>(reinterpret_cast<Interface<Api> *>(api)->owner);
   }
-  explicit Host(Fixture &value, bool filter = false) : fixture(value), guarded(filter) {
+  explicit Host(Fixture &value, bool filter = false, bool wrapped = false)
+      : fixture(value), gate(value.source), guarded(filter), via_gate(wrapped) {
     entries.api.GetPlugin = [](IDRDYNVC_ENTRY_POINTS *api, const char *) {
       return get(api).plugin;
     };
@@ -145,8 +150,15 @@ struct Host {
     };
     channel.api.Write = [](IWTSVirtualChannel *api, ULONG size, const BYTE *data, void *) -> UINT {
       auto &host = get(api);
+      ++host.attempts;
       if (host.close_during_write)
         host.nested_close = host.fixture.provider.close();
+      if (host.close_host_during_write)
+        host.nested_host_close = host.close();
+      if (host.write_throws)
+        throw std::runtime_error("fixture DVC write failure");
+      if (host.fail_at && host.attempts == host.fail_at)
+        return CHANNEL_RC_NOT_CONNECTED;
       if (host.write_status != CHANNEL_RC_OK)
         return host.write_status;
       if (!data || !size || size > 19201 || host.writes.size() == 32)
@@ -167,14 +179,18 @@ struct Host {
     REQUIRE(plugin->Initialize(plugin, &manager.api) == CHANNEL_RC_OK);
     REQUIRE(listener_callback);
     BOOL accepted = TRUE;
-    REQUIRE(listener_callback->OnNewChannelConnection(listener_callback, &channel.api, nullptr,
-                                                      &accepted, &callback) == CHANNEL_RC_OK);
+    const auto result =
+        via_gate ? gate.open(*fixture.context, listener_callback, &channel.api, nullptr, &accepted,
+                             &callback)
+                 : listener_callback->OnNewChannelConnection(listener_callback, &channel.api,
+                                                             nullptr, &accepted, &callback);
+    REQUIRE(result == CHANNEL_RC_OK);
     REQUIRE(accepted);
     REQUIRE(callback);
   }
   UINT send(std::vector<BYTE> bytes) {
     std::span<const BYTE> forwarded = bytes;
-    if (guarded) {
+    if (guarded && !via_gate) {
       const auto pdu = ingress.inspect(bytes);
       if (!pdu)
         return ERROR_INVALID_DATA;
@@ -187,10 +203,17 @@ struct Host {
     return callback->OnDataReceived(callback, &stream);
   }
   UINT close() {
+    if (via_gate && !gate.retired() && !gate.quiescent())
+      return ERROR_INVALID_STATE;
     UINT result = CHANNEL_RC_OK;
     if (callback) {
       result = callback->OnClose(callback);
       callback = nullptr;
+    }
+    if (via_gate) {
+      const auto retired = gate.retire();
+      if (result == CHANNEL_RC_OK)
+        result = retired;
     }
     if (plugin) {
       const auto terminated = plugin->Terminated(plugin);
@@ -234,6 +257,250 @@ void negotiate(Host &host) {
   REQUIRE(host.fixture.source.stats()->opened);
 }
 } // namespace
+TEST_CASE("AUDIN DVC gate confirms negotiated capture pairs and survives delayed host close") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  REQUIRE_FALSE(host.gate.ready());
+  REQUIRE(host.gate.pump() == AudinPumpStatus::inactive);
+  negotiate(host);
+  REQUIRE(host.gate.ready());
+  std::vector<BYTE> input(3840, 0x41);
+  REQUIRE(fixture.source.submit({1, 0, true, input}) == CaptureStatus::accepted);
+  REQUIRE(fixture.source.submit({1, 20000, false, input}) == CaptureStatus::accepted);
+  REQUIRE(host.gate.pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.writes.size() == 7);
+  REQUIRE(host.writes[5] == std::vector<BYTE>{5});
+  REQUIRE(host.writes.back().size() == 3841);
+  REQUIRE(std::equal(input.begin(), input.end(), host.writes.back().begin() + 1));
+  REQUIRE(host.send({7, 1, 0, 0, 0}) == CHANNEL_RC_OK);
+  REQUIRE(host.gate.ready());
+  REQUIRE(fixture.source.stats()->epoch == 2);
+  REQUIRE(host.gate.pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.writes.back().size() == 1921);
+  REQUIRE(std::all_of(host.writes.back().begin() + 1, host.writes.back().end(),
+                      [](BYTE value) { return value == 0; }));
+  auto *late = host.callback;
+  REQUIRE(host.gate.retire() == CHANNEL_RC_OK);
+  REQUIRE_FALSE(host.gate.ready());
+  REQUIRE_FALSE(fixture.source.stats()->opened);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  UINT delayed = ERROR_INTERNAL_ERROR, terminated = ERROR_INTERNAL_ERROR;
+  std::thread thread([&] {
+    delayed = late->OnClose(late);
+    terminated = host.close();
+  });
+  thread.join();
+  REQUIRE(delayed == CHANNEL_RC_OK);
+  REQUIRE(terminated == CHANNEL_RC_OK);
+  REQUIRE(host.destroyed == 1);
+}
+TEST_CASE("AUDIN DVC gate reports no common format without entering upstream zero-count parser") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  REQUIRE(host.send({1, 2, 0, 0, 0}) == CHANNEL_RC_OK);
+  auto unsupported = formats();
+  unsupported[23] = unsupported[41] = 24;
+  REQUIRE(host.send(unsupported) == CHANNEL_RC_OK);
+  REQUIRE(host.writes.size() == 3);
+  REQUIRE(host.writes[1] == std::vector<BYTE>{5});
+  REQUIRE(host.writes[2] == std::vector<BYTE>{2, 0, 0, 0, 0, 9, 0, 0, 0});
+  REQUIRE(host.gate.phase() == AudinChannelPhase::unsupported);
+  REQUIRE_FALSE(host.gate.ready());
+  REQUIRE(host.gate.pump() == AudinPumpStatus::inactive);
+  REQUIRE(fixture.source.stats()->epoch == 0);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("AUDIN DVC gate refuses bad Open before device and closes capture on malformed change") {
+  for (const unsigned fault : {0U, 1U, 2U}) {
+    Fixture fixture;
+    REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+    Host host(fixture, false, true);
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    REQUIRE(host.send({1, 2, 0, 0, 0}) == CHANNEL_RC_OK);
+    REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
+    std::vector<BYTE> open{3, 0xc0, 3, 0, 0, 0, 0, 0, 0};
+    const auto offer = formats();
+    if (fault)
+      open.insert(open.end(), offer.begin() + 9, offer.begin() + 27);
+    if (fault == 1) {
+      open[1] = 0xc1;
+      open[2] = 0x12; // 4,801 frames.
+    }
+    if (fault == 2)
+      open[5] = 2;
+    REQUIRE(host.send(open) == ERROR_INVALID_DATA);
+    REQUIRE(host.writes.size() == 3);
+    REQUIRE_FALSE(fixture.source.stats()->opened);
+    REQUIRE(fixture.source.stats()->epoch == 0);
+    REQUIRE(host.gate.phase() == AudinChannelPhase::failed);
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  }
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(host.send({7, 2, 0, 0, 0}) == ERROR_INVALID_DATA);
+  REQUIRE_FALSE(fixture.source.stats()->opened);
+  REQUIRE(host.gate.pump() == AudinPumpStatus::inactive);
+  REQUIRE(host.writes.size() == 5);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("AUDIN DVC gate checks both data writes and exceptions without sample retry") {
+  for (const unsigned failure : {0U, 1U, 2U}) {
+    Fixture fixture;
+    REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+    Host host(fixture, false, true);
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    negotiate(host);
+    if (failure)
+      host.fail_at = host.attempts + failure;
+    else
+      host.write_throws = true;
+    REQUIRE(host.gate.pump() == AudinPumpStatus::failed);
+    REQUIRE(host.gate.phase() == AudinChannelPhase::failed);
+    const UINT expected = failure ? CHANNEL_RC_NOT_CONNECTED : ERROR_INTERNAL_ERROR;
+    REQUIRE(host.gate.last_error() == expected);
+    REQUIRE(fixture.source.stats()->last_error == expected);
+    REQUIRE_FALSE(fixture.source.stats()->opened);
+    REQUIRE(fixture.source.stats()->callback_failures == 1);
+    REQUIRE(host.gate.pump() == AudinPumpStatus::inactive);
+    REQUIRE(host.writes.size() == (failure == 2 ? 6U : 5U));
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  }
+}
+TEST_CASE("AUDIN DVC gate requires both successful Open replies before capture readiness") {
+  for (const unsigned failure : {1U, 2U}) {
+    Fixture fixture;
+    REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+    Host host(fixture, false, true);
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    REQUIRE(host.send({1, 2, 0, 0, 0}) == CHANNEL_RC_OK);
+    REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
+    REQUIRE_FALSE(host.gate.ready());
+    host.fail_at = host.attempts + failure;
+    std::vector<BYTE> open{3, 0xc0, 3, 0, 0, 0, 0, 0, 0};
+    const auto offer = formats();
+    open.insert(open.end(), offer.begin() + 9, offer.begin() + 27);
+    REQUIRE(host.send(open) == CHANNEL_RC_NOT_CONNECTED);
+    REQUIRE_FALSE(host.gate.ready());
+    REQUIRE_FALSE(fixture.source.stats()->opened);
+    REQUIRE(host.gate.phase() == AudinChannelPhase::failed);
+    REQUIRE(host.gate.pump() == AudinPumpStatus::inactive);
+    REQUIRE(host.writes.size() == (failure == 2 ? 4U : 3U));
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  }
+}
+TEST_CASE("AUDIN DVC gate bounds maximum negotiated PCM block and silence padding") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  REQUIRE(host.send({1, 2, 0, 0, 0}) == CHANNEL_RC_OK);
+  REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
+  std::vector<BYTE> open{3, 0xc0, 0x12, 0, 0, 0, 0, 0, 0}; // 4,800 stereo frames.
+  const auto offer = formats();
+  open.insert(open.end(), offer.begin() + 9, offer.begin() + 27);
+  REQUIRE(host.send(open) == CHANNEL_RC_OK);
+  REQUIRE(host.gate.ready());
+  for (unsigned i = 0; i < 6; ++i) {
+    const std::vector<BYTE> input(3840, static_cast<BYTE>(0x10 + i));
+    REQUIRE(fixture.source.submit({1, i * 20000ULL, i == 0, input}) == CaptureStatus::accepted);
+  }
+  REQUIRE(host.gate.pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.writes.back().size() == 19201);
+  REQUIRE(host.writes.back()[0] == 6);
+  for (std::size_t i = 0; i < 5; ++i) {
+    const auto begin = host.writes.back().begin() + 1 + i * 3840;
+    REQUIRE(std::all_of(begin, begin + 3840,
+                        [i](BYTE value) { return value == static_cast<BYTE>(0x10 + i); }));
+  }
+  REQUIRE(host.gate.pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.writes.back().size() == 19201);
+  REQUIRE(std::all_of(host.writes.back().begin() + 1, host.writes.back().begin() + 3841,
+                      [](BYTE value) { return value == 0x15; }));
+  REQUIRE(std::all_of(host.writes.back().begin() + 3841, host.writes.back().end(),
+                      [](BYTE value) { return value == 0; }));
+  REQUIRE(fixture.source.stats()->capture.queue.silence_frames == 3840);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("AUDIN DVC gate catches detached upstream success without a PCM transport pair") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(host.plugin->Detached(host.plugin) == CHANNEL_RC_OK);
+  REQUIRE(host.gate.pump() == AudinPumpStatus::failed);
+  REQUIRE(host.writes.size() == 5);
+  REQUIRE_FALSE(host.gate.ready());
+  REQUIRE(host.gate.last_error() == ERROR_INVALID_DATA);
+  REQUIRE_FALSE(fixture.source.stats()->opened);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("AUDIN DVC gate preserves active callback ownership through reentrant host close") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  host.close_host_during_write = true;
+  REQUIRE(host.gate.pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.nested_host_close == ERROR_INVALID_STATE);
+  REQUIRE(host.plugin);
+  REQUIRE(host.callback);
+  REQUIRE(host.gate.ready());
+  host.close_host_during_write = false;
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(host.destroyed == 1);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("AUDIN DVC gate refuses foreign calls before owner retirement and channel reuse") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  UINT close = CHANNEL_RC_OK, retire = CHANNEL_RC_OK;
+  AudinPumpStatus pumped = AudinPumpStatus::delivered;
+  std::thread thread([&] {
+    close = host.callback->OnClose(host.callback);
+    retire = host.gate.retire();
+    pumped = host.gate.pump();
+  });
+  thread.join();
+  REQUIRE(close == ERROR_INVALID_STATE);
+  REQUIRE(retire == ERROR_INVALID_STATE);
+  REQUIRE(pumped == AudinPumpStatus::inactive);
+  BOOL accepted = TRUE;
+  IWTSVirtualChannelCallback *reopened = host.callback;
+  REQUIRE(host.gate.open(*fixture.context, host.listener_callback, &host.channel.api, nullptr,
+                         &accepted, &reopened) == ERROR_INVALID_STATE);
+  REQUIRE_FALSE(accepted);
+  REQUIRE_FALSE(reopened);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
 
 TEST_CASE("AUDIN provider binds exact backend context and refuses malformed registration") {
   Fixture fixture;
