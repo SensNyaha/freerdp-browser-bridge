@@ -48,3 +48,9 @@ permission/graph composition or negotiated RDP microphone acceptance.
 Startup context/permission cleanup, full Edge socket/capture composition,
 reference-viewer/native selection, physical/remote/LAN/platform microphone,
 native resampling and Opus input remain open.
+
+Iteration 125 verifies this client with permission/graph/Worklet over actual
+Edge WebSockets and fake RDP worker API admission. Held completion during
+controller loss stops the local track/context before fake worker reset, then
+observes fresh source epoch. This is browser/socket composition, not private
+RWI1 or actual AUDIN acceptance. [Evidence](ITERATION_125.md).
