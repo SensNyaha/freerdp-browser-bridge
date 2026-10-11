@@ -72,6 +72,12 @@ epoch retirement before transfer. It introduces no socket/capture activation;
 normal native creation still refuses non-off input. Fake-manager evidence and
 typed backend methods are described in [the microphone contract](MICROPHONE_SESSION.md).
 
+Current update — iteration 119: explicit media.hello PCM microphone selection
+now routes source/grant metadata, start/stop and fixed binary packets with
+independent ACKs, verified over actual loopback sockets with fake backends.
+Legacy media remains unchanged. Native high-level input creation and browser
+permission/capture remain gated. [Wire limits](MICROPHONE_SOCKET.md).
+
 Each session owns a fresh trusted backend instance. Starting receives a cloned,
 validated configuration and abort signal. Secrets are dereferenced after startup
 settles or is aborted; this is not guaranteed zeroization of JS strings.

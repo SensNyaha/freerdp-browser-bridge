@@ -10,11 +10,13 @@ import {
   type CursorState,
   MAX_CURSOR_BYTES,
   type DisplayState,
+  MICROPHONE_RECORD_BYTES,
 } from '@freerdp-bridge/protocol';
 import { publicSessionError, type SessionManager } from '@freerdp-bridge/node';
 import type { MediaMetrics } from './metrics.js';
 import { displayData } from './display.js';
 import { installPcmMedia, installOpusMedia } from './audio.js';
+import { installMicrophoneMedia } from './microphone.js';
 
 const hello = TypeCompiler.Compile(
   Type.Object(
@@ -33,6 +35,12 @@ const hello = TypeCompiler.Compile(
           ),
           cursor: Type.Optional(Type.Boolean()),
           display: Type.Optional(Type.Boolean()),
+          microphone: Type.Optional(
+            Type.Object(
+              { codec: Type.Literal('pcm'), sourceStatus: Type.Literal(true) },
+              { additionalProperties: false },
+            ),
+          ),
           audio: Type.Optional(
             Type.Object(
               {
@@ -124,6 +132,9 @@ export function installMedia(
   let displayOffered = false;
   let audioOffered: 'pcm' | 'opus' | undefined;
   let audio: ReturnType<typeof installPcmMedia> | undefined;
+  let microphoneOffered = false;
+  let microphone: ReturnType<typeof installMicrophoneMedia> | undefined;
+  let microphoneCommands = 0;
   let latestCursor = lease.cursor;
   let latestDisplay = lease.display;
   let cursorBusy = false;
@@ -169,6 +180,7 @@ export function installMedia(
   };
   const fail = (code: string) => {
     audio?.close();
+    microphone?.close();
     send('media.error', { code });
     ws.close(1008, 'media unavailable');
   };
@@ -298,6 +310,8 @@ export function installMedia(
             ? installPcmMedia(ws, lease, fail, audioMetrics)
             : installOpusMedia(ws, lease, fail, audioMetrics);
       }
+      if (microphoneOffered)
+        microphone = installMicrophoneMedia(ws, lease, send, fail);
       clearTimeout(deadline);
       send('media.ready', {
         codec,
@@ -306,6 +320,22 @@ export function installMedia(
         maxPayloadBytes: MAX_JPEG_BYTES,
         cursor: cursorOffered,
         display: displayOffered,
+        ...(microphone
+          ? {
+              microphone: {
+                codec: 'pcm',
+                sourceStatus: true,
+                streamId: 4,
+                sampleRate: 48000,
+                channels: 2,
+                frames: 960,
+                maxPayloadBytes: MICROPHONE_RECORD_BYTES,
+                maxInFlight: 1,
+                packetTimeoutMs: 2000,
+                stopTimeoutMs: 4000,
+              },
+            }
+          : {}),
         ...(audio
           ? {
               audio: {
@@ -322,6 +352,7 @@ export function installMedia(
         send('display.info', displayData(latestDisplay, lease.resizing));
       if (latestCursor) cursor(latestCursor);
       audio?.start();
+      microphone?.start();
       void pull();
     } catch (error) {
       fail(publicSessionError(error).code);
@@ -351,6 +382,7 @@ export function installMedia(
   );
   ws.once('close', () => {
     audio?.close();
+    microphone?.close();
     latestCursor = undefined;
     delete lease.cursor;
     releaseCredit(false);
@@ -362,12 +394,18 @@ export function installMedia(
     if (Date.now() - window >= 1000) {
       window = Date.now();
       received = 0;
+      microphoneCommands = 0;
     }
-    if (++received > (audio ? 128 : 32)) {
+    if (++received > (microphone ? 160 : audio ? 128 : 32)) {
       fail('MEDIA_RATE_LIMIT');
       return;
     }
-    if (binary || !Buffer.isBuffer(bytes)) {
+    if (binary) {
+      if (microphone && Buffer.isBuffer(bytes)) microphone.receive(bytes);
+      else fail('MEDIA_PROTOCOL_ERROR');
+      return;
+    }
+    if (!Buffer.isBuffer(bytes)) {
       fail('MEDIA_PROTOCOL_ERROR');
       return;
     }
@@ -384,7 +422,18 @@ export function installMedia(
       cursorOffered = value.data.cursor ?? false;
       displayOffered = value.data.display ?? false;
       audioOffered = value.data.audio?.codec;
+      microphoneOffered = Boolean(value.data.microphone);
       negotiate();
+    } else if (
+      microphone &&
+      value &&
+      typeof value === 'object' &&
+      'type' in value &&
+      typeof value.type === 'string' &&
+      value.type.startsWith('microphone.')
+    ) {
+      if (++microphoneCommands > 16) fail('MICROPHONE_RATE_LIMIT');
+      else if (!microphone.command(value)) fail('MEDIA_PROTOCOL_ERROR');
     } else if (audio && audioAck.Check(value)) {
       audio.acknowledge(value.data.sequence);
     } else if (

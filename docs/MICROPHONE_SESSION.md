@@ -1,5 +1,11 @@
 # Preparatory microphone session attachment ownership
 
+Current update — iteration 119: optional media.hello selection now calls these
+typed methods through a bounded WebSocket adapter, with actual loopback/fake-RDP
+transport evidence. Native selection and browser permission/capture stay gated.
+[Current socket contract](MICROPHONE_SOCKET.md). Earlier no-routing statements
+below describe iteration 116.
+
 Iteration 116 connects [exclusive capture ownership](MICROPHONE_OWNERSHIP.md)
 to the SessionManager for SPECIFICATION §2.6 / ARCHITECTURE §2/5 /
 MEDIA_PIPELINE §7. No WebSocket command or browser permission/capture is enabled.

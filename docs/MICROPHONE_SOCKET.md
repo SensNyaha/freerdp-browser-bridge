@@ -1,5 +1,29 @@
 # Prepared PCM microphone media adapter
 
+Current update — iteration 119: the adapter is now selected by the additive
+`media.hello.data.microphone: {codec: "pcm", sourceStatus: true}` extension.
+`media.ready.data.microphone` confirms codec, sourceStatus, streamId 4, sampleRate
+48,000, channels 2, frames 960, maxPayloadBytes 3,876, maxInFlight 1,
+packetTimeoutMs 2,000 and stopTimeoutMs 4,000. The server sends initial status
+after ready; no grant is obtained by negotiation. All commands, states and ACKs
+below are now routed on the selected media socket. Clients omitting the selector
+receive no microphone extension/state and binary input remains refused.
+
+Only this negotiated route gets a total budget of 160 incoming messages/s,
+including binary samples and JSON ACKs/commands. It leaves headroom for 50 input
+packets, 50 output audio ACKs and up to 30 video ACKs. Microphone start/stop commands
+have an additional 16/s cap, checked before mutation. Legacy media retains 32/s
+and audio-only 128/s. Existing WSS maxPayload remains 4,096 bytes before assembly;
+exact record validation still requires 3,876 bytes. Outgoing backlog remains
+bounded. Input ACKs cannot release video or output audio credit.
+
+Actual loopback WebSocket tests use explicit fake RDP backends and synthetic PCM /
+opaque JPEG records. They establish routing, dual-lease revocation and parser/rate
+bounds, not capture or decoding acceptance. Normal NativeSessionWorker creation
+still refuses non-off microphone before spawn; reference-viewer permission /
+capture and actual microphone/RDP acceptance remain open. Historical no-selection
+statements below describe iteration 118.
+
 Iteration 118 implements the isolated adapter for SPECIFICATION §2.6 /
 PROTOCOL §6 / MEDIA_PIPELINE §7. It is **not yet selected by media.hello or
 the viewer**. Native high-level microphone creation remains gated. The message

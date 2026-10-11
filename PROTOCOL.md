@@ -285,6 +285,15 @@ One sample/stop flight, fixed deadlines and shared backlog bounds are tested
 with pure fake sockets; media.hello does not select this adapter yet.
 [Prepared shapes and limits](docs/MICROPHONE_SOCKET.md).
 
+Iteration 119 activates that adapter only for explicit
+`media.hello.data.microphone: {codec: "pcm", sourceStatus: true}`. Ready confirms
+the fixed input profile/deadlines; microphone state/start/stop/result/ACK stay
+separate from video/output audio credit. Selected mixed media gets 160 incoming
+messages/s and microphone commands 16/s; prior 32/128 budgets and 4 KiB input
+preallocation remain. Actual sockets are verified with fake RDP backends;
+normal native input creation and browser permission/capture remain gated.
+[Negotiation and routing contract](docs/MICROPHONE_SOCKET.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

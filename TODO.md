@@ -28,9 +28,11 @@ latency/resource/platform acceptance remain open.
 Microphone foundations now include private Windows worker dispatch/reset,
 bounded Node ingress and exclusive control/media session ownership. Restored
 XRDP private off/PCM/Opus output combinations pass waiting-source inventory;
-ready input, public socket/permission/capture and remote microphone acceptance
+ready input, native selection/permission/capture and remote microphone acceptance
 remain open. [Current session ownership](docs/MICROPHONE_SESSION.md),
 [actual XRDP inventory](docs/ITERATION_115.md).
+Explicit PCM microphone media routing is verified over actual loopback sockets
+with fake RDP backends; this is separate from capture/RDP acceptance.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -38,7 +40,7 @@ remain open. [Current session ownership](docs/MICROPHONE_SESSION.md),
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 340/340 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 346/346 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -575,6 +577,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   pass; media.hello activation, real socket integration, permission/capture and
   actual remote/physical/LAN acceptance remain open.
   [Contract](docs/MICROPHONE_SOCKET.md), [evidence](docs/ITERATION_118.md).
+- [~] IN PROGRESS — Explicit media.hello PCM microphone selection now routes
+  scalar status, grant/stop and fixed binary input with independent ACKs and
+  unchanged 4 KiB input preallocation. Negotiated mixed media has a bounded
+  160/s message budget and 16/s microphone-command cap. Actual loopback sockets
+  with fake RDP verify revocation, stop epoch, video-credit separation and flood /
+  oversized-input refusal. Native selection, permission/capture and actual
+  remote/physical/LAN acceptance remain open. [Evidence](docs/ITERATION_119.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
