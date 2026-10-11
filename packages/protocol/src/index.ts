@@ -5,6 +5,11 @@ export * from './display.js';
 export * from './touch.js';
 export * from './audio.js';
 export * from './opus.js';
+export * from './audio-reset.js';
+import {
+  AUDIO_RESET_REQUEST_BYTES,
+  AUDIO_RESET_RESULT_BYTES,
+} from './audio-reset.js';
 import {
   OPUS_AUDIO_MIN_PACKET_BYTES,
   OPUS_AUDIO_MAX_PACKET_BYTES,
@@ -58,7 +63,9 @@ export enum Kind {
   AudioConfig = 33,
   AudioPcm = 34,
   AudioState = 35,
-  AudioOpus = 36, // Prepared codec; no worker/browser capability is activated.
+  AudioOpus = 36, // Experimental private profile; public media remains gated.
+  AudioReset = 37,
+  AudioResetResult = 38,
 }
 
 export interface Packet {
@@ -96,6 +103,8 @@ function payloadLimit(kind: number): number {
     case Kind.DisplayResize:
     case Kind.DisplayResizeResult:
       return 4;
+    case Kind.AudioResetResult:
+      return AUDIO_RESET_RESULT_BYTES;
     case Kind.DisplayUpdate:
       return DISPLAY_UPDATE_BYTES;
     case Kind.PipelineStatsAck:
@@ -119,6 +128,8 @@ function payloadLimit(kind: number): number {
     case Kind.CaptureAvc:
     case Kind.Input:
       return 12;
+    case Kind.AudioReset:
+      return AUDIO_RESET_REQUEST_BYTES;
     case Kind.InputText:
       return 512;
     case Kind.InputTouch:
@@ -178,7 +189,9 @@ export function decodeHeader(header: Buffer): {
       length !== 24) ||
     (kind === Kind.AudioOpus &&
       (length < OPUS_AUDIO_MIN_PACKET_BYTES ||
-        header.readBigUInt64BE(12) !== 0n))
+        header.readBigUInt64BE(12) !== 0n)) ||
+    ((kind === Kind.AudioReset || kind === Kind.AudioResetResult) &&
+      header.readBigUInt64BE(12) === 0n)
   ) {
     throw new ProtocolError();
   }

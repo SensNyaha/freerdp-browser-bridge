@@ -1,4 +1,5 @@
 #include "audio.hpp"
+#include "audio_reset.hpp"
 #include "connection_config.hpp"
 #include "display.hpp"
 #include "input.hpp"
@@ -16,7 +17,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
       const auto header = decode_header(bytes.first(header_bytes));
       if (size == header_bytes + header.length) {
         const auto payload = bytes.subspan(header_bytes);
-        // Explicit isolated Opus queue; the production dispatcher stays PCM.
+        // Explicit Opus profile keeps codec-specific records in the matching queue.
         OutputQueue opus_output{OutputAudioCodec::opus};
         if (header.kind == Kind::audio_opus) {
           (void)audio::opus::decode_packet(payload);
@@ -50,6 +51,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)audio::decode_packet(payload);
         else if (header.kind == Kind::audio_state)
           (void)audio::decode_state(payload);
+        else if (header.kind == Kind::audio_reset)
+          (void)audio::decode_reset(payload);
+        else if (header.kind == Kind::audio_reset_result)
+          (void)audio::decode_reset_result(payload);
         else if (header.kind == Kind::input_text)
           (void)bridge::input::decode_text(payload);
         else if (header.kind == Kind::input_touch) {

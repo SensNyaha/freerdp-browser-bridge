@@ -45,7 +45,9 @@ enum class Kind : std::uint16_t {
   audio_config = 33,
   audio_pcm = 34,
   audio_state = 35,
-  audio_opus = 36 // Experimental private Windows profile; public media remains gated.
+  audio_opus = 36, // Experimental private Windows profile; public media remains gated.
+  audio_reset = 37,
+  audio_reset_result = 38
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

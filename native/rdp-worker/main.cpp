@@ -1,3 +1,4 @@
+#include "audio_reset.hpp"
 #include "build_features.hpp"
 #include "connection_config.hpp"
 #include "protocol.hpp"
@@ -197,6 +198,10 @@ int run() {
         send({Kind::hello_ack, header.request_id, build_payload()});
       } else if (header.kind == Kind::heartbeat && ready) {
         send({Kind::heartbeat_ack, header.request_id, {}});
+      } else if (header.kind == Kind::audio_reset && ready) {
+        (void)audio::decode_reset(payload);
+        const auto result = audio::encode_reset_result(audio::ResetResult::unavailable);
+        send({Kind::audio_reset_result, header.request_id, {result.begin(), result.end()}});
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.stop();

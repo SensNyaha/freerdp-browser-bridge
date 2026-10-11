@@ -389,6 +389,10 @@ Classes:
 
 All `length` values are checked against message-class maxima before allocation. IPC parser has fuzz tests.
 
+The additive private reset kinds 37/38 are fixed, correlated RWI1 messages;
+see [audio reset contract](docs/AUDIO_RESET.md). Iteration 87 prepares the codec
+and explicit unavailable worker response. It enables no public reset message.
+
 ## 7. Error model
 
 Public error structure:

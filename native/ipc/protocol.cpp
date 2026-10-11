@@ -1,5 +1,6 @@
 #include "protocol.hpp"
 #include "audio.hpp"
+#include "audio_reset.hpp"
 #include "cursor.hpp"
 #include "display.hpp"
 #include "opus_audio.hpp"
@@ -42,6 +43,7 @@ static std::uint32_t limit(Kind kind) {
   case Kind::error:
   case Kind::display_resize:
   case Kind::display_resize_result:
+  case Kind::audio_reset_result:
     return 4;
   case Kind::display_update:
     return display_update_bytes;
@@ -65,6 +67,7 @@ static std::uint32_t limit(Kind kind) {
     return static_cast<std::uint32_t>(max_jpeg_bytes + frame_metadata_bytes);
   case Kind::capture_avc:
   case Kind::input:
+  case Kind::audio_reset:
     return 12;
   case Kind::input_text:
     return 512;
@@ -109,7 +112,8 @@ void validate_header(const Header &header) {
       (kind == Kind::cursor_update && length < cursor::metadata_bytes) ||
       (kind == Kind::input_text && (length == 0 || length % 2)) ||
       (kind == Kind::input_touch && length != 16 && length != 24) ||
-      (kind == Kind::audio_opus && (length < audio::opus::min_packet_bytes || header.request_id)))
+      (kind == Kind::audio_opus && (length < audio::opus::min_packet_bytes || header.request_id)) ||
+      ((kind == Kind::audio_reset || kind == Kind::audio_reset_result) && !header.request_id))
     throw ProtocolError();
 }
 std::array<std::uint8_t, header_bytes> encode_header(const Header &header) {

@@ -42,6 +42,8 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | TOUCH_UPDATE | 32 | exactly 32 bytes; unsolicited readiness metadata, requestId=0 |
 | AUDIO_CONFIG | 33 | exactly 20 bytes; PCM codec foundation, not emitted by current workers |
 | AUDIO_PCM | 34 | exactly 3864 bytes; PCM metadata + samples, not emitted by current workers |
+| AUDIO_RESET | 37 | exactly 12 bytes; nonzero requestId and expected epoch; [reset contract](AUDIO_RESET.md) |
+| AUDIO_RESET_RESULT | 38 | exactly 4 bytes; schema/result/reserved, echoes requestId; [reset contract](AUDIO_RESET.md) |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,
