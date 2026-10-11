@@ -279,6 +279,12 @@ server grant/retirement state. Control loss revokes and notifies synchronously;
 consumer removal/fault also requires native retirement. These are typed library
 events, not activated public JSON/binary messages or permission claims.
 
+Iteration 118 prepares an isolated microphone media adapter with explicit
+start/stop commands, scalar state and separate MIC_PACKET ACK correlation.
+One sample/stop flight, fixed deadlines and shared backlog bounds are tested
+with pure fake sockets; media.hello does not select this adapter yet.
+[Prepared shapes and limits](docs/MICROPHONE_SOCKET.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload
