@@ -1,5 +1,10 @@
 # RWI1 foundation wire contract
 
+Current update — iteration 108: raw CONFIGURE schema 7 adds independent input
+flag 16 on guarded Windows workers. One-slot PCM dispatch and input status are
+wired to the RDP owner; no microphone HELLO/public/WorkerProcess activation yet.
+[Worker contract](MICROPHONE_WORKER.md).
+
 Current update — iteration 103: additive private microphone kinds 39/40 have
 fixed schema-1 bounds and typed unavailable replies on real workers. Microphone
 activation/capability remains disabled. [Input codec](MICROPHONE_PCM_WIRE.md).
@@ -19,7 +24,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
 | ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue/contact capacity full, 8 input paused during display transition, 9 Unicode input not negotiated, 10 touch unavailable, 11 invalid touch transition |
-| CONFIGURE | 8 | connection schema v1/v2/v3/v4 below; maximum 2048 bytes |
+| CONFIGURE | 8 | connection schemas v1..v7; maximum 2048 bytes; [private input opt-in](MICROPHONE_WORKER.md) |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
 | SECRET_ACK | 11 | empty |
@@ -50,7 +55,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | AUDIO_RESET_RESULT | 38 | exactly 4 bytes; schema/result/reserved, echoes requestId; [reset contract](AUDIO_RESET.md) |
 | MICROPHONE_PCM | 39 | exactly 3864 bytes; captured PCM, nonzero requestId; [input codec](MICROPHONE_PCM_WIRE.md) |
 | MICROPHONE_RESULT | 40 | exactly 4 bytes; schema/result/reserved, echoes requestId; current worker replies unavailable |
-| MICROPHONE_STATE | 41 | exactly 40 bytes; input readiness/epoch, requestId=0; [status contract](MICROPHONE_STATE.md), not emitted yet |
+| MICROPHONE_STATE | 41 | exactly 40 bytes; input readiness/epoch, requestId=0; [status contract](MICROPHONE_STATE.md), experimental raw schema-7 worker emission |
 
 HELLO_ACK: u16 negotiatedVersion (1), u16 capabilities (bit 0 lifecycle, bit 1 usable browser RDP,
 bit 2 experimental connection core, bit 3 experimental JPEG capture, bit 4 experimental AVC capture,

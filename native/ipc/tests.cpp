@@ -16,6 +16,43 @@ TEST_CASE("network-order envelope roundtrip and maximum request id") {
   REQUIRE(header.request_id == UINT64_MAX);
   REQUIRE(header.length == 0);
 }
+TEST_CASE("connection v7 private microphone input is independent of the exclusive output codec") {
+  auto bytes = connection;
+  bytes[1] = 7;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 16});
+  for (unsigned flags = 0; flags < 32; ++flags) {
+    bytes.back() = static_cast<std::uint8_t>(flags);
+    if ((flags & 12U) == 12U) {
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+      continue;
+    }
+    const auto config = decode_connection_config(bytes);
+    REQUIRE(config.pcm_input == ((flags & 16U) != 0));
+    REQUIRE(config.opus_output == ((flags & 8U) != 0));
+    REQUIRE(config.pcm_output == ((flags & 4U) != 0));
+    REQUIRE(config.touch == ((flags & 2U) != 0));
+    REQUIRE(config.dynamic_resolution == ((flags & 1U) != 0));
+  }
+  bytes.back() = 16;
+  for (std::size_t size = 0; size < bytes.size(); ++size)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(size)), ProtocolError);
+  for (unsigned schema = 1; schema <= 6; ++schema) {
+    bytes[1] = static_cast<std::uint8_t>(schema);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes[1] = 7;
+  for (const unsigned mask : {32U, 128U, 255U}) {
+    bytes.back() = static_cast<std::uint8_t>(mask);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes.back() = 16;
+  auto high = bytes;
+  high[high.size() - 2] = 1;
+  REQUIRE_THROWS_AS(decode_connection_config(high), ProtocolError);
+  bytes.push_back(0);
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  REQUIRE_FALSE(decode_connection_config(connection).pcm_input);
+}
 TEST_CASE("reject malformed headers before allocation") {
   const auto valid = encode({Kind::heartbeat, 1, {}});
   for (const auto index : {0, 4, 7, 8, 20, 23}) {

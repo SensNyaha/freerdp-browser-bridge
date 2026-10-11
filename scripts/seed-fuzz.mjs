@@ -9,9 +9,33 @@ import {
   encodeMicrophonePcm,
   encodeMicrophoneResult,
   encodeMicrophoneState,
+  encodeConnectionSettings,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+await writeFile(
+  'build/fuzz/corpus/configure-microphone',
+  encodePacket({
+    kind: Kind.Configure,
+    requestId: 1n,
+    payload: encodeConnectionSettings({
+      host: 'localhost',
+      username: 'synthetic',
+      domain: '',
+      port: 3389,
+      width: 1024,
+      height: 768,
+      colorDepth: 32,
+      security: 2,
+      certificatePolicy: 0,
+      minimumTls: 2,
+      connectMs: 5000,
+      tcpAckMs: 1000,
+      pcmInput: true,
+      opusOutput: true,
+    }),
+  }),
+);
 await writeFile(
   'build/fuzz/corpus/microphone-state',
   encodePacket({

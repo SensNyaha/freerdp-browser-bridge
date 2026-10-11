@@ -1,5 +1,9 @@
 # Preparatory private microphone PCM wire
 
+Current update — iteration 108: raw schema-7 input opt-in activates one-slot
+dispatch on guarded Windows workers. Normal WorkerProcess/public selection and
+HELLO microphone negotiation remain pending. [Worker contract](MICROPHONE_WORKER.md).
+
 Current update — iteration 104: one fixed PCM handoff slot now rechecks owner
 epoch/readiness and a 20 ms dispatch deadline before source admission in native
 fixtures. Worker/public activation remains pending.

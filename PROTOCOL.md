@@ -409,6 +409,12 @@ activation is added. [Input status contract](docs/MICROPHONE_STATE.md).
 
 ## 7. Error model
 
+Iteration 108 adds private CONFIGURE schema 7/input flag 16 and guarded Windows
+worker dispatch/status for explicit raw-IPC tests. It keeps microphone HELLO,
+normal Node/public creation, permission and capture unactivated.
+[Private worker contract](docs/MICROPHONE_WORKER.md).
+
+
 Public error structure:
 
 ```json

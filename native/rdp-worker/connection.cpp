@@ -99,6 +99,14 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   if (c.pcm_output || c.opus_output)
     throw ProtocolError();
 #endif
+  // Raw private schema-7 opt-in only; public microphone selection remains gated.
+#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+  if (c.pcm_input && !audio_send_)
+    throw ProtocolError();
+#else
+  if (c.pcm_input)
+    throw ProtocolError();
+#endif
   auto *s = context_->settings;
   const auto boolean = [&](auto key, BOOL value) {
     if (!freerdp_settings_set_bool(s, key, value))
@@ -141,7 +149,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   // Add the guarded static channel in PreConnect. TRUE here would let the
   // pinned generic loader auto-add an unprotected dynamic rdpsnd channel.
   boolean(FreeRDP_AudioPlayback, FALSE);
-  boolean(FreeRDP_AudioCapture, FALSE);
+  boolean(FreeRDP_AudioCapture, c.pcm_input);
 #ifdef CHANNEL_RDPEI_CLIENT
   boolean(FreeRDP_MultiTouchInput, c.touch);
 #else
@@ -831,6 +839,61 @@ void Connection::enqueue_audio_reset(std::uint64_t request, std::span<const std:
   if (result)
     send_(audio_reset_reply(request, *result));
 }
+bool Connection::publish_microphone(void *owner, Kind kind, std::span<const std::uint8_t> bytes) {
+  auto &self = *static_cast<Connection *>(owner);
+  if (kind != Kind::microphone_state)
+    throw ProtocolError();
+  const auto state = ipc::microphone::decode_state(bytes);
+  // Admission and producer authority change together. Lock order: microphone -> output.
+  std::lock_guard lock(self.microphone_mutex_);
+  if (!self.audio_send_(kind, bytes))
+    return false;
+  self.microphone_state_ = state;
+  return true;
+}
+ipc::microphone::Result Connection::submit_microphone(void *owner,
+                                                      const ipc::microphone::PcmPacket &packet) {
+  auto &self = *static_cast<Connection *>(owner);
+  return self.microphone_ ? self.microphone_->submit(packet) : ipc::microphone::Result::unavailable;
+}
+void Connection::enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload) {
+  std::optional<ipc::microphone::Result> result;
+  {
+    std::lock_guard lock(microphone_mutex_);
+    const auto epoch = microphone_state_ ? microphone_state_->epoch : 0;
+    const bool ready = microphone_state_ &&
+                       microphone_state_->availability == ipc::audio::Availability::ready &&
+                       connected_ && !stopping_;
+    result = microphone_handoff_.enqueue(request, payload, audio_time_us(), epoch, ready);
+    if (!result && !SetEvent(media_event_))
+      throw ProtocolError();
+  }
+  if (result) {
+    const auto body = ipc::microphone::encode_result(*result);
+    send_({Kind::microphone_result, request, {body.begin(), body.end()}});
+  }
+}
+void Connection::service_microphone(bool ending) {
+  // Actual source stats are read on RDP owner, never by the IPC producer.
+  const auto state = microphone_ ? microphone_->published_state() : std::nullopt;
+  const auto stats = microphone_ ? microphone_->stats() : std::nullopt;
+  const auto epoch = stats ? stats->source.epoch : 0;
+  const bool ready = !ending && connected_ && !stopping_ && state && stats &&
+                     state->availability == ipc::audio::Availability::ready &&
+                     state->epoch == epoch && stats->source.opened;
+  std::optional<bridge::audio::CaptureCompletion> completion;
+  {
+    std::lock_guard lock(microphone_mutex_);
+    completion =
+        microphone_handoff_.service(audio_time_us(), epoch, ready, submit_microphone, this);
+    if (ending && !microphone_handoff_.retire())
+      throw ProtocolError();
+  }
+  if (completion) {
+    const auto body = ipc::microphone::encode_result(completion->result);
+    send_({Kind::microphone_result, completion->request_id, {body.begin(), body.end()}});
+  }
+}
 void Connection::service_audio_reset(bool ending) {
   std::optional<bridge::audio::ResetCompletion> completion;
   {
@@ -959,6 +1022,9 @@ void Connection::run() noexcept {
           },
           audio_discard_, bridge::audio::AudioSession::Drain{}, 1000000,
           config_->opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm);
+    if (config_->pcm_input)
+      microphone_ =
+          std::make_unique<bridge::audio::MicrophoneSession>(*context_, publish_microphone, this);
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
     std::jthread watchdog([this, deadline](std::stop_token token) {
@@ -1010,7 +1076,7 @@ void Connection::run() noexcept {
         }
         input_pending();
         events[count] = media_event_;
-        DWORD wait_ms = audio_ ? 20 : 50;
+        DWORD wait_ms = audio_ || microphone_ ? 20 : 50;
         {
           std::lock_guard lock(media_mutex_);
           if (frame_request_) {
@@ -1019,8 +1085,17 @@ void Connection::run() noexcept {
                                        .count() +
                                    1;
             wait_ms = static_cast<DWORD>(std::clamp<std::int64_t>(remaining, 1, 50));
-            if (audio_)
+            if (audio_ || microphone_)
               wait_ms = std::min<DWORD>(wait_ms, 20);
+          }
+        }
+        if (microphone_) {
+          if (const auto microphone_deadline = microphone_->capture_deadline()) {
+            const auto now = audio_time_us();
+            const auto remaining =
+                *microphone_deadline <= now ? 0 : (*microphone_deadline - now + 999) / 1000;
+            wait_ms = std::min<DWORD>(wait_ms,
+                                      static_cast<DWORD>(std::min<std::uint64_t>(remaining, 20)));
           }
         }
         const auto result = WaitForMultipleObjects(count + 1, events.data(), FALSE, wait_ms);
@@ -1049,6 +1124,13 @@ void Connection::run() noexcept {
         input_pending();
         resize_pending();
         service_audio_reset();
+        service_microphone();
+        if (microphone_) {
+          const auto microphone_publication = microphone_->pump(audio_time_us());
+          if (microphone_publication == bridge::audio::MicrophonePump::failed ||
+              microphone_publication == bridge::audio::MicrophonePump::invalid)
+            throw ProtocolError();
+        }
         if (audio_) {
           const auto published = audio_->pump(audio_time_us());
           if (published == bridge::audio::PublishStatus::failed ||
@@ -1089,6 +1171,27 @@ void Connection::run() noexcept {
   if (!explicitly_disconnected && !freerdp_disconnect(context_->instance)) {
     terminal_state = RdpState::failed;
     terminal_error = RdpError::protocol;
+  }
+  try {
+    service_microphone(true);
+  } catch (...) {
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
+  }
+  // Microphone was bound above output audio and touch: retire scopes in reverse.
+  if (microphone_) {
+    auto retired = microphone_->retire(audio_time_us());
+    while (retired == bridge::audio::MicrophoneRetirement::pending) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      retired = microphone_->retire(audio_time_us());
+    }
+    const auto stats = microphone_->stats();
+    if (!stats || !stats->resources_retired)
+      std::terminate(); // Worker fault; preserve live callback targets until process exit.
+    if (retired != bridge::audio::MicrophoneRetirement::done) {
+      terminal_state = RdpState::failed;
+      terminal_error = RdpError::protocol;
+    }
   }
   try {
     service_audio_reset(true);

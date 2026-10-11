@@ -496,6 +496,15 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   deadline snapshots require admitted readiness/actual epoch. Worker wakeup,
   global CPU/resource and real microphone acceptance remain open.
   [Contract](docs/AUDIO_AUDIN_PROFILE.md), [evidence](docs/ITERATION_107.md).
+- [~] IN PROGRESS — Raw private schema-7 PCM input opt-in now selects the guarded
+  AUDIN owner in Windows worker. One mutex couples admitted status with producer
+  authority; one 20 ms slot rechecks actual source/epoch before root-thread queue
+  admission. Wakeup/deadline scheduling and reverse finite cleanup are wired.
+  Actual native TLS-refusal/lifetime cases pass with output off/PCM/Opus; no
+  physical capture or negotiated remote microphone is claimed. Normal Node /
+  HELLO/public selection, reset, connected-worker latency and real transport /
+  microphone acceptance remain open. [Contract](docs/MICROPHONE_WORKER.md),
+  [evidence](docs/ITERATION_108.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

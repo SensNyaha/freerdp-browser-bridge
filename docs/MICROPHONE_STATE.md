@@ -1,5 +1,9 @@
 # Preparatory microphone input status and publication
 
+Current update — iteration 108: guarded Windows workers emit input status for
+experimental raw schema-7 selection. Normal Node/public capability, permission
+and capture remain pending. [Worker contract](MICROPHONE_WORKER.md).
+
 Iteration 105 implements SPECIFICATION §2.6 / ARCHITECTURE §5 /
 MEDIA_PIPELINE §7. RWI1 kind 41 MICROPHONE_STATE is a fixed 40-byte schema-1
 worker→Node event with request ID zero. Both header parsers reject other lengths

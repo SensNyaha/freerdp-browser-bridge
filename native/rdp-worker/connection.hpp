@@ -1,4 +1,6 @@
 #pragma once
+#include "../audio/capture_handoff.hpp"
+#include "../audio/microphone_session.hpp"
 #include "../audio/reset_control.hpp"
 #include "../audio/session.hpp"
 #include "certificate.hpp"
@@ -52,6 +54,7 @@ class Connection {
 #endif
   // Host final callbacks must see this wrapper through context destruction.
   std::unique_ptr<audio::AudioSession> audio_;
+  std::unique_ptr<audio::MicrophoneSession> microphone_;
   ContextPtr context_;
   std::function<void(const ipc::Packet &)> send_;
   audio::PcmPublisher::TrySend audio_send_;
@@ -59,6 +62,12 @@ class Connection {
   std::mutex audio_reset_mutex_;
   audio::ResetControl audio_reset_;
   void service_audio_reset(bool ending = false);
+  std::mutex microphone_mutex_;
+  audio::CaptureHandoff microphone_handoff_;
+  std::optional<ipc::microphone::State> microphone_state_;
+  static bool publish_microphone(void *, ipc::Kind, std::span<const std::uint8_t>);
+  static ipc::microphone::Result submit_microphone(void *, const ipc::microphone::PcmPacket &);
+  void service_microphone(bool ending = false);
   std::optional<ipc::ConnectionConfig> config_;
   bool supplied_ = false, started_ = false;
   std::atomic<bool> stopping_{false}, timed_out_{false}, finished_{false};
@@ -148,6 +157,7 @@ public:
   unsigned enqueue_touch(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_audio_reset(std::uint64_t request, std::span<const std::uint8_t> payload);
+  void enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload);
   std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;
 };

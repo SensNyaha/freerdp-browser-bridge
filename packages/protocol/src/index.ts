@@ -487,6 +487,7 @@ export interface ConnectionSettings {
   touch?: boolean;
   pcmOutput?: boolean;
   opusOutput?: boolean;
+  pcmInput?: boolean;
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -503,20 +504,23 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     (c.touch !== undefined && typeof c.touch !== 'boolean') ||
     (c.pcmOutput !== undefined && typeof c.pcmOutput !== 'boolean') ||
     (c.opusOutput !== undefined && typeof c.opusOutput !== 'boolean') ||
+    (c.pcmInput !== undefined && typeof c.pcmInput !== 'boolean') ||
     (c.pcmOutput === true && c.opusOutput === true)
   )
     throw new ProtocolError();
-  const schema = c.opusOutput
-    ? 6
-    : c.pcmOutput
-      ? 5
-      : c.touch
-        ? 4
-        : c.dynamicResolution
-          ? 3
-          : c.videoQuality
-            ? 2
-            : 1;
+  const schema = c.pcmInput
+    ? 7
+    : c.opusOutput
+      ? 6
+      : c.pcmOutput
+        ? 5
+        : c.touch
+          ? 4
+          : c.dynamicResolution
+            ? 3
+            : c.videoQuality
+              ? 2
+              : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -612,7 +616,8 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
         (c.dynamicResolution ? 1 : 0) |
           (c.touch ? 2 : 0) |
           (c.pcmOutput ? 4 : 0) |
-          (c.opusOutput ? 8 : 0),
+          (c.opusOutput ? 8 : 0) |
+          (c.pcmInput ? 16 : 0),
       ]),
     );
   return Buffer.concat(parts);
