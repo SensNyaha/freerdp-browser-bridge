@@ -8,6 +8,7 @@ import {
   WorkerProcess,
   NativeSessionWorker,
   MicrophoneIngress,
+  MicrophoneOwnership,
 } from '../../packages/node-bridge/dist/index.js';
 import { encodeMicrophoneRecord } from '../../packages/protocol/dist/index.js';
 import { eventually } from '../fixtures/session-worker.mjs';
@@ -233,6 +234,52 @@ test('synthetic process: public PCM ingress projects into private IPC, drains an
       await worker.resetMicrophone(replacement.drainEpoch),
       'scheduled',
     );
+    await worker.ping();
+  }, 'fixture-microphone-reset');
+});
+test('synthetic process: microphone ownership barrier joins private reset and fresh publication before transfer', async () => {
+  await run(async (worker) => {
+    await worker.connect(configuration('valid'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    const ownership = new MicrophoneOwnership({
+      source: () => worker.microphoneState,
+      onSource: (listener) => {
+        worker.on('microphone', listener);
+        return () => worker.off('microphone', listener);
+      },
+      submit: (packet) => worker.sendMicrophone(packet),
+      reset: (epoch) => worker.resetMicrophone(epoch),
+      terminate: () => worker.terminate(),
+    });
+    const first = ownership.acquire(() => true);
+    assert.equal(
+      (await first.receive(encodeMicrophoneRecord(samples(), 1))).result,
+      'accepted',
+    );
+    const released = ownership.release(first);
+    assert.equal(ownership.release(first), released);
+    assert.equal(
+      ownership.acquire(() => true),
+      undefined,
+    );
+    assert.equal(await released, true);
+    assert.equal(worker.microphoneState.epoch, 2n);
+    assert.equal(worker.listenerCount('microphone'), 0);
+    const replacement = ownership.acquire(() => true);
+    assert.equal(await ownership.release(first), false);
+    assert.equal(
+      (await first.receive(encodeMicrophoneRecord(samples(2n), 2))).result,
+      'unavailable',
+    );
+    assert.equal(
+      (await replacement.receive(encodeMicrophoneRecord(samples(2n), 1)))
+        .result,
+      'accepted',
+    );
+    assert.equal(await ownership.close(), true);
+    assert.equal(ownership.status, 'closed');
+    assert.equal(worker.microphoneState.epoch, 3n);
+    assert.equal(worker.listenerCount('microphone'), 0);
     await worker.ping();
   }, 'fixture-microphone-reset');
 });

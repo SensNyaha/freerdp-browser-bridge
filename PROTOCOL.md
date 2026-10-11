@@ -264,6 +264,11 @@ Revocation drains its one owned sample slot; the host must additionally reset
 native capture before ownership transfer. Public dispatch remains pending.
 [Admission contract](docs/MICROPHONE_INGRESS.md).
 
+Iteration 114 adds an isolated exclusive owner with a finite drain/reset/new-epoch
+barrier. A scheduled reset alone grants no replacement authority; failure requests
+host termination and permanently disables that owner. Public lease/socket routing
+remains pending. [Ownership contract](docs/MICROPHONE_OWNERSHIP.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

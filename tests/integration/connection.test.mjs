@@ -251,6 +251,12 @@ test(
     const manager = new SessionManager({
       workerFactory: () => new NativeSessionWorker({ workerPath, runtimeRoot }),
     });
+    let promptedSession;
+    const observePrompt = (event) => {
+      if (event.type === 'certificate.prompt')
+        promptedSession = event.session.sessionId;
+    };
+    manager.on('event', observePrompt);
     try {
       const owner = { id: 'synthetic-owner' };
       const created = manager.create(
@@ -259,7 +265,9 @@ test(
         '127.0.0.1',
       );
       await eventually(
-        () => manager.get(created.sessionId, owner).state === 'awaiting-user',
+        () =>
+          manager.get(created.sessionId, owner).state === 'awaiting-user' &&
+          promptedSession === created.sessionId,
       );
       const token = manager.mintToken(
         created.sessionId,
@@ -295,6 +303,7 @@ test(
       });
       await eventually(() => manager.statistics().active === 0);
     } finally {
+      manager.off('event', observePrompt);
       await manager.shutdown();
       assert.deepEqual(await readdir(runtimeRoot), []);
       await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });

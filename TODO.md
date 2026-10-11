@@ -536,6 +536,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   projection/drain/reset fixtures pass; public finite retirement/ownership,
   socket/ACK, permission/capture and remote/physical/LAN gates remain open.
   [Contract](docs/MICROPHONE_INGRESS.md), [evidence](docs/ITERATION_113.md).
+- [~] IN PROGRESS — Isolated exclusive microphone ownership revokes immediately,
+  drains one operation and requires native reset/new epoch before transfer under
+  one finite deadline. Late replies cannot revive expired ownership; failure
+  requests termination once. Portable and synthetic-process fixtures pass;
+  public host cleanup/lease/socket integration, permission/capture and actual
+  remote/physical/LAN gates remain open. [Contract](docs/MICROPHONE_OWNERSHIP.md),
+  [evidence](docs/ITERATION_114.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
