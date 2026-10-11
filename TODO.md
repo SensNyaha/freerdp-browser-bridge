@@ -314,6 +314,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   clock/reset/priority and fresh prediction recovery. Production mode remains
   PCM; codec selection, public negotiation and audible acceptance remain open.
   [Output contract](docs/AUDIO_OPUS_OUTPUT.md), [evidence](docs/ITERATION_079.md).
+- [~] IN PROGRESS — Native AudioSession selects exactly one PCM/Opus publisher
+  with shared sink/provider and retirement ownership. Actual linked RDPSND/fake-SVC
+  verifies Opus Wave2 publication and cancelled-confirmation Close, plus unknown
+  mode refusal/default PCM counters. Worker still selects PCM; IPC/Node/public
+  selection and audible acceptance remain open. [Session contract](docs/AUDIO_SESSION_CODECS.md),
+  [evidence](docs/ITERATION_080.md).
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.

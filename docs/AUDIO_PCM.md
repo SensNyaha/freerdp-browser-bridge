@@ -453,6 +453,11 @@ remain open.
 
 ### Serialized session and retirement owner
 
+The historical foundation below was activated for PCM in later iterations.
+[Iteration 80](AUDIO_SESSION_CODECS.md) adds explicit native PCM/Opus publisher
+selection with the same owner/retirement contract. The production worker still
+uses default PCM; Opus private/public selection remains open.
+
 [Iteration 65](ITERATION_065.md) adds isolated `AudioSession`: one RDP-thread sink,
 static gate, scoped provider and status-aware publisher, with no additional sample
 queue. Construct after context creation, before addin loading; fixed backend/PCM

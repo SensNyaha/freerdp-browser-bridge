@@ -13,6 +13,7 @@
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
 #include <freerdp/svc.h>
+#include <opus/opus.h>
 #include <stdexcept>
 #include <vector>
 #include <winpr/error.h>
@@ -1393,6 +1394,86 @@ TEST_CASE("Actual RDPSND source status orders suspend Close recovery and retired
   REQUIRE(publisher.pump(1021000, send) == PublishStatus::sent);
   take_state(A::closed, 7, 3);
   REQUIRE_FALSE(output.take());
+}
+
+TEST_CASE("Opus audio session selects one publisher and retires actual channel confirmations") {
+  Fixture fixture;
+  const auto previous = freerdp_get_current_addin_provider();
+  bridge::ipc::OutputQueue output{bridge::ipc::OutputAudioCodec::opus};
+  StaticHost *transport = nullptr;
+  AudioSession owner(
+      *fixture.context,
+      [&](auto kind, auto bytes) {
+        return output.push(kind, 0, bytes) == bridge::ipc::EnqueueStatus::accepted;
+      },
+      [&] {
+        output.discard_audio();
+        return true;
+      },
+      [&] {
+        transport->complete(CHANNEL_EVENT_WRITE_CANCELLED);
+        return false;
+      },
+      1000000, bridge::ipc::OutputAudioCodec::opus);
+  StaticHost host(fixture.context.get());
+  transport = &host;
+  host.load(nullptr, true);
+  host.connect();
+  host.defer_writes = true;
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  emit_pcm(host, 100, 1, {0, 128, 255, 127});
+  REQUIRE(owner.pump(1000) == PublishStatus::sent);
+  REQUIRE(owner.stats()->codec == bridge::ipc::OutputAudioCodec::opus);
+  REQUIRE(owner.stats()->opus_encoded_packets == 1);
+  REQUIRE(owner.stats()->opus_cached_bytes == 0);
+  const auto ready = output.take();
+  const auto state = bridge::ipc::audio::opus::decode_state(ready->payload);
+  REQUIRE(state.availability == bridge::ipc::audio::Availability::ready);
+  REQUIRE_THROWS_AS(bridge::ipc::audio::decode_state(ready->payload), bridge::ipc::ProtocolError);
+  const auto config_record = output.take();
+  const auto config = bridge::ipc::audio::opus::decode_config(config_record->payload);
+  const auto audio_record = output.take();
+  const auto packet = bridge::ipc::audio::opus::decode_packet(audio_record->payload);
+  REQUIRE(state.epoch == config.epoch);
+  REQUIRE(packet.epoch == config.epoch);
+  REQUIRE(packet.timestamp_us == 1000);
+  REQUIRE(packet.discontinuity);
+  REQUIRE(packet.frames + packet.silence_frames == 960);
+  REQUIRE(opus_packet_get_nb_samples(packet.encoded.data(),
+                                     static_cast<opus_int32>(packet.encoded.size()), 48000) == 960);
+  REQUIRE(opus_packet_get_nb_channels(packet.encoded.data()) == 2);
+  REQUIRE_FALSE(host.pending.empty());
+  REQUIRE(owner.retire(2000) == RetireStatus::pending);
+  REQUIRE(host.pending.empty());
+  REQUIRE_FALSE(owner.stats()->resources_retired);
+  const auto closed = output.take();
+  REQUIRE(bridge::ipc::audio::opus::decode_state(closed->payload).availability ==
+          bridge::ipc::audio::Availability::closed);
+  REQUIRE_FALSE(output.take());
+  REQUIRE(owner.retire(3000) == RetireStatus::done);
+  REQUIRE(owner.stats()->resources_retired);
+  REQUIRE(owner.stats()->publisher.sent_states == 2);
+  REQUIRE(owner.stats()->opus_encoded_packets == 1);
+  REQUIRE(owner.stats()->opus_cached_bytes == 0);
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
+  REQUIRE(owner.retire(0) == RetireStatus::done);
+  REQUIRE(owner.pump(4000) == PublishStatus::invalid);
+}
+
+TEST_CASE("Audio session rejects unknown codec before binding and keeps PCM SDK counters zero") {
+  Fixture fixture;
+  const auto previous = freerdp_get_current_addin_provider();
+  REQUIRE_THROWS_AS(AudioSession(
+                        *fixture.context, [](auto, auto) { return true; }, [] { return true; }, {},
+                        1000000, static_cast<bridge::ipc::OutputAudioCodec>(2)),
+                    std::invalid_argument);
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
+  AudioSession owner(*fixture.context, [](auto, auto) { return true; }, [] { return true; });
+  REQUIRE(owner.stats()->codec == bridge::ipc::OutputAudioCodec::pcm);
+  REQUIRE(owner.stats()->opus_encoded_packets == 0);
+  REQUIRE(owner.stats()->opus_cached_bytes == 0);
+  REQUIRE(owner.retire(0) == RetireStatus::done);
 }
 
 TEST_CASE("Audio session owner publishes Close while cancelled confirmations drain") {
