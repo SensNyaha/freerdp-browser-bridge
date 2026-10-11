@@ -285,3 +285,23 @@ sound. `--audio-opus-manual` opens the manual viewer with the same gesture butto
 and manual input enabled. Existing `--audio-test` / `--audio-manual` select PCM.
 Run lab modes sequentially. Waiting/zero packets is not audible acceptance.
 [Wire and recovery ownership](AUDIO_OPUS_PUBLIC.md).
+
+## Private XRDP microphone inventory
+
+After bundled native and Node builds, run sequentially:
+
+```powershell
+node scripts/test-xrdp-microphone.mjs $fingerprint off
+node scripts/test-xrdp-microphone.mjs $fingerprint pcm
+node scripts/test-xrdp-microphone.mjs $fingerprint opus
+```
+
+Use Node 24 and the previously verified `sha256:<fingerprint>`. The helper reads
+authorized ignored lab credentials and sends them through private IPC. It selects
+PCM input with the indicated output, observes three seconds of source metadata,
+checks heartbeat/JPEG and closes with empty runtime. It sends no PCM/input/reset
+or remote application commands and requests no physical/browser microphone.
+Reports in `.local-tests/xrdp-microphone-<mode>-report.json` contain only bounded
+scalar inventory. Waiting/epoch 0 is not ready capture, permission, remote
+application, audible or latency acceptance. Public creation remains gated.
+[Actual evidence](ITERATION_115.md).

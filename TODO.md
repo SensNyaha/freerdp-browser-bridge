@@ -543,6 +543,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   public host cleanup/lease/socket integration, permission/capture and actual
   remote/physical/LAN gates remain open. [Contract](docs/MICROPHONE_OWNERSHIP.md),
   [evidence](docs/ITERATION_114.md).
+- [~] IN PROGRESS — Restored actual XRDP accepts private PCM input with output
+  off/PCM/Opus; heartbeat, 1080p JPEG and empty-runtime cleanup pass in all three
+  modes. Input remains waiting/epoch 0, so no ready or remote capture acceptance
+  is claimed. The reproducible inventory helper sends no PCM or remote input.
+  Public activation and remote/physical/LAN gates remain open.
+  [Evidence](docs/ITERATION_115.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
