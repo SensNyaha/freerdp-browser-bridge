@@ -2,6 +2,7 @@
 #include "audin_ingress.hpp"
 #include "audin_plugin.hpp"
 #include "audin_provider.hpp"
+#include "capture_handoff.hpp"
 #include "rdpsnd_provider.hpp"
 #include <algorithm>
 #include <bit>
@@ -9,6 +10,7 @@
 #include <cstring>
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
+#include <mutex>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
@@ -299,7 +301,76 @@ void negotiate(Host &host) {
   REQUIRE(host.send(open) == CHANNEL_RC_OK);
   REQUIRE(host.fixture.source.stats()->opened);
 }
+bridge::ipc::microphone::Result submit_capture(void *owner,
+                                               const bridge::ipc::microphone::PcmPacket &packet) {
+  const auto result = static_cast<AudinSource *>(owner)->submit(
+      {packet.epoch, packet.timestamp_us, packet.discontinuity, packet.pcm});
+  using Result = bridge::ipc::microphone::Result;
+  switch (result) {
+  case CaptureStatus::accepted:
+    return Result::accepted;
+  case CaptureStatus::stale:
+    return Result::stale;
+  case CaptureStatus::inactive:
+    return Result::unavailable;
+  case CaptureStatus::invalid:
+    return Result::invalid;
+  }
+  return Result::invalid;
+}
 } // namespace
+TEST_CASE(
+    "AUDIN capture handoff transfers bounded IPC PCM to the RDP owner and rejects reset races") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  auto &gate = registration.gate();
+  CaptureHandoff handoff;
+  std::mutex mutex;
+  std::vector<BYTE> samples(3840, 0x41);
+  for (std::uint64_t packet = 0; packet < 3; ++packet) {
+    const auto wire =
+        bridge::ipc::microphone::encode_pcm({1, packet * 20000, packet == 0, samples});
+    const auto epoch = fixture.source.stats()->epoch;
+    const auto ready = gate.ready();
+    std::optional<bridge::ipc::microphone::Result> queued;
+    std::thread producer([&] {
+      std::lock_guard lock(mutex);
+      queued = handoff.enqueue(packet + 1, wire, packet * 20000, epoch, ready);
+    });
+    producer.join();
+    REQUIRE_FALSE(queued);
+    if (packet == 2)
+      REQUIRE(gate.reset_capture(1).status == AudinCaptureResetStatus::reset);
+    std::optional<CaptureCompletion> completed;
+    {
+      std::lock_guard lock(mutex);
+      completed = handoff.service(packet * 20000 + 1, fixture.source.stats()->epoch, gate.ready(),
+                                  submit_capture, &fixture.source);
+    }
+    REQUIRE(completed);
+    REQUIRE(completed->request_id == packet + 1);
+    REQUIRE(completed->result == (packet == 2 ? bridge::ipc::microphone::Result::stale
+                                              : bridge::ipc::microphone::Result::accepted));
+    REQUIRE(gate.tick(packet * 20000) == AudinScheduledStatus::delivered);
+    if (packet == 1)
+      REQUIRE(host.writes.back()[1] == 0x41);
+    else
+      REQUIRE(std::all_of(host.writes.back().begin() + 1, host.writes.back().end(),
+                          [](BYTE value) { return value == 0; }));
+  }
+  REQUIRE(handoff.stats().accepted == 2);
+  REQUIRE(handoff.stats().stale == 1);
+  REQUIRE(handoff.stats().owned_bytes == 0);
+  REQUIRE(handoff.retire());
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+
 TEST_CASE("AUDIN capture reset wipes queued samples without reopening the negotiated channel") {
   Fixture fixture;
   AudinRegistration registration(*fixture.context, fixture.source);

@@ -1,5 +1,10 @@
 # Preparatory private microphone PCM wire
 
+Current update — iteration 104: one fixed PCM handoff slot now rechecks owner
+epoch/readiness and a 20 ms dispatch deadline before source admission in native
+fixtures. Worker/public activation remains pending.
+[Handoff contract](AUDIO_CAPTURE_HANDOFF.md).
+
 Iteration 103 implements the codec boundary for SPECIFICATION §2.6 /
 ARCHITECTURE §5 / MEDIA_PIPELINE §7. It does not activate microphone settings,
 AUDIN in the worker, browser permission/capture or public RWB1 MIC_PACKET.

@@ -470,6 +470,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   heartbeat/shutdown fixtures pass; worker handoff/admission, capability, current
   lease/permission, public browser transport and actual microphone remain open.
   [Contract](docs/MICROPHONE_PCM_WIRE.md), [evidence](docs/ITERATION_103.md).
+- [~] IN PROGRESS — Single-slot native microphone handoff copies exact PCM once,
+  rechecks epoch/readiness and a 20 ms dispatch deadline, protects callback borrows
+  and wipes completed/drained samples. Portable and linked AUDIN/fake-DVC producer /
+  RDP-owner fixtures pass; worker wakeup/completions/status, finite shutdown,
+  Node/lease/permission/browser capture and actual LAN acceptance remain open.
+  [Contract](docs/AUDIO_CAPTURE_HANDOFF.md), [evidence](docs/ITERATION_104.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
