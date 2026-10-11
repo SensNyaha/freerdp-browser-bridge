@@ -3,6 +3,7 @@
 #include "output_queue.hpp"
 #include "publisher.hpp"
 #include "rdpsnd_provider.hpp"
+#include "reset_control.hpp"
 #include "session.hpp"
 #include "static_gate.hpp"
 #include <algorithm>
@@ -501,6 +502,10 @@ TEST_CASE("Public static audio gate bounds actual RDPSND ingress and handles str
   REQUIRE(fixture.sink.ready()); // Pinned Close leaves the device open; source state does not.
   REQUIRE(fixture.sink.stats()->queue.queued_frames == 0);
   REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == 2);
+  // Pinned rdpsnd_detect_overrun rounds this tiny Wave2 to 0 ms. Its unsigned
+  // remaining-duration calculation may drop a replay 1..10 ms after first Play.
+  // Let its public clock leave that window; no production dispatch delay is added.
+  std::this_thread::sleep_for(std::chrono::milliseconds(12));
   host.raw(wave, static_cast<UINT>(wave.size()));
   REQUIRE(fixture.sink.stats()->availability == SourceAvailability::ready);
   std::vector<BYTE> output(8);
@@ -1584,6 +1589,70 @@ TEST_CASE("Audio session reset orders discard waiting and fresh PCM Opus predict
     REQUIRE(owner.retire(26000) == RetireStatus::done);
     REQUIRE_FALSE(owner.reset());
     REQUIRE(owner.stats()->source_resets == 1);
+  }
+}
+
+TEST_CASE("Audio reset control drives linked session only after published ready epoch") {
+  namespace ipc = bridge::ipc;
+  for (const auto codec : {ipc::OutputAudioCodec::pcm, ipc::OutputAudioCodec::opus}) {
+    Fixture fixture;
+    ResetControl control;
+    auto output = std::make_unique<ipc::OutputQueue>(codec);
+    bool state_credit = false;
+    AudioSession owner(
+        *fixture.context,
+        [&](auto kind, auto bytes) {
+          if (kind == ipc::Kind::audio_state && !state_credit)
+            return false;
+          if (output->push(kind, 0, bytes) != ipc::EnqueueStatus::accepted)
+            return false;
+          if (kind == ipc::Kind::audio_state)
+            REQUIRE(control.observe(codec == ipc::OutputAudioCodec::opus
+                                        ? ipc::audio::opus::decode_state(bytes)
+                                        : ipc::audio::decode_state(bytes)));
+          return true;
+        },
+        [&] {
+          output->discard_audio();
+          return true;
+        },
+        {}, 1000000, codec);
+    StaticHost host(fixture.context.get());
+    host.load(nullptr, true);
+    host.connect();
+    const auto configuration = formats();
+    host.raw(configuration, static_cast<UINT>(configuration.size()));
+    emit_pcm(host, 100, 1, {0, 128, 255, 127});
+    REQUIRE(owner.pump(1000) == PublishStatus::blocked);
+    REQUIRE(control.enqueue(1, 1, 1000, true) == ipc::audio::ResetResult::unavailable);
+    REQUIRE(owner.stats()->source_resets == 0);
+    state_credit = true;
+    REQUIRE(owner.pump(2000) == PublishStatus::sent);
+    REQUIRE_FALSE(control.enqueue(2, 1, 2000, true));
+    REQUIRE(owner.stats()->source_resets == 0);
+    REQUIRE(control.enqueue(3, 1, 2001, true) == ipc::audio::ResetResult::busy);
+    const auto result = control.service(2002, true, [&] { return owner.reset(); });
+    REQUIRE(result);
+    REQUIRE(result->request_id == 2);
+    REQUIRE(result->result == ipc::audio::ResetResult::scheduled);
+    REQUIRE(owner.stats()->source_resets == 1);
+    REQUIRE(control.enqueue(4, 1, 2003, true) == ipc::audio::ResetResult::busy);
+    REQUIRE(owner.pump(3000) == PublishStatus::sent);
+    REQUIRE(control.enqueue(5, 1, 3001, true) == ipc::audio::ResetResult::stale);
+    REQUIRE(control.enqueue(6, 2, 3001, true) == ipc::audio::ResetResult::unavailable);
+    // Waiting status reserves epoch 2; only new Play reactivates reset eligibility.
+    while (output->take()) {
+    }
+    emit_pcm(host, 120, 2, {1, 0, 254, 255});
+    REQUIRE(owner.pump(4000) == PublishStatus::sent);
+    REQUIRE_FALSE(control.enqueue(7, 2, 4001, true));
+    const auto cancelled = control.service(4002, false, [&] { return owner.reset(); });
+    REQUIRE(cancelled);
+    REQUIRE(cancelled->request_id == 7);
+    REQUIRE(cancelled->result == ipc::audio::ResetResult::unavailable);
+    REQUIRE(owner.stats()->source_resets == 1);
+    REQUIRE(owner.retire(5000) == RetireStatus::done);
+    REQUIRE(control.enqueue(8, 2, 5001, false) == ipc::audio::ResetResult::unavailable);
   }
 }
 

@@ -14,6 +14,8 @@ import {
   helloPayload,
   encodeConnectionSettings,
   decodeConnectionState,
+  encodeAudioReset,
+  decodeAudioResetResult,
 } from '../../packages/protocol/dist/index.js';
 import { OpusSource } from '../../packages/node-bridge/dist/opus-source.js';
 
@@ -126,6 +128,18 @@ test(
       );
       assert.equal(source.current.enabled, true);
       assert.equal(endpoint.applicationBytes, 0);
+      await request(
+        Kind.AudioReset,
+        Kind.AudioResetResult,
+        7n,
+        encodeAudioReset(source.current.epoch),
+      );
+      assert.equal(
+        decodeAudioResetResult(
+          packets.find((p) => p.kind === Kind.AudioResetResult).payload,
+        ),
+        'unavailable',
+      );
       await request(Kind.Heartbeat, Kind.HeartbeatAck, 5n);
       await request(Kind.Shutdown, Kind.ShutdownAck, 6n);
       child.stdin.end();

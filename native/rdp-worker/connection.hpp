@@ -1,4 +1,5 @@
 #pragma once
+#include "../audio/reset_control.hpp"
 #include "../audio/session.hpp"
 #include "certificate.hpp"
 #include "connection_config.hpp"
@@ -55,6 +56,9 @@ class Connection {
   std::function<void(const ipc::Packet &)> send_;
   audio::PcmPublisher::TrySend audio_send_;
   audio::PcmPublisher::TryDiscard audio_discard_;
+  std::mutex audio_reset_mutex_;
+  audio::ResetControl audio_reset_;
+  void service_audio_reset(bool ending = false);
   std::optional<ipc::ConnectionConfig> config_;
   bool supplied_ = false, started_ = false;
   std::atomic<bool> stopping_{false}, timed_out_{false}, finished_{false};
@@ -143,6 +147,7 @@ public:
                          bool text = false);
   unsigned enqueue_touch(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload);
+  void enqueue_audio_reset(std::uint64_t request, std::span<const std::uint8_t> payload);
   std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;
 };

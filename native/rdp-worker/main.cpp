@@ -199,9 +199,13 @@ int run() {
       } else if (header.kind == Kind::heartbeat && ready) {
         send({Kind::heartbeat_ack, header.request_id, {}});
       } else if (header.kind == Kind::audio_reset && ready) {
+#ifdef BRIDGE_WITH_FREERDP
+        connection.enqueue_audio_reset(header.request_id, payload);
+#else
         (void)audio::decode_reset(payload);
         const auto result = audio::encode_reset_result(audio::ResetResult::unavailable);
         send({Kind::audio_reset_result, header.request_id, {result.begin(), result.end()}});
+#endif
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.stop();

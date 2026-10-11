@@ -21,6 +21,17 @@
 
 namespace bridge {
 using namespace ipc;
+namespace {
+std::uint64_t audio_time_us() {
+  return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                        std::chrono::steady_clock::now().time_since_epoch())
+                                        .count());
+}
+Packet audio_reset_reply(std::uint64_t id, ipc::audio::ResetResult result) {
+  const auto body = ipc::audio::encode_reset_result(result);
+  return {Kind::audio_reset_result, id, {body.begin(), body.end()}};
+}
+} // namespace
 // Keep the physical international-key wire table aligned with pinned public API.
 static_assert(RDP_SCANCODE_ABNT_C1 == 0x73 && RDP_SCANCODE_BACKSLASH_JP == 0x7d &&
               RDP_SCANCODE_HIRAGANA == 0x70 && RDP_SCANCODE_CONVERT_JP == 0x79 &&
@@ -808,6 +819,31 @@ void Connection::resize_pending(bool ending) {
   }
   resizing_ = queued_resize_.has_value() || active_resize_.has_value();
 }
+void Connection::enqueue_audio_reset(std::uint64_t request, std::span<const std::uint8_t> payload) {
+  const auto epoch = ipc::audio::decode_reset(payload);
+  std::optional<ipc::audio::ResetResult> result;
+  {
+    std::lock_guard lock(audio_reset_mutex_);
+    result = audio_reset_.enqueue(request, epoch, audio_time_us(), connected_ && !stopping_);
+    if (!result && !SetEvent(media_event_))
+      throw ProtocolError();
+  }
+  if (result)
+    send_(audio_reset_reply(request, *result));
+}
+void Connection::service_audio_reset(bool ending) {
+  std::optional<bridge::audio::ResetCompletion> completion;
+  {
+    std::lock_guard lock(audio_reset_mutex_);
+    completion = audio_reset_.service(audio_time_us(), !ending && connected_ && !stopping_, [this] {
+      const auto stats = audio_ ? audio_->stats() : std::nullopt;
+      return stats && stats->source.availability == bridge::audio::SourceAvailability::ready &&
+             audio_->reset();
+    });
+  }
+  if (completion)
+    send_(audio_reset_reply(completion->request_id, completion->result));
+}
 BOOL Connection::authenticate(freerdp *instance, char **username, char **password, char **,
                               rdp_auth_reason) {
   if (username && password && *username && **username && *password)
@@ -892,11 +928,6 @@ void Connection::run() noexcept {
   auto terminal_state = RdpState::failed;
   auto terminal_error = RdpError::protocol;
   bool explicitly_disconnected = false;
-  const auto audio_time = [] {
-    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
-                                          std::chrono::steady_clock::now().time_since_epoch())
-                                          .count());
-  };
 #ifdef CHANNEL_RDPEI_CLIENT
   touch::AddinProvider touch_provider;
 #endif
@@ -911,7 +942,22 @@ void Connection::run() noexcept {
 #endif
     if (config_->pcm_output || config_->opus_output)
       audio_ = std::make_unique<bridge::audio::AudioSession>(
-          *context_, audio_send_, audio_discard_, bridge::audio::AudioSession::Drain{}, 1000000,
+          *context_,
+          [this](Kind kind, std::span<const std::uint8_t> bytes) {
+            std::optional<ipc::audio::State> state;
+            if (kind == Kind::audio_state)
+              state = config_->opus_output ? ipc::audio::opus::decode_state(bytes)
+                                           : ipc::audio::decode_state(bytes);
+            if (!audio_send_(kind, bytes))
+              return false;
+            if (state) {
+              std::lock_guard lock(audio_reset_mutex_);
+              if (!audio_reset_.observe(*state))
+                throw ProtocolError();
+            }
+            return true;
+          },
+          audio_discard_, bridge::audio::AudioSession::Drain{}, 1000000,
           config_->opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm);
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
@@ -1002,8 +1048,9 @@ void Connection::run() noexcept {
           break;
         input_pending();
         resize_pending();
+        service_audio_reset();
         if (audio_) {
-          const auto published = audio_->pump(audio_time());
+          const auto published = audio_->pump(audio_time_us());
           if (published == bridge::audio::PublishStatus::failed ||
               published == bridge::audio::PublishStatus::invalid)
             throw ProtocolError();
@@ -1043,11 +1090,17 @@ void Connection::run() noexcept {
     terminal_state = RdpState::failed;
     terminal_error = RdpError::protocol;
   }
+  try {
+    service_audio_reset(true);
+  } catch (...) {
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
+  }
   if (audio_) {
-    auto retired = audio_->retire(audio_time());
+    auto retired = audio_->retire(audio_time_us());
     while (retired == bridge::audio::RetireStatus::pending) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      retired = audio_->retire(audio_time());
+      retired = audio_->retire(audio_time_us());
     }
     const auto stats = audio_->stats();
     if (!stats || !stats->resources_retired)
