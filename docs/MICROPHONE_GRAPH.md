@@ -13,6 +13,9 @@ synchronously and resolve void only after its finite native/server barrier.
 `failed()` must synchronously stop the enclosing permission/track owner.
 This scope does not itself implement media negotiation or server grant commands.
 
+Iteration 124 adds the [media command/ACK owner](MICROPHONE_MEDIA_CLIENT.md).
+Actual Edge graph/socket and startup context composition remain open.
+
 The graph loads only the fixed capture Worklet module. It connects the silent
 output before waiting for exact ready confirmation, then connects the stream
 source. Exact monotonically increasing port packet ids, epoch, capture time and

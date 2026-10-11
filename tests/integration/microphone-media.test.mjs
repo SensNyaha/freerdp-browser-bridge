@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { encodeMicrophoneRecord } from '../../packages/protocol/dist/index.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
+import { MicrophoneMediaClient } from '../../apps/reference-harness/microphone-media.js';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
 )('ws');
@@ -192,6 +193,101 @@ async function setup(run, microphone = 'pcm', controller = true) {
 const message = (messages, type, predicate = () => true) =>
   messages.find((value) => value.type === type && predicate(value.data));
 const binary = (messages) => messages.filter(Buffer.isBuffer);
+
+test('fake RDP / actual WS microphone browser client: correlated commands, latest synthetic PCM, preserved ACK and observed restart epoch', async () => {
+  await setup(async ({ worker, media, hello }) => {
+    hello();
+    await eventually(
+      () =>
+        message(media.messages, 'media.ready') &&
+        message(media.messages, 'microphone.state'),
+    );
+    let failed = 0;
+    const admitted = [],
+      held = deferred();
+    worker.sendMicrophone = async (value) => {
+      ++worker.samples;
+      assert.equal(value.pcm.length, 3840);
+      assert.equal(value.pcm[0], 8);
+      assert.ok(admitted.length < 4);
+      admitted.push({
+        epoch: value.epoch,
+        timestampUs: value.timestampUs,
+        discontinuity: value.discontinuity,
+      });
+      return admitted.length === 1 ? held.promise : 'accepted';
+    };
+    const client = new MicrophoneMediaClient(
+      {
+        write(value) {
+          if (
+            media.ws.readyState !== WebSocket.OPEN ||
+            media.ws.bufferedAmount +
+              (typeof value === 'string'
+                ? Buffer.byteLength(value)
+                : value.byteLength) >
+              65536
+          )
+            return false;
+          media.ws.send(
+            value instanceof ArrayBuffer ? Buffer.from(value) : value,
+          );
+          return true;
+        },
+        changed() {},
+        failed() {
+          ++failed;
+          media.ws.terminate();
+        },
+      },
+      message(media.messages, 'media.ready').data.microphone,
+    );
+    const receive = (bytes, isBinary) => {
+      if (!isBinary) client.message(JSON.parse(bytes.toString()));
+    };
+    media.ws.on('message', receive);
+    for (const value of media.messages)
+      if (!Buffer.isBuffer(value)) client.message(value);
+    const samples = (timestampUs, epoch = 1n) => ({
+      timestampUs,
+      epoch,
+      pcm: new Uint8Array(3840).fill(8),
+    });
+    try {
+      assert.equal(await client.start(1n), true);
+      const token = client.authorize(1n);
+      client.sender.offer(token, samples(0n), performance.now());
+      await eventually(() => worker.samples === 1);
+      client.sender.offer(token, samples(20000n), performance.now());
+      client.sender.offer(token, samples(40000n), performance.now());
+      assert.equal(client.stats.pendingBytes, 3840);
+      held.resolve('accepted');
+      await eventually(() => client.stats.accepted === 2);
+      assert.deepEqual(admitted, [
+        { epoch: 1n, timestampUs: 0n, discontinuity: true },
+        { epoch: 1n, timestampUs: 40000n, discontinuity: true },
+      ]);
+      await client.stop();
+      assert.equal(worker.resets, 1);
+      assert.equal(client.source.source.epoch, 2n);
+      assert.equal(client.authorized(token, 1n), false);
+      assert.equal(await client.start(2n), true);
+      const fresh = client.authorize(2n);
+      assert.notEqual(fresh, token);
+      client.sender.offer(fresh, samples(0n, 2n), performance.now());
+      await eventually(() => client.stats.accepted === 3);
+      assert.equal(admitted[2].epoch, 2n);
+      await client.stop();
+      assert.equal(worker.resets, 2);
+      assert.equal(media.ws.readyState, WebSocket.OPEN);
+      assert.equal(failed, 0);
+    } finally {
+      held.resolve('accepted');
+      media.ws.off('message', receive);
+      client.close();
+    }
+  });
+});
 
 test('fake RDP / actual WS microphone: explicit profile/grant, private admission, independent video credit and observed stop epoch', async () => {
   await setup(async ({ worker, media, hello }) => {
