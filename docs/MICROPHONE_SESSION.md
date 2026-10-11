@@ -1,5 +1,9 @@
 # RDP-owner microphone session
 
+Current update — iteration 107: the owner selects the bounded callback profile
+and exposes an authority/epoch-checked deadline for future worker polling.
+[Profile contract](AUDIO_AUDIN_PROFILE.md).
+
 Iteration 106 implements SPECIFICATION §2.6 / ARCHITECTURE §5 /
 MEDIA_PIPELINE §7. MicrophoneSession owns the virtual source, guarded AUDIN
 plugin/listener/provider, scheduled PCM callback and latest input-status

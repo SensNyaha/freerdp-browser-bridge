@@ -96,8 +96,13 @@ std::optional<AudinPdu> AudinIngress::inspect(std::span<const std::uint8_t> data
       return reject();
     const auto frames = dword(data, 1), index = dword(data, 5);
     const auto preferred = format_size(data, 9);
-    if (!frames || frames > 4800 || index >= count_ || !preferred || data.size() != 9 + *preferred)
+    if (!frames || frames > max_frames || index >= count_ || !preferred ||
+        data.size() != 9 + *preferred)
       return reject();
+    if (profile_ == AudinCaptureProfile::worker && frames < worker_min_frames)
+      // A valid but too frequent request gets a failed Open Reply. Keep the
+      // negotiated table so the server may retry Open with an admissible size.
+      return AudinPdu{AudinPduKind::open, data, version_, count_, index, frames, false};
     // Capture preference is structurally checked; pinned AUDIN records from
     // the selected negotiated format. No preferred-format payload is retained.
     frames_ = frames;

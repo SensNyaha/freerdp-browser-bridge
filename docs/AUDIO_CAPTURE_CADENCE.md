@@ -1,5 +1,10 @@
 # Bounded AUDIN capture cadence
 
+Current update — iteration 107: MicrophoneSession selects 480..4,800-frame
+callbacks, refuses smaller Open requests with a checked HRESULT and allows a
+compatible retry. Native compatibility fixtures still retain 1-frame support.
+Worker wakeup/CPU integration remains open. [Profile contract](AUDIO_AUDIN_PROFILE.md).
+
 Current update — iteration 102: native capture reset preserves the negotiated
 receiver with a fresh epoch, and deadline snapshots require matching source /
 cadence epochs. [Reset contract](AUDIO_CAPTURE_RESET.md).

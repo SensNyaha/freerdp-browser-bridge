@@ -489,6 +489,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   snapshot/mutex/wakeup/selection, production callback CPU budget, live-handle
   expiry and real microphone acceptance remain open.
   [Contract](docs/MICROPHONE_SESSION.md), [evidence](docs/ITERATION_106.md).
+- [~] IN PROGRESS — Microphone owner selects 10..100 ms AUDIN callbacks;
+  valid smaller Open gets a checked HRESULT refusal before device/upstream Open,
+  with negotiated-table retention for a compatible retry. Portable and actual
+  linked AUDIN/fake-DVC boundary, cadence and write-failure checks pass. Owner
+  deadline snapshots require admitted readiness/actual epoch. Worker wakeup,
+  global CPU/resource and real microphone acceptance remain open.
+  [Contract](docs/AUDIO_AUDIN_PROFILE.md), [evidence](docs/ITERATION_107.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

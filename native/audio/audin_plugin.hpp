@@ -41,7 +41,8 @@ class AudinRegistration {
   UINT new_channel(IWTSVirtualChannel *, BYTE *, BOOL *, IWTSVirtualChannelCallback **) noexcept;
 
 public:
-  AudinRegistration(rdpContext &, AudinSource &) noexcept;
+  AudinRegistration(rdpContext &, AudinSource &,
+                    AudinCaptureProfile = AudinCaptureProfile::compatibility) noexcept;
   AudinRegistration(const AudinRegistration &) = delete;
   AudinRegistration &operator=(const AudinRegistration &) = delete;
   ~AudinRegistration();
@@ -51,5 +52,6 @@ public:
   UINT retire() noexcept;
   bool retired() const noexcept { return retired_.load(std::memory_order_acquire); }
   AudinDvcGate &gate() noexcept { return gate_; }
+  const AudinDvcGate &gate() const noexcept { return gate_; }
 };
 } // namespace bridge::audio

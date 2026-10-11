@@ -8,6 +8,7 @@
 namespace bridge::audio {
 enum class AudinPhase { version, formats, open, recording, unsupported, failed };
 enum class AudinPduKind { version, formats, open, change };
+enum class AudinCaptureProfile { compatibility, worker };
 struct AudinPdu {
   AudinPduKind kind;
   std::span<const std::uint8_t> bytes;
@@ -21,6 +22,9 @@ class AudinIngress {
 public:
   static constexpr std::size_t max_bytes = 65536, max_formats = 64, max_extra = 1024;
   static constexpr std::size_t max_offer_bytes = 9 + max_formats * 18;
+  static constexpr std::uint32_t worker_min_frames = 480, max_frames = 4800;
+  explicit AudinIngress(AudinCaptureProfile profile = AudinCaptureProfile::compatibility) noexcept
+      : profile_(profile) {}
   std::optional<AudinPdu> inspect(std::span<const std::uint8_t>) noexcept;
   void reset() noexcept;
   AudinPhase phase() const noexcept { return phase_; }
@@ -28,6 +32,7 @@ public:
   std::uint32_t frames_per_packet() const noexcept { return frames_; }
 
 private:
+  const AudinCaptureProfile profile_;
   std::array<std::uint8_t, max_offer_bytes> offer_{};
   AudinPhase phase_ = AudinPhase::version;
   std::uint32_t version_ = 0, count_ = 0, frames_ = 0;

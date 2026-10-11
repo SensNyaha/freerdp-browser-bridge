@@ -42,7 +42,9 @@ class AudinDvcGate {
   UINT opened() noexcept;
 
 public:
-  explicit AudinDvcGate(AudinSource &) noexcept;
+  static constexpr std::uint32_t unsupported_open_result = 0x80070032U;
+  explicit AudinDvcGate(AudinSource &,
+                        AudinCaptureProfile = AudinCaptureProfile::compatibility) noexcept;
   AudinDvcGate(const AudinDvcGate &) = delete;
   AudinDvcGate &operator=(const AudinDvcGate &) = delete;
   ~AudinDvcGate();

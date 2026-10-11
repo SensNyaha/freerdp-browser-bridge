@@ -55,6 +55,71 @@ void ready(AudinIngress &parser) {
   REQUIRE(parser.inspect(offers({format(1), format(2)})));
 }
 } // namespace
+TEST_CASE("AUDIN worker profile refuses short Open without consuming the negotiated table") {
+  AudinIngress parser(AudinCaptureProfile::worker);
+  ready(parser);
+  for (const unsigned frames : {1U, 2U, 479U}) {
+    const auto pdu = parser.inspect(open(frames, 1));
+    REQUIRE(pdu);
+    REQUIRE(pdu->kind == AudinPduKind::open);
+    REQUIRE_FALSE(pdu->forward);
+    REQUIRE(pdu->frames_per_packet == frames);
+    REQUIRE(pdu->format_index == 1);
+    REQUIRE(parser.phase() == AudinPhase::open);
+    REQUIRE(parser.frames_per_packet() == 0);
+    REQUIRE(parser.format_count() == 2);
+  }
+  const auto pdu = parser.inspect(open(480));
+  REQUIRE(pdu);
+  REQUIRE(pdu->forward);
+  REQUIRE(parser.phase() == AudinPhase::recording);
+  REQUIRE(parser.frames_per_packet() == 480);
+  REQUIRE(parser.inspect(std::vector<std::uint8_t>{7, 1, 0, 0, 0})->frames_per_packet == 480);
+  parser.reset();
+  ready(parser);
+  REQUIRE_FALSE(parser.inspect(open(479))->forward); // Reset preserves worker policy.
+}
+TEST_CASE("AUDIN worker profile validates complete Open before applying its cadence budget") {
+  for (const unsigned frames : {480U, 481U, 960U, 4096U, 4800U}) {
+    AudinIngress parser(AudinCaptureProfile::worker);
+    ready(parser);
+    const auto pdu = parser.inspect(open(frames));
+    REQUIRE(pdu);
+    REQUIRE(pdu->forward);
+    REQUIRE(pdu->frames_per_packet == frames);
+  }
+  for (const unsigned mode : {0U, 1U, 2U, 3U, 4U, 5U}) {
+    AudinIngress parser(AudinCaptureProfile::worker);
+    ready(parser);
+    auto request = open(1);
+    switch (mode) {
+    case 0:
+      set(request, 1, 0);
+      break;
+    case 1:
+      set(request, 1, 4801);
+      break;
+    case 2:
+      set(request, 5, 2);
+      break;
+    case 3:
+      request.pop_back();
+      break;
+    case 4:
+      request.push_back(0);
+      break;
+    case 5:
+      request[25] = 23;
+      break;
+    }
+    REQUIRE_FALSE(parser.inspect(request));
+    REQUIRE(parser.phase() == AudinPhase::failed);
+  }
+  AudinIngress compatible;
+  ready(compatible);
+  REQUIRE(compatible.inspect(open(1))->forward);
+  REQUIRE(compatible.frames_per_packet() == 1);
+}
 TEST_CASE("AUDIN ingress validates bounded versions and retains terminal failure until reset") {
   for (const std::uint8_t value : {std::uint8_t{1}, std::uint8_t{2}}) {
     AudinIngress parser;

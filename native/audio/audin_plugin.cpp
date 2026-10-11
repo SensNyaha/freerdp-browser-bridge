@@ -25,8 +25,10 @@ template <class Api> AudinRegistration &AudinRegistration::get(Api *api) noexcep
   return *reinterpret_cast<Box<Api> *>(api)->owner;
 }
 bool AudinRegistration::on_thread() const noexcept { return thread_ == std::this_thread::get_id(); }
-AudinRegistration::AudinRegistration(rdpContext &context, AudinSource &source) noexcept
-    : source_(source), gate_(source), context_(&context), thread_(std::this_thread::get_id()) {
+AudinRegistration::AudinRegistration(rdpContext &context, AudinSource &source,
+                                     AudinCaptureProfile profile) noexcept
+    : source_(source), gate_(source, profile), context_(&context),
+      thread_(std::this_thread::get_id()) {
   entries_.api.RegisterPlugin = [](IDRDYNVC_ENTRY_POINTS *api, const char *name,
                                    IWTSPlugin *plugin) -> UINT {
     auto &s = get(api);

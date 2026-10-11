@@ -26,8 +26,8 @@ template <class Api> AudinDvcGate &AudinDvcGate::get(Api *api) noexcept {
   static_assert(std::is_standard_layout_v<Box<Api>>);
   return *reinterpret_cast<Box<Api> *>(api)->owner;
 }
-AudinDvcGate::AudinDvcGate(AudinSource &source) noexcept
-    : source_(source), thread_(std::this_thread::get_id()) {
+AudinDvcGate::AudinDvcGate(AudinSource &source, AudinCaptureProfile profile) noexcept
+    : source_(source), ingress_(profile), thread_(std::this_thread::get_id()) {
   endpoint_.api.Write = [](IWTSVirtualChannel *api, ULONG size, const BYTE *data, void *user) {
     return get(api).write(size, data, user);
   };
@@ -140,10 +140,16 @@ UINT AudinDvcGate::receive(wStream *stream) noexcept {
   }
   UINT result = CHANNEL_RC_OK;
   if (!pdu->forward) {
-    const BYTE incoming = 5;
-    result = write(1, &incoming, nullptr);
-    if (result == CHANNEL_RC_OK)
-      result = write(static_cast<ULONG>(pdu->bytes.size()), pdu->bytes.data(), nullptr);
+    if (pdu->kind == AudinPduKind::open) {
+      // HRESULT_FROM_WIN32(ERROR_NOT_SUPPORTED), before device Open/upstream DSP.
+      const BYTE refused[]{4, 0x32, 0, 7, 0x80};
+      result = write(sizeof(refused), refused, nullptr);
+    } else {
+      const BYTE incoming = 5;
+      result = write(1, &incoming, nullptr);
+      if (result == CHANNEL_RC_OK)
+        result = write(static_cast<ULONG>(pdu->bytes.size()), pdu->bytes.data(), nullptr);
+    }
   } else {
     wStream filtered{};
     if (!Stream_StaticConstInit(&filtered, pdu->bytes.data(), pdu->bytes.size()))
@@ -153,7 +159,8 @@ UINT AudinDvcGate::receive(wStream *stream) noexcept {
   }
   receiving_ = false;
   const unsigned expected =
-      pdu->kind == AudinPduKind::formats || pdu->kind == AudinPduKind::open ? 2 : 1;
+      pdu->kind == AudinPduKind::formats || (pdu->kind == AudinPduKind::open && pdu->forward) ? 2
+                                                                                              : 1;
   const bool completed = reply_ == expected;
   pending_.reset(); // All borrowed packet/table spans stop here.
   if (result != CHANNEL_RC_OK)
@@ -194,6 +201,12 @@ UINT AudinDvcGate::write(ULONG size, const BYTE *data, void *reserved) noexcept 
                                 std::equal(bytes.begin(), bytes.end(), pending_->bytes.begin());
       break;
     case AudinPduKind::open:
+      if (!pending_->forward) {
+        valid = reply_ == 0 && size == 5 && bytes[0] == 4 &&
+                little(bytes, 1) == unsupported_open_result;
+        break;
+      }
+      [[fallthrough]];
     case AudinPduKind::change:
       valid = reply_ == 0 ? size == 5 && bytes[0] == 7 && little(bytes, 1) == pending_->format_index
                           : pending_->kind == AudinPduKind::open && reply_ == 1 && size == 5 &&

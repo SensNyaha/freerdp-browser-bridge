@@ -11,7 +11,7 @@ void increment(std::uint64_t &value) noexcept {
 } // namespace
 MicrophoneSession::MicrophoneSession(rdpContext &context, CaptureStatePublisher::TrySend send,
                                      void *sender, std::uint64_t window)
-    : registration_(context, source_), send_(send), sender_(sender),
+    : registration_(context, source_, AudinCaptureProfile::worker), send_(send), sender_(sender),
       thread_(std::this_thread::get_id()), retire_window_us_(window) {
   if (!send || !sender || !context.instance || window < 20000 || window > 1000000)
     throw std::invalid_argument("Invalid microphone session owner");
@@ -167,5 +167,13 @@ std::optional<MicrophoneSessionStats> MicrophoneSession::stats() const noexcept 
   value.source = *source;
   value.publication = publisher_.stats();
   return value;
+}
+std::optional<std::uint64_t> MicrophoneSession::capture_deadline() const noexcept {
+  const auto authority = published_state();
+  if (!authority || authority->availability != ipc::audio::Availability::ready)
+    return {};
+  const auto source = source_.stats();
+  return source && authority->epoch == source->epoch ? registration_.gate().capture_deadline()
+                                                     : std::nullopt;
 }
 } // namespace bridge::audio

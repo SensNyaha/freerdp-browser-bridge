@@ -296,13 +296,18 @@ std::vector<BYTE> formats() {
   }
   return data;
 }
-void negotiate(Host &host) {
-  REQUIRE(host.send({1, 1, 0, 0, 0}) == CHANNEL_RC_OK);
-  REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
-  std::vector<BYTE> open{3, 0xc0, 3, 0, 0, 0, 0, 0, 0};
+std::vector<BYTE> open_packet(unsigned frames = 960) {
+  std::vector<BYTE> open{3};
+  dword(open, frames);
+  dword(open, 0);
   const auto offer = formats();
   open.insert(open.end(), offer.begin() + 9, offer.begin() + 27);
-  REQUIRE(host.send(open) == CHANNEL_RC_OK);
+  return open;
+}
+void negotiate(Host &host, unsigned frames = 960) {
+  REQUIRE(host.send({1, 1, 0, 0, 0}) == CHANNEL_RC_OK);
+  REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
+  REQUIRE(host.send(open_packet(frames)) == CHANNEL_RC_OK);
   if (host.verify_fixture_source)
     REQUIRE(host.fixture.source.stats()->opened);
 }
@@ -324,6 +329,104 @@ bridge::ipc::microphone::Result submit_capture(void *owner,
   return Result::invalid;
 }
 } // namespace
+TEST_CASE("Microphone worker profile refuses tiny callbacks and accepts a later compatible Open") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  REQUIRE(host.send({1, 1, 0, 0, 0}) == CHANNEL_RC_OK);
+  REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
+  for (const unsigned frames : {1U, 479U}) {
+    const auto writes = host.writes.size();
+    REQUIRE(host.send(open_packet(frames)) == CHANNEL_RC_OK);
+    REQUIRE(host.writes.size() == writes + 1);
+    REQUIRE(host.writes.back() == std::vector<BYTE>{4, 0x32, 0, 7, 0x80});
+    REQUIRE(session.pump(0) == MicrophonePump::idle);
+    REQUIRE(session.published_state()->availability ==
+            bridge::ipc::audio::Availability::unavailable);
+    REQUIRE(session.stats()->source.epoch == 0);
+    REQUIRE_FALSE(session.stats()->source.opened);
+    REQUIRE(session.stats()->source.callbacks == 0);
+    REQUIRE_FALSE(session.capture_deadline());
+  }
+  REQUIRE(host.send(open_packet(480)) == CHANNEL_RC_OK);
+  REQUIRE(session.pump(10) == MicrophonePump::delivered);
+  REQUIRE(session.published_state()->availability == bridge::ipc::audio::Availability::ready);
+  REQUIRE(session.published_state()->epoch == 1);
+  REQUIRE(host.writes.back().size() == 1921);
+  REQUIRE(session.pump(10009) == MicrophonePump::idle);
+  REQUIRE(session.capture_deadline() == 10010);
+  REQUIRE(session.pump(10010) == MicrophonePump::delivered);
+  REQUIRE(session.stats()->source.callbacks == 2);
+  REQUIRE(host.send({7, 1, 0, 0, 0}) == CHANNEL_RC_OK);
+  REQUIRE(session.pump(10011) == MicrophonePump::delivered);
+  REQUIRE(session.published_state()->epoch == 2);
+  REQUIRE(host.writes.back().size() == 961);
+  REQUIRE(session.retire(10012) == MicrophoneRetirement::done);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE(
+    "Microphone worker profile bounds callback intervals across accepted server packet sizes") {
+  for (const unsigned frames : {480U, 481U, 4096U, 4800U}) {
+    Fixture fixture;
+    bool admitted = true;
+    const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+      return *static_cast<bool *>(owner);
+    };
+    MicrophoneSession session(*fixture.context, send, &admitted);
+    Host host(fixture);
+    host.general_loader = true;
+    host.verify_fixture_source = false;
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    negotiate(host, frames);
+    REQUIRE(session.pump(0) == MicrophonePump::delivered);
+    REQUIRE(host.writes.back().size() == 1 + frames * 4);
+    const auto deadline = (std::uint64_t{frames} * 1000000 + 47999) / 48000;
+    REQUIRE(deadline >= 10000);
+    REQUIRE(session.capture_deadline() == deadline);
+    REQUIRE(session.pump(deadline - 1) == MicrophonePump::idle);
+    REQUIRE(session.pump(deadline) == MicrophonePump::delivered);
+    REQUIRE(session.stats()->source.callbacks == 2);
+    REQUIRE(session.stats()->source.emitted_frames == frames * 2);
+    REQUIRE(session.retire(deadline + 1) == MicrophoneRetirement::done);
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+  }
+}
+TEST_CASE("Microphone worker profile checks refused Open writes without opening capture") {
+  for (const bool throws : {false, true}) {
+    Fixture fixture;
+    bool admitted = true;
+    const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+      return *static_cast<bool *>(owner);
+    };
+    MicrophoneSession session(*fixture.context, send, &admitted);
+    Host host(fixture);
+    host.general_loader = true;
+    host.verify_fixture_source = false;
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    REQUIRE(host.send({1, 1, 0, 0, 0}) == CHANNEL_RC_OK);
+    REQUIRE(host.send(formats()) == CHANNEL_RC_OK);
+    host.write_status = CHANNEL_RC_NOT_CONNECTED;
+    host.write_throws = throws;
+    REQUIRE(host.send(open_packet(1)) != CHANNEL_RC_OK);
+    REQUIRE(session.pump(0) == MicrophonePump::failed);
+    REQUIRE(session.published_state()->availability == bridge::ipc::audio::Availability::failed);
+    REQUIRE_FALSE(session.stats()->source.opened);
+    REQUIRE(session.stats()->source.epoch == 0);
+    REQUIRE(session.stats()->source.callbacks == 0);
+    REQUIRE(session.retire(1) == MicrophoneRetirement::done);
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+  }
+}
 TEST_CASE(
     "Microphone session expires closed metadata backpressure without retrying released handles") {
   Fixture fixture;
@@ -426,8 +529,9 @@ TEST_CASE("Microphone session refuses foreign reentrant and regressing owner ope
     value.retirement = value.session->retire(1000000);
     value.submit = value.session->submit({});
     value.reset = value.session->reset_capture(1).status;
-    value.snapshots =
-        value.session->stats().has_value() || value.session->published_state().has_value();
+    value.snapshots = value.session->stats().has_value() ||
+                      value.session->published_state().has_value() ||
+                      value.session->capture_deadline().has_value();
     return true;
   };
   REQUIRE_THROWS_AS(MicrophoneSession(*fixture.context, nullptr, &probe), std::invalid_argument);
@@ -449,7 +553,8 @@ TEST_CASE("Microphone session refuses foreign reentrant and regressing owner ope
     probe.retirement = session.retire(1000000);
     probe.submit = session.submit({});
     probe.reset = session.reset_capture(1).status;
-    probe.snapshots = session.stats().has_value() || session.published_state().has_value();
+    probe.snapshots = session.stats().has_value() || session.published_state().has_value() ||
+                      session.capture_deadline().has_value();
   });
   foreign.join();
   REQUIRE(probe.pump == MicrophonePump::invalid);
@@ -496,6 +601,7 @@ TEST_CASE(
   REQUIRE(session.pump(20200) == MicrophonePump::delivered);
   REQUIRE(host.writes.back()[1] == 0x41);
   REQUIRE(session.reset_capture(1).status == AudinCaptureResetStatus::reset);
+  REQUIRE_FALSE(session.capture_deadline());
   REQUIRE(session.submit({1, 40000, false, pcm}) == bridge::ipc::microphone::Result::stale);
   REQUIRE(session.submit({2, 0, true, pcm}) == bridge::ipc::microphone::Result::unavailable);
   REQUIRE(session.pump(20300) == MicrophonePump::delivered);

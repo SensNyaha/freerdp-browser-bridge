@@ -42,6 +42,7 @@ public:
   AudinCaptureReset reset_capture(std::uint64_t expected_epoch) noexcept;
   MicrophoneRetirement retire(std::uint64_t now_us) noexcept;
   std::optional<ipc::microphone::State> published_state() const noexcept;
+  std::optional<std::uint64_t> capture_deadline() const noexcept;
   std::optional<MicrophoneSessionStats> stats() const noexcept;
 };
 } // namespace bridge::audio
