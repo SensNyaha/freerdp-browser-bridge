@@ -1,5 +1,9 @@
 # Prepared PCM microphone media adapter
 
+Iteration 120 adds an [isolated browser sender](MICROPHONE_SENDER.md) with local
+permission tokens, one packet awaiting ACK and one expiring latest unsent block.
+It does not yet acquire a device or activate the reference viewer/native path.
+
 Current update — iteration 119: the adapter is now selected by the additive
 `media.hello.data.microphone: {codec: "pcm", sourceStatus: true}` extension.
 `media.ready.data.microphone` confirms codec, sourceStatus, streamId 4, sampleRate
