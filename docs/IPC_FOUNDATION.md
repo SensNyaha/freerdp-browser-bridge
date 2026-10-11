@@ -451,6 +451,8 @@ Generic framing/parser tests do not imply transport, browser or audible acceptan
 
 ## Private PCM worker activation (Iteration 66)
 
+Schema 6 preparation is documented below; current production selection remains PCM.
+
 Connection settings schema **5** extends the existing four-byte flags field:
 bit 0 dynamic resolution, bit 1 touch, bit 2 opt-in PCM output. Other bits, trailing
 bytes and truncated records are refused. Earlier schemas retain their masks and
@@ -491,3 +493,21 @@ capture time. Wrong mode/order/replay/epoch/clock fails private IPC. Pending nat
 retirement retries once per later call within one second; unresolved callback
 ownership fails the owned worker rather than freeing live targets. Real transport
 fault/resource, audible/browser and latency gates remain open.
+
+## Preparatory connection schema 6 (Iteration 82)
+
+The bounded non-secret CONFIGURE body adds schema **6**, with the same field
+lengths as schema 5. Its four-byte flags are bit 0 dynamic resolution, bit 1
+touch, bit 2 PCM output and bit 3 Opus output. PCM/Opus bits are mutually
+exclusive. Bits 4..31, trailing bytes and truncation are refused. Schemas 3/4/5
+keep their original masks 1/3/7, so legacy peers cannot interpret an Opus claim
+as another option. Schema 1/2 have no flags and retain default audio off.
+
+The TypeScript encoder chooses schema 6 only for `opusOutput: true`, validates
+boolean options and refuses simultaneous audio modes. False/omitted Opus keeps
+the old bytes. This is a private codec preparation, not a capability promise:
+WorkerProcess still rejects public Opus settings; HELLO has no Opus bit. Current
+linked Connection explicitly rejects schema-6 Opus before mapping FreeRDP
+settings, secret delivery or connect, rather than silently substituting audio
+off. Foundation workers reject CONFIGURE as unsupported. Tests use synthetic
+non-secret fields and no remote connection.

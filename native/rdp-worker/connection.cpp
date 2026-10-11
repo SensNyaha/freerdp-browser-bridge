@@ -81,6 +81,8 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
     throw ProtocolError();
   config_ = decode_connection_config(payload);
   const auto &c = *config_;
+  if (c.opus_output)
+    throw ProtocolError(); // Schema preparation only; no silent audio-off substitution.
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
   if (c.pcm_output && (!audio_send_ || !audio_discard_))
     throw ProtocolError();

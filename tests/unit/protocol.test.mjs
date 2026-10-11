@@ -241,6 +241,50 @@ test('connection IPC: independent golden settings, byte limits and no legacy sec
     '000500096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e81e145000003d0900003d090000000004',
   );
   assert.equal(
+    encodeConnectionSettings({ ...settings, opusOutput: true }).toString('hex'),
+    '000600096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e81e145000003d0900003d090000000008',
+  );
+  for (const touch of [false, true])
+    for (const dynamicResolution of [false, true]) {
+      const bytes = encodeConnectionSettings({
+        ...settings,
+        opusOutput: true,
+        touch,
+        dynamicResolution,
+      });
+      assert.equal(bytes.readUInt16BE(0), 6);
+      assert.equal(
+        bytes.subarray(-4).readUInt32BE(0),
+        8 | (touch ? 2 : 0) | (dynamicResolution ? 1 : 0),
+      );
+    }
+  assert.deepEqual(
+    encodeConnectionSettings({ ...settings, opusOutput: false }),
+    encodeConnectionSettings(settings),
+  );
+  assert.deepEqual(
+    encodeConnectionSettings({
+      ...settings,
+      pcmOutput: true,
+      opusOutput: false,
+    }),
+    encodeConnectionSettings({ ...settings, pcmOutput: true }),
+  );
+  for (const opusOutput of [null, 1, 'opus'])
+    assert.throws(
+      () => encodeConnectionSettings({ ...settings, opusOutput }),
+      ProtocolError,
+    );
+  assert.throws(
+    () =>
+      encodeConnectionSettings({
+        ...settings,
+        opusOutput: true,
+        pcmOutput: true,
+      }),
+    ProtocolError,
+  );
+  assert.equal(
     encodeConnectionSettings({
       ...settings,
       pcmOutput: true,

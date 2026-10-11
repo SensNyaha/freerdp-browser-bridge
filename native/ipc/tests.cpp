@@ -182,6 +182,41 @@ TEST_CASE("connection v5 PCM opt-in preserves flags and refuses truncated and le
   REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
   REQUIRE_FALSE(decode_connection_config(connection).pcm_output);
 }
+TEST_CASE("connection v6 Opus opt-in refuses mixed audio modes and legacy masks") {
+  auto bytes = connection;
+  bytes[1] = 6;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 8});
+  REQUIRE(decode_connection_config(bytes).opus_output);
+  REQUIRE_FALSE(decode_connection_config(bytes).pcm_output);
+  for (unsigned flags = 0; flags <= 255; ++flags) {
+    bytes.back() = static_cast<std::uint8_t>(flags);
+    if (flags > 15 || (flags & 12U) == 12U) {
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+    } else {
+      const auto config = decode_connection_config(bytes);
+      REQUIRE(config.opus_output == ((flags & 8U) != 0));
+      REQUIRE(config.pcm_output == ((flags & 4U) != 0));
+      REQUIRE(config.touch == ((flags & 2U) != 0));
+      REQUIRE(config.dynamic_resolution == ((flags & 1U) != 0));
+    }
+  }
+  bytes.back() = 8;
+  for (std::size_t length = 0; length < bytes.size(); ++length)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+  for (unsigned schema = 1; schema <= 5; ++schema) {
+    bytes[1] = static_cast<std::uint8_t>(schema);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes[1] = 6;
+  for (std::size_t offset = bytes.size() - 4; offset < bytes.size() - 1; ++offset) {
+    auto invalid = bytes;
+    invalid[offset] = 1;
+    REQUIRE_THROWS_AS(decode_connection_config(invalid), ProtocolError);
+  }
+  bytes.push_back(0);
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  REQUIRE_FALSE(decode_connection_config(connection).opus_output);
+}
 TEST_CASE("display IPC independent vectors and exact class bounds before allocation") {
   const DisplayUpdate update{1, 2, {1920, 1080}, true, true, {3840, 2160}, 3840U * 2160U};
   const std::vector<std::uint8_t> expected{0,    0, 0, 0,    0, 0, 0,    1,    0,    0, 0,

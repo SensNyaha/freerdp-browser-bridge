@@ -64,7 +64,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 5)
+  if (schema < 1 || schema > 6)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -95,11 +95,16 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
   }
   if (schema >= 3) {
     const auto flags = number(4);
-    if (flags > (schema == 3 ? 1U : schema == 4 ? 3U : 7U))
+    if (flags > (schema == 3   ? 1U
+                 : schema == 4 ? 3U
+                 : schema == 5 ? 7U
+                               : 15U) ||
+        (flags & 12U) == 12U)
       throw ProtocolError();
     config.dynamic_resolution = (flags & 1U) != 0;
     config.touch = (flags & 2U) != 0;
     config.pcm_output = (flags & 4U) != 0;
+    config.opus_output = (flags & 8U) != 0;
   }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),

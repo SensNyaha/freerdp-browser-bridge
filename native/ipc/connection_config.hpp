@@ -13,6 +13,7 @@ struct ConnectionConfig {
   bool dynamic_resolution = false;
   bool touch = false;
   bool pcm_output = false;
+  bool opus_output = false;
 };
 ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes);
 void validate_secret(std::span<const std::uint8_t> bytes);

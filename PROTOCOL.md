@@ -269,6 +269,11 @@ The preparatory private Opus payload schema is specified in
 negotiation, source-state mode or browser activation is introduced by that codec
 preparation; current public Opus selection remains explicitly unsupported.
 
+Preparatory private CONFIGURE schema 6 adds a mutually exclusive Opus flag
+while preserving earlier masks and body bounds. Current workers refuse that
+selection before secret/connect; public settings and HELLO remain unchanged.
+[Private schema contract](docs/IPC_FOUNDATION.md#preparatory-connection-schema-6-iteration-82).
+
 Additional preparatory RWB1 Opus records use stream 3: codec-1 AUDIO_CONFIG is
 48 bytes, raw AUDIO_PACKET is 30..1,303 bytes, and codec-1 AUDIO_STATE is 68 bytes
 with matched body/header time. The isolated browser parser checks these layouts;
