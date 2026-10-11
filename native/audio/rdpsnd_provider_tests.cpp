@@ -15,6 +15,7 @@
 #include <freerdp/svc.h>
 #include <opus/opus.h>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 #include <winpr/error.h>
 
@@ -1474,6 +1475,167 @@ TEST_CASE("Audio session rejects unknown codec before binding and keeps PCM SDK 
   REQUIRE(owner.stats()->opus_encoded_packets == 0);
   REQUIRE(owner.stats()->opus_cached_bytes == 0);
   REQUIRE(owner.retire(0) == RetireStatus::done);
+}
+
+TEST_CASE("Audio session reset orders discard waiting and fresh PCM Opus prediction") {
+  namespace ipc = bridge::ipc;
+  for (const auto codec : {ipc::OutputAudioCodec::pcm, ipc::OutputAudioCodec::opus}) {
+    Fixture fixture;
+    auto output = std::make_unique<ipc::OutputQueue>(codec);
+    bool packet_credit = true, discard_credit = true;
+    AudioSession owner(
+        *fixture.context,
+        [&](auto kind, auto bytes) {
+          if ((kind == ipc::Kind::audio_pcm || kind == ipc::Kind::audio_opus) && !packet_credit)
+            return false;
+          return output->push(kind, 0, bytes) == ipc::EnqueueStatus::accepted;
+        },
+        [&] {
+          if (!discard_credit)
+            return false;
+          output->discard_audio();
+          return true;
+        },
+        {}, 1000000, codec);
+    StaticHost host(fixture.context.get());
+    host.load(nullptr, true);
+    host.connect();
+    const auto configuration = formats();
+    host.raw(configuration, static_cast<UINT>(configuration.size()));
+    emit_pcm(host, 100, 1, {0, 128, 255, 127});
+    REQUIRE(owner.pump(1000) == PublishStatus::sent);
+    const auto first_state = output->take();
+    const auto decode_state = [&](const auto &record) {
+      REQUIRE(record);
+      REQUIRE(record->kind == ipc::Kind::audio_state);
+      return codec == ipc::OutputAudioCodec::opus ? ipc::audio::opus::decode_state(record->payload)
+                                                  : ipc::audio::decode_state(record->payload);
+    };
+    REQUIRE(decode_state(first_state).epoch == 1);
+    packet_credit = false;
+    REQUIRE(owner.pump(21000) == PublishStatus::blocked);
+    REQUIRE(owner.stats()->publisher.pending);
+    REQUIRE(output->stats().records == 2);
+    if (codec == ipc::OutputAudioCodec::opus) {
+      REQUIRE(owner.stats()->opus_encoded_packets == 2);
+      REQUIRE(owner.stats()->opus_cached_bytes > 0);
+    }
+    REQUIRE(owner.reset());
+    REQUIRE(owner.stats()->source_resets == 1);
+    REQUIRE_FALSE(owner.stats()->publisher.pending);
+    REQUIRE(owner.stats()->opus_cached_bytes == 0);
+    REQUIRE(output->stats().records == 2); // Consumer removal belongs to the pump barrier.
+    discard_credit = false;
+    packet_credit = true;
+    REQUIRE(owner.pump(22000) == PublishStatus::blocked);
+    REQUIRE(owner.stats()->publisher.reset_pending);
+    REQUIRE(output->stats().records == 2);
+    discard_credit = true;
+    REQUIRE(owner.pump(23000) == PublishStatus::sent);
+    const auto waiting = decode_state(output->take());
+    REQUIRE(waiting.availability == ipc::audio::Availability::waiting);
+    REQUIRE(waiting.epoch == 2);
+    REQUIRE(waiting.revision == 2);
+    REQUIRE_FALSE(output->take());
+    REQUIRE(output->stats().discarded_audio == 1);
+    REQUIRE(owner.pump(24000) == PublishStatus::idle);
+    REQUIRE_FALSE(output->take()); // Reset packetizer waits for fresh Play, not silence.
+    emit_pcm(host, 120, 2, {1, 0, 254, 255});
+    REQUIRE(owner.pump(25000) == PublishStatus::sent);
+    const auto ready = decode_state(output->take());
+    REQUIRE(ready.availability == ipc::audio::Availability::ready);
+    REQUIRE(ready.epoch == 2);
+    REQUIRE(ready.revision == 3);
+    const auto config_record = output->take(), packet_record = output->take();
+    REQUIRE(config_record);
+    REQUIRE(packet_record);
+    REQUIRE(config_record->kind == ipc::Kind::audio_config);
+    if (codec == ipc::OutputAudioCodec::opus) {
+      REQUIRE(ipc::audio::opus::decode_config(config_record->payload).epoch == 2);
+      REQUIRE(packet_record->kind == ipc::Kind::audio_opus);
+      const auto packet = ipc::audio::opus::decode_packet(packet_record->payload);
+      REQUIRE(packet.epoch == 2);
+      REQUIRE(packet.timestamp_us == 25000);
+      REQUIRE(packet.discontinuity);
+      REQUIRE(packet.frames == 960);
+      REQUIRE(packet.silence_frames == 0);
+      std::vector<std::uint8_t> pcm(ipc::audio::pcm_bytes, 0);
+      for (std::size_t offset = 0; offset < pcm.size(); offset += 4) {
+        pcm[offset] = 1;
+        pcm[offset + 2] = 254;
+        pcm[offset + 3] = 255;
+      }
+      SoftwareOpusEncoder fresh;
+      const auto unit = fresh.encode({pcm, 25000, true});
+      REQUIRE(std::equal(unit.bytes.begin(), unit.bytes.end(), packet.encoded.begin(),
+                         packet.encoded.end()));
+      REQUIRE(owner.stats()->opus_encoded_packets == 3);
+    } else {
+      REQUIRE(ipc::audio::decode_config(config_record->payload).epoch == 2);
+      REQUIRE(packet_record->kind == ipc::Kind::audio_pcm);
+      const auto packet = ipc::audio::decode_packet(packet_record->payload);
+      REQUIRE(packet.epoch == 2);
+      REQUIRE(packet.timestamp_us == 25000);
+      REQUIRE(packet.discontinuity);
+      REQUIRE(packet.pcm[0] == 1);
+      REQUIRE(packet.pcm[2] == 254);
+      REQUIRE(owner.stats()->opus_encoded_packets == 0);
+    }
+    REQUIRE(owner.retire(26000) == RetireStatus::done);
+    REQUIRE_FALSE(owner.reset());
+    REQUIRE(owner.stats()->source_resets == 1);
+  }
+}
+
+TEST_CASE("Audio session reset refuses foreign reentrant and retiring ownership") {
+  Fixture fixture;
+  AudioSession *active = nullptr;
+  bool send_credit = true;
+  std::size_t refused_reentrant = 0;
+  AudioSession owner(
+      *fixture.context,
+      [&](auto, auto) {
+        if (!active->reset())
+          ++refused_reentrant;
+        return send_credit;
+      },
+      [] { return true; });
+  active = &owner;
+  REQUIRE(owner.reset()); // No Open/sample is required to discard an idle source.
+  REQUIRE(owner.pump(1000) == PublishStatus::sent);
+  REQUIRE(refused_reentrant == 1);
+  REQUIRE(owner.stats()->source_resets == 1);
+  bool foreign_reset = true;
+  std::thread foreign([&] { foreign_reset = owner.reset(); });
+  foreign.join();
+  REQUIRE_FALSE(foreign_reset);
+  REQUIRE(owner.stats()->source_resets == 1);
+  send_credit = false;
+  REQUIRE(owner.retire(2000) == RetireStatus::pending);
+  REQUIRE_FALSE(owner.reset());
+  REQUIRE(owner.stats()->source_resets == 1);
+  send_credit = true;
+  REQUIRE(owner.retire(3000) == RetireStatus::done);
+  REQUIRE_FALSE(owner.reset());
+  REQUIRE(owner.stats()->source_resets == 1);
+}
+
+TEST_CASE("Audio session reset refuses failed publication without source mutation") {
+  for (const auto codec :
+       {bridge::ipc::OutputAudioCodec::pcm, bridge::ipc::OutputAudioCodec::opus}) {
+    Fixture fixture;
+    AudioSession owner(
+        *fixture.context, [](auto, auto) -> bool { throw std::runtime_error("fixture"); },
+        [] { return true; }, {}, 1000000, codec);
+    REQUIRE(owner.pump(1000) == PublishStatus::failed);
+    const auto revision = owner.stats()->source.stream_revision;
+    REQUIRE_FALSE(owner.reset());
+    REQUIRE(owner.stats()->source.stream_revision == revision);
+    REQUIRE(owner.stats()->source_resets == 0);
+    REQUIRE(owner.stats()->publication_failed);
+    REQUIRE(owner.retire(2000) == RetireStatus::failed);
+    REQUIRE(owner.stats()->resources_retired);
+  }
 }
 
 TEST_CASE("Audio session owner publishes Close while cancelled confirmations drain") {

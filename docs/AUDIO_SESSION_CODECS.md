@@ -54,3 +54,23 @@ in this block. Raw native tests cover configuration selection and strict local
 TLS refusal, with a codec-1 Close record and healthy control after retirement.
 This is native lifecycle integration against a synthetic TLS endpoint, not
 audible RDP or public Opus acceptance.
+
+## Owner reset scheduling (Iteration 86)
+
+`AudioSession::reset()` delegates to the selected publisher on the serialized RDP
+thread, before retirement. It refuses foreign/reentrant calls, retired sources
+and failed publication without resetting state. Successful calls increment a
+saturating native-only counter and discard prepared publisher packets/cache.
+They preserve monotonic clock and lifetime counters and reserve a fresh epoch.
+Repeated resets before capture can share an unused epoch reservation; there is
+no reset request queue in this owner.
+
+Consumer output is removed by the existing nonblocking discard barrier in a
+later pump. While that barrier lacks credit, old bounded output remains and new
+status cannot overtake it. After removal, waiting status clears the receiver's
+configuration; the existing packetizer waits for fresh Play before config/audio.
+Fresh data produces ready/config plus marked first samples in the new epoch.
+For Opus, the encoder resets before encoding the new configuration's data.
+This method schedules source recovery; it does not acknowledge pipe delivery,
+browser admission or audible playback. No IPC/public reset selector is enabled
+in this block.

@@ -347,6 +347,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   startup remains gated pending compressed delivery/attachment recovery. Current
   XRDP Opus observation is unavailable: TCP 192.168.21.149:3389 returned False.
   No audible/remote acceptance claimed. [Evidence](docs/ITERATION_085.md).
+- [~] IN PROGRESS — Serialized AudioSession reset selects its PCM/Opus publisher,
+  clears prepared storage and schedules the existing discard/new-epoch barrier.
+  Actual linked source/fake-SVC checks verify blocked-output ownership, waiting /
+  fresh-Play order and exact fresh-encoder Opus recovery. Foreign/reentrant /
+  retiring/failed reset is refused. IPC/public selector remains open.
+  [Evidence](docs/ITERATION_086.md).
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.

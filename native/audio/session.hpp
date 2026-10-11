@@ -11,6 +11,7 @@ struct SessionStats {
   SinkStats source;
   PublisherStats publisher;
   std::uint64_t close_attempts = 0, drain_calls = 0, drain_failures = 0, invalid_calls = 0;
+  std::uint64_t source_resets = 0;
   UINT close_status = CHANNEL_RC_OK;
   RetireStatus retirement = RetireStatus::active;
   bool resources_retired = false;
@@ -34,6 +35,9 @@ public:
   AudioSession(const AudioSession &) = delete;
   AudioSession &operator=(const AudioSession &) = delete;
   PublishStatus pump(std::uint64_t worker_time_us) noexcept;
+  // Schedule a fresh epoch and unsent-output barrier; pump completes publication.
+  // RDP owner thread only, before retirement. This is not a receiver acknowledgement.
+  bool reset() noexcept;
   RetireStatus retire(std::uint64_t worker_time_us) noexcept;
   std::optional<SessionStats> stats() const noexcept;
 

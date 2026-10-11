@@ -21,7 +21,7 @@ struct OpusUnit {
 // One serialized owner. Fixed heap-backed sample/output scratch; no packet queue.
 // Output borrows storage until successful encode/reset/destruction. Invalid input
 // preserves prediction and previously borrowed bytes. SDK failure retires state.
-// Preparatory provider only: no worker/IPC/browser Opus selector is activated.
+// Private publisher provider; public browser media selection remains gated.
 class SoftwareOpusEncoder final {
   struct State;
   std::unique_ptr<State> state_;

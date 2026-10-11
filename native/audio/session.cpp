@@ -55,6 +55,17 @@ PublishStatus AudioSession::pump(std::uint64_t now) noexcept {
   busy_ = false;
   return result;
 }
+bool AudioSession::reset() noexcept {
+  if (!on_thread() || busy_ || stats_.retirement != RetireStatus::active ||
+      stats_.publication_failed || source_.retired())
+    return false;
+  busy_ = true;
+  const bool reset = pcm_publisher_ ? pcm_publisher_->reset() : opus_publisher_->reset();
+  busy_ = false;
+  if (reset)
+    increment(stats_.source_resets);
+  return reset;
+}
 RetireStatus AudioSession::retire(std::uint64_t now) noexcept {
   if (!on_thread() || busy_)
     return RetireStatus::invalid;
