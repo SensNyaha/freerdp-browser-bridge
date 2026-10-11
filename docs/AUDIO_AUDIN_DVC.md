@@ -1,5 +1,9 @@
 # Guarded AUDIN public DVC callback
 
+Current update — iteration 101: owner tick/deadline snapshots apply exact rational
+capture cadence and bounded stale PCM skipping. Production polling/CPU budgets
+and worker/browser activation remain open. [Cadence contract](AUDIO_CAPTURE_CADENCE.md).
+
 Current update — iteration 100: the scoped plugin/listener owner and optional
 provider selection now wrap this gate through the general public loader.
 Worker/browser activation remains pending. [Current owner contract](AUDIO_AUDIN_PLUGIN.md).

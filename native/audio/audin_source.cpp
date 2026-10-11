@@ -96,6 +96,11 @@ CaptureStatus AudinSource::submit(const CapturePacket &packet) noexcept {
     return CaptureStatus::inactive;
   return capture_->submit(packet);
 }
+CaptureStatus AudinSource::skip(std::uint64_t frames) noexcept {
+  if (!usable() || !stats_.opened || busy_)
+    return CaptureStatus::inactive;
+  return capture_->skip(frames);
+}
 AudinPumpStatus AudinSource::pump() noexcept {
   if (!usable() || !stats_.opened || !receive_)
     return AudinPumpStatus::inactive;

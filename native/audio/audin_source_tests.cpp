@@ -27,6 +27,7 @@ struct Receiver {
   AudinPumpStatus nested = AudinPumpStatus::inactive;
   bool retired = true;
   CaptureStatus submitted = CaptureStatus::accepted;
+  CaptureStatus skipped = CaptureStatus::accepted;
   static UINT receive(const AUDIO_FORMAT *format, const BYTE *data, std::size_t size, void *user) {
     auto &self = *static_cast<Receiver *>(user);
     self.format = *format;
@@ -41,6 +42,7 @@ struct Receiver {
       self.nested = self.source->pump();
       self.retired = self.source->retire();
       self.submitted = self.source->submit({1, 0, true, self.bytes});
+      self.skipped = self.source->skip(960);
     }
     if (self.throws)
       throw std::runtime_error("test-only callback exception");
@@ -181,6 +183,7 @@ TEST_CASE("Public AUDIN receive callback cannot reenter or release borrowed reso
   REQUIRE(receiver.nested == AudinPumpStatus::invalid);
   REQUIRE_FALSE(receiver.retired);
   REQUIRE(receiver.submitted == CaptureStatus::inactive);
+  REQUIRE(receiver.skipped == CaptureStatus::inactive);
   REQUIRE(source.stats()->opened);
   REQUIRE(source.retire());
 }

@@ -81,6 +81,15 @@ CaptureStatus PcmCaptureSource::submit(const CapturePacket &packet) noexcept {
   timestamp_ = packet.timestamp_us;
   return CaptureStatus::accepted;
 }
+CaptureStatus PcmCaptureSource::skip(std::uint64_t frames) noexcept {
+  if (!stats_.active)
+    return CaptureStatus::inactive;
+  const auto bounded = static_cast<std::size_t>(
+      (std::min)(frames, static_cast<std::uint64_t>(PcmQueue::capacity_frames)));
+  if (queue_.discard(bounded) && !queue_.stats().queued_frames)
+    stats_.buffering = true;
+  return CaptureStatus::accepted;
+}
 CaptureRead PcmCaptureSource::read() noexcept {
   if (!stats_.active || !format_)
     return {CaptureStatus::inactive, {}};

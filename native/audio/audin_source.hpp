@@ -45,6 +45,7 @@ public:
   ~AudinSource();
   IAudinDevice &device() noexcept { return device_; }
   CaptureStatus submit(const CapturePacket &) noexcept;
+  CaptureStatus skip(std::uint64_t frames) noexcept;
   AudinPumpStatus pump() noexcept;
   std::optional<AudinSourceStats> stats() const noexcept;
   bool retire() noexcept;

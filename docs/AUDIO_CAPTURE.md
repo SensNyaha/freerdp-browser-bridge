@@ -1,5 +1,10 @@
 # Bounded virtual microphone PCM source
 
+Current update — iteration 101: scheduled public AUDIN polling now drops bounded
+old queued PCM after missed callbacks without reading silence. Public device,
+provider and guarded plugin foundations are implemented; worker/browser capture
+remains pending. [Cadence contract](AUDIO_CAPTURE_CADENCE.md).
+
 Iteration 95 (2026-10-11) implements the isolated source foundation for
 SPECIFICATION §2.6 / ARCHITECTURE §5 / MEDIA_PIPELINE §7. It does not access a host
 microphone, register AUDIN, expose wire input or advertise microphone support.

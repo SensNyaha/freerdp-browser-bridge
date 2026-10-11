@@ -1,10 +1,12 @@
 #pragma once
 #include "audin_ingress.hpp"
 #include "audin_source.hpp"
+#include "capture_cadence.hpp"
 #include <freerdp/dvc.h>
 
 namespace bridge::audio {
 enum class AudinChannelPhase { closed, handshake, recording, unsupported, failed };
+enum class AudinScheduledStatus { inactive, waiting, delivered, failed };
 // One serialized public DVC callback/endpoint owner, with no worker activation.
 // Retire before plugin termination/thread join; wrapper outlives delayed OnClose.
 class AudinDvcGate {
@@ -17,6 +19,8 @@ class AudinDvcGate {
   Box<IWTSVirtualChannelCallback> callback_{this};
   AudinSource &source_;
   AudinIngress ingress_;
+  CaptureCadence cadence_;
+  std::uint64_t scheduled_epoch_ = 0;
   IWTSVirtualChannel *transport_ = nullptr;
   IWTSVirtualChannelCallback *delegate_ = nullptr;
   std::thread::id thread_;
@@ -50,6 +54,10 @@ public:
   bool quiescent() const noexcept;
   bool ready() const noexcept;
   AudinPumpStatus pump() noexcept;
+  // RDP-owner poll: at most one pair; skipped deadlines discard old queued PCM.
+  AudinScheduledStatus tick(std::uint64_t now_us) noexcept;
+  std::optional<std::uint64_t> capture_deadline() const noexcept;
+  std::optional<CaptureCadenceStats> cadence_stats() const noexcept;
   AudinChannelPhase phase() const noexcept;
   UINT last_error() const noexcept;
 };

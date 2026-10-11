@@ -451,6 +451,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   same-plugin reopen, finite worker teardown/cadence/resources, IPC/browser capture
   and actual microphone acceptance remain open. [Contract](docs/AUDIO_AUDIN_PLUGIN.md),
   [evidence](docs/ITERATION_100.md).
+- [~] IN PROGRESS — Rational 48 kHz capture cadence emits at most one checked
+  AUDIN PCM pair per due owner poll, skips missed deadlines without bursts and
+  discards bounded old queue samples. Portable and linked AUDIN/fake-DVC fixtures
+  pass; production callback/CPU and wakeup budgets, worker/IPC/browser capture and
+  actual microphone/LAN acceptance remain open. [Contract](docs/AUDIO_CAPTURE_CADENCE.md),
+  [evidence](docs/ITERATION_101.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

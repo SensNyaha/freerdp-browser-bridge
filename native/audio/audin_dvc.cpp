@@ -235,12 +235,50 @@ AudinPumpStatus AudinDvcGate::pump() noexcept {
   }
   return AudinPumpStatus::delivered;
 }
+AudinScheduledStatus AudinDvcGate::tick(std::uint64_t now) noexcept {
+  if (!quiescent())
+    return AudinScheduledStatus::inactive;
+  if (!ready()) {
+    cadence_.stop();
+    return AudinScheduledStatus::inactive;
+  }
+  const auto epoch = source_.stats()->epoch;
+  if (epoch != scheduled_epoch_) {
+    cadence_.stop();
+    if (!cadence_.start(epoch, frames_, now)) {
+      (void)fail(ERROR_INVALID_STATE);
+      return AudinScheduledStatus::failed;
+    }
+    scheduled_epoch_ = epoch;
+  }
+  const auto due = cadence_.poll(now);
+  if (due.status == CaptureTickStatus::waiting)
+    return AudinScheduledStatus::waiting;
+  if (due.status != CaptureTickStatus::due ||
+      source_.skip(due.skipped_frames) != CaptureStatus::accepted) {
+    cadence_.stop();
+    (void)fail(ERROR_INVALID_DATA);
+    return AudinScheduledStatus::failed;
+  }
+  if (pump() != AudinPumpStatus::delivered) {
+    cadence_.stop();
+    return AudinScheduledStatus::failed;
+  }
+  return AudinScheduledStatus::delivered;
+}
+std::optional<std::uint64_t> AudinDvcGate::capture_deadline() const noexcept {
+  return on_thread() && ready() ? cadence_.deadline() : std::nullopt;
+}
+std::optional<CaptureCadenceStats> AudinDvcGate::cadence_stats() const noexcept {
+  return on_thread() ? std::optional{cadence_.stats()} : std::nullopt;
+}
 UINT AudinDvcGate::close() noexcept {
   if (retired())
     return close_result_;
   if (!quiescent())
     return ERROR_INVALID_STATE;
   phase_ = AudinChannelPhase::closed;
+  cadence_.stop();
   pending_.reset();
   transport_ = nullptr;
   incoming_ = emitted_ = false;

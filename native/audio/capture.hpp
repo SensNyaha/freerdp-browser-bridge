@@ -34,6 +34,8 @@ public:
   bool start(std::uint64_t epoch) noexcept;
   void stop() noexcept;
   CaptureStatus submit(const CapturePacket &) noexcept;
+  // Skip old queued frames after an owner scheduling stall; no silence is read.
+  CaptureStatus skip(std::uint64_t frames) noexcept;
   // Always bounded; valid active reads return configured frames, including silence.
   // Returned bytes borrow scratch until read/configure/start/stop.
   CaptureRead read() noexcept;

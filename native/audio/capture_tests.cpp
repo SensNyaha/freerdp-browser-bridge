@@ -22,6 +22,35 @@ bool silent(std::span<const std::uint8_t> bytes) {
 }
 } // namespace
 
+TEST_CASE("Microphone source scheduling skips old PCM without reading or counting silence") {
+  PcmCaptureSource source;
+  REQUIRE(source.skip(1) == CaptureStatus::inactive);
+  REQUIRE(source.configure({48000, 2, 16}, 960));
+  REQUIRE(source.start(1));
+  for (std::uint16_t packet = 0; packet < 6; ++packet)
+    REQUIRE(source.submit({1, static_cast<std::uint64_t>(packet) * 20000, packet == 0,
+                           samples(packet + 1, packet + 1)}) == CaptureStatus::accepted);
+  REQUIRE(source.skip(2880) == CaptureStatus::accepted);
+  REQUIRE(source.stats().queue.queued_frames == 2880);
+  REQUIRE(source.stats().queue.playback_skipped_frames == 2880);
+  REQUIRE(source.stats().queue.consumed_frames == 0);
+  REQUIRE(source.stats().queue.silence_frames == 0);
+  const auto fresh = source.read();
+  REQUIRE(fresh.frames == 960);
+  REQUIRE(fresh.discontinuity);
+  REQUIRE(fresh.bytes[0] == 4);
+  REQUIRE(source.skip((std::numeric_limits<std::uint64_t>::max)()) == CaptureStatus::accepted);
+  REQUIRE(source.stats().queue.queued_frames == 0);
+  REQUIRE(source.stats().queue.playback_skipped_frames == 4800);
+  REQUIRE(source.stats().buffering);
+  REQUIRE(source.read().silence_frames == 960);
+  REQUIRE(source.submit({1, 120000, false, samples(7, 7)}) == CaptureStatus::accepted);
+  REQUIRE(source.read().frames == 0); // Rebuffer instead of exposing one stale/partial packet.
+  REQUIRE(source.stats().queue.queued_frames == 960);
+  source.stop();
+  REQUIRE(source.skip(0) == CaptureStatus::inactive);
+}
+
 TEST_CASE("Microphone source bounds capture format packet projection and exhausted generations") {
   PcmCaptureSource source;
   REQUIRE_FALSE(source.start(1));
