@@ -58,3 +58,7 @@ RWI1 or actual AUDIN acceptance. [Evidence](ITERATION_125.md).
 Iteration 126 replaces fixture startup orchestration with the production
 [startup/permission/graph owner](MICROPHONE_OWNER.md), including an Edge
 permission-denial case. Viewer/native activation remains open.
+
+Iteration 127 wires the client into the reference viewer. Microphone JSON
+replies continue during finite detach cleanup; video and output-audio credits
+remain separate. [Viewer contract](MICROPHONE_VIEWER.md).

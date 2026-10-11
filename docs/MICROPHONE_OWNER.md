@@ -49,3 +49,8 @@ are not physical capture, OS permission dialog or native RWI1/AUDIN acceptance.
 Reference-viewer/native activation, actual hardware/device loss, negotiated RDP
 microphone, LAN/soak/platform, native resampling, Opus input and upstream limits
 remain open.
+
+Iteration 127 selects this owner in the reference viewer with explicit PCM
+options, gesture controls and a shared detach/reattachment barrier.
+[Viewer contract](MICROPHONE_VIEWER.md). Native and actual device acceptance
+remain open.

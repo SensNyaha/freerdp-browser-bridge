@@ -108,6 +108,20 @@ for (const [url, name, type] of [
   ['/harness/opus-wire.js', 'opus-wire.js', 'text/javascript'],
   ['/harness/pcm-worklet.js', 'pcm-worklet.js', 'text/javascript'],
   ['/harness/pcm-queue.js', 'pcm-queue.js', 'text/javascript'],
+  ...[
+    'wire',
+    'sender',
+    'capture',
+    'worklet',
+    'permission',
+    'graph',
+    'media',
+    'owner',
+  ].map((name) => [
+    `/harness/microphone-${name}.js`,
+    `microphone-${name}.js`,
+    'text/javascript',
+  ]),
 ]) {
   const bytes = await readFile(resolve('apps/reference-harness', name));
   server.get(url, (_request, reply) =>

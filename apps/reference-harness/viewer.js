@@ -3,6 +3,8 @@ import { installText, validText } from './text.js';
 import { installCursor } from './cursor.js';
 import { displayState, resizeResult, displayInputReady } from './display.js';
 import { touchState, touchInputReady } from './touch.js';
+import { MicrophoneMediaClient } from './microphone-media.js';
+import { MicrophoneOwner } from './microphone-owner.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -12,6 +14,11 @@ const resizeButton = document.querySelector('#resize-button');
 const resizeStatus = document.querySelector('#resize-status');
 const audioButton = document.querySelector('#audio-start');
 const audioStatus = document.querySelector('#audio-status');
+const microphoneStart = document.querySelector('#microphone-start');
+const microphoneStop = document.querySelector('#microphone-stop');
+const microphoneStatus = document.querySelector('#microphone-status');
+let microphoneRetirement;
+let microphoneFailed = false;
 let audioRequest;
 let current;
 const textInput = installText(
@@ -43,6 +50,7 @@ const stats = {
   resizeStatus: undefined,
   stage: 'waiting',
   audio: undefined,
+  microphone: undefined,
 };
 let decodeTimes = [];
 class DecodeFailure extends Error {}
@@ -59,6 +67,8 @@ function detach() {
   if (pending?.context && pending.context.state !== 'closed')
     void pending.context.close().catch(() => {});
   audioStatus.textContent = 'Звук выключен';
+  microphoneStart.hidden = microphoneStop.hidden = true;
+  microphoneStatus.textContent = 'Микрофон выключен';
   stats.closed = true;
   if (!current || current.detaching) return;
   current.detaching = true;
@@ -82,11 +92,118 @@ function detach() {
   current.abortDecode?.();
   closeDecoder(current);
   current.control.close();
-  current.media.close();
+  retireMicrophone(current);
   current = undefined;
   certificate.hidden = true;
   updateResize();
 }
+function microphoneSnapshot(session) {
+  const client = session?.microphone;
+  if (!client) return undefined;
+  const source = client.source?.source;
+  return {
+    ...client.stats,
+    owner: session.microphoneOwner?.stats,
+    retiring: Boolean(microphoneRetirement) || client.source?.retiring === true,
+    cleanupFailed: microphoneFailed,
+    source: source
+      ? {
+          ...source,
+          revision: String(source.revision),
+          epoch: String(source.epoch),
+          timestampUs: String(source.timestampUs),
+        }
+      : undefined,
+  };
+}
+function updateMicrophone(session = current) {
+  if (!session || session !== current || session.closed) return;
+  const client = session.microphone;
+  const owner = session.microphoneOwner?.stats;
+  microphoneStart.hidden = microphoneStop.hidden = !client;
+  const busy = Boolean(
+    owner?.preparing ||
+      owner?.permissionPending ||
+      owner?.activationPending ||
+      owner?.active ||
+      owner?.retiring ||
+      client?.stats.starting ||
+      client?.stats.stopping ||
+      client?.source?.granted ||
+      client?.source?.retiring,
+  );
+  microphoneStart.disabled =
+    !client ||
+    !session.connected ||
+    session.control.readyState !== WebSocket.OPEN ||
+    microphoneFailed ||
+    Boolean(microphoneRetirement) ||
+    owner?.failed ||
+    busy ||
+    client.source?.source?.availability !== 'ready';
+  microphoneStop.disabled = !client || !busy;
+  microphoneStatus.textContent =
+    microphoneFailed || owner?.failed
+      ? 'Не удалось освободить микрофон. Перезагрузите просмотрщик'
+      : owner?.active
+        ? 'Микрофон включён'
+        : busy
+          ? 'Подготовка или остановка микрофона'
+          : client?.source?.source?.availability === 'ready'
+            ? 'Микрофон выключен — можно включить'
+            : client
+              ? 'Ожидание готовности удалённого микрофона'
+              : 'Микрофон выключен';
+}
+function retireMicrophone(session) {
+  if (!session.microphoneOwner) {
+    session.media.close();
+    return;
+  }
+  // Keep only microphone replies alive until local resources and server stop settle.
+  // The control attachment is already closed; no new capture can be authorized.
+  const previous = microphoneRetirement;
+  const closing = session.microphoneOwner.close(); // Stops tracks synchronously.
+  const barrier = Promise.all([previous, closing])
+    .catch(() => {
+      microphoneFailed = true;
+    })
+    .finally(() => {
+      if (
+        session.microphoneOwner.stats.permissionPending ||
+        session.microphoneOwner.stats.activationPending
+      )
+        microphoneFailed = true; // An unresolved old permission cannot overlap a new owner.
+      if (microphoneRetirement === barrier) microphoneRetirement = undefined;
+      stats.microphone = microphoneSnapshot(session);
+      session.microphone.close();
+      session.media.close();
+      updateMicrophone();
+    });
+  microphoneRetirement = barrier;
+}
+microphoneStart.addEventListener('click', () => {
+  const session = current;
+  if (!session?.microphoneOwner || microphoneStart.disabled) return;
+  void session.microphoneOwner.start().then(
+    () => updateMicrophone(session),
+    () => {
+      if (current === session) detach();
+    },
+  );
+  updateMicrophone(session);
+});
+microphoneStop.addEventListener('click', () => {
+  const session = current;
+  if (!session?.microphoneOwner) return;
+  void session.microphoneOwner.stop().then(
+    () => updateMicrophone(session),
+    () => {
+      if (current === session) detach();
+    },
+  );
+  updateMicrophone(session);
+});
 function updateResize() {
   textInput.refresh();
   const state = current?.display;
@@ -220,6 +337,8 @@ function attach(created, options = {}) {
   validateAttachment(created);
   if (![undefined, 'off', 'pcm', 'opus'].includes(options.audioOutput))
     throw new Error('Unsupported audio output');
+  if (![undefined, 'off', 'pcm'].includes(options.microphone))
+    throw new Error('Unsupported microphone input');
   resetStats();
   if (options.audioOutput === 'pcm' || options.audioOutput === 'opus') {
     audioRequest = { created, options: { ...options }, preparing: false };
@@ -325,6 +444,7 @@ function resetStats() {
     resizeStatus: undefined,
     stage: 'waiting',
     audio: undefined,
+    microphone: undefined,
   });
   decodeTimes = [];
 }
@@ -415,6 +535,8 @@ function attachSession(created, options, playback) {
         certificate.hidden = false;
       } else if (message.type === 'session.state') {
         session.connected = message.data.state === 'connected';
+        session.microphoneOwner?.changed();
+        updateMicrophone(session);
         status.textContent = message.data.state;
         updateResize();
       } else if (['display.info', 'display.resize'].includes(message.type)) {
@@ -511,6 +633,9 @@ function attachSession(created, options, playback) {
           ...(playback
             ? { audio: { codec: options.audioOutput, sourceStatus: true } }
             : {}),
+          ...(options.microphone === 'pcm'
+            ? { microphone: { codec: 'pcm', sourceStatus: true } }
+            : {}),
         },
       }),
     );
@@ -518,10 +643,15 @@ function attachSession(created, options, playback) {
   session.media.addEventListener('error', fail);
   let rendering = Promise.resolve();
   session.media.addEventListener('message', (event) => {
-    if (session.closed) return;
     if (typeof event.data === 'string') {
       try {
         const message = JSON.parse(event.data);
+        if (message.type?.startsWith('microphone.')) {
+          if (!session.microphone || !session.microphone.message(message))
+            fail();
+          return;
+        }
+        if (session.closed) return;
         if (message.type === 'media.ready') {
           ready(message);
           return;
@@ -531,6 +661,7 @@ function attachSession(created, options, playback) {
         return;
       }
     }
+    if (session.closed) return;
     if (
       event.data instanceof ArrayBuffer &&
       event.data.byteLength >= 12 &&
@@ -713,6 +844,40 @@ function attachSession(created, options, playback) {
     )
       throw new Error('Audio negotiation mismatch');
     session.audioNegotiated = Boolean(audio);
+    if (options.microphone === 'pcm') {
+      session.microphone = new MicrophoneMediaClient(
+        {
+          write(record) {
+            if (
+              session.media.readyState !== WebSocket.OPEN ||
+              session.media.bufferedAmount > 16384
+            )
+              return false;
+            session.media.send(record);
+            return true;
+          },
+          changed() {
+            session.microphoneOwner?.changed();
+            updateMicrophone(session);
+          },
+          failed: fail,
+        },
+        message.data.microphone,
+      );
+      session.microphoneOwner = new MicrophoneOwner(session.microphone, {
+        controller: () =>
+          session === current &&
+          !session.closed &&
+          session.connected &&
+          session.control.readyState === WebSocket.OPEN &&
+          !microphoneRetirement &&
+          !microphoneFailed,
+        changed: () => updateMicrophone(session),
+        failed: fail,
+      });
+    } else if (message.data.microphone !== undefined)
+      throw new Error('Microphone negotiation mismatch');
+    updateMicrophone(session);
     stats.stage = 'ready';
   }
   async function render(bytes) {
@@ -876,6 +1041,7 @@ window.bridgeViewer = {
     return {
       ...stats,
       audio: current?.playback?.snapshot() ?? stats.audio,
+      microphone: microphoneSnapshot(current) ?? stats.microphone,
       decodeMeanMs: times.length
         ? times.reduce((a, b) => a + b, 0) / times.length
         : 0,

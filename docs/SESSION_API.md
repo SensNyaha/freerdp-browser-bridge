@@ -78,6 +78,12 @@ independent ACKs, verified over actual loopback sockets with fake backends.
 Legacy media remains unchanged. Native high-level input creation and browser
 permission/capture remain gated. [Wire limits](MICROPHONE_SOCKET.md).
 
+Current update — iteration 127: explicit reference-viewer PCM selection now
+composes permission, prepared context, server grant and Worklet graph. Waiting
+source metadata never acquires a device. Four synthetic Edge/viewer/socket
+cases pass; native selection and actual AUDIN/device acceptance remain open.
+[Viewer contract](MICROPHONE_VIEWER.md).
+
 Each session owns a fresh trusted backend instance. Starting receives a cloned,
 validated configuration and abort signal. Secrets are dereferenced after startup
 settles or is aborted; this is not guaranteed zeroization of JS strings.

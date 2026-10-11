@@ -294,6 +294,12 @@ preallocation remain. Actual sockets are verified with fake RDP backends;
 normal native input creation and browser permission/capture remain gated.
 [Negotiation and routing contract](docs/MICROPHONE_SOCKET.md).
 
+Current update — iteration 127: the reference viewer now selects this profile
+explicitly with gesture-only microphone controls, bounded startup/cleanup and
+independent JSON/ACK routing. Synthetic Edge/viewer/socket evidence establishes
+browser composition; native selection and actual AUDIN/device acceptance remain
+open. [Viewer contract](docs/MICROPHONE_VIEWER.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload
