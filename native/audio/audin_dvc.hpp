@@ -56,6 +56,7 @@ public:
   AudinPumpStatus pump() noexcept;
   // RDP-owner poll: at most one pair; skipped deadlines discard old queued PCM.
   AudinScheduledStatus tick(std::uint64_t now_us) noexcept;
+  AudinCaptureReset reset_capture(std::uint64_t expected_epoch) noexcept;
   std::optional<std::uint64_t> capture_deadline() const noexcept;
   std::optional<CaptureCadenceStats> cadence_stats() const noexcept;
   AudinChannelPhase phase() const noexcept;

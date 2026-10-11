@@ -28,6 +28,7 @@ struct Receiver {
   bool retired = true;
   CaptureStatus submitted = CaptureStatus::accepted;
   CaptureStatus skipped = CaptureStatus::accepted;
+  AudinCaptureReset reset{AudinCaptureResetStatus::reset};
   static UINT receive(const AUDIO_FORMAT *format, const BYTE *data, std::size_t size, void *user) {
     auto &self = *static_cast<Receiver *>(user);
     self.format = *format;
@@ -43,6 +44,7 @@ struct Receiver {
       self.retired = self.source->retire();
       self.submitted = self.source->submit({1, 0, true, self.bytes});
       self.skipped = self.source->skip(960);
+      self.reset = self.source->reset_capture(1);
     }
     if (self.throws)
       throw std::runtime_error("test-only callback exception");
@@ -60,6 +62,53 @@ std::vector<std::uint8_t> input() {
   return bytes;
 }
 } // namespace
+
+TEST_CASE("Public AUDIN capture reset preserves receiver and refuses stale input epochs") {
+  AudinSource source;
+  auto &device = source.device();
+  Receiver receiver;
+  const auto pcm = format();
+  REQUIRE(source.reset_capture(1).status == AudinCaptureResetStatus::inactive);
+  REQUIRE(device.SetFormat(&device, &pcm, 960) == CHANNEL_RC_OK);
+  REQUIRE(device.Open(&device, Receiver::receive, &receiver) == CHANNEL_RC_OK);
+  const auto samples = input();
+  REQUIRE(source.submit({1, 0, true, samples}) == CaptureStatus::accepted);
+  REQUIRE(source.submit({1, 20000, false, samples}) == CaptureStatus::accepted);
+  REQUIRE(source.pump() == AudinPumpStatus::delivered);
+  REQUIRE(receiver.bytes == samples);
+  REQUIRE(source.stats()->capture.queue.queued_frames == 960);
+  REQUIRE(source.reset_capture(0).status == AudinCaptureResetStatus::invalid);
+  REQUIRE(source.reset_capture(2).status == AudinCaptureResetStatus::stale);
+  REQUIRE(source.stats()->capture.queue.queued_frames == 960);
+  const auto reset = source.reset_capture(1);
+  REQUIRE(reset.status == AudinCaptureResetStatus::reset);
+  REQUIRE(reset.epoch == 2);
+  REQUIRE(source.stats()->capture_resets == 1);
+  REQUIRE(source.stats()->opened);
+  REQUIRE(source.stats()->capture.active);
+  REQUIRE(source.stats()->capture.buffering);
+  REQUIRE(source.stats()->capture.queue.queued_frames == 0);
+  REQUIRE(source.stats()->capture.queue.reset_discarded_frames == 960);
+  REQUIRE(source.reset_capture(1).status == AudinCaptureResetStatus::stale);
+  REQUIRE(source.stats()->capture_resets == 1);
+  REQUIRE(source.pump() == AudinPumpStatus::delivered);
+  REQUIRE(receiver.calls == 2);
+  REQUIRE(receiver.format.nChannels == 2);
+  REQUIRE(std::all_of(receiver.bytes.begin(), receiver.bytes.end(), [](auto v) { return v == 0; }));
+  REQUIRE(source.submit({1, 40000, false, samples}) == CaptureStatus::stale);
+  REQUIRE(source.submit({2, 0, false, samples}) == CaptureStatus::invalid);
+  REQUIRE(source.submit({2, 0, true, samples}) == CaptureStatus::accepted);
+  REQUIRE(source.submit({2, 20000, false, samples}) == CaptureStatus::accepted);
+  REQUIRE(source.pump() == AudinPumpStatus::delivered);
+  REQUIRE(receiver.bytes == samples);
+  REQUIRE(receiver.calls == 3);
+  REQUIRE(device.Close(&device) == CHANNEL_RC_OK);
+  REQUIRE(source.reset_capture(2).status == AudinCaptureResetStatus::inactive);
+  REQUIRE(device.Open(&device, Receiver::receive, &receiver) == CHANNEL_RC_OK);
+  REQUIRE(source.stats()->epoch == 3);
+  REQUIRE(source.retire());
+  REQUIRE(source.reset_capture(3).status == AudinCaptureResetStatus::inactive);
+}
 
 TEST_CASE("Public AUDIN virtual source validates pinned device format and callback budgets") {
   AudinSource source;
@@ -184,6 +233,8 @@ TEST_CASE("Public AUDIN receive callback cannot reenter or release borrowed reso
   REQUIRE_FALSE(receiver.retired);
   REQUIRE(receiver.submitted == CaptureStatus::inactive);
   REQUIRE(receiver.skipped == CaptureStatus::inactive);
+  REQUIRE(receiver.reset.status == AudinCaptureResetStatus::busy);
+  REQUIRE(receiver.reset.epoch == 0);
   REQUIRE(source.stats()->opened);
   REQUIRE(source.retire());
 }
@@ -225,6 +276,7 @@ TEST_CASE(
   bool retired = true, supported = true, stats = true;
   UINT closed = 0, freed = 0;
   AudinPumpStatus pumped = AudinPumpStatus::delivered;
+  AudinCaptureReset reset{AudinCaptureResetStatus::reset};
   std::thread wrong([&] {
     retired = source.retire();
     supported = device.FormatSupported(&device, &pcm) != FALSE;
@@ -232,6 +284,7 @@ TEST_CASE(
     closed = device.Close(&device);
     freed = device.Free(&device);
     pumped = source.pump();
+    reset = source.reset_capture(1);
   });
   wrong.join();
   REQUIRE_FALSE(retired);
@@ -240,6 +293,8 @@ TEST_CASE(
   REQUIRE(closed != CHANNEL_RC_OK);
   REQUIRE(freed != CHANNEL_RC_OK);
   REQUIRE(pumped == AudinPumpStatus::inactive);
+  REQUIRE(reset.status == AudinCaptureResetStatus::inactive);
+  REQUIRE(reset.epoch == 0);
   REQUIRE(source.stats()->opened);
   REQUIRE(source.retire());
   REQUIRE(source.retired());

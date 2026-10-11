@@ -457,6 +457,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   pass; production callback/CPU and wakeup budgets, worker/IPC/browser capture and
   actual microphone/LAN acceptance remain open. [Contract](docs/AUDIO_CAPTURE_CADENCE.md),
   [evidence](docs/ITERATION_101.md).
+- [~] IN PROGRESS — Native capture reset wipes PCM and advances the exact current
+  input epoch while preserving the negotiated AUDIN receiver for silence/fresh
+  input. Stale, foreign and reentrant resets preserve ownership; deadline snapshots
+  reject previous-epoch cadence. Public device and linked AUDIN/fake-DVC fixtures
+  pass; worker/lease/permission/rate limits, IPC/browser and actual remote reset
+  acceptance remain open. [Contract](docs/AUDIO_CAPTURE_RESET.md),
+  [evidence](docs/ITERATION_102.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

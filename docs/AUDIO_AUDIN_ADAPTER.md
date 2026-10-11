@@ -1,5 +1,10 @@
 # Public virtual microphone device adapter
 
+Current update — iteration 102: guarded registration/cadence and native capture
+reset are implemented. Reset advances the input epoch without replacing the
+open callback. Worker/browser activation remains pending.
+[Reset contract](AUDIO_CAPTURE_RESET.md).
+
 Iteration 96 (2026-10-11) targets the exact public FreeRDP 3.32.1 IAudinDevice /
 AudinReceive ABI for SPECIFICATION §2.6, ARCHITECTURE §5 and MEDIA_PIPELINE §7.
 AudinSource wraps the [bounded capture source](AUDIO_CAPTURE.md); it is not yet

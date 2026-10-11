@@ -101,6 +101,28 @@ CaptureStatus AudinSource::skip(std::uint64_t frames) noexcept {
     return CaptureStatus::inactive;
   return capture_->skip(frames);
 }
+AudinCaptureReset AudinSource::reset_capture(std::uint64_t expected) noexcept {
+  if (!usable() || !stats_.opened)
+    return {AudinCaptureResetStatus::inactive};
+  if (busy_)
+    return {AudinCaptureResetStatus::busy};
+  if (!expected)
+    return {AudinCaptureResetStatus::invalid};
+  if (expected != stats_.epoch)
+    return {AudinCaptureResetStatus::stale};
+  if (stats_.epoch == (std::numeric_limits<std::uint64_t>::max)()) {
+    stop();
+    return {AudinCaptureResetStatus::exhausted};
+  }
+  const auto next = stats_.epoch + 1;
+  if (!capture_->start(next)) {
+    stop();
+    return {AudinCaptureResetStatus::failed};
+  }
+  stats_.epoch = next;
+  add(stats_.capture_resets, 1);
+  return {AudinCaptureResetStatus::reset, next};
+}
 AudinPumpStatus AudinSource::pump() noexcept {
   if (!usable() || !stats_.opened || !receive_)
     return AudinPumpStatus::inactive;

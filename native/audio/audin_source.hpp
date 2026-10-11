@@ -7,9 +7,15 @@
 
 namespace bridge::audio {
 enum class AudinPumpStatus { delivered, inactive, invalid, failed };
+enum class AudinCaptureResetStatus { reset, stale, inactive, busy, invalid, exhausted, failed };
+struct AudinCaptureReset {
+  AudinCaptureResetStatus status;
+  std::uint64_t epoch = 0;
+};
 struct AudinSourceStats {
   CaptureStats capture;
   std::uint64_t epoch = 0, callbacks = 0, emitted_frames = 0, callback_failures = 0;
+  std::uint64_t capture_resets = 0;
   UINT last_error = CHANNEL_RC_OK;
   bool opened = false;
 };
@@ -46,6 +52,9 @@ public:
   IAudinDevice &device() noexcept { return device_; }
   CaptureStatus submit(const CapturePacket &) noexcept;
   CaptureStatus skip(std::uint64_t frames) noexcept;
+  // Wipe old input and advance epoch without replacing the open AUDIN receiver.
+  // Caller owns permission/lease checks; this is not a public/browser command.
+  AudinCaptureReset reset_capture(std::uint64_t expected_epoch) noexcept;
   AudinPumpStatus pump() noexcept;
   std::optional<AudinSourceStats> stats() const noexcept;
   bool retire() noexcept;

@@ -106,6 +106,8 @@ struct Host {
   UINT nested_termination = CHANNEL_RC_OK;
   bool terminate_during_write = false;
   bool tick_during_write = false;
+  bool reset_during_write = false;
+  AudinCaptureReset nested_reset{AudinCaptureResetStatus::reset};
   AudinScheduledStatus nested_tick = AudinScheduledStatus::delivered;
   bool close_during_write = false, close_host_during_write = false, write_throws = false;
   unsigned attempts = 0, fail_at = 0;
@@ -188,6 +190,9 @@ struct Host {
       if (host.tick_during_write)
         host.nested_tick =
             (host.registration ? host.registration->gate() : host.gate).tick(1000000);
+      if (host.reset_during_write)
+        host.nested_reset =
+            (host.registration ? host.registration->gate() : host.gate).reset_capture(1);
       if (host.write_throws)
         throw std::runtime_error("fixture DVC write failure");
       if (host.fail_at && host.attempts == host.fail_at)
@@ -295,6 +300,79 @@ void negotiate(Host &host) {
   REQUIRE(host.fixture.source.stats()->opened);
 }
 } // namespace
+TEST_CASE("AUDIN capture reset wipes queued samples without reopening the negotiated channel") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  auto &gate = registration.gate();
+  std::vector<BYTE> input(3840, 0x35);
+  REQUIRE(fixture.source.submit({1, 0, true, input}) == CaptureStatus::accepted);
+  REQUIRE(fixture.source.submit({1, 20000, false, input}) == CaptureStatus::accepted);
+  REQUIRE(gate.tick(1000) == AudinScheduledStatus::delivered);
+  REQUIRE(host.writes.back()[1] == 0x35);
+  REQUIRE(gate.capture_deadline() == 21000);
+  REQUIRE(gate.reset_capture(0).status == AudinCaptureResetStatus::invalid);
+  REQUIRE(gate.reset_capture(2).status == AudinCaptureResetStatus::stale);
+  REQUIRE(gate.capture_deadline() == 21000);
+  REQUIRE(fixture.source.stats()->capture.queue.queued_frames == 960);
+  const auto count = host.writes.size();
+  const auto reset = gate.reset_capture(1);
+  REQUIRE(reset.status == AudinCaptureResetStatus::reset);
+  REQUIRE(reset.epoch == 2);
+  REQUIRE(gate.ready());
+  REQUIRE(host.writes.size() == count); // No forged Open/FormatChange reply.
+  REQUIRE_FALSE(gate.capture_deadline());
+  REQUIRE(fixture.source.stats()->capture.queue.queued_frames == 0);
+  REQUIRE(gate.tick(2000) == AudinScheduledStatus::delivered);
+  REQUIRE(host.writes.size() == count + 2);
+  REQUIRE(std::all_of(host.writes.back().begin() + 1, host.writes.back().end(),
+                      [](BYTE v) { return v == 0; }));
+  REQUIRE(gate.capture_deadline() == 22000);
+  REQUIRE(fixture.source.submit({1, 40000, false, input}) == CaptureStatus::stale);
+  REQUIRE(fixture.source.submit({2, 0, true, input}) == CaptureStatus::accepted);
+  REQUIRE(fixture.source.submit({2, 20000, false, input}) == CaptureStatus::accepted);
+  REQUIRE(gate.reset_capture(1).status == AudinCaptureResetStatus::stale);
+  REQUIRE(fixture.source.stats()->capture.queue.queued_frames == 1920);
+  REQUIRE(gate.tick(22000) == AudinScheduledStatus::delivered);
+  REQUIRE(host.writes.back()[1] == 0x35);
+  REQUIRE(host.send({7, 1, 0, 0, 0}) == CHANNEL_RC_OK);
+  REQUIRE(fixture.source.stats()->epoch == 3);
+  REQUIRE(gate.reset_capture(2).status == AudinCaptureResetStatus::stale);
+  REQUIRE_FALSE(gate.capture_deadline());
+  REQUIRE(gate.tick(22000) == AudinScheduledStatus::delivered);
+  REQUIRE(host.writes.back().size() == 1921);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(gate.reset_capture(3).status == AudinCaptureResetStatus::inactive);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("AUDIN capture reset refuses reentrant and foreign queue mutation") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  host.reset_during_write = true;
+  REQUIRE(host.gate.tick(0) == AudinScheduledStatus::delivered);
+  REQUIRE(host.nested_reset.status == AudinCaptureResetStatus::busy);
+  REQUIRE(host.nested_reset.epoch == 0);
+  REQUIRE(fixture.source.stats()->epoch == 1);
+  AudinCaptureReset foreign{AudinCaptureResetStatus::reset};
+  std::thread thread([&] { foreign = host.gate.reset_capture(1); });
+  thread.join();
+  REQUIRE(foreign.status == AudinCaptureResetStatus::inactive);
+  REQUIRE(foreign.epoch == 0);
+  REQUIRE(host.gate.capture_deadline() == 20000);
+  REQUIRE(fixture.source.stats()->epoch == 1);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
 TEST_CASE("AUDIN scheduled capture skips stale PCM and emits one pair without bursts") {
   Fixture fixture;
   AudinRegistration registration(*fixture.context, fixture.source);

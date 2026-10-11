@@ -235,6 +235,18 @@ AudinPumpStatus AudinDvcGate::pump() noexcept {
   }
   return AudinPumpStatus::delivered;
 }
+AudinCaptureReset AudinDvcGate::reset_capture(std::uint64_t expected) noexcept {
+  if (!on_thread())
+    return {AudinCaptureResetStatus::inactive};
+  if (!quiescent())
+    return {AudinCaptureResetStatus::busy};
+  if (!ready())
+    return {AudinCaptureResetStatus::inactive};
+  const auto result = source_.reset_capture(expected);
+  if (result.status == AudinCaptureResetStatus::reset)
+    cadence_.stop(); // Next owner tick binds the newly authoritative input epoch.
+  return result;
+}
 AudinScheduledStatus AudinDvcGate::tick(std::uint64_t now) noexcept {
   if (!quiescent())
     return AudinScheduledStatus::inactive;
@@ -267,7 +279,8 @@ AudinScheduledStatus AudinDvcGate::tick(std::uint64_t now) noexcept {
   return AudinScheduledStatus::delivered;
 }
 std::optional<std::uint64_t> AudinDvcGate::capture_deadline() const noexcept {
-  return on_thread() && ready() ? cadence_.deadline() : std::nullopt;
+  return on_thread() && ready() && source_.stats()->epoch == scheduled_epoch_ ? cadence_.deadline()
+                                                                              : std::nullopt;
 }
 std::optional<CaptureCadenceStats> AudinDvcGate::cadence_stats() const noexcept {
   return on_thread() ? std::optional{cadence_.stats()} : std::nullopt;

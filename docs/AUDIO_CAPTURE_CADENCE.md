@@ -1,5 +1,9 @@
 # Bounded AUDIN capture cadence
 
+Current update — iteration 102: native capture reset preserves the negotiated
+receiver with a fresh epoch, and deadline snapshots require matching source /
+cadence epochs. [Reset contract](AUDIO_CAPTURE_RESET.md).
+
 Iteration 101 implements SPECIFICATION §2.6 / ARCHITECTURE §5 /
 MEDIA_PIPELINE §7. CaptureCadence is a portable, serialized 48 kHz callback
 clock; AudinDvcGate.tick applies it to the actual public AUDIN path. No worker
