@@ -651,6 +651,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   or PCM capture. Manual viewer input/output flags exist. Ready AUDIN/remote /
   physical/LAN/platform/soak, resampling/Opus input acceptance remain open.
   [Evidence](docs/ITERATION_128.md), [launch](docs/DEVELOPMENT.md#explicit-nativebrowser-microphone-viewer).
+- [~] IN PROGRESS — Isolated private Opus input decoder accepts one bounded
+  stereo 20 ms frame, owns fixed heap scratch/two SDK states and commits only
+  successful decode. Profile/clock/refusal/reset and actual SDK PCM equivalence
+  pass 4 cases / 78,189 assertions. No Opus input capability/settings, worker /
+  transport/browser encoder selection or capture is enabled. SDK failure /
+  resource/sanitizer/platform and actual microphone gates remain open.
+  [Contract](docs/AUDIO_OPUS_INPUT_DECODER.md), [evidence](docs/ITERATION_129.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).

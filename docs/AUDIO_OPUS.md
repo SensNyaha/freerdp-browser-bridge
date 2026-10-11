@@ -1,5 +1,11 @@
 # Private Opus encoder foundation
 
+Current update — iteration 129: output selection/ownership is described in
+[the current public output contract](AUDIO_OPUS_PUBLIC.md). An isolated
+[native input decoder](AUDIO_OPUS_INPUT_DECODER.md) now complements this encoder;
+it does not enable Opus microphone settings or capture. Historical output-gating
+statements below describe the original encoder foundation.
+
 Stage 6 implements MEDIA_PIPELINE §6 using privately bundled libopus **1.6.1**.
 The vcpkg baseline and source SHA-512 are recorded in `native/dependencies.json`.
 The local overlay retains the baseline source and patches, then fixes its version
