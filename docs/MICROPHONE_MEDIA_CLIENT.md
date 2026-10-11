@@ -54,3 +54,7 @@ Edge WebSockets and fake RDP worker API admission. Held completion during
 controller loss stops the local track/context before fake worker reset, then
 observes fresh source epoch. This is browser/socket composition, not private
 RWI1 or actual AUDIN acceptance. [Evidence](ITERATION_125.md).
+
+Iteration 126 replaces fixture startup orchestration with the production
+[startup/permission/graph owner](MICROPHONE_OWNER.md), including an Edge
+permission-denial case. Viewer/native activation remains open.

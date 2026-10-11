@@ -65,13 +65,14 @@ class SyntheticMicrophoneWorker extends FakeSessionWorker {
   } // No rendering or RDP graphics acceptance in this fixture.
 }
 
-for (const mode of ['stop', 'controller-loss'])
+for (const mode of ['stop', 'controller-loss', 'permission-denied'])
   test(
     `Edge / actual WS / fake RDP microphone: synthetic capture and ${mode} complete the observed retirement barrier`,
     { skip: process.platform !== 'win32', timeout: 45000 },
     async () => {
       const names = [
         'microphone-media.js',
+        'microphone-owner.js',
         'microphone-graph.js',
         'microphone-permission.js',
         'microphone-sender.js',
@@ -138,15 +139,15 @@ for (const mode of ['stop', 'controller-loss'])
         page.setDefaultTimeout(5000);
         await page.goto(origin);
         await page.evaluate(
-          async ({ base, session }) => {
+          async ({ base, session, mode }) => {
             const [
               { MicrophoneMediaClient },
               { MicrophoneGraph },
-              { MicrophonePermission },
+              { MicrophoneOwner },
             ] = await Promise.all([
               import('/microphone-media.js'),
               import('/microphone-graph.js'),
-              import('/microphone-permission.js'),
+              import('/microphone-owner.js'),
             ]);
             let client,
               graph,
@@ -214,7 +215,7 @@ for (const mode of ['stop', 'controller-loss'])
                       return true;
                     },
                     changed() {
-                      if (owner && !owner.poll() && graph) void owner.stop();
+                      owner?.changed();
                     },
                     failed: fail,
                   },
@@ -251,87 +252,84 @@ for (const mode of ['stop', 'controller-loss'])
                 control.close();
                 tone?.disconnect();
                 destination?.disconnect();
+                for (const track of stream?.getTracks() ?? []) track.stop();
                 if (context && context.state !== 'closed')
                   await context.close();
               },
             };
-            document.querySelector('#start').onclick = async () => {
-              context = new AudioContext({ sampleRate: 48000 });
-              const resumed = context.resume();
-              destination = context.createMediaStreamDestination();
-              tone = context.createConstantSource();
-              tone.offset.value = -0.5;
-              tone.connect(destination);
-              tone.start();
-              stream = destination.stream;
+            document.querySelector('#start').onclick = () => {
               navigator.mediaDevices.getUserMedia = () => {
                 ++requests;
+                if (mode === 'permission-denied')
+                  return Promise.reject(
+                    new Error('Synthetic permission denied'),
+                  );
                 return Promise.resolve(stream);
               }; // Never calls the physical-device API.
-              await resumed;
-              owner = new MicrophonePermission(
+              owner = new MicrophoneOwner(
+                client,
                 {
-                  eligible: (epoch) =>
-                    control.readyState === WebSocket.OPEN &&
-                    client.source?.source?.epoch === epoch,
-                  begin(value, epoch) {
-                    let cancelled = false,
-                      token;
-                    const activation = (async () => {
-                      if (!(await client.start(epoch)) || cancelled)
-                        return false;
-                      token = client.authorize(epoch);
-                      if (!token) return false;
-                      graph = new MicrophoneGraph(
-                        context,
-                        value,
-                        epoch,
-                        token,
-                        client.sender,
-                        {
-                          authorized: (key, current) =>
-                            !cancelled && client.authorized(key, current),
-                          retire: () => client.stop(),
-                          failed: () => {
-                            void owner.stop();
-                          },
-                        },
-                        { retirementMs: 4500 },
-                      );
-                      return graph.ready;
-                    })();
-                    return {
-                      ready: activation,
-                      current: () =>
-                        !cancelled &&
-                        control.readyState === WebSocket.OPEN &&
-                        (token
-                          ? client.authorized(token, epoch)
-                          : client.source?.source?.epoch === epoch),
-                      close: async () => {
-                        cancelled = true;
-                        await Promise.all([
-                          client.stop(),
-                          graph ? graph.close() : context.close(),
-                          activation,
-                        ]);
-                      },
-                    };
+                  controller: () => control.readyState === WebSocket.OPEN,
+                  changed() {},
+                  failed: fail,
+                },
+                {
+                  gesture: () => navigator.userActivation.isActive,
+                  request: () =>
+                    navigator.mediaDevices.getUserMedia({
+                      audio: true,
+                      video: false,
+                    }),
+                  context() {
+                    context = new AudioContext({ sampleRate: 48000 });
+                    destination = context.createMediaStreamDestination();
+                    tone = context.createConstantSource();
+                    tone.offset.value = -0.5;
+                    tone.connect(destination);
+                    tone.start();
+                    stream = destination.stream;
+                    return context;
+                  },
+                  graph(...args) {
+                    graph = new MicrophoneGraph(...args);
+                    return graph;
                   },
                 },
-                undefined,
-                30000,
-                5000,
               );
-              window.started = owner.start(client.source.source.epoch);
+              window.started = owner.start();
             };
           },
-          { base: 'ws://127.0.0.1:' + server.server.address().port, session },
+          {
+            base: 'ws://127.0.0.1:' + server.server.address().port,
+            session,
+            mode,
+          },
         );
         await page.waitForFunction(() => window.fixture.eligible());
         assert.equal(worker.samples, 0);
         await page.click('#start');
         await page.waitForFunction(() => Boolean(window.started));
+        if (mode === 'permission-denied') {
+          assert.equal(await page.evaluate(() => window.started), false);
+          const denied = await page.evaluate(() => ({
+            ...window.fixture.result(),
+            active: window.fixture.client().stats.active,
+            preparing: window.fixture.owner().stats.preparing,
+            ownerFailed: window.fixture.owner().stats.failed,
+            mediaOpen: window.fixture.media.readyState === WebSocket.OPEN,
+          }));
+          assert.equal(denied.failed, 0);
+          assert.equal(denied.requests, 1);
+          assert.equal(denied.context, 'closed');
+          assert.equal(denied.active, false);
+          assert.equal(denied.preparing, false);
+          assert.equal(denied.ownerFailed, false);
+          assert.equal(denied.mediaOpen, true);
+          assert.equal(worker.samples, 0);
+          assert.equal(worker.resets, 0);
+          await page.evaluate(() => window.fixture.cleanup());
+          return;
+        }
         assert.equal(await page.evaluate(() => window.started), true);
         await eventually(() => worker.samples >= 3 && worker.signal);
         if (mode === 'stop') await page.evaluate(() => window.fixture.stop());
