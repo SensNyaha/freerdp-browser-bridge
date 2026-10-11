@@ -2,25 +2,65 @@ import { WebSocket } from 'ws';
 import {
   PcmMediaSender,
   isPcmSourceEvent,
+  OpusMediaSender,
+  isOpusSourceEvent,
   SessionError,
+  type SessionAudioEvent,
   type SessionManager,
 } from '@freerdp-bridge/node';
 import type { AudioMetrics, AudioFailure } from './metrics.js';
 
-/** One ordered socket record and one latest pending sample, with finite progress. */
+/** Existing PCM route: one credit and one latest pending sample. */
 export function installPcmMedia(
   ws: WebSocket,
   lease: ReturnType<SessionManager['attach']>,
   fail: (code: string) => void,
   metrics?: AudioMetrics,
 ) {
+  return installAudioMedia(ws, lease, fail, 'pcm', metrics);
+}
+
+/** Preparatory Opus route; public negotiation remains separately gated. */
+export function installOpusMedia(
+  ws: WebSocket,
+  lease: ReturnType<SessionManager['attach']>,
+  fail: (code: string) => void,
+  metrics?: AudioMetrics,
+) {
+  return installAudioMedia(ws, lease, fail, 'opus', metrics);
+}
+
+function installAudioMedia(
+  ws: WebSocket,
+  lease: ReturnType<SessionManager['attach']>,
+  fail: (code: string) => void,
+  codec: 'pcm' | 'opus',
+  metrics?: AudioMetrics,
+) {
   const initial = lease.audio;
-  if (!initial || initial.codec !== 'pcm')
+  if (!initial || initial.codec !== codec)
     throw new SessionError('MEDIA_NOT_IMPLEMENTED');
-  const owner = new PcmMediaSender({
-    ...(initial.state ? { state: initial.state } : {}),
-    ...(initial.config ? { config: initial.config } : {}),
-  });
+  const owner =
+    initial.codec === 'pcm'
+      ? new PcmMediaSender({
+          ...(initial.state ? { state: initial.state } : {}),
+          ...(initial.config ? { config: initial.config } : {}),
+        })
+      : new OpusMediaSender({
+          ...(initial.state ? { state: initial.state } : {}),
+          ...(initial.config ? { config: initial.config } : {}),
+        });
+  const offer = (event: SessionAudioEvent) =>
+    owner instanceof PcmMediaSender
+      ? isPcmSourceEvent(event) && owner.offer(event)
+      : isOpusSourceEvent(event) && owner.offer(event);
+  const snapshot = () => {
+    const next = owner.snapshot();
+    return {
+      ...next,
+      replacedPackets: 'replacedPackets' in next ? next.replacedPackets : 0,
+    };
+  };
   let started = false,
     closed = false;
   let timer: NodeJS.Timeout | undefined;
@@ -35,8 +75,11 @@ export function installPcmMedia(
     retiredPackets: 0,
   };
   let creditStarted: number | undefined;
+  let resetPending = false;
+  let scheduledEpoch: bigint | undefined;
+  let resetRetryAt = 0;
   const account = () => {
-    const next = owner.snapshot();
+    const next = snapshot();
     if (
       next.inFlight !== accounted.inFlight ||
       next.pendingPacketBytes !== accounted.pendingPacketBytes ||
@@ -80,6 +123,39 @@ export function installPcmMedia(
     close();
     fail(code);
   };
+  const recover = (now: number) => {
+    if (!(owner instanceof OpusMediaSender)) return;
+    const epoch = owner.resetEpoch;
+    if (
+      epoch === undefined ||
+      resetPending ||
+      epoch === scheduledEpoch ||
+      now < resetRetryAt
+    )
+      return;
+    resetPending = true;
+    resetRetryAt = now + 100;
+    // One promise only. Detach may retire this route before its first microtask.
+    void Promise.resolve()
+      .then(() => {
+        if (closed || owner.resetEpoch !== epoch) return undefined;
+        return lease.resetAudio(epoch);
+      })
+      .then((result) => {
+        if (closed || result === undefined) return;
+        if (result === 'scheduled') scheduledEpoch = epoch;
+        else if (!['stale', 'busy', 'unavailable'].includes(result))
+          retire('MEDIA_FAILED', 'protocol');
+        // Refusals retry at most every 100 ms within the sender's 2 s deadline.
+        // Fresh source state/config, never this completion, grants new-epoch media.
+      })
+      .catch(() => {
+        if (!closed) retire();
+      })
+      .finally(() => {
+        resetPending = false;
+      });
+  };
   const flush = () => {
     if (!started || closed) return;
     if (ws.readyState !== WebSocket.OPEN) {
@@ -114,6 +190,7 @@ export function installPcmMedia(
         retire('MEDIA_FAILED', hadCredit ? 'receiver_deadline' : 'consumer');
         return;
       }
+      recover(now);
       const state = owner.snapshot();
       if (
         result === 'blocked' &&
@@ -130,8 +207,7 @@ export function installPcmMedia(
   };
   off = lease.onAudio((event) => {
     if (closed) return;
-    if (!isPcmSourceEvent(event) || !owner.offer(event))
-      retire('MEDIA_FAILED', 'protocol');
+    if (!offer(event)) retire('MEDIA_FAILED', 'protocol');
     else {
       account();
       flush();
