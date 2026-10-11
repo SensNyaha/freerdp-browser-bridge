@@ -423,6 +423,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   failure fixtures pass; channel/provider, worker/IPC/browser microphone and actual
   remote acceptance remain open. [Contract](docs/AUDIO_AUDIN_ADAPTER.md),
   [evidence](docs/ITERATION_096.md).
+- [~] IN PROGRESS — Scoped public audin/browser backend loading validates exact
+  owner/context/arguments, consumes uncertain handoffs once and composes with
+  RDPSND. Actual pinned AUDIN/fake-DVC fixtures project stereo/mono PCM and cover
+  reopen, write failure and delayed termination. General AUDIN channel loading
+  stays refused pending ingress/lifetime guards; worker/browser microphone and
+  actual acceptance remain open. [Contract](docs/AUDIO_AUDIN_PROVIDER.md),
+  [evidence](docs/ITERATION_097.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
