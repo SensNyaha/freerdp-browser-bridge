@@ -26,6 +26,11 @@ for (const codec of ['pcm', 'opus'])
     });
     const manager = new SessionManager({ workerFactory: () => worker });
     const principal = { id: 'reset-fixture-owner' };
+    let initialPacket = false;
+    const unsubscribeInitial = worker.onAudio((event) => {
+      if (event.type === 'packet' && event.packet.epoch === 1n)
+        initialPacket = true;
+    });
     try {
       const session = manager.create(
         {
@@ -49,8 +54,10 @@ for (const codec of ['pcm', 'opus'])
       await eventually(
         () =>
           lease.audio.state?.availability === 'ready' &&
-          lease.audio.config?.epoch === 1n,
+          lease.audio.config?.epoch === 1n &&
+          initialPacket,
       );
+      unsubscribeInitial(); // Config and the first packet arrive as separate IPC records.
       const events = [];
       lease.onAudio((event) => {
         assert.ok(events.length < 8);
@@ -77,6 +84,7 @@ for (const codec of ['pcm', 'opus'])
         'connected',
       );
     } finally {
+      unsubscribeInitial();
       await manager.shutdown();
       assert.deepEqual(await readdir(runtimeRoot), []);
       await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
