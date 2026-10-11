@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 363/363 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 372/372 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -600,6 +600,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   checks pass. No device permission is requested; permission/track/context owner,
   sender/viewer/native composition and actual microphone acceptance remain open.
   [Contract](docs/MICROPHONE_CAPTURE.md), [evidence](docs/ITERATION_121.md).
+- [~] IN PROGRESS — Explicit browser permission/track owner has a gesture and
+  eligibility gate, one pending permission/activation attempt, stopped late
+  streams, listener cleanup and a finite scope retirement barrier. Eight pure
+  fake-API and one actual Edge synthetic-stream checks pass without physical
+  capture. Capture/sender/context/server-grant composition, viewer/native
+  activation and actual microphone acceptance remain open.
+  [Contract](docs/MICROPHONE_PERMISSION.md), [evidence](docs/ITERATION_122.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).

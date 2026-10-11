@@ -4,6 +4,9 @@ Iteration 121 implements the capture packetizer/Worklet foundation for
 SPECIFICATION §2.6 / MEDIA_PIPELINE §7. No getUserMedia, physical device,
 permission owner, viewer selection or native public activation is added.
 
+Iteration 122 adds a separate [permission/track owner](MICROPHONE_PERMISSION.md).
+Its host graph/server-grant scope and composition with this Worklet remain open.
+
 `MicrophoneCapture` accepts only finite Float32 mono/stereo quanta of 1..2,048
 frames at 48 kHz. It clips to signed S16LE and duplicates mono. It owns one fixed
 960-frame collector and one latest complete 3,840-byte block. Caller input is not
