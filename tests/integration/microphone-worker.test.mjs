@@ -7,7 +7,9 @@ import { execFileSync, spawn } from 'node:child_process';
 import {
   WorkerProcess,
   NativeSessionWorker,
+  MicrophoneIngress,
 } from '../../packages/node-bridge/dist/index.js';
+import { encodeMicrophoneRecord } from '../../packages/protocol/dist/index.js';
 import { eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
 const directory = process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation';
@@ -189,6 +191,50 @@ test('private microphone selection: legacy and Opus input refuse before configur
     await worker.close();
     await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
   }
+});
+test('synthetic process: public PCM ingress projects into private IPC, drains and resets before fresh ownership', async () => {
+  await run(async (worker) => {
+    await worker.connect(configuration('valid'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    let authorized = true;
+    const ingress = new MicrophoneIngress({
+      authorized: () => authorized,
+      source: () => worker.microphoneState,
+      submit: (packet) => worker.sendMicrophone(packet),
+    });
+    assert.equal(
+      (await ingress.receive(encodeMicrophoneRecord(samples(), 1))).result,
+      'accepted',
+    );
+    authorized = false;
+    await ingress.close();
+    assert.equal(await worker.resetMicrophone(ingress.drainEpoch), 'scheduled');
+    await eventually(() => worker.microphoneState?.epoch === 2n);
+    assert.equal(
+      (await ingress.receive(encodeMicrophoneRecord(samples(2n), 2))).result,
+      'unavailable',
+    );
+    const replacement = new MicrophoneIngress({
+      authorized: () => true,
+      source: () => worker.microphoneState,
+      submit: (packet) => worker.sendMicrophone(packet),
+    });
+    assert.equal(
+      (await replacement.receive(encodeMicrophoneRecord(samples(), 1))).result,
+      'stale',
+    );
+    assert.equal(
+      (await replacement.receive(encodeMicrophoneRecord(samples(2n), 2)))
+        .result,
+      'accepted',
+    );
+    await replacement.close();
+    assert.equal(
+      await worker.resetMicrophone(replacement.drainEpoch),
+      'scheduled',
+    );
+    await worker.ping();
+  }, 'fixture-microphone-reset');
 });
 const native = JSON.parse(
   execFileSync(resolve(directory, 'rdp-worker' + suffix), ['--capabilities'], {

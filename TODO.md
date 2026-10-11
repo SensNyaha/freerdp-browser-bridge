@@ -530,6 +530,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   activation is claimed. Lease/reset/credit/permission/resampling/Opus input and
   actual remote/physical/LAN/platform gates remain open.
   [Contract](docs/MICROPHONE_WIRE.md), [evidence](docs/ITERATION_112.md).
+- [~] IN PROGRESS — Isolated microphone ingress has one owned PCM slot and one
+  backend flight, sequence/continuity checks, permanent grant revocation and
+  source/lease recheck after completion. Portable and synthetic-process private
+  projection/drain/reset fixtures pass; public finite retirement/ownership,
+  socket/ACK, permission/capture and remote/physical/LAN gates remain open.
+  [Contract](docs/MICROPHONE_INGRESS.md), [evidence](docs/ITERATION_113.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

@@ -258,6 +258,12 @@ captured timestamp, input epoch and exactly 960 stereo S16LE 48 kHz frames.
 Public negotiation, permission, lease and dispatch remain pending.
 [Wire contract](docs/MICROPHONE_WIRE.md).
 
+Iteration 113 adds isolated one-flight Node admission: sequence consumption,
+capture continuity and lease/source checks before and after private submission.
+Revocation drains its one owned sample slot; the host must additionally reset
+native capture before ownership transfer. Public dispatch remains pending.
+[Admission contract](docs/MICROPHONE_INGRESS.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload
