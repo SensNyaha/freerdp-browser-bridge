@@ -51,6 +51,67 @@ TEST_CASE("Opus output mode refuses mixed profiles and preserves control audio v
   REQUIRE_THROWS_AS(OutputQueue(static_cast<OutputAudioCodec>(2)), ProtocolError);
 }
 
+TEST_CASE("Audio startup selection preserves pending records and locks only accepted audio") {
+  OutputQueue queue;
+  REQUIRE_FALSE(queue.select_audio_codec(static_cast<OutputAudioCodec>(2)));
+  REQUIRE(queue.push(Kind::heartbeat_ack, 7, {}) == EnqueueStatus::accepted);
+  REQUIRE(queue.push(Kind::frame, 8, std::array<std::uint8_t, 24>{}) == EnqueueStatus::accepted);
+  REQUIRE(push(queue, config()) == EnqueueStatus::invalid);
+  const auto before = queue.stats();
+  REQUIRE(queue.select_audio_codec(OutputAudioCodec::opus));
+  REQUIRE(queue.stats().records == before.records);
+  REQUIRE(queue.stats().bytes == before.bytes);
+  REQUIRE(queue.stats().high_water_bytes == before.high_water_bytes);
+  REQUIRE_FALSE(queue.select_audio_codec(OutputAudioCodec::opus));
+  REQUIRE_FALSE(queue.select_audio_codec(OutputAudioCodec::pcm));
+  REQUIRE(push(queue, config()) == EnqueueStatus::accepted);
+  REQUIRE(push(queue, packet()) == EnqueueStatus::accepted);
+  REQUIRE(queue.take()->request_id == 7);
+  REQUIRE(queue.take()->kind == Kind::audio_config);
+  REQUIRE(queue.take()->kind == Kind::audio_opus);
+  REQUIRE(queue.take()->request_id == 8);
+  queue.discard_all();
+  REQUIRE_FALSE(queue.select_audio_codec(OutputAudioCodec::pcm));
+  REQUIRE(push(queue, config()) == EnqueueStatus::invalid);
+  REQUIRE(push(queue, config(2)) == EnqueueStatus::accepted);
+  REQUIRE(push(queue, packet(0, true, 2)) == EnqueueStatus::invalid);
+  REQUIRE(push(queue, packet(20000, true, 2)) == EnqueueStatus::accepted);
+}
+
+TEST_CASE("Implicit PCM choice locks at accepted enabled disabled or configuration records") {
+  for (unsigned mode = 0; mode < 3; ++mode) {
+    OutputQueue queue;
+    if (mode < 2) {
+      const auto state = audio::encode_state(
+          {mode == 0, mode == 0 ? audio::Availability::waiting : audio::Availability::unavailable,
+           1, mode == 0 ? 1U : 0U, 0});
+      REQUIRE(queue.push(Kind::audio_state, 0, state) == EnqueueStatus::accepted);
+    } else {
+      REQUIRE(queue.push(Kind::audio_config, 0, audio::encode_config({1})) ==
+              EnqueueStatus::accepted);
+    }
+    queue.discard_all();
+    REQUIRE_FALSE(queue.select_audio_codec(OutputAudioCodec::opus));
+    REQUIRE_FALSE(queue.select_audio_codec(OutputAudioCodec::pcm));
+  }
+  OutputQueue explicit_pcm{OutputAudioCodec::pcm};
+  REQUIRE_FALSE(explicit_pcm.select_audio_codec(OutputAudioCodec::opus));
+}
+
+TEST_CASE("Refused audio admission does not consume startup selection") {
+  OutputQueue queue;
+  for (std::uint64_t i = 1; i <= OutputQueue::control_capacity; ++i)
+    REQUIRE(queue.push(Kind::heartbeat_ack, i, {}) == EnqueueStatus::accepted);
+  const auto disabled = audio::encode_state({false, audio::Availability::unavailable, 1, 0, 0});
+  REQUIRE(queue.push(Kind::audio_state, 0, disabled) == EnqueueStatus::full);
+  REQUIRE(queue.push(Kind::audio_state, 1, disabled) == EnqueueStatus::invalid);
+  REQUIRE(queue.select_audio_codec(OutputAudioCodec::opus));
+  REQUIRE(queue.stats().records == OutputQueue::control_capacity);
+  for (std::uint64_t i = 1; i <= OutputQueue::control_capacity; ++i)
+    REQUIRE(queue.take()->request_id == i);
+  REQUIRE(push(queue, config()) == EnqueueStatus::accepted);
+}
+
 TEST_CASE(
     "Opus output backpressure preserves copied bytes and admission clock until credit returns") {
   OutputQueue queue{OutputAudioCodec::opus};

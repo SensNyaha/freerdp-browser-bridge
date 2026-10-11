@@ -2,6 +2,15 @@
 #include <limits>
 
 namespace bridge::ipc {
+DispatchAdmission OutputDispatcher::try_select_audio_codec(OutputAudioCodec codec) {
+  const std::unique_lock lock(mutex_, std::try_to_lock);
+  if (!lock.owns_lock())
+    return DispatchAdmission::busy;
+  if (!stats_.accepting)
+    return DispatchAdmission::closed;
+  return queue_.select_audio_codec(codec) ? DispatchAdmission::accepted
+                                          : DispatchAdmission::invalid;
+}
 DispatchAdmission OutputDispatcher::try_send(Kind kind, std::uint64_t request_id,
                                              std::span<const std::uint8_t> bytes) {
   const std::unique_lock lock(mutex_, std::try_to_lock);

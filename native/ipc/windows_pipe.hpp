@@ -14,6 +14,7 @@ public:
   WindowsPipeOutput(const WindowsPipeOutput &) = delete;
   WindowsPipeOutput &operator=(const WindowsPipeOutput &) = delete;
   DispatchAdmission try_send(Kind, std::uint64_t, std::span<const std::uint8_t>);
+  DispatchAdmission try_select_audio_codec(OutputAudioCodec codec);
   std::optional<DispatcherStats> try_stats() const;
   bool try_discard_audio();
   // Graceful drain deadline, then cancellation grace. False means failed drain.

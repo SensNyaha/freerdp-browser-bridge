@@ -306,6 +306,11 @@ dispatcher mode is prepared in [Iteration 79](AUDIO_OPUS_OUTPUT.md), using the s
 bounded slots and full admission for an occupied compressed packet slot.
 Production worker codec selection remains unchanged.
 
+Iteration 81 adds a one-time startup selector to default output owners, before
+the first accepted audio record. Constructor selection and accepted audio lock
+the mode permanently; queued/in-flight non-audio records are preserved.
+[Selection contract](AUDIO_OPUS_OUTPUT.md#one-time-startup-selection-iteration-81).
+
 `native/ipc/output_queue.*` prepares bounded worker-to-Node priority lanes, without
 changing the current worker writer or wire formats. Callers must serialize all
 queue operations and use one consumer, preserving the order of taken records.

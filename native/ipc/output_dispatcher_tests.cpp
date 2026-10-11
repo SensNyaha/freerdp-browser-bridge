@@ -1,4 +1,5 @@
 #include "audio.hpp"
+#include "opus_audio.hpp"
 #include "output_dispatcher.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -124,6 +125,33 @@ TEST_CASE("Writer callback reentry cannot start a second record and may enqueue 
   }) == DispatchResult::sent);
   owner.finish();
   REQUIRE(owner.try_stats()->closed);
+}
+
+TEST_CASE("Startup codec selection proceeds during a non-audio write and refuses retired owners") {
+  OutputDispatcher owner;
+  REQUIRE(owner.try_select_audio_codec(static_cast<OutputAudioCodec>(255)) ==
+          DispatchAdmission::invalid);
+  REQUIRE(owner.try_send(Kind::heartbeat_ack, 1, {}) == DispatchAdmission::accepted);
+  DispatchAdmission selected = DispatchAdmission::closed;
+  REQUIRE(owner.write_next([&](auto header, auto) {
+    selected = owner.try_select_audio_codec(OutputAudioCodec::opus);
+    return decode_header(header).request_id == 1;
+  }) == DispatchResult::sent);
+  REQUIRE(selected == DispatchAdmission::accepted);
+  REQUIRE(owner.try_select_audio_codec(OutputAudioCodec::pcm) == DispatchAdmission::invalid);
+  REQUIRE(owner.try_send(Kind::audio_config, 0, audio::opus::encode_config({1, 312})) ==
+          DispatchAdmission::accepted);
+  REQUIRE(owner.try_stats()->sent_records == 1);
+  REQUIRE(owner.try_stats()->queued.records == 1);
+  owner.finish();
+  REQUIRE(owner.try_select_audio_codec(OutputAudioCodec::opus) == DispatchAdmission::closed);
+  REQUIRE(owner.write_next([](auto header, auto bytes) {
+    return decode_header(header).kind == Kind::audio_config &&
+           audio::opus::decode_config(bytes).epoch == 1;
+  }) == DispatchResult::sent);
+  REQUIRE(owner.try_stats()->closed);
+  owner.abort();
+  REQUIRE(owner.try_select_audio_codec(OutputAudioCodec::pcm) == DispatchAdmission::closed);
 }
 TEST_CASE(
     "Write failure and exceptions discard bounded pending records and refuse later producers") {

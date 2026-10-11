@@ -184,6 +184,9 @@ struct WindowsPipeOutput::Impl {
 WindowsPipeOutput::WindowsPipeOutput(void *write_handle, std::chrono::milliseconds timeout)
     : impl_(std::make_unique<Impl>(write_handle, timeout)) {}
 WindowsPipeOutput::~WindowsPipeOutput() = default;
+DispatchAdmission WindowsPipeOutput::try_select_audio_codec(OutputAudioCodec codec) {
+  return impl_->dispatcher.try_select_audio_codec(codec);
+}
 DispatchAdmission WindowsPipeOutput::try_send(Kind kind, std::uint64_t id,
                                               std::span<const std::uint8_t> bytes) {
   const auto result = impl_->dispatcher.try_send(kind, id, bytes);

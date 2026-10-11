@@ -65,9 +65,16 @@ CursorInfo cursor_info(std::span<const std::uint8_t> bytes) {
   return info;
 }
 } // namespace
-OutputQueue::OutputQueue(OutputAudioCodec codec) : audio_codec_(codec) {
+OutputQueue::OutputQueue(OutputAudioCodec codec) : audio_codec_(codec), audio_locked_(true) {
   if (codec != OutputAudioCodec::pcm && codec != OutputAudioCodec::opus)
     throw ProtocolError();
+}
+bool OutputQueue::select_audio_codec(OutputAudioCodec codec) noexcept {
+  if (audio_locked_ || (codec != OutputAudioCodec::pcm && codec != OutputAudioCodec::opus))
+    return false;
+  audio_codec_ = codec;
+  audio_locked_ = true;
+  return true;
 }
 EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
                                 std::span<const std::uint8_t> bytes) {
@@ -176,6 +183,9 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
   } catch (const ProtocolError &) {
     return EnqueueStatus::invalid;
   }
+  if (kind == Kind::audio_state || kind == Kind::audio_config || kind == Kind::audio_pcm ||
+      kind == Kind::audio_opus)
+    audio_locked_ = true;
   refresh();
   return EnqueueStatus::accepted;
 }

@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+#include "opus_audio.hpp"
 #include "windows_pipe.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <thread>
@@ -97,6 +98,33 @@ TEST_CASE(
   REQUIRE_FALSE(output.timed_out());
   REQUIRE(output.finish());
   REQUIRE(send(output, {Kind::heartbeat_ack, 11, {}}) == DispatchAdmission::closed);
+}
+TEST_CASE("Windows pipe startup selects Opus once and writes its exact configuration") {
+  Pipe pipe;
+  WindowsPipeOutput output(pipe.write);
+  REQUIRE(send(output, {Kind::heartbeat_ack, 17, {}}) == DispatchAdmission::accepted);
+  const auto deadline = std::chrono::steady_clock::now() + 1s;
+  DispatchAdmission selected = DispatchAdmission::busy;
+  while (selected == DispatchAdmission::busy && std::chrono::steady_clock::now() < deadline) {
+    selected = output.try_select_audio_codec(OutputAudioCodec::opus);
+    std::this_thread::yield();
+  }
+  REQUIRE(selected == DispatchAdmission::accepted);
+  const auto config = audio::opus::encode_config({1, 312});
+  REQUIRE(send(output, {Kind::audio_config, 0, {config.begin(), config.end()}}) ==
+          DispatchAdmission::accepted);
+  REQUIRE(output.finish());
+  REQUIRE(output.try_select_audio_codec(OutputAudioCodec::pcm) == DispatchAdmission::closed);
+  auto expected = encode({Kind::heartbeat_ack, 17, {}});
+  const auto audio = encode({Kind::audio_config, 0, {config.begin(), config.end()}});
+  expected.insert(expected.end(), audio.begin(), audio.end());
+  std::vector<std::uint8_t> received(expected.size());
+  DWORD count = 0;
+  REQUIRE(
+      ReadFile(pipe.read, received.data(), static_cast<DWORD>(received.size()), &count, nullptr));
+  REQUIRE(count == received.size());
+  REQUIRE(received == expected);
+  REQUIRE(output.try_stats()->sent_records == 2);
 }
 TEST_CASE("Windows pipe stalled reader triggers write watchdog while producers retain credit") {
   Pipe pipe;

@@ -23,6 +23,7 @@ public:
   using Write = std::function<bool(std::span<const std::uint8_t>, std::span<const std::uint8_t>)>;
   OutputDispatcher() = default;
   explicit OutputDispatcher(OutputAudioCodec codec) : queue_(codec) {}
+  DispatchAdmission try_select_audio_codec(OutputAudioCodec codec);
   DispatchAdmission try_send(Kind, std::uint64_t request_id, std::span<const std::uint8_t>);
   DispatchResult write_next(const Write &) noexcept;
   // Refuse new producers, retain pending records for the external driver to drain.

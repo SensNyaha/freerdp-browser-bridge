@@ -39,3 +39,19 @@ The libFuzzer target prepares explicit Opus queue branches; local sanitizer/fuzz
 execution remains unavailable. Production codec selection/lifecycle, private
 Node forwarding, public negotiation, audible RDP/microphone, loss fidelity,
 resource/platform/latency and soak acceptance remain open.
+
+## One-time startup selection (Iteration 81)
+
+The default owner now permits one explicit PCM/Opus choice before its first
+accepted audio state, configuration or sample record. A constructor-supplied
+mode is already fixed. Invalid selections and refused/full audio admissions do
+not consume this startup window; accepted disabled source state does. Repeating
+a choice, including the same mode, is refused. Taking or discarding records does
+not reopen the window or reset the lifetime epoch/PTS guards.
+
+Selection preserves queued control/video, statistics and in-flight writes.
+Dispatcher selection uses the existing producer try-lock and returns busy,
+closed or invalid as appropriate. The Windows pipe forwards that operation
+without I/O, allocation or an additional queue. No active profile switching or
+implicit negotiation is provided. The production worker still uses default PCM;
+configuration/HELLO/Node/public activation is separate work.
