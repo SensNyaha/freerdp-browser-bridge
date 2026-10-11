@@ -1,11 +1,11 @@
 import { EventEmitter } from 'node:events';
 import { createHash, randomBytes } from 'node:crypto';
-import { PcmSource, type PcmSourceEvent } from './pcm-source.js';
-import type {
-  PcmAudioState,
-  PcmAudioConfig,
-  AudioResetResult,
-} from '@freerdp-bridge/protocol';
+import {
+  SessionAudioSource,
+  type SessionAudioEvent,
+  type SessionAudioSnapshot,
+} from './session-audio.js';
+import type { AudioResetResult } from '@freerdp-bridge/protocol';
 import {
   validateCursorState,
   validateDisplayState,
@@ -182,7 +182,7 @@ export interface SessionWorker {
   onCursor?(listener: (cursor: CursorState) => void): () => void;
   onDisplay?(listener: (display: DisplayState) => void): () => void;
   onTouch?(listener: (touch: TouchState) => void): () => void;
-  onAudio?(listener: (event: PcmSourceEvent) => void): () => void;
+  onAudio?(listener: (event: SessionAudioEvent) => void): () => void;
   resetAudio?(expectedEpoch: bigint): Promise<AudioResetResult>;
   resizeDisplay?(width: number, height: number): Promise<DisplayResizeResult>;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
@@ -215,8 +215,8 @@ type Entry = {
   dynamicResolution: boolean;
   touchEnabled: boolean;
   audioEnabled: boolean;
-  audio?: PcmSource;
-  audioListener?: { lease: symbol; sink: (event: PcmSourceEvent) => void };
+  audio?: SessionAudioSource;
+  audioListener?: { lease: symbol; sink: (event: SessionAudioEvent) => void };
   audioReset?: symbol;
   touch?: TouchState;
   display?: DisplayState;
@@ -391,7 +391,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         touchEnabled: config.input?.touch === true,
         audioEnabled: config.media?.audioOutput === 'pcm',
         ...(config.media?.audioOutput === 'pcm'
-          ? { audio: new PcmSource() }
+          ? { audio: new SessionAudioSource('pcm') }
           : {}),
         owner,
         worker,
@@ -579,7 +579,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                 entry.snapshot.state === 'closing'
               )
                 return;
-              let accepted: PcmSourceEvent;
+              let accepted: SessionAudioEvent;
               try {
                 if (
                   !entry.audio ||
@@ -819,11 +819,9 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     readonly display: DisplayState | undefined;
     readonly touch: TouchState | undefined;
     readonly resizing: boolean;
-    readonly audio:
-      | { state: PcmAudioState | undefined; config: PcmAudioConfig | undefined }
-      | undefined;
+    readonly audio: SessionAudioSnapshot | undefined;
     readonly audioFailed: boolean;
-    onAudio: (listener: (event: PcmSourceEvent) => void) => () => void;
+    onAudio: (listener: (event: SessionAudioEvent) => void) => () => void;
     resetAudio: (expectedEpoch: bigint) => Promise<AudioResetResult>;
     resizeDisplay: (
       request: DisplayResizeRequest,
@@ -881,12 +879,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       },
       get audio() {
         requireAudioLease();
-        return (
-          entry.audio && {
-            state: entry.audio.current,
-            config: entry.audio.configuration,
-          }
-        );
+        return entry.audio?.snapshot();
       },
       get audioFailed() {
         requireAudioLease();
@@ -900,7 +893,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
           throw new SessionError('MEDIA_FAILED');
         const registration = {
           lease,
-          sink: (event: PcmSourceEvent) => {
+          sink: (event: SessionAudioEvent) => {
             try {
               listener(event);
             } catch {

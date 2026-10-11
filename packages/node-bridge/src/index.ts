@@ -5,6 +5,7 @@ export * from './session-manager.js';
 export * from './native-session.js';
 export * from './pcm-delivery.js';
 export * from './opus-delivery.js';
+export * from './session-audio.js';
 import { EventEmitter } from 'node:events';
 import { PcmSource } from './pcm-source.js';
 import { OpusSource } from './opus-source.js';

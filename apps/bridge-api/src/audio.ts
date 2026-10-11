@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws';
 import {
   PcmMediaSender,
+  isPcmSourceEvent,
   SessionError,
   type SessionManager,
 } from '@freerdp-bridge/node';
@@ -14,7 +15,8 @@ export function installPcmMedia(
   metrics?: AudioMetrics,
 ) {
   const initial = lease.audio;
-  if (!initial) throw new SessionError('MEDIA_NOT_IMPLEMENTED');
+  if (!initial || initial.codec !== 'pcm')
+    throw new SessionError('MEDIA_NOT_IMPLEMENTED');
   const owner = new PcmMediaSender({
     ...(initial.state ? { state: initial.state } : {}),
     ...(initial.config ? { config: initial.config } : {}),
@@ -128,7 +130,8 @@ export function installPcmMedia(
   };
   off = lease.onAudio((event) => {
     if (closed) return;
-    if (!owner.offer(event)) retire('MEDIA_FAILED', 'protocol');
+    if (!isPcmSourceEvent(event) || !owner.offer(event))
+      retire('MEDIA_FAILED', 'protocol');
     else {
       account();
       flush();

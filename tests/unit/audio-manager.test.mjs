@@ -239,6 +239,7 @@ test('fake audio manager: detached source samples are not replayed; media gets o
     for (let index = 0; index < 100; index++) emit(packet(index));
     const lease = attach();
     assert.equal(lease.audio.state.availability, 'ready');
+    assert.equal(lease.audio.codec, 'pcm');
     assert.equal(lease.audio.config.channels, 2);
     const snapshot = lease.audio;
     snapshot.state.epoch = 9n;

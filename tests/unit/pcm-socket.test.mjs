@@ -16,6 +16,7 @@ function fixture() {
     unsubscribed = 0;
   const lease = {
     audio: {
+      codec: 'pcm',
       state: {
         enabled: true,
         availability: 'waiting',

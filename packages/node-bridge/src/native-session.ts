@@ -7,6 +7,7 @@ import {
   type SessionWorker,
 } from './session-manager.js';
 import type { SessionCreate } from '@freerdp-bridge/config';
+import type { SessionAudioEvent } from './session-audio.js';
 import type {
   CertificatePrompt,
   NativeConnectionState,
@@ -47,12 +48,9 @@ export class NativeSessionWorker implements SessionWorker {
     this.worker.on('touch', (touch: TouchState) => {
       if (!this.closing) this.events.emit('touch', touch);
     });
-    this.worker.on(
-      'audio',
-      (event: import('./pcm-source.js').PcmSourceEvent) => {
-        if (!this.closing) this.events.emit('audio', event);
-      },
-    );
+    this.worker.on('audio', (event: SessionAudioEvent) => {
+      if (!this.closing) this.events.emit('audio', event);
+    });
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
     });
@@ -128,9 +126,7 @@ export class NativeSessionWorker implements SessionWorker {
       this.events.off('certificate', listener);
     };
   }
-  onAudio(
-    listener: (event: import('./pcm-source.js').PcmSourceEvent) => void,
-  ): () => void {
+  onAudio(listener: (event: SessionAudioEvent) => void): () => void {
     this.events.on('audio', listener);
     return () => {
       this.events.off('audio', listener);
