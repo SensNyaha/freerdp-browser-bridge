@@ -482,6 +482,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   emission/mutex/wakeup/deadlines, capability/lease/permission/browser/Opus input
   and actual remote/LAN acceptance remain open. [Contract](docs/MICROPHONE_STATE.md),
   [evidence](docs/ITERATION_105.md).
+- [~] IN PROGRESS — RDP-owner MicrophoneSession composes guarded AUDIN loading,
+  scheduled capture, admitted status authority and epoch reset. Finite retirement,
+  failed listener retry, publication failure, reverse provider ordering and
+  delayed host cleanup pass actual linked AUDIN/fake-DVC fixtures. Worker
+  snapshot/mutex/wakeup/selection, production callback CPU budget, live-handle
+  expiry and real microphone acceptance remain open.
+  [Contract](docs/MICROPHONE_SESSION.md), [evidence](docs/ITERATION_106.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

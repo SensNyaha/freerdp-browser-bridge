@@ -4,6 +4,7 @@
 #include "audin_provider.hpp"
 #include "capture_handoff.hpp"
 #include "capture_state.hpp"
+#include "microphone_session.hpp"
 #include "rdpsnd_provider.hpp"
 #include <algorithm>
 #include <bit>
@@ -95,6 +96,7 @@ struct Host {
   AudinDvcGate gate;
   AudinRegistration *registration = nullptr;
   bool guarded = false, via_gate = false;
+  bool general_loader = false, verify_fixture_source = true;
   Interface<IDRDYNVC_ENTRY_POINTS> entries{this};
   Interface<IWTSVirtualChannelManager> manager{this};
   Interface<IWTSVirtualChannel> channel{this};
@@ -211,10 +213,11 @@ struct Host {
   ~Host() { (void)close(); }
   UINT install() {
     const auto entry =
-        registration ? freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, nullptr, nullptr,
-                                                        FREERDP_ADDIN_CHANNEL_DYNAMIC)
-                     : freerdp_channels_load_static_addin_entry(
-                           AUDIN_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
+        (registration || general_loader)
+            ? freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, nullptr, nullptr,
+                                               FREERDP_ADDIN_CHANNEL_DYNAMIC)
+            : freerdp_channels_load_static_addin_entry(AUDIN_CHANNEL_NAME, nullptr, nullptr,
+                                                       FREERDP_ADDIN_CHANNEL_DYNAMIC);
     REQUIRE(entry);
     return std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api);
   }
@@ -300,7 +303,8 @@ void negotiate(Host &host) {
   const auto offer = formats();
   open.insert(open.end(), offer.begin() + 9, offer.begin() + 27);
   REQUIRE(host.send(open) == CHANNEL_RC_OK);
-  REQUIRE(host.fixture.source.stats()->opened);
+  if (host.verify_fixture_source)
+    REQUIRE(host.fixture.source.stats()->opened);
 }
 bridge::ipc::microphone::Result submit_capture(void *owner,
                                                const bridge::ipc::microphone::PcmPacket &packet) {
@@ -320,6 +324,223 @@ bridge::ipc::microphone::Result submit_capture(void *owner,
   return Result::invalid;
 }
 } // namespace
+TEST_CASE(
+    "Microphone session expires closed metadata backpressure without retrying released handles") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted, 20000);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::delivered);
+  admitted = false;
+  REQUIRE(session.retire(100) == MicrophoneRetirement::pending);
+  REQUIRE(session.stats()->resources_retired);
+  REQUIRE(host.destroy_attempts == 1);
+  REQUIRE(session.retire(20099) == MicrophoneRetirement::pending);
+  const auto publications = session.stats()->publication.backpressure;
+  REQUIRE(session.retire(20100) == MicrophoneRetirement::expired);
+  admitted = true;
+  REQUIRE(session.retire(20101) == MicrophoneRetirement::expired);
+  REQUIRE(session.stats()->publication.backpressure == publications);
+  REQUIRE(session.stats()->close_attempts == 1);
+  REQUIRE(host.destroy_attempts == 1);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Microphone session stops uncertain publication and never replays borrowed status") {
+  Fixture fixture;
+  unsigned attempts = 0;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) -> bool {
+    ++*static_cast<unsigned *>(owner);
+    throw std::runtime_error("fixture uncertain publication");
+  };
+  MicrophoneSession session(*fixture.context, send, &attempts);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::failed);
+  REQUIRE_FALSE(session.stats()->source.opened);
+  REQUIRE_FALSE(session.published_state());
+  REQUIRE(session.stats()->publication_failed);
+  REQUIRE(session.pump(20000) == MicrophonePump::failed);
+  REQUIRE(session.reset_capture(1).status == AudinCaptureResetStatus::inactive);
+  REQUIRE(session.retire(20001) == MicrophoneRetirement::failed);
+  REQUIRE(session.stats()->resources_retired);
+  REQUIRE(session.retire(20002) == MicrophoneRetirement::failed);
+  REQUIRE(attempts == 1);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Microphone session stops capture below another provider before ordered retirement") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  RdpsndSink sink;
+  RdpsndProvider sound;
+  REQUIRE(sound.bind(*fixture.context, sink) == CHANNEL_RC_OK);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::delivered);
+  REQUIRE(session.retire(100) == MicrophoneRetirement::pending);
+  REQUIRE_FALSE(session.stats()->resources_retired);
+  REQUIRE_FALSE(session.stats()->source.opened);
+  REQUIRE(session.stats()->close_status == ERROR_INVALID_STATE);
+  REQUIRE(host.destroy_attempts == 0);
+  REQUIRE(sound.close() == CHANNEL_RC_OK);
+  REQUIRE(session.retire(101) == MicrophoneRetirement::done);
+  REQUIRE(session.stats()->resources_retired);
+  REQUIRE(host.destroy_attempts == 1);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Microphone session refuses foreign reentrant and regressing owner operations") {
+  Fixture fixture;
+  struct Probe {
+    MicrophoneSession *session = nullptr;
+    MicrophonePump pump = MicrophonePump::idle;
+    MicrophoneRetirement retirement = MicrophoneRetirement::done;
+    bridge::ipc::microphone::Result submit = bridge::ipc::microphone::Result::accepted;
+    AudinCaptureResetStatus reset = AudinCaptureResetStatus::reset;
+    bool snapshots = true;
+  } probe;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    auto &value = *static_cast<Probe *>(owner);
+    value.pump = value.session->pump(1000000);
+    value.retirement = value.session->retire(1000000);
+    value.submit = value.session->submit({});
+    value.reset = value.session->reset_capture(1).status;
+    value.snapshots =
+        value.session->stats().has_value() || value.session->published_state().has_value();
+    return true;
+  };
+  REQUIRE_THROWS_AS(MicrophoneSession(*fixture.context, nullptr, &probe), std::invalid_argument);
+  REQUIRE_THROWS_AS(MicrophoneSession(*fixture.context, send, nullptr), std::invalid_argument);
+  REQUIRE_THROWS_AS(MicrophoneSession(*fixture.context, send, &probe, 19999),
+                    std::invalid_argument);
+  REQUIRE_THROWS_AS(MicrophoneSession(*fixture.context, send, &probe, 1000001),
+                    std::invalid_argument);
+  MicrophoneSession session(*fixture.context, send, &probe);
+  probe.session = &session;
+  REQUIRE(session.pump(100) == MicrophonePump::idle);
+  REQUIRE(probe.pump == MicrophonePump::invalid);
+  REQUIRE(probe.retirement == MicrophoneRetirement::invalid);
+  REQUIRE(probe.submit == bridge::ipc::microphone::Result::busy);
+  REQUIRE(probe.reset == AudinCaptureResetStatus::busy);
+  REQUIRE_FALSE(probe.snapshots);
+  std::thread foreign([&] {
+    probe.pump = session.pump(1000000);
+    probe.retirement = session.retire(1000000);
+    probe.submit = session.submit({});
+    probe.reset = session.reset_capture(1).status;
+    probe.snapshots = session.stats().has_value() || session.published_state().has_value();
+  });
+  foreign.join();
+  REQUIRE(probe.pump == MicrophonePump::invalid);
+  REQUIRE(probe.retirement == MicrophoneRetirement::invalid);
+  REQUIRE(probe.submit == bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(probe.reset == AudinCaptureResetStatus::inactive);
+  REQUIRE_FALSE(probe.snapshots);
+  REQUIRE(session.pump(99) == MicrophonePump::invalid);
+  REQUIRE(session.retire(UINT64_MAX) == MicrophoneRetirement::invalid);
+  REQUIRE(session.stats()->invalid_calls == 2);
+  REQUIRE(session.pump(101) == MicrophonePump::idle);
+  REQUIRE(session.retire(102) == MicrophoneRetirement::done);
+}
+
+TEST_CASE(
+    "Microphone session owns guarded PCM scheduling reset status and delayed host termination") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+    REQUIRE(kind == bridge::ipc::Kind::microphone_state);
+    REQUIRE(bridge::ipc::microphone::decode_state(bytes).enabled);
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(session.pump(0) == MicrophonePump::idle);
+  REQUIRE(session.published_state()->availability == bridge::ipc::audio::Availability::waiting);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  admitted = false;
+  REQUIRE(session.pump(100) == MicrophonePump::blocked);
+  REQUIRE(session.published_state()->epoch == 0);
+  std::vector<BYTE> pcm(3840, 0x41);
+  REQUIRE(session.submit({1, 0, true, pcm}) == bridge::ipc::microphone::Result::unavailable);
+  admitted = true;
+  REQUIRE(session.pump(200) == MicrophonePump::delivered);
+  REQUIRE(session.published_state()->epoch == 1);
+  REQUIRE(session.submit({1, 0, true, pcm}) == bridge::ipc::microphone::Result::accepted);
+  REQUIRE(session.submit({1, 20000, false, pcm}) == bridge::ipc::microphone::Result::accepted);
+  REQUIRE(session.pump(20199) == MicrophonePump::idle);
+  REQUIRE(session.pump(20200) == MicrophonePump::delivered);
+  REQUIRE(host.writes.back()[1] == 0x41);
+  REQUIRE(session.reset_capture(1).status == AudinCaptureResetStatus::reset);
+  REQUIRE(session.submit({1, 40000, false, pcm}) == bridge::ipc::microphone::Result::stale);
+  REQUIRE(session.submit({2, 0, true, pcm}) == bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(session.pump(20300) == MicrophonePump::delivered);
+  REQUIRE(session.published_state()->epoch == 2);
+  REQUIRE(std::all_of(host.writes.back().begin() + 1, host.writes.back().end(),
+                      [](BYTE value) { return value == 0; }));
+  REQUIRE(session.stats()->source.capture_resets == 1);
+  REQUIRE(session.retire(20400) == MicrophoneRetirement::done);
+  REQUIRE(session.stats()->resources_retired);
+  REQUIRE_FALSE(session.published_state());
+  REQUIRE(session.submit({2, 0, true, pcm}) == bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(session.pump(20500) == MicrophonePump::invalid);
+  UINT late = ERROR_INTERNAL_ERROR;
+  std::thread thread([&] { late = host.close(); });
+  thread.join();
+  REQUIRE(late == CHANNEL_RC_OK);
+}
+
+TEST_CASE(
+    "Microphone session retains failed listener for finite owner retries and disables source") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted, 20000);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::delivered);
+  host.destroy_failures = 1;
+  REQUIRE(session.retire(100) == MicrophoneRetirement::pending);
+  REQUIRE(host.destroy_attempts == 1);
+  REQUIRE_FALSE(session.stats()->source.opened);
+  REQUIRE_FALSE(session.published_state());
+  REQUIRE(session.retire(101) == MicrophoneRetirement::done);
+  REQUIRE(host.destroy_attempts == 2);
+  REQUIRE(session.stats()->close_attempts == 2);
+  REQUIRE(session.stats()->resources_retired);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+
 TEST_CASE(
     "AUDIN input authority follows admitted microphone status and rechecks actual reset epoch") {
   Fixture fixture;
