@@ -411,6 +411,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.
+- [~] IN PROGRESS — Isolated virtual microphone PCM source has exact epoch/time /
+  boundary validation, fixed 120 ms newest-data queue, capped prebuffer, counted
+  underflow/silence, signed mono projection and wipe-on-stop. Six pure cases pass;
+  public AUDIN backend/provider, worker/IPC/browser permission/capture and actual
+  microphone remain open. [Contract](docs/AUDIO_CAPTURE.md),
+  [evidence](docs/ITERATION_095.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
