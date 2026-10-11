@@ -444,6 +444,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   selection, reopen/cadence/resources, worker/browser microphone and actual
   acceptance remain open. [Contract](docs/AUDIO_AUDIN_DVC.md),
   [evidence](docs/ITERATION_099.md).
+- [~] IN PROGRESS — Scoped pinned AUDIN plugin/listener ownership selects the
+  guarded public DVC path with fixed arguments, rejects reentry/foreign calls,
+  retires before delayed host termination and retains failed listener handles
+  for one retry per later owner close. Actual linked AUDIN/fake-DVC fixtures pass;
+  same-plugin reopen, finite worker teardown/cadence/resources, IPC/browser capture
+  and actual microphone acceptance remain open. [Contract](docs/AUDIO_AUDIN_PLUGIN.md),
+  [evidence](docs/ITERATION_100.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.

@@ -1,5 +1,9 @@
 # Guarded AUDIN public DVC callback
 
+Current update — iteration 100: the scoped plugin/listener owner and optional
+provider selection now wrap this gate through the general public loader.
+Worker/browser activation remains pending. [Current owner contract](AUDIO_AUDIN_PLUGIN.md).
+
 Iteration 99 implements AudinDvcGate for SPECIFICATION §2.6 / ARCHITECTURE §5 /
 MEDIA_PIPELINE §7. The gate owns one delegated channel callback behind public
 IWTSListenerCallback/IWTSVirtualChannelCallback/IWTSVirtualChannel wrappers and

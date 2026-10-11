@@ -1,4 +1,5 @@
 #include "audin_provider.hpp"
+#include "audin_plugin.hpp"
 #include <bit>
 #include <cstring>
 #include <exception>
@@ -21,10 +22,12 @@ AudinProvider::~AudinProvider() {
       std::terminate();
   }
 }
-UINT AudinProvider::bind(rdpContext &context, AudinSource &source) noexcept {
+UINT AudinProvider::bind(rdpContext &context, AudinSource &source,
+                         AudinRegistration *registration) noexcept {
   if (bound_ || used_ || source.retired())
     return ERROR_INVALID_STATE;
-  if (!source.stats() || !context.settings ||
+  if (!source.stats() || (registration && !registration->ready_for(context, source)) ||
+      !context.settings ||
       !freerdp_settings_get_bool(context.settings, FreeRDP_SynchronousDynamicChannels) ||
       freerdp_settings_get_bool(context.settings, FreeRDP_AsyncChannels) ||
       freerdp_settings_get_bool(context.settings, FreeRDP_AsyncUpdate))
@@ -39,6 +42,7 @@ UINT AudinProvider::bind(rdpContext &context, AudinSource &source) noexcept {
   }
   context_ = &context;
   source_ = &source;
+  registration_ = registration;
   thread_ = std::this_thread::get_id();
   bound_ = used_ = true;
   return CHANNEL_RC_OK;
@@ -55,10 +59,17 @@ PVIRTUALCHANNELENTRY AudinProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR t
       return std::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(allowed ? entry : denied));
     }
-    // Non-null refusal prevents FreeRDP's dynamic-library fallback. The actual
-    // linked channel is exercised directly in fixtures, not activated here.
-    if (flags & FREERDP_ADDIN_CHANNEL_DYNAMIC)
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(dynamic_denied));
+    // Non-null refusal prevents FreeRDP's dynamic-library fallback. Only the
+    // scoped pinned registration can select a guarded top-level channel.
+    if (flags & FREERDP_ADDIN_CHANNEL_DYNAMIC) {
+      const bool allowed = provider && provider->bound_ && provider->on_thread() &&
+                           provider->registration_ && !provider->loading_ && !provider->entering_ &&
+                           !provider->channel_entering_ && !provider->channel_attempted_ &&
+                           !provider->source_->retired() && provider->scope_.active() && !type &&
+                           flags == FREERDP_ADDIN_CHANNEL_DYNAMIC;
+      return std::bit_cast<PVIRTUALCHANNELENTRY>(
+          static_cast<PDVC_PLUGIN_ENTRY>(allowed ? channel_entry : dynamic_denied));
+    }
     if (flags & FREERDP_ADDIN_CHANNEL_ENTRYEX)
       return std::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PVIRTUALCHANNELENTRYEX>(static_ex_denied));
@@ -81,6 +92,28 @@ UINT VCAPITYPE AudinProvider::denied(PFREERDP_AUDIN_DEVICE_ENTRY_POINTS) noexcep
 }
 UINT VCAPITYPE AudinProvider::dynamic_denied(IDRDYNVC_ENTRY_POINTS *) noexcept {
   return ERROR_NOT_SUPPORTED;
+}
+UINT VCAPITYPE AudinProvider::channel_entry(IDRDYNVC_ENTRY_POINTS *points) noexcept {
+  auto *provider = active_.load();
+  if (!provider || !provider->bound_ || !provider->on_thread() || provider->loading_ ||
+      provider->entering_ || provider->channel_entering_ || provider->channel_attempted_ ||
+      !provider->registration_ || provider->source_->retired() || !provider->scope_.active())
+    return ERROR_INVALID_STATE;
+  if (!points || !points->GetRdpContext)
+    return ERROR_INVALID_PARAMETER;
+  UINT result = ERROR_INTERNAL_ERROR;
+  provider->channel_entering_ = true;
+  try {
+    if (points->GetRdpContext(points) != provider->context_)
+      result = ERROR_INVALID_PARAMETER;
+    else {
+      provider->channel_attempted_ = true;
+      result = provider->registration_->install(points);
+    }
+  } catch (...) {
+  }
+  provider->channel_entering_ = false;
+  return result;
 }
 BOOL VCAPITYPE AudinProvider::static_denied(PCHANNEL_ENTRY_POINTS) noexcept { return FALSE; }
 BOOL VCAPITYPE AudinProvider::static_ex_denied(PCHANNEL_ENTRY_POINTS_EX, LPVOID) noexcept {
@@ -108,8 +141,15 @@ UINT VCAPITYPE AudinProvider::entry(PFREERDP_AUDIN_DEVICE_ENTRY_POINTS points) n
 UINT AudinProvider::close() noexcept {
   if (!bound_)
     return CHANNEL_RC_OK;
-  if (!on_thread() || loading_ || entering_ || active_.load() != this || !scope_.top())
+  if (!on_thread() || loading_ || entering_ || channel_entering_ || active_.load() != this ||
+      !scope_.top())
     return ERROR_INVALID_STATE;
+  UINT retired = CHANNEL_RC_OK;
+  if (registration_) {
+    retired = registration_->retire();
+    if (!registration_->retired())
+      return retired;
+  }
   if (!source_->retire())
     return ERROR_INVALID_STATE;
   const auto result = scope_.close();
@@ -118,7 +158,8 @@ UINT AudinProvider::close() noexcept {
   bound_ = false;
   context_ = nullptr;
   source_ = nullptr;
+  registration_ = nullptr;
   active_.store(nullptr);
-  return result;
+  return result != CHANNEL_RC_OK ? result : retired;
 }
 } // namespace bridge::audio

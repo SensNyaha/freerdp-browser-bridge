@@ -1,5 +1,10 @@
 # Scoped virtual microphone backend loading
 
+Current update — iteration 100: an explicitly bound AudinRegistration now enables
+the guarded pinned DVC entry, fixed internal arguments and controlled native /
+listener retirement. The backend-only scope still refuses channel loading;
+worker/public microphone remains disabled. [Current owner contract](AUDIO_AUDIN_PLUGIN.md).
+
 Iteration 97 targets SPECIFICATION §2.6 / ARCHITECTURE §5 / MEDIA_PIPELINE §7
 through pinned public FREERDP_AUDIN_DEVICE_ENTRY_POINTS. It builds on
 [the device ABI adapter](AUDIO_AUDIN_ADAPTER.md). This scope is preparatory;

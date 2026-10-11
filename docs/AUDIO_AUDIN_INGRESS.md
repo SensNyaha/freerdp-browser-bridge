@@ -1,5 +1,9 @@
 # Bounded AUDIN server negotiation
 
+Current update — iteration 100: scoped plugin/listener/provider loading now places
+this filter through the guarded native DVC callback. Worker activation and the
+earlier core/resource/sanitizer gates remain open. [Owner contract](AUDIO_AUDIN_PLUGIN.md).
+
 Iteration 98 implements preparatory allocation-free server-PDU validation and
 PCM offer filtering for SPECIFICATION §2.6 / ARCHITECTURE §5 / MEDIA_PIPELINE §7.
 It is exercised ahead of the actual pinned static AUDIN parser in fake-DVC

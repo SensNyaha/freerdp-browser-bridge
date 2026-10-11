@@ -1,5 +1,6 @@
 #include "audin_dvc.hpp"
 #include "audin_ingress.hpp"
+#include "audin_plugin.hpp"
 #include "audin_provider.hpp"
 #include "rdpsnd_provider.hpp"
 #include <algorithm>
@@ -89,6 +90,7 @@ struct Host {
   Fixture &fixture;
   AudinIngress ingress;
   AudinDvcGate gate;
+  AudinRegistration *registration = nullptr;
   bool guarded = false, via_gate = false;
   Interface<IDRDYNVC_ENTRY_POINTS> entries{this};
   Interface<IWTSVirtualChannelManager> manager{this};
@@ -101,17 +103,30 @@ struct Host {
   UINT write_status = CHANNEL_RC_OK, register_status = CHANNEL_RC_OK;
   UINT nested_close = CHANNEL_RC_OK;
   UINT nested_host_close = CHANNEL_RC_OK;
+  UINT nested_termination = CHANNEL_RC_OK;
+  bool terminate_during_write = false;
   bool close_during_write = false, close_host_during_write = false, write_throws = false;
   unsigned attempts = 0, fail_at = 0;
   unsigned destroyed = 0;
+  unsigned destroy_attempts = 0, destroy_failures = 0;
+  UINT listener_status = CHANNEL_RC_OK;
+  bool return_listener = true, destroy_throws = false, register_throws = false;
+  bool retain_failed_registration = false;
+  bool retire_during_probe = false;
+  UINT probe_retirement = CHANNEL_RC_OK;
   template <class Api> static Host &get(Api *api) {
     static_assert(std::is_standard_layout_v<Interface<Api>>);
     return *static_cast<Host *>(reinterpret_cast<Interface<Api> *>(api)->owner);
   }
-  explicit Host(Fixture &value, bool filter = false, bool wrapped = false)
-      : fixture(value), gate(value.source), guarded(filter), via_gate(wrapped) {
+  explicit Host(Fixture &value, bool filter = false, bool wrapped = false,
+                AudinRegistration *managed = nullptr)
+      : fixture(value), gate(value.source), registration(managed), guarded(filter),
+        via_gate(wrapped) {
     entries.api.GetPlugin = [](IDRDYNVC_ENTRY_POINTS *api, const char *) {
-      return get(api).plugin;
+      auto &host = get(api);
+      if (host.retire_during_probe && host.registration)
+        host.probe_retirement = host.registration->retire();
+      return host.plugin;
     };
     entries.api.GetPluginData = [](IDRDYNVC_ENTRY_POINTS *api) -> const ADDIN_ARGV * {
       return &get(api).fixture.args;
@@ -127,6 +142,10 @@ struct Host {
       auto &host = get(api);
       if (!name || std::strcmp(name, AUDIN_CHANNEL_NAME) || !plugin || host.plugin)
         return ERROR_INVALID_PARAMETER;
+      if (host.retain_failed_registration)
+        host.plugin = plugin;
+      if (host.register_throws)
+        throw std::runtime_error("fixture DVC registration failure");
       if (host.register_status != CHANNEL_RC_OK)
         return host.register_status;
       host.plugin = plugin;
@@ -139,11 +158,18 @@ struct Host {
       if (!name || std::strcmp(name, AUDIN_DVC_CHANNEL_NAME) || flags || !callback || !listener)
         return ERROR_INVALID_PARAMETER;
       host.listener_callback = callback;
-      *listener = &host.listener;
-      return CHANNEL_RC_OK;
+      *listener = host.return_listener ? &host.listener : nullptr;
+      return host.listener_status;
     };
     manager.api.DestroyListener = [](IWTSVirtualChannelManager *api, IWTSListener *) -> UINT {
       auto &host = get(api);
+      ++host.destroy_attempts;
+      if (host.destroy_failures) {
+        --host.destroy_failures;
+        if (host.destroy_throws)
+          throw std::runtime_error("fixture listener destruction failure");
+        return CHANNEL_RC_NOT_CONNECTED;
+      }
       host.listener_callback = nullptr;
       ++host.destroyed;
       return CHANNEL_RC_OK;
@@ -155,6 +181,8 @@ struct Host {
         host.nested_close = host.fixture.provider.close();
       if (host.close_host_during_write)
         host.nested_host_close = host.close();
+      if (host.terminate_during_write)
+        host.nested_termination = host.plugin->Terminated(host.plugin);
       if (host.write_throws)
         throw std::runtime_error("fixture DVC write failure");
       if (host.fail_at && host.attempts == host.fail_at)
@@ -169,8 +197,11 @@ struct Host {
   }
   ~Host() { (void)close(); }
   UINT install() {
-    const auto entry = freerdp_channels_load_static_addin_entry(
-        AUDIN_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
+    const auto entry =
+        registration ? freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, nullptr, nullptr,
+                                                        FREERDP_ADDIN_CHANNEL_DYNAMIC)
+                     : freerdp_channels_load_static_addin_entry(
+                           AUDIN_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
     REQUIRE(entry);
     return std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api);
   }
@@ -203,6 +234,8 @@ struct Host {
     return callback->OnDataReceived(callback, &stream);
   }
   UINT close() {
+    if (registration && !registration->retired() && !registration->gate().quiescent())
+      return ERROR_INVALID_STATE;
     if (via_gate && !gate.retired() && !gate.quiescent())
       return ERROR_INVALID_STATE;
     UINT result = CHANNEL_RC_OK;
@@ -257,6 +290,201 @@ void negotiate(Host &host) {
   REQUIRE(host.fixture.source.stats()->opened);
 }
 } // namespace
+TEST_CASE("AUDIN scoped channel loads guarded fixed backend and retires before delayed host") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  std::copy_n("sys:winmm", sizeof("sys:winmm"), fixture.selection); // Host selection is ignored.
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(registration.gate().ready());
+  REQUIRE(registration.gate().pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.writes.back().size() == 3841);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(registration.retired());
+  REQUIRE(fixture.source.retired());
+  REQUIRE(host.destroyed == 1);
+  REQUIRE_FALSE(host.listener_callback);
+  UINT closed = ERROR_INTERNAL_ERROR;
+  std::thread late([&] { closed = host.close(); });
+  late.join();
+  REQUIRE(closed == CHANNEL_RC_OK);
+  REQUIRE(host.destroyed == 1);
+}
+TEST_CASE("AUDIN scoped channel retires partial listener creation without retrying Initialize") {
+  for (const bool partial : {false, true}) {
+    Fixture fixture;
+    AudinRegistration registration(*fixture.context, fixture.source);
+    REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) ==
+            CHANNEL_RC_OK);
+    Host host(fixture, false, false, &registration);
+    host.listener_status = CHANNEL_RC_NOT_CONNECTED;
+    host.return_listener = partial;
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    REQUIRE(host.plugin->Initialize(host.plugin, &host.manager.api) == CHANNEL_RC_NOT_CONNECTED);
+    REQUIRE(host.plugin->Initialize(host.plugin, &host.manager.api) == ERROR_INVALID_STATE);
+    REQUIRE_FALSE(registration.gate().ready());
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+    REQUIRE(registration.retired());
+    REQUIRE(host.destroyed == (partial ? 1U : 0U));
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+  }
+}
+TEST_CASE(
+    "AUDIN scoped channel consumes uncertain host registration and preserves cached wrapper") {
+  for (const bool throws : {false, true}) {
+    Fixture fixture;
+    AudinRegistration registration(*fixture.context, fixture.source);
+    REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) ==
+            CHANNEL_RC_OK);
+    Host host(fixture, false, false, &registration);
+    host.retain_failed_registration = true;
+    host.register_status = CHANNEL_RC_NOT_CONNECTED;
+    host.register_throws = throws;
+    const UINT expected = throws ? ERROR_INTERNAL_ERROR : CHANNEL_RC_NOT_CONNECTED;
+    REQUIRE(host.install() == expected);
+    REQUIRE(host.plugin);
+    REQUIRE(registration.retired());
+    REQUIRE(fixture.source.retired());
+    REQUIRE(host.plugin->Initialize(host.plugin, &host.manager.api) == ERROR_INVALID_STATE);
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+  }
+}
+TEST_CASE("AUDIN scoped channel retains failed listener handle and retries once per owner close") {
+  for (const bool throws : {false, true}) {
+    Fixture fixture;
+    AudinRegistration registration(*fixture.context, fixture.source);
+    REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) ==
+            CHANNEL_RC_OK);
+    Host host(fixture, false, false, &registration);
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    negotiate(host);
+    auto *listener = host.listener_callback;
+    host.destroy_failures = 2;
+    host.destroy_throws = throws;
+    const UINT expected = throws ? ERROR_INTERNAL_ERROR : CHANNEL_RC_NOT_CONNECTED;
+    REQUIRE(fixture.provider.close() == expected);
+    REQUIRE_FALSE(registration.retired());
+    REQUIRE(fixture.source.retired());
+    REQUIRE(host.destroy_attempts == 1);
+    REQUIRE(host.listener_callback == listener);
+    BOOL accepted = TRUE;
+    IWTSVirtualChannelCallback *callback = host.callback;
+    REQUIRE(listener->OnNewChannelConnection(listener, &host.channel.api, nullptr, &accepted,
+                                             &callback) == ERROR_INVALID_STATE);
+    REQUIRE_FALSE(accepted);
+    REQUIRE_FALSE(callback);
+    REQUIRE(fixture.provider.close() == expected);
+    REQUIRE(host.destroy_attempts == 2);
+    REQUIRE_FALSE(registration.retired());
+    REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+    REQUIRE(host.destroy_attempts == 3);
+    REQUIRE(host.destroyed == 1);
+    REQUIRE(registration.retired());
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+    REQUIRE(host.destroy_attempts == 3);
+  }
+}
+TEST_CASE(
+    "AUDIN scoped channel detaches before silence capture and preserves controller teardown") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(host.plugin->Detached(host.plugin) == CHANNEL_RC_OK);
+  REQUIRE_FALSE(registration.gate().ready());
+  REQUIRE_FALSE(fixture.source.stats()->opened);
+  REQUIRE(registration.gate().pump() == AudinPumpStatus::inactive);
+  REQUIRE(host.writes.size() == 5);
+  REQUIRE(host.plugin->Attached(host.plugin) == CHANNEL_RC_OK);
+  REQUIRE_FALSE(registration.gate().ready()); // No same-plugin DVC reopen/resume is claimed.
+  REQUIRE(host.plugin->Disconnected(host.plugin, 0) == CHANNEL_RC_OK);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("AUDIN scoped channel blocks plugin termination inside transport callback") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  host.terminate_during_write = true;
+  REQUIRE(registration.gate().pump() == AudinPumpStatus::delivered);
+  REQUIRE(host.nested_termination == ERROR_INVALID_STATE);
+  REQUIRE_FALSE(registration.retired());
+  REQUIRE(registration.gate().ready());
+  host.terminate_during_write = false;
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE(
+    "AUDIN scoped channel protects preflight ownership and rejects foreign plugin callbacks") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  host.retire_during_probe = true;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  REQUIRE(host.probe_retirement == ERROR_INVALID_STATE);
+  REQUIRE_FALSE(registration.retired());
+  host.retire_during_probe = false;
+  host.open();
+  negotiate(host);
+  UINT detached = CHANNEL_RC_OK, terminated = CHANNEL_RC_OK;
+  std::thread foreign([&] {
+    detached = host.plugin->Detached(host.plugin);
+    terminated = host.plugin->Terminated(host.plugin);
+  });
+  foreign.join();
+  REQUIRE(detached == ERROR_INVALID_STATE);
+  REQUIRE(terminated == ERROR_INVALID_STATE);
+  REQUIRE(registration.gate().ready());
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("AUDIN scoped channel composes guarded registration with RDPSND in either order") {
+  for (const bool microphone_first : {false, true}) {
+    Fixture fixture;
+    AudinRegistration registration(*fixture.context, fixture.source);
+    RdpsndSink sink;
+    RdpsndProvider sound;
+    if (microphone_first) {
+      REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) ==
+              CHANNEL_RC_OK);
+      REQUIRE(sound.bind(*fixture.context, sink) == CHANNEL_RC_OK);
+    } else {
+      REQUIRE(sound.bind(*fixture.context, sink) == CHANNEL_RC_OK);
+      REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) ==
+              CHANNEL_RC_OK);
+    }
+    Host host(fixture, false, false, &registration);
+    REQUIRE(host.install() == CHANNEL_RC_OK);
+    host.open();
+    negotiate(host);
+    REQUIRE(registration.gate().pump() == AudinPumpStatus::delivered);
+    if (microphone_first) {
+      REQUIRE(fixture.provider.close() == ERROR_INVALID_STATE);
+      REQUIRE_FALSE(registration.retired());
+      REQUIRE(sound.close() == CHANNEL_RC_OK);
+      REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+    } else {
+      REQUIRE(sound.close() == ERROR_INVALID_STATE);
+      REQUIRE_FALSE(sink.retired());
+      REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+      REQUIRE(sound.close() == CHANNEL_RC_OK);
+    }
+    REQUIRE(host.close() == CHANNEL_RC_OK);
+  }
+}
 TEST_CASE("AUDIN DVC gate confirms negotiated capture pairs and survives delayed host close") {
   Fixture fixture;
   REQUIRE(fixture.bind() == CHANNEL_RC_OK);
