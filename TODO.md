@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 372/372 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 379/379 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -607,6 +607,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   capture. Capture/sender/context/server-grant composition, viewer/native
   activation and actual microphone acceptance remain open.
   [Contract](docs/MICROPHONE_PERMISSION.md), [evidence](docs/ITERATION_122.md).
+- [~] IN PROGRESS — Browser graph scope now composes actual capture Worklet with
+  the bounded RWB1 sender, separate port/network credit, sample wiping and
+  main-thread authority/ACK/stall checks. Six pure and one actual Edge synthetic
+  permission/stream/Worklet/sender fixture pass. Native/server ACKs are simulated;
+  public command/socket ownership, startup context cleanup, viewer/native
+  selection and actual microphone acceptance remain open.
+  [Contract](docs/MICROPHONE_GRAPH.md), [evidence](docs/ITERATION_123.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).

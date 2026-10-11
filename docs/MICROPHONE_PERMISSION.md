@@ -5,6 +5,10 @@ SPECIFICATION §2.6 / MEDIA_PIPELINE §7. It is separate from capture/sender,
 WebSocket negotiation and native public activation; the viewer does not yet
 select it.
 
+Iteration 123 adds the [capture graph scope](MICROPHONE_GRAPH.md), verified with
+this owner in an actual Edge synthetic fixture. Public server-grant/WebSocket
+and startup context ownership remain open.
+
 `MicrophonePermission.start(epoch)` requires a valid nonzero u64 epoch, current
 host eligibility and transient browser user activation before its sole
 getUserMedia call. Defaults request audio only, with 48 kHz/stereo preferences
