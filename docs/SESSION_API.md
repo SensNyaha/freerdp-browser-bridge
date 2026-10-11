@@ -156,6 +156,12 @@ acceptance remains open. [Socket evidence](ITERATION_069.md) uses a fake backend
 
 ## PCM media metrics
 
+Iteration 94 adds fixed `codec="opus"` series alongside PCM, with the same
+bounded label set. Public Opus selection requires source and epoch-reset backend
+methods; native peers must advertise both Opus and audioReset before connect.
+See [current public audio contract](AUDIO_OPUS_PUBLIC.md). The PCM sizes and
+historical baseline below remain specific to PCM.
+
 The existing authenticated `/metrics` endpoint aggregates fixed `codec="pcm"`
 series. `bridge_audio_records_queued_total` and `bridge_audio_bytes_queued_total`
 have `record=state|config|packet` and count local socket admission, not playback.

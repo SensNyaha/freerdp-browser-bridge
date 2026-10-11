@@ -214,14 +214,14 @@ function validateAttachment(created) {
   )
     throw new Error('Invalid attachment');
 }
-/** PCM sockets open only after the user activates the exclusive AudioContext. */
+/** Audio sockets open only after the user activates the exclusive AudioContext. */
 function attach(created, options = {}) {
   detach();
   validateAttachment(created);
-  if (![undefined, 'off', 'pcm'].includes(options.audioOutput))
+  if (![undefined, 'off', 'pcm', 'opus'].includes(options.audioOutput))
     throw new Error('Unsupported audio output');
   resetStats();
-  if (options.audioOutput === 'pcm') {
+  if (options.audioOutput === 'pcm' || options.audioOutput === 'opus') {
     audioRequest = { created, options: { ...options }, preparing: false };
     audioButton.hidden = false;
     audioStatus.textContent = 'Нажмите кнопку для включения звука';
@@ -256,8 +256,11 @@ audioButton.addEventListener('click', () => {
     const resumed = context.resume();
     void (async () => {
       await resumed;
-      const { createPcmPlayback } = await import('./pcm-playback.js');
-      const playback = await createPcmPlayback(context, {
+      const createPlayback =
+        request.options.audioOutput === 'opus'
+          ? (await import('./opus-playback.js')).createOpusPlayback
+          : (await import('./pcm-playback.js')).createPcmPlayback;
+      const playback = await createPlayback(context, {
         sourceStatus: true,
         recordCredit: true,
         onFailure: failed,
@@ -505,7 +508,9 @@ function attachSession(created, options, playback) {
           codecs: offered,
           cursor: true,
           display: true,
-          ...(playback ? { audio: { codec: 'pcm', sourceStatus: true } } : {}),
+          ...(playback
+            ? { audio: { codec: options.audioOutput, sourceStatus: true } }
+            : {}),
         },
       }),
     );
@@ -535,7 +540,7 @@ function attachSession(created, options, playback) {
       else
         audioStatus.textContent =
           {
-            ready: 'Вывод PCM включён',
+            ready: 'Вывод звука включён',
             waiting: 'Ожидание аудиоисточника',
             suspended: 'Аудиоисточник приостановлен',
             closed: 'Аудиоисточник закрыт',
@@ -699,7 +704,7 @@ function attachSession(created, options, playback) {
       playback
         ? !audio ||
           Object.keys(audio).length !== 5 ||
-          audio.codec !== 'pcm' ||
+          audio.codec !== options.audioOutput ||
           audio.sourceStatus !== true ||
           audio.streamId !== 3 ||
           audio.maxInFlight !== 1 ||

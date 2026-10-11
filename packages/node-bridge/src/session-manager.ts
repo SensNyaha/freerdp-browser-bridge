@@ -363,8 +363,6 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       this.rate('principal:' + owner);
       this.rate('ip:' + remoteAddress);
       const config = validateSessionConfig(value);
-      if (config.media?.audioOutput === 'opus')
-        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (!this.factory) throw new SessionError('RDP_NOT_IMPLEMENTED');
       this.prune();
       const active = [...this.entries.values()].filter(
@@ -389,9 +387,12 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         videoQuality: resolveVideoQuality(config.quality),
         dynamicResolution: config.display?.dynamicResolution === true,
         touchEnabled: config.input?.touch === true,
-        audioEnabled: config.media?.audioOutput === 'pcm',
-        ...(config.media?.audioOutput === 'pcm'
-          ? { audio: new SessionAudioSource('pcm') }
+        audioEnabled:
+          config.media?.audioOutput === 'pcm' ||
+          config.media?.audioOutput === 'opus',
+        ...(config.media?.audioOutput === 'pcm' ||
+        config.media?.audioOutput === 'opus'
+          ? { audio: new SessionAudioSource(config.media.audioOutput) }
           : {}),
         owner,
         worker,
@@ -566,7 +567,11 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
               });
             }),
           );
-        if (entry.audioEnabled && !worker.onAudio) {
+        if (
+          entry.audioEnabled &&
+          (!worker.onAudio ||
+            (config.media?.audioOutput === 'opus' && !worker.resetAudio))
+        ) {
           this.fail(entry, 'RDP_SETTING_NOT_IMPLEMENTED');
           throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
         }

@@ -68,10 +68,13 @@ export class NativeSessionWorker implements SessionWorker {
     const abort = () => this.worker.terminate();
     try {
       if (signal.aborted) throw new SessionError('WORKER_START_FAILED');
-      if (config.media?.audioOutput === 'opus')
-        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       signal.addEventListener('abort', abort, { once: true });
-      await this.worker.start();
+      const build = await this.worker.start();
+      if (
+        config.media?.audioOutput === 'opus' &&
+        !build.capabilities.audioReset
+      )
+        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (signal.aborted || this.closing)
         throw new SessionError('WORKER_START_FAILED');
       await this.worker.connect(config);

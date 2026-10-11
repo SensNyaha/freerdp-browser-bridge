@@ -13,12 +13,13 @@ import { eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
 const directory = process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation';
 const suffix = process.platform === 'win32' ? '.exe' : '';
-const nativePcm = JSON.parse(
+const nativeAudio = JSON.parse(
   execFileSync(resolve(directory, 'rdp-worker' + suffix), ['--capabilities'], {
     encoding: 'utf8',
     windowsHide: true,
   }),
-).capabilities.pcmOutput;
+).capabilities;
+const nativePcm = nativeAudio.pcmOutput;
 const configuration = (host, media = { audioOutput: 'pcm' }) => ({
   target: { host },
   auth: {},
@@ -138,49 +139,57 @@ test('fake PCM native adapter forwards opt-in source/config/samples and refuses 
   }
 });
 
-test(
-  'actual native PCM session manager preserves strict TLS refusal and retires public native selection before GDI',
-  { skip: !nativePcm, timeout: 15000 },
-  async () => {
-    const endpoint = await createRdpTlsFixture();
-    const runtimeRoot = await mkdtemp(join(tmpdir(), 'bridge-audio-registry-'));
-    const principal = { id: 'audio-registry-fixture' };
-    const manager = new SessionManager({
-      workerFactory: () =>
-        new NativeSessionWorker({
-          workerPath: resolve(directory, 'rdp-worker' + suffix),
-          runtimeRoot,
-        }),
-    });
-    try {
-      const created = manager.create(
-        {
-          target: { host: '127.0.0.1', port: endpoint.port },
-          auth: { username: 'synthetic', password: 'synthetic-IPC-sentinel' },
-          security: { protocol: 'tls', certificatePolicy: 'strict' },
-          media: { audioOutput: 'pcm' },
-          timeouts: { connectMs: 5000 },
-        },
-        principal,
-        '127.0.0.1',
+for (const codec of ['pcm', 'opus'])
+  test(
+    `actual native ${codec} session manager preserves strict TLS refusal and retires public native selection before GDI`,
+    {
+      skip: !(codec === 'pcm'
+        ? nativePcm
+        : nativeAudio.opusOutput && nativeAudio.audioReset),
+      timeout: 15000,
+    },
+    async () => {
+      const endpoint = await createRdpTlsFixture();
+      const runtimeRoot = await mkdtemp(
+        join(tmpdir(), 'bridge-audio-registry-'),
       );
-      await eventually(
-        () => manager.get(created.sessionId, principal).state === 'failed',
-      );
-      assert.equal(
-        manager.get(created.sessionId, principal).error.code,
-        'RDP_CERTIFICATE_REJECTED',
-      );
-      assert.equal(endpoint.applicationBytes, 0);
-      await manager.shutdown();
-      assert.deepEqual(await readdir(runtimeRoot), []);
-    } finally {
-      await manager.shutdown();
-      await endpoint.close();
-      await rm(runtimeRoot, { recursive: true, force: true });
-    }
-  },
-);
+      const principal = { id: 'audio-registry-fixture' };
+      const manager = new SessionManager({
+        workerFactory: () =>
+          new NativeSessionWorker({
+            workerPath: resolve(directory, 'rdp-worker' + suffix),
+            runtimeRoot,
+          }),
+      });
+      try {
+        const created = manager.create(
+          {
+            target: { host: '127.0.0.1', port: endpoint.port },
+            auth: { username: 'synthetic', password: 'synthetic-IPC-sentinel' },
+            security: { protocol: 'tls', certificatePolicy: 'strict' },
+            media: { audioOutput: codec },
+            timeouts: { connectMs: 5000 },
+          },
+          principal,
+          '127.0.0.1',
+        );
+        await eventually(
+          () => manager.get(created.sessionId, principal).state === 'failed',
+        );
+        assert.equal(
+          manager.get(created.sessionId, principal).error.code,
+          'RDP_CERTIFICATE_REJECTED',
+        );
+        assert.equal(endpoint.applicationBytes, 0);
+        await manager.shutdown();
+        assert.deepEqual(await readdir(runtimeRoot), []);
+      } finally {
+        await manager.shutdown();
+        await endpoint.close();
+        await rm(runtimeRoot, { recursive: true, force: true });
+      }
+    },
+  );
 test(
   'actual native PCM worker retires registered static channel on strict TLS rejection before GDI',
   { skip: !nativePcm, timeout: 15000 },

@@ -269,3 +269,19 @@ fingerprint check, private IPC credentials, heartbeat/frame/cleanup and no-input
 no-sound-generation behavior apply. High-level public Opus remains unsupported;
 this helper does not test browser playback or audible acceptance. Current public
 PCM availability is documented in the later media/viewer contracts.
+
+## Public Windows Opus viewer
+
+Iteration 94 enables explicit `media.audioOutput: 'opus'` and matching
+`bridgeViewer.attach(created, { audioOutput: 'opus' })`. The harness opens audio
+sockets only after the existing **Включить звук и подключиться** button activates
+an exclusive AudioContext; AudioDecoder support is checked and unsupported Opus
+fails explicitly. No codec switch or automatic PCM fallback occurs mid-session.
+
+Use `node scripts/test-xrdp-viewer.mjs sha256:<verified-lab-fingerprint> h264
+--audio-opus-test` for the authorized local browser/idle-source regression.
+It retains only the existing motion/reset input checks and generates no remote
+sound. `--audio-opus-manual` opens the manual viewer with the same gesture button
+and manual input enabled. Existing `--audio-test` / `--audio-manual` select PCM.
+Run lab modes sequentially. Waiting/zero packets is not audible acceptance.
+[Wire and recovery ownership](AUDIO_OPUS_PUBLIC.md).

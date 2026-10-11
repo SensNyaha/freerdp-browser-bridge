@@ -20,7 +20,7 @@ export function installPcmMedia(
   return installAudioMedia(ws, lease, fail, 'pcm', metrics);
 }
 
-/** Preparatory Opus route; public negotiation remains separately gated. */
+/** Opus route with native expected-epoch recovery and one receiver credit. */
 export function installOpusMedia(
   ws: WebSocket,
   lease: ReturnType<SessionManager['attach']>,

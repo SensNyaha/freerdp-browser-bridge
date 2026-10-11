@@ -9,6 +9,7 @@ export type AudioFailure =
   | 'admission_deadline'
   | 'consumer';
 export interface AudioMetrics {
+  forCodec?(codec: 'pcm' | 'opus'): AudioMetrics;
   observe(stage: 'forward' | 'receiver_credit', milliseconds: number): void;
   queued(record: 'state' | 'config' | 'packet', bytes: number): void;
   storage(credit: number, pendingBytes: number, inFlightBytes: number): void;
@@ -150,89 +151,93 @@ export function createSessionMetrics(manager: SessionManager) {
 function createAudioMetrics(registry: Registry): AudioMetrics {
   const duration = new Histogram({
     name: 'bridge_audio_stage_duration_seconds',
-    help: 'Successful active local PCM writes and exact receiver admission-credit ACK round trips',
+    help: 'Successful active local audio writes and exact receiver admission-credit ACK round trips',
     labelNames: ['codec', 'stage'] as const,
     buckets: [0.001, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6, 1, 2],
     registers: [registry],
   });
   const records = new Counter({
     name: 'bridge_audio_records_queued_total',
-    help: 'PCM RWB1 records admitted to local socket writes',
+    help: 'Audio RWB1 records admitted to local socket writes',
     labelNames: ['codec', 'record'] as const,
     registers: [registry],
   });
   const bytes = new Counter({
     name: 'bridge_audio_bytes_queued_total',
-    help: 'PCM RWB1 bytes admitted, including state and config',
+    help: 'Audio RWB1 bytes admitted, including state and config',
     labelNames: ['codec', 'record'] as const,
     registers: [registry],
   });
   const credit = new Gauge({
     name: 'bridge_audio_records_in_flight',
-    help: 'PCM records holding receiver admission credit',
+    help: 'Audio records holding receiver admission credit',
     labelNames: ['codec'] as const,
     registers: [registry],
   });
   const pending = new Gauge({
     name: 'bridge_audio_pending_sample_bytes',
-    help: 'Copied latest unsent PCM sample storage',
+    help: 'Copied bounded unsent audio sample storage',
     labelNames: ['codec'] as const,
     registers: [registry],
   });
   const flight = new Gauge({
     name: 'bridge_audio_record_bytes_in_flight',
-    help: 'RWB1 bytes holding PCM receiver credit',
+    help: 'RWB1 bytes holding audio receiver credit',
     labelNames: ['codec'] as const,
     registers: [registry],
   });
   const discarded = new Counter({
     name: 'bridge_audio_packets_discarded_total',
-    help: 'Unsent PCM packets replaced or discarded at reset/retirement',
+    help: 'Unsent audio packets replaced or discarded at reset/retirement',
     labelNames: ['codec', 'reason'] as const,
     registers: [registry],
   });
   const failures = new Counter({
     name: 'bridge_audio_consumers_failed_total',
-    help: 'PCM media consumers retired by bounded protocol/progress checks',
+    help: 'Audio media consumers retired by bounded protocol/progress checks',
     labelNames: ['codec', 'reason'] as const,
     registers: [registry],
   });
-  const codec = 'pcm';
-  for (const record of ['state', 'config', 'packet'] as const) {
-    records.inc({ codec, record }, 0);
-    bytes.inc({ codec, record }, 0);
-  }
-  for (const reason of ['replacement', 'source_reset', 'retirement'] as const)
-    discarded.inc({ codec, reason }, 0);
-  for (const reason of [
-    'ack',
-    'protocol',
-    'receiver_deadline',
-    'admission_deadline',
-    'consumer',
-  ] as const)
-    failures.inc({ codec, reason }, 0);
-  credit.set({ codec }, 0);
-  pending.set({ codec }, 0);
-  flight.set({ codec }, 0);
-  return {
-    observe(stage, milliseconds) {
-      duration.observe({ codec, stage }, milliseconds / 1000);
-    },
-    queued(record, length) {
-      records.inc({ codec, record });
-      bytes.inc({ codec, record }, length);
-    },
-    storage(change, pendingBytes, inFlightBytes) {
-      credit.inc({ codec }, change);
-      pending.inc({ codec }, pendingBytes);
-      flight.inc({ codec }, inFlightBytes);
-    },
-    discarded(reason, packets) {
-      discarded.inc({ codec, reason }, packets);
-    },
-    failure(reason) {
-      failures.inc({ codec, reason });
-    },
+  const bind = (codec: 'pcm' | 'opus'): AudioMetrics => {
+    for (const record of ['state', 'config', 'packet'] as const) {
+      records.inc({ codec, record }, 0);
+      bytes.inc({ codec, record }, 0);
+    }
+    for (const reason of ['replacement', 'source_reset', 'retirement'] as const)
+      discarded.inc({ codec, reason }, 0);
+    for (const reason of [
+      'ack',
+      'protocol',
+      'receiver_deadline',
+      'admission_deadline',
+      'consumer',
+    ] as const)
+      failures.inc({ codec, reason }, 0);
+    credit.set({ codec }, 0);
+    pending.set({ codec }, 0);
+    flight.set({ codec }, 0);
+    return {
+      observe(stage, milliseconds) {
+        duration.observe({ codec, stage }, milliseconds / 1000);
+      },
+      queued(record, length) {
+        records.inc({ codec, record });
+        bytes.inc({ codec, record }, length);
+      },
+      storage(change, pendingBytes, inFlightBytes) {
+        credit.inc({ codec }, change);
+        pending.inc({ codec }, pendingBytes);
+        flight.inc({ codec }, inFlightBytes);
+      },
+      discarded(reason, packets) {
+        discarded.inc({ codec, reason }, packets);
+      },
+      failure(reason) {
+        failures.inc({ codec, reason });
+      },
+    };
   };
+  const pcm = bind('pcm'),
+    opus = bind('opus');
+  return { ...pcm, forCodec: (codec) => (codec === 'opus' ? opus : pcm) };
 }

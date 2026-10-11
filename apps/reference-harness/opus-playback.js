@@ -239,13 +239,16 @@ export class OpusPlayback {
     return !this.closed && this.sink.requestStats();
   }
   snapshot() {
+    const playback = this.sink.snapshot();
     return {
+      ...playback,
+      codec: 'opus',
       closed: this.closed,
       decoded: this.decoded,
       lookaheadFrames: this.lookaheadFrames,
       decoding: this.flight?.decoding ? 1 : 0,
       recordInFlight: this.flight ? 1 : 0,
-      playback: this.sink.snapshot(),
+      playback,
     };
   }
   fail(reason) {
@@ -280,7 +283,7 @@ export class OpusPlayback {
   }
 }
 
-/** Exclusive activated context ownership; no sockets or public selection here. */
+/** Exclusive activated context ownership; socket negotiation belongs to the viewer. */
 export async function createOpusPlayback(context, options = {}) {
   let owner, sink;
   try {

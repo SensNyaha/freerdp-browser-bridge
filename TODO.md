@@ -18,10 +18,12 @@ Stages 0/1/3/4/5/6 remain **IN PROGRESS**. Physical input and release ownership 
 implemented and tested with native/fake/Edge fixtures; actual XRDP input is verified
 for motion only. Independent cursor extraction/overlay and XRDP shape replay are
 verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain open.
-Stage 6 has guarded static RDPSND/PCM worker activation, public media negotiation
-and gesture/Worklet admission ownership on Windows. Actual linked audio data tests
-use simulated SVC transport, and browser PCM fixtures use synthetic samples.
-Actual audible RDP, microphone/Opus and latency/resource/platform acceptance remain open.
+Stage 6 has guarded static RDPSND PCM/Opus worker activation, public media
+negotiation and gesture/decoder/Worklet admission ownership on Windows. Actual
+linked channel data tests use simulated SVC transport; browser PCM fixtures use
+synthetic samples and Opus fixtures use the pinned SDK. Actual XRDP viewers pass
+with idle/waiting audio. Audible RDP, ready-source reset, microphone and
+latency/resource/platform acceptance remain open.
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -29,7 +31,7 @@ Actual audible RDP, microphone/Opus and latency/resource/platform acceptance rem
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 271/271 Node tests;
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 276/276 Node tests;
   CTest/Catch2: 66 IPC/input/state/audio-codec/output cases / 9,679 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -399,6 +401,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   regression pass. Public negotiation/harness activation and actual recovery /
   audible acceptance remain open. [Contract](docs/AUDIO_OPUS_SOCKET.md),
   [evidence](docs/ITERATION_093.md).
+- [~] IN PROGRESS — Public Opus creation, exact codec-matched media negotiation,
+  one-record ACK/native reset recovery, separate fixed metrics and gesture-gated
+  reference harness are implemented. Fake private IPC/real WebSocket, actual
+  linked strict TLS and Edge pinned-SDK decode/Worklet fixtures pass. Restored
+  XRDP H.264/Opus viewer/reattachment passes with waiting/zero audio; audible and
+  actual ready-source reset acceptance remain open.
+  [Contract](docs/AUDIO_OPUS_PUBLIC.md), [evidence](docs/ITERATION_094.md).
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
 - [ ] Implement custom `audin-browser` source.

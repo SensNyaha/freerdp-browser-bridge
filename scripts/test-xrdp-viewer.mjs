@@ -11,9 +11,17 @@ import { waitForViewerClose } from './viewer-window.mjs';
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
 const mode = process.argv[3] ?? 'jpeg';
-const audioManual = process.argv[4] === '--audio-manual';
-const audioTest = process.argv[4] === '--audio-test';
-const audioOutput = audioManual || audioTest ? 'pcm' : 'off';
+const audioManual = ['--audio-manual', '--audio-opus-manual'].includes(
+  process.argv[4],
+);
+const audioTest = ['--audio-test', '--audio-opus-test'].includes(
+  process.argv[4],
+);
+const audioOutput = process.argv[4]?.startsWith('--audio-opus-')
+  ? 'opus'
+  : audioManual || audioTest
+    ? 'pcm'
+    : 'off';
 const manual = process.argv[4] === '--manual' || audioManual;
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
@@ -96,6 +104,8 @@ for (const [url, name, type] of [
   ['/harness/display.js', 'display.js', 'text/javascript'],
   ['/harness/touch.js', 'touch.js', 'text/javascript'],
   ['/harness/pcm-playback.js', 'pcm-playback.js', 'text/javascript'],
+  ['/harness/opus-playback.js', 'opus-playback.js', 'text/javascript'],
+  ['/harness/opus-wire.js', 'opus-wire.js', 'text/javascript'],
   ['/harness/pcm-worklet.js', 'pcm-worklet.js', 'text/javascript'],
   ['/harness/pcm-queue.js', 'pcm-queue.js', 'text/javascript'],
 ]) {

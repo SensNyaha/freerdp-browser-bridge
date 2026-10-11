@@ -14,7 +14,7 @@ import {
 import { publicSessionError, type SessionManager } from '@freerdp-bridge/node';
 import type { MediaMetrics } from './metrics.js';
 import { displayData } from './display.js';
-import { installPcmMedia } from './audio.js';
+import { installPcmMedia, installOpusMedia } from './audio.js';
 
 const hello = TypeCompiler.Compile(
   Type.Object(
@@ -35,7 +35,10 @@ const hello = TypeCompiler.Compile(
           display: Type.Optional(Type.Boolean()),
           audio: Type.Optional(
             Type.Object(
-              { codec: Type.Literal('pcm'), sourceStatus: Type.Literal(true) },
+              {
+                codec: Type.Union([Type.Literal('pcm'), Type.Literal('opus')]),
+                sourceStatus: Type.Literal(true),
+              },
               { additionalProperties: false },
             ),
           ),
@@ -119,7 +122,7 @@ export function installMedia(
     cursorSequence = 0,
     sentShapeId = 0n;
   let displayOffered = false;
-  let audioOffered = false;
+  let audioOffered: 'pcm' | 'opus' | undefined;
   let audio: ReturnType<typeof installPcmMedia> | undefined;
   let latestCursor = lease.cursor;
   let latestDisplay = lease.display;
@@ -287,7 +290,14 @@ export function installMedia(
       }
       codec = choices[selected]!;
       maxFps = lease.maxFps(codec);
-      if (audioOffered) audio = installPcmMedia(ws, lease, fail, metrics.audio);
+      if (audioOffered) {
+        const audioMetrics =
+          metrics.audio.forCodec?.(audioOffered) ?? metrics.audio;
+        audio =
+          audioOffered === 'pcm'
+            ? installPcmMedia(ws, lease, fail, audioMetrics)
+            : installOpusMedia(ws, lease, fail, audioMetrics);
+      }
       clearTimeout(deadline);
       send('media.ready', {
         codec,
@@ -299,7 +309,7 @@ export function installMedia(
         ...(audio
           ? {
               audio: {
-                codec: 'pcm',
+                codec: audioOffered,
                 sourceStatus: true,
                 streamId: 3,
                 maxInFlight: 1,
@@ -373,7 +383,7 @@ export function installMedia(
       offered = value.data.codecs;
       cursorOffered = value.data.cursor ?? false;
       displayOffered = value.data.display ?? false;
-      audioOffered = Boolean(value.data.audio);
+      audioOffered = value.data.audio?.codec;
       negotiate();
     } else if (audio && audioAck.Check(value)) {
       audio.acknowledge(value.data.sequence);

@@ -90,8 +90,10 @@ Session migration between bridge instances is out of v1 scope because RDP client
 ## 7. Diagnostics
 
 The private bundle also includes pinned libopus 1.6.1 and its BSD copyright.
-Its isolated 20 ms encoder is a preparatory provider; public Opus audio remains
-unsupported. The relocation probe checks real Opus encode/decode and the loaded
+Its 20 ms encoder now supports explicit public Opus output with gesture-gated
+AudioDecoder/Worklet playback and native epoch recovery; audible RDP acceptance
+remains open. See [public contract](docs/AUDIO_OPUS_PUBLIC.md).
+The relocation probe checks real Opus encode/decode and the loaded
 private DLL/version. The local version-fix overlay and hash ship alongside build
 metadata. See [Opus foundation](docs/AUDIO_OPUS.md).
 

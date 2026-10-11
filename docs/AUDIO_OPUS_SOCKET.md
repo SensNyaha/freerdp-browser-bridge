@@ -1,5 +1,8 @@
 # Bounded Opus socket recovery owner
 
+Iteration 94 activates this owner through explicit public Opus negotiation and
+the gesture-gated harness; see [current contract](AUDIO_OPUS_PUBLIC.md).
+
 Iteration 93 (2026-10-11) prepares SPECIFICATION §2.6 / MEDIA_PIPELINE §6 with
 installOpusMedia. Public negotiation/startup remains gated. PCM retains its
 existing sender policy; both routes share finite socket admission, ACK, subscription

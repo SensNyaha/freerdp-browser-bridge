@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SessionManager } from '../../packages/node-bridge/dist/index.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
 const principal = { id: 'audio-owner' };
-test('public audio manager refuses Opus before backend allocation until negotiation is implemented', async () => {
+test('public audio manager requires source and recovery methods for Opus before backend startup', async () => {
   let allocated = 0;
   const manager = new SessionManager({
     workerFactory: () => {
@@ -25,7 +25,8 @@ test('public audio manager refuses Opus before backend allocation until negotiat
         ),
       { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
     );
-    assert.equal(allocated, 0);
+    assert.equal(allocated, 1);
+    await eventually(() => manager.statistics().active === 0);
     assert.equal(manager.statistics().active, 0);
   } finally {
     await manager.shutdown();

@@ -1,5 +1,9 @@
 # Fixed managed audio source profiles
 
+Iteration 94 activates the prepared Opus profile through public media/harness
+ownership. Startup gates described below are historical preparation; current
+requirements are in [AUDIO_OPUS_PUBLIC](AUDIO_OPUS_PUBLIC.md).
+
 Iteration 92 (2026-10-11) implements the typed server boundary for SPECIFICATION
 §2.6 / ARCHITECTURE §5. A SessionAudioSource chooses PCM or Opus once at creation.
 Both delegate to the existing strict source clock/epoch owners. No sample packet

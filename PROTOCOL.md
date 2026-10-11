@@ -261,6 +261,11 @@ Define one format and do not mix Annex-B/AVCC silently. Recommendation: `VIDEO_C
 
 ### Audio payload
 
+Current iteration 94 enables explicit public PCM **or Opus** selection and
+gesture-activated harness delivery with one audio ACK credit. Historical
+preparatory gates below are superseded by the
+[current Opus negotiation contract](docs/AUDIO_OPUS_PUBLIC.md).
+
 Opus mode uses complete Opus packets with timestamps. PCM mode uses interleaved signed 16-bit little-endian frames and explicit sample-rate/channel config.
 
 The preparatory private Opus payload schema is specified in

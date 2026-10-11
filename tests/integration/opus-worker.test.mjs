@@ -117,7 +117,7 @@ test('private Opus selection: legacy peers and unsupported microphone latency or
     await worker.ping();
   });
 });
-test('public native adapter refuses Opus before private startup until public media ownership exists', async () => {
+test('public native Opus adapter refuses peers without epoch reset before private connect', async () => {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'bridge-opus-public-gate-'));
   const worker = new NativeSessionWorker({
     workerPath: resolve(directory, 'fixture-audio-opus' + suffix),
@@ -128,6 +128,7 @@ test('public native adapter refuses Opus before private startup until public med
       worker.start(configuration('valid'), new AbortController().signal),
       { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
     );
+    await worker.close();
     assert.deepEqual(await readdir(runtimeRoot), []);
   } finally {
     await worker.close();
