@@ -4,11 +4,17 @@
 #include "display.hpp"
 #include "input.hpp"
 #include "microphone.hpp"
+#include "microphone_opus.hpp"
 #include "opus_audio.hpp"
 #include "output_queue.hpp"
 #include "protocol.hpp"
 #include "touch_ipc.hpp"
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
+  // Prepared input payload has no RWI1 kind; fuzz its bounded grammar directly.
+  try {
+    (void)bridge::ipc::microphone::opus::decode_packet(std::span(data, size));
+  } catch (const bridge::ipc::ProtocolError &) {
+  }
   try {
     using namespace bridge::ipc;
     const auto bytes = std::span(data, size);

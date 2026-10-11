@@ -7,6 +7,7 @@ export * from './audio.js';
 export * from './opus.js';
 export * from './audio-reset.js';
 export * from './microphone.js';
+export * from './microphone-opus.js';
 import {
   MICROPHONE_PCM_BYTES,
   MICROPHONE_RESULT_BYTES,

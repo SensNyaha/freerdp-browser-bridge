@@ -251,6 +251,7 @@ Record types:
 0x07 MIC_PACKET              # client -> server
 0x08 STATS_BINARY_RESERVED
 0x09 AUDIO_STATE             # server -> client; prepared, not activated yet
+0x0a MIC_OPUS_PACKET         # client -> server; prepared, not selected
 ```
 
 Iteration 112 prepares a fixed PCM MIC_PACKET type 7/stream 4: nonzero sequence,
@@ -304,6 +305,12 @@ Iteration 128 enables native high-level PCM selection only with pcmInput and
 microphoneReset HELLO capabilities. No public/private wire shape changes; actual
 XRDP source replay is waiting epoch 0 without capture. Opus input and actual
 recording acceptance remain open. [Evidence](docs/ITERATION_128.md).
+
+Iteration 131 prepares RWB1 MIC_OPUS_PACKET type 10/stream 4, 42..1,315 bytes,
+with epoch, measured encoder lookahead and one bounded stereo 20 ms packet.
+The standalone 26..1,299-byte private input payload has no assigned RWI1 kind.
+Neither route nor Opus microphone selection is activated by these codecs.
+[Wire contract](docs/MICROPHONE_OPUS_WIRE.md).
 
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 

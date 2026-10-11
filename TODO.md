@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 414/414 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 419/419 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -665,6 +665,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   no device/socket and is not selected by capture/media/native dispatch. Opus
   input, complete codec/permission/AUDIN composition and actual recording remain
   open. [Contract](docs/MICROPHONE_OPUS_ENCODER.md), [evidence](docs/ITERATION_130.md).
+- [~] IN PROGRESS — Prepared microphone Opus Node/browser RWB1 type 10 and
+  standalone native/Node private payload preserve measured lookahead with
+  fixed bounds, strict single stereo 20 ms TOC and borrowed compressed storage.
+  Five Node/browser and three portable native cases cover golden agreement,
+  malformed framing and extrema. No RWI1 kind, route, capture, settings or
+  capability is activated. Delay compensation, ownership/codec composition
+  and actual microphone/platform/resource gates remain open.
+  [Contract](docs/MICROPHONE_OPUS_WIRE.md), [evidence](docs/ITERATION_131.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).
