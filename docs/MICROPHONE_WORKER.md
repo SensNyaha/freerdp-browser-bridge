@@ -1,5 +1,11 @@
 # Experimental private microphone worker dispatch
 
+Current update — iteration 128: public NativeSessionWorker selection now
+requires pcmInput and microphoneReset before configuring PCM input. Opus input
+stays unsupported. The reference viewer has an explicit gesture path; actual
+XRDP metadata replay succeeds in waiting epoch 0 without capture. Historical
+gating statements below retain their original scope. [Evidence](ITERATION_128.md).
+
 Current update — iteration 109: guarded Windows/AUDIN HELLO/CLI advertises
 `pcmInput`; private WorkerProcess can select PCM input and send bounded packets.
 Public creation, permission and capture remain pending. Historical activation

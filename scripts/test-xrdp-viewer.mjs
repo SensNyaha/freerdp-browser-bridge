@@ -11,18 +11,28 @@ import { waitForViewerClose } from './viewer-window.mjs';
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
 const mode = process.argv[3] ?? 'jpeg';
-const audioManual = ['--audio-manual', '--audio-opus-manual'].includes(
-  process.argv[4],
-);
+const microphoneManual = [
+  '--microphone-manual',
+  '--microphone-pcm-manual',
+  '--microphone-opus-manual',
+].includes(process.argv[4]);
+const microphoneTest = process.argv[4] === '--microphone-test';
+const microphone = microphoneManual || microphoneTest ? 'pcm' : 'off';
+const audioManual =
+  ['--audio-manual', '--audio-opus-manual'].includes(process.argv[4]) ||
+  ['--microphone-pcm-manual', '--microphone-opus-manual'].includes(
+    process.argv[4],
+  );
 const audioTest = ['--audio-test', '--audio-opus-test'].includes(
   process.argv[4],
 );
-const audioOutput = process.argv[4]?.startsWith('--audio-opus-')
+const audioOutput = process.argv[4]?.includes('-opus-')
   ? 'opus'
   : audioManual || audioTest
     ? 'pcm'
     : 'off';
-const manual = process.argv[4] === '--manual' || audioManual;
+const manual =
+  process.argv[4] === '--manual' || audioManual || microphoneManual;
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
 const touchInventory = process.argv[4] === '--touch-inventory';
@@ -42,7 +52,8 @@ if (
     !qualityTest &&
     !resizeTest &&
     !touchInventory &&
-    !audioTest) ||
+    !audioTest &&
+    !microphoneTest) ||
   (manual && mode === 'h264-reset') ||
   !['jpeg', 'h264', 'h264-reset'].includes(mode) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
@@ -156,7 +167,7 @@ try {
         dynamicResolution: resizeTest || manual,
       },
       input: { touch: manual || touchInventory },
-      media: { audioOutput },
+      media: { audioOutput, microphone },
       security: { certificatePolicy: 'prompt' },
       timeouts: { connectMs: audioManual ? 120000 : 20000, tcpAckMs: 10000 },
       ...(quality ? { quality } : {}),
@@ -174,6 +185,14 @@ try {
   page = await browser.newPage({
     viewport: manual ? null : { width: 1980, height: 1240 },
   });
+  if (microphoneTest)
+    await page.addInitScript(() => {
+      window.labMicrophoneRequests = 0;
+      navigator.mediaDevices.getUserMedia = async () => {
+        ++window.labMicrophoneRequests;
+        throw new Error('LAB_MICROPHONE_CAPTURE_DISABLED');
+      };
+    });
   if (mode === 'h264-reset')
     await page.addInitScript(() => {
       const Original = globalThis.EncodedVideoChunk;
@@ -191,9 +210,9 @@ try {
   phase = 'attach';
   await page.waitForFunction(() => Boolean(window.bridgeViewer));
   await page.evaluate(
-    ({ created, codecs, audioOutput }) =>
-      window.bridgeViewer.attach(created, { codecs, audioOutput }),
-    { created: attachment, codecs, audioOutput },
+    ({ created, codecs, audioOutput, microphone }) =>
+      window.bridgeViewer.attach(created, { codecs, audioOutput, microphone }),
+    { created: attachment, codecs, audioOutput, microphone },
   );
   if (audioTest) await page.click('#audio-start');
   if (audioManual)
@@ -228,6 +247,23 @@ try {
         !window.bridgeViewer.stats.audio.inFlight,
     );
   }
+  let microphoneEvidence;
+  if (microphoneTest) {
+    await page.waitForFunction(() =>
+      Boolean(window.bridgeViewer.stats.microphone?.source),
+    );
+    microphoneEvidence = await page.evaluate(
+      () => window.bridgeViewer.stats.microphone,
+    );
+    if (
+      microphoneEvidence.owner.requests !== 0 ||
+      microphoneEvidence.sent !== 0 ||
+      microphoneEvidence.owner.preparing ||
+      microphoneEvidence.owner.active ||
+      (await page.evaluate(() => window.labMicrophoneRequests !== 0))
+    )
+      throw new Error('LAB_UNEXPECTED_MICROPHONE_CAPTURE');
+  }
   if (manual) {
     phase = 'manual';
     console.log(
@@ -236,6 +272,10 @@ try {
     console.log(
       'Для завершения закройте окно Edge или нажмите Ctrl+C в этом терминале.',
     );
+    if (microphoneManual)
+      console.log(
+        'Микрофон включается только отдельной кнопкой после готовности удалённого канала.',
+      );
     await waitForViewerClose(browser, page);
   } else {
     phase = 'pixels';
@@ -432,9 +472,18 @@ try {
       nextAttach[channel] = response.json();
     }
     await page.evaluate(
-      ({ created, codecs, audioOutput }) =>
-        window.bridgeViewer.attach(created, { codecs, audioOutput }),
-      { created: { sessionId, attach: nextAttach }, codecs, audioOutput },
+      ({ created, codecs, audioOutput, microphone }) =>
+        window.bridgeViewer.attach(created, {
+          codecs,
+          audioOutput,
+          microphone,
+        }),
+      {
+        created: { sessionId, attach: nextAttach },
+        codecs,
+        audioOutput,
+        microphone,
+      },
     );
     if (audioTest) await page.click('#audio-start');
     await page.waitForFunction(
@@ -468,6 +517,26 @@ try {
         BigInt(replay.revision) < BigInt(touchEvidence.revision)
       )
         throw new Error('LAB_TOUCH_REPLAY_FAILED');
+    }
+    if (microphoneTest) {
+      await page.waitForFunction(() =>
+        Boolean(window.bridgeViewer.stats.microphone?.source),
+      );
+      const replay = await page.evaluate(
+        () => window.bridgeViewer.stats.microphone,
+      );
+      if (
+        replay.owner.requests !== 0 ||
+        replay.sent !== 0 ||
+        replay.owner.preparing ||
+        replay.owner.active ||
+        replay.cleanupFailed ||
+        replay.source.epoch !== microphoneEvidence.source.epoch ||
+        BigInt(replay.source.revision) <
+          BigInt(microphoneEvidence.source.revision) ||
+        (await page.evaluate(() => window.labMicrophoneRequests !== 0))
+      )
+        throw new Error('LAB_MICROPHONE_REPLAY_FAILED');
     }
     if (
       resizeTest &&
@@ -503,6 +572,16 @@ try {
               browserAudioActivated: true,
               audibleAcceptance: false,
               remoteAudioGenerated: false,
+            }
+          : {}),
+        ...(microphoneTest
+          ? {
+              microphoneEvidence,
+              microphoneReplayed: true,
+              capturePermissionRequested: false,
+              physicalCapture: false,
+              microphoneSamplesSent: 0,
+              remoteMicrophoneAcceptance: false,
             }
           : {}),
         ...(touchInventory

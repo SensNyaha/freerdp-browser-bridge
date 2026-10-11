@@ -303,5 +303,33 @@ checks heartbeat/JPEG and closes with empty runtime. It sends no PCM/input/reset
 or remote application commands and requests no physical/browser microphone.
 Reports in `.local-tests/xrdp-microphone-<mode>-report.json` contain only bounded
 scalar inventory. Waiting/epoch 0 is not ready capture, permission, remote
-application, audible or latency acceptance. Public creation remains gated.
+application, audible or latency acceptance. Historical iteration 115 public
+creation gating is superseded by explicit PCM selection in iteration 128.
 [Actual evidence](ITERATION_115.md).
+
+## Explicit native/browser microphone viewer
+
+After the bundled native/Node builds, use the same previously verified fingerprint:
+
+```powershell
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --microphone-manual
+```
+
+This opens the actual native PCM-input session with output off. The viewer waits
+for remote source readiness before enabling **Включить микрофон**. Click that
+separate button to request a local microphone; **Выключить микрофон** stops
+tracks and joins graph/server cleanup. There is no automatic device request.
+Current XRDP evidence is waiting/epoch 0, so the button stays disabled until a
+remote application/server negotiates a supported capture profile. No remote
+application is opened automatically.
+
+Use `--microphone-pcm-manual` or `--microphone-opus-manual` for simultaneous PCM
+input and the indicated output. These modes first require the existing output
+activation button, then the separate microphone button. Opus **input** remains
+unsupported. Incomplete/failed old permission cleanup blocks new capture until
+reload. Other manual input follows the existing explicitly manual viewer rules.
+
+Automated `--microphone-test` verifies H.264/source replay and cleanup with the
+existing motion/reset-only guard. It never clicks microphone enable and replaces
+getUserMedia with a rejecting sentinel, preventing physical capture even on an
+unexpected startup. [Evidence and remaining acceptance](ITERATION_128.md).

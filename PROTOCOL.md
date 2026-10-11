@@ -300,6 +300,11 @@ independent JSON/ACK routing. Synthetic Edge/viewer/socket evidence establishes
 browser composition; native selection and actual AUDIN/device acceptance remain
 open. [Viewer contract](docs/MICROPHONE_VIEWER.md).
 
+Iteration 128 enables native high-level PCM selection only with pcmInput and
+microphoneReset HELLO capabilities. No public/private wire shape changes; actual
+XRDP source replay is waiting epoch 0 without capture. Opus input and actual
+recording acceptance remain open. [Evidence](docs/ITERATION_128.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

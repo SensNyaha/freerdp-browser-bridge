@@ -149,7 +149,24 @@ export class MicrophoneOwner {
             this.#eligible(current) &&
             this.#client.authorized(token, current),
           retire: () => this.#client.stop(),
-          failed: () => this.#fault(),
+          failed: () => {
+            // Graph/port and owner polls may observe ordinary authority loss in
+            // either order. Cancel tracks and join cleanup without latching a
+            // startup fault merely because the graph saw that loss first.
+            try {
+              if (
+                !this.#client.stats.failed &&
+                (!this.#eligible(epoch) ||
+                  !this.#client.authorized(prepared.token, epoch))
+              ) {
+                void this.stop().catch(() => this.#fault());
+                return;
+              }
+            } catch {
+              /* Invalid authority still fails closed below. */
+            }
+            this.#fault();
+          },
         },
         { retirementMs: this.#retirementMs },
       );

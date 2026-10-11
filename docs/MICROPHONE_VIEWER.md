@@ -36,3 +36,9 @@ acceptance. Native SessionWorker PCM selection remains gated until the next
 verified block. Native resampling, Opus input and upstream limits remain open.
 
 [Startup owner](MICROPHONE_OWNER.md), [media client](MICROPHONE_MEDIA_CLIENT.md).
+
+Iteration 128 enables explicit native PCM selection only with both private PCM
+and microphone-reset capabilities. The lab helper exposes manual input and
+optional PCM/Opus output modes. Actual XRDP/Edge H.264 plus microphone replay
+passes without capture; waiting epoch 0 is not negotiated recording acceptance.
+[Evidence](ITERATION_128.md).

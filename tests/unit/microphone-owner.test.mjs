@@ -291,3 +291,45 @@ test('microphone startup owner: reentrant context creation and changed callback 
     await f.owner.close();
   }
 });
+
+test('microphone startup owner: graph observes revoked authority before owner poll; real graph/client/cleanup faults remain terminal', async () => {
+  for (const mode of ['controller', 'grant', 'graph', 'client', 'cleanup']) {
+    const f = fixture();
+    let graphBackend;
+    f.api.graph = (_context, _stream, _epoch, _token, _sender, backend) => {
+      ++f.calls.graphs;
+      graphBackend = backend;
+      return {
+        ready: Promise.resolve(true),
+        stats: { ready: true },
+        close: () =>
+          mode === 'cleanup'
+            ? Promise.reject(new Error('synthetic cleanup failure'))
+            : f.context.close(),
+      };
+    };
+    const started = f.owner.start();
+    f.permission.resolve(f.stream);
+    assert.equal(await started, true, mode);
+    if (['controller', 'cleanup'].includes(mode)) f.controller(false);
+    if (mode === 'grant') await f.client.stop();
+    if (mode === 'client') {
+      f.client.stats.failed = true;
+      f.controller(false);
+    }
+    graphBackend.failed(); // No owner.changed()/timer has observed the loss yet.
+    assert.equal(f.track.readyState, 'ended', mode);
+    if (['controller', 'grant'].includes(mode)) {
+      await f.owner.stop();
+      assert.equal(f.calls.failed, 0, mode);
+      assert.equal(f.owner.stats.failed, false, mode);
+      assert.equal(f.context.state, 'closed', mode);
+    } else {
+      await f.owner.stop().catch(() => {});
+      assert.equal(f.owner.stats.failed, true, mode);
+      assert.equal(f.calls.failed, 1, mode);
+      assert.equal(await f.owner.start(), false, mode);
+    }
+    await f.owner.close().catch(() => {});
+  }
+});

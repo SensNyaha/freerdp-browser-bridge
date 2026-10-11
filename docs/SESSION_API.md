@@ -84,6 +84,13 @@ source metadata never acquires a device. Four synthetic Edge/viewer/socket
 cases pass; native selection and actual AUDIN/device acceptance remain open.
 [Viewer contract](MICROPHONE_VIEWER.md).
 
+Current update — iteration 128: NativeSessionWorker now accepts explicit PCM
+microphone only after both pcmInput/microphoneReset HELLO capabilities. Missing
+capabilities refuse before configuration/credentials; Opus input refuses before
+startup. Actual XRDP/API/Edge metadata replay is waiting at epoch 0 with no device
+permission or PCM. Ready AUDIN/remote acceptance remains open.
+[Evidence](ITERATION_128.md).
+
 Each session owns a fresh trusted backend instance. Starting receives a cloned,
 validated configuration and abort signal. Secrets are dereferenced after startup
 settles or is aborted; this is not guaranteed zeroization of JS strings.

@@ -2,11 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import {
+  NativeSessionWorker,
+  SessionManager,
+} from '../../packages/node-bridge/dist/index.js';
 import {
   Kind,
   PacketDecoder,
@@ -33,6 +37,59 @@ const available =
       windowsHide: true,
     }),
   ).capabilities.pcmInput;
+
+for (const output of ['off', 'pcm', 'opus'])
+  test(
+    `actual native session microphone/${output} output preserves strict TLS and bounded cleanup`,
+    { skip: !available, timeout: 15000 },
+    async () => {
+      const endpoint = await createRdpTlsFixture();
+      const runtimeRoot = await mkdtemp(
+        join(tmpdir(), 'bridge-microphone-session-'),
+      );
+      const principal = { id: 'native-microphone-fixture' };
+      let source;
+      const manager = new SessionManager({
+        workerFactory: () => {
+          const worker = new NativeSessionWorker({ workerPath, runtimeRoot });
+          worker.onMicrophone((state) => {
+            source = state;
+          });
+          return worker;
+        },
+      });
+      try {
+        const created = manager.create(
+          {
+            target: { host: '127.0.0.1', port: endpoint.port },
+            auth: { username: 'synthetic', password: 'synthetic-IPC-sentinel' },
+            security: { protocol: 'tls', certificatePolicy: 'strict' },
+            media: { microphone: 'pcm', audioOutput: output },
+            timeouts: { connectMs: 5000 },
+          },
+          principal,
+          '127.0.0.1',
+        );
+        await eventually(
+          () => manager.get(created.sessionId, principal).state === 'failed',
+        );
+        assert.equal(
+          manager.get(created.sessionId, principal).error.code,
+          'RDP_CERTIFICATE_REJECTED',
+        );
+        assert.equal(endpoint.applicationBytes, 0);
+        assert.equal(source.enabled, true);
+        assert.equal(source.availability, 'closed');
+        assert.equal(source.epoch, 0n);
+        await manager.shutdown();
+        assert.deepEqual(await readdir(runtimeRoot), []);
+      } finally {
+        await manager.shutdown();
+        await endpoint.close();
+        await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
+      }
+    },
+  );
 
 for (const output of ['off', 'pcm', 'opus'])
   test(

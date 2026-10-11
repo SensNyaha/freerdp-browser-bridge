@@ -156,7 +156,7 @@ test('fake microphone peer: premature, unsolicited, replayed and malformed autho
     assert.equal(worker.state, 'failed');
   });
 });
-test('private microphone selection: legacy and Opus input refuse before configure; public path stays gated', async () => {
+test('microphone selection: legacy PCM/reset capabilities and Opus input refuse before configure', async () => {
   await run(async (worker) => {
     assert.equal(worker.build.capabilities.pcmInput, false);
     await assert.rejects(worker.connect(configuration('valid')), {
@@ -184,13 +184,39 @@ test('private microphone selection: legacy and Opus input refuse before configur
   });
   try {
     await assert.rejects(
-      worker.start(configuration('valid'), new AbortController().signal),
+      worker.start(
+        configuration('valid', 'opus'),
+        new AbortController().signal,
+      ),
       { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
     );
     assert.deepEqual(await readdir(runtimeRoot), []);
   } finally {
     await worker.close();
     await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
+  }
+});
+
+test('native microphone adapter: legacy PCM/reset peers refuse public selection and reclaim runtime', async () => {
+  for (const peer of ['fixture-audio-1', 'fixture-microphone']) {
+    const runtimeRoot = await mkdtemp(
+      join(tmpdir(), 'bridge-microphone-legacy-'),
+    );
+    const worker = new NativeSessionWorker({
+      workerPath: resolve(directory, peer + suffix),
+      runtimeRoot,
+    });
+    try {
+      await assert.rejects(
+        worker.start(configuration('valid'), new AbortController().signal),
+        { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
+      );
+      await worker.close();
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    } finally {
+      await worker.close();
+      await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
+    }
   }
 });
 test('synthetic process: public PCM ingress projects into private IPC, drains and resets before fresh ownership', async () => {

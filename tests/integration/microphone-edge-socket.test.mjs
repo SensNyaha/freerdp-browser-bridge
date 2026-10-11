@@ -336,7 +336,10 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
         else {
           worker.holdNext = true;
           await eventually(() => worker.held);
-          await page.evaluate(() => window.fixture.control.close());
+          await page.evaluate(() => {
+            window.fixture.control.close();
+            window.fixture.graph().poll(); // Graph observes lost authority before the owner's next poll.
+          });
           await page.waitForFunction(
             () =>
               window.fixture.result().track === 'ended' &&

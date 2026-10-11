@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 401/401 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 406/406 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -643,6 +643,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   existing PCM/Opus output viewer cases also pass. Native SessionWorker selection,
   negotiated AUDIN/physical/remote/LAN/platform/soak acceptance remain open.
   [Contract](docs/MICROPHONE_VIEWER.md), [evidence](docs/ITERATION_127.md).
+- [~] IN PROGRESS — NativeSessionWorker now selects explicit PCM input only
+  after pcmInput and microphoneReset HELLO capabilities; legacy peers and Opus
+  input fail before configure/start respectively. Three actual native registry /
+  strict TLS fixtures pass with output off/PCM/Opus. Restored XRDP/API/Edge H.264
+  renders 52 frames at 1080p and replays waiting source epoch 0 without permission
+  or PCM capture. Manual viewer input/output flags exist. Ready AUDIN/remote /
+  physical/LAN/platform/soak, resampling/Opus input acceptance remain open.
+  [Evidence](docs/ITERATION_128.md), [launch](docs/DEVELOPMENT.md#explicit-nativebrowser-microphone-viewer).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).
