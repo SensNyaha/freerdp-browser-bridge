@@ -269,6 +269,11 @@ barrier. A scheduled reset alone grants no replacement authority; failure reques
 host termination and permanently disables that owner. Public lease/socket routing
 remains pending. [Ownership contract](docs/MICROPHONE_OWNERSHIP.md).
 
+Iteration 116 connects the isolated owner to typed SessionManager media methods
+bound to both attachment identities. Detach immediately revokes input and a
+fresh native epoch gates replacement. No public socket command or capture
+activation is introduced. [Session contract](docs/MICROPHONE_SESSION.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

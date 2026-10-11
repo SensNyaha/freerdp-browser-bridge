@@ -1,4 +1,9 @@
 import { EventEmitter } from 'node:events';
+import { MicrophoneOwnership } from './microphone-ownership.js';
+import type {
+  MicrophoneIngress,
+  MicrophoneAdmission,
+} from './microphone-ingress.js';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   SessionAudioSource,
@@ -13,6 +18,8 @@ import {
   validTouchInput,
   validateTouchState,
   encodeAudioReset,
+  encodeMicrophoneState,
+  validateMicrophoneStateProgress,
 } from '@freerdp-bridge/protocol';
 import {
   ConfigError,
@@ -33,6 +40,10 @@ import type {
   DisplayState,
   DisplayResizeResult,
   TouchState,
+  MicrophoneState,
+  MicrophonePcmPacket,
+  MicrophoneResult,
+  MicrophoneResetResult,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
@@ -184,6 +195,9 @@ export interface SessionWorker {
   onTouch?(listener: (touch: TouchState) => void): () => void;
   onAudio?(listener: (event: SessionAudioEvent) => void): () => void;
   resetAudio?(expectedEpoch: bigint): Promise<AudioResetResult>;
+  onMicrophone?(listener: (state: MicrophoneState) => void): () => void;
+  sendMicrophone?(packet: MicrophonePcmPacket): Promise<MicrophoneResult>;
+  resetMicrophone?(epoch: bigint): Promise<MicrophoneResetResult>;
   resizeDisplay?(width: number, height: number): Promise<DisplayResizeResult>;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
   captureFrame?(
@@ -218,6 +232,16 @@ type Entry = {
   audio?: SessionAudioSource;
   audioListener?: { lease: symbol; sink: (event: SessionAudioEvent) => void };
   audioReset?: symbol;
+  microphoneEnabled: boolean;
+  microphone?: MicrophoneState;
+  microphoneOwnership?: MicrophoneOwnership;
+  microphoneSink?: (state: MicrophoneState) => void;
+  microphoneGrant?: {
+    control: symbol;
+    media: symbol;
+    ingress: MicrophoneIngress;
+  };
+  microphoneRetirement?: { media: symbol; promise: Promise<boolean> };
   touch?: TouchState;
   display?: DisplayState;
   resize?: symbol;
@@ -387,6 +411,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         videoQuality: resolveVideoQuality(config.quality),
         dynamicResolution: config.display?.dynamicResolution === true,
         touchEnabled: config.input?.touch === true,
+        microphoneEnabled: config.media?.microphone === 'pcm',
         audioEnabled:
           config.media?.audioOutput === 'pcm' ||
           config.media?.audioOutput === 'opus',
@@ -568,6 +593,74 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
             }),
           );
         if (
+          config.media?.microphone === 'opus' ||
+          (entry.microphoneEnabled &&
+            (typeof worker.onMicrophone !== 'function' ||
+              typeof worker.sendMicrophone !== 'function' ||
+              typeof worker.resetMicrophone !== 'function'))
+        ) {
+          this.fail(entry, 'RDP_SETTING_NOT_IMPLEMENTED');
+          throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+        }
+        if (entry.microphoneEnabled) {
+          entry.microphoneOwnership = new MicrophoneOwnership({
+            source: () => entry.microphone,
+            onSource: (sink) => {
+              if (entry.microphoneSink)
+                throw new Error('Duplicate microphone retirement listener');
+              entry.microphoneSink = sink;
+              return () => {
+                if (entry.microphoneSink === sink) delete entry.microphoneSink;
+              };
+            },
+            submit: (packet) => worker.sendMicrophone!(packet),
+            reset: (epoch) => worker.resetMicrophone!(epoch),
+            terminate: () => {
+              if (
+                !entry.released &&
+                !terminal(entry.snapshot.state) &&
+                entry.snapshot.state !== 'closing'
+              )
+                this.fail(entry, 'WORKER_FAILED');
+            },
+          });
+        }
+        if (worker.onMicrophone)
+          entry.unsubscribers.push(
+            worker.onMicrophone((value) => {
+              if (
+                entry.released ||
+                terminal(entry.snapshot.state) ||
+                entry.snapshot.state === 'closing'
+              )
+                return;
+              try {
+                const { enabled, availability, revision, epoch, timestampUs } =
+                  value;
+                const state = {
+                  enabled,
+                  availability,
+                  revision,
+                  epoch,
+                  timestampUs,
+                };
+                encodeMicrophoneState(state);
+                validateMicrophoneStateProgress(entry.microphone, state);
+                if (
+                  !entry.microphoneEnabled ||
+                  !enabled ||
+                  (availability === 'ready' &&
+                    entry.snapshot.state !== 'connected')
+                )
+                  throw new Error('Invalid microphone source');
+                entry.microphone = state;
+                entry.microphoneSink?.({ ...state });
+              } catch {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+              }
+            }),
+          );
+        if (
           entry.audioEnabled &&
           (!worker.onAudio ||
             (config.media?.audioOutput === 'opus' && !worker.resetAudio))
@@ -722,6 +815,9 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     if (entry.cleanup) return entry.cleanup;
     entry.abort.abort();
     entry.tokens.clear();
+    const microphoneClose = entry.microphoneOwnership?.close();
+    delete entry.microphoneGrant;
+    delete entry.microphone;
     delete entry.certificate;
     delete entry.cursor;
     delete entry.display;
@@ -739,7 +835,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       let timer: NodeJS.Timeout | undefined;
       try {
         await Promise.race([
-          Promise.resolve().then(() => entry.worker.close()),
+          Promise.all([
+            Promise.resolve().then(() => entry.worker.close()),
+            microphoneClose,
+          ]),
           new Promise<never>((_, reject) => {
             timer = setTimeout(
               () => reject(new Error()),
@@ -828,6 +927,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     readonly audioFailed: boolean;
     onAudio: (listener: (event: SessionAudioEvent) => void) => () => void;
     resetAudio: (expectedEpoch: bigint) => Promise<AudioResetResult>;
+    readonly microphone: MicrophoneState | undefined;
+    startMicrophone: () => boolean;
+    stopMicrophone: () => Promise<boolean>;
+    sendMicrophone: (bytes: Buffer) => Promise<MicrophoneAdmission>;
     resizeDisplay: (
       request: DisplayResizeRequest,
     ) => Promise<DisplayResizeResult>;
@@ -871,7 +974,65 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       )
         throw new SessionError('ATTACH_INVALID');
     };
+    const requireMicrophoneLease = () => {
+      requireAudioLease(); // Both input/output metadata use the current media attachment.
+      if (!entry.microphoneEnabled || !entry.microphoneOwnership)
+        throw new SessionError('MEDIA_NOT_IMPLEMENTED');
+    };
     return {
+      get microphone() {
+        requireMicrophoneLease();
+        return entry.microphone && { ...entry.microphone };
+      },
+      startMicrophone: () => {
+        requireMicrophoneLease();
+        if (entry.snapshot.state !== 'connected') return false;
+        const control = entry.attachments.get('control');
+        if (!control || entry.microphoneGrant) return false;
+        const ingress = entry.microphoneOwnership!.acquire(
+          () =>
+            entry.microphoneGrant?.ingress === ingress &&
+            entry.attachments.get('control') === control &&
+            entry.attachments.get('media') === lease &&
+            !entry.released &&
+            entry.snapshot.state === 'connected',
+        );
+        if (!ingress) return false;
+        entry.microphoneGrant = { control, media: lease, ingress };
+        return true;
+      },
+      stopMicrophone: () => {
+        requireMicrophoneLease();
+        if (entry.microphoneRetirement?.media === lease)
+          return entry.microphoneRetirement.promise;
+        const grant = entry.microphoneGrant;
+        if (!grant || grant.media !== lease) return Promise.resolve(true);
+        return this.retireMicrophone(entry, grant);
+      },
+      sendMicrophone: (bytes) => {
+        try {
+          requireMicrophoneLease();
+          const grant = entry.microphoneGrant;
+          if (
+            !grant ||
+            grant.media !== lease ||
+            entry.attachments.get('control') !== grant.control ||
+            entry.snapshot.state !== 'connected'
+          )
+            throw new SessionError('ATTACH_INVALID');
+          return grant.ingress.receive(bytes).then(
+            (result) => {
+              if (grant.ingress.stats.faults) this.fail(entry, 'WORKER_FAILED');
+              return result;
+            },
+            () => {
+              throw new SessionError('MEDIA_FAILED');
+            },
+          );
+        } catch (error) {
+          return Promise.reject(publicSessionError(error));
+        }
+      },
       session: structuredClone(entry.snapshot),
       get display() {
         return entry.display && { ...entry.display };
@@ -1037,6 +1198,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       release: () => {
         if (entry.attachments.get(channel) === lease) {
           entry.attachments.delete(channel);
+          const grant = entry.microphoneGrant;
+          if (
+            grant &&
+            ((channel === 'control' && grant.control === lease) ||
+              (channel === 'media' && grant.media === lease))
+          ) {
+            void this.retireMicrophone(entry, grant);
+          }
           if (channel === 'media' && entry.audioListener?.lease === lease)
             delete entry.audioListener;
           if (
@@ -1048,6 +1217,22 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         }
       },
     };
+  }
+  private retireMicrophone(
+    entry: Entry,
+    grant: NonNullable<Entry['microphoneGrant']>,
+  ): Promise<boolean> {
+    if (entry.microphoneGrant === grant) delete entry.microphoneGrant;
+    const reservation = {
+      media: grant.media,
+      promise: entry.microphoneOwnership!.release(grant.ingress),
+    };
+    entry.microphoneRetirement = reservation;
+    void reservation.promise.then(() => {
+      if (entry.microphoneRetirement === reservation)
+        delete entry.microphoneRetirement;
+    });
+    return reservation.promise;
   }
   private displayEvent(
     entry: Entry,

@@ -66,6 +66,12 @@ actual RDP/media support. Cursor records do not contribute to video credit metri
 
 ## Backend and diagnostics
 
+Iteration 116 prepares media-lease microphone methods bound to both current
+control and media identities, with immediate revocation and observed native
+epoch retirement before transfer. It introduces no socket/capture activation;
+normal native creation still refuses non-off input. Fake-manager evidence and
+typed backend methods are described in [the microphone contract](MICROPHONE_SESSION.md).
+
 Each session owns a fresh trusted backend instance. Starting receives a cloned,
 validated configuration and abort signal. Secrets are dereferenced after startup
 settles or is aborted; this is not guaranteed zeroization of JS strings.

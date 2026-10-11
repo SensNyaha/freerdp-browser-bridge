@@ -21,6 +21,10 @@ import type {
   DisplayResizeResult,
   TouchState,
   AudioResetResult,
+  MicrophoneState,
+  MicrophonePcmPacket,
+  MicrophoneResult,
+  MicrophoneResetResult,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -50,6 +54,9 @@ export class NativeSessionWorker implements SessionWorker {
     });
     this.worker.on('audio', (event: SessionAudioEvent) => {
       if (!this.closing) this.events.emit('audio', event);
+    });
+    this.worker.on('microphone', (state: MicrophoneState) => {
+      if (!this.closing) this.events.emit('microphone', state);
     });
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
@@ -136,6 +143,28 @@ export class NativeSessionWorker implements SessionWorker {
     return () => {
       this.events.off('audio', listener);
     };
+  }
+  onMicrophone(listener: (state: MicrophoneState) => void): () => void {
+    this.events.on('microphone', listener);
+    return () => {
+      this.events.off('microphone', listener);
+    };
+  }
+  async sendMicrophone(packet: MicrophonePcmPacket): Promise<MicrophoneResult> {
+    try {
+      if (this.closing) return 'unavailable';
+      return await this.worker.sendMicrophone(packet);
+    } catch {
+      throw new SessionError('MEDIA_FAILED');
+    }
+  }
+  async resetMicrophone(epoch: bigint): Promise<MicrophoneResetResult> {
+    try {
+      if (this.closing) return 'unavailable';
+      return await this.worker.resetMicrophone(epoch);
+    } catch {
+      throw new SessionError('MEDIA_FAILED');
+    }
   }
   async resetAudio(expectedEpoch: bigint): Promise<AudioResetResult> {
     try {

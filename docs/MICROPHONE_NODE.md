@@ -1,5 +1,11 @@
 # Experimental private Node PCM microphone
 
+Current update — iteration 116: the manager now has preparatory typed PCM methods
+and control/media ownership barriers, tested with explicit fake backends. Native
+high-level selection and public socket/permission/capture remain gated.
+[Session ownership](MICROPHONE_SESSION.md). Restored actual XRDP private input
+profiles pass idle/waiting inventory, not ready capture: [iteration 115](ITERATION_115.md).
+
 Current update — iteration 111: private reset is negotiated through a versioned
 HELLO capability suffix and executed on the RDP owner. Sample sending pauses
 during reset/for the scheduled old epoch. [Reset contract](MICROPHONE_RESET.md).

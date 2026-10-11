@@ -25,14 +25,21 @@ synthetic samples and Opus fixtures use the pinned SDK. Actual XRDP viewers pass
 with idle/waiting audio. Audible RDP, ready-source reset, microphone and
 latency/resource/platform acceptance remain open.
 
+Microphone foundations now include private Windows worker dispatch/reset,
+bounded Node ingress and exclusive control/media session ownership. Restored
+XRDP private off/PCM/Opus output combinations pass waiting-source inventory;
+ready input, public socket/permission/capture and remote microphone acceptance
+remain open. [Current session ownership](docs/MICROPHONE_SESSION.md),
+[actual XRDP inventory](docs/ITERATION_115.md).
+
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
 - **DONE:** initial TypeBox configuration contract and recursive redaction; real worker-backed
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 276/276 Node tests;
-  CTest/Catch2: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 329/329 Node tests.
+  Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
@@ -549,6 +556,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   is claimed. The reproducible inventory helper sends no PCM or remote input.
   Public activation and remote/physical/LAN gates remain open.
   [Evidence](docs/ITERATION_115.md).
+- [~] IN PROGRESS — Preparatory SessionManager PCM input methods bind one grant
+  to current control/media attachment identities, revoke on either detach and
+  join a finite reset/new-epoch barrier before replacement. Fake-manager tests
+  cover late ACK, stop, invalid source and cleanup ownership. Typed native
+  forwarding exists; normal native selection and socket/permission/capture stay
+  gated. Actual remote/physical/LAN acceptance remains open.
+  [Contract](docs/MICROPHONE_SESSION.md), [evidence](docs/ITERATION_116.md).
 - [ ] Browser microphone capture and packet transport.
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
