@@ -81,13 +81,11 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
     throw ProtocolError();
   config_ = decode_connection_config(payload);
   const auto &c = *config_;
-  if (c.opus_output)
-    throw ProtocolError(); // Schema preparation only; no silent audio-off substitution.
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
-  if (c.pcm_output && (!audio_send_ || !audio_discard_))
+  if ((c.pcm_output || c.opus_output) && (!audio_send_ || !audio_discard_))
     throw ProtocolError();
 #else
-  if (c.pcm_output)
+  if (c.pcm_output || c.opus_output)
     throw ProtocolError();
 #endif
   auto *s = context_->settings;
@@ -203,7 +201,7 @@ BOOL Connection::pre_connect(freerdp *instance) {
   if (PubSub_SubscribeChannelDisconnected(pubsub, channel_disconnected) < 0)
     return FALSE;
   self.subscribed_disconnected_ = true;
-  if (self.config_->pcm_output) {
+  if (self.config_->pcm_output || self.config_->opus_output) {
     const char *args[] = {"rdpsnd"}; // Provider supplies fixed browser/PCM arguments.
     if (!freerdp_client_add_static_channel(instance->context->settings, 1, args))
       return FALSE;
@@ -911,9 +909,10 @@ void Connection::run() noexcept {
     if (config_->touch)
       touch_contacts_ = std::make_unique<touch::Contacts>(touch_registration_);
 #endif
-    if (config_->pcm_output)
-      audio_ =
-          std::make_unique<bridge::audio::AudioSession>(*context_, audio_send_, audio_discard_);
+    if (config_->pcm_output || config_->opus_output)
+      audio_ = std::make_unique<bridge::audio::AudioSession>(
+          *context_, audio_send_, audio_discard_, bridge::audio::AudioSession::Drain{}, 1000000,
+          config_->opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm);
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
     std::jthread watchdog([this, deadline](std::stop_token token) {

@@ -35,3 +35,22 @@ These are actual linked channel fixtures, not audible remote RDP acceptance.
 Production codec selection through IPC, typed Node forwarding and public browser
 negotiation remain open, alongside microphone, audible RDP, loss fidelity,
 resource/platform/latency, A/V scheduling and soak gates.
+
+## Native worker profile wiring (Iteration 84)
+
+On guarded Windows builds, raw private CONFIGURE schema 6 now selects the
+output dispatcher once before configuration acknowledgement and selects the
+matching AudioSession publisher on the RDP thread. The bounded startup selection
+waits at most 50 ms for producer mutex contention; duplicate configuration cannot
+switch an active profile. Unsupported builds refuse either audio output mode.
+
+Both modes declare the same guarded static RDPSND descriptor and accept only
+the existing bounded PCM source formats. Opus does not enable an upstream
+compressed RDPSND format or host audio device. Existing audio-first pump,
+20-ms event wait, finite retirement and provider lifetime apply unchanged.
+
+HELLO/CLI and high-level Node/public Opus selection are deliberately unchanged
+in this block. Raw native tests cover configuration selection and strict local
+TLS refusal, with a codec-1 Close record and healthy control after retirement.
+This is native lifecycle integration against a synthetic TLS endpoint, not
+audible RDP or public Opus acceptance.

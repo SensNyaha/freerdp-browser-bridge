@@ -16,7 +16,7 @@ import {
 } from '../../packages/protocol/dist/index.js';
 
 test(
-  'native lifecycle: preparatory Opus configuration is refused before secret/connect',
+  'native lifecycle: private Opus configuration selects only guarded Windows output before connect',
   { timeout: 10000 },
   async (t) => {
     const directory = await mkdtemp(join(tmpdir(), 'bridge-opus-config-'));
@@ -52,45 +52,58 @@ test(
       );
       await eventually(() => packets.length === 1);
       assert.equal(packets[0].kind, Kind.HelloAck);
-      const core = decodeBuild(packets[0].payload).capabilities.connectCore;
+      const capabilities = decodeBuild(packets[0].payload).capabilities;
+      const core = capabilities.connectCore;
+      const selected = process.platform === 'win32' && capabilities.pcmOutput;
+      assert.equal(Object.hasOwn(capabilities, 'opusOutput'), false);
       child.stdin.end(
-        encodePacket({
-          kind: Kind.Configure,
-          requestId: 2n,
-          payload: encodeConnectionSettings({
-            host: '127.0.0.1',
-            username: 'synthetic',
-            domain: '',
-            port: 3389,
-            width: 1024,
-            height: 768,
-            colorDepth: 32,
-            security: 2,
-            certificatePolicy: 0,
-            minimumTls: 2,
-            connectMs: 1000,
-            tcpAckMs: 1000,
-            opusOutput: true,
+        Buffer.concat([
+          encodePacket({
+            kind: Kind.Configure,
+            requestId: 2n,
+            payload: encodeConnectionSettings({
+              host: '127.0.0.1',
+              username: 'synthetic',
+              domain: '',
+              port: 3389,
+              width: 1024,
+              height: 768,
+              colorDepth: 32,
+              security: 2,
+              certificatePolicy: 0,
+              minimumTls: 2,
+              connectMs: 1000,
+              tcpAckMs: 1000,
+              opusOutput: true,
+            }),
           }),
-        }),
+          encodePacket({
+            kind: Kind.Shutdown,
+            requestId: 3n,
+            payload: Buffer.alloc(0),
+          }),
+        ]),
       );
       const [code, signal] = await closed;
-      assert.equal(code, 2);
+      assert.equal(code, selected ? 0 : 2);
       assert.equal(signal, null);
       assert.equal(invalid, false);
       decoder.finish();
-      assert.equal(packets.length, core ? 1 : 2);
+      assert.equal(packets.length, selected ? 3 : core ? 1 : 2);
       assert.equal(
         packets.some((packet) =>
-          [
-            Kind.ConfigureAck,
-            Kind.SecretAck,
-            Kind.ConnectAck,
-            Kind.AudioState,
-          ].includes(packet.kind),
+          [Kind.SecretAck, Kind.ConnectAck, Kind.AudioState].includes(
+            packet.kind,
+          ),
         ),
         false,
       );
+      if (selected) {
+        assert.equal(packets[1].kind, Kind.ConfigureAck);
+        assert.equal(packets[1].requestId, 2n);
+        assert.equal(packets[2].kind, Kind.ShutdownAck);
+        assert.equal(packets[2].requestId, 3n);
+      }
       if (!core) {
         assert.equal(packets[1].kind, Kind.Error);
         assert.equal(packets[1].requestId, 2n);

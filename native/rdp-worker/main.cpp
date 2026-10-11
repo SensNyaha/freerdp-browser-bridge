@@ -205,6 +205,19 @@ int run() {
         return 0;
 #ifdef BRIDGE_WITH_FREERDP
       } else if (header.kind == Kind::configure && ready) {
+#ifdef _WIN32
+        const auto config = decode_connection_config(payload);
+        const auto codec = config.opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
+        for (;;) {
+          const auto result = output.try_select_audio_codec(codec);
+          if (result == DispatchAdmission::accepted)
+            break;
+          if (result != DispatchAdmission::busy || std::chrono::steady_clock::now() >= deadline)
+            throw ProtocolError();
+          std::this_thread::yield();
+        }
+#endif
         connection.configure(payload);
         send({Kind::configure_ack, header.request_id, {}});
       } else if (header.kind == Kind::secret && ready) {

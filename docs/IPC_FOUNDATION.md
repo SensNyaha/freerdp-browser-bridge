@@ -511,3 +511,14 @@ linked Connection explicitly rejects schema-6 Opus before mapping FreeRDP
 settings, secret delivery or connect, rather than silently substituting audio
 off. Foundation workers reject CONFIGURE as unsupported. Tests use synthetic
 non-secret fields and no remote connection.
+
+## Raw native Opus profile wiring (Iteration 84)
+
+This supersedes schema-6 activation refusal above for guarded Windows builds:
+raw CONFIGURE can now select the matching dispatcher and AudioSession Opus
+profile. Selection precedes CONFIGURE_ACK; duplicate configuration/profile
+switching is refused. Unsupported builds still reject it. HELLO has no Opus bit
+yet and WorkerProcess/high-level public settings continue refusing Opus until
+typed selection/capability ownership is installed. No arbitrary arguments or
+additional channel formats are exposed.
+[Native lifecycle contract](AUDIO_SESSION_CODECS.md#native-worker-profile-wiring-iteration-84).
