@@ -1,13 +1,18 @@
 import { EventEmitter } from 'node:events';
 import { createHash, randomBytes } from 'node:crypto';
 import { PcmSource, type PcmSourceEvent } from './pcm-source.js';
-import type { PcmAudioState, PcmAudioConfig } from '@freerdp-bridge/protocol';
+import type {
+  PcmAudioState,
+  PcmAudioConfig,
+  AudioResetResult,
+} from '@freerdp-bridge/protocol';
 import {
   validateCursorState,
   validateDisplayState,
   validInputText,
   validTouchInput,
   validateTouchState,
+  encodeAudioReset,
 } from '@freerdp-bridge/protocol';
 import {
   ConfigError,
@@ -178,6 +183,7 @@ export interface SessionWorker {
   onDisplay?(listener: (display: DisplayState) => void): () => void;
   onTouch?(listener: (touch: TouchState) => void): () => void;
   onAudio?(listener: (event: PcmSourceEvent) => void): () => void;
+  resetAudio?(expectedEpoch: bigint): Promise<AudioResetResult>;
   resizeDisplay?(width: number, height: number): Promise<DisplayResizeResult>;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
   captureFrame?(
@@ -211,6 +217,7 @@ type Entry = {
   audioEnabled: boolean;
   audio?: PcmSource;
   audioListener?: { lease: symbol; sink: (event: PcmSourceEvent) => void };
+  audioReset?: symbol;
   touch?: TouchState;
   display?: DisplayState;
   resize?: symbol;
@@ -817,6 +824,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       | undefined;
     readonly audioFailed: boolean;
     onAudio: (listener: (event: PcmSourceEvent) => void) => () => void;
+    resetAudio: (expectedEpoch: bigint) => Promise<AudioResetResult>;
     resizeDisplay: (
       request: DisplayResizeRequest,
     ) => Promise<DisplayResizeResult>;
@@ -909,6 +917,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       },
       resizeDisplay: (request) =>
         this.resizeDisplay(entry, channel, lease, request),
+      resetAudio: (expectedEpoch) =>
+        this.resetAudio(entry, channel, lease, expectedEpoch),
       ...(entry.cursor
         ? {
             cursor: {
@@ -1057,6 +1067,68 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       display: { ...entry.display },
       resizing: Boolean(entry.resize),
     });
+  }
+  private async resetAudio(
+    entry: Entry,
+    channel: SessionChannel,
+    lease: symbol,
+    expectedEpoch: bigint,
+  ): Promise<AudioResetResult> {
+    const authorized = () => {
+      if (
+        channel !== 'media' ||
+        entry.attachments.get(channel) !== lease ||
+        entry.released ||
+        terminal(entry.snapshot.state) ||
+        entry.snapshot.state === 'closing'
+      )
+        throw new SessionError('ATTACH_INVALID');
+    };
+    authorized();
+    try {
+      encodeAudioReset(expectedEpoch);
+    } catch {
+      throw new SessionError('MEDIA_FAILED');
+    }
+    if (!entry.audio || !entry.worker.resetAudio)
+      throw new SessionError('MEDIA_NOT_IMPLEMENTED');
+    if (entry.snapshot.state !== 'connected') return 'unavailable';
+    const state = entry.audio.current;
+    if (!state?.enabled) return 'unavailable';
+    if (expectedEpoch !== state.epoch) return 'stale';
+    if (state.availability !== 'ready') return 'unavailable';
+    if (entry.audioReset) return 'busy';
+    const reservation = Symbol();
+    entry.audioReset = reservation;
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        (async () => {
+          authorized();
+          const result = await entry.worker.resetAudio!(expectedEpoch);
+          authorized();
+          if (!['scheduled', 'stale', 'unavailable', 'busy'].includes(result)) {
+            this.fail(entry, 'WORKER_INVALID_STATE');
+            throw new SessionError('MEDIA_FAILED');
+          }
+          return result;
+        })(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            // Unknown completion cannot leave a live backend able to reset a new lease.
+            this.fail(entry, 'WORKER_FAILED');
+            reject(new SessionError('MEDIA_FAILED'));
+          }, 3000);
+        }),
+      ]);
+    } catch (error) {
+      if (error instanceof SessionError) throw error;
+      this.fail(entry, 'WORKER_FAILED');
+      throw new SessionError('MEDIA_FAILED');
+    } finally {
+      clearTimeout(timer);
+      if (entry.audioReset === reservation) delete entry.audioReset;
+    }
   }
   private async resizeDisplay(
     entry: Entry,

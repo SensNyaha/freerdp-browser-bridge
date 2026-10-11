@@ -103,6 +103,131 @@ async function fixture(body, enabled = true, mode = 'connected') {
     assert.equal(worker.listenerCount('audio'), 0);
   }
 }
+test('fake audio reset lease: control stale invalid and inactive authority never reaches backend', async () => {
+  await fixture(async ({ worker, attach, emit }) => {
+    let calls = 0;
+    worker.resetAudio = async () => {
+      calls++;
+      return 'scheduled';
+    };
+    const control = attach('control');
+    const media = attach();
+    await assert.rejects(control.resetAudio(1n), { code: 'ATTACH_INVALID' });
+    assert.equal(await media.resetAudio(1n), 'unavailable');
+    for (const epoch of [0n, -1n, 1, 0x10000000000000000n])
+      await assert.rejects(media.resetAudio(epoch), { code: 'MEDIA_FAILED' });
+    emit(state());
+    assert.equal(await media.resetAudio(2n), 'stale');
+    media.release();
+    await assert.rejects(media.resetAudio(1n), { code: 'ATTACH_INVALID' });
+    assert.equal(calls, 0);
+  });
+  await fixture(async ({ attach, emit }) => {
+    emit(state());
+    await assert.rejects(attach().resetAudio(1n), {
+      code: 'MEDIA_NOT_IMPLEMENTED',
+    });
+  });
+  await fixture(async ({ worker, attach }) => {
+    worker.resetAudio = async () => assert.fail();
+    await assert.rejects(attach().resetAudio(1n), {
+      code: 'MEDIA_NOT_IMPLEMENTED',
+    });
+  }, false);
+});
+test('fake audio reset lease: one pending operation returns busy and valid typed results preserve session', async () => {
+  await fixture(async ({ worker, attach, emit, manager, created }) => {
+    emit(state());
+    const lease = attach();
+    let resolve,
+      calls = 0;
+    worker.resetAudio = (epoch) => {
+      assert.equal(epoch, 1n);
+      calls++;
+      return new Promise((done) => {
+        resolve = done;
+      });
+    };
+    const pending = lease.resetAudio(1n);
+    assert.equal(await lease.resetAudio(1n), 'busy');
+    assert.equal(calls, 1);
+    resolve('scheduled');
+    assert.equal(await pending, 'scheduled');
+    for (const result of ['stale', 'busy', 'unavailable']) {
+      worker.resetAudio = async () => result;
+      assert.equal(await lease.resetAudio(1n), result);
+    }
+    assert.equal(manager.get(created.sessionId, principal).state, 'connected');
+  });
+});
+test('fake audio reset lease: detached completion cannot grant replacement authority and reservation stays bounded', async () => {
+  await fixture(async ({ worker, attach, emit }) => {
+    emit(state());
+    let resolve,
+      calls = 0;
+    worker.resetAudio = () => {
+      calls++;
+      return new Promise((done) => {
+        resolve = done;
+      });
+    };
+    const old = attach();
+    const denied = assert.rejects(old.resetAudio(1n), {
+      code: 'ATTACH_INVALID',
+    });
+    old.release();
+    const replacement = attach();
+    const seen = [];
+    replacement.onAudio((event) => seen.push(event.state.epoch));
+    emit(state(2n, 'waiting', 2n));
+    emit(state(3n, 'ready', 2n));
+    assert.equal(await replacement.resetAudio(2n), 'busy');
+    assert.equal(calls, 1);
+    resolve('scheduled');
+    await denied;
+    assert.deepEqual(seen, [2n, 2n]);
+    worker.resetAudio = async (epoch) => {
+      assert.equal(epoch, 2n);
+      return 'scheduled';
+    };
+    assert.equal(await replacement.resetAudio(2n), 'scheduled');
+  });
+});
+test('fake audio reset lease: invalid backend result and unsanitized exception fail bounded backend ownership', async () => {
+  for (const invalid of [true, false])
+    await fixture(async ({ worker, attach, emit, manager, created }) => {
+      emit(state());
+      worker.resetAudio = async () => {
+        if (invalid) return 'made-up';
+        throw new Error('secret-diagnostic-sentinel');
+      };
+      await assert.rejects(
+        attach().resetAudio(1n),
+        (error) =>
+          error.code === 'MEDIA_FAILED' && !error.message.includes('sentinel'),
+      );
+      assert.equal(manager.get(created.sessionId, principal).state, 'failed');
+      await eventually(() => worker.closed === 1);
+    });
+});
+test('fake audio reset lease: uncertain deadline retires backend before reservation can serve another receiver', async () => {
+  await fixture(async ({ worker, attach, emit, manager, created }) => {
+    emit(state());
+    let resolve;
+    worker.resetAudio = () =>
+      new Promise((done) => {
+        resolve = done;
+      });
+    const lease = attach();
+    await assert.rejects(lease.resetAudio(1n), { code: 'MEDIA_FAILED' });
+    assert.equal(manager.get(created.sessionId, principal).state, 'failed');
+    await eventually(() => worker.closed === 1);
+    resolve('scheduled');
+    await Promise.resolve();
+    await assert.rejects(lease.resetAudio(1n), { code: 'ATTACH_INVALID' });
+  });
+});
+
 test('fake audio manager: detached source samples are not replayed; media gets only copied current metadata and live events', async () => {
   await fixture(async ({ attach, emit }) => {
     const initial = state();

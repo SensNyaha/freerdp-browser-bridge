@@ -19,6 +19,7 @@ import type {
   DisplayState,
   DisplayResizeResult,
   TouchState,
+  AudioResetResult,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -134,6 +135,19 @@ export class NativeSessionWorker implements SessionWorker {
     return () => {
       this.events.off('audio', listener);
     };
+  }
+  async resetAudio(expectedEpoch: bigint): Promise<AudioResetResult> {
+    try {
+      if (this.closing) return 'unavailable';
+      return await this.worker.resetAudio(expectedEpoch);
+    } catch (error) {
+      throw new SessionError(
+        error instanceof WorkerError &&
+        error.code === 'AUDIO_RESET_NOT_IMPLEMENTED'
+          ? 'MEDIA_NOT_IMPLEMENTED'
+          : 'MEDIA_FAILED',
+      );
+    }
   }
   onCursor(listener: (cursor: CursorState) => void): () => void {
     this.events.on('cursor', listener);
