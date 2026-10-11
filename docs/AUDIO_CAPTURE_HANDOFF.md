@@ -1,5 +1,31 @@
 # Bounded IPC-to-RDP microphone handoff
 
+Current update — iteration 133: the same serialized handoff has an immutable
+PCM (default) or prepared Opus profile. Exactly one heap slot is allocated at
+construction: 3,840 PCM bytes or 1,275 compressed bytes, plus scalar metadata.
+The selected private grammar is checked before copying; Opus lookahead and
+encoded length are preserved. `service_opus` uses the typed Opus callback and
+shares the existing readiness/epoch/20 ms deadline, reentrancy, correlated
+completion, callback-result validation and post-borrow wipe. A wrong callback
+profile drains as unavailable without invoking a foreign typed callback.
+`owned_bytes` reports reserved slot capacity while pending/borrowed, not payload
+length. There is no profile switch, SDK decode on producer or second lane.
+
+Four additional portable cases cover min/max compressed storage, independent
+copying and wipe, all logical/exception/unknown outcomes, exact expiry/current
+source checks, foreign grammar/callback refusal, reentrancy and 1,000 fixed-slot
+transfers. Combined PCM/Opus handoff tests pass eight cases / 8,323 assertions.
+One actual native-SDK/source composition passes 33 assertions: one Opus input
+primes without PCM, subsequent inputs fill the bounded source, capture reset
+rejects old queued compressed input before decode, and fresh epoch primes again.
+This is synthetic native composition, not actual AUDIN/channel/worker dispatch.
+
+PCM production selection remains unchanged. Opus RWI1 kind/config/capability,
+worker owner callback, permission/lease/network credit and actual microphone /
+resource/platform/LAN/soak acceptance remain open. Priming admission may accept
+a decoded packet with no full PCM output; it does not establish remote capture.
+Historical iteration 104 below describes the original PCM-only foundation.
+
 Iteration 104 implements the isolated handoff foundation for SPECIFICATION §2.6 /
 ARCHITECTURE §5 / MEDIA_PIPELINE §7. It is not selected by the worker and adds no
 wire kind, microphone capability, host capture or browser permission flow.

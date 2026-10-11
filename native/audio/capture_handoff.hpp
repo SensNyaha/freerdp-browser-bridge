@@ -1,5 +1,6 @@
 #pragma once
 #include "microphone.hpp"
+#include "microphone_opus.hpp"
 #include <memory>
 #include <optional>
 
@@ -13,14 +14,19 @@ struct CaptureHandoffStats {
   std::uint64_t expired = 0;
   std::size_t owned_bytes = 0;
 };
-// Caller serializes producer/owner with its mutex. One 20 ms PCM request slot;
+enum class CaptureCodec { pcm, opus };
+// Caller serializes producer/owner with its mutex. One 20 ms selected input slot;
 // service callback is bounded/nonblocking on RDP owner, never retries samples.
 class CaptureHandoff {
   struct Request {
     std::uint64_t id, epoch, timestamp, admitted;
     bool discontinuity;
+    std::uint16_t lookahead = 0;
+    std::size_t bytes = 0;
   };
-  std::unique_ptr<std::array<std::uint8_t, ipc::audio::pcm_bytes>> pcm_;
+  const CaptureCodec codec_;
+  const std::size_t capacity_;
+  std::unique_ptr<std::uint8_t[]> bytes_;
   std::optional<Request> request_;
   CaptureHandoffStats stats_;
   bool servicing_ = false, retired_ = false;
@@ -29,7 +35,14 @@ class CaptureHandoff {
 public:
   static constexpr std::uint64_t window_us = 20000;
   using Submit = ipc::microphone::Result (*)(void *, const ipc::microphone::PcmPacket &);
-  CaptureHandoff();
+  using SubmitOpus = ipc::microphone::Result (*)(void *, const ipc::microphone::opus::Packet &);
+
+private:
+  std::optional<CaptureCompletion> service_impl(std::uint64_t, std::uint64_t, bool, Submit,
+                                                SubmitOpus, void *) noexcept;
+
+public:
+  explicit CaptureHandoff(CaptureCodec = CaptureCodec::pcm);
   CaptureHandoff(const CaptureHandoff &) = delete;
   CaptureHandoff &operator=(const CaptureHandoff &) = delete;
   ~CaptureHandoff();
@@ -40,6 +53,8 @@ public:
                                                  bool ready);
   std::optional<CaptureCompletion> service(std::uint64_t now_us, std::uint64_t current_epoch,
                                            bool ready, Submit, void *owner) noexcept;
+  std::optional<CaptureCompletion> service_opus(std::uint64_t now_us, std::uint64_t current_epoch,
+                                                bool ready, SubmitOpus, void *owner) noexcept;
   // Drain pending with service(ready=false) first; active callback cannot retire.
   bool retire() noexcept;
   bool pending() const noexcept { return servicing_ || request_.has_value(); }

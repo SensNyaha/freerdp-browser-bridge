@@ -1,3 +1,5 @@
+#include "capture.hpp"
+#include "capture_handoff.hpp"
 #include "opus_capture.hpp"
 #include "opus_encoder.hpp"
 #include <algorithm>
@@ -134,4 +136,77 @@ TEST_CASE("Opus capture forward discontinuity and new epochs wipe carry and keep
   REQUIRE_THROWS_AS(capture.decode(packet(b, UINT64_MAX, 0, false, UINT64_MAX)),
                     std::invalid_argument);
   REQUIRE_THROWS_AS(capture.reset(UINT64_MAX), std::invalid_argument);
+}
+TEST_CASE("Opus capture handoff primes and feeds the bounded PCM source while reset refuses old "
+          "queued input") {
+  struct Sink {
+    OpusCaptureDecoder decoder{1};
+    PcmCaptureSource source;
+    unsigned calls = 0, outputs = 0;
+    std::vector<std::uint8_t> first_pcm;
+    static ipc::microphone::Result submit(void *owner,
+                                          const ipc::microphone::opus::Packet &packet) {
+      auto &sink = *static_cast<Sink *>(owner);
+      ++sink.calls;
+      const auto output = sink.decoder.decode(packet);
+      if (!output)
+        return ipc::microphone::Result::accepted;
+      ++sink.outputs;
+      if (sink.outputs == 1)
+        sink.first_pcm.assign(output->pcm.begin(), output->pcm.end());
+      return sink.source.submit({output->epoch, output->timestamp_us, output->discontinuity,
+                                 output->pcm}) == CaptureStatus::accepted
+                 ? ipc::microphone::Result::accepted
+                 : ipc::microphone::Result::invalid;
+    }
+  } sink;
+  REQUIRE(sink.source.configure({48000, 2, 16}, 960));
+  REQUIRE(sink.source.start(1));
+  SoftwareOpusEncoder encoder;
+  CaptureHandoff handoff(CaptureCodec::opus);
+  for (std::uint64_t index = 0; index < 3; ++index) {
+    const auto unit = encoder.encode({pcm(static_cast<std::size_t>(index)), index * 20000});
+    auto body = ipc::microphone::opus::encode_packet(
+        {1, index * 20000, encoder.lookahead_frames(), index == 0, unit.bytes});
+    REQUIRE_FALSE(handoff.enqueue(index + 1, body.bytes(), index * 20000, 1, true));
+    body.storage.fill(0);
+    REQUIRE(handoff.service_opus(index * 20000 + 1, 1, true, Sink::submit, &sink)->result ==
+            ipc::microphone::Result::accepted);
+    REQUIRE(handoff.stats().owned_bytes == 0);
+    if (index < 2)
+      REQUIRE(sink.source.read().silence_frames == 960);
+  }
+  REQUIRE(sink.calls == 3);
+  REQUIRE(sink.outputs == 2);
+  const auto read = sink.source.read();
+  REQUIRE(read.frames == 960);
+  REQUIRE(read.silence_frames == 0);
+  REQUIRE(std::ranges::equal(read.bytes, sink.first_pcm));
+  const auto old = encoder.encode({pcm(3), 60000});
+  const auto queued = ipc::microphone::opus::encode_packet(
+      {1, 60000, encoder.lookahead_frames(), false, old.bytes});
+  REQUIRE_FALSE(handoff.enqueue(4, queued.bytes(), 60000, 1, true));
+  sink.source.stop();
+  REQUIRE(sink.source.start(2));
+  sink.decoder.reset(2);
+  REQUIRE(handoff.service_opus(60001, 2, true, Sink::submit, &sink)->result ==
+          ipc::microphone::Result::stale);
+  REQUIRE(sink.calls == 3);
+  REQUIRE(sink.decoder.stats().queued_frames == 0);
+  REQUIRE(sink.source.read().silence_frames == 960);
+  encoder.reset();
+  const auto fresh = encoder.encode({pcm(0), 0});
+  const auto new_body =
+      ipc::microphone::opus::encode_packet({2, 0, encoder.lookahead_frames(), true, fresh.bytes});
+  REQUIRE_FALSE(handoff.enqueue(5, new_body.bytes(), 80000, 2, true));
+  REQUIRE(handoff.service_opus(80001, 2, true, Sink::submit, &sink)->result ==
+          ipc::microphone::Result::accepted);
+  REQUIRE(sink.calls == 4);
+  REQUIRE(sink.outputs == 2);
+  REQUIRE(sink.source.read().silence_frames == 960);
+  REQUIRE_FALSE(handoff.enqueue(6, new_body.bytes(), 100000, 2, true));
+  REQUIRE(handoff.service_opus(100001, 2, false, Sink::submit, &sink)->result ==
+          ipc::microphone::Result::unavailable);
+  REQUIRE(sink.calls == 4);
+  REQUIRE(handoff.retire());
 }

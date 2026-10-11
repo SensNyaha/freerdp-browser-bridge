@@ -681,6 +681,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   network credit/permission/lease, actual recording/platform/resource/LAN/soak
   gates remain open. [Contract](docs/MICROPHONE_OPUS_CAPTURE.md),
   [evidence](docs/ITERATION_132.md).
+- [~] IN PROGRESS — The serialized microphone handoff now owns exactly one
+  immutable PCM/default or prepared Opus slot; both profiles share bounded
+  arrival deadline, epoch/readiness checks, typed callback completion and wipe.
+  Eight portable PCM/Opus cases / 8,323 assertions and actual native SDK/source
+  priming/reset composition pass. Opus kind/config/capability/worker callback,
+  permission/lease/network and actual AUDIN/device/platform/resource/LAN/soak
+  gates remain open. [Contract](docs/AUDIO_CAPTURE_HANDOFF.md),
+  [evidence](docs/ITERATION_133.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).

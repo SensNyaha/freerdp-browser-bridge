@@ -6,6 +6,15 @@
 namespace bridge::audio {
 using ipc::microphone::Result;
 namespace {
+std::size_t capacity(CaptureCodec codec) {
+  switch (codec) {
+  case CaptureCodec::pcm:
+    return ipc::audio::pcm_bytes;
+  case CaptureCodec::opus:
+    return ipc::audio::opus::max_payload_bytes;
+  }
+  throw ipc::ProtocolError();
+}
 void increment(std::uint64_t &value) noexcept {
   if (value != (std::numeric_limits<std::uint64_t>::max)())
     ++value;
@@ -18,12 +27,13 @@ std::optional<Result> refusal(std::uint64_t expected, std::uint64_t current, boo
   return {};
 }
 } // namespace
-CaptureHandoff::CaptureHandoff()
-    : pcm_(std::make_unique<std::array<std::uint8_t, ipc::audio::pcm_bytes>>()) {}
+CaptureHandoff::CaptureHandoff(CaptureCodec codec)
+    : codec_(codec), capacity_(capacity(codec)),
+      bytes_(std::make_unique<std::uint8_t[]>(capacity_)) {}
 CaptureHandoff::~CaptureHandoff() {
   if (servicing_)
     std::terminate(); // Borrowed bytes require caller to preserve owner lifetime.
-  pcm_->fill(0);
+  std::fill_n(bytes_.get(), capacity_, 0);
 }
 void CaptureHandoff::count(Result result) noexcept {
   switch (result) {
@@ -49,28 +59,57 @@ std::optional<Result> CaptureHandoff::enqueue(std::uint64_t id,
                                               std::uint64_t now, std::uint64_t epoch, bool ready) {
   if (!id)
     throw ipc::ProtocolError();
-  const auto packet = ipc::microphone::decode_pcm(payload); // Validate before copying slot.
+  Request request{id, 0, 0, now, false};
+  std::span<const std::uint8_t> input;
+  // Decode only the selected grammar and bound before copying the sole slot.
+  if (codec_ == CaptureCodec::pcm) {
+    const auto packet = ipc::microphone::decode_pcm(payload);
+    request.epoch = packet.epoch;
+    request.timestamp = packet.timestamp_us;
+    request.discontinuity = packet.discontinuity;
+    input = packet.pcm;
+  } else {
+    const auto packet = ipc::microphone::opus::decode_packet(payload);
+    request.epoch = packet.epoch;
+    request.timestamp = packet.timestamp_us;
+    request.discontinuity = packet.discontinuity;
+    request.lookahead = packet.lookahead_frames;
+    input = packet.encoded;
+  }
+  request.bytes = input.size();
   std::optional<Result> result;
   if (servicing_)
     result = Result::busy;
   else if (retired_)
     result = Result::unavailable;
   else
-    result = refusal(packet.epoch, epoch, ready);
+    result = refusal(request.epoch, epoch, ready);
   if (!result && (request_ || now > (std::numeric_limits<std::uint64_t>::max)() - window_us))
     result = Result::busy;
   if (result) {
     count(*result);
     return result;
   }
-  std::copy(packet.pcm.begin(), packet.pcm.end(), pcm_->begin());
-  request_ = Request{id, packet.epoch, packet.timestamp_us, now, packet.discontinuity};
+  std::copy(input.begin(), input.end(), bytes_.get());
+  request_ = request;
   increment(stats_.queued);
   return {};
 }
 std::optional<CaptureCompletion> CaptureHandoff::service(std::uint64_t now, std::uint64_t epoch,
                                                          bool ready, Submit submit,
                                                          void *owner) noexcept {
+  return service_impl(now, epoch, ready, submit, nullptr, owner);
+}
+std::optional<CaptureCompletion> CaptureHandoff::service_opus(std::uint64_t now,
+                                                              std::uint64_t epoch, bool ready,
+                                                              SubmitOpus submit,
+                                                              void *owner) noexcept {
+  return service_impl(now, epoch, ready, nullptr, submit, owner);
+}
+std::optional<CaptureCompletion> CaptureHandoff::service_impl(std::uint64_t now,
+                                                              std::uint64_t epoch, bool ready,
+                                                              Submit submit, SubmitOpus opus_submit,
+                                                              void *owner) noexcept {
   if (servicing_ || !request_)
     return {};
   const auto request = *request_;
@@ -84,9 +123,17 @@ std::optional<CaptureCompletion> CaptureHandoff::service(std::uint64_t now, std:
   if (!result) {
     servicing_ = true;
     try {
-      result = submit && owner
-                   ? submit(owner, {request.epoch, request.timestamp, request.discontinuity, *pcm_})
-                   : Result::unavailable;
+      const auto input = std::span<const std::uint8_t>(bytes_.get(), request.bytes);
+      if (codec_ == CaptureCodec::pcm)
+        result =
+            submit && owner
+                ? submit(owner, {request.epoch, request.timestamp, request.discontinuity, input})
+                : Result::unavailable;
+      else
+        result = opus_submit && owner
+                     ? opus_submit(owner, {request.epoch, request.timestamp, request.lookahead,
+                                           request.discontinuity, input})
+                     : Result::unavailable;
     } catch (...) {
       result = Result::unavailable;
     }
@@ -94,20 +141,20 @@ std::optional<CaptureCompletion> CaptureHandoff::service(std::uint64_t now, std:
     if (static_cast<unsigned>(*result) > 4)
       result = Result::invalid;
   }
-  pcm_->fill(0); // Callback returned; never overwrite its borrowed bytes earlier.
+  std::fill_n(bytes_.get(), capacity_, 0); // Callback returned; borrowed bytes are no longer live.
   count(*result);
   return CaptureCompletion{request.id, *result};
 }
 bool CaptureHandoff::retire() noexcept {
   if (pending())
     return false;
-  pcm_->fill(0);
+  std::fill_n(bytes_.get(), capacity_, 0);
   retired_ = true;
   return true;
 }
 CaptureHandoffStats CaptureHandoff::stats() const noexcept {
   auto value = stats_;
-  value.owned_bytes = pending() ? pcm_->size() : 0;
+  value.owned_bytes = pending() ? capacity_ : 0;
   return value;
 }
 } // namespace bridge::audio
