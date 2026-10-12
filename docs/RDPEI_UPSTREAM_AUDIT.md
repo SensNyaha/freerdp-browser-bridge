@@ -72,3 +72,15 @@ and public SDK retention fixtures. Releasing a logical message does not imply it
 capacity is returned to the OS. A fixed cumulative declaration budget is prepared,
 but not activated; public completion hooks and retained-memory gates remain open.
 [Reservation and pool evidence](DVC_MESSAGE_BUDGET.md).
+
+## Pinned listener failure output is not an ownership token
+
+Pinned drdynvc CreateListener assigns ppListener before HashTable_Insert, then
+frees on insertion failure; generic Initialize nevertheless dereferences the
+returned listener and Terminated later destroys it. A nonnull error output can
+therefore dangle. Existing injected partial-creation cases are not proof of this
+actual allocator failure path. Iteration 153 prepares a public manager facade
+which normalizes error output to persistent fallback without inspecting/destroying
+the undefined pointer. Actual generic addin and successful real-manager fixtures
+pass; worker/provider placement and actual allocator-failure acceptance remain open.
+[Detailed source contract](PINNED_DVC_MANAGER.md).

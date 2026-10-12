@@ -2,6 +2,7 @@
 #include "dvc_channel_registry.hpp"
 #include "dvc_completion_hook.hpp"
 #include "dvc_receive_guard.hpp"
+#include "pinned_dvc_manager.hpp"
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -33,6 +34,9 @@ struct Host {
   DvcMessageBudget budget{{2, 8, 8, 100}};
   std::array<std::unique_ptr<DvcCompletionHook>, 2> completion_hooks;
   std::unique_ptr<DvcChannelRegistry> registry;
+  std::unique_ptr<PinnedDvcManager> manager_facade;
+  IWTSVirtualChannelManager *actual_manager = nullptr;
+  bool wrap_manager = false;
   UINT registry_retirement_status = CHANNEL_RC_OK;
   bool observe_completion = false;
   std::uint64_t now_ms = 1;
@@ -97,8 +101,9 @@ struct Host {
       return ERROR_INVALID_PARAMETER;
     return entries->RegisterPlugin(entries, plugin_name, &active->dynamic);
   }
-  explicit Host(bool completion_observation = false, bool registry_observation = false)
-      : observe_completion(completion_observation) {
+  explicit Host(bool completion_observation = false, bool registry_observation = false,
+                bool pinned_manager_observation = false)
+      : observe_completion(completion_observation), wrap_manager(pinned_manager_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
@@ -118,8 +123,18 @@ struct Host {
     dynamic.pInterface = listener_callback.pInterface = this;
     dynamic.Initialize = [](IWTSPlugin *p, IWTSVirtualChannelManager *m) -> UINT {
       auto &host = *static_cast<Host *>(p->pInterface);
+      host.actual_manager = m;
       host.manager = m;
-      return m->CreateListener(m, channel_name, 0, &host.listener_callback, &host.listener);
+      if (host.wrap_manager) {
+        try {
+          host.manager_facade = std::make_unique<PinnedDvcManager>(*m);
+          host.manager = host.manager_facade->interface();
+        } catch (...) {
+          return ERROR_NOT_ENOUGH_MEMORY;
+        }
+      }
+      return host.manager->CreateListener(host.manager, channel_name, 0, &host.listener_callback,
+                                          &host.listener);
     };
     dynamic.Terminated = [](IWTSPlugin *p) -> UINT {
       auto &host = *static_cast<Host *>(p->pInterface);
@@ -275,6 +290,8 @@ struct Host {
     }
     if (registry)
       registry_retirement_status = registry->retire();
+    if (manager_facade)
+      manager_facade->retire();
     budget.close();
   }
   bool send(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
@@ -541,4 +558,24 @@ TEST_CASE("Actual drdynvc public ID registry logical deadline requires actual ho
   REQUIRE(host.registry->stats().resources_retired);
   REQUIRE(host.channels[0].closes == 1);
   REQUIRE(host.channels[0].packets == 0);
+}
+
+TEST_CASE(
+    "Actual drdynvc pinned manager facade preserves successful public ID/find/listener cleanup") {
+  Host host(false, true, true);
+  REQUIRE(host.manager_facade);
+  REQUIRE(host.actual_manager != host.manager);
+  auto *channel = host.manager->FindChannelById(host.manager, 0x42);
+  REQUIRE(channel);
+  REQUIRE(channel == host.actual_manager->FindChannelById(host.actual_manager, 0x42));
+  REQUIRE(host.manager->GetChannelId(channel) == 0x42);
+  const BYTE initial[]{1, 2, 3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  host.shutdown();
+  REQUIRE(host.registry_retirement_status == CHANNEL_RC_OK);
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.terminated == 1);
+  REQUIRE(host.manager->FindChannelById(host.manager, 0x42) == nullptr);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
 }

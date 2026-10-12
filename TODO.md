@@ -887,6 +887,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Pinned public manager facade normalizes failed CreateListener
+  output to stable fallback without touching a potentially freed native pointer;
+  actual generic addin and successful drdynvc/fake-SVC fixtures pass. Production
+  provider placement, partial/failed handoff and actual allocator-failure resource
+  acceptance remain open. [Iteration 153](docs/ITERATION_153.md).
+
 - [~] IN PROGRESS — Fixed public DVC ID/callback registry reserves DATA_FIRST only
   for registered live channels, retains rejected-target caller ownership and joins
   callback retirement. Seven public-ABI and five actual drdynvc/fake-SVC cases

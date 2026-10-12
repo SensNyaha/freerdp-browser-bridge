@@ -45,3 +45,7 @@ Global addin/manager/listener lifecycle integration, failed/partial registration
 handoffs, actual GFX/Windows server/remote cumulative memory and lost transport,
 pool retention, nested control/codec allocation, Linux/sanitizers/fuzz/soak remain
 open. No dependency source/pin/ABI/wire/capability changes.
+
+Iteration 153 adds [pinned manager failed-output normalization](PINNED_DVC_MANAGER.md)
+with actual generic-addin/fake-manager and drdynvc/fake-SVC fixtures. Production
+listener/provider handoff remains open.
