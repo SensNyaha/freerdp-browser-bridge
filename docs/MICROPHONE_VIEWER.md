@@ -42,3 +42,26 @@ and microphone-reset capabilities. The lab helper exposes manual input and
 optional PCM/Opus output modes. Actual XRDP/Edge H.264 plus microphone replay
 passes without capture; waiting epoch 0 is not negotiated recording acceptance.
 [Evidence](ITERATION_128.md).
+
+Iteration 144 enables explicit `bridgeViewer.attach(created, { microphone:
+'opus' })` for a matching selected Opus session, using the iteration-143 client.
+PCM/off behavior remains available; input and output choices are independent.
+The historical unsupported-Opus-input statement above is superseded.
+
+Before opening sockets, a fixed-profile AudioEncoder capability query verifies
+Opus 48 kHz stereo / 64 kbit/s / 20 ms / complexity 5 and AudioData availability.
+It constructs no codec, AudioContext or device. One document-wide query, one
+replaceable pending attachment and a 2 s deadline prevent query/consumer buildup.
+Detach clears the consumer; late results cannot open its sockets. Unsupported,
+rejected or timed-out support yields MICROPHONE_UNSUPPORTED without PCM fallback.
+The result is cached for this document; a timed-out provider requires reload.
+Only a successful query proceeds to the existing output-gesture/socket flow.
+Actual Opus encoders remain lazy until explicit microphone permission and ready
+source/grant input. Ready must match the requested microphone codec exactly.
+
+Twelve actual Edge/reference-viewer/WS cases cover both codecs across capture
+stop/restart/detach, source loss, denial and unresolved permission, plus unsupported
+provider, late query after detach, timeout and ten replacements during one pending
+query. All permission/streams are synthetic and RDP admission is fake. Actual
+codec/context/track retirement passes; no physical or remote recording acceptance
+is implied. [Evidence](ITERATION_144.md), [client](MICROPHONE_MEDIA_CLIENT.md).

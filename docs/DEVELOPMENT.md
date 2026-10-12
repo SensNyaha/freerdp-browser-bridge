@@ -333,3 +333,38 @@ Automated `--microphone-test` verifies H.264/source replay and cleanup with the
 existing motion/reset-only guard. It never clicks microphone enable and replaces
 getUserMedia with a rejecting sentinel, preventing physical capture even on an
 unexpected startup. [Evidence and remaining acceptance](ITERATION_128.md).
+
+## Explicit Opus microphone input
+
+Iteration 144 supersedes the unsupported-input statement above. With Node 24 and
+the bundled guarded Windows worker, use:
+
+```powershell
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --microphone-opus-input-manual
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --microphone-opus-input-test
+```
+
+The first selects Opus input / output off and opens the manual viewer. A bounded
+provider support check runs before sockets; physical capture still requires the
+separate microphone button and an actual ready remote source. The second is an
+automated source/video regression with a rejecting getUserMedia sentinel, no
+microphone button click and only the existing motion/reset. Waiting is not remote
+recording acceptance. Run lab modes sequentially.
+
+Existing `--microphone-opus-manual` keeps its original **PCM input / Opus output**
+meaning. It does not select Opus input. Typed `bridgeViewer.attach` and SessionCreate
+can select input/output independently; there is no codec fallback.
+
+The private inventory helper accepts an optional third argument selecting input:
+
+```powershell
+node scripts/test-xrdp-microphone.mjs $fingerprint off opus
+node scripts/test-xrdp-microphone.mjs $fingerprint pcm opus
+node scripts/test-xrdp-microphone.mjs $fingerprint opus opus
+```
+
+Omitting it retains PCM input and the existing report paths. Opus-input reports
+use `.local-tests/xrdp-microphone-opus-<output>-report.json`; all reports remain
+bounded scalar metadata. The helper checks selected native capabilities and sends
+no microphone samples, reset or remote application input. Credentials stay in
+ignored local files and reach the worker only through private IPC.

@@ -7,32 +7,20 @@ import { chromium } from 'playwright-core';
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { waitForViewerClose } from './viewer-window.mjs';
+import { viewerMediaOptions } from './viewer-media-options.mjs';
 
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
 const mode = process.argv[3] ?? 'jpeg';
-const microphoneManual = [
-  '--microphone-manual',
-  '--microphone-pcm-manual',
-  '--microphone-opus-manual',
-].includes(process.argv[4]);
-const microphoneTest = process.argv[4] === '--microphone-test';
-const microphone = microphoneManual || microphoneTest ? 'pcm' : 'off';
-const audioManual =
-  ['--audio-manual', '--audio-opus-manual'].includes(process.argv[4]) ||
-  ['--microphone-pcm-manual', '--microphone-opus-manual'].includes(
-    process.argv[4],
-  );
-const audioTest = ['--audio-test', '--audio-opus-test'].includes(
-  process.argv[4],
-);
-const audioOutput = process.argv[4]?.includes('-opus-')
-  ? 'opus'
-  : audioManual || audioTest
-    ? 'pcm'
-    : 'off';
-const manual =
-  process.argv[4] === '--manual' || audioManual || microphoneManual;
+const {
+  microphoneManual,
+  microphoneTest,
+  microphone,
+  audioManual,
+  audioTest,
+  audioOutput,
+  manual,
+} = viewerMediaOptions(process.argv[4]);
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
 const touchInventory = process.argv[4] === '--touch-inventory';
@@ -580,6 +568,7 @@ try {
         ...(microphoneTest
           ? {
               microphoneEvidence,
+              microphoneCodec: microphone,
               microphoneReplayed: true,
               capturePermissionRequested: false,
               physicalCapture: false,

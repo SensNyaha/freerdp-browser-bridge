@@ -52,3 +52,8 @@ Worklet and actual WebSocket with a fake RDP backend for PCM and Opus. This
 supersedes the isolated-encoder statement above; the reference viewer still
 selects PCM input only. Physical capture, actual ready AUDIN/recording and broader
 acceptance remain open. [Client contract](MICROPHONE_MEDIA_CLIENT.md).
+
+Iteration 144 enables explicit reference-viewer Opus input after bounded provider
+support preflight and matching media negotiation. The viewer selection limitation
+above is superseded; permission remains gesture-only and actual ready AUDIN /
+physical or remote recording acceptance stays open. [Viewer](MICROPHONE_VIEWER.md).

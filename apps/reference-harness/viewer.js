@@ -5,6 +5,7 @@ import { displayState, resizeResult, displayInputReady } from './display.js';
 import { touchState, touchInputReady } from './touch.js';
 import { MicrophoneMediaClient } from './microphone-media.js';
 import { MicrophoneOwner } from './microphone-owner.js';
+import { queryMicrophoneOpusSupport } from './microphone-opus-encoder.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -19,6 +20,9 @@ const microphoneStop = document.querySelector('#microphone-stop');
 const microphoneStatus = document.querySelector('#microphone-status');
 let microphoneRetirement;
 let microphoneFailed = false;
+let microphoneCodecRequest;
+let microphoneCodecSupport;
+let microphoneCodecTimer;
 let audioRequest;
 let current;
 const textInput = installText(
@@ -60,6 +64,7 @@ function closeDecoder(session) {
   if (decoder && decoder.state !== 'closed') decoder.close();
 }
 function detach() {
+  microphoneCodecRequest = undefined;
   const pending = audioRequest;
   audioRequest = undefined;
   audioButton.hidden = true;
@@ -337,9 +342,54 @@ function attach(created, options = {}) {
   validateAttachment(created);
   if (![undefined, 'off', 'pcm', 'opus'].includes(options.audioOutput))
     throw new Error('Unsupported audio output');
-  if (![undefined, 'off', 'pcm'].includes(options.microphone))
+  if (![undefined, 'off', 'pcm', 'opus'].includes(options.microphone))
     throw new Error('Unsupported microphone input');
   resetStats();
+  if (options.microphone === 'opus') {
+    microphoneCodecRequest = { created, options: { ...options } };
+    stats.stage = 'microphone-codec';
+    status.textContent = 'Проверка поддержки Opus для микрофона';
+    if (microphoneCodecSupport === 'pending') return;
+    if (typeof microphoneCodecSupport === 'boolean') {
+      finishMicrophoneCodecAttachment();
+      return;
+    }
+    microphoneCodecSupport = 'pending';
+    // One document-wide query and one replaceable attachment, including reentry/detach.
+    microphoneCodecTimer = setTimeout(() => settleMicrophoneCodec(false), 2000);
+    void queryMicrophoneOpusSupport().then(settleMicrophoneCodec);
+    return;
+  }
+  beginAttachment(created, options);
+}
+function settleMicrophoneCodec(supported) {
+  if (microphoneCodecSupport !== 'pending') return;
+  clearTimeout(microphoneCodecTimer);
+  microphoneCodecTimer = undefined;
+  microphoneCodecSupport = supported === true;
+  finishMicrophoneCodecAttachment();
+}
+function finishMicrophoneCodecAttachment() {
+  const request = microphoneCodecRequest;
+  microphoneCodecRequest = undefined;
+  if (!request) return;
+  if (!microphoneCodecSupport) {
+    stats.closed = true;
+    stats.stage = 'error';
+    stats.error = 'MICROPHONE_UNSUPPORTED';
+    status.textContent = 'Браузер не поддерживает выбранный Opus микрофон';
+    return;
+  }
+  try {
+    beginAttachment(request.created, request.options);
+  } catch {
+    detach();
+    stats.stage = 'error';
+    stats.error = 'ATTACH_FAILED';
+    status.textContent = 'Не удалось подключить просмотрщик';
+  }
+}
+function beginAttachment(created, options) {
   if (options.audioOutput === 'pcm' || options.audioOutput === 'opus') {
     audioRequest = { created, options: { ...options }, preparing: false };
     audioButton.hidden = false;
@@ -633,8 +683,8 @@ function attachSession(created, options, playback) {
           ...(playback
             ? { audio: { codec: options.audioOutput, sourceStatus: true } }
             : {}),
-          ...(options.microphone === 'pcm'
-            ? { microphone: { codec: 'pcm', sourceStatus: true } }
+          ...(['pcm', 'opus'].includes(options.microphone)
+            ? { microphone: { codec: options.microphone, sourceStatus: true } }
             : {}),
         },
       }),
@@ -844,7 +894,9 @@ function attachSession(created, options, playback) {
     )
       throw new Error('Audio negotiation mismatch');
     session.audioNegotiated = Boolean(audio);
-    if (options.microphone === 'pcm') {
+    if (['pcm', 'opus'].includes(options.microphone)) {
+      if (message.data.microphone?.codec !== options.microphone)
+        throw new Error('Microphone negotiation mismatch');
       session.microphone = new MicrophoneMediaClient(
         {
           write(record) {

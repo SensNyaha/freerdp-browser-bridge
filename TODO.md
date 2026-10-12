@@ -37,13 +37,20 @@ An isolated browser PCM sender now enforces local permission tokens, one issued
 ACK correlation and one expiring latest unsent block. Capture/device ownership
 and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
 
+Current explicit PCM/Opus microphone viewer, permission/Worklet/client and typed
+native selection are implemented and verified with synthetic browser/socket
+fixtures. Iteration 144 supersedes historical unactivated/PCM-only descriptions
+below; actual authorized XRDP selection still reports waiting epoch 0 with no
+capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
+[Current viewer](docs/ITERATION_144.md).
+
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
 - **DONE:** initial TypeBox configuration contract and recursive redaction; real worker-backed
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 478/478 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 490/490 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -721,6 +728,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   public session/browser, ready AUDIN/device/LAN/resource/platform/soak gates
   remain open. [Evidence](docs/ITERATION_137.md).
 - [ ] Audio reconnect/discontinuity reset.
+- [~] IN PROGRESS — Reference viewer now explicitly selects Opus input after
+  a fixed-profile capability query, one replaceable pending attachment and 2 s
+  preflight deadline. Both codec paths retain gesture-only permission and shared
+  cleanup; unsupported/late/timeout/replaced provider cases never open stale
+  sockets or downgrade. Portable and synthetic actual Edge/viewer/WS checks pass;
+  actual ready AUDIN/device/recording/LAN/platform/resource/failure injection and
+  soak remain open. [Evidence](docs/ITERATION_144.md). Client: `6ecfe61`.
 - [~] IN PROGRESS — Negotiated browser microphone client now selects exact
   PCM/Opus profiles and composes the Opus sender behind shared permission,
   command/ACK/stop ownership. Five pure cases and actual Edge/Worklet/WS fixtures

@@ -18,6 +18,7 @@ class MicrophoneViewerWorker extends FakeSessionWorker {
     timestampUs: 0n,
   };
   samples = 0;
+  opusPackets = 0;
   resets = 0;
   signal = false;
   onMicrophone(listener) {
@@ -45,6 +46,15 @@ class MicrophoneViewerWorker extends FakeSessionWorker {
     if (packet.pcm.readInt16LE(0) === -16384) this.signal = true;
     return 'accepted';
   }
+  async sendMicrophoneOpus(packet) {
+    ++this.samples;
+    ++this.opusPackets;
+    assert.equal(packet.epoch, this.source.epoch);
+    assert.ok(packet.encoded.length >= 2 && packet.encoded.length <= 1275);
+    assert.equal(packet.encoded[0] & 7, 4);
+    assert.ok(packet.lookaheadFrames >= 0 && packet.lookaheadFrames <= 960);
+    return 'accepted';
+  }
   async resetMicrophone(epoch) {
     assert.equal(epoch, this.source.epoch);
     ++this.resets;
@@ -67,14 +77,22 @@ class MicrophoneViewerWorker extends FakeSessionWorker {
   }
 }
 
-for (const mode of [
+const captureModes = [
   'stop-restart-detach',
   'source-loss',
   'denied',
   'pending-detach',
+];
+for (const [codec, mode] of [
+  ...['pcm', 'opus'].flatMap((codec) =>
+    captureModes.map((mode) => [codec, mode]),
+  ),
+  ...['unsupported', 'probe-detach', 'probe-timeout', 'probe-replace'].map(
+    (mode) => ['opus', mode],
+  ),
 ])
   test(
-    `Edge reference microphone viewer: waiting readiness, gesture and ${mode} preserve bounded ownership`,
+    `Edge reference ${codec} microphone viewer: waiting readiness, gesture and ${mode} preserve bounded ownership`,
     { skip: process.platform !== 'win32', timeout: 45000 },
     async () => {
       const worker = new MicrophoneViewerWorker();
@@ -107,7 +125,10 @@ for (const mode of [
               .send(bytes),
         );
       }
-      let browser, page, sessionId;
+      let browser,
+        page,
+        sessionId,
+        socketCount = 0;
       try {
         for (let attempt = 0; ; attempt++) {
           try {
@@ -123,6 +144,7 @@ for (const mode of [
           timeout: 5000,
         });
         page = await browser.newPage();
+        page.on('websocket', () => ++socketCount);
         page.setDefaultTimeout(5000);
         await page.addInitScript(
           ({ mode }) => {
@@ -130,6 +152,28 @@ for (const mode of [
             window.ownedContexts = [];
             window.ownedStreams = [];
             window.permissionRequests = 0;
+            window.ownedEncoders = [];
+            window.codecQueries = 0;
+            const NativeEncoder = window.AudioEncoder;
+            window.AudioEncoder = class extends NativeEncoder {
+              constructor(callbacks) {
+                super(callbacks);
+                window.ownedEncoders.push(this);
+              }
+              static async isConfigSupported(config) {
+                ++window.codecQueries;
+                if (mode === 'unsupported') return { supported: false };
+                if (
+                  ['probe-detach', 'probe-timeout', 'probe-replace'].includes(
+                    mode,
+                  )
+                )
+                  return new Promise((done) => {
+                    window.releaseCodecQuery = done;
+                  });
+                return NativeEncoder.isConfigSupported(config);
+              }
+            };
             window.AudioContext = class extends Original {
               constructor(options) {
                 super(options);
@@ -179,20 +223,120 @@ for (const mode of [
           payload: {
             target: { host: 'fake.test' },
             auth: {},
-            media: { microphone: 'pcm' },
+            media: { microphone: codec },
           },
         });
         assert.equal(response.statusCode, 202);
         const created = response.json();
         sessionId = created.sessionId;
         await page.evaluate(
-          (created) =>
+          ({ created, codec }) =>
             window.bridgeViewer.attach(created, {
               codecs: ['jpeg'],
-              microphone: 'pcm',
+              microphone: codec,
             }),
-          created,
+          { created, codec },
         );
+        if (
+          [
+            'unsupported',
+            'probe-detach',
+            'probe-timeout',
+            'probe-replace',
+          ].includes(mode)
+        ) {
+          if (mode === 'probe-replace') {
+            await page.waitForFunction(() => Boolean(window.releaseCodecQuery));
+            await page.evaluate((created) => {
+              for (let count = 0; count < 10; ++count)
+                window.bridgeViewer.attach(created, {
+                  codecs: ['jpeg'],
+                  microphone: 'opus',
+                });
+            }, created);
+            assert.equal(socketCount, 0);
+            await page.evaluate(() =>
+              window.releaseCodecQuery({ supported: true }),
+            );
+            await page.waitForFunction(
+              () => window.bridgeViewer.stats.frames === 1,
+            );
+            assert.equal(socketCount, 2);
+            assert.equal(await page.evaluate(() => window.codecQueries), 1);
+            assert.equal(
+              await page.evaluate(() => window.permissionRequests),
+              0,
+            );
+            assert.equal(
+              await page.evaluate(() => window.ownedEncoders.length),
+              0,
+            );
+            assert.equal(worker.samples, 0);
+            return;
+          }
+          if (mode === 'probe-detach') {
+            await page.waitForFunction(() => Boolean(window.releaseCodecQuery));
+            await page.evaluate(() => {
+              window.bridgeViewer.detach();
+              window.releaseCodecQuery({ supported: true });
+            });
+            await page.evaluate(
+              () => new Promise((done) => setTimeout(done, 80)),
+            );
+            assert.equal(
+              (await page.evaluate(() => window.bridgeViewer.stats)).closed,
+              true,
+            );
+          } else {
+            await page.waitForFunction(
+              () =>
+                window.bridgeViewer.stats.error === 'MICROPHONE_UNSUPPORTED',
+            );
+          }
+          assert.equal(socketCount, 0);
+          assert.deepEqual(
+            await page.evaluate(() => ({
+              requests: window.permissionRequests,
+              contexts: window.ownedContexts.length,
+              codecs: window.ownedEncoders.length,
+              queries: window.codecQueries,
+            })),
+            { requests: 0, contexts: 0, codecs: 0, queries: 1 },
+          );
+          if (mode === 'probe-detach' || mode === 'probe-timeout') {
+            if (mode === 'probe-timeout')
+              await page.evaluate(() =>
+                window.releaseCodecQuery({ supported: true }),
+              );
+            await page.evaluate(
+              (created) =>
+                window.bridgeViewer.attach(created, {
+                  codecs: ['jpeg'],
+                  microphone: 'opus',
+                }),
+              created,
+            );
+            if (mode === 'probe-detach') {
+              await page.waitForFunction(
+                () => window.bridgeViewer.stats.frames === 1,
+              );
+              assert.equal(socketCount, 2);
+            } else {
+              await page.evaluate(
+                () => new Promise((done) => setTimeout(done, 80)),
+              );
+              assert.equal(socketCount, 0);
+              assert.equal(
+                (await page.evaluate(() => window.bridgeViewer.stats)).error,
+                'MICROPHONE_UNSUPPORTED',
+              );
+            }
+            assert.equal(await page.evaluate(() => window.codecQueries), 1);
+          }
+          assert.equal(worker.samples, 0);
+          assert.equal(worker.resets, 0);
+          return;
+        }
         await page.waitForFunction(
           () =>
             window.bridgeViewer.stats.frames > 0 &&
@@ -248,12 +392,12 @@ for (const mode of [
             attach[channel] = replacement.json();
           }
           await page.evaluate(
-            (created) =>
+            ({ created, codec }) =>
               window.bridgeViewer.attach(created, {
                 codecs: ['jpeg'],
-                microphone: 'pcm',
+                microphone: codec,
               }),
-            { sessionId, attach },
+            { created: { sessionId, attach }, codec },
           );
           await page.waitForFunction(
             () =>
@@ -277,7 +421,11 @@ for (const mode of [
           assert.equal(worker.samples, 0);
           assert.equal(worker.resets, 0);
         } else {
-          await eventually(() => worker.samples >= 3 && worker.signal);
+          await eventually(
+            () =>
+              worker.samples >= 3 &&
+              (codec === 'pcm' ? worker.signal : worker.opusPackets >= 3),
+          );
           await page.waitForFunction(
             () => window.bridgeViewer.stats.microphone?.owner.active,
           );
@@ -325,6 +473,17 @@ for (const mode of [
         await page.waitForFunction(() =>
           window.ownedContexts.every((context) => context.state === 'closed'),
         );
+        assert.equal(
+          await page.evaluate(() =>
+            window.ownedEncoders.every((encoder) => encoder.state === 'closed'),
+          ),
+          true,
+        );
+        assert.equal(
+          await page.evaluate(() => window.codecQueries),
+          codec === 'opus' ? 1 : 0,
+        );
+        assert.equal(worker.opusPackets, codec === 'opus' ? worker.samples : 0);
       } finally {
         await page
           ?.evaluate(() => {

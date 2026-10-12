@@ -53,3 +53,12 @@ Browser/provider fallback, native/public Opus dispatch, capture integration,
 resampling, codec CPU limits, platforms/LAN/soak and actual AUDIN remain open.
 
 [Native decoder](AUDIO_OPUS_INPUT_DECODER.md), [PCM startup owner](MICROPHONE_OWNER.md).
+
+Iteration 144 adds a fixed-profile support query that never constructs encoder,
+AudioData, graph or device resources and refuses absent/unsupported/malformed or
+throwing APIs. Each query receives a fresh configuration copy. The viewer owns
+one cached document-wide query, one replaceable consumer and a 2 s deadline.
+Selected sender/client/permission/Worklet/socket composition is now verified with
+synthetic data and fake RDP admission; this supersedes the isolation-only status
+above. Actual ready AUDIN/device/recording/LAN/platform acceptance remains open.
+[Current viewer](MICROPHONE_VIEWER.md).

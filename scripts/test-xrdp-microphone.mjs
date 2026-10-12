@@ -3,14 +3,18 @@ import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 
-// Authorized lab inventory only: no microphone capture, PCM submission or remote input.
-const [fingerprint, audioOutput = 'off', ...extra] = process.argv.slice(2);
+// Authorized lab inventory only: no microphone capture, sample submission or remote input.
+const [fingerprint, audioOutput = 'off', microphone = 'pcm', ...extra] =
+  process.argv.slice(2);
 if (
   extra.length ||
   !['off', 'pcm', 'opus'].includes(audioOutput) ||
+  !['pcm', 'opus'].includes(microphone) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
 )
-  throw new Error('Use sha256:<verified-lab-fingerprint> [off|pcm|opus]');
+  throw new Error(
+    'Use sha256:<verified-lab-fingerprint> [output:off|pcm|opus] [input:pcm|opus]',
+  );
 async function localJson(path) {
   try {
     return JSON.parse(
@@ -22,7 +26,8 @@ async function localJson(path) {
 }
 const lab = await localJson('.local-tests/xrdp-lab.json');
 const credentials = await localJson('.local-tests/xrdp-lab.secrets.json');
-const runtimeRoot = resolve('.runtime/lab-microphone-' + audioOutput);
+const reportTag = microphone === 'pcm' ? audioOutput : 'opus-' + audioOutput;
+const runtimeRoot = resolve('.runtime/lab-microphone-' + reportTag);
 const worker = new WorkerProcess({
   workerPath: resolve(
     'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
@@ -31,13 +36,14 @@ const worker = new WorkerProcess({
 });
 const report = {
   actualRdp: true,
-  microphone: 'pcm',
+  microphone,
   audioOutput,
   microphoneStates: [],
   outputStates: [],
   capturePermissionRequested: false,
   physicalCapture: false,
   pcmSamplesSent: 0,
+  opusPacketsSent: 0,
   remoteInputSent: false,
   remoteAudioGenerated: false,
   audibleAcceptance: false,
@@ -85,15 +91,23 @@ const activation = new Promise((done, reject) => {
 void activation.catch(() => {});
 try {
   const build = await worker.start();
-  if (!build.capabilities.pcmInput || !build.capabilities.microphoneReset)
+  if (
+    !build.capabilities.pcmInput ||
+    !build.capabilities.microphoneReset ||
+    (microphone === 'opus' && !build.capabilities.opusInput)
+  )
     throw new Error('LAB_MICROPHONE_UNSUPPORTED');
-  report.capabilities = { pcmInput: true, microphoneReset: true };
+  report.capabilities = {
+    pcmInput: true,
+    microphoneReset: true,
+    opusInput: build.capabilities.opusInput,
+  };
   await worker.connect({
     target: { host: lab.host, port: lab.port },
     auth: { username: credentials.username, password: credentials.password },
     security: { certificatePolicy: 'prompt' },
     display: { width: 1920, height: 1080 },
-    media: { microphone: 'pcm', audioOutput },
+    media: { microphone, audioOutput },
     timeouts: { connectMs: 20000, tcpAckMs: 10000 },
   });
   delete credentials.password;
@@ -117,7 +131,7 @@ try {
   if (!report.closed || !report.runtimeEmpty)
     throw new Error('LAB_CLEANUP_FAILED');
   await writeFile(
-    resolve('.local-tests/xrdp-microphone-' + audioOutput + '-report.json'),
+    resolve('.local-tests/xrdp-microphone-' + reportTag + '-report.json'),
     JSON.stringify(report, null, 2) + '\n',
   );
   console.log(JSON.stringify(report));

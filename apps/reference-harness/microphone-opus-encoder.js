@@ -13,6 +13,24 @@ const browserApi = {
   data: (options) => new AudioData(options),
 };
 
+/** Fixed-profile capability query only; never constructs a codec or acquires a device. */
+export async function queryMicrophoneOpusSupport(api = globalThis) {
+  try {
+    if (
+      typeof api?.AudioEncoder?.isConfigSupported !== 'function' ||
+      typeof api?.AudioData !== 'function'
+    )
+      return false;
+    const result = await api.AudioEncoder.isConfigSupported({
+      ...CONFIG,
+      opus: { ...CONFIG.opus },
+    });
+    return result?.supported === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Isolated codec owner. No device/permission/socket; caller owns epoch and network credit. */
 export class MicrophoneOpusEncoder {
   #epoch;
