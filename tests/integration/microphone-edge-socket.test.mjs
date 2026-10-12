@@ -77,6 +77,7 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
         'microphone-permission.js',
         'microphone-sender.js',
         'microphone-wire.js',
+        'microphone-opus-wire.js',
         'microphone-worklet.js',
         'microphone-capture.js',
       ];

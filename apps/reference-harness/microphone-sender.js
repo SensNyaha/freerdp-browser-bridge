@@ -1,4 +1,5 @@
 import { encodeMicrophoneRecord } from './microphone-wire.js';
+import { parseMicrophoneOpusRecord } from './microphone-opus-wire.js';
 const MAX = 0xffffffffffffffffn;
 const MAX_TIMESTAMP = MAX - 20000n;
 const availability = [
@@ -84,11 +85,18 @@ export class MicrophoneSender {
   #permissionBlocked;
   #busy;
   #counts;
+  #prepare;
+  #cancelPreparation;
   constructor(backend, timeoutMs = 2000, sequence = 0) {
     if (
       !backend ||
       typeof backend.send !== 'function' ||
       typeof backend.revoke !== 'function' ||
+      (backend.prepare !== undefined &&
+        (typeof backend.prepare !== 'function' ||
+          typeof backend.cancelPreparation !== 'function')) ||
+      (backend.prepare === undefined &&
+        backend.cancelPreparation !== undefined) ||
       !Number.isInteger(timeoutMs) ||
       timeoutMs < 20 ||
       timeoutMs > 2000 ||
@@ -98,6 +106,8 @@ export class MicrophoneSender {
     )
       throw invalid();
     this.#backend = backend;
+    this.#prepare = backend.prepare?.bind(backend);
+    this.#cancelPreparation = backend.cancelPreparation?.bind(backend);
     this.#timeoutMs = timeoutMs;
     this.#sequence = sequence;
     this.#samples = new Uint8Array(3840);
@@ -131,6 +141,7 @@ export class MicrophoneSender {
       closed: this.#closed,
       inFlight: Boolean(this.#flight),
       pendingBytes: this.#pending ? 3840 : 0,
+      ...(this.#prepare ? { preparing: Boolean(this.#flight?.preparing) } : {}),
     };
   }
   count(name) {
@@ -150,6 +161,8 @@ export class MicrophoneSender {
       return false;
     }
     this.#observed = now;
+    if (this.#flight?.preparing && now >= this.#flight.expires)
+      this.cancelPreparation();
     if (this.#flight && now >= this.#flight.deadline) {
       this.fault();
       return false;
@@ -161,6 +174,26 @@ export class MicrophoneSender {
     this.#pending = undefined;
     this.#samples.fill(0);
     this.#forceDiscontinuity = true;
+  }
+  cancelPreparation() {
+    if (!this.#flight?.preparing) return;
+    this.#flight = undefined;
+    this.#forceDiscontinuity = true;
+    this.count('dropped');
+    this.notifyCancel();
+  }
+  notifyCancel() {
+    try {
+      const result = this.#cancelPreparation?.();
+      if (result !== undefined && result !== true) {
+        if (result && typeof result.then === 'function')
+          void Promise.resolve(result).catch(() => {});
+        throw invalid();
+      }
+    } catch {
+      if (this.#closed) this.count('faults');
+      else this.fault();
+    }
   }
   notifyRevoke() {
     try {
@@ -178,6 +211,7 @@ export class MicrophoneSender {
     if (this.#closed) return;
     this.#closed = true;
     this.#permission = undefined;
+    this.cancelPreparation();
     this.#flight = undefined;
     this.clear();
     this.#source = undefined;
@@ -223,6 +257,8 @@ export class MicrophoneSender {
       if (!previous || (next && next.revision > previous.revision) || changed)
         this.#waitingForState = false;
       this.#source = state;
+      if (changed || !state.granted || next?.availability !== 'ready')
+        this.cancelPreparation();
       if (revoked) this.notifyRevoke(); // Publish all local authority before external cleanup can reenter.
       return this.pump(this.#observed);
     } catch {
@@ -251,6 +287,7 @@ export class MicrophoneSender {
     this.#permission = undefined;
     this.#permissionBlocked = true;
     this.clear();
+    this.cancelPreparation();
     this.notifyRevoke();
     return true;
   }
@@ -332,13 +369,47 @@ export class MicrophoneSender {
       epoch: pending.epoch,
       token: pending.token,
       deadline: now + this.#timeoutMs,
+      expires: pending.expires,
+      timestampUs: pending.timestampUs,
+      preparing: Boolean(this.#prepare),
     };
     const discontinuity =
       this.#forceDiscontinuity ||
       this.#sentEpoch !== pending.epoch ||
       this.#nextTimestamp !== pending.timestampUs;
+    flight.discontinuity = discontinuity;
     let record;
+    let samples;
     try {
+      if (this.#prepare) {
+        samples = new Uint8Array(this.#samples);
+        this.#flight = flight;
+        this.#pending = undefined;
+        this.#samples.fill(0);
+        this.#sequence = flight.sequence;
+        const admitted = this.#prepare(
+          Object.freeze({
+            epoch: pending.epoch,
+            timestampUs: pending.timestampUs,
+            discontinuity,
+            pcm: samples,
+          }),
+          flight.sequence,
+          (encoded, completedAt) => this.prepared(flight, encoded, completedAt),
+        );
+        if (admitted !== true) throw invalid();
+        if (
+          this.#closed ||
+          this.#flight !== flight ||
+          this.#permission !== pending.token ||
+          this.#source?.source?.epoch !== pending.epoch
+        )
+          return false;
+        this.#sentEpoch = pending.epoch;
+        this.#nextTimestamp = pending.timestampUs + 20000n;
+        this.#forceDiscontinuity = false;
+        return true;
+      }
       record = encodeMicrophoneRecord(
         { ...pending, pcm: this.#samples, discontinuity },
         flight.sequence,
@@ -373,7 +444,55 @@ export class MicrophoneSender {
       this.fault();
       return false;
     } finally {
+      samples?.fill(0);
       this.#busy = false;
+    }
+  }
+  /** Completion of an unissued codec job. Only the later socket ACK releases issued input. */
+  prepared(flight, record, now) {
+    if (this.#closed || this.#flight !== flight) return false;
+    if (this.#busy || !flight.preparing) {
+      this.fault();
+      return false;
+    }
+    if (!this.clock(now) || this.#flight !== flight) return false;
+    try {
+      const packet = parseMicrophoneOpusRecord(record);
+      if (
+        packet.sequence !== flight.sequence ||
+        packet.epoch !== flight.epoch ||
+        packet.timestampUs !== flight.timestampUs ||
+        packet.discontinuity !== flight.discontinuity
+      )
+        throw invalid();
+      if (
+        !this.#permission ||
+        this.#permission !== flight.token ||
+        !this.ready() ||
+        this.#source.source.epoch !== flight.epoch
+      ) {
+        this.cancelPreparation();
+        return false;
+      }
+      this.#busy = true;
+      flight.preparing = false; // Treat entry to send as potentially issued until explicit no-write.
+      const sent = this.#backend.send(record);
+      if (typeof sent !== 'boolean') throw invalid();
+      if (!sent) {
+        if (this.#flight === flight) this.#flight = undefined;
+        this.#forceDiscontinuity = true;
+        this.count('dropped');
+        this.notifyCancel(); // Prediction advanced, so this packet cannot be retried.
+        return false;
+      }
+      this.count('sent');
+      return !this.#closed;
+    } catch {
+      this.fault();
+      return false;
+    } finally {
+      this.#busy = false;
+      this.pump(now);
     }
   }
   acknowledge(value, now) {
@@ -393,6 +512,7 @@ export class MicrophoneSender {
         flight = this.#flight;
       if (
         !flight ||
+        flight.preparing ||
         value.sequence !== flight.sequence ||
         epoch !== flight.epoch
       )

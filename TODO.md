@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 455/455 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 462/462 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -721,6 +721,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   public session/browser, ready AUDIN/device/LAN/resource/platform/soak gates
   remain open. [Evidence](docs/ITERATION_137.md).
 - [ ] Audio reconnect/discontinuity reset.
+- [~] IN PROGRESS — Browser microphone sender now separates optional unissued
+  codec preparation from issued transport ACK ownership, with one latest PCM
+  block and 120 ms freshness across preparation. Correlation, cancellation,
+  no-write discontinuity and uncertain-failure bounds pass pure tests; real
+  synthetic Edge/Worklet/WS PCM regression passes. Opus provider/permission /
+  graph/client/viewer composition and actual device/LAN/platform/soak remain
+  open. [Evidence](docs/ITERATION_141.md). Public transport: `e39b1eb`.
 - [~] IN PROGRESS — Explicit public Opus microphone now selects a typed
   session/native backend and matching media hello/ready/type-10 receiver.
   Control/media ownership, reset/deadline/backlog bounds and separate ACK/video

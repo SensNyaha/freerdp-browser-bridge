@@ -1,5 +1,12 @@
 # Browser PCM microphone sender
 
+Current update — iteration 141: an optional paired preparation/cancellation
+contract reserves one unissued Opus job before the existing issued ACK phase.
+It extends 120 ms freshness through preparation, validates bounded completion
+correlation and cancels only unissued work without synthetic ACKs. Default PCM
+behavior remains; reference Opus encoder/permission/graph selection is not yet
+composed. [Preparation contract](MICROPHONE_PREPARATION.md).
+
 Iteration 120 implements an isolated sender for SPECIFICATION §2.6 and
 MEDIA_PIPELINE §7. It does not acquire a device, own a WebSocket, create timers
 or activate the reference viewer. Its host must explicitly acquire permission,
