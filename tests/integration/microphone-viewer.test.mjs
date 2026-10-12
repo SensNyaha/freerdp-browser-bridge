@@ -94,7 +94,7 @@ for (const [codec, mode] of [
   test(
     `Edge reference ${codec} microphone viewer: waiting readiness, gesture and ${mode} preserve bounded ownership`,
     { skip: process.platform !== 'win32', timeout: 45000 },
-    async () => {
+    async (t) => {
       const worker = new MicrophoneViewerWorker();
       const ports = Array.from({ length: 16 }, () => randomInt(50000, 60000));
       const server = await createSessionServer({
@@ -484,6 +484,40 @@ for (const [codec, mode] of [
           codec === 'opus' ? 1 : 0,
         );
         assert.equal(worker.opusPackets, codec === 'opus' ? worker.samples : 0);
+      } catch (error) {
+        const reading = page
+          ?.evaluate(() => ({
+            closed: window.bridgeViewer?.stats.closed,
+            error: window.bridgeViewer?.stats.error,
+            ownerActive: window.bridgeViewer?.stats.microphone?.owner?.active,
+            ownerFailed: window.bridgeViewer?.stats.microphone?.owner?.failed,
+            contexts: window.ownedContexts?.map((context) => context.state),
+            encoders: window.ownedEncoders?.map((encoder) => encoder.state),
+            permissionRequests: window.permissionRequests,
+            stopHidden: document.querySelector('#microphone-stop')?.hidden,
+            stopDisabled: document.querySelector('#microphone-stop')?.disabled,
+          }))
+          .catch(() => ({ unavailable: true }));
+        let diagnosticTimer;
+        const snapshot = await Promise.race([
+          reading,
+          new Promise((done) => {
+            diagnosticTimer = setTimeout(
+              () => done({ unavailable: true }),
+              2000,
+            );
+          }),
+        ]).finally(() => clearTimeout(diagnosticTimer));
+        t.diagnostic(
+          JSON.stringify({
+            codec,
+            mode,
+            samples: worker.samples,
+            resets: worker.resets,
+            snapshot,
+          }),
+        );
+        throw error;
       } finally {
         await page
           ?.evaluate(() => {
