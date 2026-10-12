@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Allocation-free cumulative DATA_FIRST reservation foundation
+  has fixed 32 slots / 64 MiB aggregate / 16 MiB individual hard caps, original
+  deadlines and observed release. Five portable cases and two public WinPR pool
+  fixtures pass. Not active in worker: public completion/close wiring, host
+  retirement, channel and retained-pool/nested memory limits remain open.
+  [Iteration 150](docs/ITERATION_150.md).
+
 - [~] IN PROGRESS — Worker public receive admission now bounds individual outer
   SVC, DATA_FIRST and compressed-DVC claims before pinned host dispatch. Six
   actual-linked drdynvc/fake-SVC cases include compressed decoding, 12 MiB input,

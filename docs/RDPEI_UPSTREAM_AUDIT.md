@@ -66,3 +66,9 @@ decoding, legitimate 12 MiB input and two independent logical channels. They do
 not establish cumulative allocations, pool retention, abandoned logical messages,
 nested GFX/control/codec limits or actual lost-transport terminal release.
 [Current placement and retained gates](DVC_WORKER_INGRESS.md).
+
+Iteration 150 records the pinned local 16 MiB per-returned-stream pool threshold
+and public SDK retention fixtures. Releasing a logical message does not imply its
+capacity is returned to the OS. A fixed cumulative declaration budget is prepared,
+but not activated; public completion hooks and retained-memory gates remain open.
+[Reservation and pool evidence](DVC_MESSAGE_BUDGET.md).

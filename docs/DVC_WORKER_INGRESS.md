@@ -50,3 +50,7 @@ input waiting without physical capture or sample transmission. Full bundled Node
 498/498, foundation CTest 7/7 and native relocation 1/1 pass.
 [Current evidence](ITERATION_149.md). Windows-server/actual GFX and resource gates
 listed above remain open.
+
+Iteration 150 adds an unactivated [cumulative declaration foundation](DVC_MESSAGE_BUDGET.md)
+and public WinPR pool-retention evidence. Production individual admission remains
+as above; aggregate/pool memory acceptance is not closed by that helper.
