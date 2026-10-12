@@ -5,6 +5,7 @@
 #include "dvc_listener_manager.hpp"
 #include "dvc_listener_proxy.hpp"
 #include "dvc_plugin_proxy.hpp"
+#include "dvc_plugin_registry.hpp"
 #include "dvc_receive_guard.hpp"
 #include "pinned_dvc_manager.hpp"
 #include <algorithm>
@@ -48,6 +49,9 @@ struct Host {
   bool wrap_listeners = false;
   bool wrap_plugin = false;
   std::unique_ptr<DvcPluginProxy> plugin_proxy;
+  std::unique_ptr<DvcPluginRegistry> plugin_registry;
+  bool wrap_registration = false;
+  UINT plugin_registry_retirement_status = CHANNEL_RC_OK;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
   bool observe_completion = false;
@@ -109,6 +113,11 @@ struct Host {
                : nullptr;
   }
   static UINT VCAPITYPE entry(IDRDYNVC_ENTRY_POINTS *entries) {
+    if (active && active->plugin_registry)
+      return active->plugin_registry->install(*entries, raw_entry);
+    return raw_entry(entries);
+  }
+  static UINT VCAPITYPE raw_entry(IDRDYNVC_ENTRY_POINTS *entries) {
     if (!active || entries->GetRdpContext(entries) != active->context.get())
       return ERROR_INVALID_PARAMETER;
     return entries->RegisterPlugin(entries, plugin_name,
@@ -118,10 +127,11 @@ struct Host {
   explicit Host(bool completion_observation = false, bool registry_observation = false,
                 bool pinned_manager_observation = false, bool handoff_observation = false,
                 bool listener_proxy_observation = false, bool listener_manager_observation = false,
-                bool plugin_proxy_observation = false)
+                bool plugin_proxy_observation = false, bool plugin_registry_observation = false)
       : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
         use_handoff(handoff_observation), wrap_listener(listener_proxy_observation),
-        wrap_listeners(listener_manager_observation), wrap_plugin(plugin_proxy_observation) {
+        wrap_listeners(listener_manager_observation), wrap_plugin(plugin_proxy_observation),
+        wrap_registration(plugin_registry_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
@@ -194,7 +204,8 @@ struct Host {
         return ERROR_INVALID_PARAMETER;
       *accept = TRUE;
       *callback = &host.channels[id - 0x42].api;
-      if (host.registry && !host.listener_proxy && !host.listener_manager) {
+      if (host.registry && !host.listener_proxy && !host.listener_manager &&
+          !host.plugin_registry) {
         DvcChannelBinding binding{CHANNEL_RC_OK, nullptr};
         if (host.use_handoff) {
           host.handoff_result = handoff_accepted_channel(*host.registry, *host.manager, *channel,
@@ -268,6 +279,9 @@ struct Host {
             return host.listener_manager->interface();
           },
           this);
+    if (wrap_registration)
+      plugin_registry = std::make_unique<DvcPluginRegistry>(
+          *registry, [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this);
     points.cbSize = sizeof(points);
     points.protocolVersion = VIRTUAL_CHANNEL_VERSION_WIN2000;
     points.MagicNumber = FREERDP_CHANNEL_MAGIC_NUMBER;
@@ -358,6 +372,10 @@ struct Host {
       (void)listener_manager->retire();
     if (manager_facade)
       manager_facade->retire();
+    if (plugin_registry) {
+      plugin_registry_retirement_status = plugin_registry->retire();
+      (void)plugin_registry->host_unpublished();
+    }
     budget.close();
   }
   bool send(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
@@ -507,6 +525,26 @@ TEST_CASE("Actual drdynvc cumulative fixture refuses second claim before enterin
   REQUIRE(host.channels[0].closes == 1);
   REQUIRE(host.channels[1].closes == 1);
   REQUIRE(host.terminated == 1);
+}
+
+TEST_CASE("Actual drdynvc entry registry binds public plugins listeners and cumulative channel "
+          "ownership") {
+  Host host(false, true, false, false, false, false, false, true);
+  REQUIRE(host.plugin_registry);
+  REQUIRE(host.plugin_registry->stats().retained_plugins == 1);
+  REQUIRE_FALSE(host.plugin_registry->stats().failed);
+  REQUIRE(host.registry->owns_callback(host.channels[0].api));
+  const BYTE initial[]{1, 2, 3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  host.create(0x43);
+  REQUIRE(host.registry->owns_callback(host.channels[1].api));
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.channels[1].closes == 1);
+  REQUIRE(host.terminated == 1);
+  REQUIRE(host.plugin_registry_retirement_status == CHANNEL_RC_OK);
+  REQUIRE(host.plugin_registry->stats().host_unpublished);
 }
 TEST_CASE("Actual drdynvc completion proxy releases after compressed continuation and raw final "
           "outer fragment") {

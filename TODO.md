@@ -887,6 +887,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Bounded public DVC entry-point registry captures one pinned
+  plugin per entry, publishes stable proxy/name storage after entry success,
+  projects GetPlugin back to original objects and shares one bounded manager.
+  Failed publication retains an inert late-callback proxy. Seven public/generic
+  fixtures and one actual drdynvc/fake-SVC fixture pass; scoped provider/worker,
+  allocator-fault and remote aggregate/cached/nested resource gates remain open.
+  [Iteration 158](docs/ITERATION_158.md).
+
 - [~] IN PROGRESS — Public DVC plugin lifecycle proxy resolves a shared manager,
   preserves original delegate identity and cleanup notifications, and terminates
   a self-deleting/throwing plugin once without uncertain retry. Six public cases
