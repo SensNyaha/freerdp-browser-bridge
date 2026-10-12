@@ -4,6 +4,7 @@
 #include "cursor.hpp"
 #include "display.hpp"
 #include "microphone.hpp"
+#include "microphone_opus.hpp"
 #include "opus_audio.hpp"
 #include <algorithm>
 #include <limits>
@@ -89,6 +90,8 @@ static std::uint32_t limit(Kind kind) {
     return static_cast<std::uint32_t>(audio::state_bytes);
   case Kind::audio_opus:
     return static_cast<std::uint32_t>(audio::opus::max_packet_bytes);
+  case Kind::microphone_opus:
+    return static_cast<std::uint32_t>(microphone::opus::max_packet_bytes);
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);
   }
@@ -111,7 +114,8 @@ void validate_header(const Header &header) {
   const bool variable = kind == Kind::hello_ack || kind == Kind::configure ||
                         kind == Kind::secret || kind == Kind::frame || kind == Kind::frame_avc ||
                         kind == Kind::cursor_update || kind == Kind::input_text ||
-                        kind == Kind::input_touch || kind == Kind::audio_opus;
+                        kind == Kind::input_touch || kind == Kind::audio_opus ||
+                        kind == Kind::microphone_opus;
   if (length > maximum || (!variable && length != maximum) ||
       (kind == Kind::microphone_state && header.request_id) ||
       (kind == Kind::frame && length < frame_metadata_bytes) ||
@@ -120,9 +124,11 @@ void validate_header(const Header &header) {
       (kind == Kind::input_text && (length == 0 || length % 2)) ||
       (kind == Kind::input_touch && length != 16 && length != 24) ||
       (kind == Kind::audio_opus && (length < audio::opus::min_packet_bytes || header.request_id)) ||
+      (kind == Kind::microphone_opus && length < microphone::opus::min_packet_bytes) ||
       ((kind == Kind::audio_reset || kind == Kind::audio_reset_result ||
         kind == Kind::microphone_pcm || kind == Kind::microphone_result ||
-        kind == Kind::microphone_reset || kind == Kind::microphone_reset_result) &&
+        kind == Kind::microphone_reset || kind == Kind::microphone_reset_result ||
+        kind == Kind::microphone_opus) &&
        !header.request_id))
     throw ProtocolError();
 }

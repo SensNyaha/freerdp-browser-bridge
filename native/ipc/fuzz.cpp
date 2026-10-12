@@ -64,6 +64,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)audio::decode_reset_result(payload);
         else if (header.kind == Kind::microphone_pcm)
           (void)microphone::decode_pcm(payload);
+        else if (header.kind == Kind::microphone_opus)
+          (void)microphone::opus::decode_packet(payload);
         else if (header.kind == Kind::microphone_result)
           (void)microphone::decode_result(payload);
         else if (header.kind == Kind::microphone_state)

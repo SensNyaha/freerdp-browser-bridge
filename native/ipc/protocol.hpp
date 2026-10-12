@@ -52,7 +52,8 @@ enum class Kind : std::uint16_t {
   microphone_result = 40,
   microphone_state = 41,
   microphone_reset = 42,
-  microphone_reset_result = 43
+  microphone_reset_result = 43,
+  microphone_opus = 44 // Prepared input envelope; worker dispatch is unavailable.
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

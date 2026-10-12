@@ -1,5 +1,11 @@
 # Prepared microphone Opus packet codecs
 
+Current update — iteration 134: RWI1 input kind 44 and CONFIGURE schema 8 are
+assigned with preallocation limits, but workers still reply unavailable and
+refuse Opus selection. No input capability is advertised. The historical
+iteration 131 preparation below predates that assignment; payload/RWB1 bytes
+remain unchanged. [Current IPC contract](MICROPHONE_OPUS_IPC.md).
+
 Iteration 131 prepares bounded input codecs for SPECIFICATION §2.6 and
 MEDIA_PIPELINE §7. They activate no capture, lease, socket route, RWI1 kind,
 settings or capability. Current sessions still reject Opus microphone selection.

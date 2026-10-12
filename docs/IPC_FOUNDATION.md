@@ -1,5 +1,11 @@
 # RWI1 foundation wire contract
 
+Current Opus input preparation — iteration 134: RWI1 kind 44 and CONFIGURE
+schema 8 add bounded input framing and exclusive PCM/Opus flags. Current
+workers explicitly refuse dispatch/selection and advertise no Opus input;
+historical codec-only preparation has been superseded by the assigned envelope.
+[Contract](MICROPHONE_OPUS_IPC.md).
+
 Current update — iteration 108: raw CONFIGURE schema 7 adds independent input
 flag 16 on guarded Windows workers. One-slot PCM dispatch and input status are
 wired to the RDP owner; no microphone HELLO/public/WorkerProcess activation yet.

@@ -96,6 +96,8 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
     throw ProtocolError();
   config_ = decode_connection_config(payload);
   const auto &c = *config_;
+  if (c.opus_input)
+    throw ProtocolError(); // Prepared schema only; no Opus owner-thread dispatch yet.
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
   if ((c.pcm_output || c.opus_output) && (!audio_send_ || !audio_discard_))
     throw ProtocolError();

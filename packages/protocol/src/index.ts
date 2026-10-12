@@ -9,6 +9,10 @@ export * from './audio-reset.js';
 export * from './microphone.js';
 export * from './microphone-opus.js';
 import {
+  MICROPHONE_OPUS_MIN_BYTES,
+  MICROPHONE_OPUS_MAX_BYTES,
+} from './microphone-opus.js';
+import {
   MICROPHONE_PCM_BYTES,
   MICROPHONE_RESULT_BYTES,
   MICROPHONE_STATE_BYTES,
@@ -78,6 +82,7 @@ export enum Kind {
   MicrophoneState = 41,
   MicrophoneReset = 42,
   MicrophoneResetResult = 43,
+  MicrophoneOpus = 44, // Prepared envelope; no selected worker dispatch.
 }
 
 export interface Packet {
@@ -164,6 +169,8 @@ function payloadLimit(kind: number): number {
       return PCM_AUDIO_STATE_BYTES;
     case Kind.AudioOpus:
       return OPUS_AUDIO_MAX_PACKET_BYTES;
+    case Kind.MicrophoneOpus:
+      return MICROPHONE_OPUS_MAX_BYTES;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:
@@ -199,6 +206,7 @@ export function decodeHeader(header: Buffer): {
       Kind.InputText,
       Kind.InputTouch,
       Kind.AudioOpus,
+      Kind.MicrophoneOpus,
     ].includes(kind) &&
       length !== payloadLimit(kind)) ||
     (kind === Kind.Frame && length < 24) ||
@@ -211,12 +219,14 @@ export function decodeHeader(header: Buffer): {
     (kind === Kind.AudioOpus &&
       (length < OPUS_AUDIO_MIN_PACKET_BYTES ||
         header.readBigUInt64BE(12) !== 0n)) ||
+    (kind === Kind.MicrophoneOpus && length < MICROPHONE_OPUS_MIN_BYTES) ||
     ((kind === Kind.AudioReset ||
       kind === Kind.AudioResetResult ||
       kind === Kind.MicrophonePcm ||
       kind === Kind.MicrophoneResult ||
       kind === Kind.MicrophoneReset ||
-      kind === Kind.MicrophoneResetResult) &&
+      kind === Kind.MicrophoneResetResult ||
+      kind === Kind.MicrophoneOpus) &&
       header.readBigUInt64BE(12) === 0n)
   ) {
     throw new ProtocolError();
@@ -516,6 +526,7 @@ export interface ConnectionSettings {
   pcmOutput?: boolean;
   opusOutput?: boolean;
   pcmInput?: boolean;
+  opusInput?: boolean;
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -533,22 +544,26 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     (c.pcmOutput !== undefined && typeof c.pcmOutput !== 'boolean') ||
     (c.opusOutput !== undefined && typeof c.opusOutput !== 'boolean') ||
     (c.pcmInput !== undefined && typeof c.pcmInput !== 'boolean') ||
-    (c.pcmOutput === true && c.opusOutput === true)
+    (c.opusInput !== undefined && typeof c.opusInput !== 'boolean') ||
+    (c.pcmOutput === true && c.opusOutput === true) ||
+    (c.pcmInput === true && c.opusInput === true)
   )
     throw new ProtocolError();
-  const schema = c.pcmInput
-    ? 7
-    : c.opusOutput
-      ? 6
-      : c.pcmOutput
-        ? 5
-        : c.touch
-          ? 4
-          : c.dynamicResolution
-            ? 3
-            : c.videoQuality
-              ? 2
-              : 1;
+  const schema = c.opusInput
+    ? 8
+    : c.pcmInput
+      ? 7
+      : c.opusOutput
+        ? 6
+        : c.pcmOutput
+          ? 5
+          : c.touch
+            ? 4
+            : c.dynamicResolution
+              ? 3
+              : c.videoQuality
+                ? 2
+                : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -645,7 +660,8 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
           (c.touch ? 2 : 0) |
           (c.pcmOutput ? 4 : 0) |
           (c.opusOutput ? 8 : 0) |
-          (c.pcmInput ? 16 : 0),
+          (c.pcmInput ? 16 : 0) |
+          (c.opusInput ? 32 : 0),
       ]),
     );
   return Buffer.concat(parts);

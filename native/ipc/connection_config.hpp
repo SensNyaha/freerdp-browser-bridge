@@ -15,6 +15,7 @@ struct ConnectionConfig {
   bool pcm_output = false;
   bool opus_output = false;
   bool pcm_input = false;
+  bool opus_input = false;
 };
 ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes);
 void validate_secret(std::span<const std::uint8_t> bytes);

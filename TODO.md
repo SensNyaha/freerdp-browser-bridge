@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 420/420 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 424/424 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -689,6 +689,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   permission/lease/network and actual AUDIN/device/platform/resource/LAN/soak
   gates remain open. [Contract](docs/AUDIO_CAPTURE_HANDOFF.md),
   [evidence](docs/ITERATION_133.md).
+- [~] IN PROGRESS — Prepared Opus microphone RWI1 kind 44 has 26..1,299-byte
+  header limits/nonzero correlation; schema 8 adds exclusive PCM/Opus input
+  flags independent of output. Native/Node parser/config and actual process
+  refusal/heartbeat/shutdown fixtures pass. Worker dispatch is unavailable and
+  Opus selection/capability remains disabled. Decoder/AUDIN ownership, browser /
+  Node selection and actual device/platform/resource/LAN/soak gates remain open.
+  [Contract](docs/MICROPHONE_OPUS_IPC.md), [evidence](docs/ITERATION_134.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).

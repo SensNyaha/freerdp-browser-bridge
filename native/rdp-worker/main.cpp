@@ -2,6 +2,7 @@
 #include "build_features.hpp"
 #include "connection_config.hpp"
 #include "microphone.hpp"
+#include "microphone_opus.hpp"
 #include "protocol.hpp"
 #include <csignal>
 #include <cstdio>
@@ -195,7 +196,9 @@ int run() {
           if (secret)
             wipe(bytes);
         }
-      } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text};
+      } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text ||
+                           header.kind == Kind::microphone_pcm ||
+                           header.kind == Kind::microphone_opus};
       (void)read_exact(payload);
       if (header.kind == Kind::hello && !ready) {
         try {
@@ -224,6 +227,10 @@ int run() {
         const auto result = microphone::encode_result(microphone::Result::unavailable);
         send({Kind::microphone_result, header.request_id, {result.begin(), result.end()}});
 #endif
+      } else if (header.kind == Kind::microphone_opus && ready) {
+        (void)microphone::opus::decode_packet(payload);
+        const auto result = microphone::encode_result(microphone::Result::unavailable);
+        send({Kind::microphone_result, header.request_id, {result.begin(), result.end()}});
       } else if (header.kind == Kind::microphone_reset && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.enqueue_microphone_reset(header.request_id, payload);

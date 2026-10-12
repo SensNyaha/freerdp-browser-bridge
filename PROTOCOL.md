@@ -312,6 +312,12 @@ The standalone 26..1,299-byte private input payload has no assigned RWI1 kind.
 Neither route nor Opus microphone selection is activated by these codecs.
 [Wire contract](docs/MICROPHONE_OPUS_WIRE.md).
 
+Iteration 134 assigns private RWI1 input kind 44 (26..1,299 bytes, nonzero
+correlation) and CONFIGURE schema 8 / Opus input bit 32, mutually exclusive
+with PCM input bit 16. Current workers validate then reply unavailable and
+refuse Opus selection before secret/connect; no input capability is advertised.
+[Private contract](docs/MICROPHONE_OPUS_IPC.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

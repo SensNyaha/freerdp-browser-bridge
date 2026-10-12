@@ -19,6 +19,60 @@ const settings = {
   connectMs: 5000,
   tcpAckMs: 1000,
 };
+test('private microphone Opus settings: schema-8 golden flags keep input/output selection independent and exclusive', () => {
+  assert.equal(
+    encodeConnectionSettings({ ...settings, opusInput: true }).toString('hex'),
+    '000800096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e8' +
+      '1e145000003d0900003d090000000020',
+  );
+  for (const output of ['off', 'pcm', 'opus']) {
+    const bytes = encodeConnectionSettings({
+      ...settings,
+      opusInput: true,
+      touch: true,
+      dynamicResolution: true,
+      pcmOutput: output === 'pcm',
+      opusOutput: output === 'opus',
+    });
+    assert.equal(bytes.readUInt16BE(0), 8);
+    assert.equal(
+      bytes.readUInt32BE(bytes.length - 4),
+      35 | (output === 'pcm' ? 4 : output === 'opus' ? 8 : 0),
+    );
+  }
+  for (const opusInput of [0, 1, 'true', null, {}])
+    assert.throws(
+      () => encodeConnectionSettings({ ...settings, opusInput }),
+      ProtocolError,
+    );
+  assert.throws(
+    () =>
+      encodeConnectionSettings({
+        ...settings,
+        pcmInput: true,
+        opusInput: true,
+      }),
+    ProtocolError,
+  );
+  assert.throws(
+    () =>
+      encodeConnectionSettings({
+        ...settings,
+        pcmOutput: true,
+        opusOutput: true,
+        opusInput: true,
+      }),
+    ProtocolError,
+  );
+  assert.deepEqual(
+    encodeConnectionSettings({ ...settings, opusInput: false }),
+    encodeConnectionSettings(settings),
+  );
+  assert.deepEqual(
+    encodeConnectionSettings({ ...settings, opusInput: false, pcmInput: true }),
+    encodeConnectionSettings({ ...settings, pcmInput: true }),
+  );
+});
 test('private microphone settings: schema-7 golden bytes preserve independent output and old selection', () => {
   const bytes = encodeConnectionSettings({ ...settings, pcmInput: true });
   assert.equal(

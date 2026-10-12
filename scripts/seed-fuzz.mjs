@@ -180,8 +180,30 @@ await writeFile(
     payload: Buffer.from('synthetic-fuzz-only'),
   }),
 );
-// Standalone prepared microphone Opus payload; it has no RWI1 dispatch kind.
+// Standalone microphone Opus payload; also seed its prepared RWI1 envelope.
 await writeFile(
   'build/fuzz/corpus/microphone-opus-payload',
   Buffer.from('010203c000000138010203040506070800000000000f4240fcfffe', 'hex'),
+);
+await writeFile(
+  'build/fuzz/corpus/microphone-opus-envelope',
+  encodePacket({
+    kind: Kind.MicrophoneOpus,
+    requestId: 1n,
+    payload: Buffer.from(
+      '010203c000000138010203040506070800000000000f4240fcfffe',
+      'hex',
+    ),
+  }),
+);
+await writeFile(
+  'build/fuzz/corpus/configure-opus-microphone',
+  encodePacket({
+    kind: Kind.Configure,
+    requestId: 2n,
+    payload: Buffer.from(
+      '000800096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e81e145000003d0900003d090000000020',
+      'hex',
+    ),
+  }),
 );

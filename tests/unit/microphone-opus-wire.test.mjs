@@ -58,10 +58,10 @@ test('microphone Opus: independent public/private vectors preserve delay and bor
   const header = Buffer.alloc(24);
   header.write('RWI1');
   header.writeUInt16BE(1, 4);
-  header.writeUInt16BE(44, 6);
+  header.writeUInt16BE(45, 6);
   header.writeBigUInt64BE(1n, 12);
   header.writeUInt32BE(27, 20);
-  assert.throws(() => decodeHeader(header), ProtocolError); // No dispatch kind assigned.
+  assert.throws(() => decodeHeader(header), ProtocolError); // Unknown envelope kind.
 });
 
 test('microphone Opus: public framing bounds length before fields and refuses direction/profile/reserved/correlation claims', () => {

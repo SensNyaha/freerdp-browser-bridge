@@ -8,6 +8,43 @@ using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
     0x3d, 4, 0, 3, 0,   0,   32,  2,   1,   2,   0,   0,   0,   0x13, 0x88, 0,   0, 3, 0xe8};
+TEST_CASE(
+    "connection v8 Opus microphone flags preserve independent exclusive input and output codecs") {
+  auto bytes = connection;
+  bytes[1] = 8;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 32});
+  for (unsigned flags = 0; flags < 256; ++flags) {
+    bytes.back() = static_cast<std::uint8_t>(flags);
+    if (flags > 63 || (flags & 12U) == 12U || (flags & 48U) == 48U) {
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+    } else {
+      const auto config = decode_connection_config(bytes);
+      REQUIRE(config.opus_input == ((flags & 32U) != 0));
+      REQUIRE(config.pcm_input == ((flags & 16U) != 0));
+      REQUIRE(config.opus_output == ((flags & 8U) != 0));
+      REQUIRE(config.pcm_output == ((flags & 4U) != 0));
+      REQUIRE(config.touch == ((flags & 2U) != 0));
+      REQUIRE(config.dynamic_resolution == ((flags & 1U) != 0));
+    }
+  }
+  bytes.back() = 32;
+  for (std::size_t size = 0; size < bytes.size(); ++size)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(size)), ProtocolError);
+  for (unsigned schema = 1; schema < 8; ++schema) {
+    bytes[1] = static_cast<std::uint8_t>(schema);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes[1] = 8;
+  auto trailing = bytes;
+  trailing.push_back(0);
+  REQUIRE_THROWS_AS(decode_connection_config(trailing), ProtocolError);
+  for (std::size_t at = bytes.size() - 4; at < bytes.size() - 1; ++at) {
+    auto bad = bytes;
+    bad[at] = 1;
+    REQUIRE_THROWS_AS(decode_connection_config(bad), ProtocolError);
+  }
+  REQUIRE_FALSE(decode_connection_config(connection).opus_input);
+}
 TEST_CASE("network-order envelope roundtrip and maximum request id") {
   const auto bytes = encode({Kind::heartbeat, UINT64_MAX, {}});
   REQUIRE(bytes.size() == 24);

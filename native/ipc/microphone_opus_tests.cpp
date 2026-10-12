@@ -10,6 +10,19 @@ const std::array<std::uint8_t, 27> golden{1, 2, 3, 0xc0, 0,    0,    1,    0x38,
                                           0, 0, 0, 0x0f, 0x42, 0x40, 0xfc, 0xff, 0xfe};
 }
 TEST_CASE(
+    "Microphone Opus envelope bounds correlation and compressed lengths before body allocation") {
+  using namespace bridge::ipc;
+  for (const auto length : {26U, 1299U}) {
+    const auto header = encode_header({Kind::microphone_opus, UINT64_MAX, length});
+    REQUIRE(header[7] == 44);
+    REQUIRE(decode_header(header).length == length);
+    REQUIRE(decode_header(header).request_id == UINT64_MAX);
+    REQUIRE_THROWS_AS(encode_header({Kind::microphone_opus, 0, length}), ProtocolError);
+  }
+  for (const auto length : {0U, 1U, 24U, 25U, 1300U, UINT32_MAX})
+    REQUIRE_THROWS_AS(encode_header({Kind::microphone_opus, 1, length}), ProtocolError);
+}
+TEST_CASE(
     "Microphone Opus payload preserves golden delay epoch capture clock and borrowed storage") {
   const auto p = mic::decode_packet(golden);
   REQUIRE(p.epoch == 0x0102030405060708ULL);
