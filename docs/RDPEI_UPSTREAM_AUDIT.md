@@ -49,3 +49,12 @@ readiness while refusing multi-pen. [Iteration 32](ITERATION_032.md).
 
 No dependency source or pin was modified by this audit. Linux/sanitizers, malformed
 actual-host reassembly, concurrent resource accounting and soak remain unverified.
+
+Iteration 146 adds an allocation-free DATA_FIRST/ZGFX claim inspector with linked
+public codec checks and large-payload coverage. It is not installed before host
+dispatch yet, so the upstream preallocation gate above remains open. Pinned
+zgfx_append bounds each output realloc by the declared size plus 64-byte padding;
+transient realloc and fixed dictionary/scratch are separate. The existing worker
+already selects SynchronousDynamicChannels=true, which keeps drdynvc's incoming
+dispatch out of its asynchronous queue; AsyncChannels alone is not that setting.
+[Foundation and remaining placement](DVC_ALLOCATION_BOUNDS.md).

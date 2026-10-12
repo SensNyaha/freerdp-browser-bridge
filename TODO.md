@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Allocation-free DVC DATA_FIRST/ZGFX declared-size/count
+  inspection and linked public-codec/large-payload fixtures are implemented.
+  Limits are independent of touch size and include SDK output padding. This
+  foundation is not installed before the actual host yet; outer/cumulative
+  admission, public callback/lifetime placement, nested GFX/control/codec
+  allocations, concurrent budgets, actual hostile/lost transport, platforms and
+  sanitizer/fuzz/soak acceptance remain open. [Evidence](docs/ITERATION_146.md).
 - [ ] No new secret in logs/argv/env.
 - [ ] No unbounded queue introduced.
 - [ ] Public protocol change is versioned/documented.
