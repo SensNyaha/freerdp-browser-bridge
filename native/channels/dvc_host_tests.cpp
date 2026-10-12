@@ -1,4 +1,5 @@
 #include "addin_scope.hpp"
+#include "dvc_completion_hook.hpp"
 #include "dvc_receive_guard.hpp"
 #include <algorithm>
 #include <array>
@@ -28,6 +29,10 @@ struct Host {
       nullptr, freerdp_client_context_free};
   AddinScope provider;
   std::unique_ptr<DvcReceiveGuard> guard;
+  DvcMessageBudget budget{{2, 8, 8, 100}};
+  std::array<std::unique_ptr<DvcCompletionHook>, 2> completion_hooks;
+  bool observe_completion = false;
+  std::uint64_t now_ms = 1;
   CHANNEL_ENTRY_POINTS_FREERDP_EX points{};
   LPVOID plugin = nullptr;
   PCHANNEL_INIT_EVENT_EX_FN init = nullptr;
@@ -40,6 +45,8 @@ struct Host {
   IWTSListener *listener = nullptr;
   struct Channel {
     IWTSVirtualChannelCallback api{};
+    Host *owner = nullptr;
+    std::size_t charged_during_callback = 0;
     unsigned opens = 0, closes = 0, packets = 0;
     std::size_t size = 0;
     BYTE first = 0, last = 0;
@@ -56,6 +63,15 @@ struct Host {
     auto &host = owner(instance);
     if (id != 1004 || !host.opened || size > UINT32_MAX || total > UINT32_MAX)
       return FALSE;
+    if (host.observe_completion) {
+      const auto info = inspect_dvc_allocations({data, size});
+      if (!info)
+        return FALSE;
+      if (info->declared_message && info->channel_id && *info->channel_id >= 0x42 &&
+          *info->channel_id <= 0x43 && host.channels[*info->channel_id - 0x42].opens &&
+          !host.budget.reserve(*info->channel_id, *info->declared_message, host.now_ms))
+        return FALSE;
+    }
     ++host.deliveries;
     host.opened(host.plugin, 1, CHANNEL_EVENT_DATA_RECEIVED, const_cast<BYTE *>(data),
                 static_cast<UINT32>(size), static_cast<UINT32>(total), flags);
@@ -75,7 +91,7 @@ struct Host {
       return ERROR_INVALID_PARAMETER;
     return entries->RegisterPlugin(entries, plugin_name, &active->dynamic);
   }
-  Host() {
+  explicit Host(bool completion_observation = false) : observe_completion(completion_observation) {
     RDP_CLIENT_ENTRY_POINTS entry_points{};
     entry_points.Size = sizeof(entry_points);
     entry_points.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -111,9 +127,22 @@ struct Host {
         return ERROR_INVALID_PARAMETER;
       *accept = TRUE;
       *callback = &host.channels[id - 0x42].api;
+      if (host.observe_completion) {
+        try {
+          auto &hook = host.completion_hooks[id - 0x42];
+          hook = std::make_unique<DvcCompletionHook>(
+              host.budget, id, **callback,
+              [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, &host);
+          *callback = hook->interface();
+        } catch (...) {
+          *accept = FALSE;
+          return ERROR_NOT_ENOUGH_MEMORY;
+        }
+      }
       return CHANNEL_RC_OK;
     };
     for (auto &channel : channels) {
+      channel.owner = this;
       channel.api.pInterface = &channel;
       channel.api.OnOpen = [](IWTSVirtualChannelCallback *p) -> UINT {
         ++static_cast<Channel *>(p->pInterface)->opens;
@@ -125,6 +154,7 @@ struct Host {
       };
       channel.api.OnDataReceived = [](IWTSVirtualChannelCallback *p, wStream *stream) -> UINT {
         auto &channel_state = *static_cast<Channel *>(p->pInterface);
+        channel_state.charged_during_callback = channel_state.owner->budget.stats().reserved_bytes;
         const auto size = Stream_GetRemainingLength(stream);
         const auto *data = static_cast<const BYTE *>(Stream_Pointer(stream));
         ++channel_state.packets;
@@ -222,11 +252,13 @@ struct Host {
       plugin = nullptr;
       connected = false;
     }
+    budget.close();
   }
   bool send(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
             std::uint64_t now = 1) {
     if (!guard)
       return false;
+    now_ms = now;
     return guard->receive(1004, bytes.data(), bytes.size(), flags, total ? total : bytes.size(),
                           now);
   }
@@ -334,4 +366,82 @@ TEST_CASE("Actual drdynvc host shutdown retires logical partials after outer aba
   REQUIRE(host.channels[0].closes == 1);
   REQUIRE(host.terminated == 1);
   REQUIRE(host.closes == 1);
+}
+
+TEST_CASE("Actual drdynvc completion proxy holds fragmented claim until real complete callback") {
+  Host host(true);
+  const BYTE initial[]{1, 2};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.budget.stats().reserved_bytes == 4);
+  REQUIRE(host.budget.stats().releases == 0);
+  const BYTE end[]{0x30, 0x42, 3, 4};
+  REQUIRE(host.send(end));
+  REQUIRE(host.channels[0].charged_during_callback == 4);
+  REQUIRE(host.channels[0].small_copy == std::vector<BYTE>{1, 2, 3, 4});
+  REQUIRE(host.budget.stats().reserved_bytes == 0);
+  REQUIRE(host.budget.stats().releases == 1);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  host.shutdown();
+  REQUIRE(host.completion_hooks[0]->closed());
+  REQUIRE_FALSE(host.completion_hooks[0]->failed());
+  REQUIRE(host.channels[0].closes == 1);
+}
+TEST_CASE("Actual drdynvc cumulative fixture refuses second claim before entering the host") {
+  Host host(true);
+  host.create(0x43);
+  const BYTE initial[]{1, 2};
+  REQUIRE(host.send(first(2, 0x42, 6, initial)));
+  const auto deliveries = host.deliveries;
+  REQUIRE_FALSE(host.send(first(2, 0x43, 3, initial)));
+  REQUIRE(host.deliveries == deliveries);
+  REQUIRE(host.channels[0].packets == 0);
+  REQUIRE(host.channels[1].packets == 0);
+  REQUIRE(host.budget.stats().failed);
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.channels[1].closes == 1);
+  REQUIRE(host.terminated == 1);
+}
+TEST_CASE("Actual drdynvc completion proxy releases after compressed continuation and raw final "
+          "outer fragment") {
+  Host host(true);
+  const BYTE literal[]{0xe0, 0x24, 0, 0, 7};
+  REQUIRE(host.send(first(6, 0x42, 2, literal)));
+  REQUIRE(host.budget.stats().reserved_bytes == 2);
+  const BYTE next[]{0x70, 0x42, 0xe0, 0x24, 0, 0, 7};
+  REQUIRE(host.send(next));
+  REQUIRE(host.channels[0].charged_during_callback == 2);
+  REQUIRE(host.budget.stats().releases == 1);
+  const BYTE initial[]{1, 2, 3, 4};
+  const auto whole = first(2, 0x42, 4, initial);
+  REQUIRE(host.send(std::span(whole).first(3), CHANNEL_FLAG_FIRST, whole.size()));
+  REQUIRE(host.budget.stats().active == 0); // Outer staging has not forwarded a logical claim.
+  REQUIRE(host.send(std::span(whole).subspan(3), CHANNEL_FLAG_LAST, whole.size()));
+  REQUIRE(host.channels[0].charged_during_callback == 4);
+  REQUIRE(host.budget.stats().active == 0);
+  REQUIRE(host.budget.stats().releases == 2);
+}
+TEST_CASE("Actual drdynvc unknown ignored channel is not charged by completion fixture") {
+  Host host(true);
+  const BYTE initial[]{1};
+  REQUIRE(host.send(first(2, 0x99, 8, initial)));
+  REQUIRE(host.budget.stats().active == 0);
+  REQUIRE(host.budget.stats().reservations == 0);
+  host.now_ms = 101;
+  REQUIRE(host.budget.poll(101));
+  REQUIRE_FALSE(host.budget.stats().failed);
+  REQUIRE(host.channels[0].packets == 0);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE("Actual drdynvc close proxy releases incomplete logical claim during host shutdown") {
+  Host host(true);
+  const BYTE initial[]{1, 2};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.budget.stats().reserved_bytes == 4);
+  host.shutdown();
+  REQUIRE(host.budget.stats().releases == 1);
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.completion_hooks[0]->closed());
+  REQUIRE_FALSE(host.completion_hooks[0]->failed());
+  REQUIRE(host.terminated == 1);
 }

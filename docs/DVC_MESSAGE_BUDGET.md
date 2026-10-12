@@ -51,3 +51,7 @@ before-forward reservation, idle polling and host retirement on refusal. Unknown
 channels that the pinned host ignores must not be charged as allocated owners.
 Fixtures, full actual host/remote compatibility, logical abandonment, cumulative
 and retained-memory accounting, Linux/sanitizers/fuzz/soak remain open.
+
+Iteration 151 adds a [public completion/close proxy](DVC_COMPLETION_HOOK.md) with
+actual pinned drdynvc/fake-SVC reservation fixtures. It remains outside production
+registration/admission; table clearing still does not establish host memory release.

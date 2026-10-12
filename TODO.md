@@ -887,6 +887,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Public DVC completion/close proxy preserves callback borrow,
+  defers nested close, joins retirement and releases DATA_FIRST reservations only
+  after actual callback return or host close. Eight public-ABI and five actual
+  drdynvc/fake-SVC cases pass. Production registration, cumulative admission and
+  pool/nested memory acceptance remain open. [Iteration 151](docs/ITERATION_151.md).
+
 - [~] IN PROGRESS — Allocation-free cumulative DATA_FIRST reservation foundation
   has fixed 32 slots / 64 MiB aggregate / 16 MiB individual hard caps, original
   deadlines and observed release. Five portable cases and two public WinPR pool
