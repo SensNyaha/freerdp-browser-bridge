@@ -39,6 +39,8 @@ public:
   MicrophoneSession &operator=(const MicrophoneSession &) = delete;
   MicrophonePump pump(std::uint64_t now_us) noexcept;
   ipc::microphone::Result submit(const ipc::microphone::PcmPacket &) noexcept;
+  // Actual negotiated/published input authority, queried only on the RDP owner.
+  bool input_ready(std::uint64_t epoch) const noexcept;
   AudinCaptureReset reset_capture(std::uint64_t expected_epoch) noexcept;
   MicrophoneRetirement retire(std::uint64_t now_us) noexcept;
   std::optional<ipc::microphone::State> published_state() const noexcept;

@@ -4,7 +4,9 @@
 #include "audin_provider.hpp"
 #include "capture_handoff.hpp"
 #include "capture_state.hpp"
+#include "microphone_opus_owner.hpp"
 #include "microphone_session.hpp"
+#include "opus_encoder.hpp"
 #include "rdpsnd_provider.hpp"
 #include "reset_control.hpp"
 #include <algorithm>
@@ -391,6 +393,266 @@ TEST_CASE("Microphone reset control clears actual source before fresh admitted a
           bridge::ipc::audio::ResetResult::unavailable);
   REQUIRE(session.stats()->source.capture_resets == 1);
   REQUIRE(session.retire(1000700) == MicrophoneRetirement::done);
+}
+TEST_CASE("Opus microphone owner checks published actual AUDIN readiness before decode and emits "
+          "compensated PCM") {
+  Fixture fixture;
+  bool admitted = false;
+  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+    REQUIRE(kind == bridge::ipc::Kind::microphone_state);
+    REQUIRE(bridge::ipc::microphone::decode_state(bytes).enabled);
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  MicrophoneOpusOwner input(session);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  SoftwareOpusEncoder encoder;
+  std::vector<BYTE> pcm(3840, 0x21);
+  const auto first = encoder.encode({pcm, 0});
+  REQUIRE(input.submit({1, 0, encoder.lookahead_frames(), true, first.bytes}) ==
+          bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(input.stats()->decoded_packets == 0);
+  REQUIRE(input.stats()->epoch == 0);
+  REQUIRE(session.pump(0) == MicrophonePump::blocked);
+  REQUIRE_FALSE(session.input_ready(1));
+  admitted = true;
+  REQUIRE(session.pump(1) == MicrophonePump::delivered);
+  REQUIRE(session.input_ready(1));
+  REQUIRE(input.submit({2, 0, encoder.lookahead_frames(), true, first.bytes}) ==
+          bridge::ipc::microphone::Result::stale);
+  REQUIRE(input.stats()->decoded_packets == 0);
+  REQUIRE(input.submit({1, 0, encoder.lookahead_frames(), true, first.bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  REQUIRE(input.stats()->primed == 1);
+  REQUIRE(input.stats()->pcm_units == 0);
+  for (std::uint64_t index = 1; index < 3; ++index) {
+    const auto unit = encoder.encode({pcm, index * 20000});
+    REQUIRE(input.submit({1, index * 20000, encoder.lookahead_frames(), false, unit.bytes}) ==
+            bridge::ipc::microphone::Result::accepted);
+  }
+  REQUIRE(input.stats()->decoded_packets == 3);
+  REQUIRE(input.stats()->pcm_units == 2);
+  REQUIRE(session.stats()->source.capture.queue.queued_frames == 1920);
+  REQUIRE(session.pump(20001) == MicrophonePump::delivered);
+  REQUIRE(host.writes.back().size() == 3841);
+  REQUIRE(std::ranges::any_of(std::span(host.writes.back()).subspan(1),
+                              [](auto byte) { return byte != 0; }));
+  REQUIRE(input.retire());
+  REQUIRE(input.stats()->partial_frames == 0);
+  REQUIRE(input.stats()->retired);
+  REQUIRE(session.retire(20002) == MicrophoneRetirement::done);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("Opus microphone owner clears partial prediction across unpublished reset and requires a "
+          "fresh boundary") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  MicrophoneOpusOwner input(session);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::delivered);
+  SoftwareOpusEncoder encoder;
+  std::vector<BYTE> pcm(3840, 0x21);
+  const auto first = encoder.encode({pcm, 0});
+  const std::vector<BYTE> bytes(first.bytes.begin(), first.bytes.end());
+  REQUIRE(input.submit({1, 0, encoder.lookahead_frames(), true, bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  const auto partial = input.stats()->partial_frames;
+  REQUIRE(partial > 0);
+  REQUIRE(partial < 960);
+  REQUIRE(session.reset_capture(1).status == AudinCaptureResetStatus::reset);
+  REQUIRE_FALSE(input.synchronize());
+  REQUIRE(input.stats()->partial_frames == 0);
+  REQUIRE(input.stats()->discarded_partial_frames == partial);
+  REQUIRE(input.stats()->epoch == 0);
+  admitted = false;
+  REQUIRE(session.pump(1) == MicrophonePump::blocked);
+  REQUIRE(input.submit({2, 0, encoder.lookahead_frames(), true, bytes}) ==
+          bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(input.stats()->decoded_packets == 1);
+  admitted = true;
+  REQUIRE(session.pump(2) == MicrophonePump::delivered);
+  REQUIRE(input.synchronize());
+  REQUIRE(session.input_ready(2));
+  REQUIRE(input.submit({2, 0, encoder.lookahead_frames(), false, bytes}) ==
+          bridge::ipc::microphone::Result::invalid);
+  REQUIRE(input.stats()->epoch == 0);
+  REQUIRE_FALSE(input.stats()->failed);
+  REQUIRE(input.submit({1, 0, encoder.lookahead_frames(), true, bytes}) ==
+          bridge::ipc::microphone::Result::stale);
+  REQUIRE(input.submit({2, 0, encoder.lookahead_frames(), true, bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  REQUIRE(input.stats()->primed == 2);
+  REQUIRE(session.reset_capture(2).status == AudinCaptureResetStatus::reset);
+  REQUIRE(session.pump(3) == MicrophonePump::delivered);
+  REQUIRE(input.submit({3, 0, encoder.lookahead_frames(), false, bytes}) ==
+          bridge::ipc::microphone::Result::invalid);
+  REQUIRE(input.stats()->epoch == 0);
+  REQUIRE(input.stats()->partial_frames == 0);
+  REQUIRE(input.submit({3, 0, encoder.lookahead_frames(), true, bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  REQUIRE(input.stats()->primed == 3);
+  REQUIRE(input.invalidate());
+  REQUIRE(input.stats()->partial_frames == 0);
+  REQUIRE(input.retire());
+  REQUIRE(input.retire());
+  REQUIRE(input.submit({2, 20000, encoder.lookahead_frames(), false, bytes}) ==
+          bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(session.retire(3) == MicrophoneRetirement::done);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("Opus microphone owner refuses wrong threads and malformed packets without disturbing "
+          "prediction or host lifetime") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  MicrophoneOpusOwner input(session);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::delivered);
+  bool wrong_construction = false, wrong_ready = true, wrong_stats = true, wrong_sync = true,
+       wrong_retire = true;
+  auto wrong_result = bridge::ipc::microphone::Result::accepted;
+  std::thread other([&] {
+    try {
+      MicrophoneOpusOwner foreign(session);
+    } catch (const std::invalid_argument &) {
+      wrong_construction = true;
+    }
+    wrong_ready = session.input_ready(1);
+    wrong_stats = input.stats().has_value();
+    wrong_sync = input.synchronize();
+    wrong_retire = input.retire();
+    wrong_result = input.submit({1, 0, 0, true, {}});
+  });
+  other.join();
+  REQUIRE(wrong_construction);
+  REQUIRE_FALSE(wrong_ready);
+  REQUIRE_FALSE(wrong_stats);
+  REQUIRE_FALSE(wrong_sync);
+  REQUIRE_FALSE(wrong_retire);
+  REQUIRE(wrong_result == bridge::ipc::microphone::Result::unavailable);
+  const std::vector<BYTE> malformed{0, 0};
+  REQUIRE(input.submit({1, 0, 0, true, malformed}) == bridge::ipc::microphone::Result::invalid);
+  REQUIRE(input.stats()->epoch == 0);
+  REQUIRE(input.stats()->decoded_packets == 0);
+  SoftwareOpusEncoder encoder;
+  std::vector<BYTE> pcm(3840, 0x21);
+  const auto first = encoder.encode({pcm, 0});
+  REQUIRE(input.submit({1, 0, encoder.lookahead_frames(), true, first.bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  const auto partial = input.stats()->partial_frames;
+  const auto next = encoder.encode({pcm, 20000});
+  REQUIRE(input.submit({1, 20000, 961, false, next.bytes}) ==
+          bridge::ipc::microphone::Result::invalid);
+  REQUIRE(input.submit({1, 20001, encoder.lookahead_frames(), false, next.bytes}) ==
+          bridge::ipc::microphone::Result::invalid);
+  REQUIRE(input.stats()->partial_frames == partial);
+  REQUIRE(input.stats()->decoded_packets == 1);
+  REQUIRE(input.submit({1, 20000, encoder.lookahead_frames(), false, next.bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  REQUIRE_FALSE(input.stats()->failed);
+  REQUIRE(input.retire());
+  REQUIRE(session.retire(1) == MicrophoneRetirement::done);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("Opus microphone owner retires prediction after decoded PCM is refused and never retries "
+          "uncertain admission") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  MicrophoneOpusOwner input(session);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::delivered);
+  std::vector<BYTE> pcm(3840, 0x21);
+  REQUIRE(session.submit({1, 100000, true, pcm}) ==
+          bridge::ipc::microphone::Result::accepted); // Deliberate fixture-only foreign PCM clock.
+  SoftwareOpusEncoder encoder;
+  const auto first = encoder.encode({pcm, 0});
+  REQUIRE(input.submit({1, 0, encoder.lookahead_frames(), true, first.bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  const auto next = encoder.encode({pcm, 20000});
+  REQUIRE(input.submit({1, 20000, encoder.lookahead_frames(), false, next.bytes}) ==
+          bridge::ipc::microphone::Result::invalid);
+  REQUIRE(input.stats()->failed);
+  REQUIRE(input.stats()->partial_frames == 0);
+  REQUIRE(input.stats()->pcm_units == 0);
+  REQUIRE(input.stats()->decoded_packets == 2);
+  REQUIRE_FALSE(input.synchronize());
+  REQUIRE(input.submit({1, 40000, encoder.lookahead_frames(), true, next.bytes}) ==
+          bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(input.invalidate());
+  REQUIRE(input.stats()->failed);
+  REQUIRE(input.retire());
+  REQUIRE(session.retire(1) == MicrophoneRetirement::done);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+}
+TEST_CASE("Opus microphone owner observes actual channel Close before stale ready status can admit "
+          "another packet") {
+  Fixture fixture;
+  bool admitted = true;
+  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    return *static_cast<bool *>(owner);
+  };
+  MicrophoneSession session(*fixture.context, send, &admitted);
+  MicrophoneOpusOwner input(session);
+  Host host(fixture);
+  host.general_loader = true;
+  host.verify_fixture_source = false;
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  negotiate(host);
+  REQUIRE(session.pump(0) == MicrophonePump::delivered);
+  SoftwareOpusEncoder encoder;
+  const std::vector<BYTE> pcm(3840, 0x21);
+  const auto first = encoder.encode({pcm, 0});
+  const std::vector<BYTE> bytes(first.bytes.begin(), first.bytes.end());
+  REQUIRE(input.submit({1, 0, encoder.lookahead_frames(), true, bytes}) ==
+          bridge::ipc::microphone::Result::accepted);
+  REQUIRE(input.stats()->partial_frames > 0);
+  REQUIRE(session.input_ready(1));
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(
+      session.published_state()->availability ==
+      bridge::ipc::audio::Availability::ready); // Published snapshot is intentionally still old.
+  REQUIRE_FALSE(session.input_ready(1));
+  REQUIRE_FALSE(input.synchronize());
+  REQUIRE(input.stats()->partial_frames == 0);
+  REQUIRE(input.stats()->epoch == 0);
+  REQUIRE(input.submit({1, 20000, encoder.lookahead_frames(), false, bytes}) ==
+          bridge::ipc::microphone::Result::unavailable);
+  REQUIRE(input.stats()->decoded_packets == 1);
+  REQUIRE_FALSE(input.stats()->failed);
+  REQUIRE(input.retire());
+  REQUIRE(session.retire(1) == MicrophoneRetirement::done);
 }
 TEST_CASE("Microphone worker profile refuses tiny callbacks and accepts a later compatible Open") {
   Fixture fixture;

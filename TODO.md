@@ -696,6 +696,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   Opus selection/capability remains disabled. Decoder/AUDIN ownership, browser /
   Node selection and actual device/platform/resource/LAN/soak gates remain open.
   [Contract](docs/MICROPHONE_OPUS_IPC.md), [evidence](docs/ITERATION_134.md).
+- [~] IN PROGRESS — RDP-thread Opus microphone owner now composes bounded
+  compensation with guarded MicrophoneSession using actual negotiated/open /
+  admitted ready epoch before decode. Source reset/loss clears partial state;
+  invalid packets preserve prediction, refused decoded PCM is never retried.
+  Five actual-linked AUDIN/fake-DVC cases / 211 assertions pass with synthetic
+  samples. Worker selection/capability/failure propagation, Node/browser and
+  actual device/platform/resource/LAN/soak gates remain open.
+  [Contract](docs/MICROPHONE_OPUS_OWNER.md), [evidence](docs/ITERATION_135.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).

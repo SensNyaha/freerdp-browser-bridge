@@ -91,9 +91,7 @@ MicrophoneSession::submit(const ipc::microphone::PcmPacket &packet) noexcept {
     return Result::unavailable;
   if (packet.epoch != source->epoch)
     return Result::stale;
-  const auto authority = publisher_.published();
-  if (!authority || authority->availability != ipc::audio::Availability::ready ||
-      authority->epoch != source->epoch || !registration_.gate().ready())
+  if (!input_ready(packet.epoch))
     return Result::unavailable;
   switch (source_.submit({packet.epoch, packet.timestamp_us, packet.discontinuity, packet.pcm})) {
   case CaptureStatus::accepted:
@@ -106,6 +104,15 @@ MicrophoneSession::submit(const ipc::microphone::PcmPacket &packet) noexcept {
     return Result::invalid;
   }
   return Result::invalid;
+}
+bool MicrophoneSession::input_ready(std::uint64_t epoch) const noexcept {
+  if (!on_thread() || busy_ || !epoch || stats_.retirement != MicrophoneRetirement::active ||
+      stats_.publication_failed || !registration_.gate().ready())
+    return false;
+  const auto source = source_.stats();
+  const auto authority = publisher_.published();
+  return source && source->opened && source->epoch == epoch && authority &&
+         authority->availability == ipc::audio::Availability::ready && authority->epoch == epoch;
 }
 AudinCaptureReset MicrophoneSession::reset_capture(std::uint64_t expected) noexcept {
   if (!on_thread() || stats_.retirement != MicrophoneRetirement::active ||
