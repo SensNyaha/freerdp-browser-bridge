@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 test(
   'Edge AudioWorklet: actual offline stereo PCM rendering and one-command live acknowledgments',
   { skip: process.platform !== 'win32', timeout: 45000 },
-  async () => {
+  async (testContext) => {
     const files = new Map(
       await Promise.all(
         ['pcm-worklet.js', 'pcm-queue.js'].map(async (name) => [
@@ -27,14 +27,28 @@ test(
     });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     let browser, page;
+    let phase = 'launch';
+    const aborted = () => {
+      testContext.diagnostic('PCM fixture timeout phase: ' + phase);
+      server.closeAllConnections();
+      // Abort an unbounded evaluate/render/resume promise, preserving test failure.
+      void browser?.close({ reason: 'PCM fixture deadline' }).catch(() => {});
+    };
+    testContext.signal.addEventListener('abort', aborted, { once: true });
     try {
       browser = await chromium.launch({
         channel: 'msedge',
         headless: true,
         timeout: 5000,
       });
+      testContext.signal.throwIfAborted();
+      phase = 'page';
       page = await browser.newPage();
+      page.setDefaultTimeout(3000);
+      page.setDefaultNavigationTimeout(5000);
+      phase = 'navigation';
       await page.goto('http://127.0.0.1:' + server.address().port);
+      phase = 'offline';
       const result = await page.evaluate(async () => {
         const make = (index, left, right) => {
           const pcm = new ArrayBuffer(3840),
@@ -93,6 +107,7 @@ test(
         second: true,
         silence: true,
       });
+      phase = 'invalid-offline';
       const refused = await page.evaluate(async () => {
         const results = [];
         for (const [rate, count] of [
@@ -132,6 +147,7 @@ test(
         return results;
       });
       assert.deepEqual(refused, [true, true]);
+      phase = 'gesture';
       await page.evaluate(() => {
         document.querySelector('#start').onclick = () => {
           window.audio = new AudioContext({ sampleRate: 48000 });
@@ -139,6 +155,7 @@ test(
         };
       });
       await page.click('#start');
+      phase = 'live';
       const live = await page.evaluate(async () => {
         const context = window.audio;
         await window.resumed;
@@ -235,11 +252,24 @@ test(
       assert.equal(live.packets, 1);
       assert.equal(live.queued, 960);
       assert.equal(live.malformedRefused, true);
+    } catch (error) {
+      testContext.diagnostic('PCM fixture phase: ' + phase);
+      throw error;
     } finally {
-      await page?.close();
-      server.closeAllConnections();
-      await browser?.close();
-      await new Promise((resolve) => server.close(resolve));
+      testContext.signal.removeEventListener('abort', aborted);
+      phase = 'page-close';
+      try {
+        await page?.close();
+      } finally {
+        server.closeAllConnections();
+        phase = 'browser-close';
+        try {
+          await browser?.close();
+        } finally {
+          phase = 'server-close';
+          await new Promise((resolve) => server.close(resolve));
+        }
+      }
     }
   },
 );
