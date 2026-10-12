@@ -887,6 +887,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Public ReceiveChannelData adapter normalizes only complete
+  inspected drdynvc input, preserves other SVC arguments and validates raw flags,
+  notifications, channel-ID lifetime and callback retirement. Seven linked public
+  ABI fixture cases pass; actual host/worker activation and remote resource
+  acceptance remain open. [Iteration 148](docs/ITERATION_148.md).
+
 - [~] IN PROGRESS — One bounded outer drdynvc SVC message owner now validates
   total before staging allocation and inner claims before synchronous forwarding.
   Whole packets borrow without a copy; exact abandonment/framing/clock/reentrant

@@ -42,3 +42,7 @@ Production public callback/lifetime placement, raw SVC flags/normalization,
 cumulative DVC/channel budgets, nested GFX/control/codec allocation, actual hostile /
 lost transport, Linux/sanitizers/fuzz and soak gates remain open.
 [Header policy](DVC_ALLOCATION_BOUNDS.md), [evidence](ITERATION_147.md).
+
+Iteration 148 adds a [public receive adapter](DVC_RECEIVE_GUARD.md) with raw flag,
+other-SVC and reentrant lifetime fixtures. Production worker placement remains
+open; the historical foundation description above is preserved.
