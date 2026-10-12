@@ -1,4 +1,5 @@
 #include "addin_scope.hpp"
+#include "dvc_channel_registry.hpp"
 #include "dvc_completion_hook.hpp"
 #include "dvc_receive_guard.hpp"
 #include <algorithm>
@@ -31,6 +32,8 @@ struct Host {
   std::unique_ptr<DvcReceiveGuard> guard;
   DvcMessageBudget budget{{2, 8, 8, 100}};
   std::array<std::unique_ptr<DvcCompletionHook>, 2> completion_hooks;
+  std::unique_ptr<DvcChannelRegistry> registry;
+  UINT registry_retirement_status = CHANNEL_RC_OK;
   bool observe_completion = false;
   std::uint64_t now_ms = 1;
   CHANNEL_ENTRY_POINTS_FREERDP_EX points{};
@@ -63,7 +66,10 @@ struct Host {
     auto &host = owner(instance);
     if (id != 1004 || !host.opened || size > UINT32_MAX || total > UINT32_MAX)
       return FALSE;
-    if (host.observe_completion) {
+    if (host.registry) {
+      if (!host.registry->admit({data, size}, host.now_ms))
+        return FALSE;
+    } else if (host.observe_completion) {
       const auto info = inspect_dvc_allocations({data, size});
       if (!info)
         return FALSE;
@@ -91,7 +97,12 @@ struct Host {
       return ERROR_INVALID_PARAMETER;
     return entries->RegisterPlugin(entries, plugin_name, &active->dynamic);
   }
-  explicit Host(bool completion_observation = false) : observe_completion(completion_observation) {
+  explicit Host(bool completion_observation = false, bool registry_observation = false)
+      : observe_completion(completion_observation) {
+    if (registry_observation)
+      registry = std::make_unique<DvcChannelRegistry>(
+          [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
+          DvcMessageBudgetLimits{2, 8, 8, 100});
     RDP_CLIENT_ENTRY_POINTS entry_points{};
     entry_points.Size = sizeof(entry_points);
     entry_points.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -127,7 +138,14 @@ struct Host {
         return ERROR_INVALID_PARAMETER;
       *accept = TRUE;
       *callback = &host.channels[id - 0x42].api;
-      if (host.observe_completion) {
+      if (host.registry) {
+        const auto binding = host.registry->bind(*host.manager, *channel, **callback, host.now_ms);
+        if (binding.status != CHANNEL_RC_OK) {
+          *accept = FALSE;
+          return binding.status;
+        }
+        *callback = binding.callback;
+      } else if (host.observe_completion) {
         try {
           auto &hook = host.completion_hooks[id - 0x42];
           hook = std::make_unique<DvcCompletionHook>(
@@ -154,7 +172,10 @@ struct Host {
       };
       channel.api.OnDataReceived = [](IWTSVirtualChannelCallback *p, wStream *stream) -> UINT {
         auto &channel_state = *static_cast<Channel *>(p->pInterface);
-        channel_state.charged_during_callback = channel_state.owner->budget.stats().reserved_bytes;
+        auto &host = *channel_state.owner;
+        channel_state.charged_during_callback = host.registry
+                                                    ? host.registry->stats().budget.reserved_bytes
+                                                    : host.budget.stats().reserved_bytes;
         const auto size = Stream_GetRemainingLength(stream);
         const auto *data = static_cast<const BYTE *>(Stream_Pointer(stream));
         ++channel_state.packets;
@@ -252,6 +273,8 @@ struct Host {
       plugin = nullptr;
       connected = false;
     }
+    if (registry)
+      registry_retirement_status = registry->retire();
     budget.close();
   }
   bool send(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
@@ -444,4 +467,78 @@ TEST_CASE("Actual drdynvc close proxy releases incomplete logical claim during h
   REQUIRE(host.completion_hooks[0]->closed());
   REQUIRE_FALSE(host.completion_hooks[0]->failed());
   REQUIRE(host.terminated == 1);
+}
+
+TEST_CASE("Actual drdynvc public ID registry owns claim until observed complete host delivery") {
+  Host host(false, true);
+  REQUIRE(host.registry->contains(0x42));
+  const BYTE initial[]{1, 2};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.reserved_bytes == 4);
+  const BYTE end[]{0x30, 0x42, 3, 4};
+  REQUIRE(host.send(end));
+  REQUIRE(host.channels[0].charged_during_callback == 4);
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  REQUIRE(host.registry->stats().budget.reserved_bytes == 0);
+  host.shutdown();
+  REQUIRE(host.registry_retirement_status == CHANNEL_RC_OK);
+  REQUIRE(host.registry->stats().resources_retired);
+  REQUIRE(host.channels[0].closes == 1);
+}
+TEST_CASE("Actual drdynvc public ID registry rejects aggregate claim before second host dispatch") {
+  Host host(false, true);
+  host.create(0x43);
+  const BYTE initial[]{1, 2};
+  REQUIRE(host.send(first(2, 0x42, 6, initial)));
+  const auto delivered = host.deliveries;
+  REQUIRE_FALSE(host.send(first(2, 0x43, 3, initial)));
+  REQUIRE(host.deliveries == delivered);
+  REQUIRE(host.registry->stats().failed);
+  host.shutdown();
+  REQUIRE(host.registry_retirement_status == ERROR_INVALID_DATA);
+  REQUIRE(host.registry->stats().resources_retired);
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.channels[1].closes == 1);
+}
+TEST_CASE("Actual drdynvc public ID registry leaves ignored unknown claims uncharged") {
+  Host host(false, true);
+  const BYTE initial[]{1};
+  REQUIRE(host.send(first(2, 0x99, 8, initial)));
+  REQUIRE(host.registry->stats().budget.reservations == 0);
+  REQUIRE(host.registry->stats().active_channels == 1);
+  host.now_ms = 101;
+  REQUIRE(host.registry->poll(101));
+  REQUIRE_FALSE(host.registry->stats().failed);
+  host.shutdown();
+  REQUIRE(host.registry_retirement_status == CHANNEL_RC_OK);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE(
+    "Actual drdynvc public ID registry observes compressed message completion without prediction") {
+  Host host(false, true);
+  const BYTE literal[]{0xe0, 0x24, 0, 0, 7};
+  REQUIRE(host.send(first(6, 0x42, 2, literal)));
+  REQUIRE(host.registry->stats().budget.reserved_bytes == 2);
+  const BYTE end[]{0x70, 0x42, 0xe0, 0x24, 0, 0, 7};
+  REQUIRE(host.send(end));
+  REQUIRE(host.channels[0].charged_during_callback == 2);
+  REQUIRE(host.channels[0].small_copy == std::vector<BYTE>{0, 0});
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  REQUIRE(host.registry->stats().budget.reserved_bytes == 0);
+  REQUIRE_FALSE(host.registry->stats().failed);
+}
+TEST_CASE("Actual drdynvc public ID registry logical deadline requires actual host retirement") {
+  Host host(false, true);
+  const BYTE initial[]{1, 2};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  host.now_ms = 101;
+  REQUIRE_FALSE(host.registry->poll(101));
+  REQUIRE(host.registry->stats().failed);
+  REQUIRE_FALSE(host.registry->stats().resources_retired);
+  REQUIRE(host.channels[0].closes == 0);
+  host.shutdown();
+  REQUIRE(host.registry_retirement_status == ERROR_INVALID_DATA);
+  REQUIRE(host.registry->stats().resources_retired);
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.channels[0].packets == 0);
 }

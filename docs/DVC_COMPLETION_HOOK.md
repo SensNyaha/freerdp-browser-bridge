@@ -51,3 +51,7 @@ types without warning suppression. No dependency source/pin/ABI/wire/capability
 change. Actual plugin registration/lifetime/provider/worker activation, pool and
 nested memory bounds, real cumulative/abandonment/network/device acceptance,
 Linux/sanitizer/fuzz and soak remain open.
+
+Iteration 152 adds a [fixed public ID/callback registry](DVC_CHANNEL_REGISTRY.md)
+with actual-host fixtures. Production manager/listener/provider integration is
+still pending; raw dispatch/close return is not remote acceptance.

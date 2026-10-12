@@ -887,6 +887,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Fixed public DVC ID/callback registry reserves DATA_FIRST only
+  for registered live channels, retains rejected-target caller ownership and joins
+  callback retirement. Seven public-ABI and five actual drdynvc/fake-SVC cases
+  pass; production addin/listener handoff, aggregate admission and pool/nested
+  memory/resource acceptance remain open. [Iteration 152](docs/ITERATION_152.md).
+
 - [~] IN PROGRESS — Public DVC completion/close proxy preserves callback borrow,
   defers nested close, joins retirement and releases DATA_FIRST reservations only
   after actual callback return or host close. Eight public-ABI and five actual
