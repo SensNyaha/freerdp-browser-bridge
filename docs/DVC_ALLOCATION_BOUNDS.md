@@ -48,3 +48,8 @@ codec allocations require their own placement/audit; inspecting compressed DVC
 alone does not cover them. Fixed dictionary/scratch memory, upstream queues,
 actual hostile/lost transport, Linux/sanitizers/libFuzzer and soak remain open.
 [Audit](RDPEI_UPSTREAM_AUDIT.md), [evidence](ITERATION_146.md).
+
+Iteration 147 composes these headers with a bounded outer SVC message owner:
+validated total before allocation, exact/non-renewing abandonment deadline and
+borrow-preserving synchronous dispatch. Worker/actual-host placement is still
+open. [Assembly contract](DVC_SVC_INGRESS.md).

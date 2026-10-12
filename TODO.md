@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — One bounded outer drdynvc SVC message owner now validates
+  total before staging allocation and inner claims before synchronous forwarding.
+  Whole packets borrow without a copy; exact abandonment/framing/clock/reentrant
+  cleanup checks pass portable and linked-codec regression. No production receive
+  callback is installed yet; actual host placement, raw flags, cumulative/channel
+  budgets, nested GFX/control/codec and hostile/lost-transport/platform/fuzz/soak
+  gates remain open. [Evidence](docs/ITERATION_147.md). Headers: `6744bff`.
 - [~] IN PROGRESS — Allocation-free DVC DATA_FIRST/ZGFX declared-size/count
   inspection and linked public-codec/large-payload fixtures are implemented.
   Limits are independent of touch size and include SDK output padding. This

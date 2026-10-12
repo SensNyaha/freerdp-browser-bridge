@@ -1,13 +1,12 @@
 #include "dvc_bounds.hpp"
 
 namespace bridge::channels {
-namespace {
-bool valid(const DvcAllocationLimits &limits) noexcept {
-  return limits.message_bytes > 0 && limits.message_bytes <= limits.hard_message_bytes &&
-         limits.codec_bytes > 0 && limits.codec_bytes <= limits.hard_message_bytes &&
-         limits.encoded_bytes > 0 && limits.encoded_bytes <= limits.hard_encoded_bytes &&
-         limits.segments > 0 && limits.segments <= limits.hard_segments;
+bool DvcAllocationLimits::valid() const noexcept {
+  return message_bytes > 0 && message_bytes <= hard_message_bytes && codec_bytes > 0 &&
+         codec_bytes <= hard_message_bytes && encoded_bytes > 0 &&
+         encoded_bytes <= hard_encoded_bytes && segments > 0 && segments <= hard_segments;
 }
+namespace {
 struct Reader {
   std::span<const std::uint8_t> bytes;
   std::size_t position = 0;
@@ -50,7 +49,7 @@ std::optional<std::size_t> segment(std::span<const std::uint8_t> bytes) noexcept
 
 std::optional<ZgfxAllocationInfo> inspect_zgfx_allocations(std::span<const std::uint8_t> bytes,
                                                            DvcAllocationLimits limits) noexcept {
-  if (!valid(limits) || bytes.empty() || bytes.size() > limits.encoded_bytes)
+  if (!limits.valid() || bytes.empty() || bytes.size() > limits.encoded_bytes)
     return std::nullopt;
   Reader reader{bytes};
   const auto descriptor = reader.integer(1);
@@ -98,7 +97,7 @@ std::optional<ZgfxAllocationInfo> inspect_zgfx_allocations(std::span<const std::
 
 std::optional<DvcAllocationInfo> inspect_dvc_allocations(std::span<const std::uint8_t> bytes,
                                                          DvcAllocationLimits limits) noexcept {
-  if (!valid(limits) || bytes.empty() || bytes.size() > limits.encoded_bytes)
+  if (!limits.valid() || bytes.empty() || bytes.size() > limits.encoded_bytes)
     return std::nullopt;
   Reader reader{bytes};
   const auto header = static_cast<std::uint8_t>(*reader.integer(1));

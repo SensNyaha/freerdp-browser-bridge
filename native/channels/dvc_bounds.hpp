@@ -14,6 +14,7 @@ struct DvcAllocationLimits {
   std::size_t codec_bytes = hard_message_bytes;
   std::size_t encoded_bytes = hard_encoded_bytes;
   std::size_t segments = hard_segments;
+  bool valid() const noexcept;
 };
 struct ZgfxAllocationInfo {
   std::size_t segments = 0;
