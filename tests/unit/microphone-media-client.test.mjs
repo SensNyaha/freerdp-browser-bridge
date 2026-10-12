@@ -5,6 +5,7 @@ import {
   validateMicrophoneProfile,
 } from '../../apps/reference-harness/microphone-media.js';
 import { parseMicrophoneRecord } from '../../apps/reference-harness/microphone-wire.js';
+import { parseMicrophoneOpusRecord } from '../../apps/reference-harness/microphone-opus-wire.js';
 const profile = () => ({
   codec: 'pcm',
   sourceStatus: true,
@@ -35,7 +36,7 @@ const message = (type, data) => ({
   ts: 0,
   data,
 });
-function fixture() {
+function fixture(codec = 'pcm', codecApi) {
   let now = 0;
   const writes = [],
     changes = [],
@@ -50,7 +51,16 @@ function fixture() {
     changed: (value) => changes.push(value),
     failed: () => ++calls.failed,
   };
-  const client = new MicrophoneMediaClient(backend, profile(), () => now);
+  const client = new MicrophoneMediaClient(
+    backend,
+    {
+      ...profile(),
+      codec,
+      maxPayloadBytes: codec === 'opus' ? 1315 : 3876,
+    },
+    () => now,
+    codecApi,
+  );
   const emit = (type, data) => client.message(message(type, data));
   emit('state', state());
   return {
@@ -299,5 +309,210 @@ test('microphone media client: reentrant write/observer closure cannot commit a 
     assert.equal(f.client.authorize(1n), undefined);
     assert.equal(f.client.stats.closed, true);
     f.client.close();
+  }
+});
+
+function syntheticOpus() {
+  const codecs = [];
+  const api = {
+    encoder(callbacks) {
+      const codec = {
+        callbacks,
+        state: 'unconfigured',
+        closes: 0,
+        configure() {
+          this.state = 'configured';
+        },
+        encode(data) {
+          this.input = data;
+        },
+        close() {
+          ++this.closes;
+          this.state = 'closed';
+        },
+      };
+      codecs.push(codec);
+      return codec;
+    },
+    data(options) {
+      return { ...options, close() {} };
+    },
+  };
+  return {
+    api,
+    codecs,
+    output(codec = codecs.at(-1)) {
+      codec.callbacks.output(
+        {
+          timestamp: codec.input.timestamp,
+          duration: 20000,
+          byteLength: 3,
+          copyTo: (bytes) => bytes.set([0xfc, 0xff, 0xfe]),
+        },
+        {
+          decoderConfig: {
+            codec: 'opus',
+            sampleRate: 48000,
+            numberOfChannels: 2,
+            description: new Uint8Array([
+              79, 112, 117, 115, 72, 101, 97, 100, 1, 2, 56, 1, 128, 187, 0, 0,
+              0, 0, 0,
+            ]).buffer,
+          },
+        },
+      );
+    },
+  };
+}
+const binaryWrites = (f) =>
+  f.writes.filter((value) => value instanceof ArrayBuffer);
+
+test('Opus media client: exact independent profile, lazy codec and no implicit permission or PCM fallback', async (t) => {
+  const selected = { ...profile(), codec: 'opus', maxPayloadBytes: 1315 };
+  assert.deepEqual(validateMicrophoneProfile(selected), selected);
+  for (const patch of [
+    { codec: 'pcm' },
+    { codec: 'unknown' },
+    { maxPayloadBytes: 3876 },
+    { frames: 480 },
+    { extra: true },
+  ])
+    assert.throws(() => validateMicrophoneProfile({ ...selected, ...patch }));
+  const sdk = syntheticOpus(),
+    f = fixture('opus', sdk.api);
+  t.after(() => f.client.close());
+  assert.equal(sdk.codecs.length, 0);
+  assert.equal(f.client.sender.offer(Symbol('foreign'), f.packet(), 0), false);
+  assert.equal(await f.client.start(2n), false);
+  assert.equal(sdk.codecs.length, 0);
+  const token = await f.grant();
+  assert.equal(sdk.codecs.length, 0);
+  f.client.sender.offer(token, f.packet(), 0);
+  assert.equal(sdk.codecs.length, 1);
+  assert.equal(binaryWrites(f).length, 0);
+  f.now(1);
+  sdk.output();
+  const unit = parseMicrophoneOpusRecord(binaryWrites(f)[0]);
+  assert.equal(unit.discontinuity, true);
+  assert.equal(unit.sequence, 1);
+  assert.equal(unit.lookaheadFrames, 312);
+  f.emit('ack', { sequence: 1, epoch: '1', status: 'accepted' });
+  assert.equal(f.client.stats.accepted, 1);
+  assert.equal(f.calls.failed, 0);
+});
+
+test('Opus media client: stop cancels unissued encoding before reset and stale callback cannot send; fresh permission creates new prediction', async (t) => {
+  const sdk = syntheticOpus(),
+    f = fixture('opus', sdk.api);
+  t.after(() => f.client.close());
+  const token = await f.grant();
+  f.client.sender.offer(token, f.packet(), 0);
+  const old = sdk.codecs[0],
+    stopped = f.client.stop();
+  assert.equal(old.closes, 1);
+  assert.equal(f.client.stats.inFlight, false);
+  assert.equal(f.client.authorized(token, 1n), false);
+  sdk.output(old);
+  assert.equal(binaryWrites(f).length, 0);
+  f.emit('state', state(false, '2', '2'));
+  f.emit('result', { requestSeq: 2, status: 'stopped' });
+  await stopped;
+  const fresh = await f.grant(2n, '2');
+  f.client.sender.offer(fresh, f.packet(0n, 2n), 0);
+  f.now(1);
+  sdk.output();
+  const unit = parseMicrophoneOpusRecord(binaryWrites(f)[0]);
+  assert.equal(unit.sequence, 2);
+  assert.equal(unit.epoch, 2n);
+  assert.equal(unit.discontinuity, true);
+  assert.equal(f.calls.failed, 0);
+});
+
+test('Opus media client: stop retires codec but issued old-epoch credit still needs the actual ACK before restart', async (t) => {
+  const sdk = syntheticOpus(),
+    f = fixture('opus', sdk.api);
+  t.after(() => f.client.close());
+  const token = await f.grant();
+  f.client.sender.offer(token, f.packet(), 0);
+  f.now(1);
+  sdk.output();
+  const stopped = f.client.stop();
+  assert.equal(sdk.codecs[0].closes, 1);
+  f.emit('state', state(false, '2', '2'));
+  f.emit('result', { requestSeq: 2, status: 'stopped' });
+  await stopped;
+  assert.equal(f.client.stats.inFlight, true);
+  assert.equal(await f.client.start(2n), false);
+  f.emit('ack', { sequence: 1, epoch: '1', status: 'unavailable' });
+  const fresh = await f.grant(2n, '2');
+  f.client.sender.offer(fresh, f.packet(0n, 2n), 1);
+  f.now(2);
+  sdk.output();
+  assert.equal(
+    parseMicrophoneOpusRecord(binaryWrites(f)[1]).discontinuity,
+    true,
+  );
+  assert.equal(f.calls.failed, 0);
+});
+
+test('Opus media client: preparation expiry retires the codec without a network ACK; issued timeout survives graph stop', async (t) => {
+  const sdk = syntheticOpus(),
+    f = fixture('opus', sdk.api);
+  t.after(() => f.client.close());
+  const token = await f.grant();
+  f.client.sender.offer(token, f.packet(), 0);
+  f.now(120);
+  f.client.poll();
+  assert.equal(sdk.codecs[0].closes, 1);
+  sdk.output(sdk.codecs[0]);
+  assert.equal(binaryWrites(f).length, 0);
+  assert.equal(f.client.stats.active, true);
+  f.client.sender.offer(token, f.packet(20000n), 120);
+  f.now(121);
+  sdk.output();
+  assert.equal(
+    parseMicrophoneOpusRecord(binaryWrites(f)[0]).discontinuity,
+    true,
+  );
+  const stopped = f.client.stop();
+  f.emit('state', state(false, '2', '2'));
+  f.emit('result', { requestSeq: 2, status: 'stopped' });
+  await stopped;
+  f.now(2120);
+  f.client.poll();
+  assert.equal(f.client.stats.failed, true);
+  assert.equal(f.calls.failed, 1);
+});
+
+test('Opus media client: codec error, uncertain transport and early ACK fail once without retry or PCM downgrade', async (t) => {
+  for (const mode of ['codec', 'transport', 'earlyAck']) {
+    const sdk = syntheticOpus(),
+      f = fixture('opus', sdk.api);
+    t.after(() => f.client.close());
+    const token = await f.grant();
+    f.client.sender.offer(token, f.packet(), 0);
+    if (mode === 'codec')
+      sdk.codecs[0].callbacks.error(new Error('Private codec error'));
+    if (mode === 'transport') {
+      const write = f.backend.write;
+      f.backend.write = (value) => {
+        if (typeof value !== 'string')
+          throw new Error('Private transport error');
+        return write(value);
+      };
+      f.now(1);
+      sdk.output();
+    }
+    if (mode === 'earlyAck')
+      f.emit('ack', { sequence: 1, epoch: '1', status: 'accepted' });
+    f.client.poll();
+    assert.equal(f.client.stats.failed, true, mode);
+    assert.equal(f.calls.failed, 1, mode);
+    assert.equal(binaryWrites(f).length, 0, mode);
+    assert.equal(sdk.codecs[0].closes, 1, mode);
+    sdk.output();
+    f.client.poll();
+    assert.equal(f.calls.failed, 1, mode);
+    assert.equal(binaryWrites(f).length, 0, mode);
   }
 });

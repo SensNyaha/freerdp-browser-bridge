@@ -122,6 +122,8 @@ for (const [url, name, type] of [
   ...[
     'wire',
     'opus-wire',
+    'opus-sender',
+    'opus-encoder',
     'sender',
     'capture',
     'worklet',

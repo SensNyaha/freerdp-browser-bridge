@@ -19,6 +19,7 @@ class SyntheticMicrophoneWorker extends FakeSessionWorker {
   samples = 0;
   resets = 0;
   signal = false;
+  opusPackets = 0;
   holdNext = false;
   held = false;
   release;
@@ -31,11 +32,22 @@ class SyntheticMicrophoneWorker extends FakeSessionWorker {
     if (!abort.aborted) this.emit('microphone', this.source);
   }
   async sendMicrophone(packet) {
-    ++this.samples;
     assert.equal(packet.pcm.length, 3840);
     assert.equal(packet.epoch, this.source.epoch);
     for (let at = 0; at < packet.pcm.length; at += 2)
       if (packet.pcm.readInt16LE(at) === -16384) this.signal = true;
+    return this.accept(packet);
+  }
+  async sendMicrophoneOpus(packet) {
+    ++this.opusPackets;
+    assert.ok(packet.encoded.length >= 2 && packet.encoded.length <= 1275);
+    assert.equal(packet.encoded[0] & 7, 4);
+    assert.ok(packet.lookaheadFrames >= 0 && packet.lookaheadFrames <= 960);
+    return this.accept(packet);
+  }
+  async accept(packet) {
+    ++this.samples;
+    assert.equal(packet.epoch, this.source.epoch);
     if (this.holdNext) {
       this.holdNext = false;
       this.held = true;
@@ -65,9 +77,11 @@ class SyntheticMicrophoneWorker extends FakeSessionWorker {
   } // No rendering or RDP graphics acceptance in this fixture.
 }
 
-for (const mode of ['stop', 'controller-loss', 'permission-denied'])
+for (const [codec, mode] of ['pcm', 'opus'].flatMap((codec) =>
+  ['stop', 'controller-loss', 'permission-denied'].map((mode) => [codec, mode]),
+))
   test(
-    `Edge / actual WS / fake RDP microphone: synthetic capture and ${mode} complete the observed retirement barrier`,
+    `Edge / actual WS / fake RDP ${codec} microphone: synthetic capture and ${mode} complete the observed retirement barrier`,
     { skip: process.platform !== 'win32', timeout: 45000 },
     async () => {
       const names = [
@@ -78,6 +92,8 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
         'microphone-sender.js',
         'microphone-wire.js',
         'microphone-opus-wire.js',
+        'microphone-opus-sender.js',
+        'microphone-opus-encoder.js',
         'microphone-worklet.js',
         'microphone-capture.js',
       ];
@@ -126,7 +142,7 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
           payload: {
             target: { host: 'fixture.invalid' },
             auth: {},
-            media: { microphone: 'pcm' },
+            media: { microphone: codec },
           },
         });
         assert.equal(created.statusCode, 202);
@@ -140,7 +156,7 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
         page.setDefaultTimeout(5000);
         await page.goto(origin);
         await page.evaluate(
-          async ({ base, session, mode }) => {
+          async ({ base, session, mode, codec }) => {
             const [
               { MicrophoneMediaClient },
               { MicrophoneGraph },
@@ -159,6 +175,7 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
               destination,
               failed = 0,
               requests = 0;
+            const encoders = [];
             const socket = (channel) =>
               new WebSocket(
                 base +
@@ -192,7 +209,7 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
                   type: 'media.hello',
                   data: {
                     codecs: ['jpeg'],
-                    microphone: { codec: 'pcm', sourceStatus: true },
+                    microphone: { codec, sourceStatus: true },
                   },
                 }),
               );
@@ -221,6 +238,15 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
                     failed: fail,
                   },
                   value.data.microphone,
+                  () => performance.now(),
+                  {
+                    encoder(callbacks) {
+                      const encoder = new AudioEncoder(callbacks);
+                      encoders.push(encoder);
+                      return encoder;
+                    },
+                    data: (options) => new AudioData(options),
+                  },
                 );
               else if (
                 value.type === 'media.error' ||
@@ -240,6 +266,10 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
                 requests,
                 context: context?.state,
                 track: stream?.getAudioTracks()[0]?.readyState,
+                codecInstances: encoders.length,
+                codecsClosed: encoders.every(
+                  (encoder) => encoder.state === 'closed',
+                ),
               }),
               control,
               media,
@@ -304,6 +334,7 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
             base: 'ws://127.0.0.1:' + server.server.address().port,
             session,
             mode,
+            codec,
           },
         );
         await page.waitForFunction(() => window.fixture.eligible());
@@ -321,6 +352,8 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
           }));
           assert.equal(denied.failed, 0);
           assert.equal(denied.requests, 1);
+          assert.equal(denied.codecInstances, 0);
+          assert.equal(denied.codecsClosed, true);
           assert.equal(denied.context, 'closed');
           assert.equal(denied.active, false);
           assert.equal(denied.preparing, false);
@@ -332,7 +365,12 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
           return;
         }
         assert.equal(await page.evaluate(() => window.started), true);
-        await eventually(() => worker.samples >= 3 && worker.signal);
+        await eventually(
+          () =>
+            worker.samples >= 3 &&
+            (codec === 'pcm' ? worker.signal : worker.opusPackets >= 3),
+        );
+        assert.equal(worker.opusPackets, codec === 'opus' ? worker.samples : 0);
         if (mode === 'stop') await page.evaluate(() => window.fixture.stop());
         else {
           worker.holdNext = true;
@@ -352,7 +390,7 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
         }
         await eventually(() => worker.resets === 1);
         const count = worker.samples;
-        const result = await page.evaluate(async () => {
+        const { codecInstances, ...result } = await page.evaluate(async () => {
           const f = window.fixture;
           await new Promise((done) => setTimeout(done, 60));
           return {
@@ -364,9 +402,12 @@ for (const mode of ['stop', 'controller-loss', 'permission-denied'])
             mediaOpen: f.media.readyState === WebSocket.OPEN,
           };
         });
+        if (codec === 'opus') assert.ok(codecInstances >= 1);
+        else assert.equal(codecInstances, 0);
         assert.deepEqual(result, {
           failed: 0,
           requests: 1,
+          codecsClosed: true,
           context: 'closed',
           track: 'ended',
           sourceEpoch: '2',

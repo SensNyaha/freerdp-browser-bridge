@@ -62,3 +62,25 @@ permission-denial case. Viewer/native activation remains open.
 Iteration 127 wires the client into the reference viewer. Microphone JSON
 replies continue during finite detach cleanup; video and output-audio credits
 remain separate. [Viewer contract](MICROPHONE_VIEWER.md).
+
+Iteration 143 extends exact profile admission to selected Opus with **1,315**
+record bytes; PCM remains **3,876**. Codec and size must match. The validated
+profile selects MicrophoneOpusSender or the existing PCM sender; there is no
+automatic codec fallback. Commands, token/grant checks, ACK/start/stop deadlines,
+graph facade and native reset/ownership transfer remain shared. An optional
+injected codec API supports deterministic fixtures; production uses WebCodecs.
+
+Negotiation, start and permission authorization create no Opus encoder. Only the
+first authorized ready-source PCM input constructs it. Stop/source loss retires
+unissued encoding immediately; an issued packet retains its real network ACK
+through stop/fresh source. The existing media poll keeps both preparation and
+issued-input deadlines alive after the graph stops. Codec/transport/protocol
+failure closes admission once without retry or PCM downgrade.
+
+Five new portable client cases and six actual Edge/Worklet/loopback-WS cases
+(PCM/Opus × stop/controller loss/permission denial) verify selected composition.
+Streams and permission results are synthetic, RDP admission is fake, and no
+physical getUserMedia runs. Actual Edge encoders, graph/context and tracks retire;
+permission denial creates no encoder. Viewer Opus selection, actual ready
+AUDIN/device/recording/LAN/platform/resource/failure injection and soak remain
+open. [Evidence](ITERATION_143.md), [sender](MICROPHONE_OPUS_SENDER.md).

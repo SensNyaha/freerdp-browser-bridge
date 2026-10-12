@@ -2,6 +2,7 @@ import {
   MicrophoneSender,
   parseMicrophoneStatus,
 } from './microphone-sender.js';
+import { MicrophoneOpusSender } from './microphone-opus-sender.js';
 const exact = (value, keys) =>
   value &&
   typeof value === 'object' &&
@@ -23,13 +24,13 @@ export function validateMicrophoneProfile(value) {
       'packetTimeoutMs',
       'stopTimeoutMs',
     ]) ||
-    value.codec !== 'pcm' ||
+    !['pcm', 'opus'].includes(value.codec) ||
     value.sourceStatus !== true ||
     value.streamId !== 4 ||
     value.sampleRate !== 48000 ||
     value.channels !== 2 ||
     value.frames !== 960 ||
-    value.maxPayloadBytes !== 3876 ||
+    value.maxPayloadBytes !== (value.codec === 'opus' ? 1315 : 3876) ||
     value.maxInFlight !== 1 ||
     value.packetTimeoutMs !== 2000 ||
     value.stopTimeoutMs !== 4000
@@ -55,8 +56,8 @@ export class MicrophoneMediaClient {
   #timer;
   #failed = false;
   #writing = false;
-  constructor(backend, profile, now = () => performance.now()) {
-    validateMicrophoneProfile(profile);
+  constructor(backend, profile, now = () => performance.now(), codecApi) {
+    const selected = validateMicrophoneProfile(profile);
     if (
       !backend ||
       typeof backend.write !== 'function' ||
@@ -67,14 +68,18 @@ export class MicrophoneMediaClient {
       throw invalid();
     this.#backend = backend;
     this.#now = now;
-    this.#sender = new MicrophoneSender({
+    const senderBackend = {
       send: (record) => backend.write(record),
       revoke: () => {
         this.#token = undefined;
         this.#active = false;
         if (!this.#closed) void this.stop().catch(() => {});
       },
-    });
+    };
+    this.#sender =
+      selected.codec === 'opus'
+        ? new MicrophoneOpusSender(senderBackend, codecApi, now)
+        : new MicrophoneSender(senderBackend);
     this.#timer = setInterval(() => this.poll(), 20);
   }
   get stats() {

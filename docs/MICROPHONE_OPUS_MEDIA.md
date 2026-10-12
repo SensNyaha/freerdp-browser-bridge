@@ -46,3 +46,9 @@ has not yet been composed with permission/graph/network ownership. This server
 route does not activate browser microphone permission or automatic capture.
 Browser selection, actual ready AUDIN/recording/LAN/platform/resource/failure
 injection and soak acceptance remain open.
+
+Iteration 143 composes the selected browser client, startup/permission owner,
+Worklet and actual WebSocket with a fake RDP backend for PCM and Opus. This
+supersedes the isolated-encoder statement above; the reference viewer still
+selects PCM input only. Physical capture, actual ready AUDIN/recording and broader
+acceptance remain open. [Client contract](MICROPHONE_MEDIA_CLIENT.md).
