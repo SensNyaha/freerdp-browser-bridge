@@ -5,7 +5,9 @@ handoff `63e4368`. DvcListenerProxy borrows a public listener callback and prese
 its pInterface, actual channel and opaque data argument. It is installed only in
 fixtures; production provider/listener/aggregate worker admission remains open.
 
-The proxy starts with false acceptance/null output and uses local factory results.
+The proxy starts external outputs with false acceptance/null output and uses local factory results.
+Iteration 156 corrects the original factory's in/out acceptance default to TRUE,
+matching pinned drdynvc and generic addins which leave this flag untouched.
 Only successful factory status plus explicit acceptance and a live target reaches
 accepted handoff. Ordinary factory error or denial preserves its return, emits no
 callback and does not close an output whose ownership was never transferred.

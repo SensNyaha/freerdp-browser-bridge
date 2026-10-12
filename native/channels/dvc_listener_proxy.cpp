@@ -53,7 +53,8 @@ UINT DvcListenerProxy::create(IWTSVirtualChannel *channel, BYTE *data, BOOL *acc
     return ERROR_INVALID_STATE;
   increment(stats_.calls);
   stats_.busy = true;
-  BOOL admitted = FALSE;
+  // Pinned drdynvc starts accepted; generic addins leave this in/out flag untouched.
+  BOOL admitted = TRUE;
   IWTSVirtualChannelCallback *target = nullptr;
   UINT status = ERROR_INTERNAL_ERROR;
   try {

@@ -887,6 +887,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Bounded public DVC listener manager installs accepted callback
+  proxies, rejects live duplicate names and slot overflow, defers destruction
+  during factory calls and retains uncertain native handles until explicit final
+  host unpublication. Actual pinned generic acceptance default is preserved.
+  Six public fixtures and one actual drdynvc/fake-SVC fixture pass; production
+  addin/plugin/worker and aggregate/cached/nested/remote resource gates remain open.
+  [Iteration 156](docs/ITERATION_156.md).
+
 - [~] IN PROGRESS — Public listener factory proxy transfers only explicitly
   accepted live callbacks, preserves ordinary factory refusal, prevents late
   publication on close and keeps uncertain cleanup visible. Seven public-ABI and

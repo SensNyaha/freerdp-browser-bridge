@@ -2,6 +2,7 @@
 #include "dvc_channel_handoff.hpp"
 #include "dvc_channel_registry.hpp"
 #include "dvc_completion_hook.hpp"
+#include "dvc_listener_manager.hpp"
 #include "dvc_listener_proxy.hpp"
 #include "dvc_receive_guard.hpp"
 #include "pinned_dvc_manager.hpp"
@@ -42,6 +43,8 @@ struct Host {
   bool use_handoff = false;
   bool wrap_listener = false;
   std::unique_ptr<DvcListenerProxy> listener_proxy;
+  std::unique_ptr<DvcListenerManager> listener_manager;
+  bool wrap_listeners = false;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
   bool observe_completion = false;
@@ -109,9 +112,10 @@ struct Host {
   }
   explicit Host(bool completion_observation = false, bool registry_observation = false,
                 bool pinned_manager_observation = false, bool handoff_observation = false,
-                bool listener_proxy_observation = false)
+                bool listener_proxy_observation = false, bool listener_manager_observation = false)
       : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
-        use_handoff(handoff_observation), wrap_listener(listener_proxy_observation) {
+        use_handoff(handoff_observation), wrap_listener(listener_proxy_observation),
+        wrap_listeners(listener_manager_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
@@ -134,6 +138,16 @@ struct Host {
       auto &host = *static_cast<Host *>(p->pInterface);
       host.actual_manager = m;
       host.manager = m;
+      if (host.wrap_listeners) {
+        try {
+          host.listener_manager = std::make_unique<DvcListenerManager>(
+              *m, *host.registry,
+              [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, &host);
+          host.manager = host.listener_manager->interface();
+        } catch (...) {
+          return ERROR_NOT_ENOUGH_MEMORY;
+        }
+      }
       if (host.wrap_manager) {
         try {
           host.manager_facade = std::make_unique<PinnedDvcManager>(*m);
@@ -174,7 +188,7 @@ struct Host {
         return ERROR_INVALID_PARAMETER;
       *accept = TRUE;
       *callback = &host.channels[id - 0x42].api;
-      if (host.registry && !host.listener_proxy) {
+      if (host.registry && !host.listener_proxy && !host.listener_manager) {
         DvcChannelBinding binding{CHANNEL_RC_OK, nullptr};
         if (host.use_handoff) {
           host.handoff_result = handoff_accepted_channel(*host.registry, *host.manager, *channel,
@@ -321,6 +335,8 @@ struct Host {
       registry_retirement_status = registry->retire();
     if (listener_proxy)
       listener_proxy->close();
+    if (listener_manager)
+      (void)listener_manager->retire();
     if (manager_facade)
       manager_facade->retire();
     budget.close();
@@ -676,4 +692,21 @@ TEST_CASE(
   REQUIRE(host.channels[0].closes == 1);
   REQUIRE(host.channels[1].closes == 1);
   REQUIRE(host.registry->stats().resources_retired);
+}
+
+TEST_CASE("Actual drdynvc manager installs bounded listener and channel proxies through plugin "
+          "lifecycle") {
+  Host host(false, true, false, false, false, true);
+  REQUIRE(host.listener_manager);
+  REQUIRE(host.listener_manager->stats().live_listeners == 1);
+  REQUIRE(host.registry->owns_callback(host.channels[0].api));
+  const BYTE initial[]{1, 2, 3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.terminated == 1);
+  REQUIRE(host.listener_manager->stats().retired);
+  REQUIRE(host.listener_manager->stats().live_listeners == 0);
+  REQUIRE_FALSE(host.listener_manager->stats().failed);
 }
