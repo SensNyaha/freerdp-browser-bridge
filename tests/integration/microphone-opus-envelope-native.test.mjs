@@ -105,10 +105,10 @@ test(
     }),
 );
 test(
-  'actual native lifecycle: prepared schema-8 Opus selection fails before secret or RDP connect',
+  'actual native lifecycle: raw schema-8 Opus selection is Windows gated and inactive before RDP connect',
   { timeout: 15000 },
   async (t) =>
-    run(t, async ({ child, closed, build }) => {
+    run(t, async ({ child, closed, build, request }) => {
       const bytes = encodeConnectionSettings({
         host: '127.0.0.1',
         username: 'synthetic',
@@ -124,12 +124,30 @@ test(
         tcpAckMs: 1000,
         opusInput: true,
       });
-      child.stdin.write(
-        encodePacket({ kind: Kind.Configure, requestId: 2n, payload: bytes }),
-      );
-      const result = await closed;
-      assert.equal(result[1], null);
-      assert.equal(result[0], 2);
+      if (build.capabilities.pcmInput) {
+        await request(Kind.Configure, Kind.ConfigureAck, 2n, bytes);
+        const result = await request(
+          Kind.MicrophoneOpus,
+          Kind.MicrophoneResult,
+          3n,
+          encodeMicrophoneOpus({
+            epoch: 1n,
+            timestampUs: 0n,
+            discontinuity: true,
+            lookaheadFrames: 312,
+            encoded: Buffer.from([0xfc, 0xff]),
+          }),
+        );
+        assert.equal(decodeMicrophoneResult(result.payload), 'unavailable');
+        await request(Kind.Heartbeat, Kind.HeartbeatAck, 4n);
+        await request(Kind.Shutdown, Kind.ShutdownAck, 5n);
+        assert.deepEqual(await closed, [0, null]);
+      } else {
+        child.stdin.write(
+          encodePacket({ kind: Kind.Configure, requestId: 2n, payload: bytes }),
+        );
+        assert.deepEqual(await closed, [2, null]);
+      }
       assert.equal(build.capabilities.opusInput, undefined);
     }),
 );

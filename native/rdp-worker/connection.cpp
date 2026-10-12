@@ -96,8 +96,6 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
     throw ProtocolError();
   config_ = decode_connection_config(payload);
   const auto &c = *config_;
-  if (c.opus_input)
-    throw ProtocolError(); // Prepared schema only; no Opus owner-thread dispatch yet.
 #if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
   if ((c.pcm_output || c.opus_output) && (!audio_send_ || !audio_discard_))
     throw ProtocolError();
@@ -105,14 +103,21 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   if (c.pcm_output || c.opus_output)
     throw ProtocolError();
 #endif
-  // Raw private schema-7 opt-in only; public microphone selection remains gated.
+  // Raw private schema-7/8 input only; typed/public Opus selection remains gated.
 #if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
-  if (c.pcm_input && !audio_send_)
+  if ((c.pcm_input || c.opus_input) && !audio_send_)
     throw ProtocolError();
 #else
-  if (c.pcm_input)
+  if (c.pcm_input || c.opus_input)
     throw ProtocolError();
 #endif
+  if (c.pcm_input || c.opus_input) {
+    std::lock_guard lock(microphone_mutex_);
+    if (microphone_handoff_->pending())
+      throw ProtocolError();
+    microphone_handoff_ = std::make_unique<bridge::audio::CaptureHandoff>(
+        c.opus_input ? bridge::audio::CaptureCodec::opus : bridge::audio::CaptureCodec::pcm);
+  }
   auto *s = context_->settings;
   const auto boolean = [&](auto key, BOOL value) {
     if (!freerdp_settings_set_bool(s, key, value))
@@ -155,7 +160,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   // Add the guarded static channel in PreConnect. TRUE here would let the
   // pinned generic loader auto-add an unprotected dynamic rdpsnd channel.
   boolean(FreeRDP_AudioPlayback, FALSE);
-  boolean(FreeRDP_AudioCapture, c.pcm_input);
+  boolean(FreeRDP_AudioCapture, c.pcm_input || c.opus_input);
 #ifdef CHANNEL_RDPEI_CLIENT
   boolean(FreeRDP_MultiTouchInput, c.touch);
 #else
@@ -864,7 +869,19 @@ ipc::microphone::Result Connection::submit_microphone(void *owner,
   auto &self = *static_cast<Connection *>(owner);
   return self.microphone_ ? self.microphone_->submit(packet) : ipc::microphone::Result::unavailable;
 }
-void Connection::enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload) {
+ipc::microphone::Result
+Connection::submit_microphone_opus(void *owner, const ipc::microphone::opus::Packet &packet) {
+  auto &self = *static_cast<Connection *>(owner);
+  return self.microphone_opus_ ? self.microphone_opus_->submit(packet)
+                               : ipc::microphone::Result::unavailable;
+}
+void Connection::enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload,
+                                    bool opus) {
+  // Validate the incoming grammar even when its profile is unselected.
+  if (opus)
+    (void)ipc::microphone::opus::decode_packet(payload);
+  else
+    (void)ipc::microphone::decode_pcm(payload);
   std::optional<ipc::microphone::Result> result;
   {
     std::lock_guard lock(microphone_mutex_);
@@ -872,7 +889,10 @@ void Connection::enqueue_microphone(std::uint64_t request, std::span<const std::
     const bool ready = microphone_state_ &&
                        microphone_state_->availability == ipc::audio::Availability::ready &&
                        connected_ && !stopping_;
-    result = microphone_handoff_.enqueue(request, payload, audio_time_us(), epoch, ready);
+    if (!config_ || !(opus ? config_->opus_input : config_->pcm_input))
+      result = ipc::microphone::Result::unavailable;
+    else
+      result = microphone_handoff_->enqueue(request, payload, audio_time_us(), epoch, ready);
     if (!result && !SetEvent(media_event_))
       throw ProtocolError();
   }
@@ -886,21 +906,37 @@ void Connection::service_microphone(bool ending) {
   const auto state = microphone_ ? microphone_->published_state() : std::nullopt;
   const auto stats = microphone_ ? microphone_->stats() : std::nullopt;
   const auto epoch = stats ? stats->source.epoch : 0;
-  const bool ready = !ending && connected_ && !stopping_ && state && stats &&
-                     state->availability == ipc::audio::Availability::ready &&
-                     state->epoch == epoch && stats->source.opened;
+  bool ready = !ending && connected_ && !stopping_ && state && stats &&
+               state->availability == ipc::audio::Availability::ready && state->epoch == epoch &&
+               stats->source.opened && microphone_->input_ready(epoch);
+  if (microphone_opus_)
+    ready = microphone_opus_->synchronize() && ready;
   std::optional<bridge::audio::CaptureCompletion> completion;
+  bool codec_failed = false;
   {
     std::lock_guard lock(microphone_mutex_);
     completion =
-        microphone_handoff_.service(audio_time_us(), epoch, ready, submit_microphone, this);
-    if (ending && !microphone_handoff_.retire())
+        config_ && config_->opus_input
+            ? microphone_handoff_->service_opus(audio_time_us(), epoch, ready,
+                                                submit_microphone_opus, this)
+            : microphone_handoff_->service(audio_time_us(), epoch, ready, submit_microphone, this);
+    if (microphone_opus_) {
+      const auto codec = microphone_opus_->stats();
+      if (!codec)
+        throw ProtocolError();
+      codec_failed = codec->failed;
+      if (ending && !microphone_opus_->retire())
+        throw ProtocolError();
+    }
+    if (ending && !microphone_handoff_->retire())
       throw ProtocolError();
   }
   if (completion) {
     const auto body = ipc::microphone::encode_result(completion->result);
     send_({Kind::microphone_result, completion->request_id, {body.begin(), body.end()}});
   }
+  if (codec_failed)
+    throw ProtocolError(); // Correlated completion precedes terminal connection failure.
 }
 void Connection::enqueue_microphone_reset(std::uint64_t request,
                                           std::span<const std::uint8_t> payload) {
@@ -923,11 +959,15 @@ void Connection::service_microphone_reset(bool ending) {
         microphone_reset_.service(audio_time_us(), !ending && connected_ && !stopping_, [this] {
           const auto state = microphone_ ? microphone_->published_state() : std::nullopt;
           const auto stats = microphone_ ? microphone_->stats() : std::nullopt;
-          return state && stats && stats->source.opened &&
-                 state->availability == ipc::audio::Availability::ready &&
-                 state->epoch == stats->source.epoch &&
-                 microphone_->reset_capture(state->epoch).status ==
-                     bridge::audio::AudinCaptureResetStatus::reset;
+          if (!(state && stats && stats->source.opened &&
+                state->availability == ipc::audio::Availability::ready &&
+                state->epoch == stats->source.epoch &&
+                microphone_->reset_capture(state->epoch).status ==
+                    bridge::audio::AudinCaptureResetStatus::reset))
+            return false;
+          if (microphone_opus_ && !microphone_opus_->invalidate())
+            throw ProtocolError();
+          return true;
         });
   }
   if (completion)
@@ -1061,9 +1101,11 @@ void Connection::run() noexcept {
           },
           audio_discard_, bridge::audio::AudioSession::Drain{}, 1000000,
           config_->opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm);
-    if (config_->pcm_input)
+    if (config_->pcm_input || config_->opus_input)
       microphone_ =
           std::make_unique<bridge::audio::MicrophoneSession>(*context_, publish_microphone, this);
+    if (config_->opus_input)
+      microphone_opus_ = std::make_unique<bridge::audio::MicrophoneOpusOwner>(*microphone_);
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
     std::jthread watchdog([this, deadline](std::stop_token token) {

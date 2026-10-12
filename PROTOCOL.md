@@ -318,6 +318,11 @@ with PCM input bit 16. Current workers validate then reply unavailable and
 refuse Opus selection before secret/connect; no input capability is advertised.
 [Private contract](docs/MICROPHONE_OPUS_IPC.md).
 
+Iteration 136 activates raw guarded-Windows schema-8 Opus input through one
+selected handoff and RDP-thread AUDIN/decoder owner. HELLO/typed/public Opus
+input remain disabled; non-guarded workers explicitly refuse it. No wire shape
+changes beyond the assigned preparation. [Worker contract](docs/MICROPHONE_OPUS_WORKER.md).
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

@@ -228,9 +228,13 @@ int run() {
         send({Kind::microphone_result, header.request_id, {result.begin(), result.end()}});
 #endif
       } else if (header.kind == Kind::microphone_opus && ready) {
+#ifdef BRIDGE_WITH_FREERDP
+        connection.enqueue_microphone(header.request_id, payload, true);
+#else
         (void)microphone::opus::decode_packet(payload);
         const auto result = microphone::encode_result(microphone::Result::unavailable);
         send({Kind::microphone_result, header.request_id, {result.begin(), result.end()}});
+#endif
       } else if (header.kind == Kind::microphone_reset && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.enqueue_microphone_reset(header.request_id, payload);

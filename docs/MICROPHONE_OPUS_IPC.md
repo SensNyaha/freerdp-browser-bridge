@@ -1,5 +1,11 @@
 # Prepared Opus microphone IPC envelope
 
+Current update — iteration 136: guarded Windows raw CONFIGURE can select Opus
+input and kind 44 dispatches through one handoff and the RDP-thread owner.
+HELLO/typed/public Opus selection remain disabled; foundation still refuses it.
+The historical iteration 134 preparation below predates native activation.
+[Current worker contract](MICROPHONE_OPUS_WORKER.md).
+
 Iteration 134 prepares the private transport for SPECIFICATION §2.6 /
 MEDIA_PIPELINE §7. Input RWI1 kind **44** (`MicrophoneOpus`) carries the existing
 [input-specific payload](MICROPHONE_OPUS_WIRE.md), 26..1,299 bytes, with nonzero
