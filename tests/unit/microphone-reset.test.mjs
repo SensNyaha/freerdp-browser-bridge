@@ -101,6 +101,21 @@ test('microphone reset HELLO extension: fixed version, legacy absence, dependenc
   };
   const extension = Buffer.from('0001000000000001', 'hex');
   assert.equal(decodeBuild(report()).capabilities.microphoneReset, false);
+  assert.equal(decodeBuild(report()).capabilities.opusInput, false);
+  const opus = Buffer.from('0001000000000003', 'hex');
+  assert.equal(
+    decodeBuild(Buffer.concat([report(), opus])).capabilities.opusInput,
+    true,
+  );
+  for (const [flags, suffix] of [
+    [32773, Buffer.from('0001000000000002', 'hex')],
+    [32769, opus],
+    [5, opus],
+  ])
+    assert.throws(
+      () => decodeBuild(Buffer.concat([report(flags), suffix])),
+      ProtocolError,
+    );
   assert.equal(
     decodeBuild(Buffer.concat([report(), extension])).capabilities
       .microphoneReset,
@@ -127,7 +142,7 @@ test('microphone reset HELLO extension: fixed version, legacy absence, dependenc
   );
   for (const at of [0, 1, 2, 3, 4, 5, 6, 7]) {
     const bytes = Buffer.from(extension);
-    bytes[at] ^= at === 7 ? 2 : 1;
+    bytes[at] ^= at === 7 ? 4 : 1;
     assert.throws(
       () => decodeBuild(Buffer.concat([report(), bytes])),
       ProtocolError,

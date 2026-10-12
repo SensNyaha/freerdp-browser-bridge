@@ -100,6 +100,13 @@ Iteration 110 permits one optional fixed eight-byte suffix after the seven
 HELLO strings: u16 schema 1, u16 zero, u32 feature mask. Bit 0 is microphoneReset
 and requires base pcmInput. Missing suffix means false; unknown mask bits,
 partial/repeated suffixes or extra bytes reject before configuration/secrets.
+
+Iteration 137 assigns bit 1 to private opusInput. This bit requires bit 0 and
+base connectCore; microphoneReset still requires base pcmInput. Guarded
+Windows/AUDIN emits mask 3 with matching CLI/REST inventory. Typed private Node
+selection uses CONFIGURE schema 8 and kind 44, sharing one capture send/reset
+flight with PCM. The source-state body remains normalized PCM. Public Opus
+capture selection is not activated by this private capability.
 Workers do not emit it or claim reset yet. Kinds 42/43 validate fixed input epoch
 reset/result and explicitly reply unavailable. [Reset contract](MICROPHONE_RESET.md).
 

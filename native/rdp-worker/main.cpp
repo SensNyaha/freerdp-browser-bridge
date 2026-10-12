@@ -110,10 +110,10 @@ std::vector<std::uint8_t> build_payload() {
                             platform, arch, "framed-pipes"})
     append_string(bytes, value);
 #if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
-  // Fixed schema-1 extension: microphone reset, independent of output reset.
+  // Fixed schema-1 extension: microphone reset and Opus input.
   append_be(bytes, 1, 2);
   append_be(bytes, 0, 2);
-  append_be(bytes, 1, 4);
+  append_be(bytes, 3, 4);
 #endif
   return bytes;
 }
@@ -330,9 +330,9 @@ int main(int argc, char **argv) {
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
                  "\"rdp\":false,\"penInput\":false,"
 #if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
-                 "\"microphoneReset\":true,"
+                 "\"microphoneReset\":true,\"opusInput\":true,"
 #else
-                 "\"microphoneReset\":false,"
+                 "\"microphoneReset\":false,\"opusInput\":false,"
 #endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP

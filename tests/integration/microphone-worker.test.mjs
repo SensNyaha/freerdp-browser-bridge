@@ -26,6 +26,13 @@ const samples = (epoch = 1n) => ({
   discontinuity: true,
   pcm: Buffer.alloc(3840, 7),
 });
+const opusSamples = (epoch = 1n) => ({
+  epoch,
+  timestampUs: 0n,
+  discontinuity: true,
+  lookaheadFrames: 312,
+  encoded: Buffer.from([0xfc, 0xff, 0xfe]),
+});
 async function run(body, peer = 'fixture-microphone') {
   const runtimeRoot = await mkdtemp(
     join(tmpdir(), 'bridge-microphone-worker-'),
@@ -400,6 +407,124 @@ test('fake microphone reset: malformed and duplicate results terminate private I
       assert.equal(worker.state, 'failed');
     }, 'fixture-microphone-reset');
 });
+
+test('synthetic private Opus: explicit codec, immutable source, copied packet and shared send/reset flight', async () => {
+  await run(async (worker) => {
+    assert.equal(worker.build.capabilities.opusInput, true);
+    assert.equal(await worker.sendMicrophoneOpus(opusSamples()), 'unavailable');
+    await worker.connect(configuration('hold', 'opus'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    assert.equal(await worker.sendMicrophone(samples()), 'unavailable');
+    const packet = opusSamples(),
+      original = Buffer.from(packet.encoded);
+    const pending = worker.sendMicrophoneOpus(packet);
+    assert.equal(await worker.sendMicrophoneOpus(opusSamples()), 'busy');
+    assert.equal(await worker.resetMicrophone(1n), 'busy');
+    await worker.ping();
+    assert.equal(await pending, 'accepted');
+    assert.deepEqual(packet.encoded, original);
+    assert.equal(await worker.sendMicrophoneOpus(opusSamples(2n)), 'stale');
+    const copy = worker.microphoneState;
+    copy.epoch = 8n;
+    assert.equal(worker.microphoneState.epoch, 1n);
+    const final = worker.sendMicrophoneOpus(packet),
+      closing = worker.close();
+    assert.equal(await final, 'unavailable');
+    await closing;
+    assert.equal(worker.microphoneState, undefined);
+  }, 'fixture-microphone-reset');
+});
+
+test('synthetic private Opus: reset pauses old epoch, current epoch resumes and PCM selection refuses encoded input', async () => {
+  for (const host of ['reset-hold', 'reset-scheduled-only'])
+    await run(async (worker) => {
+      await worker.connect(configuration(host, 'opus'));
+      await eventually(() => worker.microphoneState?.epoch === 1n);
+      const reset = worker.resetMicrophone(1n);
+      assert.equal(await worker.sendMicrophoneOpus(opusSamples()), 'busy');
+      await worker.ping();
+      assert.equal(await reset, 'scheduled');
+      if (host === 'reset-scheduled-only') {
+        assert.equal(
+          await worker.sendMicrophoneOpus(opusSamples()),
+          'unavailable',
+        );
+        assert.equal(worker.microphoneState.epoch, 1n);
+      } else {
+        await eventually(() => worker.microphoneState?.epoch === 2n);
+        assert.equal(await worker.sendMicrophoneOpus(opusSamples()), 'stale');
+        assert.equal(
+          await worker.sendMicrophoneOpus(opusSamples(2n)),
+          'accepted',
+        );
+        await assert.rejects(
+          worker.sendMicrophoneOpus({
+            ...opusSamples(2n),
+            encoded: Buffer.alloc(1),
+          }),
+        );
+      }
+    }, 'fixture-microphone-reset');
+  await run(async (worker) => {
+    await worker.connect(configuration('valid'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    assert.equal(await worker.sendMicrophoneOpus(opusSamples()), 'unavailable');
+    assert.equal(await worker.sendMicrophone(samples()), 'accepted');
+  }, 'fixture-microphone-reset');
+});
+
+test('synthetic private Opus: malformed or duplicate completion ends correlation without predictive retry', async () => {
+  for (const host of ['input-malformed', 'input-duplicate'])
+    await run(async (worker) => {
+      const failures = [];
+      worker.on('failure', (error) => failures.push(error.code));
+      await worker.connect(configuration(host, 'opus'));
+      await eventually(() => worker.microphoneState?.epoch === 1n);
+      await worker.sendMicrophoneOpus(opusSamples()).catch(() => {});
+      await eventually(() => failures.length === 1);
+      assert.equal(failures[0], 'IPC_PROTOCOL_ERROR');
+      assert.equal(worker.state, 'failed');
+    }, 'fixture-microphone-reset');
+});
+
+for (const audioOutput of ['off', 'pcm', 'opus'])
+  test(
+    `actual typed private Node Opus microphone/${audioOutput}: strict TLS refusal, no capture and cleanup`,
+    { skip: !native, timeout: 15000 },
+    async () => {
+      const endpoint = await createRdpTlsFixture();
+      try {
+        await run(async (worker) => {
+          assert.equal(worker.build.capabilities.opusInput, true);
+          const terminal = [];
+          worker.on('rdp-state', (state) => {
+            if (state.state === 'failed') terminal.push(state);
+          });
+          await worker.connect({
+            target: { host: '127.0.0.1', port: endpoint.port },
+            auth: { username: 'synthetic', password: 'synthetic-IPC-sentinel' },
+            security: { protocol: 'tls', certificatePolicy: 'strict' },
+            media: { microphone: 'opus', audioOutput },
+            timeouts: { connectMs: 5000 },
+          });
+          await eventually(() => terminal.length === 1);
+          assert.equal(terminal[0].error, 'RDP_CERTIFICATE_REJECTED');
+          assert.equal(worker.microphoneState.availability, 'closed');
+          assert.equal(worker.microphoneState.epoch, 0n);
+          assert.equal(
+            await worker.sendMicrophoneOpus(opusSamples()),
+            'unavailable',
+          );
+          assert.equal(await worker.sendMicrophone(samples()), 'unavailable');
+          assert.equal(await worker.resetMicrophone(1n), 'unavailable');
+          assert.equal(endpoint.applicationBytes, 0);
+          await worker.ping();
+        }, 'rdp-worker');
+      } finally {
+        await endpoint.close();
+      }
+    },
+  );
 test(
   'actual native private Node microphone: strict TLS refusal publishes closed input and cleans up',
   { skip: !native, timeout: 15000 },

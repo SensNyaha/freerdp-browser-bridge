@@ -323,6 +323,13 @@ selected handoff and RDP-thread AUDIN/decoder owner. HELLO/typed/public Opus
 input remain disabled; non-guarded workers explicitly refuse it. No wire shape
 changes beyond the assigned preparation. [Worker contract](docs/MICROPHONE_OPUS_WORKER.md).
 
+Iteration 137 adds private HELLO schema-1 suffix bit 1 (`opusInput`) with
+microphoneReset/pcmInput/connectCore dependencies. Guarded Windows CLI/build
+REST agree with the handshake; legacy absence means false. Typed private Node
+selects schema 8 and sends kind 44 with one shared send/reset flight, copied
+encoded storage and current source epoch checks. The state body remains the
+normalized PCM descriptor. Public/session/browser Opus input remains disabled.
+
 Video flags include `KEYFRAME`, `DISCONTINUITY`, `END_OF_STREAM`. Audio flags include `DISCONTINUITY`.
 
 ### H.264 payload

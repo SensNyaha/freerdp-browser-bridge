@@ -79,7 +79,10 @@ test(
   { timeout: 15000 },
   async (t) =>
     run(t, async ({ request, closed, build }) => {
-      assert.equal(build.capabilities.opusInput, undefined); // No capability advertised yet.
+      assert.equal(
+        build.capabilities.opusInput,
+        build.capabilities.microphoneReset,
+      );
       for (const [id, length] of [
         [2n, 2],
         [3n, 1275],
@@ -148,6 +151,9 @@ test(
         );
         assert.deepEqual(await closed, [2, null]);
       }
-      assert.equal(build.capabilities.opusInput, undefined);
+      assert.equal(
+        build.capabilities.opusInput,
+        build.capabilities.microphoneReset,
+      );
     }),
 );

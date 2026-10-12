@@ -333,6 +333,7 @@ export interface WorkerBuild {
     audioReset: boolean;
     pcmInput: boolean;
     microphoneReset: boolean;
+    opusInput: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -387,8 +388,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~1) !== 0 ||
-      ((extensions & 1) !== 0 && !(capabilities & 32768))
+      (extensions & ~3) !== 0 ||
+      ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
+      ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4)))
     )
       throw new ProtocolError();
     offset += 8;
@@ -418,6 +420,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       audioReset: Boolean(capabilities & 16384),
       pcmInput: Boolean(capabilities & 32768),
       microphoneReset: Boolean(extensions & 1),
+      opusInput: Boolean(extensions & 2),
       penInput: false,
     },
     bridgeVersion,

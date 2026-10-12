@@ -713,6 +713,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   remain open. [Contract](docs/MICROPHONE_OPUS_WORKER.md),
   [evidence](docs/ITERATION_136.md).
 - [ ] Underflow/silence behavior that does not block RDP loop.
+- [~] IN PROGRESS — Typed private Node Opus microphone now uses guarded
+  HELLO/CLI/build opusInput capability, immutable schema-8 selection, copied
+  encoded storage and one shared send/reset flight. Legacy/wrong profile,
+  stale epoch and malformed/duplicate completion are refused without retry.
+  Focused protocol and synthetic IPC/actual native local TLS checks pass;
+  public session/browser, ready AUDIN/device/LAN/resource/platform/soak gates
+  remain open. [Evidence](docs/ITERATION_137.md).
 - [ ] Audio reconnect/discontinuity reset.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).
 - [~] IN PROGRESS — The initial PCM table is fixed for one connection; replacement tables fail before upstream mutation. Source rate/layout/width changes within that table pass actual linked channel/fake-SVC tests. [Evidence](docs/ITERATION_047.md); `2713056`. Broader renegotiation remains open.

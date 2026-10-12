@@ -1,5 +1,10 @@
 # Prepared Opus microphone IPC envelope
 
+Current update — iteration 137: private HELLO/CLI/build inventory and typed
+WorkerProcess Opus input are enabled on guarded Windows. Public/session/browser
+selection remains disabled. The earlier preparation/activation records below
+retain their historical scope. [Typed worker contract](MICROPHONE_OPUS_WORKER.md).
+
 Current update — iteration 136: guarded Windows raw CONFIGURE can select Opus
 input and kind 44 dispatches through one handoff and the RDP-thread owner.
 HELLO/typed/public Opus selection remain disabled; foundation still refuses it.

@@ -1,5 +1,18 @@
 # Raw native Opus microphone dispatch
 
+Current update — iteration 137: guarded Windows/AUDIN advertises private
+`opusInput` through HELLO schema-1 extension bit 1 and matching CLI/build REST
+inventory. It requires microphoneReset (bit 0), base pcmInput and connectCore.
+Old peers without the suffix report false. Typed WorkerProcess accepts explicit
+Opus input, sends CONFIGURE schema 8 before private credentials, and exposes
+`sendMicrophoneOpus`. The normalized input source descriptor stays PCM: Opus is
+decoded before the AUDIN source. One immutable codec shares one in-flight
+send/reset reservation; wrong codec is unavailable, stale epochs are refused,
+scheduled reset pauses its old epoch and encoded transport copies are wiped.
+No packet is retried. NativeSessionWorker/public media/browser selection remains
+unsupported pending its own permission/lease/credit integration. The historical
+iteration-136 activation record below predates this typed capability.
+
 Iteration 136 activates raw private CONFIGURE schema 8 / Opus input bit 32 on
 guarded Windows builds for SPECIFICATION §2.6 / ARCHITECTURE §5 / MEDIA_PIPELINE
 §7. It does not advertise a HELLO/CLI/REST Opus input capability or activate

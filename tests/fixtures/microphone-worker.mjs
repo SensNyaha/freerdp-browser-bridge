@@ -4,13 +4,14 @@ import {
   PacketDecoder,
   encodePacket,
   decodeMicrophonePcm,
+  decodeMicrophoneOpus,
   encodeMicrophoneResult,
   encodeMicrophoneState,
   decodeMicrophoneReset,
   encodeMicrophoneResetResult,
 } from '../../packages/protocol/dist/index.js';
 const decoder = new PacketDecoder();
-let host, pending, pendingReset;
+let host, codec, pending, pendingReset;
 let state = {
   enabled: true,
   availability: 'ready',
@@ -67,22 +68,28 @@ function receive({ kind, requestId, payload }) {
       Buffer.concat([
         header,
         ...strings,
-        Buffer.from('0001000000000001', 'hex'),
+        Buffer.from('0001000000000003', 'hex'),
       ]),
     );
   } else if (kind === Kind.Configure) {
     // Minimal bounded fake scenario selector; production/native config parsers are tested separately.
-    if (host || payload.length < 12 || payload.readUInt16BE(0) !== 7)
+    if (
+      host ||
+      payload.length < 12 ||
+      ![7, 8].includes(payload.readUInt16BE(0))
+    )
       throw new Error('FIXTURE_CONFIG');
     const length = payload.readUInt16BE(2);
     if (
       !length ||
       length > 253 ||
       4 + length > payload.length ||
-      !(payload.readUInt32BE(payload.length - 4) & 16)
+      (payload.readUInt32BE(payload.length - 4) & 48) !==
+        (payload.readUInt16BE(0) === 8 ? 32 : 16)
     )
       throw new Error('FIXTURE_CONFIG');
     host = payload.subarray(4, 4 + length).toString('utf8');
+    codec = payload.readUInt16BE(0) === 8 ? 'opus' : 'pcm';
     send(Kind.ConfigureAck, requestId);
   } else if (kind === Kind.Secret) {
     payload.fill(0);
@@ -92,13 +99,24 @@ function receive({ kind, requestId, payload }) {
     send(Kind.ConnectAck, requestId);
     send(Kind.State, 0n, Buffer.from('0003000000000000', 'hex'));
     status();
-  } else if (kind === Kind.MicrophonePcm) {
+  } else if (kind === Kind.MicrophonePcm || kind === Kind.MicrophoneOpus) {
     if (!host || pending) throw new Error('FIXTURE_QUEUE_LIMIT');
-    const packet = decodeMicrophonePcm(payload);
+    if ((kind === Kind.MicrophoneOpus ? 'opus' : 'pcm') !== codec)
+      throw new Error('FIXTURE_PROFILE');
+    const packet =
+      kind === Kind.MicrophoneOpus
+        ? decodeMicrophoneOpus(payload)
+        : decodeMicrophonePcm(payload);
     const result = packet.epoch === state.epoch ? 'accepted' : 'stale';
     payload.fill(0);
     if (host === 'hold') pending = requestId;
-    else send(Kind.MicrophoneResult, requestId, encodeMicrophoneResult(result));
+    else {
+      const reply = encodeMicrophoneResult(result);
+      if (host === 'input-malformed') reply[2] = 1;
+      send(Kind.MicrophoneResult, requestId, reply);
+      if (host === 'input-duplicate')
+        send(Kind.MicrophoneResult, requestId, reply);
+    }
   } else if (kind === Kind.MicrophoneReset) {
     const epoch = decodeMicrophoneReset(payload);
     if (!host || pendingReset) throw new Error('FIXTURE_QUEUE_LIMIT');

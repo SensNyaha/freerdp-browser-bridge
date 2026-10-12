@@ -34,7 +34,7 @@ export function validateMicrophoneOpus(packet: MicrophoneOpusPacket): void {
     throw new ProtocolError();
   validateOpusAudioPayload(packet.encoded);
 }
-/** Prepared private payload only: no RWI1 kind/worker dispatch is assigned. */
+/** Private RWI1 kind 44 payload; dispatch requires negotiated Opus input. */
 export function encodeMicrophoneOpus(packet: MicrophoneOpusPacket): Buffer {
   validateMicrophoneOpus(packet);
   const bytes = Buffer.alloc(24 + packet.encoded.length);

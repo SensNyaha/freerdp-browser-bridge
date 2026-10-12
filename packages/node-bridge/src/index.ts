@@ -43,12 +43,14 @@ import {
   decodeMicrophoneState,
   validateMicrophoneStateProgress,
   encodeMicrophonePcm,
+  encodeMicrophoneOpus,
   decodeMicrophoneResult,
   encodeMicrophoneReset,
   decodeMicrophoneResetResult,
   type MicrophoneResetResult,
   type MicrophoneState,
   type MicrophonePcmPacket,
+  type MicrophoneOpusPacket,
   type MicrophoneResult,
   type AudioResetResult,
   type DisplayState,
@@ -81,6 +83,7 @@ export type {
   AudioResetResult,
   MicrophoneState,
   MicrophonePcmPacket,
+  MicrophoneOpusPacket,
   MicrophoneResult,
   MicrophoneResetResult,
 } from '@freerdp-bridge/protocol';
@@ -143,6 +146,7 @@ export class WorkerProcess extends EventEmitter {
   private audioResetting = false;
   private scheduledAudioEpoch: bigint | undefined;
   private microphoneEnabled = false;
+  private microphoneCodec: 'pcm' | 'opus' | undefined;
   private microphoneStatus: MicrophoneState | undefined;
   private microphoneSending = false;
   private microphoneResetting = false;
@@ -333,7 +337,9 @@ export class WorkerProcess extends EventEmitter {
         !this.connectionRequested ||
         !['ready', 'closing'].includes(this.status) ||
         !this.microphoneEnabled ||
-        !this.report?.capabilities.pcmInput
+        !(this.microphoneCodec === 'opus'
+          ? this.report?.capabilities.opusInput
+          : this.report?.capabilities.pcmInput)
       )
         throw new WorkerError('IPC_UNEXPECTED_EVENT');
       const state = decodeMicrophoneState(packet.payload);
@@ -606,7 +612,8 @@ export class WorkerProcess extends EventEmitter {
         if (
           kind === Kind.Secret ||
           kind === Kind.InputText ||
-          kind === Kind.MicrophonePcm
+          kind === Kind.MicrophonePcm ||
+          kind === Kind.MicrophoneOpus
         )
           bytes.fill(0);
         if (error) this.fail('IPC_WRITE_FAILED');
@@ -619,21 +626,44 @@ export class WorkerProcess extends EventEmitter {
     await this.request(Kind.Heartbeat, Kind.HeartbeatAck);
   }
 
-  /** One in-flight PCM packet. Acceptance is source admission, not remote delivery. */
+  /** Acceptance is source admission, not remote delivery. Neither codec is retried. */
   async sendMicrophone(packet: MicrophonePcmPacket): Promise<MicrophoneResult> {
-    if (!this.report?.capabilities.pcmInput)
+    return this.sendMicrophonePacket({ codec: 'pcm', packet });
+  }
+
+  async sendMicrophoneOpus(
+    packet: MicrophoneOpusPacket,
+  ): Promise<MicrophoneResult> {
+    return this.sendMicrophonePacket({ codec: 'opus', packet });
+  }
+
+  private async sendMicrophonePacket(
+    input:
+      | { codec: 'pcm'; packet: MicrophonePcmPacket }
+      | { codec: 'opus'; packet: MicrophoneOpusPacket },
+  ): Promise<MicrophoneResult> {
+    const { packet } = input;
+    if (
+      !(input.codec === 'opus'
+        ? this.report?.capabilities.opusInput
+        : this.report?.capabilities.pcmInput)
+    )
       throw new WorkerError('MICROPHONE_NOT_IMPLEMENTED');
     if (
       this.status !== 'ready' ||
       !this.rdpConnected ||
       !this.microphoneEnabled ||
+      this.microphoneCodec !== input.codec ||
       this.microphoneStatus?.availability !== 'ready'
     )
       return 'unavailable';
     if (this.microphoneSending || this.microphoneResetting) return 'busy';
     if (this.scheduledMicrophoneEpoch === this.microphoneStatus.epoch)
       return 'unavailable';
-    const bytes = encodeMicrophonePcm(packet);
+    const bytes =
+      input.codec === 'opus'
+        ? encodeMicrophoneOpus(input.packet)
+        : encodeMicrophonePcm(input.packet);
     if (packet.epoch !== this.microphoneStatus.epoch) {
       bytes.fill(0);
       return 'stale';
@@ -641,7 +671,7 @@ export class WorkerProcess extends EventEmitter {
     this.microphoneSending = true;
     try {
       const reply = await this.request(
-        Kind.MicrophonePcm,
+        input.codec === 'opus' ? Kind.MicrophoneOpus : Kind.MicrophonePcm,
         Kind.MicrophoneResult,
         bytes,
       );
@@ -652,7 +682,7 @@ export class WorkerProcess extends EventEmitter {
     }
   }
 
-  /** Clears input samples on the owner; fresh ready epoch authorizes subsequent PCM. */
+  /** Clears input on the owner; a fresh ready epoch authorizes the selected codec. */
   async resetMicrophone(expectedEpoch: bigint): Promise<MicrophoneResetResult> {
     const payload = encodeMicrophoneReset(expectedEpoch);
     if (!this.report?.capabilities.microphoneReset)
@@ -865,6 +895,8 @@ export class WorkerProcess extends EventEmitter {
         this.report.capabilities.pcmOutput,
         this.report.capabilities.opusOutput,
         this.report.capabilities.pcmInput,
+        this.report.capabilities.opusInput,
+        this.report.capabilities.microphoneReset,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -883,7 +915,13 @@ export class WorkerProcess extends EventEmitter {
       this.connectionRequested = true;
       this.dynamicResolution = config.display?.dynamicResolution === true;
       this.touchEnabled = config.input?.touch === true;
-      this.microphoneEnabled = config.media?.microphone === 'pcm';
+      this.microphoneCodec =
+        config.media?.microphone === 'opus'
+          ? 'opus'
+          : config.media?.microphone === 'pcm'
+            ? 'pcm'
+            : undefined;
+      this.microphoneEnabled = this.microphoneCodec !== undefined;
       this.audioCodec =
         config.media?.audioOutput === 'opus'
           ? 'opus'
@@ -964,6 +1002,8 @@ export class WorkerProcess extends EventEmitter {
     this.displayState = undefined;
     this.touchState = undefined;
     this.microphoneStatus = undefined;
+    this.microphoneCodec = undefined;
+    this.microphoneEnabled = false;
     if (this.directory) {
       await rm(this.directory, {
         recursive: true,
@@ -984,6 +1024,8 @@ function connectionPayload(
   pcmOutput: boolean,
   opusOutput: boolean,
   pcmInput: boolean,
+  opusInput: boolean,
+  microphoneReset: boolean,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -1017,7 +1059,9 @@ function connectionPayload(
     (config.media?.audioOutput === 'opus' && !opusOutput) ||
     (config.media?.microphone &&
       config.media.microphone !== 'off' &&
-      (config.media.microphone !== 'pcm' || !pcmInput)) ||
+      !['pcm', 'opus'].includes(config.media.microphone)) ||
+    (config.media?.microphone === 'pcm' && !pcmInput) ||
+    (config.media?.microphone === 'opus' && (!opusInput || !microphoneReset)) ||
     config.media?.audioLatencyMs !== undefined
   )
     throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
@@ -1072,6 +1116,7 @@ function connectionPayload(
     ...(config.media?.audioOutput === 'pcm' ? { pcmOutput: true } : {}),
     ...(config.media?.audioOutput === 'opus' ? { opusOutput: true } : {}),
     ...(config.media?.microphone === 'pcm' ? { pcmInput: true } : {}),
+    ...(config.media?.microphone === 'opus' ? { opusInput: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),
   });
 }

@@ -197,6 +197,18 @@ test('native integration: build REST is backed by actual handshake and CLI repor
       );
       assert.equal(capabilityCli.capabilities.penInput, false);
       assert.equal(
+        capabilityCli.capabilities.opusInput,
+        build.capabilities.opusInput,
+      );
+      assert.equal(
+        response.json().capabilities.opusInput,
+        build.capabilities.opusInput,
+      );
+      assert.equal(
+        (await server.inject('/v1/capabilities')).json().opusInput,
+        build.capabilities.opusInput,
+      );
+      assert.equal(
         capabilityCli.capabilities.microphoneReset,
         build.capabilities.microphoneReset,
       );
