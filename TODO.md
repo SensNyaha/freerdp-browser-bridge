@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Public listener factory proxy transfers only explicitly
+  accepted live callbacks, preserves ordinary factory refusal, prevents late
+  publication on close and keeps uncertain cleanup visible. Seven public-ABI and
+  two actual drdynvc/fake-SVC cases pass; production provider/host lifetime,
+  aggregate/cached/nested/remote resource acceptance remain open.
+  [Iteration 155](docs/ITERATION_155.md).
+
 - [~] IN PROGRESS — Accepted DVC callback handoff closes rejected new targets once,
   preserves separate uncertain cleanup status and refuses shared live callback
   aliases without closing the existing owner. Five fixtures and two actual

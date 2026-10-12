@@ -36,3 +36,7 @@ not actual server/device/application acceptance. Global listener/addin registrat
 cancelled/failed factory handoffs, active worker aggregate limits, actual allocator /
 remote cumulative memory, pool/nested codec limits, Linux/sanitizer/fuzz/soak remain
 open. Original factory ownership/lifetime must be preserved through all calls.
+
+Iteration 155 adds a [public listener factory proxy](DVC_LISTENER_PROXY.md) and
+shared accepted-rejection cleanup for cancellation/clock failure. Production
+provider/host lifetime binding remains open.

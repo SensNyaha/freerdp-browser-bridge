@@ -2,6 +2,7 @@
 #include "dvc_channel_handoff.hpp"
 #include "dvc_channel_registry.hpp"
 #include "dvc_completion_hook.hpp"
+#include "dvc_listener_proxy.hpp"
 #include "dvc_receive_guard.hpp"
 #include "pinned_dvc_manager.hpp"
 #include <algorithm>
@@ -39,6 +40,8 @@ struct Host {
   IWTSVirtualChannelManager *actual_manager = nullptr;
   bool wrap_manager = false;
   bool use_handoff = false;
+  bool wrap_listener = false;
+  std::unique_ptr<DvcListenerProxy> listener_proxy;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
   bool observe_completion = false;
@@ -105,13 +108,15 @@ struct Host {
     return entries->RegisterPlugin(entries, plugin_name, &active->dynamic);
   }
   explicit Host(bool completion_observation = false, bool registry_observation = false,
-                bool pinned_manager_observation = false, bool handoff_observation = false)
+                bool pinned_manager_observation = false, bool handoff_observation = false,
+                bool listener_proxy_observation = false)
       : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
-        use_handoff(handoff_observation) {
+        use_handoff(handoff_observation), wrap_listener(listener_proxy_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
-          DvcMessageBudgetLimits{handoff_observation ? 1U : 2U, 8, 8, 100});
+          DvcMessageBudgetLimits{handoff_observation || listener_proxy_observation ? 1U : 2U, 8, 8,
+                                 100});
     RDP_CLIENT_ENTRY_POINTS entry_points{};
     entry_points.Size = sizeof(entry_points);
     entry_points.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -137,8 +142,20 @@ struct Host {
           return ERROR_NOT_ENOUGH_MEMORY;
         }
       }
-      return host.manager->CreateListener(host.manager, channel_name, 0, &host.listener_callback,
-                                          &host.listener);
+      auto *receiver = &host.listener_callback;
+      if (host.wrap_listener) {
+        if (!host.registry)
+          return ERROR_INVALID_STATE;
+        try {
+          host.listener_proxy = std::make_unique<DvcListenerProxy>(
+              *host.registry, *host.manager, host.listener_callback,
+              [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, &host);
+          receiver = host.listener_proxy->interface();
+        } catch (...) {
+          return ERROR_NOT_ENOUGH_MEMORY;
+        }
+      }
+      return host.manager->CreateListener(host.manager, channel_name, 0, receiver, &host.listener);
     };
     dynamic.Terminated = [](IWTSPlugin *p) -> UINT {
       auto &host = *static_cast<Host *>(p->pInterface);
@@ -157,7 +174,7 @@ struct Host {
         return ERROR_INVALID_PARAMETER;
       *accept = TRUE;
       *callback = &host.channels[id - 0x42].api;
-      if (host.registry) {
+      if (host.registry && !host.listener_proxy) {
         DvcChannelBinding binding{CHANNEL_RC_OK, nullptr};
         if (host.use_handoff) {
           host.handoff_result = handoff_accepted_channel(*host.registry, *host.manager, *channel,
@@ -302,6 +319,8 @@ struct Host {
     }
     if (registry)
       registry_retirement_status = registry->retire();
+    if (listener_proxy)
+      listener_proxy->close();
     if (manager_facade)
       manager_facade->retire();
     budget.close();
@@ -620,6 +639,39 @@ TEST_CASE(
   REQUIRE(getChannelError(host.context.get()) ==
           CHANNEL_RC_OK);                 // Negative CREATE response is not a global channel error.
   REQUIRE(host.registry->stats().failed); // Future owner must observe its own refusal too.
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.channels[1].closes == 1);
+  REQUIRE(host.registry->stats().resources_retired);
+}
+
+TEST_CASE(
+    "Actual drdynvc listener proxy publishes accepted callback and observes host completion") {
+  Host host(false, true, true, false, true);
+  REQUIRE(host.listener_proxy);
+  REQUIRE(host.listener_proxy->stats().accepted == 1);
+  REQUIRE_FALSE(host.listener_proxy->stats().failed);
+  const BYTE initial[]{1, 2, 3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  host.shutdown();
+  REQUIRE(host.listener_proxy->stats().closed);
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.registry_retirement_status == CHANNEL_RC_OK);
+}
+TEST_CASE(
+    "Actual drdynvc listener proxy reports own refusal when negative CREATE has no global error") {
+  Host host(false, true, true, false, true);
+  std::vector<BYTE> create{0x10, 0x43};
+  create.insert(create.end(), channel_name, channel_name + std::strlen(channel_name) + 1);
+  REQUIRE(host.send(create));
+  REQUIRE(host.listener_proxy->stats().failed);
+  REQUIRE(host.listener_proxy->stats().last_status == ERROR_TOO_MANY_OPEN_FILES);
+  REQUIRE(host.listener_proxy->stats().cleanup_status == CHANNEL_RC_OK);
+  REQUIRE(host.listener_proxy->stats().accepted == 1);
+  REQUIRE(host.channels[1].closes == 1);
+  REQUIRE(host.channels[0].closes == 0);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
   host.shutdown();
   REQUIRE(host.channels[0].closes == 1);
   REQUIRE(host.channels[1].closes == 1);

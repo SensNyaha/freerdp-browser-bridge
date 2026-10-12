@@ -12,4 +12,6 @@ DvcAcceptedChannelResult handoff_accepted_channel(DvcChannelRegistry &, IWTSVirt
                                                   IWTSVirtualChannel &,
                                                   IWTSVirtualChannelCallback &,
                                                   std::uint64_t now_ms) noexcept;
+DvcAcceptedChannelResult reject_accepted_channel(DvcChannelRegistry &, IWTSVirtualChannelCallback &,
+                                                 UINT status) noexcept;
 } // namespace bridge::channels
