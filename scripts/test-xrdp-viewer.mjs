@@ -121,6 +121,7 @@ for (const [url, name, type] of [
   ['/harness/pcm-queue.js', 'pcm-queue.js', 'text/javascript'],
   ...[
     'wire',
+    'opus-wire',
     'sender',
     'capture',
     'worklet',
