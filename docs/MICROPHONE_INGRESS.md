@@ -1,5 +1,12 @@
 # Preparatory microphone admission owner
 
+Current update — iteration 138: MicrophoneIngress additionally supports an
+explicit immutable Opus backend with one 1,275-byte compressed slot and the
+matching prepared RWB1 type 10 parser. PCM remains the default. Opus enforces
+stable lookahead and interrupts prediction after fresh sequence gaps/refusals,
+including refusal during a pending discontinuity. Public Opus session/WS/capture
+activation stays disabled. [Selected Opus contract](MICROPHONE_OPUS_INGRESS.md).
+
 Iteration 113 implements SPECIFICATION §2.6 / MEDIA_PIPELINE §7 / ADR-008
 between the fixed [browser record](MICROPHONE_WIRE.md) and private worker PCM.
 It does not enable public session selection, WebSocket dispatch or capture.

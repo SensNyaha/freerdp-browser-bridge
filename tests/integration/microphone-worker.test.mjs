@@ -10,7 +10,10 @@ import {
   MicrophoneIngress,
   MicrophoneOwnership,
 } from '../../packages/node-bridge/dist/index.js';
-import { encodeMicrophoneRecord } from '../../packages/protocol/dist/index.js';
+import {
+  encodeMicrophoneRecord,
+  encodeMicrophoneOpusRecord,
+} from '../../packages/protocol/dist/index.js';
 import { eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
 const directory = process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation';
@@ -485,6 +488,60 @@ test('synthetic private Opus: malformed or duplicate completion ends correlation
       assert.equal(failures[0], 'IPC_PROTOCOL_ERROR');
       assert.equal(worker.state, 'failed');
     }, 'fixture-microphone-reset');
+});
+
+test('synthetic Opus process: selected public-record ingress projects into private kind 44 and drains before fresh reset epoch', async () => {
+  await run(async (worker) => {
+    await worker.connect(configuration('hold', 'opus'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    const createIngress = () =>
+      new MicrophoneIngress({
+        codec: 'opus',
+        authorized: () => true,
+        source: () => worker.microphoneState,
+        submit: (packet) => worker.sendMicrophoneOpus(packet),
+      });
+    const first = createIngress();
+    const encoded = encodeMicrophoneOpusRecord(opusSamples(), 1),
+      received = first.receive(encoded);
+    encoded.fill(0, 40);
+    const closing = first.close();
+    await worker.ping();
+    assert.equal((await received).result, 'unavailable');
+    await closing;
+    assert.equal(first.drainEpoch, 1n);
+    assert.equal(await worker.resetMicrophone(first.drainEpoch), 'scheduled');
+    await eventually(() => worker.microphoneState?.epoch === 2n);
+    const replacement = createIngress();
+    assert.equal(
+      (
+        await replacement.receive(
+          encodeMicrophoneOpusRecord(
+            { ...opusSamples(2n), discontinuity: false },
+            1,
+          ),
+        )
+      ).result,
+      'invalid',
+    );
+    const fresh = replacement.receive(
+      encodeMicrophoneOpusRecord(opusSamples(2n), 2),
+    );
+    await worker.ping();
+    assert.equal((await fresh).result, 'accepted');
+    await replacement.close();
+    assert.equal(
+      await worker.resetMicrophone(replacement.drainEpoch),
+      'scheduled',
+    );
+    await eventually(() => worker.microphoneState?.epoch === 3n);
+    assert.equal(
+      (await first.receive(encodeMicrophoneOpusRecord(opusSamples(3n), 3)))
+        .result,
+      'unavailable',
+    );
+    await worker.ping();
+  }, 'fixture-microphone-reset');
 });
 
 for (const audioOutput of ['off', 'pcm', 'opus'])

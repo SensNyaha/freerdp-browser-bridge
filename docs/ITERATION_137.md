@@ -35,6 +35,8 @@ The isolated unchanged PCM/Opus viewer recheck passes **2/2**. Every test passes
 across the two full runs, but neither is a clean whole-suite gate; this remains
 an explicit validation gap to recheck with the next block rather than declaring
 433/433. Neither failure establishes a product regression or an antivirus cause.
+Subsequent iteration 138 full `pnpm check` passes **439/439** on unchanged
+fixture assertions/deadlines, closing the clean whole-suite validation gap.
 Public
 NativeSessionWorker/media/browser Opus input remains unsupported; actual
 audio/device/LAN/platform/resource/failure injection and soak gates stay open.

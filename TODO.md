@@ -43,7 +43,7 @@ and viewer activation remain open. [Sender contract](docs/MICROPHONE_SENDER.md).
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 427/427 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 439/439 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -721,6 +721,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   public session/browser, ready AUDIN/device/LAN/resource/platform/soak gates
   remain open. [Evidence](docs/ITERATION_137.md).
 - [ ] Audio reconnect/discontinuity reset.
+- [~] IN PROGRESS — Selected microphone ingress now accepts PCM/default or
+  prepared Opus in one immutable bounded slot and backend flight. Opus requires
+  stable lookahead/predictive PTS; sequence gaps or fresh refused packets require
+  new discontinuity, including interruption during pending reset boundary.
+  Portable and synthetic process/private-IPC checks pass; public ownership/WS /
+  capture and actual AUDIN/device/LAN/platform/resource/soak remain open.
+  [Evidence](docs/ITERATION_138.md). Private typed activation: `d7e0ee7`.
 - [~] IN PROGRESS — Guarded static PCM detects epoch/gap/block/format/type changes before Open/Play, resets stale queue/interpolation, preserves ordinary timestamp/block wraps and validates whole-frame/100 ms preparation budgets. Pure clocks and actual linked channel/fake-SVC fixtures cover recovery; larger packet splitting, server table renegotiation, browser PTS and actual audio acceptance remain open. [Evidence](docs/ITERATION_046.md).
 - [~] IN PROGRESS — The initial PCM table is fixed for one connection; replacement tables fail before upstream mutation. Source rate/layout/width changes within that table pass actual linked channel/fake-SVC tests. [Evidence](docs/ITERATION_047.md); `2713056`. Broader renegotiation remains open.
 - [~] IN PROGRESS — RDPEI and guarded RDPSND now compose in either binding order through a fixed eight-record owner/context scope stack. Cached public entries and delayed confirmation ownership pass actual linked addin/simulated transport tests; outer close fails before retiring resources beneath an attached child. Worker audio activation and real transport/audio acceptance remain open. [Evidence](docs/ITERATION_048.md).
