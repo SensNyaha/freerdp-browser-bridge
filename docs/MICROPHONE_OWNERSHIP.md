@@ -1,5 +1,15 @@
 # Preparatory exclusive microphone ownership
 
+Current update — iteration 139: an explicit immutable Opus backend selects
+the same one-grant retirement barrier with a compressed ingress. PCM/default
+behavior and deadlines remain. Delegated submit is read only after grant and
+packet reservations, so reentrant host callbacks cannot acquire another owner.
+Node drain precedes native reset; scheduled alone cannot transfer authority.
+Newer waiting epoch proves retirement but not sample readiness. Typed/reset /
+publication/deadline faults request termination once and keep grants closed.
+Public Opus session/WS/browser activation remains disabled; actual AUDIN/device
+acceptance is not implied by these portable/private synthetic checks.
+
 Iteration 114 composes the [one-flight ingress](MICROPHONE_INGRESS.md) with the
 [private owner reset](MICROPHONE_RESET.md) for SPECIFICATION §2.6 /
 MEDIA_PIPELINE §7. No public socket, permission prompt or device capture is enabled.

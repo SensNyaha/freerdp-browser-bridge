@@ -148,6 +148,10 @@ export class MicrophoneIngress {
           ? decodeMicrophoneOpusRecord(bytes)
           : decodeMicrophoneRecord(bytes);
     } catch (error) {
+      if (this.codec === 'opus') {
+        this.predictionInterrupted = true;
+        if (this.busy) this.pendingInterrupted = true;
+      }
       this.counters.invalid = increment(this.counters.invalid);
       return Promise.reject(error);
     }

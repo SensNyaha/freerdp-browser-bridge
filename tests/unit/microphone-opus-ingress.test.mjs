@@ -186,6 +186,38 @@ test('Opus ingress: busy attempt during pending discontinuity cannot be erased b
   await ingress.close();
 });
 
+test('Opus ingress: malformed input during pending boundary interrupts future prediction without consuming sequence', async () => {
+  const pending = deferred();
+  let calls = 0;
+  const ingress = new MicrophoneIngress({
+    codec: 'opus',
+    authorized: () => true,
+    source,
+    submit: () => {
+      ++calls;
+      return calls === 1 ? pending.promise : Promise.resolve('accepted');
+    },
+  });
+  const first = ingress.receive(wire());
+  await assert.rejects(ingress.receive(Buffer.alloc(1316)), ProtocolError);
+  pending.resolve('accepted');
+  assert.equal((await first).result, 'accepted');
+  assert.equal(
+    (await ingress.receive(wire(2, 20000n, false))).result,
+    'invalid',
+  );
+  assert.equal(
+    (await ingress.receive(wire(3, 40000n, true))).result,
+    'accepted',
+  );
+  assert.equal(
+    (await ingress.receive(wire(4, 60000n, false))).result,
+    'accepted',
+  );
+  assert.equal(calls, 3);
+  await ingress.close();
+});
+
 test('Opus ingress: wrong profile and malformed frame never dispatch; immutable selection and source loss suppress late acceptance', async () => {
   const pending = deferred();
   let state = source(),

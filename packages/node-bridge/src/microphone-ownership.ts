@@ -4,12 +4,14 @@ import {
   encodeMicrophoneResetResult,
   type MicrophoneState,
   type MicrophonePcmPacket,
+  type MicrophoneOpusPacket,
   type MicrophoneResult,
   type MicrophoneResetResult,
 } from '@freerdp-bridge/protocol';
 import { MicrophoneIngress } from './microphone-ingress.js';
 
 export interface MicrophoneOwnershipBackend {
+  codec?: 'pcm';
   source(): MicrophoneState | undefined;
   onSource(listener: (state: MicrophoneState) => void): () => void;
   submit(packet: MicrophonePcmPacket): Promise<MicrophoneResult>;
@@ -17,6 +19,13 @@ export interface MicrophoneOwnershipBackend {
   /** Host owns process retirement; this owner stays failed even if termination throws/hangs. */
   terminate(): void | Promise<void>;
 }
+export type MicrophoneOpusOwnershipBackend = Omit<
+  MicrophoneOwnershipBackend,
+  'codec' | 'submit'
+> & {
+  codec: 'opus';
+  submit(packet: MicrophoneOpusPacket): Promise<MicrophoneResult>;
+};
 type Owner = { ingress: MicrophoneIngress; revoked: boolean };
 
 /** Preparatory exclusive capture owner. No socket or browser permission activation. */
@@ -26,13 +35,23 @@ export class MicrophoneOwnership {
   private closed = false;
   private failed = false;
   private terminated = false;
+  private readonly createIngress: (
+    authorized: () => boolean,
+  ) => MicrophoneIngress;
 
+  constructor(backend: MicrophoneOwnershipBackend, timeoutMs?: number);
+  constructor(backend: MicrophoneOpusOwnershipBackend, timeoutMs?: number);
   constructor(
-    private readonly backend: MicrophoneOwnershipBackend,
+    private readonly backend:
+      | MicrophoneOwnershipBackend
+      | MicrophoneOpusOwnershipBackend,
     private readonly timeoutMs = 3000,
   ) {
     if (
       !backend ||
+      (backend.codec !== undefined &&
+        backend.codec !== 'pcm' &&
+        backend.codec !== 'opus') ||
       ['source', 'onSource', 'submit', 'reset', 'terminate'].some(
         (key) =>
           typeof backend[key as keyof MicrophoneOwnershipBackend] !==
@@ -43,6 +62,23 @@ export class MicrophoneOwnership {
       timeoutMs > 5000
     )
       throw new Error('Invalid microphone ownership backend');
+    if (backend.codec === 'opus') {
+      this.createIngress = (authorized) =>
+        new MicrophoneIngress({
+          codec: 'opus',
+          authorized,
+          source: () => backend.source(),
+          submit: (packet) => backend.submit(packet),
+        });
+    } else {
+      this.createIngress = (authorized) =>
+        new MicrophoneIngress({
+          codec: 'pcm',
+          authorized,
+          source: () => backend.source(),
+          submit: (packet) => backend.submit(packet),
+        });
+    }
   }
   get status(): 'idle' | 'active' | 'retiring' | 'closed' | 'failed' {
     if (this.failed) return 'failed';
@@ -57,16 +93,14 @@ export class MicrophoneOwnership {
       return undefined;
     const owner: Owner = {
       revoked: false,
-      ingress: new MicrophoneIngress({
-        authorized: () =>
+      ingress: this.createIngress(
+        () =>
           this.owner === owner &&
           !owner.revoked &&
           !this.closed &&
           !this.failed &&
           authorized(),
-        source: () => this.backend.source(),
-        submit: (packet) => this.backend.submit(packet),
-      }),
+      ),
     };
     this.owner = owner;
     return owner.ingress;

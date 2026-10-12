@@ -544,6 +544,51 @@ test('synthetic Opus process: selected public-record ingress projects into priva
   }, 'fixture-microphone-reset');
 });
 
+test('synthetic Opus ownership: exclusive compressed grant joins private flight and observed reset before transfer', async () => {
+  await run(async (worker) => {
+    await worker.connect(configuration('hold', 'opus'));
+    await eventually(() => worker.microphoneState?.epoch === 1n);
+    const ownership = new MicrophoneOwnership({
+      codec: 'opus',
+      source: () => worker.microphoneState,
+      onSource: (listener) => {
+        worker.on('microphone', listener);
+        return () => worker.off('microphone', listener);
+      },
+      submit: (packet) => worker.sendMicrophoneOpus(packet),
+      reset: (epoch) => worker.resetMicrophone(epoch),
+      terminate: () => worker.terminate(),
+    });
+    const first = ownership.acquire(() => true),
+      packet = first.receive(encodeMicrophoneOpusRecord(opusSamples(), 1));
+    const release = ownership.release(first);
+    assert.equal(ownership.release(first), release);
+    assert.equal(
+      ownership.acquire(() => true),
+      undefined,
+    );
+    assert.equal(worker.microphoneState.epoch, 1n);
+    await worker.ping();
+    assert.equal((await packet).result, 'unavailable');
+    assert.equal(await release, true);
+    assert.equal(worker.microphoneState.epoch, 2n);
+    assert.equal(worker.listenerCount('microphone'), 0);
+    const next = ownership.acquire(() => true);
+    assert.equal(await ownership.release(first), false);
+    const fresh = next.receive(encodeMicrophoneOpusRecord(opusSamples(2n), 1));
+    await worker.ping();
+    assert.equal((await fresh).result, 'accepted');
+    assert.equal(await ownership.close(), true);
+    assert.equal(worker.microphoneState.epoch, 3n);
+    assert.equal(worker.listenerCount('microphone'), 0);
+    assert.equal(
+      ownership.acquire(() => true),
+      undefined,
+    );
+    await worker.ping();
+  }, 'fixture-microphone-reset');
+});
+
 for (const audioOutput of ['off', 'pcm', 'opus'])
   test(
     `actual typed private Node Opus microphone/${audioOutput}: strict TLS refusal, no capture and cleanup`,

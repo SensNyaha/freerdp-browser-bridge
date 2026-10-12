@@ -33,5 +33,11 @@ pending discontinuity, sequence/PTS/lookahead boundaries, typed refusals,
 new epoch suppression, malformed/wrong records, reentrant close and backend
 faults. Synthetic IPC confirms drain/reset/fresh epoch before replacement input.
 They do not establish actual ready AUDIN, permission or remote recording.
+
+Iteration 139 also interrupts prediction on malformed records without consuming
+their untrusted sequence, including a malformed attempt during pending
+discontinuity. The current accepted boundary cannot silently clear that newer
+interruption. Its enclosing codec-selected ownership barrier now supports Opus;
+public media/capture selection remains disabled.
 Public lease/WS/encoder/capture selection, actual AUDIN/device/LAN/platform /
 resource/failure injection and soak acceptance remain open.
