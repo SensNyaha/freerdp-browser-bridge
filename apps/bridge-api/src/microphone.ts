@@ -8,12 +8,14 @@ import {
   encodeMicrophoneState,
   validateMicrophoneStateProgress,
   type MicrophoneState,
+  type MicrophoneResult,
 } from '@freerdp-bridge/protocol';
 import {
   SessionError,
   type SessionManager,
   type SessionMicrophoneSnapshot,
 } from '@freerdp-bridge/node';
+import type { MicrophoneMetrics, MicrophoneMetricFailure } from './metrics.js';
 
 const command = TypeCompiler.Compile(
   Type.Object(
@@ -39,6 +41,7 @@ export function installMicrophoneMedia(
   send: (type: string, data: unknown) => void,
   fail: (code: string) => void,
   deadlines = { packetMs: 2000, stopMs: 4000 },
+  metrics?: MicrophoneMetrics,
 ) {
   const codec = lease.microphoneCodec;
   if (
@@ -88,6 +91,15 @@ export function installMicrophoneMedia(
   };
   const fault = (code: string) => {
     if (closed) return;
+    const reasons: Record<string, MicrophoneMetricFailure> = {
+      MICROPHONE_BACKLOG_LIMIT: 'backlog',
+      MICROPHONE_TRANSPORT_ERROR: 'transport',
+      MICROPHONE_ADMISSION_ERROR: 'admission',
+      MICROPHONE_RETIREMENT_ERROR: 'retirement',
+      MICROPHONE_PACKET_DEADLINE: 'packet_deadline',
+      MICROPHONE_STOP_DEADLINE: 'stop_deadline',
+    };
+    metrics?.failure(reasons[code] ?? 'protocol');
     close();
     try {
       fail(code);
@@ -182,14 +194,26 @@ export function installMicrophoneMedia(
     throw new SessionError('MEDIA_FAILED');
   }
   ws.once('close', close);
-  const reply = (requestSeq: number, value: string) =>
+  const reply = (
+    requestSeq: number,
+    value: 'started' | 'busy' | 'stopped',
+    operation: 'start' | 'stop' = 'start',
+  ) => {
+    metrics?.decision(operation, value);
     output('microphone.result', { requestSeq, status: value });
-  const acknowledge = (sequence: number, epoch: bigint, result: string) =>
+  };
+  const acknowledge = (
+    sequence: number,
+    epoch: bigint,
+    result: MicrophoneResult,
+  ) => {
+    metrics?.decision('packet', result);
     output('microphone.ack', {
       sequence,
       epoch: epoch.toString(),
       status: result,
     });
+  };
   return {
     start() {
       if (started || closed) return;
@@ -217,7 +241,11 @@ export function installMicrophoneMedia(
       lastCommand = value.data.requestSeq;
       const requestSeq = lastCommand;
       if (stopPending) {
-        reply(requestSeq, 'busy');
+        reply(
+          requestSeq,
+          'busy',
+          value.type === 'microphone.stop' ? 'stop' : 'start',
+        );
         return true;
       }
       if (value.type === 'microphone.start') {
@@ -238,10 +266,20 @@ export function installMicrophoneMedia(
       } else {
         grantRequested = false;
         stopPending = true;
+        const began = performance.now();
+        metrics?.retirement(1);
+        let measured = true;
+        const settled = () => {
+          if (measured) {
+            measured = false;
+            metrics?.retirement(-1);
+          }
+        };
         stopTimer = setTimeout(() => fault('MICROPHONE_STOP_DEADLINE'), stopMs);
         try {
           void lease.stopMicrophone().then(
             (safe) => {
+              settled();
               if (closed) return;
               clearTimeout(stopTimer);
               stopPending = false;
@@ -249,11 +287,16 @@ export function installMicrophoneMedia(
                 fault('MICROPHONE_RETIREMENT_ERROR');
                 return;
               }
-              reply(requestSeq, 'stopped');
+              metrics?.observe('retirement', performance.now() - began);
+              reply(requestSeq, 'stopped', 'stop');
             },
-            () => fault('MICROPHONE_RETIREMENT_ERROR'),
+            () => {
+              settled();
+              fault('MICROPHONE_RETIREMENT_ERROR');
+            },
           );
         } catch {
+          settled();
           fault('MICROPHONE_RETIREMENT_ERROR');
         }
       }
@@ -273,6 +316,7 @@ export function installMicrophoneMedia(
         fault('MICROPHONE_PROTOCOL_ERROR');
         return;
       }
+      metrics?.received(bytes.length);
       if (!grantRequested || !latest?.granted) {
         acknowledge(sequence, epoch, 'unavailable');
         return;
@@ -290,6 +334,16 @@ export function installMicrophoneMedia(
         return;
       }
       packetPending = true;
+      const began = performance.now(),
+        length = bytes.length;
+      metrics?.packetStorage(1, length);
+      let measured = true;
+      const settled = () => {
+        if (measured) {
+          measured = false;
+          metrics?.packetStorage(-1, -length);
+        }
+      };
       packetTimer = setTimeout(
         () => fault('MICROPHONE_PACKET_DEADLINE'),
         packetMs,
@@ -297,12 +351,14 @@ export function installMicrophoneMedia(
       try {
         void lease.sendMicrophone(bytes).then(
           (admission) => {
+            settled();
             if (closed) return;
             clearTimeout(packetTimer);
             packetPending = false;
             try {
               if (admission.sequence !== sequence) throw new Error();
               encodeMicrophoneResult(admission.result);
+              metrics?.observe('packet_admission', performance.now() - began);
               const current = grantRequested && latest?.granted;
               acknowledge(
                 sequence,
@@ -317,9 +373,13 @@ export function installMicrophoneMedia(
               fault('MICROPHONE_PROTOCOL_ERROR');
             }
           },
-          () => fault('MICROPHONE_ADMISSION_ERROR'),
+          () => {
+            settled();
+            fault('MICROPHONE_ADMISSION_ERROR');
+          },
         );
       } catch {
+        settled();
         fault('MICROPHONE_ADMISSION_ERROR');
       }
     },

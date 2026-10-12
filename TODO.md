@@ -50,7 +50,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 490/490 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 498/498 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -429,6 +429,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   [Contract](docs/AUDIO_OPUS_PUBLIC.md), [evidence](docs/ITERATION_094.md).
 - [~] IN PROGRESS — Protected fixed-cardinality PCM record/byte counters, receiver-credit/in-flight and pending-sample gauges, replacement/reset/retirement counts and forwarding/valid-ACK timing histograms are implemented. Real socket/fake-backend and pure failure fixtures verify exact accounting and zeroed cleanup. Native/browser jitter/underflow export and measured LAN acceptance remain open. [Evidence](docs/ITERATION_072.md).
 - [~] IN PROGRESS — Fixed 120 ms native PCM handoff ring, packet-atomic overflow, counted underflow silence, reset discontinuity and saturating lifetime counters are implemented. Worker/transport/browser integration, public metrics and actual LAN latency acceptance remain open. [Evidence](docs/ITERATION_037.md).
+- [~] IN PROGRESS — Protected PCM/Opus microphone transport counters and Node
+  admission/explicit-stop histograms now expose fixed enum labels and actual
+  outstanding backend promises. Detached/expired operations remain counted until
+  settlement. Pure and actual loopback-WS/fake-RDP checks cover bytes, decisions,
+  held stop/admission, failure and privacy bounds; native/browser jitter,
+  underflow/encode/host queues and actual LAN/device/platform/soak remain open.
+  [Evidence](docs/ITERATION_145.md). Explicit viewer: `daf3ba7`.
 - [ ] Implement custom `audin-browser` source.
 - [~] IN PROGRESS — Isolated virtual microphone PCM source has exact epoch/time /
   boundary validation, fixed 120 ms newest-data queue, capped prebuffer, counted

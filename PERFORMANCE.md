@@ -109,3 +109,14 @@ Timing uses one Node monotonic clock; worker media timestamps are preserved.
 The stages overlap and cannot be summed into an end-to-end bridge latency number.
 Framebuffer dirty-to-send age, independent queue delays, controlled scene replay,
 CPU/RSS and the existing full performance/soak gates remain pending.
+
+## 11. Microphone transport timing instrumentation
+
+Protected `/metrics` aggregates selected PCM/Opus packet admission and explicit
+safe-stop round trips, validated input bytes/local decisions and outstanding
+private promises. Detached but unfinished operations remain counted until actual
+settlement. These Node intervals exclude browser encoding, transport arrival,
+native/AUDIN queue consumption and remote recording; they must not be interpreted
+as the <150 ms LAN end-to-end target. Fixed label/bucket bounds add no sample
+history or queue. [Metric semantics](docs/MICROPHONE_METRICS.md).
+Actual ready-source/jitter/underflow/CPU/RSS/LAN/platform/soak gates remain open.

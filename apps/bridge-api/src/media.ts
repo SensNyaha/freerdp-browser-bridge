@@ -321,7 +321,15 @@ export function installMedia(
       if (microphoneOffered) {
         if (lease.microphoneCodec !== microphoneOffered)
           throw new SessionError('MEDIA_NOT_IMPLEMENTED');
-        microphone = installMicrophoneMedia(ws, lease, send, fail);
+        microphone = installMicrophoneMedia(
+          ws,
+          lease,
+          send,
+          fail,
+          undefined,
+          metrics.microphone?.forCodec?.(microphoneOffered) ??
+            metrics.microphone,
+        );
       }
       clearTimeout(deadline);
       send('media.ready', {

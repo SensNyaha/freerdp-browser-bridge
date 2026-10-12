@@ -22,7 +22,7 @@ const command = (type = 'start', requestSeq = 1) => ({
   type: 'microphone.' + type,
   data: { requestSeq },
 });
-function fixture(deadlines) {
+function fixture(deadlines, metrics) {
   const ws = new EventEmitter();
   ws.readyState = 1;
   ws.bufferedAmount = 0;
@@ -96,6 +96,7 @@ function fixture(deadlines) {
       send,
       (code) => failures.push(code),
       deadlines,
+      metrics,
     );
   return {
     ws,
@@ -110,6 +111,111 @@ function fixture(deadlines) {
     },
   };
 }
+
+function metricProbe() {
+  const values = {
+    packets: 0,
+    bytes: 0,
+    retirements: 0,
+    failures: [],
+    decisions: [],
+    observations: [],
+  };
+  return {
+    values,
+    metrics: {
+      received() {},
+      decision(operation, result) {
+        values.decisions.push([operation, result]);
+      },
+      observe(operation) {
+        values.observations.push(operation);
+      },
+      packetStorage(change, bytes) {
+        values.packets += change;
+        values.bytes += bytes;
+      },
+      retirement(change) {
+        values.retirements += change;
+      },
+      failure(reason) {
+        values.failures.push(reason);
+      },
+    },
+  };
+}
+
+test('microphone metrics: deadline retirement retains unfinished packet/stop ownership until real promise settlement', async () => {
+  for (const operation of ['packet', 'stop']) {
+    const probe = metricProbe(),
+      pending = deferred(),
+      stopped = deferred();
+    const f = fixture({ packetMs: 20, stopMs: 20 }, probe.metrics);
+    f.lease.sendMicrophone = () => pending.promise;
+    f.lease.stopMicrophone = () => stopped.promise;
+    const route = f.create();
+    route.start();
+    route.command(command());
+    if (operation === 'packet') route.receive(wire());
+    else route.command(command('stop', 2));
+    await eventually(() => f.failures.length === 1);
+    assert.deepEqual(probe.values.failures, [
+      operation === 'packet' ? 'packet_deadline' : 'stop_deadline',
+    ]);
+    assert.equal(probe.values.packets, operation === 'packet' ? 1 : 0);
+    assert.equal(probe.values.bytes, operation === 'packet' ? 3876 : 0);
+    assert.equal(probe.values.retirements, operation === 'stop' ? 1 : 0);
+    pending.resolve({ sequence: 1, result: 'accepted' });
+    stopped.resolve(true);
+    await tick();
+    assert.equal(probe.values.packets, 0);
+    assert.equal(probe.values.bytes, 0);
+    assert.equal(probe.values.retirements, 0);
+    assert.deepEqual(probe.values.observations, []);
+    assert.deepEqual(probe.values.decisions, [['start', 'started']]);
+    route.close();
+    assert.equal(probe.values.failures.length, 1);
+  }
+});
+
+test('microphone metrics: synchronous backend failure and malformed completion release gauges without success timings', async () => {
+  for (const operation of ['packet', 'stop', 'invalid']) {
+    const probe = metricProbe(),
+      f = fixture(undefined, probe.metrics),
+      route = f.create();
+    route.start();
+    route.command(command());
+    if (operation === 'stop') {
+      f.lease.stopMicrophone = () => {
+        throw new Error('Private backend detail');
+      };
+      route.command(command('stop', 2));
+    } else {
+      f.lease.sendMicrophone = () => {
+        if (operation === 'packet') throw new Error('Private backend detail');
+        return Promise.resolve({
+          sequence: 1,
+          result: 'Private invalid result',
+        });
+      };
+      route.receive(wire());
+    }
+    await tick();
+    assert.equal(probe.values.packets, 0);
+    assert.equal(probe.values.bytes, 0);
+    assert.equal(probe.values.retirements, 0);
+    assert.deepEqual(probe.values.observations, []);
+    assert.deepEqual(probe.values.failures, [
+      operation === 'packet'
+        ? 'admission'
+        : operation === 'stop'
+          ? 'retirement'
+          : 'protocol',
+    ]);
+    assert.equal(f.failures.length, 1);
+    route.close();
+  }
+});
 
 test('microphone socket: preparation has no automatic grant; explicit start, bounded packet ACK and separate control result', async () => {
   const f = fixture(),

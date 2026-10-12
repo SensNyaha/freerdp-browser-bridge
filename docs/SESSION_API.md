@@ -212,3 +212,14 @@ not audible completion or proof of actual Worklet behavior by an arbitrary clien
 No identity, target, credential, revision/epoch/PTS or sample payload is a label.
 Native/browser jitter and underflow metrics and measured LAN audio acceptance
 remain open. [Evidence](ITERATION_072.md).
+
+### Microphone transport metrics (iteration 145)
+
+Protected `/metrics` now includes fixed PCM/Opus microphone packet/byte and local
+decision counters, outstanding backend packet/explicit-stop gauges and Node
+monotonic admission/retirement histograms. Outstanding operations remain counted
+after detach until the backend promise settles; logical wire bytes are not heap
+allocation or audio queue depth. Decisions and valid active timing do not prove
+remote recording or physical permission. Labels are fixed codec/operation/result/
+reason/bucket enums, without session/device/identity or source-clock metadata.
+[Exact names, semantics and retained gaps](MICROPHONE_METRICS.md).

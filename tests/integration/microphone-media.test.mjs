@@ -202,6 +202,25 @@ async function setup(run, microphone = 'pcm', controller = true) {
 const message = (messages, type, predicate = () => true) =>
   messages.find((value) => value.type === type && predicate(value.data));
 const binary = (messages) => messages.filter(Buffer.isBuffer);
+async function microphoneMetricText(server) {
+  const response = await server.inject({ method: 'GET', url: '/metrics' });
+  assert.equal(response.statusCode, 200);
+  return response.body;
+}
+function microphoneMetric(text, suffix, labels) {
+  const name = 'bridge_microphone_' + suffix;
+  const row = text
+    .split('\n')
+    .find(
+      (line) =>
+        line.startsWith(name + '{') &&
+        Object.entries(labels).every(([key, value]) =>
+          line.includes(key + '="' + value + '"'),
+        ),
+    );
+  assert.ok(row, 'Expected fixed microphone metric series: ' + name);
+  return Number(row.slice(row.lastIndexOf(' ') + 1));
+}
 const opusPacket = (sequence = 1, epoch = 1n, discontinuity = true) =>
   encodeMicrophoneOpusRecord(
     {
@@ -213,6 +232,298 @@ const opusPacket = (sequence = 1, epoch = 1n, discontinuity = true) =>
     },
     sequence,
   );
+
+for (const codec of ['pcm', 'opus']) {
+  const selectedPacket = (sequence) =>
+    codec === 'opus' ? opusPacket(sequence) : packet(sequence);
+  test(`fake RDP / actual WS ${codec} microphone metrics: exact bytes/decisions and joined packet/stop ownership`, async () => {
+    await setup(async (f) => {
+      f.hello(true, codec);
+      await eventually(() => message(f.media.messages, 'microphone.state'));
+      let text = await microphoneMetricText(f.server);
+      assert.equal(
+        microphoneMetric(text, 'packets_received_total', { codec }),
+        0,
+      );
+      f.media.ws.send(selectedPacket(1));
+      await eventually(() =>
+        message(
+          f.media.messages,
+          'microphone.ack',
+          (value) => value.sequence === 1,
+        ),
+      );
+      request(f.media.ws, 'start', 1);
+      await eventually(() =>
+        message(
+          f.media.messages,
+          'microphone.result',
+          (value) => value.status === 'started',
+        ),
+      );
+      const held = deferred(),
+        method = codec === 'opus' ? 'sendMicrophoneOpus' : 'sendMicrophone';
+      const submit = f.worker[method].bind(f.worker);
+      f.worker[method] = async (value) => {
+        await submit(value);
+        return held.promise;
+      };
+      try {
+        f.media.ws.send(selectedPacket(2));
+        await eventually(() =>
+          codec === 'opus'
+            ? f.worker.opusSamples === 1
+            : f.worker.samples === 1,
+        );
+        f.media.ws.send(selectedPacket(3));
+        await eventually(() =>
+          message(
+            f.media.messages,
+            'microphone.ack',
+            (value) => value.sequence === 3 && value.status === 'busy',
+          ),
+        );
+        request(f.media.ws, 'stop', 2);
+        await eventually(() =>
+          message(
+            f.media.messages,
+            'microphone.state',
+            (value) => value.retiring,
+          ),
+        );
+        text = await microphoneMetricText(f.server);
+        const length = selectedPacket(2).length;
+        assert.equal(
+          microphoneMetric(text, 'packets_received_total', { codec }),
+          3,
+        );
+        assert.equal(
+          microphoneMetric(text, 'bytes_received_total', { codec }),
+          3 * length,
+        );
+        assert.equal(
+          microphoneMetric(text, 'packet_operations_in_flight', { codec }),
+          1,
+        );
+        assert.equal(
+          microphoneMetric(text, 'packet_bytes_in_flight', { codec }),
+          length,
+        );
+        assert.equal(
+          microphoneMetric(text, 'retirements_in_flight', { codec }),
+          1,
+        );
+        assert.equal(f.worker.resets, 0);
+        held.resolve('accepted');
+        await eventually(() =>
+          message(
+            f.media.messages,
+            'microphone.result',
+            (value) => value.status === 'stopped',
+          ),
+        );
+        text = await microphoneMetricText(f.server);
+        assert.equal(
+          microphoneMetric(text, 'packet_operations_in_flight', { codec }),
+          0,
+        );
+        assert.equal(
+          microphoneMetric(text, 'packet_bytes_in_flight', { codec }),
+          0,
+        );
+        assert.equal(
+          microphoneMetric(text, 'retirements_in_flight', { codec }),
+          0,
+        );
+        assert.equal(
+          microphoneMetric(text, 'decisions_total', {
+            codec,
+            operation: 'start',
+            result: 'started',
+          }),
+          1,
+        );
+        assert.equal(
+          microphoneMetric(text, 'decisions_total', {
+            codec,
+            operation: 'stop',
+            result: 'stopped',
+          }),
+          1,
+        );
+        assert.equal(
+          microphoneMetric(text, 'decisions_total', {
+            codec,
+            operation: 'packet',
+            result: 'unavailable',
+          }),
+          2,
+        );
+        assert.equal(
+          microphoneMetric(text, 'decisions_total', {
+            codec,
+            operation: 'packet',
+            result: 'busy',
+          }),
+          1,
+        );
+        assert.equal(
+          microphoneMetric(text, 'decisions_total', {
+            codec,
+            operation: 'packet',
+            result: 'accepted',
+          }),
+          0,
+        );
+        assert.equal(
+          microphoneMetric(text, 'stage_duration_seconds_count', {
+            codec,
+            operation: 'packet_admission',
+          }),
+          1,
+        );
+        assert.equal(
+          microphoneMetric(text, 'stage_duration_seconds_count', {
+            codec,
+            operation: 'retirement',
+          }),
+          1,
+        );
+        assert.equal(
+          microphoneMetric(text, 'packets_received_total', {
+            codec: codec === 'pcm' ? 'opus' : 'pcm',
+          }),
+          0,
+        );
+        for (const secret of [
+          f.created.sessionId,
+          f.created.attach.control.token,
+          f.created.attach.media.token,
+          'fixture.invalid',
+          'microphone-transport-fixture',
+        ])
+          assert.equal(text.includes(secret), false);
+        for (const row of text
+          .split('\n')
+          .filter(
+            (line) =>
+              line.startsWith('bridge_microphone_') && line.includes('{'),
+          ))
+          for (const match of row
+            .slice(row.indexOf('{') + 1, row.indexOf('}'))
+            .matchAll(/([a-z_]+)="/g))
+            assert.ok(
+              ['codec', 'operation', 'result', 'reason', 'le'].includes(
+                match[1],
+              ),
+            );
+      } finally {
+        held.resolve('accepted');
+      }
+    }, codec);
+  });
+  test(`fake RDP / actual WS ${codec} microphone metrics: detach preserves unfinished private operation until settlement`, async () => {
+    await setup(async (f) => {
+      f.hello(true, codec);
+      await eventually(() => message(f.media.messages, 'microphone.state'));
+      request(f.media.ws, 'start', 1);
+      await eventually(() =>
+        message(
+          f.media.messages,
+          'microphone.result',
+          (value) => value.status === 'started',
+        ),
+      );
+      const held = deferred(),
+        method = codec === 'opus' ? 'sendMicrophoneOpus' : 'sendMicrophone';
+      const submit = f.worker[method].bind(f.worker);
+      f.worker[method] = async (value) => {
+        await submit(value);
+        return held.promise;
+      };
+      try {
+        f.media.ws.send(selectedPacket(1));
+        await eventually(() =>
+          codec === 'opus'
+            ? f.worker.opusSamples === 1
+            : f.worker.samples === 1,
+        );
+        const closed = once(f.media.ws, 'close');
+        f.media.ws.close();
+        await closed;
+        let text = await microphoneMetricText(f.server);
+        const detachedDeadline = Date.now() + 3000;
+        // Client close can precede the server close event and lease revocation.
+        while (!/^bridge_attachments 1$/m.test(text)) {
+          assert.ok(
+            Date.now() < detachedDeadline,
+            'Server media detach deadline',
+          );
+          await delay(5);
+          text = await microphoneMetricText(f.server);
+        }
+        assert.equal(
+          microphoneMetric(text, 'packet_operations_in_flight', { codec }),
+          1,
+        );
+        assert.equal(
+          microphoneMetric(text, 'packet_bytes_in_flight', { codec }),
+          selectedPacket(1).length,
+        );
+        assert.equal(f.worker.resets, 0);
+        held.resolve('accepted');
+        await eventually(() => f.worker.resets === 1);
+        text = await microphoneMetricText(f.server);
+        assert.equal(
+          microphoneMetric(text, 'packet_operations_in_flight', { codec }),
+          0,
+        );
+        assert.equal(
+          microphoneMetric(text, 'packet_bytes_in_flight', { codec }),
+          0,
+        );
+        assert.equal(
+          microphoneMetric(text, 'decisions_total', {
+            codec,
+            operation: 'packet',
+            result: 'accepted',
+          }),
+          0,
+        );
+      } finally {
+        held.resolve('accepted');
+      }
+    }, codec);
+  });
+  test(`fake RDP / actual WS ${codec} microphone metrics: malformed records fail once without new series or accepted packet counts`, async () => {
+    await setup(async (f) => {
+      f.hello(true, codec);
+      await eventually(() => message(f.media.messages, 'microphone.state'));
+      const bad = selectedPacket(1);
+      bad.writeUInt16BE(8, 6);
+      const closed = once(f.media.ws, 'close');
+      f.media.ws.send(bad);
+      await closed;
+      const text = await microphoneMetricText(f.server);
+      assert.equal(
+        microphoneMetric(text, 'packets_received_total', { codec }),
+        0,
+      );
+      assert.equal(
+        microphoneMetric(text, 'consumers_failed_total', {
+          codec,
+          reason: 'protocol',
+        }),
+        1,
+      );
+      assert.equal(
+        microphoneMetric(text, 'packet_operations_in_flight', { codec }),
+        0,
+      );
+      assert.equal(f.worker.samples + f.worker.opusSamples, 0);
+    }, codec);
+  });
+}
 
 test('fake RDP / actual WS Opus microphone: exact profile, explicit grant, independent video credit and fresh reset epoch', async () => {
   await setup(async ({ media, hello, worker }) => {

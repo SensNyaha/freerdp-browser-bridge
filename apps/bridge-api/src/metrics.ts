@@ -1,6 +1,31 @@
 import { Gauge, Counter, Histogram, Registry } from 'prom-client';
 import { type SessionManager } from '@freerdp-bridge/node';
 import type { MediaCodec } from '@freerdp-bridge/protocol';
+import type { MicrophoneResult } from '@freerdp-bridge/protocol';
+
+export type MicrophoneMetricFailure =
+  | 'protocol'
+  | 'backlog'
+  | 'transport'
+  | 'admission'
+  | 'retirement'
+  | 'packet_deadline'
+  | 'stop_deadline';
+export interface MicrophoneMetrics {
+  forCodec?(codec: 'pcm' | 'opus'): MicrophoneMetrics;
+  received(bytes: number): void;
+  decision(
+    operation: 'start' | 'stop' | 'packet',
+    result: MicrophoneResult | 'started' | 'stopped',
+  ): void;
+  observe(
+    operation: 'packet_admission' | 'retirement',
+    milliseconds: number,
+  ): void;
+  packetStorage(change: 1 | -1, bytes: number): void;
+  retirement(change: 1 | -1): void;
+  failure(reason: MicrophoneMetricFailure): void;
+}
 
 export type AudioFailure =
   | 'ack'
@@ -22,6 +47,7 @@ export interface AudioMetrics {
 
 export interface MediaMetrics {
   audio: AudioMetrics;
+  microphone?: MicrophoneMetrics;
   observe(
     codec: MediaCodec,
     stage:
@@ -120,6 +146,7 @@ export function createSessionMetrics(manager: SessionManager) {
   }
   const media: MediaMetrics = {
     audio: createAudioMetrics(registry),
+    microphone: createMicrophoneMetrics(registry),
     observe(codec, stage, milliseconds) {
       duration.observe({ codec, stage }, milliseconds / 1000);
     },
@@ -146,6 +173,107 @@ export function createSessionMetrics(manager: SessionManager) {
       return registry.metrics();
     },
   };
+}
+
+function createMicrophoneMetrics(registry: Registry): MicrophoneMetrics {
+  const received = new Counter({
+    name: 'bridge_microphone_packets_received_total',
+    help: 'Valid sequenced microphone RWB1 packets before grant/admission checks',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  const bytes = new Counter({
+    name: 'bridge_microphone_bytes_received_total',
+    help: 'Valid sequenced microphone RWB1 bytes including metadata',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  const decisions = new Counter({
+    name: 'bridge_microphone_decisions_total',
+    help: 'Validated local microphone command and packet decisions before reply writes',
+    labelNames: ['codec', 'operation', 'result'] as const,
+    registers: [registry],
+  });
+  const duration = new Histogram({
+    name: 'bridge_microphone_stage_duration_seconds',
+    help: 'Active valid microphone backend admission and explicit stop-barrier round trips',
+    labelNames: ['codec', 'operation'] as const,
+    buckets: [0.001, 0.005, 0.01, 0.02, 0.04, 0.08, 0.15, 0.3, 0.6, 1, 2, 4],
+    registers: [registry],
+  });
+  const packets = new Gauge({
+    name: 'bridge_microphone_packet_operations_in_flight',
+    help: 'Microphone backend packet promises awaiting settlement including detached leases',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  const flightBytes = new Gauge({
+    name: 'bridge_microphone_packet_bytes_in_flight',
+    help: 'Logical RWB1 bytes awaiting microphone backend settlement, not heap allocation',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  const retirements = new Gauge({
+    name: 'bridge_microphone_retirements_in_flight',
+    help: 'Explicit microphone stop promises awaiting settlement including detached leases',
+    labelNames: ['codec'] as const,
+    registers: [registry],
+  });
+  const failures = new Counter({
+    name: 'bridge_microphone_consumers_failed_total',
+    help: 'Microphone media consumers retired by bounded protocol/progress checks',
+    labelNames: ['codec', 'reason'] as const,
+    registers: [registry],
+  });
+  const bind = (codec: 'pcm' | 'opus'): MicrophoneMetrics => {
+    received.inc({ codec }, 0);
+    bytes.inc({ codec }, 0);
+    packets.set({ codec }, 0);
+    flightBytes.set({ codec }, 0);
+    retirements.set({ codec }, 0);
+    for (const [operation, results] of [
+      ['start', ['started', 'busy']],
+      ['stop', ['stopped', 'busy']],
+      ['packet', ['accepted', 'stale', 'unavailable', 'busy', 'invalid']],
+    ] as const)
+      for (const result of results)
+        decisions.inc({ codec, operation, result }, 0);
+    for (const reason of [
+      'protocol',
+      'backlog',
+      'transport',
+      'admission',
+      'retirement',
+      'packet_deadline',
+      'stop_deadline',
+    ] as const)
+      failures.inc({ codec, reason }, 0);
+    return {
+      received(length) {
+        received.inc({ codec });
+        bytes.inc({ codec }, length);
+      },
+      decision(operation, result) {
+        decisions.inc({ codec, operation, result });
+      },
+      observe(operation, milliseconds) {
+        duration.observe({ codec, operation }, milliseconds / 1000);
+      },
+      packetStorage(change, length) {
+        packets.inc({ codec }, change);
+        flightBytes.inc({ codec }, length);
+      },
+      retirement(change) {
+        retirements.inc({ codec }, change);
+      },
+      failure(reason) {
+        failures.inc({ codec, reason });
+      },
+    };
+  };
+  const pcm = bind('pcm'),
+    opus = bind('opus');
+  return { ...pcm, forCodec: (codec) => (codec === 'opus' ? opus : pcm) };
 }
 
 function createAudioMetrics(registry: Registry): AudioMetrics {
