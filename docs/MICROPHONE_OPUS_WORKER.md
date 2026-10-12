@@ -1,5 +1,11 @@
 # Raw native Opus microphone dispatch
 
+Current update — iteration 140: NativeSessionWorker and matching explicit
+SessionCreate/media Opus input are enabled behind the negotiated worker
+capability/reset gate. Browser Opus permission/encoder/graph selection remains
+uncomposed. Historical private-only statements below describe earlier blocks.
+[Public media contract](MICROPHONE_OPUS_MEDIA.md).
+
 Current update — iteration 137: guarded Windows/AUDIN advertises private
 `opusInput` through HELLO schema-1 extension bit 1 and matching CLI/build REST
 inventory. It requires microphoneReset (bit 0), base pcmInput and connectCore.

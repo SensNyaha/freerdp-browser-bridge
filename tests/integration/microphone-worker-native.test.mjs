@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
+import { setTimeout as delay } from 'node:timers/promises';
 import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -39,58 +40,66 @@ const available =
     }),
   ).capabilities.pcmInput;
 
-for (const output of ['off', 'pcm', 'opus'])
-  test(
-    `actual native session microphone/${output} output preserves strict TLS and bounded cleanup`,
-    { skip: !available, timeout: 15000 },
-    async () => {
-      const endpoint = await createRdpTlsFixture();
-      const runtimeRoot = await mkdtemp(
-        join(tmpdir(), 'bridge-microphone-session-'),
-      );
-      const principal = { id: 'native-microphone-fixture' };
-      let source;
-      const manager = new SessionManager({
-        workerFactory: () => {
-          const worker = new NativeSessionWorker({ workerPath, runtimeRoot });
-          worker.onMicrophone((state) => {
-            source = state;
-          });
-          return worker;
-        },
-      });
-      try {
-        const created = manager.create(
-          {
-            target: { host: '127.0.0.1', port: endpoint.port },
-            auth: { username: 'synthetic', password: 'synthetic-IPC-sentinel' },
-            security: { protocol: 'tls', certificatePolicy: 'strict' },
-            media: { microphone: 'pcm', audioOutput: output },
-            timeouts: { connectMs: 5000 },
+for (const input of ['pcm', 'opus'])
+  for (const output of ['off', 'pcm', 'opus'])
+    test(
+      `actual native session ${input} microphone/${output} output preserves strict TLS and bounded cleanup`,
+      { skip: !available, timeout: 15000 },
+      async () => {
+        const endpoint = await createRdpTlsFixture();
+        const runtimeRoot = await mkdtemp(
+          join(tmpdir(), 'bridge-microphone-session-'),
+        );
+        const principal = { id: 'native-microphone-fixture' };
+        let source;
+        const manager = new SessionManager({
+          workerFactory: () => {
+            const worker = new NativeSessionWorker({ workerPath, runtimeRoot });
+            worker.onMicrophone((state) => {
+              source = state;
+            });
+            return worker;
           },
-          principal,
-          '127.0.0.1',
-        );
-        await eventually(
-          () => manager.get(created.sessionId, principal).state === 'failed',
-        );
-        assert.equal(
-          manager.get(created.sessionId, principal).error.code,
-          'RDP_CERTIFICATE_REJECTED',
-        );
-        assert.equal(endpoint.applicationBytes, 0);
-        assert.equal(source.enabled, true);
-        assert.equal(source.availability, 'closed');
-        assert.equal(source.epoch, 0n);
-        await manager.shutdown();
-        assert.deepEqual(await readdir(runtimeRoot), []);
-      } finally {
-        await manager.shutdown();
-        await endpoint.close();
-        await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
-      }
-    },
-  );
+        });
+        try {
+          const created = manager.create(
+            {
+              target: { host: '127.0.0.1', port: endpoint.port },
+              auth: {
+                username: 'synthetic',
+                password: 'synthetic-IPC-sentinel',
+              },
+              security: { protocol: 'tls', certificatePolicy: 'strict' },
+              media: { microphone: input, audioOutput: output },
+              timeouts: { connectMs: 5000 },
+            },
+            principal,
+            '127.0.0.1',
+          );
+          await eventually(
+            () => manager.get(created.sessionId, principal).state === 'failed',
+          );
+          assert.equal(
+            manager.get(created.sessionId, principal).error.code,
+            'RDP_CERTIFICATE_REJECTED',
+          );
+          assert.equal(endpoint.applicationBytes, 0);
+          assert.equal(source.enabled, true);
+          assert.equal(source.availability, 'closed');
+          assert.equal(source.epoch, 0n);
+          await manager.shutdown();
+          assert.deepEqual(await readdir(runtimeRoot), []);
+        } finally {
+          await manager.shutdown();
+          await endpoint.close();
+          await rm(runtimeRoot, {
+            recursive: true,
+            force: true,
+            maxRetries: 3,
+          });
+        }
+      },
+    );
 
 for (const input of ['pcm', 'opus'])
   for (const output of ['off', 'pcm', 'opus'])
@@ -131,11 +140,20 @@ for (const input of ['pcm', 'opus'])
           payload = Buffer.alloc(0),
         ) => {
           child.stdin.write(encodePacket({ kind, requestId, payload }));
-          await eventually(() =>
-            packets.some(
+          // Match WorkerProcess's bounded 10 s startup contract only for HELLO.
+          const deadline = Date.now() + (kind === Kind.Hello ? 10000 : 3000);
+          while (
+            !packets.some(
               (p) => p.kind === expected && p.requestId === requestId,
-            ),
-          );
+            )
+          ) {
+            if (invalid) throw new Error('Native fixture parser failed');
+            if (child.exitCode !== null || child.signalCode !== null)
+              throw new Error('Native fixture ended before reply');
+            if (Date.now() >= deadline)
+              throw new Error('Native fixture reply deadline exceeded');
+            await delay(5);
+          }
           return packets.find(
             (p) => p.kind === expected && p.requestId === requestId,
           );

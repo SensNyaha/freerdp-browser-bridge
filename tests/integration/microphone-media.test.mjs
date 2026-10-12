@@ -7,7 +7,10 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
-import { encodeMicrophoneRecord } from '../../packages/protocol/dist/index.js';
+import {
+  encodeMicrophoneRecord,
+  encodeMicrophoneOpusRecord,
+} from '../../packages/protocol/dist/index.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
 import { MicrophoneMediaClient } from '../../apps/reference-harness/microphone-media.js';
 const { WebSocket } = createRequire(
@@ -57,7 +60,7 @@ class MicrophoneMediaWorker extends FakeSessionWorker {
   }
   async start(config, signal) {
     await super.start(config, signal);
-    if (config.media?.microphone === 'pcm' && !signal.aborted)
+    if (['pcm', 'opus'].includes(config.media?.microphone) && !signal.aborted)
       this.emit('microphone', this.source);
   }
   publish(patch = {}) {
@@ -80,6 +83,14 @@ class MicrophoneMediaWorker extends FakeSessionWorker {
     assert.equal(epoch, this.source.epoch);
     this.publish({ epoch: epoch + 1n });
     return 'scheduled';
+  }
+  opusSamples = 0;
+  async sendMicrophoneOpus(value) {
+    ++this.opusSamples;
+    assert.equal('pcm' in value, false);
+    assert.equal(value.encoded.length, 3);
+    assert.equal(value.lookaheadFrames, 312);
+    return 'accepted';
   }
   supportsCodec(codec) {
     return codec === 'jpeg';
@@ -160,16 +171,14 @@ async function setup(run, microphone = 'pcm', controller = true) {
     }
     const control = controller ? await connect('control') : undefined;
     const media = await connect('media');
-    const hello = (selected = true) =>
+    const hello = (selected = true, codec = 'pcm') =>
       media.ws.send(
         JSON.stringify({
           v: 1,
           type: 'media.hello',
           data: {
             codecs: ['jpeg'],
-            ...(selected
-              ? { microphone: { codec: 'pcm', sourceStatus: true } }
-              : {}),
+            ...(selected ? { microphone: { codec, sourceStatus: true } } : {}),
           },
         }),
       );
@@ -193,6 +202,225 @@ async function setup(run, microphone = 'pcm', controller = true) {
 const message = (messages, type, predicate = () => true) =>
   messages.find((value) => value.type === type && predicate(value.data));
 const binary = (messages) => messages.filter(Buffer.isBuffer);
+const opusPacket = (sequence = 1, epoch = 1n, discontinuity = true) =>
+  encodeMicrophoneOpusRecord(
+    {
+      epoch,
+      timestampUs: BigInt(sequence - 1) * 20000n,
+      discontinuity,
+      lookaheadFrames: 312,
+      encoded: Buffer.from([0xfc, 0xff, 0xfe]),
+    },
+    sequence,
+  );
+
+test('fake RDP / actual WS Opus microphone: exact profile, explicit grant, independent video credit and fresh reset epoch', async () => {
+  await setup(async ({ media, hello, worker }) => {
+    hello(true, 'opus');
+    await eventually(
+      () =>
+        message(media.messages, 'media.ready') &&
+        message(media.messages, 'microphone.state'),
+    );
+    assert.deepEqual(message(media.messages, 'media.ready').data.microphone, {
+      codec: 'opus',
+      sourceStatus: true,
+      streamId: 4,
+      sampleRate: 48000,
+      channels: 2,
+      frames: 960,
+      maxPayloadBytes: 1315,
+      maxInFlight: 1,
+      packetTimeoutMs: 2000,
+      stopTimeoutMs: 4000,
+    });
+    assert.equal(
+      message(media.messages, 'microphone.state').data.granted,
+      false,
+    );
+    media.ws.send(opusPacket());
+    await eventually(() => message(media.messages, 'microphone.ack'));
+    assert.equal(
+      message(media.messages, 'microphone.ack').data.status,
+      'unavailable',
+    );
+    assert.equal(worker.opusSamples, 0);
+    request(media.ws, 'start', 1);
+    await eventually(() =>
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 1),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 1)
+        .data.status,
+      'started',
+    );
+    const captures = worker.captures;
+    media.ws.send(opusPacket(2));
+    await eventually(() =>
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 2),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 2).data
+        .status,
+      'accepted',
+    );
+    assert.equal(worker.samples, 0);
+    assert.equal(worker.opusSamples, 1);
+    await delay(60);
+    assert.equal(worker.captures, captures);
+    request(media.ws, 'stop', 2);
+    await eventually(() =>
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 2),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 2)
+        .data.status,
+      'stopped',
+    );
+    assert.equal(worker.source.epoch, 2n);
+    request(media.ws, 'start', 3);
+    await eventually(() =>
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 3),
+    );
+    media.ws.send(opusPacket(3, 2n, false));
+    await eventually(() =>
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 3),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 3).data
+        .status,
+      'invalid',
+    );
+    media.ws.send(opusPacket(4, 2n));
+    await eventually(() =>
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 4),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 4).data
+        .status,
+      'accepted',
+    );
+    assert.equal(worker.opusSamples, 2);
+    request(media.ws, 'stop', 4);
+    await eventually(() =>
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 4),
+    );
+    assert.equal(worker.source.epoch, 3n);
+    assert.equal(media.ws.readyState, WebSocket.OPEN);
+  }, 'opus');
+});
+
+test('fake RDP / actual WS microphone: explicit PCM/Opus mismatch refuses negotiation without fallback or capture', async () => {
+  for (const codec of ['pcm', 'opus'])
+    await setup(async ({ media, hello, worker, control }) => {
+      hello(true, codec === 'pcm' ? 'opus' : 'pcm');
+      await once(media.ws, 'close');
+      assert.equal(
+        message(media.messages, 'media.error').data.code,
+        'MEDIA_NOT_IMPLEMENTED',
+      );
+      assert.equal(worker.samples + worker.opusSamples, 0);
+      assert.equal(worker.resets, 0);
+      assert.equal(control.ws.readyState, WebSocket.OPEN);
+      assert.equal(message(media.messages, 'media.ready'), undefined);
+    }, codec);
+});
+
+test('fake RDP / actual WS Opus microphone: mixed PCM and bounded malformed records retire only media before backend dispatch', async () => {
+  for (const bytes of [
+    packet(),
+    opusPacket().subarray(0, 41),
+    Buffer.alloc(1316),
+  ])
+    await setup(async ({ media, hello, worker, control }) => {
+      hello(true, 'opus');
+      await eventually(() => message(media.messages, 'media.ready'));
+      request(media.ws, 'start', 1);
+      await eventually(() => message(media.messages, 'microphone.result'));
+      media.ws.send(bytes);
+      await once(media.ws, 'close');
+      assert.equal(
+        message(media.messages, 'media.error').data.code,
+        'MICROPHONE_PROTOCOL_ERROR',
+      );
+      assert.equal(worker.samples + worker.opusSamples, 0);
+      assert.equal(control.ws.readyState, WebSocket.OPEN);
+    }, 'opus');
+});
+
+test('fake RDP / actual WS Opus microphone: controller loss revokes pending encoded input and replacement waits for reset', async () => {
+  await setup(async ({ media, control, replace, hello, worker }) => {
+    const held = deferred();
+    let borrowed;
+    worker.sendMicrophoneOpus = (value) => {
+      ++worker.opusSamples;
+      borrowed = value.encoded;
+      return held.promise;
+    };
+    hello(true, 'opus');
+    await eventually(() => message(media.messages, 'media.ready'));
+    request(media.ws, 'start', 1);
+    await eventually(() => message(media.messages, 'microphone.result'));
+    media.ws.send(opusPacket());
+    await eventually(() => worker.opusSamples === 1);
+    control.ws.close();
+    await once(control.ws, 'close');
+    await eventually(
+      () =>
+        media.messages.filter((v) => v.type === 'microphone.state').at(-1)?.data
+          .retiring === true,
+    );
+    assert.equal(worker.resets, 0);
+    assert.equal(borrowed[0], 0xfc);
+    await replace('control');
+    request(media.ws, 'start', 2);
+    await eventually(() =>
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 2),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 2)
+        .data.status,
+      'busy',
+    );
+    held.resolve('accepted');
+    await eventually(() => message(media.messages, 'microphone.ack'));
+    assert.equal(
+      message(media.messages, 'microphone.ack').data.status,
+      'unavailable',
+    );
+    await eventually(() => worker.source.epoch === 2n);
+    assert.equal(
+      borrowed.every((v) => v === 0),
+      true,
+    );
+    worker.sendMicrophoneOpus =
+      MicrophoneMediaWorker.prototype.sendMicrophoneOpus;
+    request(media.ws, 'start', 3);
+    await eventually(() =>
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 3),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 3)
+        .data.status,
+      'started',
+    );
+    media.ws.send(opusPacket(2, 2n));
+    await eventually(() =>
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 2),
+    );
+    assert.equal(
+      message(media.messages, 'microphone.ack', (v) => v.sequence === 2).data
+        .status,
+      'accepted',
+    );
+    assert.equal(worker.samples, 0);
+    request(media.ws, 'stop', 4);
+    await eventually(() =>
+      message(media.messages, 'microphone.result', (v) => v.requestSeq === 4),
+    );
+    assert.equal(worker.source.epoch, 3n);
+  }, 'opus');
+});
 
 test('fake RDP / actual WS microphone browser client: correlated commands, latest synthetic PCM, preserved ACK and observed restart epoch', async () => {
   await setup(async ({ worker, media, hello }) => {

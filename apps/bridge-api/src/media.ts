@@ -11,8 +11,13 @@ import {
   MAX_CURSOR_BYTES,
   type DisplayState,
   MICROPHONE_RECORD_BYTES,
+  MICROPHONE_OPUS_MAX_RECORD_BYTES,
 } from '@freerdp-bridge/protocol';
-import { publicSessionError, type SessionManager } from '@freerdp-bridge/node';
+import {
+  publicSessionError,
+  SessionError,
+  type SessionManager,
+} from '@freerdp-bridge/node';
 import type { MediaMetrics } from './metrics.js';
 import { displayData } from './display.js';
 import { installPcmMedia, installOpusMedia } from './audio.js';
@@ -37,7 +42,10 @@ const hello = TypeCompiler.Compile(
           display: Type.Optional(Type.Boolean()),
           microphone: Type.Optional(
             Type.Object(
-              { codec: Type.Literal('pcm'), sourceStatus: Type.Literal(true) },
+              {
+                codec: Type.Union([Type.Literal('pcm'), Type.Literal('opus')]),
+                sourceStatus: Type.Literal(true),
+              },
               { additionalProperties: false },
             ),
           ),
@@ -132,7 +140,7 @@ export function installMedia(
   let displayOffered = false;
   let audioOffered: 'pcm' | 'opus' | undefined;
   let audio: ReturnType<typeof installPcmMedia> | undefined;
-  let microphoneOffered = false;
+  let microphoneOffered: 'pcm' | 'opus' | undefined;
   let microphone: ReturnType<typeof installMicrophoneMedia> | undefined;
   let microphoneCommands = 0;
   let latestCursor = lease.cursor;
@@ -310,8 +318,11 @@ export function installMedia(
             ? installPcmMedia(ws, lease, fail, audioMetrics)
             : installOpusMedia(ws, lease, fail, audioMetrics);
       }
-      if (microphoneOffered)
+      if (microphoneOffered) {
+        if (lease.microphoneCodec !== microphoneOffered)
+          throw new SessionError('MEDIA_NOT_IMPLEMENTED');
         microphone = installMicrophoneMedia(ws, lease, send, fail);
+      }
       clearTimeout(deadline);
       send('media.ready', {
         codec,
@@ -323,13 +334,16 @@ export function installMedia(
         ...(microphone
           ? {
               microphone: {
-                codec: 'pcm',
+                codec: microphoneOffered,
                 sourceStatus: true,
                 streamId: 4,
                 sampleRate: 48000,
                 channels: 2,
                 frames: 960,
-                maxPayloadBytes: MICROPHONE_RECORD_BYTES,
+                maxPayloadBytes:
+                  microphoneOffered === 'opus'
+                    ? MICROPHONE_OPUS_MAX_RECORD_BYTES
+                    : MICROPHONE_RECORD_BYTES,
                 maxInFlight: 1,
                 packetTimeoutMs: 2000,
                 stopTimeoutMs: 4000,
@@ -422,7 +436,7 @@ export function installMedia(
       cursorOffered = value.data.cursor ?? false;
       displayOffered = value.data.display ?? false;
       audioOffered = value.data.audio?.codec;
-      microphoneOffered = Boolean(value.data.microphone);
+      microphoneOffered = value.data.microphone?.codec;
       negotiate();
     } else if (
       microphone &&

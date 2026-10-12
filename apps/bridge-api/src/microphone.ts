@@ -3,6 +3,7 @@ import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
 import {
   decodeMicrophoneRecord,
+  decodeMicrophoneOpusRecord,
   encodeMicrophoneResult,
   encodeMicrophoneState,
   validateMicrophoneStateProgress,
@@ -31,7 +32,7 @@ const command = TypeCompiler.Compile(
   ),
 );
 
-/** Prepared PCM media receiver. Not yet selected by media.hello or the reference viewer. */
+/** Explicit codec-selected capture receiver; server grants do not assert device permission. */
 export function installMicrophoneMedia(
   ws: WebSocket,
   lease: ReturnType<SessionManager['attach']>,
@@ -39,7 +40,9 @@ export function installMicrophoneMedia(
   fail: (code: string) => void,
   deadlines = { packetMs: 2000, stopMs: 4000 },
 ) {
+  const codec = lease.microphoneCodec;
   if (
+    (codec !== 'pcm' && codec !== 'opus') ||
     ws.readyState !== WebSocket.OPEN ||
     !Number.isInteger(deadlines.packetMs) ||
     deadlines.packetMs < 20 ||
@@ -260,7 +263,10 @@ export function installMicrophoneMedia(
       if (closed) return;
       let sequence: number, epoch: bigint;
       try {
-        ({ sequence, epoch } = decodeMicrophoneRecord(bytes));
+        ({ sequence, epoch } =
+          codec === 'opus'
+            ? decodeMicrophoneOpusRecord(bytes)
+            : decodeMicrophoneRecord(bytes));
         if (!started || sequence <= lastPacket) throw new Error();
         lastPacket = sequence;
       } catch {

@@ -1,5 +1,11 @@
 # Prepared PCM microphone media adapter
 
+Current update — iteration 140: explicit matching session/media Opus input
+selects this same bounded adapter with the type-10 parser and maximum record
+1,315 bytes. PCM stays unchanged; mismatched profiles fail without fallback.
+Grant/state/stop/ACK, deadlines, budgets and independent media credit are shared.
+The reference browser still selects PCM only. [Opus media contract](MICROPHONE_OPUS_MEDIA.md).
+
 Iteration 120 adds an [isolated browser sender](MICROPHONE_SENDER.md) with local
 permission tokens, one packet awaiting ACK and one expiring latest unsent block.
 It does not yet acquire a device or activate the reference viewer/native path.

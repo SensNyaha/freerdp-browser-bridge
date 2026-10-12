@@ -23,6 +23,7 @@ import type {
   AudioResetResult,
   MicrophoneState,
   MicrophonePcmPacket,
+  MicrophoneOpusPacket,
   MicrophoneResult,
   MicrophoneResetResult,
 } from '@freerdp-bridge/protocol';
@@ -77,14 +78,18 @@ export class NativeSessionWorker implements SessionWorker {
       if (signal.aborted) throw new SessionError('WORKER_START_FAILED');
       if (
         config.media?.microphone &&
-        !['off', 'pcm'].includes(config.media.microphone)
+        !['off', 'pcm', 'opus'].includes(config.media.microphone)
       )
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       signal.addEventListener('abort', abort, { once: true });
       const build = await this.worker.start();
       if (
-        config.media?.microphone === 'pcm' &&
-        (!build.capabilities.pcmInput || !build.capabilities.microphoneReset)
+        (config.media?.microphone === 'pcm' ||
+          config.media?.microphone === 'opus') &&
+        (!(config.media.microphone === 'opus'
+          ? build.capabilities.opusInput
+          : build.capabilities.pcmInput) ||
+          !build.capabilities.microphoneReset)
       )
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (
@@ -170,6 +175,16 @@ export class NativeSessionWorker implements SessionWorker {
     try {
       if (this.closing) return 'unavailable';
       return await this.worker.resetMicrophone(epoch);
+    } catch {
+      throw new SessionError('MEDIA_FAILED');
+    }
+  }
+  async sendMicrophoneOpus(
+    packet: MicrophoneOpusPacket,
+  ): Promise<MicrophoneResult> {
+    try {
+      if (this.closing) return 'unavailable';
+      return await this.worker.sendMicrophoneOpus(packet);
     } catch {
       throw new SessionError('MEDIA_FAILED');
     }

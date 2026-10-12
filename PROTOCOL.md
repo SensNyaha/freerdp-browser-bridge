@@ -201,6 +201,12 @@ actual dimensions or canvas size. See [Display Control](docs/DISPLAY_CONTROL.md)
 
 ## 4. Media WebSocket
 
+Current input update — iteration 140: explicit session/media microphone Opus
+selection activates type 10/stream 4 with a 1,315-byte maximum record, one
+correlated input ACK and the existing grant/stop/reset barrier. PCM remains
+unchanged; profile mismatch refuses without fallback. Reference browser Opus
+capture selection remains open. [Contract](docs/MICROPHONE_OPUS_MEDIA.md).
+
 Endpoint:
 
 ```text
@@ -251,7 +257,7 @@ Record types:
 0x07 MIC_PACKET              # client -> server
 0x08 STATS_BINARY_RESERVED
 0x09 AUDIO_STATE             # server -> client; prepared, not activated yet
-0x0a MIC_OPUS_PACKET         # client -> server; prepared, not selected
+0x0a MIC_OPUS_PACKET         # client -> server; explicit matching Opus negotiation
 ```
 
 Iteration 112 prepares a fixed PCM MIC_PACKET type 7/stream 4: nonzero sequence,

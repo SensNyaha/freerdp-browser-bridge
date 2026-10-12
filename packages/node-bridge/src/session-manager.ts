@@ -42,6 +42,7 @@ import type {
   TouchState,
   MicrophoneState,
   MicrophonePcmPacket,
+  MicrophoneOpusPacket,
   MicrophoneResult,
   MicrophoneResetResult,
 } from '@freerdp-bridge/protocol';
@@ -203,6 +204,7 @@ export interface SessionWorker {
   resetAudio?(expectedEpoch: bigint): Promise<AudioResetResult>;
   onMicrophone?(listener: (state: MicrophoneState) => void): () => void;
   sendMicrophone?(packet: MicrophonePcmPacket): Promise<MicrophoneResult>;
+  sendMicrophoneOpus?(packet: MicrophoneOpusPacket): Promise<MicrophoneResult>;
   resetMicrophone?(epoch: bigint): Promise<MicrophoneResetResult>;
   resizeDisplay?(width: number, height: number): Promise<DisplayResizeResult>;
   decideCertificate?(prompt: CertificatePrompt, accept: boolean): Promise<void>;
@@ -239,6 +241,7 @@ type Entry = {
   audioListener?: { lease: symbol; sink: (event: SessionAudioEvent) => void };
   audioReset?: symbol;
   microphoneEnabled: boolean;
+  microphoneCodec?: 'pcm' | 'opus';
   microphone?: MicrophoneState;
   microphoneOwnership?: MicrophoneOwnership;
   microphoneSink?: (state: MicrophoneState) => void;
@@ -439,7 +442,13 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         videoQuality: resolveVideoQuality(config.quality),
         dynamicResolution: config.display?.dynamicResolution === true,
         touchEnabled: config.input?.touch === true,
-        microphoneEnabled: config.media?.microphone === 'pcm',
+        microphoneEnabled:
+          config.media?.microphone === 'pcm' ||
+          config.media?.microphone === 'opus',
+        ...(config.media?.microphone === 'pcm' ||
+        config.media?.microphone === 'opus'
+          ? { microphoneCodec: config.media.microphone }
+          : {}),
         audioEnabled:
           config.media?.audioOutput === 'pcm' ||
           config.media?.audioOutput === 'opus',
@@ -621,19 +630,20 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
             }),
           );
         if (
-          config.media?.microphone === 'opus' ||
-          (entry.microphoneEnabled &&
-            (typeof worker.onMicrophone !== 'function' ||
-              typeof worker.sendMicrophone !== 'function' ||
-              typeof worker.resetMicrophone !== 'function'))
+          entry.microphoneEnabled &&
+          (typeof worker.onMicrophone !== 'function' ||
+            typeof (entry.microphoneCodec === 'opus'
+              ? worker.sendMicrophoneOpus
+              : worker.sendMicrophone) !== 'function' ||
+            typeof worker.resetMicrophone !== 'function')
         ) {
           this.fail(entry, 'RDP_SETTING_NOT_IMPLEMENTED');
           throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
         }
         if (entry.microphoneEnabled) {
-          entry.microphoneOwnership = new MicrophoneOwnership({
+          const backend = {
             source: () => entry.microphone,
-            onSource: (sink) => {
+            onSource: (sink: (state: MicrophoneState) => void) => {
               if (entry.microphoneSink)
                 throw new Error('Duplicate microphone retirement listener');
               entry.microphoneSink = sink;
@@ -641,8 +651,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                 if (entry.microphoneSink === sink) delete entry.microphoneSink;
               };
             },
-            submit: (packet) => worker.sendMicrophone!(packet),
-            reset: (epoch) => worker.resetMicrophone!(epoch),
+            reset: (epoch: bigint) => worker.resetMicrophone!(epoch),
             terminate: () => {
               if (
                 !entry.released &&
@@ -651,7 +660,19 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
               )
                 this.fail(entry, 'WORKER_FAILED');
             },
-          });
+          };
+          entry.microphoneOwnership =
+            entry.microphoneCodec === 'opus'
+              ? new MicrophoneOwnership({
+                  ...backend,
+                  codec: 'opus',
+                  submit: (packet) => worker.sendMicrophoneOpus!(packet),
+                })
+              : new MicrophoneOwnership({
+                  ...backend,
+                  codec: 'pcm',
+                  submit: (packet) => worker.sendMicrophone!(packet),
+                });
         }
         if (worker.onMicrophone)
           entry.unsubscribers.push(
@@ -958,6 +979,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     onAudio: (listener: (event: SessionAudioEvent) => void) => () => void;
     resetAudio: (expectedEpoch: bigint) => Promise<AudioResetResult>;
     readonly microphone: MicrophoneState | undefined;
+    readonly microphoneCodec: 'pcm' | 'opus';
     readonly microphoneSnapshot: SessionMicrophoneSnapshot;
     readonly microphoneFailed: boolean;
     onMicrophone: (
@@ -1016,6 +1038,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         throw new SessionError('MEDIA_NOT_IMPLEMENTED');
     };
     return {
+      get microphoneCodec() {
+        requireMicrophoneLease();
+        return entry.microphoneCodec!;
+      },
       get microphone() {
         requireMicrophoneLease();
         return entry.microphone && { ...entry.microphone };

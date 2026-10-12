@@ -1,5 +1,13 @@
 # Preparatory microphone session attachment ownership
 
+Current update — iteration 140: selected PCM/Opus input uses a codec-specific
+backend callback and the shared exclusive owner. The media lease exposes
+microphoneCodec after attachment validation. NativeSessionWorker accepts Opus
+only after HELLO confirms opusInput and microphoneReset before configure/secret.
+Matching explicit WebSocket negotiation is enabled with fake-RDP/actual-socket
+and native local-TLS evidence. Browser Opus selection and actual ready AUDIN /
+recording remain open. [Current contract](MICROPHONE_OPUS_MEDIA.md).
+
 Current update — iteration 128: NativeSessionWorker accepts explicit PCM input
 after HELLO confirms PCM dispatch and microphoneReset. The reference viewer
 selects its complete gesture/permission/grant/graph path. Actual restored XRDP

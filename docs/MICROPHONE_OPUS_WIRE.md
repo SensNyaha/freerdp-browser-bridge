@@ -1,5 +1,10 @@
 # Prepared microphone Opus packet codecs
 
+Current update — iteration 140: explicit matching session/media Opus selection
+now activates RWB1 type 10 through the bounded grant/ACK/reset adapter. The
+prepared payload shape stays unchanged. The viewer still selects PCM input;
+actual ready AUDIN/device/recording remains open. [Current media contract](MICROPHONE_OPUS_MEDIA.md).
+
 Current update — iteration 134: RWI1 input kind 44 and CONFIGURE schema 8 are
 assigned with preallocation limits, but workers still reply unavailable and
 refuse Opus selection. No input capability is advertised. The historical

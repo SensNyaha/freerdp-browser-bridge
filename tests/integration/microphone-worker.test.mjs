@@ -166,7 +166,7 @@ test('fake microphone peer: premature, unsolicited, replayed and malformed autho
     assert.equal(worker.state, 'failed');
   });
 });
-test('microphone selection: legacy PCM/reset capabilities and Opus input refuse before configure', async () => {
+test('microphone selection: legacy codec/reset capabilities refuse before configure', async () => {
   await run(async (worker) => {
     assert.equal(worker.build.capabilities.pcmInput, false);
     await assert.rejects(worker.connect(configuration('valid')), {
@@ -189,7 +189,7 @@ test('microphone selection: legacy PCM/reset capabilities and Opus input refuse 
     join(tmpdir(), 'bridge-microphone-public-'),
   );
   const worker = new NativeSessionWorker({
-    workerPath: resolve(directory, 'missing-worker' + suffix),
+    workerPath: resolve(directory, 'fixture-microphone' + suffix),
     runtimeRoot,
   });
   try {
@@ -200,6 +200,7 @@ test('microphone selection: legacy PCM/reset capabilities and Opus input refuse 
       ),
       { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
     );
+    await worker.close();
     assert.deepEqual(await readdir(runtimeRoot), []);
   } finally {
     await worker.close();

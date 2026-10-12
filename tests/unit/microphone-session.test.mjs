@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SessionManager } from '../../packages/node-bridge/dist/index.js';
-import { encodeMicrophoneRecord } from '../../packages/protocol/dist/index.js';
+import {
+  encodeMicrophoneRecord,
+  encodeMicrophoneOpusRecord,
+} from '../../packages/protocol/dist/index.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
 const principal = { id: 'microphone-fixture-owner' };
 const configuration = (microphone = 'pcm') => ({
@@ -98,7 +101,7 @@ async function fixture(run, options = {}) {
   }
 }
 
-test('microphone session: selection requires typed backend before startup; Opus stays unsupported and off stays explicit', async () => {
+test('microphone session: selection requires codec-specific typed backend before startup and off stays explicit', async () => {
   for (const microphone of ['pcm', 'opus']) {
     const worker = new FakeSessionWorker();
     const manager = new SessionManager({ workerFactory: () => worker });
@@ -135,6 +138,76 @@ test('microphone session: selection requires typed backend before startup; Opus 
     );
   } finally {
     await manager.shutdown();
+  }
+});
+
+test('Opus microphone session: a PCM-only backend refuses explicit Opus before startup without fallback', async () => {
+  const worker = new MicrophoneWorker(),
+    manager = new SessionManager({ workerFactory: () => worker });
+  try {
+    assert.throws(
+      () => manager.create(configuration('opus'), principal, '127.0.0.1'),
+      { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
+    );
+    assert.equal(worker.started, 0);
+  } finally {
+    await manager.shutdown();
+  }
+});
+
+test('Opus microphone session: typed Opus-only backend, profile-bound lease and native reset precede replacement', async () => {
+  const worker = new MicrophoneWorker();
+  worker.sendMicrophone = undefined;
+  let submitted = 0;
+  worker.sendMicrophoneOpus = async (packet) => {
+    ++submitted;
+    assert.equal('pcm' in packet, false);
+    assert.equal(packet.lookaheadFrames, 312);
+    return 'accepted';
+  };
+  const manager = new SessionManager({ workerFactory: () => worker });
+  const created = manager.create(configuration('opus'), principal, '127.0.0.1');
+  const attach = (channel) =>
+    manager.attach(
+      created.sessionId,
+      manager.mintToken(created.sessionId, principal, channel).token,
+      channel,
+    );
+  const packet = (epoch = 1n) =>
+    encodeMicrophoneOpusRecord(
+      {
+        epoch,
+        timestampUs: 0n,
+        discontinuity: true,
+        lookaheadFrames: 312,
+        encoded: Buffer.from([0xfc, 0xff, 0xfe]),
+      },
+      1,
+    );
+  try {
+    await eventually(
+      () => manager.get(created.sessionId, principal).state === 'connected',
+    );
+    const control = attach('control'),
+      media = attach('media');
+    assert.throws(() => control.microphoneCodec, { code: 'ATTACH_INVALID' });
+    assert.equal(media.microphoneCodec, 'opus');
+    assert.equal(media.startMicrophone(), true);
+    assert.equal((await media.sendMicrophone(packet())).result, 'accepted');
+    assert.equal(submitted, 1);
+    assert.equal(await media.stopMicrophone(), true);
+    assert.equal(worker.source.epoch, 2n);
+    assert.equal(media.startMicrophone(), true);
+    assert.equal((await media.sendMicrophone(packet(2n))).result, 'accepted');
+    assert.equal(await media.stopMicrophone(), true);
+    assert.equal(worker.source.epoch, 3n);
+    assert.equal(worker.resetCalls, 2);
+    media.release();
+    assert.throws(() => media.microphoneCodec, { code: 'ATTACH_INVALID' });
+    control.release();
+  } finally {
+    await manager.shutdown();
+    assert.equal(worker.listenerCount('microphone'), 0);
   }
 });
 

@@ -63,6 +63,7 @@ function fixture(deadlines) {
     listener?.(snapshot);
   };
   const lease = {
+    microphoneCodec: 'pcm',
     get microphoneSnapshot() {
       return snapshot;
     },
