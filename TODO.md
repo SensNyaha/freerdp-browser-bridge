@@ -887,6 +887,12 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Accepted DVC callback handoff closes rejected new targets once,
+  preserves separate uncertain cleanup status and refuses shared live callback
+  aliases without closing the existing owner. Five fixtures and two actual
+  drdynvc/fake-SVC cases pass; production listener/provider handoff and aggregate/
+  cached/nested/remote resource acceptance remain open. [Iteration 154](docs/ITERATION_154.md).
+
 - [~] IN PROGRESS — Pinned public manager facade normalizes failed CreateListener
   output to stable fallback without touching a potentially freed native pointer;
   actual generic addin and successful drdynvc/fake-SVC fixtures pass. Production

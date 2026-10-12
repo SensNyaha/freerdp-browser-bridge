@@ -1,4 +1,5 @@
 #include "addin_scope.hpp"
+#include "dvc_channel_handoff.hpp"
 #include "dvc_channel_registry.hpp"
 #include "dvc_completion_hook.hpp"
 #include "dvc_receive_guard.hpp"
@@ -37,6 +38,8 @@ struct Host {
   std::unique_ptr<PinnedDvcManager> manager_facade;
   IWTSVirtualChannelManager *actual_manager = nullptr;
   bool wrap_manager = false;
+  bool use_handoff = false;
+  DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
   bool observe_completion = false;
   std::uint64_t now_ms = 1;
@@ -102,12 +105,13 @@ struct Host {
     return entries->RegisterPlugin(entries, plugin_name, &active->dynamic);
   }
   explicit Host(bool completion_observation = false, bool registry_observation = false,
-                bool pinned_manager_observation = false)
-      : observe_completion(completion_observation), wrap_manager(pinned_manager_observation) {
+                bool pinned_manager_observation = false, bool handoff_observation = false)
+      : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
+        use_handoff(handoff_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
-          DvcMessageBudgetLimits{2, 8, 8, 100});
+          DvcMessageBudgetLimits{handoff_observation ? 1U : 2U, 8, 8, 100});
     RDP_CLIENT_ENTRY_POINTS entry_points{};
     entry_points.Size = sizeof(entry_points);
     entry_points.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -154,9 +158,17 @@ struct Host {
       *accept = TRUE;
       *callback = &host.channels[id - 0x42].api;
       if (host.registry) {
-        const auto binding = host.registry->bind(*host.manager, *channel, **callback, host.now_ms);
+        DvcChannelBinding binding{CHANNEL_RC_OK, nullptr};
+        if (host.use_handoff) {
+          host.handoff_result = handoff_accepted_channel(*host.registry, *host.manager, *channel,
+                                                         **callback, host.now_ms);
+          binding = {host.handoff_result.status, host.handoff_result.callback};
+        } else {
+          binding = host.registry->bind(*host.manager, *channel, **callback, host.now_ms);
+        }
         if (binding.status != CHANNEL_RC_OK) {
           *accept = FALSE;
+          *callback = nullptr;
           return binding.status;
         }
         *callback = binding.callback;
@@ -578,4 +590,38 @@ TEST_CASE(
   REQUIRE(host.terminated == 1);
   REQUIRE(host.manager->FindChannelById(host.manager, 0x42) == nullptr);
   REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Actual drdynvc accepted handoff projects one live callback without premature close") {
+  Host host(false, true, true, true);
+  REQUIRE(host.handoff_result.status == CHANNEL_RC_OK);
+  REQUIRE_FALSE(host.handoff_result.close_invoked);
+  REQUIRE(host.registry->owns_callback(host.channels[0].api));
+  const BYTE initial[]{1, 2, 3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  REQUIRE(host.channels[0].closes == 0);
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.registry_retirement_status == CHANNEL_RC_OK);
+}
+TEST_CASE(
+    "Actual drdynvc refused accepted handoff closes new target once and preserves old owner") {
+  Host host(false, true, true, true);
+  std::vector<BYTE> create{0x10, 0x43};
+  create.insert(create.end(), channel_name, channel_name + std::strlen(channel_name) + 1);
+  REQUIRE(host.send(create)); // Core-style dispatch is void; downstream error is separate.
+  REQUIRE(host.handoff_result.status == ERROR_TOO_MANY_OPEN_FILES);
+  REQUIRE(host.handoff_result.cleanup_status == CHANNEL_RC_OK);
+  REQUIRE(host.handoff_result.close_invoked);
+  REQUIRE(host.handoff_result.callback == nullptr);
+  REQUIRE(host.channels[1].closes == 1);
+  REQUIRE(host.channels[0].closes == 0);
+  REQUIRE(getChannelError(host.context.get()) ==
+          CHANNEL_RC_OK);                 // Negative CREATE response is not a global channel error.
+  REQUIRE(host.registry->stats().failed); // Future owner must observe its own refusal too.
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.channels[1].closes == 1);
+  REQUIRE(host.registry->stats().resources_retired);
 }

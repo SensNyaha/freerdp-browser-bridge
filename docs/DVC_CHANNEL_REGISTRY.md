@@ -49,3 +49,7 @@ open. No dependency source/pin/ABI/wire/capability changes.
 Iteration 153 adds [pinned manager failed-output normalization](PINNED_DVC_MANAGER.md)
 with actual generic-addin/fake-manager and drdynvc/fake-SVC fixtures. Production
 listener/provider handoff remains open.
+
+Iteration 154 records live original callback identity and adds
+[accepted-target handoff / alias protection](DVC_CHANNEL_HANDOFF.md). Factory
+success/acceptance is required before ownership transfer; production wiring is open.

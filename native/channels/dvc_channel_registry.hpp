@@ -29,10 +29,12 @@ public:
   UINT retire() noexcept;
   DvcChannelRegistryStats stats() const noexcept;
   bool contains(std::uint32_t) const noexcept;
+  bool owns_callback(const IWTSVirtualChannelCallback &) const noexcept;
 
 private:
   struct Entry {
     std::uint32_t id = 0;
+    const IWTSVirtualChannelCallback *original = nullptr;
     std::unique_ptr<DvcCompletionHook> hook;
   };
   std::array<Entry, DvcMessageBudgetLimits::hard_slots> entries_{};

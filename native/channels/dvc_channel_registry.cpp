@@ -35,6 +35,11 @@ bool DvcChannelRegistry::contains(std::uint32_t id) const noexcept {
     return entry.hook && !entry.hook->closed() && entry.id == id;
   });
 }
+bool DvcChannelRegistry::owns_callback(const IWTSVirtualChannelCallback &callback) const noexcept {
+  return std::any_of(entries_.begin(), entries_.end(), [&callback](const auto &entry) {
+    return entry.hook && !entry.hook->closed() && entry.original == &callback;
+  });
+}
 bool DvcChannelRegistry::poll(std::uint64_t now) noexcept {
   if (closed_)
     return false;
@@ -61,7 +66,7 @@ DvcChannelBinding DvcChannelRegistry::bind(IWTSVirtualChannelManager &manager,
   try {
     const auto id = manager.GetChannelId(&channel);
     if (!closed_) {
-      if (contains(id)) {
+      if (contains(id) || owns_callback(original)) {
         (void)fail(ERROR_ALREADY_EXISTS);
         result.status = ERROR_ALREADY_EXISTS;
       } else {
@@ -78,6 +83,7 @@ DvcChannelBinding DvcChannelRegistry::bind(IWTSVirtualChannelManager &manager,
           if (free->hook)
             increment(reused_);
           free->id = id;
+          free->original = &original;
           free->hook = std::move(hook);
           result = {CHANNEL_RC_OK, free->hook->interface()};
           increment(bindings_);
