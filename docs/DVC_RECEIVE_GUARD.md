@@ -43,3 +43,7 @@ No dependency source/pin/ABI/public wire or worker selection changes. Actual
 drdynvc host, worker hook lifetime, negotiated GFX, cumulative channel/message
 budgets, nested GFX/control/codec allocation, actual hostile/lost transport,
 Linux/sanitizers/fuzz and soak remain open.
+
+Iteration 149 installs this adapter in the [worker receive path](DVC_WORKER_INGRESS.md)
+and adds actual pinned drdynvc/fake-SVC tests. The historical unactivated
+foundation description above is retained; cumulative and nested limits remain open.

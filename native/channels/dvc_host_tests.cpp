@@ -1,0 +1,337 @@
+#include "addin_scope.hpp"
+#include "dvc_receive_guard.hpp"
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <catch2/catch_test_macros.hpp>
+#include <cstring>
+#include <freerdp/client.h>
+#include <freerdp/client/channels.h>
+#include <freerdp/client/cmdline.h>
+#include <freerdp/svc.h>
+#include <memory>
+#include <stdexcept>
+#include <vector>
+#include <winpr/error.h>
+#include <winpr/stream.h>
+#include <winpr/wtsapi.h>
+using namespace bridge::channels;
+namespace {
+constexpr const char *plugin_name = "bridge-bounds-fixture";
+constexpr const char *channel_name = "bridge-bounds";
+struct Host {
+  struct Context {
+    rdpClientContext base;
+    Host *owner;
+  };
+  std::unique_ptr<rdpContext, decltype(&freerdp_client_context_free)> context{
+      nullptr, freerdp_client_context_free};
+  AddinScope provider;
+  std::unique_ptr<DvcReceiveGuard> guard;
+  CHANNEL_ENTRY_POINTS_FREERDP_EX points{};
+  LPVOID plugin = nullptr;
+  PCHANNEL_INIT_EVENT_EX_FN init = nullptr;
+  PCHANNEL_OPEN_EVENT_EX_FN opened = nullptr;
+  bool connected = false;
+  unsigned deliveries = 0, writes = 0, closes = 0, terminated = 0;
+  IWTSPlugin dynamic{};
+  IWTSListenerCallback listener_callback{};
+  IWTSVirtualChannelManager *manager = nullptr;
+  IWTSListener *listener = nullptr;
+  struct Channel {
+    IWTSVirtualChannelCallback api{};
+    unsigned opens = 0, closes = 0, packets = 0;
+    std::size_t size = 0;
+    BYTE first = 0, last = 0;
+    bool uniform = false;
+    std::vector<BYTE> small_copy;
+  };
+  std::array<Channel, 2> channels;
+  static inline thread_local Host *active = nullptr;
+  static Host &owner(freerdp *instance) {
+    return *reinterpret_cast<Context *>(instance->context)->owner;
+  }
+  static BOOL delegate(freerdp *instance, UINT16 id, const BYTE *data, std::size_t size,
+                       UINT32 flags, std::size_t total) {
+    auto &host = owner(instance);
+    if (id != 1004 || !host.opened || size > UINT32_MAX || total > UINT32_MAX)
+      return FALSE;
+    ++host.deliveries;
+    host.opened(host.plugin, 1, CHANNEL_EVENT_DATA_RECEIVED, const_cast<BYTE *>(data),
+                static_cast<UINT32>(size), static_cast<UINT32>(total), flags);
+    // Match the real core's void-event dispatch result: errors are reported separately.
+    return TRUE;
+  }
+  static PVIRTUALCHANNELENTRY load(LPCSTR name, LPCSTR subsystem, LPCSTR type, DWORD flags) {
+    if (active && name && std::strcmp(name, plugin_name) == 0 &&
+        flags == FREERDP_ADDIN_CHANNEL_DYNAMIC)
+      return std::bit_cast<PVIRTUALCHANNELENTRY>(&Host::entry);
+    return active && active->provider.previous()
+               ? active->provider.previous()(name, subsystem, type, flags)
+               : nullptr;
+  }
+  static UINT VCAPITYPE entry(IDRDYNVC_ENTRY_POINTS *entries) {
+    if (!active || entries->GetRdpContext(entries) != active->context.get())
+      return ERROR_INVALID_PARAMETER;
+    return entries->RegisterPlugin(entries, plugin_name, &active->dynamic);
+  }
+  Host() {
+    RDP_CLIENT_ENTRY_POINTS entry_points{};
+    entry_points.Size = sizeof(entry_points);
+    entry_points.Version = RDP_CLIENT_INTERFACE_VERSION;
+    entry_points.ContextSize = sizeof(Context);
+    context.reset(freerdp_client_context_new(&entry_points));
+    REQUIRE(context);
+    reinterpret_cast<Context *>(context.get())->owner = this;
+    REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_SynchronousDynamicChannels, TRUE));
+    REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_AsyncChannels, FALSE));
+    REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_AsyncUpdate, FALSE));
+    const char *arguments[]{plugin_name};
+    REQUIRE(freerdp_client_add_dynamic_channel(context->settings, 1, arguments));
+    dynamic.pInterface = listener_callback.pInterface = this;
+    dynamic.Initialize = [](IWTSPlugin *p, IWTSVirtualChannelManager *m) -> UINT {
+      auto &host = *static_cast<Host *>(p->pInterface);
+      host.manager = m;
+      return m->CreateListener(m, channel_name, 0, &host.listener_callback, &host.listener);
+    };
+    dynamic.Terminated = [](IWTSPlugin *p) -> UINT {
+      auto &host = *static_cast<Host *>(p->pInterface);
+      ++host.terminated;
+      const auto result = host.listener ? host.manager->DestroyListener(host.manager, host.listener)
+                                        : CHANNEL_RC_OK;
+      host.listener = nullptr;
+      return result;
+    };
+    listener_callback.OnNewChannelConnection = [](IWTSListenerCallback *p,
+                                                  IWTSVirtualChannel *channel, BYTE *, BOOL *accept,
+                                                  IWTSVirtualChannelCallback **callback) -> UINT {
+      auto &host = *static_cast<Host *>(p->pInterface);
+      const auto id = host.manager->GetChannelId(channel);
+      if (id < 0x42 || id > 0x43)
+        return ERROR_INVALID_PARAMETER;
+      *accept = TRUE;
+      *callback = &host.channels[id - 0x42].api;
+      return CHANNEL_RC_OK;
+    };
+    for (auto &channel : channels) {
+      channel.api.pInterface = &channel;
+      channel.api.OnOpen = [](IWTSVirtualChannelCallback *p) -> UINT {
+        ++static_cast<Channel *>(p->pInterface)->opens;
+        return CHANNEL_RC_OK;
+      };
+      channel.api.OnClose = [](IWTSVirtualChannelCallback *p) -> UINT {
+        ++static_cast<Channel *>(p->pInterface)->closes;
+        return CHANNEL_RC_OK;
+      };
+      channel.api.OnDataReceived = [](IWTSVirtualChannelCallback *p, wStream *stream) -> UINT {
+        auto &channel_state = *static_cast<Channel *>(p->pInterface);
+        const auto size = Stream_GetRemainingLength(stream);
+        const auto *data = static_cast<const BYTE *>(Stream_Pointer(stream));
+        ++channel_state.packets;
+        channel_state.size = size;
+        if (size) {
+          channel_state.first = data[0];
+          channel_state.last = data[size - 1];
+          channel_state.uniform =
+              std::all_of(data, data + size, [data](auto byte) { return byte == data[0]; });
+          if (size <= 64)
+            channel_state.small_copy.assign(data, data + size);
+        }
+        return CHANNEL_RC_OK;
+      };
+    }
+    points.cbSize = sizeof(points);
+    points.protocolVersion = VIRTUAL_CHANNEL_VERSION_WIN2000;
+    points.MagicNumber = FREERDP_CHANNEL_MAGIC_NUMBER;
+    points.context = context.get();
+    points.pVirtualChannelInitEx = [](LPVOID user, LPVOID, LPVOID handle, PCHANNEL_DEF definitions,
+                                      INT count, ULONG,
+                                      PCHANNEL_INIT_EVENT_EX_FN callback) -> UINT {
+      auto &host = *static_cast<Host *>(handle);
+      if (count != 1 || std::strcmp(definitions->name, "drdynvc") != 0)
+        return ERROR_INVALID_PARAMETER;
+      host.plugin = user;
+      host.init = callback;
+      return CHANNEL_RC_OK;
+    };
+    points.pVirtualChannelOpenEx = [](LPVOID handle, LPDWORD result, PCHAR name,
+                                      PCHANNEL_OPEN_EVENT_EX_FN callback) -> UINT {
+      if (std::strcmp(name, "drdynvc") != 0)
+        return ERROR_INVALID_PARAMETER;
+      static_cast<Host *>(handle)->opened = callback;
+      *result = 1;
+      return CHANNEL_RC_OK;
+    };
+    points.pVirtualChannelCloseEx = [](LPVOID handle, DWORD id) -> UINT {
+      if (id != 1)
+        return ERROR_INVALID_PARAMETER;
+      ++static_cast<Host *>(handle)->closes;
+      return CHANNEL_RC_OK;
+    };
+    points.pVirtualChannelWriteEx = [](LPVOID handle, DWORD id, LPVOID data, ULONG size,
+                                       LPVOID completion) -> UINT {
+      auto &host = *static_cast<Host *>(handle);
+      if (id != 1 || !data || !size || !host.opened)
+        return ERROR_INVALID_PARAMETER;
+      ++host.writes;
+      host.opened(host.plugin, 1, CHANNEL_EVENT_WRITE_COMPLETE, completion, 0, 0, 0);
+      return CHANNEL_RC_OK;
+    };
+    REQUIRE(active == nullptr);
+    REQUIRE(provider.bind(*context, load) == CHANNEL_RC_OK);
+    active = this;
+    try {
+      const auto static_entry = freerdp_channels_load_static_addin_entry(
+          "drdynvc", nullptr, nullptr,
+          FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
+      REQUIRE(static_entry);
+      REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(static_entry)(
+          reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&points), this));
+      if (!plugin || !init)
+        throw std::runtime_error("Missing fixture channel callbacks");
+      init(plugin, this, CHANNEL_EVENT_INITIALIZED, nullptr, 0);
+      REQUIRE(getChannelError(context.get()) == CHANNEL_RC_OK);
+      init(plugin, this, CHANNEL_EVENT_CONNECTED, nullptr, 0);
+      connected = true;
+      REQUIRE(getChannelError(context.get()) == CHANNEL_RC_OK);
+      REQUIRE(opened);
+      guard = std::make_unique<DvcReceiveGuard>(*context->instance, delegate, DvcAllocationLimits{},
+                                                [](freerdp *) -> UINT16 { return 1004; });
+      const BYTE capabilities[]{0x50, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+      REQUIRE(send(capabilities));
+      create(0x42);
+    } catch (...) {
+      shutdown();
+      (void)provider.close();
+      active = nullptr;
+      throw;
+    }
+  }
+  ~Host() {
+    shutdown();
+    (void)provider.close();
+    active = nullptr;
+  }
+  void shutdown() noexcept {
+    if (guard)
+      guard->close();
+    if (plugin && init) {
+      if (connected)
+        init(plugin, this, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);
+      init(plugin, this, CHANNEL_EVENT_TERMINATED, nullptr, 0);
+      plugin = nullptr;
+      connected = false;
+    }
+  }
+  bool send(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
+            std::uint64_t now = 1) {
+    if (!guard)
+      return false;
+    return guard->receive(1004, bytes.data(), bytes.size(), flags, total ? total : bytes.size(),
+                          now);
+  }
+  void create(BYTE id) {
+    std::vector<BYTE> bytes{0x10, id};
+    bytes.insert(bytes.end(), channel_name, channel_name + std::strlen(channel_name) + 1);
+    REQUIRE(send(bytes));
+    REQUIRE(getChannelError(context.get()) == CHANNEL_RC_OK);
+    REQUIRE(channels[id - 0x42].opens == 1);
+  }
+};
+std::vector<BYTE> first(BYTE command, BYTE id, UINT32 size, std::span<const BYTE> body) {
+  std::vector<BYTE> bytes{static_cast<BYTE>((command << 4) | 8), id};
+  for (unsigned index = 0; index < 4; ++index)
+    bytes.push_back(static_cast<BYTE>(size >> (index * 8)));
+  bytes.insert(bytes.end(), body.begin(), body.end());
+  return bytes;
+}
+} // namespace
+
+TEST_CASE(
+    "Actual synchronous drdynvc host receives inspected outer fragments and logical DATA_FIRST") {
+  Host host;
+  const auto baseline = host.deliveries;
+  const BYTE initial[]{1, 2};
+  const auto begin = first(2, 0x42, 8, initial);
+  REQUIRE(host.send(std::span(begin).first(3), CHANNEL_FLAG_FIRST, begin.size()));
+  REQUIRE(host.deliveries == baseline);
+  REQUIRE(host.send(std::span(begin).subspan(3), CHANNEL_FLAG_LAST, begin.size(), 2));
+  REQUIRE(host.deliveries == baseline + 1);
+  REQUIRE(host.channels[0].packets == 0);
+  const BYTE end[]{0x30, 0x42, 3, 4, 5, 6, 7, 8};
+  REQUIRE(host.send(end, CHANNEL_FLAG_ONLY, 0, 3));
+  REQUIRE(host.channels[0].small_copy == std::vector<BYTE>{1, 2, 3, 4, 5, 6, 7, 8});
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.terminated == 1);
+  REQUIRE(host.closes == 1);
+}
+TEST_CASE("Actual drdynvc host decompresses inspected first and continuation compressed literals") {
+  Host host;
+  const BYTE literal[]{0xe0, 0x24, 0, 0, 7};
+  REQUIRE(host.send(first(6, 0x42, 2, literal)));
+  const BYTE next[]{0x70, 0x42, 0xe0, 0x24, 0, 0, 7};
+  REQUIRE(host.send(next));
+  REQUIRE(host.channels[0].small_copy == std::vector<BYTE>{0, 0});
+  REQUIRE(host.channels[0].packets == 1);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE(
+    "Actual drdynvc host never sees refused huge logical and independent decompression claims") {
+  for (bool compressed : {false, true}) {
+    Host host;
+    const auto baseline = host.deliveries;
+    const BYTE payload[]{0xe1, 1, 0, 0xff, 0xff, 0xff, 0xff, 2, 0, 0, 0, 4, 0};
+    REQUIRE_FALSE(host.send(first(compressed ? 6 : 2, 0x42, compressed ? 8 : UINT32_MAX, payload)));
+    REQUIRE(host.deliveries == baseline);
+    REQUIRE(host.channels[0].packets == 0);
+    REQUIRE(host.guard->stats().failed);
+    REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  }
+}
+TEST_CASE("Actual drdynvc host preserves a legitimate inspected twelve MiB payload") {
+  Host host;
+  constexpr std::size_t size = 12U * 1024U * 1024U;
+  std::vector<BYTE> bytes(size + 2, 0x5a);
+  bytes[0] = 0x30;
+  bytes[1] = 0x42;
+  REQUIRE(host.send(bytes));
+  REQUIRE(host.channels[0].packets == 1);
+  REQUIRE(host.channels[0].size == size);
+  REQUIRE(host.channels[0].uniform);
+  REQUIRE(host.channels[0].first == 0x5a);
+  REQUIRE(host.channels[0].last == 0x5a);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE("Actual drdynvc host keeps two legitimate partial logical channels independent") {
+  Host host;
+  host.create(0x43);
+  const BYTE a[]{1, 2}, b[]{3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, a)));
+  REQUIRE(host.send(first(2, 0x43, 4, b)));
+  const BYTE end_b[]{0x30, 0x43, 5, 6}, end_a[]{0x30, 0x42, 7, 8};
+  REQUIRE(host.send(end_b));
+  REQUIRE(host.send(end_a));
+  REQUIRE(host.channels[0].small_copy == std::vector<BYTE>{1, 2, 7, 8});
+  REQUIRE(host.channels[1].small_copy == std::vector<BYTE>{3, 4, 5, 6});
+  REQUIRE(host.channels[0].packets == 1);
+  REQUIRE(host.channels[1].packets == 1);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE("Actual drdynvc host shutdown retires logical partials after outer abandonment") {
+  Host host;
+  const BYTE initial[]{1, 2};
+  REQUIRE(host.send(first(2, 0x42, 8, initial)));
+  const auto baseline = host.deliveries;
+  const BYTE next[]{0x30, 0x42, 3, 4, 5, 6, 7, 8};
+  REQUIRE(host.send(std::span(next).first(1), CHANNEL_FLAG_FIRST, sizeof(next)));
+  REQUIRE_FALSE(host.guard->poll(2001));
+  REQUIRE(host.deliveries == baseline);
+  REQUIRE(host.guard->stats().assembly.allocated_bytes == 0);
+  REQUIRE(host.channels[0].packets == 0);
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.terminated == 1);
+  REQUIRE(host.closes == 1);
+}

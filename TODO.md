@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Worker public receive admission now bounds individual outer
+  SVC, DATA_FIRST and compressed-DVC claims before pinned host dispatch. Six
+  actual-linked drdynvc/fake-SVC cases include compressed decoding, 12 MiB input,
+  two logical channels and partial shutdown; RDP-thread polling and callback
+  restoration are implemented. Cumulative/pool/nested resource and actual
+  hostile/lost-transport acceptance remain open. [Iteration 149](docs/ITERATION_149.md).
+
 - [~] IN PROGRESS — Public ReceiveChannelData adapter normalizes only complete
   inspected drdynvc input, preserves other SVC arguments and validates raw flags,
   notifications, channel-ID lifetime and callback retirement. Seven linked public

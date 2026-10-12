@@ -46,3 +46,5 @@ lost transport, Linux/sanitizers/fuzz and soak gates remain open.
 Iteration 148 adds a [public receive adapter](DVC_RECEIVE_GUARD.md) with raw flag,
 other-SVC and reentrant lifetime fixtures. Production worker placement remains
 open; the historical foundation description above is preserved.
+
+Iteration 149 adds [actual host fixtures and worker placement](DVC_WORKER_INGRESS.md).

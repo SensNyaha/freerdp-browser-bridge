@@ -58,3 +58,11 @@ transient realloc and fixed dictionary/scratch are separate. The existing worker
 already selects SynchronousDynamicChannels=true, which keeps drdynvc's incoming
 dispatch out of its asynchronous queue; AsyncChannels alone is not that setting.
 [Foundation and remaining placement](DVC_ALLOCATION_BOUNDS.md).
+
+Iteration 149 now installs the public receive admission before pinned drdynvc
+outer assembly, DATA_FIRST allocation and compressed-DVC decompression. Actual
+linked drdynvc/fake-SVC tests prove claim refusal before host dispatch, compressed
+decoding, legitimate 12 MiB input and two independent logical channels. They do
+not establish cumulative allocations, pool retention, abandoned logical messages,
+nested GFX/control/codec limits or actual lost-transport terminal release.
+[Current placement and retained gates](DVC_WORKER_INGRESS.md).

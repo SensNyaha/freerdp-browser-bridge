@@ -51,6 +51,18 @@ static void network_free() { (void)WSACleanup(); }
 Connection &Connection::owner(freerdp *instance) {
   return *reinterpret_cast<Context *>(instance->context)->owner;
 }
+BOOL Connection::receive_channels(freerdp *instance, UINT16 channel, const BYTE *data,
+                                  std::size_t size, UINT32 flags, std::size_t total) {
+  if (!instance || !instance->context)
+    return FALSE;
+  auto &self = owner(instance);
+  if (!self.dvc_receive_ ||
+      !self.dvc_receive_->receive(channel, data, size, flags, total, audio_time_us() / 1000)) {
+    self.reason_ = RdpError::protocol;
+    return FALSE;
+  }
+  return TRUE;
+}
 Connection::Connection(std::function<void(const Packet &)> send,
                        bridge::audio::PcmPublisher::TrySend audio_send,
                        bridge::audio::PcmPublisher::TryDiscard audio_discard)
@@ -1070,10 +1082,20 @@ void Connection::run() noexcept {
   auto terminal_state = RdpState::failed;
   auto terminal_error = RdpError::protocol;
   bool explicitly_disconnected = false;
+  const auto receive_delegate = context_->instance->ReceiveChannelData;
+  bool receive_installed = false;
 #ifdef CHANNEL_RDPEI_CLIENT
   touch::AddinProvider touch_provider;
 #endif
   try {
+    if (!freerdp_settings_get_bool(context_->settings, FreeRDP_SynchronousDynamicChannels) ||
+        freerdp_settings_get_bool(context_->settings, FreeRDP_AsyncChannels) ||
+        freerdp_settings_get_bool(context_->settings, FreeRDP_AsyncUpdate))
+      throw ProtocolError();
+    dvc_receive_ =
+        std::make_unique<channels::DvcReceiveGuard>(*context_->instance, receive_delegate);
+    context_->instance->ReceiveChannelData = receive_channels;
+    receive_installed = true;
 #ifdef CHANNEL_RDPEI_CLIENT
     // client_context_new installs the default process provider. Bind only here,
     // after context creation/configuration, on the synchronous RDP dispatch thread.
@@ -1184,6 +1206,8 @@ void Connection::run() noexcept {
           healthy = false;
           break;
         }
+        if (!dvc_receive_->poll(audio_time_us() / 1000))
+          throw ProtocolError();
         bool ready_ok = true;
         const auto batch = pump_ready_events(
             [&] { return freerdp_check_event_handles(context_.get()) != FALSE; },
@@ -1200,6 +1224,8 @@ void Connection::run() noexcept {
           healthy = false;
           break;
         }
+        if (!dvc_receive_->poll(audio_time_us() / 1000))
+          throw ProtocolError();
         if (stopping_ || freerdp_shall_disconnect_context(context_.get()))
           break;
         input_pending();
@@ -1228,7 +1254,10 @@ void Connection::run() noexcept {
       const auto disconnected = freerdp_disconnect(context_->instance);
       explicitly_disconnected = true;
       terminal_state = disconnected && (stopping_ || healthy) ? RdpState::closed : RdpState::failed;
-      terminal_error = terminal_state == RdpState::closed ? RdpError::none : RdpError::disconnect;
+      terminal_error =
+          terminal_state == RdpState::closed
+              ? RdpError::none
+              : (dvc_receive_->stats().failed ? RdpError::protocol : RdpError::disconnect);
     }
   } catch (...) {
     connected_ = false;
@@ -1318,6 +1347,16 @@ void Connection::run() noexcept {
   }
 #endif
   // Publish one terminal outcome only after all owned callback resources retire.
+  if (dvc_receive_)
+    dvc_receive_->close();
+  if (receive_installed) {
+    if (context_->instance->ReceiveChannelData == receive_channels)
+      context_->instance->ReceiveChannelData = receive_delegate;
+    else {
+      terminal_state = RdpState::failed;
+      terminal_error = RdpError::protocol;
+    }
+  }
   // A cleanup error must not produce the invalid public transition closed -> failed.
   state(terminal_state, terminal_error);
   finished_ = true;
