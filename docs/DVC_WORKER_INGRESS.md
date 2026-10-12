@@ -51,6 +51,11 @@ input waiting without physical capture or sample transmission. Full bundled Node
 [Current evidence](ITERATION_149.md). Windows-server/actual GFX and resource gates
 listed above remain open.
 
-Iteration 150 adds an unactivated [cumulative declaration foundation](DVC_MESSAGE_BUDGET.md)
-and public WinPR pool-retention evidence. Production individual admission remains
-as above; aggregate/pool memory acceptance is not closed by that helper.
+Iteration 150 adds the [cumulative declaration foundation](DVC_MESSAGE_BUDGET.md)
+and public WinPR pool-retention evidence. Iteration 159 activates the public scoped
+ownership chain and known-channel aggregate declaration admission in the worker.
+[Current production contract](DVC_PROVIDER.md). Active logical declarations are
+bounded separately from retained pool/nested decoder/total process memory; those
+broader acceptance gates remain open. Callback targets now retire before SDK
+plugin cleanup, while the outer receive guard still restores the saved core callback
+after disconnect.

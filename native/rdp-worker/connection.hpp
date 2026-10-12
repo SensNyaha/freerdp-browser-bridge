@@ -4,6 +4,7 @@
 #include "../audio/microphone_session.hpp"
 #include "../audio/reset_control.hpp"
 #include "../audio/session.hpp"
+#include "../channels/dvc_provider.hpp"
 #include "../channels/dvc_receive_guard.hpp"
 #include "certificate.hpp"
 #include "connection_config.hpp"
@@ -58,7 +59,10 @@ class Connection {
   std::unique_ptr<audio::AudioSession> audio_;
   std::unique_ptr<audio::MicrophoneSession> microphone_;
   std::unique_ptr<audio::MicrophoneOpusOwner> microphone_opus_;
+  std::unique_ptr<channels::DvcChannelRegistry> dvc_channels_;
+  std::unique_ptr<channels::DvcPluginRegistry> dvc_plugins_;
   std::unique_ptr<channels::DvcReceiveGuard> dvc_receive_;
+  pReceiveChannelData receive_original_ = nullptr;
   ContextPtr context_;
   std::function<void(const ipc::Packet &)> send_;
   audio::PcmPublisher::TrySend audio_send_;
@@ -138,6 +142,7 @@ class Connection {
   void erase_password() noexcept;
   static Connection &owner(freerdp *instance);
   static BOOL receive_channels(freerdp *, UINT16, const BYTE *, std::size_t, UINT32, std::size_t);
+  static BOOL receive_delegated(freerdp *, UINT16, const BYTE *, std::size_t, UINT32, std::size_t);
   static BOOL pre_connect(freerdp *instance);
   static BOOL load_channels(freerdp *instance);
   static void channel_connected(void *context, const ChannelConnectedEventArgs *event);

@@ -1,5 +1,10 @@
 # Bounded public DVC ID registry
 
+Current deployment: [iteration 159](DVC_PROVIDER.md) connects this registry to
+production public entry/plugin/manager/listener ownership and receive admission.
+The placement gaps below describe the original iteration-152 foundation;
+remote/cached/nested/total-memory acceptance remains open.
+
 Iteration 152 implements SPECIFICATION §3.3 / ARCHITECTURE §11 after completion
 observation `80cd152`. DvcChannelRegistry combines the declaration table and public
 callback proxies in a fixed array of at most 32 channel slots. It obtains IDs only

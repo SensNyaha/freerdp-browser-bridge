@@ -1,5 +1,9 @@
 # Bounded public DVC listener ownership
 
+Current deployment: [iteration 159](DVC_PROVIDER.md) selects this common manager
+through the worker's scoped public provider. Fixture-only placement below records
+the original iteration-156 block; remote and total-memory gates remain open.
+
 Iteration 156 implements SPECIFICATION §3.1/3.3 and ARCHITECTURE §12 with a
 serialized public manager facade. It is installed in fixtures only; the worker
 still uses the individual receive guard, without production aggregate admission.

@@ -1,5 +1,10 @@
 # Cumulative DATA_FIRST declaration reservations
 
+Current deployment: [iteration 159](DVC_PROVIDER.md) activates these reservations
+for known live DVC channels in the worker. Unactivated statements below describe
+the original iteration-150 foundation. Aggregate declared bytes remain separate
+from retained pool capacity and total process memory.
+
 Iteration 150 implements SPECIFICATION §3.3 / ARCHITECTURE §11 after worker
 admission `1e16dd6`. The allocation-free DvcMessageBudget is an unactivated
 foundation: **it does not limit the production worker yet**. Its future caller

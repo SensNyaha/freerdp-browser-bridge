@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <freerdp/channels/channels.h>
 #include <freerdp/client/cmdline.h>
 #include <freerdp/config.h>
 #include <freerdp/error.h>
@@ -15,6 +16,7 @@
 #include <freerdp/settings.h>
 #include <limits>
 #include <winpr/synch.h>
+#include <winpr/wtsapi.h>
 #ifdef _WIN32
 #include <winpr/winsock.h>
 #endif
@@ -62,6 +64,25 @@ BOOL Connection::receive_channels(freerdp *instance, UINT16 channel, const BYTE 
     return FALSE;
   }
   return TRUE;
+}
+BOOL Connection::receive_delegated(freerdp *instance, UINT16 channel, const BYTE *data,
+                                   std::size_t size, UINT32 flags, std::size_t total) {
+  auto &self = owner(instance);
+  const auto now = audio_time_us() / 1000;
+  if (!self.receive_original_ || !self.dvc_channels_ || !self.dvc_plugins_ ||
+      !self.dvc_channels_->poll(now) || self.dvc_plugins_->stats().failed)
+    return FALSE;
+  const auto dynamic_id = freerdp_channels_get_id_by_name(instance, "drdynvc");
+  // The outer guard passes whole inspected DVC messages here, before native
+  // DATA_FIRST allocation. Empty SUSPEND/RESUME notifications carry no PDU.
+  if (dynamic_id && channel == dynamic_id &&
+      !(flags & (CHANNEL_FLAG_SUSPEND | CHANNEL_FLAG_RESUME)) &&
+      !self.dvc_channels_->admit({data, size}, now))
+    return FALSE;
+  const auto accepted = self.receive_original_(instance, channel, data, size, flags, total);
+  // Negative CREATE and some close paths leave the SDK global error zero.
+  return accepted && self.dvc_channels_->poll(audio_time_us() / 1000) &&
+         !self.dvc_plugins_->stats().failed;
 }
 Connection::Connection(std::function<void(const Packet &)> send,
                        bridge::audio::PcmPublisher::TrySend audio_send,
@@ -1084,6 +1105,23 @@ void Connection::run() noexcept {
   bool explicitly_disconnected = false;
   const auto receive_delegate = context_->instance->ReceiveChannelData;
   bool receive_installed = false;
+  std::unique_ptr<channels::DvcProvider> dvc_provider;
+  bool dvc_retired = false;
+  UINT dvc_retirement = CHANNEL_RC_OK;
+  const auto retire_dvc = [&]() noexcept -> UINT {
+    if (dvc_retired)
+      return dvc_retirement;
+    if (dvc_provider)
+      dvc_retirement = dvc_provider->close();
+    else if (dvc_plugins_)
+      dvc_retirement = dvc_plugins_->retire();
+    else if (dvc_channels_)
+      dvc_retirement = dvc_channels_->retire();
+    if (dvc_retirement == ERROR_IO_PENDING || (dvc_provider && dvc_provider->bound()))
+      std::terminate(); // Never let SDK plugin teardown free a currently borrowed target.
+    dvc_retired = true;
+    return dvc_retirement;
+  };
 #ifdef CHANNEL_RDPEI_CLIENT
   touch::AddinProvider touch_provider;
 #endif
@@ -1092,8 +1130,12 @@ void Connection::run() noexcept {
         freerdp_settings_get_bool(context_->settings, FreeRDP_AsyncChannels) ||
         freerdp_settings_get_bool(context_->settings, FreeRDP_AsyncUpdate))
       throw ProtocolError();
+    const auto clock = [](void *) -> std::uint64_t { return audio_time_us() / 1000; };
+    dvc_channels_ = std::make_unique<channels::DvcChannelRegistry>(clock);
+    dvc_plugins_ = std::make_unique<channels::DvcPluginRegistry>(*dvc_channels_, clock);
+    receive_original_ = receive_delegate;
     dvc_receive_ =
-        std::make_unique<channels::DvcReceiveGuard>(*context_->instance, receive_delegate);
+        std::make_unique<channels::DvcReceiveGuard>(*context_->instance, receive_delegated);
     context_->instance->ReceiveChannelData = receive_channels;
     receive_installed = true;
 #ifdef CHANNEL_RDPEI_CLIENT
@@ -1128,6 +1170,10 @@ void Connection::run() noexcept {
           std::make_unique<bridge::audio::MicrophoneSession>(*context_, publish_microphone, this);
     if (config_->opus_input)
       microphone_opus_ = std::make_unique<bridge::audio::MicrophoneOpusOwner>(*microphone_);
+    // Last scope is first to retire, before microphone/audio/touch providers.
+    dvc_provider = std::make_unique<channels::DvcProvider>(*dvc_plugins_);
+    if (dvc_provider->bind(*context_) != CHANNEL_RC_OK)
+      throw ProtocolError();
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
     std::jthread watchdog([this, deadline](std::stop_token token) {
@@ -1148,6 +1194,11 @@ void Connection::run() noexcept {
     condition_.notify_all();
     watchdog.join();
     erase_password();
+    if (dvc_plugins_->stats().failed) {
+      reason_ = RdpError::protocol;
+      if (connected)
+        throw ProtocolError();
+    }
     if (!connected) {
       auto error = reason_.load();
       const auto native = freerdp_get_last_error(context_.get());
@@ -1206,7 +1257,8 @@ void Connection::run() noexcept {
           healthy = false;
           break;
         }
-        if (!dvc_receive_->poll(audio_time_us() / 1000))
+        if (!dvc_receive_->poll(audio_time_us() / 1000) ||
+            !dvc_channels_->poll(audio_time_us() / 1000) || dvc_plugins_->stats().failed)
           throw ProtocolError();
         bool ready_ok = true;
         const auto batch = pump_ready_events(
@@ -1224,7 +1276,8 @@ void Connection::run() noexcept {
           healthy = false;
           break;
         }
-        if (!dvc_receive_->poll(audio_time_us() / 1000))
+        if (!dvc_receive_->poll(audio_time_us() / 1000) ||
+            !dvc_channels_->poll(audio_time_us() / 1000) || dvc_plugins_->stats().failed)
           throw ProtocolError();
         if (stopping_ || freerdp_shall_disconnect_context(context_.get()))
           break;
@@ -1251,13 +1304,17 @@ void Connection::run() noexcept {
       resize_pending(true);
       input_pending(true);
       capture_pending(true);
+      const auto retired = retire_dvc();
       const auto disconnected = freerdp_disconnect(context_->instance);
       explicitly_disconnected = true;
-      terminal_state = disconnected && (stopping_ || healthy) ? RdpState::closed : RdpState::failed;
+      terminal_state = disconnected && retired == CHANNEL_RC_OK && (stopping_ || healthy)
+                           ? RdpState::closed
+                           : RdpState::failed;
       terminal_error =
           terminal_state == RdpState::closed
               ? RdpError::none
-              : (dvc_receive_->stats().failed ? RdpError::protocol : RdpError::disconnect);
+              : (dvc_receive_->stats().failed || retired != CHANNEL_RC_OK ? RdpError::protocol
+                                                                          : RdpError::disconnect);
     }
   } catch (...) {
     connected_ = false;
@@ -1279,9 +1336,22 @@ void Connection::run() noexcept {
   }
   // ContextFree does not synthesize host Terminated. Registered channels must
   // receive public disconnect even if connect failed before GDI was initialized.
+  if (retire_dvc() != CHANNEL_RC_OK) {
+    terminal_state = RdpState::failed;
+    terminal_error = RdpError::protocol;
+  }
   if (!explicitly_disconnected && !freerdp_disconnect(context_->instance)) {
     terminal_state = RdpState::failed;
     terminal_error = RdpError::protocol;
+  }
+  if (dvc_plugins_) {
+    const auto status = dvc_plugins_->host_unpublished();
+    if (!dvc_plugins_->stats().host_unpublished)
+      std::terminate(); // Pinned synchronous disconnect must end every registered plugin.
+    if (status != CHANNEL_RC_OK) {
+      terminal_state = RdpState::failed;
+      terminal_error = RdpError::protocol;
+    }
   }
   try {
     service_microphone_reset(true);
@@ -1357,6 +1427,7 @@ void Connection::run() noexcept {
       terminal_error = RdpError::protocol;
     }
   }
+  receive_original_ = nullptr;
   // A cleanup error must not produce the invalid public transition closed -> failed.
   state(terminal_state, terminal_error);
   finished_ = true;

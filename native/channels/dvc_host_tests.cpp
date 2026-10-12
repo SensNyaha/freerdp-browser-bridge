@@ -6,6 +6,7 @@
 #include "dvc_listener_proxy.hpp"
 #include "dvc_plugin_proxy.hpp"
 #include "dvc_plugin_registry.hpp"
+#include "dvc_provider.hpp"
 #include "dvc_receive_guard.hpp"
 #include "pinned_dvc_manager.hpp"
 #include <algorithm>
@@ -51,6 +52,8 @@ struct Host {
   std::unique_ptr<DvcPluginProxy> plugin_proxy;
   std::unique_ptr<DvcPluginRegistry> plugin_registry;
   bool wrap_registration = false;
+  bool scoped_registration = false;
+  std::unique_ptr<DvcProvider> dvc_provider;
   UINT plugin_registry_retirement_status = CHANNEL_RC_OK;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
@@ -113,7 +116,7 @@ struct Host {
                : nullptr;
   }
   static UINT VCAPITYPE entry(IDRDYNVC_ENTRY_POINTS *entries) {
-    if (active && active->plugin_registry)
+    if (active && active->plugin_registry && !active->scoped_registration)
       return active->plugin_registry->install(*entries, raw_entry);
     return raw_entry(entries);
   }
@@ -127,11 +130,12 @@ struct Host {
   explicit Host(bool completion_observation = false, bool registry_observation = false,
                 bool pinned_manager_observation = false, bool handoff_observation = false,
                 bool listener_proxy_observation = false, bool listener_manager_observation = false,
-                bool plugin_proxy_observation = false, bool plugin_registry_observation = false)
+                bool plugin_proxy_observation = false, bool plugin_registry_observation = false,
+                bool provider_observation = false)
       : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
         use_handoff(handoff_observation), wrap_listener(listener_proxy_observation),
         wrap_listeners(listener_manager_observation), wrap_plugin(plugin_proxy_observation),
-        wrap_registration(plugin_registry_observation) {
+        wrap_registration(plugin_registry_observation), scoped_registration(provider_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
@@ -279,7 +283,7 @@ struct Host {
             return host.listener_manager->interface();
           },
           this);
-    if (wrap_registration)
+    if (wrap_registration || scoped_registration)
       plugin_registry = std::make_unique<DvcPluginRegistry>(
           *registry, [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this);
     points.cbSize = sizeof(points);
@@ -323,6 +327,10 @@ struct Host {
     REQUIRE(provider.bind(*context, load) == CHANNEL_RC_OK);
     active = this;
     try {
+      if (scoped_registration) {
+        dvc_provider = std::make_unique<DvcProvider>(*plugin_registry);
+        REQUIRE(dvc_provider->bind(*context) == CHANNEL_RC_OK);
+      }
       const auto static_entry = freerdp_channels_load_static_addin_entry(
           "drdynvc", nullptr, nullptr,
           FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
@@ -357,6 +365,8 @@ struct Host {
   void shutdown() noexcept {
     if (guard)
       guard->close();
+    if (dvc_provider)
+      (void)dvc_provider->close(); // Retire borrowed channel targets before plugin state is freed.
     if (plugin && init) {
       if (connected)
         init(plugin, this, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);
@@ -544,6 +554,27 @@ TEST_CASE("Actual drdynvc entry registry binds public plugins listeners and cumu
   REQUIRE(host.channels[1].closes == 1);
   REQUIRE(host.terminated == 1);
   REQUIRE(host.plugin_registry_retirement_status == CHANNEL_RC_OK);
+  REQUIRE(host.plugin_registry->stats().host_unpublished);
+}
+
+TEST_CASE("Actual scoped DVC provider wraps public host loading and retires callbacks before "
+          "plugin cleanup") {
+  Host host(false, true, false, false, false, false, false, false, true);
+  REQUIRE(host.dvc_provider);
+  REQUIRE(host.dvc_provider->bound());
+  REQUIRE(host.plugin_registry->stats().retained_plugins == 1);
+  REQUIRE(host.registry->owns_callback(host.channels[0].api));
+  const BYTE initial[]{1, 2, 3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  REQUIRE(host.dvc_provider->close() == CHANNEL_RC_OK);
+  REQUIRE_FALSE(host.dvc_provider->bound());
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.terminated == 0);
+  REQUIRE(host.registry->stats().resources_retired);
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.terminated == 1);
   REQUIRE(host.plugin_registry->stats().host_unpublished);
 }
 TEST_CASE("Actual drdynvc completion proxy releases after compressed continuation and raw final "

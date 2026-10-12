@@ -1,5 +1,9 @@
 # Public DVC complete-message and close observation
 
+Current deployment: [iteration 159](DVC_PROVIDER.md) installs these callbacks
+through the worker's public DVC ownership chain. Fixture-only placement below
+describes the original iteration-151 block; allocator/RSS/remote gates remain open.
+
 Iteration 151 implements SPECIFICATION §3.3 / ARCHITECTURE §11 on top of
 reservation foundation `7b37d1c`. DvcCompletionHook proxies the public
 IWTSVirtualChannelCallback, preserving pInterface and the exact borrowed wStream.

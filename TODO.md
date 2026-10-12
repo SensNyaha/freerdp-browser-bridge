@@ -887,6 +887,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Production synchronous scoped DVC provider now selects the
+  bounded public entry/plugin/shared-manager/listener/channel ownership chain.
+  Worker reserves up to 32 known logical declarations / 64 MiB before host
+  allocation, polls own faults/deadlines and retires callbacks before SDK plugin
+  teardown. Five provider fixtures and one actual drdynvc/fake-SVC fixture pass;
+  total RSS/pool/nested codec, remote/Windows-server and platform/soak gates remain
+  open. [Iteration 159](docs/ITERATION_159.md).
+
 - [~] IN PROGRESS — Bounded public DVC entry-point registry captures one pinned
   plugin per entry, publishes stable proxy/name storage after entry success,
   projects GetPlugin back to original objects and shares one bounded manager.

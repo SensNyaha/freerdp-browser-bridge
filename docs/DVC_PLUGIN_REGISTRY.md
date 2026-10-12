@@ -1,5 +1,9 @@
 # Bounded public DVC entry-point registry
 
+Current deployment: [iteration 159](DVC_PROVIDER.md) selects this registry via the
+worker's scoped provider. Fixture-only placement below describes the original
+iteration-158 block. Actual allocator-fault and remote resource gates remain open.
+
 Iteration 158 implements SPECIFICATION §3.1/3.3 and ARCHITECTURE §12 after
 `8e22c2a`. DvcPluginRegistry wraps public entry points for one serialized pinned
 host, retains at most 32 plugin proxies/names, and creates one shared bounded

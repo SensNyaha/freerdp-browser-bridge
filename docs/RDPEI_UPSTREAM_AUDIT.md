@@ -84,3 +84,12 @@ which normalizes error output to persistent fallback without inspecting/destroyi
 the undefined pointer. Actual generic addin and successful real-manager fixtures
 pass; worker/provider placement and actual allocator-failure acceptance remain open.
 [Detailed source contract](PINNED_DVC_MANAGER.md).
+
+Iteration 159 now selects the public entry/plugin/common-manager/listener/channel
+ownership chain in the worker and reserves known live DATA_FIRST declarations
+before host allocation. A fixed aggregate declaration limit and original deadline
+are active, with public completion/close observation and retirement before SDK
+plugin teardown. [Current contract](DVC_PROVIDER.md). Cached pool/total RSS,
+nested GFX/control/codec limits, actual allocator faults and lost-transport terminal
+release remain independent open gates. The new actual XRDP attempt could not
+reach TCP 3389; no new remote resource acceptance is inferred.

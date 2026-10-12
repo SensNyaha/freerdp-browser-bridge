@@ -1,5 +1,9 @@
 # Public DVC plugin lifecycle projection
 
+Current deployment: [iteration 159](DVC_PROVIDER.md) selects this lifecycle proxy
+through the worker's bounded public registry/provider. Activation gaps below
+describe the original iteration-157 block; remote/resource gates remain open.
+
 Iteration 157 implements SPECIFICATION §3.1 and ARCHITECTURE §12 with a borrowed
 IWTSPlugin proxy. The enclosing owner retains the proxy through host unpublication
 and callback return. It owns neither host registration nor the original plugin,
