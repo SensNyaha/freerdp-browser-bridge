@@ -4,6 +4,7 @@
 #include "dvc_completion_hook.hpp"
 #include "dvc_listener_manager.hpp"
 #include "dvc_listener_proxy.hpp"
+#include "dvc_plugin_proxy.hpp"
 #include "dvc_receive_guard.hpp"
 #include "pinned_dvc_manager.hpp"
 #include <algorithm>
@@ -45,6 +46,8 @@ struct Host {
   std::unique_ptr<DvcListenerProxy> listener_proxy;
   std::unique_ptr<DvcListenerManager> listener_manager;
   bool wrap_listeners = false;
+  bool wrap_plugin = false;
+  std::unique_ptr<DvcPluginProxy> plugin_proxy;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
   bool observe_completion = false;
@@ -108,14 +111,17 @@ struct Host {
   static UINT VCAPITYPE entry(IDRDYNVC_ENTRY_POINTS *entries) {
     if (!active || entries->GetRdpContext(entries) != active->context.get())
       return ERROR_INVALID_PARAMETER;
-    return entries->RegisterPlugin(entries, plugin_name, &active->dynamic);
+    return entries->RegisterPlugin(entries, plugin_name,
+                                   active->plugin_proxy ? active->plugin_proxy->interface()
+                                                        : &active->dynamic);
   }
   explicit Host(bool completion_observation = false, bool registry_observation = false,
                 bool pinned_manager_observation = false, bool handoff_observation = false,
-                bool listener_proxy_observation = false, bool listener_manager_observation = false)
+                bool listener_proxy_observation = false, bool listener_manager_observation = false,
+                bool plugin_proxy_observation = false)
       : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
         use_handoff(handoff_observation), wrap_listener(listener_proxy_observation),
-        wrap_listeners(listener_manager_observation) {
+        wrap_listeners(listener_manager_observation), wrap_plugin(plugin_proxy_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
@@ -249,6 +255,19 @@ struct Host {
         return CHANNEL_RC_OK;
       };
     }
+    if (wrap_plugin)
+      plugin_proxy = std::make_unique<DvcPluginProxy>(
+          dynamic,
+          [](void *p, IWTSVirtualChannelManager &manager) -> IWTSVirtualChannelManager * {
+            auto &host = *static_cast<Host *>(p);
+            if (!host.registry || host.listener_manager)
+              return nullptr;
+            host.listener_manager = std::make_unique<DvcListenerManager>(
+                manager, *host.registry,
+                [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, &host);
+            return host.listener_manager->interface();
+          },
+          this);
     points.cbSize = sizeof(points);
     points.protocolVersion = VIRTUAL_CHANNEL_VERSION_WIN2000;
     points.MagicNumber = FREERDP_CHANNEL_MAGIC_NUMBER;
@@ -709,4 +728,25 @@ TEST_CASE("Actual drdynvc manager installs bounded listener and channel proxies 
   REQUIRE(host.listener_manager->stats().retired);
   REQUIRE(host.listener_manager->stats().live_listeners == 0);
   REQUIRE_FALSE(host.listener_manager->stats().failed);
+}
+
+TEST_CASE("Actual drdynvc plugin proxy resolves bounded manager and survives delayed duplicate "
+          "termination") {
+  Host host(false, true, false, false, false, false, true);
+  REQUIRE(host.plugin_proxy);
+  REQUIRE(host.plugin_proxy->stats().initialize_attempted);
+  REQUIRE(host.listener_manager->stats().live_listeners == 1);
+  REQUIRE(host.registry->owns_callback(host.channels[0].api));
+  const BYTE initial[]{1, 2, 3, 4};
+  REQUIRE(host.send(first(2, 0x42, 4, initial)));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  host.shutdown();
+  REQUIRE(host.channels[0].closes == 1);
+  REQUIRE(host.terminated == 1);
+  REQUIRE(host.plugin_proxy->stats().ended);
+  REQUIRE_FALSE(host.plugin_proxy->stats().failed);
+  REQUIRE(host.listener_manager->stats().retired);
+  auto *api = host.plugin_proxy->interface();
+  REQUIRE(api->Terminated(api) == CHANNEL_RC_OK);
+  REQUIRE(host.terminated == 1);
 }

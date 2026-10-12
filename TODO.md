@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Public DVC plugin lifecycle proxy resolves a shared manager,
+  preserves original delegate identity and cleanup notifications, and terminates
+  a self-deleting/throwing plugin once without uncertain retry. Six public cases
+  and one actual drdynvc/fake-SVC case pass. Production registration/provider,
+  shared manager/worker lifetime and remote resource acceptance remain open.
+  [Iteration 157](docs/ITERATION_157.md).
+
 - [~] IN PROGRESS — Bounded public DVC listener manager installs accepted callback
   proxies, rejects live duplicate names and slot overflow, defers destruction
   during factory calls and retains uncertain native handles until explicit final
