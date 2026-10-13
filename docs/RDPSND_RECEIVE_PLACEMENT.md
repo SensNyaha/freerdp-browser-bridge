@@ -37,3 +37,7 @@ Dynamic `AUDIO_PLAYBACK_DVC` still requires its own placement ahead of the
 RDPSND stream copy/parser. Transport preallocation, retained stream pools,
 total RSS/CPU, actual hostile/lost transport, Windows-server, Linux, sanitizers,
 fuzzer and soak acceptance remain open. This is not audible audio acceptance.
+
+Iteration 168 adds [dynamic RDPSND admission](RDPSND_DYNAMIC_ADMISSION.md).
+The dynamic-placement gap above is historical; retained pools/core/RSS and
+actual audio/resource acceptance remain open.

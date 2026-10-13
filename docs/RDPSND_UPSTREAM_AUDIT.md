@@ -92,3 +92,8 @@ claims are validated before its parser. Notifications do not reset only one
 side of the legacy Wave state. [Placement and evidence](RDPSND_RECEIVE_PLACEMENT.md).
 Dynamic RDPSND still needs its own bounded callback before its StreamPool_Take
 and parser. No retained-pool or whole-process memory acceptance is claimed.
+
+Iteration 168 installs [dynamic RDPSND admission](RDPSND_DYNAMIC_ADMISSION.md)
+ahead of known-channel host assembly/decompression and complete audio pool copy.
+The preceding dynamic-placement gap is historical; broader core/pool/working
+memory and actual remote/resource acceptance remain open.

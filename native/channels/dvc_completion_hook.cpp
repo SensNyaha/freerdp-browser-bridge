@@ -1,4 +1,5 @@
 #include "dvc_completion_hook.hpp"
+#include "../audio/svc_ingress.hpp"
 #include "gfx_message_gate.hpp"
 #include <exception>
 #include <stdexcept>
@@ -9,15 +10,27 @@
 namespace bridge::channels {
 DvcCompletionHook::DvcCompletionHook(DvcMessageBudget &budget, std::uint32_t channel,
                                      IWTSVirtualChannelCallback &original, Clock clock,
-                                     void *clock_context, bool gfx_zgfx,
+                                     void *clock_context, DvcPayload payload,
                                      DvcAllocationLimits allocations)
     : box_{{}, this}, budget_(budget), channel_(channel), original_(&original), clock_(clock),
-      clock_context_(clock_context) {
+      clock_context_(clock_context), payload_(payload) {
   static_assert(std::is_standard_layout_v<Box>);
-  if (!clock || !original.OnDataReceived || !allocations.valid())
+  if (!clock || !original.OnDataReceived || !allocations.valid() ||
+      (payload != DvcPayload::opaque && payload != DvcPayload::graphics &&
+       payload != DvcPayload::audio))
     throw std::invalid_argument("Invalid DVC completion hook");
-  if (gfx_zgfx)
+  if (payload == DvcPayload::graphics)
     graphics_ = std::make_unique<media::GfxMessageGate>(allocations);
+  if (payload == DvcPayload::audio)
+    audio_ = std::make_unique<audio::AudioSvcIngress>([this](auto bytes) {
+      wStream view{};
+      if (!Stream_StaticConstInit(&view, bytes.data(), bytes.size())) {
+        audio_status_ = ERROR_INVALID_DATA;
+        return false;
+      }
+      audio_status_ = original_->OnDataReceived(original_, &view);
+      return audio_status_ == CHANNEL_RC_OK;
+    });
   box_.api.OnOpen = on_open;
   box_.api.OnDataReceived = on_data;
   box_.api.OnClose = on_close;
@@ -37,6 +50,13 @@ DvcCompletionHook &DvcCompletionHook::owner(IWTSVirtualChannelCallback *p) noexc
 UINT DvcCompletionHook::fault() noexcept {
   failed_ = true;
   return ERROR_INVALID_DATA;
+}
+bool DvcCompletionHook::poll(std::uint64_t now) noexcept {
+  if (closed_)
+    return !failed_;
+  if (audio_ && !audio_->poll(now))
+    (void)fault();
+  return !failed_;
 }
 bool DvcCompletionHook::observe() noexcept {
   try {
@@ -78,8 +98,20 @@ UINT DvcCompletionHook::on_data(IWTSVirtualChannelCallback *p, wStream *stream) 
   self.busy_ = true;
   UINT status = CHANNEL_RC_OK;
   try {
-    status = self.graphics_ ? self.graphics_->forward(*self.original_, *stream)
-                            : self.original_->OnDataReceived(self.original_, stream);
+    if (self.audio_) {
+      const auto size = Stream_GetRemainingLength(stream);
+      const auto *bytes = static_cast<const BYTE *>(Stream_ConstPointer(stream));
+      self.audio_status_ = CHANNEL_RC_OK;
+      const auto accepted =
+          (!size || bytes) &&
+          self.audio_->receive({{bytes, size}, size, true, true}, self.clock_(self.clock_context_));
+      status = accepted ? CHANNEL_RC_OK
+                        : (self.audio_status_ == CHANNEL_RC_OK ? ERROR_INVALID_DATA
+                                                               : self.audio_status_);
+    } else {
+      status = self.graphics_ ? self.graphics_->forward(*self.original_, *stream)
+                              : self.original_->OnDataReceived(self.original_, stream);
+    }
   } catch (...) {
     status = ERROR_INTERNAL_ERROR;
   }
@@ -109,6 +141,8 @@ UINT DvcCompletionHook::finish_close() noexcept {
   UINT status = CHANNEL_RC_OK;
   if (graphics_ && graphics_->retire() != CHANNEL_RC_OK)
     (void)fault();
+  if (audio_)
+    audio_->close();
   try {
     if (callback)
       status = callback(original);

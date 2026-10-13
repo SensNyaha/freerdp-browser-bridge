@@ -15,6 +15,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/channels/rdpgfx.h>
+#include <freerdp/channels/rdpsnd.h>
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
 #include <freerdp/client/cmdline.h>
@@ -58,6 +59,7 @@ struct Host {
   bool scoped_registration = false;
   std::unique_ptr<DvcProvider> dvc_provider;
   bool actual_gfx = false;
+  bool actual_audio = false;
   RdpgfxClientContext *graphics_context = nullptr;
   UINT plugin_registry_retirement_status = CHANNEL_RC_OK;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
@@ -70,6 +72,7 @@ struct Host {
   PCHANNEL_OPEN_EVENT_EX_FN opened = nullptr;
   bool connected = false;
   unsigned deliveries = 0, writes = 0, closes = 0, terminated = 0;
+  unsigned data_writes = 0;
   IWTSPlugin dynamic{};
   IWTSListenerCallback listener_callback{};
   IWTSVirtualChannelManager *manager = nullptr;
@@ -136,18 +139,19 @@ struct Host {
                 bool pinned_manager_observation = false, bool handoff_observation = false,
                 bool listener_proxy_observation = false, bool listener_manager_observation = false,
                 bool plugin_proxy_observation = false, bool plugin_registry_observation = false,
-                bool provider_observation = false, bool gfx_observation = false)
+                bool provider_observation = false, bool gfx_observation = false,
+                bool audio_observation = false)
       : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
         use_handoff(handoff_observation), wrap_listener(listener_proxy_observation),
         wrap_listeners(listener_manager_observation), wrap_plugin(plugin_proxy_observation),
         wrap_registration(plugin_registry_observation), scoped_registration(provider_observation),
-        actual_gfx(gfx_observation) {
+        actual_gfx(gfx_observation), actual_audio(audio_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
           DvcMessageBudgetLimits{handoff_observation || listener_proxy_observation ? 1U : 2U,
-                                 actual_gfx ? 1024U * 1024U : 8U, actual_gfx ? 1024U * 1024U : 8U,
-                                 100});
+                                 actual_gfx || actual_audio ? 1024U * 1024U : 8U,
+                                 actual_gfx || actual_audio ? 1024U * 1024U : 8U, 100});
     RDP_CLIENT_ENTRY_POINTS entry_points{};
     entry_points.Size = sizeof(entry_points);
     entry_points.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -160,8 +164,10 @@ struct Host {
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_AsyncUpdate, FALSE));
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_BitmapCachePersistEnabled, FALSE));
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_GfxSmallCache, TRUE));
-    const char *arguments[]{actual_gfx ? RDPGFX_CHANNEL_NAME : plugin_name};
-    REQUIRE(freerdp_client_add_dynamic_channel(context->settings, 1, arguments));
+    const char *arguments[]{actual_audio ? RDPSND_CHANNEL_NAME
+                                         : (actual_gfx ? RDPGFX_CHANNEL_NAME : plugin_name),
+                            "sys:fake"};
+    REQUIRE(freerdp_client_add_dynamic_channel(context->settings, actual_audio ? 2 : 1, arguments));
     dynamic.pInterface = listener_callback.pInterface = this;
     dynamic.Initialize = [](IWTSPlugin *p, IWTSVirtualChannelManager *m) -> UINT {
       auto &host = *static_cast<Host *>(p->pInterface);
@@ -342,6 +348,9 @@ struct Host {
       if (id != 1 || !data || !size || !host.opened)
         return ERROR_INVALID_PARAMETER;
       ++host.writes;
+      const auto command = static_cast<const BYTE *>(data)[0] >> 4;
+      if (command == 2 || command == 3 || command == 6 || command == 7)
+        ++host.data_writes;
       host.opened(host.plugin, 1, CHANNEL_EVENT_WRITE_COMPLETE, completion, 0, 0, 0);
       return CHANNEL_RC_OK;
     };
@@ -428,11 +437,12 @@ struct Host {
   }
   void create(BYTE id) {
     std::vector<BYTE> bytes{0x10, id};
-    const auto *endpoint = actual_gfx ? RDPGFX_DVC_CHANNEL_NAME : channel_name;
+    const auto *endpoint = actual_audio ? RDPSND_DVC_CHANNEL_NAME
+                                        : (actual_gfx ? RDPGFX_DVC_CHANNEL_NAME : channel_name);
     bytes.insert(bytes.end(), endpoint, endpoint + std::strlen(endpoint) + 1);
     REQUIRE(send(bytes));
     REQUIRE(getChannelError(context.get()) == CHANNEL_RC_OK);
-    if (actual_gfx)
+    if (actual_gfx || actual_audio)
       REQUIRE(registry->contains(id));
     else
       REQUIRE(channels[id - 0x42].opens == 1);
@@ -446,6 +456,45 @@ std::vector<BYTE> first(BYTE command, BYTE id, UINT32 size, std::span<const BYTE
   return bytes;
 }
 } // namespace
+
+TEST_CASE("Actual dynamic RDPSND and drdynvc fake-SVC negotiate PCM through audio admission") {
+  Host host(false, true, false, false, false, false, false, false, true, false, true);
+  const BYTE formats[]{7, 0, 38, 0, 3, 0, 0, 0,   255, 255, 255, 255, 0,   0, 0, 0, 0, 0,  1, 0, 0,
+                       6, 0, 0,  1, 0, 2, 0, 128, 187, 0,   0,   0,   238, 2, 0, 4, 0, 16, 0, 0, 0};
+  const auto writes = host.writes;
+  REQUIRE(host.send(first(2, 0x42, sizeof(formats), formats)));
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.writes > writes);
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  const BYTE volume[]{3, 0, 4, 0, 1, 2, 3, 4};
+  std::vector<BYTE> packet{0x30, 0x42};
+  packet.insert(packet.end(), std::begin(volume), std::end(volume));
+  REQUIRE(host.send(packet));
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.dvc_provider->close() == CHANNEL_RC_OK);
+  REQUIRE(host.registry->stats().resources_retired);
+  host.shutdown();
+  REQUIRE(host.plugin_registry->stats().host_unpublished);
+}
+TEST_CASE("Actual dynamic RDPSND rejects audio DATA_FIRST before drdynvc pool dispatch") {
+  Host host(false, true, false, false, false, false, false, false, true, false, true);
+  const auto deliveries = host.deliveries;
+  const BYTE byte[]{3};
+  REQUIRE_FALSE(host.send(first(2, 0x42, 65537, byte)));
+  REQUIRE(host.deliveries == deliveries);
+  REQUIRE(host.registry->stats().budget.reservations == 0);
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE("Actual dynamic RDPSND refuses format claims before audio parser replies") {
+  Host host(false, true, false, false, false, false, false, false, true, false, true);
+  const auto writes = host.data_writes;
+  const BYTE bad[]{7, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0};
+  REQUIRE(host.send(first(2, 0x42, sizeof(bad), bad))); // Core dispatch has a void event ABI.
+  REQUIRE(getChannelError(host.context.get()) != CHANNEL_RC_OK);
+  REQUIRE(host.data_writes == writes); // Pinned drdynvc can still emit its owned CLOSE.
+  REQUIRE(host.registry->stats().budget.reserved_bytes == 0);
+  REQUIRE_FALSE(host.registry->poll(host.now_ms));
+}
 
 TEST_CASE(
     "Actual synchronous drdynvc host receives inspected outer fragments and logical DATA_FIRST") {

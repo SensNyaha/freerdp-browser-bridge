@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Exact audio DVC name now selects 64 KiB message/output /
+  128 KiB encoded admission before host assembly/decompression and complete
+  RDPSND validation before pool copying. Eight public/actual-linked-fake-SVC
+  cases / 120 assertions, linked DVC 143 cases / 7,879 assertions and bundled
+  CTest 21/21 pass. Pool/RSS/core/remote/platform/fuzz/soak remain open.
+  [Iteration 168](docs/ITERATION_168.md).
+
 - [~] IN PROGRESS — Production static RDPSND receive placement now checks
   complete bounded records before SDK pool/assembly/parser, including audio-off
   fake fallback. Eight public/actual-linked-fake-SVC cases / 189 assertions,
