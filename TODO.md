@@ -17,7 +17,7 @@ Current stage acceptance:
 | 1 — worker/IPC | IN PROGRESS | Linux transport, fuzz execution, Windows isolation and abnormal cleanup |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
-| 4 — graphics | IN PROGRESS | Remaining GFX/resource cases, Windows server and 30-minute desktop soak |
+| 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent soak failure; one XRDP 30-minute observation passes |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
 | 7 — clipboard/drives | TODO | Implementation and remote CRUD/clipboard gate |
@@ -186,8 +186,11 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   dependency metadata. Relocation test checks actual loaded ZLIB/FreeRDP paths and static
   channel inventory without dependency PATH. JPEG now also ships privately and is encoded/decoded
   in the relocated runtime probe. OpenH264 encoding, AVCC and FreeRDP AVC420 decoding are verified natively.
-  Current native ZIP is approximately 5.6 MiB, 14.2 MiB installed, excluding Node.js and future
-  audio/hardware providers. [Iteration 5](docs/ITERATION_005.md), [iteration 6](docs/ITERATION_006.md).
+  Current native ZIP is approximately 6.0 MiB, 14.9 MiB installed (47 files),
+  including the private Opus runtime and excluding Node.js and future hardware
+  providers/installers. Measured archive: 6,266,183 bytes; installed files:
+  15,621,256 bytes. Earlier footprints remain in their historical reports.
+  [Iteration 5](docs/ITERATION_005.md), [iteration 6](docs/ITERATION_006.md).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
 - **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP lab is available
   in this session. The XRDP lab has passed strict certificate rejection and explicitly
@@ -258,8 +261,14 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 Current actual soak attempt stopped with `RDP_PROTOCOL_ERROR` after its last
 successful sample at 22 minutes 9 seconds. Memory/queue samples were within
-bounds, but the 30-minute gate is not passed; cause investigation and a full
-rerun remain required. [Evidence and bounded diagnostics](docs/ITERATION_180.md).
+bounds. A full repeat now passes; the first failure's cause remains unverified.
+[Failure evidence and diagnostics](docs/ITERATION_180.md),
+[completed 30-minute repeat](docs/ITERATION_182.md).
+
+- [x] DONE on Windows/XRDP — Named single-viewer H.264 1080p 30-minute observation,
+  sampled bounded queues/worker memory, resize/restoration, cursor/attachment replay
+  and empty-runtime cleanup. This does not close broader interactive, Windows-server,
+  resource or intermittent-failure acceptance. [Evidence](docs/ITERATION_182.md).
 
 - [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
