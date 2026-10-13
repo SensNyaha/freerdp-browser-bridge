@@ -1,4 +1,5 @@
 #include "dvc_channel_registry.hpp"
+#include "gfx_pdu_admission.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
 #include <freerdp/channels/rdpgfx.h>
@@ -9,6 +10,16 @@
 #include <winpr/error.h>
 #include <winpr/stream.h>
 using namespace bridge::channels;
+static_assert(RDPGFX_HEADER_SIZE == 8 && RDPGFX_WIRE_TO_SURFACE_PDU_1_SIZE == 17 &&
+              RDPGFX_WIRE_TO_SURFACE_PDU_2_SIZE == 13);
+static_assert(RDPGFX_CMDID_WIRETOSURFACE_1 == 1 && RDPGFX_CMDID_WIRETOSURFACE_2 == 2 &&
+              RDPGFX_CMDID_SOLIDFILL == 4 && RDPGFX_CMDID_SURFACETOSURFACE == 5 &&
+              RDPGFX_CMDID_CACHETOSURFACE == 7 && RDPGFX_CMDID_RESETGRAPHICS == 14 &&
+              RDPGFX_CMDID_CACHEIMPORTREPLY == 17);
+static_assert(RDPGFX_CODECID_AVC420 == 11 && RDPGFX_CODECID_AVC444 == 14 &&
+              RDPGFX_CODECID_AVC444v2 == 15);
+static_assert(sizeof(RECTANGLE_16) == 8 && sizeof(RDPGFX_POINT16) == 4 &&
+              sizeof(RDPGFX_H264_QUANT_QUALITY) == 5);
 namespace {
 struct Fixture {
   struct Channel {
@@ -170,4 +181,22 @@ TEST_CASE("Public DVC channel name failure cannot publish a graphics proxy with 
     REQUIRE(f.deliveries == 0);
     REQUIRE(f.closes == 0); // Direct rejected bind leaves original callback with caller.
   }
+}
+TEST_CASE("Prepared GFX metadata admission inspects actual public ZGFX decoded output") {
+  const BYTE caps[]{0xe0, 4, 19, 0, 0, 0, 20, 0, 0, 0, 4, 0, 8, 0, 4, 0, 0, 0, 0, 0, 0, 0};
+  Fixture valid;
+  REQUIRE(valid.bind() == CHANNEL_RC_OK);
+  REQUIRE(valid.data(caps) == CHANNEL_RC_OK);
+  REQUIRE(bridge::media::admit_gfx_pdus(valid.output));
+  std::vector<BYTE> invalid{0xe0, 4};
+  // WireToSurface1, 4-byte bitmap containing an excessive metadata count.
+  const BYTE prefix[]{1, 0, 0, 0, 29, 0, 0, 0, 0, 0, 11, 0, 0x21,
+                      0, 0, 0, 0, 0,  0, 0, 0, 4, 0, 0,  0};
+  invalid.insert(invalid.end(), std::begin(prefix), std::end(prefix));
+  invalid.insert(invalid.end(), {0xff, 0xff, 0xff, 0xff});
+  Fixture malformed;
+  REQUIRE(malformed.bind() == CHANNEL_RC_OK);
+  REQUIRE(malformed.data(invalid) == CHANNEL_RC_OK); // Valid ZGFX, opaque codec fixture.
+  REQUIRE_FALSE(bridge::media::admit_gfx_pdus(malformed.output));
+  REQUIRE(malformed.deliveries == 1); // No production metadata placement is claimed yet.
 }

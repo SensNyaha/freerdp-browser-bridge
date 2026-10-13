@@ -40,3 +40,4 @@ jobs:
       - run: node scripts/seed-dvc-bounds-fuzz.mjs && build/fuzz/dvc-bounds-fuzz build/fuzz/dvc-bounds-corpus -max_total_time=20
       - run: node scripts/seed-dvc-svc-fuzz.mjs && build/fuzz/dvc-svc-fuzz build/fuzz/dvc-svc-corpus -max_total_time=20
       - run: node scripts/seed-avc-admission-fuzz.mjs && build/fuzz/avc-admission-fuzz build/fuzz/avc-admission-corpus -max_total_time=20
+      - run: node scripts/seed-gfx-pdu-admission-fuzz.mjs && build/fuzz/gfx-pdu-admission-fuzz build/fuzz/gfx-pdu-admission-corpus -max_total_time=20

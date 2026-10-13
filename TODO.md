@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Portable decoded GFX batch inspection bounds each PDU before
+  array/bitmap count checks, refusing cross-PDU borrowing and excessive AVC420
+  metadata. Five portable and one public ZGFX-output cases pass; production
+  decoded-message ownership/placement before metadata allocation remains open,
+  together with codec/RSS/remote/platform/fuzzer/soak gates.
+  [Iteration 162](docs/ITERATION_162.md).
+
 - [~] IN PROGRESS — Allocation-free complete Annex-B SPS/subset-SPS inspection
   now bounds coded dimensions to the public GFX surface before AVC420 decoder
   creation/dispatch. Profiles/scaling/POC/escape/UE and byte/NAL boundaries plus
