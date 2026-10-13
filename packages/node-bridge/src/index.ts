@@ -281,7 +281,12 @@ export class WorkerProcess extends EventEmitter {
         ['--create-private-directory', directory],
         {
           windowsHide: true,
-          timeout: 5000,
+          // Process launch may exceed five seconds on managed Windows hosts.
+          // Respect startup policy within a separate finite 5..15 second budget.
+          timeout: Math.min(
+            15000,
+            Math.max(5000, this.options.startupTimeoutMs),
+          ),
           maxBuffer: 128,
           encoding: 'utf8',
           env: {

@@ -8,9 +8,16 @@ retain their existing mode-0700 directory path.
 The Windows candidate has 128 random bits beneath the configured runtime root.
 The helper receives only its fixed command and this nonsecret internal path;
 SystemRoot/WINDIR and an empty PATH form its environment. It is hidden, has a
-five-second process deadline and 128-byte stdout/stderr capture bounds. The
+process deadline `min(15000, max(5000, startupTimeoutMs))` and 128-byte stdout/stderr capture bounds. The
 deadline is independent of the later HELLO deadline. No credentials enter the
 helper. There is still one RDP worker per session.
+
+The default existing startup policy therefore permits ten seconds for helper
+launch; short HELLO policies keep the former five-second floor, and long policies
+cannot exceed fifteen seconds. This addresses observed Windows process-start
+outliers without changing receipt validation, ACLs or protocol response deadlines.
+A dedicated synthetic helper delays 5.5 seconds then performs actual native
+creation; its confirmed receipt, worker startup and empty cleanup pass.
 
 Only an exact version-1 receipt with consistent boolean creation and unsigned
 Windows error code establishes directory ownership. Successful creation remains

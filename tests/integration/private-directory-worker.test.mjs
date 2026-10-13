@@ -7,8 +7,9 @@ import {
   readdir,
   rm,
   writeFile,
+  copyFile,
 } from 'node:fs/promises';
-import { resolve, join, relative, isAbsolute } from 'node:path';
+import { resolve, join, relative, isAbsolute, dirname } from 'node:path';
 import {
   WorkerProcess,
   NativeSessionWorker,
@@ -20,6 +21,46 @@ const binary = resolve(
   'rdp-worker.exe',
 );
 const windows = { skip: process.platform !== 'win32' };
+test(
+  'Windows delayed bootstrap: existing startup policy admits a confirmed receipt after five seconds',
+  { ...windows, timeout: 20000 },
+  async () =>
+    fixture(async (root) => {
+      const executableRoot = join(root, 'bin');
+      const runtimeRoot = join(root, 'runtime');
+      await mkdir(executableRoot);
+      const workerPath = join(executableRoot, 'fixture-audio-1.exe');
+      await copyFile(join(dirname(binary), 'fixture-audio-1.exe'), workerPath);
+      await copyFile(
+        join(dirname(binary), 'fixture-runtime-directory-delayed.exe'),
+        join(executableRoot, 'rdp-runtime-directory.exe'),
+      );
+      for (const name of [
+        'msvcp140.dll',
+        'vcruntime140.dll',
+        'vcruntime140_1.dll',
+      ]) {
+        try {
+          await copyFile(
+            join(dirname(binary), name),
+            join(executableRoot, name),
+          );
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error;
+        }
+      }
+      const worker = new WorkerProcess({ workerPath, runtimeRoot });
+      const started = performance.now();
+      try {
+        await worker.start();
+        assert.ok(performance.now() - started >= 5500);
+        assert.equal(worker.state, 'ready');
+      } finally {
+        await worker.close();
+      }
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    }),
+);
 test(
   'actual Windows worker resident sample uses bounded native metadata without command-line or environment inventory',
   windows,
