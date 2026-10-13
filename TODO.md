@@ -1068,7 +1068,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 - [x] DONE — Initial typed SessionCreate schema, unknown-field/range checks, safe privilege policy and recursive secret redaction. [Config tests](tests/unit/config.test.mjs); `3610524`. Traces to SPECIFICATION §2.1/3.2, CONFIG_SCHEMA, SECURITY §3/5. This is contract validation, not RDP feature support.
 - [~] IN PROGRESS — Separate bounded config/secret IPC classes now deliver credentials after HELLO; transport copies and the active FreeRDP password setting are overwritten. Upstream/immutable JS copies and future secret classes remain open. [Contract](docs/CONNECTION_CORE.md).
-- [ ] TODO — Explicit restricted Windows runtime ACLs and multi-user isolation acceptance. Traces to ARCHITECTURE §2 and SECURITY §2/6.
+- [~] IN PROGRESS — Isolated native Windows directory creation installs current-user/
+  LocalSystem protected inheritable ACLs atomically, refuses existing objects
+  without repair and bounds metadata storage. Five actual Windows filesystem
+  cases / 91 assertions, foundation 10/10 and bundled 22/22 pass. Worker/Node
+  startup, trusted parent, cancellation/cleanup, packaging and actual multi-user/
+  service isolation remain open. Traces to ARCHITECTURE §2 and SECURITY §2/6.
+  [Iteration 170](docs/ITERATION_170.md).
 - [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
 - [~] IN PROGRESS — Registry now retains capacity through native forced-termination completion with a separate bounded deadline; filesystem/HELLO cancellation guards prevent late spawn/readiness. Pure completion/fault tests, compiled fake-worker/native-adapter join and actual linked unsupported-config cleanup pass. Forced-deadline expiry, legacy void backends, OS/filesystem failures and orphan acceptance remain open. [Evidence](docs/ITERATION_056.md). Observed race: [iteration 55](docs/ITERATION_055.md), `46245b2`.
 - [~] IN PROGRESS — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Windows native ZIP and relocation are verified; [manual bundled CI](.github/workflows/bundled-native.yml) is prepared, not run. Linux, Node.js distribution, MSI/EXE/DEB/RPM installer integration and clean-machine tests remain open.
