@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Isolated owner now decodes bounded ZGFX through public APIs,
+  inspects each PDU before target metadata parsing and forwards only inspected
+  literal segments with independent dictionary/borrow/retirement ownership.
+  Nine native cases and actual SDK AVC/large-literal cost measurements pass;
+  production placement, large-batch CPU, codec/RSS/remote/platform/soak remain
+  open. [Iteration 164](docs/ITERATION_164.md).
+
 - [~] IN PROGRESS — Scoped DVC selection now distinguishes bare dynamic plugin
   requests from subsystem/type backend ABIs sharing the DYNAMIC flag. This fixes
   actual XRDP `rdpsnd,sys:fake` Open refusal with browser audio off, preserving
