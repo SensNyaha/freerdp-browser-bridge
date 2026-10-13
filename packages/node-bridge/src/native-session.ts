@@ -39,7 +39,7 @@ export class NativeSessionWorker implements SessionWorker {
     return this.worker.pid;
   }
   constructor(options: WorkerOptions) {
-    this.worker = new WorkerProcess(options);
+    this.worker = this.createWorkerProcess(options);
     this.worker.on('rdp-state', (event: NativeConnectionState) => {
       if (this.closing) return;
       if (event.error !== 'NONE') this.events.emit('failure', event.error);
@@ -66,6 +66,10 @@ export class NativeSessionWorker implements SessionWorker {
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
     });
+  }
+  /** Trusted host process seam; the default keeps the existing private lifecycle. */
+  protected createWorkerProcess(options: WorkerOptions): WorkerProcess {
+    return new WorkerProcess(options);
   }
   start(config: SessionCreate, signal: AbortSignal): Promise<void> {
     if (this.startup || this.closing)

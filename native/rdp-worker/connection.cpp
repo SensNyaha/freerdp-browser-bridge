@@ -1108,6 +1108,27 @@ void Connection::run() noexcept {
   bool receive_installed = false;
   std::unique_ptr<channels::DvcProvider> dvc_provider;
   bool dvc_retired = false;
+  unsigned diagnostic_stage = 0;
+  bool diagnostic_emitted = false;
+  const auto diagnose_failure = [&]() noexcept {
+    if (diagnostic_emitted)
+      return;
+    diagnostic_emitted = true;
+    const auto receive = dvc_receive_ ? dvc_receive_->stats() : channels::DvcReceiveStats{};
+    const auto registry =
+        dvc_channels_ ? dvc_channels_->stats() : channels::DvcChannelRegistryStats{};
+    (void)std::fprintf(
+        stderr,
+        "bridge.rdp.failure v=1 stage=%u channel=%u receive=%u assembly=%u registry=%u plugins=%u "
+        "reserved=%llu active=%llu abandoned=%llu\n",
+        diagnostic_stage, static_cast<unsigned>(getChannelError(context_.get())),
+        static_cast<unsigned>(receive.failed), static_cast<unsigned>(receive.assembly.failed),
+        static_cast<unsigned>(registry.failed),
+        static_cast<unsigned>(dvc_plugins_ && dvc_plugins_->stats().failed),
+        static_cast<unsigned long long>(registry.budget.reserved_bytes),
+        static_cast<unsigned long long>(registry.budget.active),
+        static_cast<unsigned long long>(registry.budget.abandonments));
+  };
   UINT dvc_retirement = CHANNEL_RC_OK;
   const auto retire_dvc = [&]() noexcept -> UINT {
     if (dvc_retired)
@@ -1262,9 +1283,11 @@ void Connection::run() noexcept {
           healthy = false;
           break;
         }
+        diagnostic_stage = 1;
         if (!dvc_receive_->poll(audio_time_us() / 1000) ||
             !dvc_channels_->poll(audio_time_us() / 1000) || dvc_plugins_->stats().failed)
           throw ProtocolError();
+        diagnostic_stage = 2;
         bool ready_ok = true;
         const auto batch = pump_ready_events(
             [&] { return freerdp_check_event_handles(context_.get()) != FALSE; },
@@ -1281,15 +1304,21 @@ void Connection::run() noexcept {
           healthy = false;
           break;
         }
+        diagnostic_stage = 3;
         if (!dvc_receive_->poll(audio_time_us() / 1000) ||
             !dvc_channels_->poll(audio_time_us() / 1000) || dvc_plugins_->stats().failed)
           throw ProtocolError();
         if (stopping_ || freerdp_shall_disconnect_context(context_.get()))
           break;
+        diagnostic_stage = 4;
         input_pending();
+        diagnostic_stage = 5;
         resize_pending();
+        diagnostic_stage = 6;
         service_audio_reset();
+        diagnostic_stage = 7;
         service_microphone_reset();
+        diagnostic_stage = 8;
         service_microphone();
         if (microphone_) {
           const auto microphone_publication = microphone_->pump(audio_time_us());
@@ -1297,12 +1326,14 @@ void Connection::run() noexcept {
               microphone_publication == bridge::audio::MicrophonePump::invalid)
             throw ProtocolError();
         }
+        diagnostic_stage = 9;
         if (audio_) {
           const auto published = audio_->pump(audio_time_us());
           if (published == bridge::audio::PublishStatus::failed ||
               published == bridge::audio::PublishStatus::invalid)
             throw ProtocolError();
         }
+        diagnostic_stage = 10;
         capture_pending();
       }
       connected_ = false;
@@ -1325,6 +1356,8 @@ void Connection::run() noexcept {
                                                                           : RdpError::disconnect);
     }
   } catch (...) {
+    // Code-owned scalars only. Snapshot before retirement erases fault ownership.
+    diagnose_failure();
     connected_ = false;
     try {
       resize_pending(true);
@@ -1450,6 +1483,10 @@ void Connection::run() noexcept {
     terminal_error = RdpError::protocol;
   }
 #endif
+  if (terminal_error == RdpError::protocol && !diagnostic_emitted) {
+    diagnostic_stage = 11; // Protocol failure reported during retirement, not a caught loop fault.
+    diagnose_failure();
+  }
   // Publish one terminal outcome only after all owned callback resources retire.
   if (dvc_receive_)
     dvc_receive_->close();

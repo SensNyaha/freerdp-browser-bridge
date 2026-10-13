@@ -410,6 +410,7 @@ node scripts/test-xrdp-audio.mjs $fingerprint pcm 200
 node scripts/test-xrdp-audio.mjs $fingerprint opus 200
 node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-test
 node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-manual
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-listen
 ```
 
 PCM viewer modes are `--audio-compat-test` / `--audio-compat-manual`. Manual output
@@ -419,3 +420,8 @@ Run actual RDP modes sequentially. Programmatic creation uses
 the original capacity. This is native handoff storage, not total playback latency.
 The private Node/native pair must both support the new gated schema.
 [Accepted scope](adr/ADR-012-audio-compatibility-buffer.md).
+
+The `--audio-opus-compat-listen` preview activates output, leaves the visible
+viewer open for one minute after the first rendered frame, and closes through
+ordinary browser/server/worker cleanup. Closing the viewer sooner also finishes
+normally. Use this bounded preview for a short listening check.

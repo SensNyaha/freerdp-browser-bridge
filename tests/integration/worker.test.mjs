@@ -303,11 +303,19 @@ test(
   async () => {
     await withRoot(async (runtimeRoot) => {
       let forced = 0;
+      let providedProcess;
+      class ObservedSession extends NativeSessionWorker {
+        createWorkerProcess(options) {
+          assert.equal(providedProcess, undefined);
+          providedProcess = new WorkerProcess(options);
+          return providedProcess;
+        }
+      }
       const manager = new SessionManager({
         shutdownTimeoutMs: 20,
         terminationTimeoutMs: 2000,
         workerFactory: () => {
-          const worker = new NativeSessionWorker({
+          const worker = new ObservedSession({
             workerPath: fixture(3),
             runtimeRoot,
             requestTimeoutMs: 5000,
@@ -332,6 +340,8 @@ test(
         );
         await eventually(() => manager.statistics().active === 0);
         assert.equal(forced, 1);
+        assert.ok(providedProcess.pid > 0);
+        assert.equal(alive(providedProcess.pid), false);
         assert.deepEqual(await readdir(runtimeRoot), []);
       } finally {
         await manager.shutdown();

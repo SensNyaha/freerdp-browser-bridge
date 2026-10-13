@@ -85,7 +85,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 518/518 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 520/520 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -255,6 +255,11 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 **Gate:** CLI-less worker connects to Windows and XRDP, reports state, rejects changed certificate correctly.
 
 ## Stage 4 — graphics, cursor and browser video
+
+Current actual soak attempt stopped with `RDP_PROTOCOL_ERROR` after its last
+successful sample at 22 minutes 9 seconds. Memory/queue samples were within
+bounds, but the 30-minute gate is not passed; cause investigation and a full
+rerun remain required. [Evidence and bounded diagnostics](docs/ITERATION_180.md).
 
 - [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).

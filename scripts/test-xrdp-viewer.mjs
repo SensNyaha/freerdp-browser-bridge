@@ -5,7 +5,11 @@ import { Writable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
-import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
+import {
+  NativeSessionWorker,
+  WorkerProcess,
+} from '../packages/node-bridge/dist/index.js';
+import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
 import {
@@ -70,7 +74,20 @@ const options = {
   ),
   runtimeRoot: resolve('.runtime/viewer-lab'),
 };
-const nativeWorker = new NativeSessionWorker(options);
+const rdpDiagnostics = new LabRdpDiagnostics();
+class DiagnosticProcess extends WorkerProcess {
+  spawnWorker(directory, env) {
+    const child = super.spawnWorker(directory, env);
+    child.stderr.on('data', (bytes) => rdpDiagnostics.push(bytes));
+    return child;
+  }
+}
+class DiagnosticSession extends NativeSessionWorker {
+  createWorkerProcess(options) {
+    return new DiagnosticProcess(options);
+  }
+}
+const nativeWorker = new DiagnosticSession(options);
 let nativeState = 'created';
 let nativeFailure;
 const releaseNativeState = nativeWorker.onState((state) => {
@@ -162,6 +179,7 @@ let page;
 let phase = 'create';
 const resizeEvidence = [];
 let soakEvidence;
+let failureEvidence;
 let restoreNeeded = false;
 try {
   await server.listen({ host: '127.0.0.1', port: 47999 });
@@ -393,6 +411,8 @@ try {
         if (elapsedMs >= soakDurationMs) break;
         await delay(Math.min(soakIntervalMs, soakDurationMs - elapsedMs));
       }
+      if (!soakEvidence.workerMemoryBudgetPassed)
+        throw new Error('LAB_SOAK_MEMORY_BUDGET_FAILED');
     }
     if (resizeTest || soakTest) {
       for (const [width, height] of [
@@ -692,15 +712,13 @@ try {
   const stats = await page
     ?.evaluate(() => window.bridgeViewer?.stats)
     .catch(() => undefined);
-  console.error(
-    JSON.stringify({
-      type: 'lab.browser.failure',
-      phase,
-      stats,
-      nativeState,
-      nativeFailure,
-    }),
-  );
+  failureEvidence = {
+    type: 'lab.browser.failure',
+    phase,
+    stats,
+    nativeState,
+    nativeFailure,
+  };
   console.error(
     'Local XRDP browser check failed; credentials and raw diagnostics omitted',
   );
@@ -726,6 +744,14 @@ try {
   }
   await browser?.close();
   await server.close();
+  if (failureEvidence)
+    console.log(
+      JSON.stringify({
+        ...failureEvidence,
+        rdpDiagnostics: rdpDiagnostics.snapshot(),
+        ...(soakTest ? { soakEvidence } : {}),
+      }),
+    );
   const leftovers = await readdir(options.runtimeRoot);
   if (leftovers.length) {
     console.error('LAB_RUNTIME_NOT_EMPTY');

@@ -510,7 +510,8 @@ The adapter uses legacy Play, interpreting bytes in the format supplied to Open.
 Pinned rdpsnd passes its original server format to PlayEx even after DSP decode;
 PlayEx is deliberately absent to avoid interpreting decoded bytes using compressed
 sample widths. Play's return value is queued latency in milliseconds, rounded up,
-bounded to 120 ms. It is not a Win32 status or evidence of audible delivery.
+bounded to the selected native capacity: 120 ms ordinarily or 200 ms under
+ADR-012. It is not a Win32 status or evidence of audible delivery.
 
 Packed 16-bit left/right volume settings are applied to normalized signed samples
 before enqueue. Iteration 38's linear amplitude conversion is superseded by
@@ -819,11 +820,11 @@ in a fixed 64-entry table. A bounded `AudioClock` receives source rate/frame cou
 negotiated index, block number, timestamp width/value and owner monotonic arrival
 milliseconds. Invalid metadata leaves history unchanged and fails the channel.
 The sink splits larger callbacks into at most 100 ms conversion spans, reusing
-the fixed normalizer arena. Interpolation persists across spans. The 120 ms ring
+the fixed normalizer arena. Interpolation persists across spans. The selected ring
 retains the newest samples for large callbacks and counts discarded old frames;
 ordinary callbacks preserve packet-atomic overflow rejection. No growing storage
 or additional publication is introduced inside Play. A 186 ms server burst still
-exceeds this ring and can cause playback gaps; packet acceptance is not smooth
+exceeds the default 120 ms ring; the opt-in 200 ms ring can retain it. Packet acceptance is not smooth
 audio or measured latency acceptance. [Actual XRDP correction](ITERATION_175.md).
 
 The first packet requests a sink reset. Subsequent packets reset interpolation and

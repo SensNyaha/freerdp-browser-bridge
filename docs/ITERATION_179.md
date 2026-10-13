@@ -44,3 +44,5 @@ the preview option's focused tests pass 4/4. The user reports smoother sound,
 with remaining interruptions, and accepts it for local development. Their slow
 tunnel explanation remains a hypothesis. This scoped acceptance does not claim
 uninterrupted playback or measured total latency.
+
+Implementation commit: `a63d10d`.
