@@ -29,6 +29,10 @@ public:
   // Discard up to this many old frames without synthesizing/consuming silence.
   // Request is bounded by capacity; a nonempty discard marks discontinuity.
   std::size_t discard(std::size_t frames) noexcept;
+  // Trim raw source before assigning packet timestamps or encoding. Loss is
+  // counted, but this alone does not invalidate an already-delivered codec history.
+  // Existing reset/timeline boundaries remain owned; discard() keeps its semantics.
+  std::size_t discard_unstamped(std::size_t frames) noexcept;
   void reset() noexcept;
   QueueStats stats() const noexcept { return stats_; }
 

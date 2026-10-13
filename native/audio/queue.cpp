@@ -78,4 +78,10 @@ void PcmQueue::reset() noexcept {
   bytes_->fill(0);
   discontinuity_ = true;
 }
+std::size_t PcmQueue::discard_unstamped(std::size_t frames) noexcept {
+  const bool boundary = discontinuity_;
+  const auto skipped = discard(frames);
+  discontinuity_ = boundary;
+  return skipped;
+}
 } // namespace bridge::audio

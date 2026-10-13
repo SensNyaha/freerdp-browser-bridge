@@ -119,7 +119,7 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
     if (!normalized.bytes.empty()) {
       const auto free = PcmQueue::capacity_frames - pipeline.queue.stats().queued_frames;
       if (chunked && normalized.frames > free)
-        (void)pipeline.queue.discard(normalized.frames - free);
+        (void)pipeline.queue.discard_unstamped(normalized.frames - free);
       if (pipeline.queue.push(std::span(pipeline.volume).first(normalized.bytes.size())) !=
           QueueStatus::accepted) {
         increment(sink->stats_.overflow_resets);

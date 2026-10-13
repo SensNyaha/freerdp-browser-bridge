@@ -93,6 +93,37 @@ TEST_CASE("Opus publisher preserves source status config clock and underflow acc
   REQUIRE(f.owner.stats()->cached_bytes == 0);
 }
 
+TEST_CASE("Opus raw source trimming preserves prediction and late timeline reset") {
+  Fixture f;
+  f.open();
+  f.play();
+  REQUIRE(f.owner.pump(0, f.send) == PublishStatus::sent);
+  const auto first = ipc::audio::opus::decode_packet(f.records.back().payload);
+  f.play(10000, 9);
+  REQUIRE(f.sink.stats()->queue.playback_skipped_frames == 4240);
+  REQUIRE(f.owner.pump(20000, f.send) == PublishStatus::sent);
+  const auto second = ipc::audio::opus::decode_packet(f.records.back().payload);
+  REQUIRE(second.epoch == first.epoch);
+  REQUIRE(second.timestamp_us == first.timestamp_us + 20000);
+  REQUIRE_FALSE(second.discontinuity);
+  REQUIRE(f.owner.stats()->source.sent_configs == 1);
+  SoftwareOpusEncoder independent;
+  std::array<std::uint8_t, SoftwareOpusEncoder::pcm_bytes> pcm{};
+  pcm.fill(7);
+  const auto initial = independent.encode({pcm, 0, true});
+  REQUIRE(std::equal(first.encoded.begin(), first.encoded.end(), initial.bytes.begin(),
+                     initial.bytes.end()));
+  pcm.fill(9);
+  const auto continuous = independent.encode({pcm, 20000, false});
+  REQUIRE(std::equal(second.encoded.begin(), second.encoded.end(), continuous.bytes.begin(),
+                     continuous.bytes.end()));
+  REQUIRE(f.owner.pump(80000, f.send) == PublishStatus::sent);
+  const auto late = ipc::audio::opus::decode_packet(f.records.back().payload);
+  REQUIRE(late.epoch > second.epoch);
+  REQUIRE(late.discontinuity);
+  REQUIRE(f.owner.stats()->source.sent_configs == 2);
+}
+
 TEST_CASE("Opus publisher retries identical compressed bytes without advancing prediction") {
   Fixture f;
   f.open();

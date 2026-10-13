@@ -61,6 +61,26 @@ TEST_CASE("PCM publisher starts only with samples and sends config before fixed 
   REQUIRE(f.publisher.stats()->sent_configs == 1);
   REQUIRE(f.publisher.stats()->sent_packets == 2);
 }
+TEST_CASE("PCM source trimming before packetization retains epoch and reports raw loss") {
+  Fixture f;
+  f.open();
+  f.play();
+  REQUIRE(f.publisher.pump(0, f.send) == PublishStatus::sent);
+  const auto first = bridge::ipc::audio::decode_packet(f.records.back().payload);
+  f.play(10000, 2);
+  REQUIRE(f.sink.stats()->queue.playback_skipped_frames == 4240);
+  REQUIRE(f.publisher.pump(20000, f.send) == PublishStatus::sent);
+  const auto next = bridge::ipc::audio::decode_packet(f.records.back().payload);
+  REQUIRE(next.epoch == first.epoch);
+  REQUIRE(next.timestamp_us == first.timestamp_us + 20000);
+  REQUIRE_FALSE(next.discontinuity);
+  REQUIRE(f.publisher.stats()->sent_configs == 1);
+  REQUIRE(std::all_of(next.pcm.begin(), next.pcm.end(), [](auto byte) { return byte == 2; }));
+  REQUIRE(f.publisher.pump(80000, f.send) == PublishStatus::sent);
+  REQUIRE(bridge::ipc::audio::decode_packet(f.records.back().payload).epoch > next.epoch);
+  REQUIRE(f.publisher.stats()->sent_configs == 2);
+}
+
 TEST_CASE("PCM publisher replaces blocked data and never retries an accepted config") {
   Fixture f;
   f.open();

@@ -5,6 +5,26 @@
 #include <vector>
 
 using namespace bridge::audio;
+
+TEST_CASE("Raw unstamped trimming counts loss without erasing an existing boundary") {
+  PcmQueue queue;
+  std::vector<std::uint8_t> samples(1920 * 4, 1);
+  std::vector<std::uint8_t> output(960 * 4);
+  REQUIRE(queue.push(samples) == QueueStatus::accepted);
+  REQUIRE(queue.discard_unstamped(100) == 100);
+  REQUIRE(queue.read(output).discontinuity);
+  REQUIRE(queue.discard_unstamped(100) == 100);
+  REQUIRE_FALSE(queue.read(output).discontinuity);
+  REQUIRE(queue.stats().playback_skipped_frames == 200);
+  REQUIRE(queue.discard_unstamped(PcmQueue::capacity_frames + 1) == 0);
+  REQUIRE(queue.stats().invalid_calls == 1);
+  queue.reset();
+  REQUIRE(queue.push(samples) == QueueStatus::accepted);
+  REQUIRE(queue.discard_unstamped(100) == 100);
+  REQUIRE(queue.read(output).discontinuity);
+  REQUIRE(queue.discard(100) == 100);
+  REQUIRE(queue.read(output).discontinuity);
+}
 namespace {
 std::vector<std::uint8_t> packet(std::size_t frames, std::uint32_t seed = 0) {
   std::vector<std::uint8_t> bytes;
