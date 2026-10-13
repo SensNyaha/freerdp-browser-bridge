@@ -9,6 +9,7 @@ namespace bridge::audio {
 enum class RetireStatus { active, pending, done, invalid, expired, failed };
 struct SessionStats {
   SinkStats source;
+  AudioGateStats ingress;
   PublisherStats publisher;
   std::uint64_t close_attempts = 0, drain_calls = 0, drain_failures = 0, invalid_calls = 0;
   std::uint64_t source_resets = 0;

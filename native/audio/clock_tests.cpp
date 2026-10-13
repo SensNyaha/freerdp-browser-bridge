@@ -14,6 +14,53 @@ AudioStamp next(AudioStamp value) {
 }
 } // namespace
 
+TEST_CASE("Audio clock counts reset causes independently without changing decisions") {
+  AudioClock clock;
+  auto stamp = first();
+  REQUIRE(clock.observe(stamp) == true);
+  REQUIRE(clock.stats().first == 1);
+  auto changed = next(stamp);
+  changed.format = 1;
+  changed.block = 3;
+  changed.arrival_ms += 200;
+  changed.timestamp += 200;
+  REQUIRE(clock.observe(changed) == true);
+  auto stats = clock.stats();
+  REQUIRE(stats.first == 1);
+  REQUIRE(stats.profile == 1);
+  REQUIRE(stats.block == 1);
+  REQUIRE(stats.arrival_gap == 1);
+  REQUIRE(stats.timestamp_gap == 1);
+  REQUIRE(stats.arrival_backward == 0);
+  REQUIRE(stats.timestamp_backward == 0);
+  REQUIRE(clock.observe(next(changed)) == false);
+  auto backward = next(next(changed));
+  backward.arrival_ms = 1;
+  backward.timestamp = 1;
+  REQUIRE(clock.observe(backward) == true);
+  REQUIRE(clock.stats().arrival_backward == 1);
+  REQUIRE(clock.stats().timestamp_backward == 1);
+  clock.reset();
+  REQUIRE(clock.observe(first()) == true);
+  REQUIRE(clock.stats().first == 2);
+  stats.first = 99;
+  REQUIRE(clock.stats().first == 2);
+}
+
+TEST_CASE("Audio clock invalid input changes neither history nor cause counters") {
+  AudioClock clock;
+  auto stamp = first();
+  stamp.frames = 0;
+  REQUIRE_FALSE(clock.observe(stamp));
+  REQUIRE(clock.stats().first == 0);
+  REQUIRE(clock.observe(first()) == true);
+  REQUIRE_FALSE(clock.observe(stamp));
+  REQUIRE(clock.stats().first == 1);
+  REQUIRE(clock.observe(next(first())) == false);
+  REQUIRE(clock.stats().profile == 0);
+  REQUIRE(clock.stats().block == 0);
+}
+
 TEST_CASE("Audio continuity resets only at first packet or explicit reset for a steady stream") {
   AudioClock clock;
   auto stamp = first();

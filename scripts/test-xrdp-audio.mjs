@@ -70,6 +70,30 @@ class LabWorker extends WorkerProcess {
             'packets',
           ].map((key, index) => [key, summary[index + 1]]),
         );
+      const causesAt = bytes.indexOf(Buffer.from('bridge.audio.causes first='));
+      const causes =
+        causesAt < 0
+          ? null
+          : bytes
+              .subarray(causesAt, Math.min(bytes.length, causesAt + 384))
+              .toString('ascii')
+              .match(
+                /^bridge\.audio\.causes first=(\d{1,20}) profile=(\d{1,20}) block=(\d{1,20}) arrivalBackward=(\d{1,20}) arrivalGap=(\d{1,20}) timestampBackward=(\d{1,20}) timestampGap=(\d{1,20}) formats=(\d{1,20}) close=(\d{1,20})\r?\n/,
+              );
+      if (causes)
+        report.nativeCauses = Object.fromEntries(
+          [
+            'first',
+            'profile',
+            'block',
+            'arrivalBackward',
+            'arrivalGap',
+            'timestampBackward',
+            'timestampGap',
+            'formats',
+            'close',
+          ].map((key, index) => [key, causes[index + 1]]),
+        );
       const prefix = Buffer.from('bridge.audio.guard fault=');
       const at = bytes.indexOf(prefix);
       if (at >= 0) {

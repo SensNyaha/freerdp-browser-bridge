@@ -40,8 +40,8 @@ These counts prove transport/decoder admission, not audible or uninterrupted
 playback. Source epoch changes are frequent. The real 186 ms burst exceeds the
 120 ms handoff and causes sample discard; CPU, queue latency, broader source recovery,
 perceptual quality, microphone, Windows-server, Linux and soak gates stay open.
-Final Worklet counters may belong to a reset empty queue and must not be read as
-lifetime played-frame totals. The user heard the actual Opus manual viewer but
+The printed Worklet snapshot was requested before warmup and can be stale;
+zero played frames in it do not establish later silence. The user heard the actual Opus manual viewer but
 reported interruptions. Audibility is observed on this lab; quality acceptance
 fails and the Stage 6 gate remains open.
 
@@ -69,6 +69,7 @@ results are recorded above; no unfinished acceptance is claimed.
 
 The first full Node run passed 512/514: one helper startup became uncertain and
 one Edge launch timed out. Both focused reruns pass 2/2 without changing deadlines
-or expectations. The quiet rerun also encountered two other native bootstrap
-timeouts. There is no all-514-pass claim; process-start reliability remains open
+or expectations. The quiet rerun also encountered another helper bootstrap
+timeout and a raw native worker first-response deadline. Both focused reruns
+pass 2/2. There is no all-514-pass claim; process-start reliability remains open
 and will be investigated separately instead of weakening protocol expectations.

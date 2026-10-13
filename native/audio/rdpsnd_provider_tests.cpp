@@ -1149,7 +1149,7 @@ TEST_CASE("Guarded RDPSND refuses replacement format tables before upstream stat
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
 
-TEST_CASE("Guarded RDPSND reannounces identical PCM tables with reset and fresh legacy playback") {
+TEST_CASE("Guarded RDPSND identical PCM reannouncement preserves stream and legacy playback") {
   Fixture fixture;
   GateScope scope(fixture);
   StaticHost host(fixture.context.get());
@@ -1168,6 +1168,7 @@ TEST_CASE("Guarded RDPSND reannounces identical PCM tables with reset and fresh 
   if (played)
     emit_pcm(host, 100, 1, {0, 128, 255, 127}, true);
   const auto accepted = fixture.sink.stats()->queue.accepted_frames;
+  const auto revision = fixture.sink.stats()->stream_revision;
   const auto writes = host.writes.size();
   configuration[1] = 0xa7; // Protocol padding is arbitrary.
   configuration[20] = 3;   // Last-confirmed block is not format identity.
@@ -1175,17 +1176,33 @@ TEST_CASE("Guarded RDPSND reannounces identical PCM tables with reset and fresh 
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
   REQUIRE(host.writes.size() == writes + (configuration[21] >= 6 ? 2U : 1U));
   REQUIRE(host.writes[writes][0] == SNDC_FORMATS);
-  REQUIRE(fixture.sink.stats()->queue.queued_frames == 0);
-  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == (played ? 960U : 0U));
-  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::waiting);
-  emit_pcm(host, 200, 4, {1, 0, 1, 0}, true);
+  REQUIRE(scope.gate.stats()->formats == 2);
+  REQUIRE(scope.gate.stats()->closes == 0);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == (played ? 960U : 0U));
+  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == 0);
+  REQUIRE(fixture.sink.stats()->stream_revision == revision);
+  REQUIRE(fixture.sink.stats()->availability ==
+          (played ? SourceAvailability::ready : SourceAvailability::waiting));
+  emit_pcm(host, 200, played ? 2 : 4, {1, 0, 1, 0}, true);
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
   REQUIRE(fixture.sink.stats()->queue.accepted_frames == accepted + 960);
+  REQUIRE(scope.gate.stats()->clock.first == 1);
   REQUIRE(fixture.sink.stats()->availability == SourceAvailability::ready);
   std::vector<BYTE> output(3840);
+  if (played) {
+    const auto old = fixture.sink.read(output);
+    REQUIRE(old.discontinuity);
+    REQUIRE(old.frames == 960);
+    for (std::size_t at = 0; at < output.size(); at += 4) {
+      REQUIRE(output[at] == 0);
+      REQUIRE(output[at + 1] == 128);
+      REQUIRE(output[at + 2] == 255);
+      REQUIRE(output[at + 3] == 127);
+    }
+  }
   const auto read = fixture.sink.read(output);
   REQUIRE(read.status == QueueStatus::accepted);
-  REQUIRE(read.discontinuity);
+  REQUIRE(read.discontinuity == !played);
   for (std::size_t at = 0; at < output.size(); at += 2) {
     REQUIRE(output[at] == 1);
     REQUIRE(output[at + 1] == 0);

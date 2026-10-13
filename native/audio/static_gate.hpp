@@ -6,6 +6,10 @@
 #include <freerdp/svc.h>
 
 namespace bridge::audio {
+struct AudioGateStats {
+  std::uint64_t formats = 0, closes = 0;
+  AudioClockStats clock;
+};
 // Pinned public static-channel adapter. Must outlive the host's Terminated event.
 // One serialized RDP owner; synchronous profile. Not installed by the worker yet.
 class AudioStaticGate {
@@ -16,6 +20,7 @@ class AudioStaticGate {
   AudioAssembler assembler_;
   AudioPduValidator validator_;
   AudioClock clock_;
+  AudioGateStats stats_;
   std::array<BYTE, max_pcm_offer_bytes> offers_{};
   std::array<PcmFormat, AudioPduValidator::max_formats> selected_formats_{};
   std::uint16_t selected_count_ = 0;
@@ -51,6 +56,7 @@ public:
   BOOL install(CHANNEL_ENTRY_POINTS_FREERDP_EX *, LPVOID, PVIRTUALCHANNELENTRYEX) noexcept;
   UINT retire() noexcept;
   bool ready_for(const rdpContext &, const RdpsndSink &) const noexcept;
+  std::optional<AudioGateStats> stats() const noexcept;
   bool retired() const noexcept { return retired_.load(std::memory_order_acquire); }
 };
 } // namespace bridge::audio

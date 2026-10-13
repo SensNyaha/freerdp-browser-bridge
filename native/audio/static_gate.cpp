@@ -4,11 +4,16 @@
 #include <cstring>
 #include <exception>
 #include <freerdp/freerdp.h>
+#include <limits>
 #include <winpr/error.h>
 #include <winpr/sysinfo.h>
 
 namespace bridge::audio {
 namespace {
+void increment(std::uint64_t &value) noexcept {
+  if (value != (std::numeric_limits<std::uint64_t>::max)())
+    ++value;
+}
 std::uint16_t u16(std::span<const BYTE> bytes, std::size_t at) noexcept {
   return static_cast<std::uint16_t>(bytes[at] | static_cast<unsigned>(bytes[at + 1]) << 8);
 }
@@ -25,6 +30,13 @@ AudioStaticGate::~AudioStaticGate() {
     std::terminate();
 }
 bool AudioStaticGate::on_thread() const noexcept { return thread_ == std::this_thread::get_id(); }
+std::optional<AudioGateStats> AudioStaticGate::stats() const noexcept {
+  if (!on_thread())
+    return {};
+  auto result = stats_;
+  result.clock = clock_.stats();
+  return result;
+}
 bool AudioStaticGate::ready_for(const rdpContext &context, const RdpsndSink &sink) const noexcept {
   return on_thread() && context_ == &context && &sink_ == &sink && !attempted_ && !retired();
 }
@@ -258,6 +270,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       return;
     }
     if (pdu->kind == AudioPduKind::close) {
+      increment(gate->stats_.closes);
       gate->clock_.reset();
       (void)gate->sink_.reset_stream(SourceAvailability::closed);
     }
@@ -304,11 +317,17 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
         return;
       }
       std::copy(selected->bytes.begin(), selected->bytes.end(), gate->offers_.begin());
+      increment(gate->stats_.formats);
+      const bool repeated = gate->negotiated_;
       gate->negotiated_ = true;
       gate->selected_count_ = selected->count;
-      gate->clock_.reset();
-      (void)gate->sink_.reset_stream(selected->count ? SourceAvailability::waiting
-                                                     : SourceAvailability::unavailable);
+      // Identical negotiation metadata does not change an already-owned PCM stream.
+      // Resetting here causes gaps when XRDP periodically reannounces its table.
+      if (!repeated) {
+        gate->clock_.reset();
+        (void)gate->sink_.reset_stream(selected->count ? SourceAvailability::waiting
+                                                       : SourceAvailability::unavailable);
+      }
       for (std::size_t at = 0; at < selected->count; ++at) {
         const auto offset = 24 + 18 * at;
         gate->selected_formats_[at] = {u32(selected->bytes, offset + 4),

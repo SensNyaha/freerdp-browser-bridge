@@ -1412,6 +1412,21 @@ void Connection::run() noexcept {
                        static_cast<unsigned long long>(stats->source.stream_revision),
                        static_cast<unsigned long long>(stats->publisher.consumer_resets),
                        static_cast<unsigned long long>(stats->publisher.sent_packets));
+    const auto &clock = stats->ingress.clock;
+    (void)std::fprintf(
+        stderr,
+        "bridge.audio.causes first=%llu profile=%llu block=%llu arrivalBackward=%llu "
+        "arrivalGap=%llu timestampBackward=%llu timestampGap=%llu formats=%llu "
+        "close=%llu\n",
+        static_cast<unsigned long long>(clock.first),
+        static_cast<unsigned long long>(clock.profile),
+        static_cast<unsigned long long>(clock.block),
+        static_cast<unsigned long long>(clock.arrival_backward),
+        static_cast<unsigned long long>(clock.arrival_gap),
+        static_cast<unsigned long long>(clock.timestamp_backward),
+        static_cast<unsigned long long>(clock.timestamp_gap),
+        static_cast<unsigned long long>(stats->ingress.formats),
+        static_cast<unsigned long long>(stats->ingress.closes));
     if (retired != bridge::audio::RetireStatus::done) {
       terminal_state = RdpState::failed;
       terminal_error = RdpError::protocol;

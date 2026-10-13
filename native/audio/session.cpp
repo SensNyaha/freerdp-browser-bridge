@@ -118,9 +118,11 @@ std::optional<SessionStats> AudioSession::stats() const noexcept {
     return {};
   auto result = stats_;
   const auto source = source_.stats();
-  if (!source)
+  const auto ingress = gate_.stats();
+  if (!source || !ingress)
     return {};
   result.source = *source;
+  result.ingress = *ingress;
   result.codec = codec_;
   if (pcm_publisher_) {
     const auto publisher = pcm_publisher_->stats();

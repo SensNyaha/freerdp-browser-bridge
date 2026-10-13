@@ -844,6 +844,15 @@ mapping server time to browser PTS or claiming AV sync. Formats, Close, accepted
 suspend/resume and retirement clear clock history. Queue reset markers carry loss
 to a future consumer; counters retain discarded PCM frame totals.
 
+Native continuity diagnostics retain fixed saturating lifetime counters for
+first packets after reset, profile changes, nonconsecutive blocks, backward/
+excessive arrival and source timestamp gaps. Reasons can overlap on one packet;
+their sum is not a unique reset count. Invalid metadata leaves these counters
+and the baseline unchanged. Explicit reset preserves the counters. The static
+gate separately counts admitted Formats and Close records. Owner-thread copied
+AudioSession snapshots and one bounded retirement summary expose them to local
+tests; no RWI1/RWB1 field, public metric, raw data or growing history is added.
+
 [Iteration 46](ITERATION_046.md) checks pure clocks and actual linked RDPSND with
 fake SVC. Server format-table replacement is explicitly refused by the baseline
 policy below, preventing upstream reuse of an incompatible already-open index.
@@ -856,8 +865,9 @@ actual audio/microphone acceptance remain open.
 The guarded baseline fixes the supported PCM table for one connection, including
 a zero-common-format response. An identical selected table and protocol version
 may be reannounced: a fixed candidate buffer verifies count, descriptor order and
-all descriptor bytes before upstream dispatch. It resets stale samples/clock and
-permits the pinned channel to resend its negotiation reply. Other header metadata
+all descriptor bytes before upstream dispatch. Identical reannouncement preserves
+the active queue, resampler phase, clock baseline and stream revision while
+permitting the pinned channel to resend its negotiation reply. Other header metadata
 does not redefine descriptor identity. Changed supported tables or protocol versions
 fail with `ERROR_NOT_SUPPORTED`, reset queued PCM and never reach upstream or mutate
 selected descriptors. Close and suspend/resume keep the initial

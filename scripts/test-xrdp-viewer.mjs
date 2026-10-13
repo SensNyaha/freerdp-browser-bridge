@@ -289,6 +289,31 @@ try {
   } else {
     phase = 'pixels';
     await delay(15000); // Let the remote login/desktop finish painting before visual verification.
+    if (audioTest) {
+      const previous = await page.evaluate(
+        () => window.bridgeViewer.stats.audio.remote,
+      );
+      if (!(await page.evaluate(() => window.bridgeViewer.requestAudioStats())))
+        throw new Error('LAB_AUDIO_STATS_UNAVAILABLE');
+      await page.waitForFunction(
+        (previous) => {
+          const audio = window.bridgeViewer.stats.audio;
+          const remote = audio?.remote;
+          return (
+            remote &&
+            !audio.inFlight &&
+            [
+              'configurations',
+              'packets',
+              'playedFrames',
+              'bufferingSilenceFrames',
+            ].some((field) => remote[field] > (previous?.[field] ?? 0))
+          );
+        },
+        previous,
+        { timeout: 5000 },
+      );
+    }
     const stats = await page.evaluate(() => {
       const canvas = document.querySelector('#desktop');
       const pixels = canvas
