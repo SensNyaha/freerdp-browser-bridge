@@ -45,6 +45,23 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
         error: 0,
       });
       assert.deepEqual(await readdir(directory), []);
+      const resident = await promisify(execFile)(
+        join(relocated, 'bin', 'rdp-runtime-directory.exe'),
+        ['--process-resident-bytes', String(process.pid)],
+        {
+          env,
+          cwd: temporary,
+          windowsHide: true,
+          timeout: 2000,
+          maxBuffer: 128,
+        },
+      );
+      assert.equal(resident.stderr, '');
+      const receipt = JSON.parse(resident.stdout);
+      assert.deepEqual(Object.keys(receipt).sort(), ['bytes', 'error', 'v']);
+      assert.equal(receipt.v, 1);
+      assert.equal(receipt.error, 0);
+      assert.ok(Number.isSafeInteger(receipt.bytes) && receipt.bytes > 0);
     }
     const probe = await promisify(execFile)(
       join(relocated, 'bin', 'rdp-runtime-check' + suffix),

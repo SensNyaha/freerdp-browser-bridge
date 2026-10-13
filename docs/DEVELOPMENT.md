@@ -375,3 +375,28 @@ use `.local-tests/xrdp-microphone-opus-<output>-report.json`; all reports remain
 bounded scalar metadata. The helper checks selected native capabilities and sends
 no microphone samples, reset or remote application input. Credentials stay in
 ignored local files and reach the worker only through private IPC.
+
+## Single-viewer stability observation
+
+After building Node and the bundled Windows worker, with the previously verified
+lab fingerprint, run lab modes sequentially:
+
+```powershell
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --soak-test
+```
+
+This holds the actual 1920×1080 desktop for 30 minutes, prints fixed aggregates
+every 30 seconds, then checks resize/restoration and cursor/attachment replay.
+It observes graphics with audio off and requests no microphone. Working-set
+measurements use the bundled limited-query helper. Do not rebuild native DLLs or
+run competing timing benchmarks during the observation. A reported failed memory
+budget or interrupted run is not acceptance. [Scope](ITERATION_174.md).
+
+The private `test-xrdp-audio.mjs $fingerprint pcm` (or `opus`) now observes ten
+seconds of real source data and makes at most one reset attempt while ready.
+Subsequent fresh config/packet evidence is distinct from merely scheduled reset.
+It emits scalar counts and a PCM nonzero indicator, never recordings/sample data.
+Dedicated lab viewer `--audio-manual` / `--audio-opus-manual` performs the output
+activation button click so certificate approval cannot expire while waiting for
+it. The product viewer retains its gesture gate; this does not request microphone
+permission. Audible quality remains a user check. [Current XRDP corrections](ITERATION_175.md).

@@ -8,6 +8,13 @@ import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
+import {
+  ViewerSoak,
+  soakDurationMs,
+  soakIntervalMs,
+  windowsWorkerResidentBytes,
+  mediaCredit,
+} from './viewer-soak.mjs';
 
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
@@ -23,6 +30,7 @@ const {
 } = viewerMediaOptions(process.argv[4]);
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
+const soakTest = process.argv[4] === '--soak-test';
 const touchInventory = process.argv[4] === '--touch-inventory';
 const quality = qualityTest
   ? {
@@ -39,6 +47,7 @@ if (
     !manual &&
     !qualityTest &&
     !resizeTest &&
+    !soakTest &&
     !touchInventory &&
     !audioTest &&
     !microphoneTest) ||
@@ -150,6 +159,7 @@ let sessionId;
 let page;
 let phase = 'create';
 const resizeEvidence = [];
+let soakEvidence;
 let restoreNeeded = false;
 try {
   await server.listen({ host: '127.0.0.1', port: 47999 });
@@ -163,7 +173,7 @@ try {
       display: {
         width: 1920,
         height: 1080,
-        dynamicResolution: resizeTest || manual,
+        dynamicResolution: resizeTest || soakTest || manual,
       },
       input: { touch: manual || touchInventory },
       media: { audioOutput, microphone },
@@ -213,9 +223,9 @@ try {
       window.bridgeViewer.attach(created, { codecs, audioOutput, microphone }),
     { created: attachment, codecs, audioOutput, microphone },
   );
-  if (audioTest) await page.click('#audio-start');
-  if (audioManual)
-    console.log('Нажмите «Включить звук и подключиться» в окне Edge.');
+  // This dedicated authorized output-only lab mode performs the activation click.
+  // Waiting for a manual click here can expire the already-created certificate prompt.
+  if (audioTest || audioManual) await page.click('#audio-start');
   phase = 'certificate';
   await page.waitForFunction(
     () => !document.querySelector('#certificate').hidden,
@@ -307,7 +317,43 @@ try {
       (mode === 'h264-reset' && stats.resets !== 1)
     )
       throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
-    if (resizeTest) {
+    if (soakTest) {
+      phase = 'soak';
+      const collector = new ViewerSoak();
+      const started = performance.now();
+      for (;;) {
+        const elapsedMs = Math.floor(performance.now() - started);
+        const view = await page.evaluate(() => window.bridgeViewer.stats);
+        const telemetry = await server.inject({
+          method: 'GET',
+          url: '/metrics',
+          headers: { authorization: 'Bearer ' + bearer },
+        });
+        if (
+          nativeState !== 'connected' ||
+          nativeFailure ||
+          telemetry.statusCode !== 200
+        )
+          throw new Error('LAB_SOAK_LIFECYCLE_FAILED');
+        collector.observe(
+          elapsedMs,
+          view,
+          await windowsWorkerResidentBytes(
+            nativeWorker.pid,
+            options.workerPath,
+          ),
+          process.memoryUsage().rss,
+          mediaCredit(telemetry.body, codecs[0]),
+        );
+        soakEvidence = collector.snapshot();
+        console.log(
+          JSON.stringify({ type: 'lab.soak.progress', ...soakEvidence }),
+        );
+        if (elapsedMs >= soakDurationMs) break;
+        await delay(Math.min(soakIntervalMs, soakDurationMs - elapsedMs));
+      }
+    }
+    if (resizeTest || soakTest) {
       for (const [width, height] of [
         [1280, 720],
         [1920, 1080],
@@ -538,7 +584,7 @@ try {
         throw new Error('LAB_MICROPHONE_REPLAY_FAILED');
     }
     if (
-      resizeTest &&
+      (resizeTest || soakTest) &&
       !(await page.evaluate(() => {
         const value = window.bridgeViewer.stats;
         return (
@@ -587,7 +633,10 @@ try {
         ...(touchInventory
           ? { touchEvidence, touchReplayed: true, remoteTouchSent: false }
           : {}),
-        ...(resizeTest ? { resizeEvidence, displayReplayed: true } : {}),
+        ...(resizeTest || soakTest
+          ? { resizeEvidence, displayReplayed: true }
+          : {}),
+        ...(soakTest ? { soakEvidence } : {}),
         pipeline,
         ...(qualityTest
           ? { qualityProfile: quality.profile, nativeCaptureMinIntervalUs }

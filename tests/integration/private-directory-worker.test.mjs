@@ -9,13 +9,64 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { resolve, join, relative, isAbsolute } from 'node:path';
-import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
+import {
+  WorkerProcess,
+  NativeSessionWorker,
+} from '../../packages/node-bridge/dist/index.js';
+import { windowsWorkerResidentBytes } from '../../scripts/viewer-soak.mjs';
 
 const binary = resolve(
   process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
   'rdp-worker.exe',
 );
 const windows = { skip: process.platform !== 'win32' };
+test(
+  'actual Windows worker resident sample uses bounded native metadata without command-line or environment inventory',
+  windows,
+  async () =>
+    fixture(async (root) => {
+      const worker = new WorkerProcess({
+        workerPath: binary,
+        runtimeRoot: root,
+      });
+      try {
+        await worker.start();
+        const bytes = await windowsWorkerResidentBytes(worker.pid, binary);
+        assert.ok(Number.isSafeInteger(bytes) && bytes >= 1024);
+      } finally {
+        await worker.close();
+      }
+      assert.deepEqual(await readdir(root), []);
+    }),
+);
+test(
+  'host native adapter process identity is absent before startup and retained after close without a liveness claim',
+  windows,
+  async () =>
+    fixture(async (root) => {
+      const worker = new NativeSessionWorker({
+        workerPath: resolve(
+          process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
+          'fixture-audio-1.exe',
+        ),
+        runtimeRoot: root,
+      });
+      assert.equal(worker.pid, undefined);
+      try {
+        await worker.start(
+          { target: { host: 'valid' }, auth: {} },
+          new AbortController().signal,
+        );
+        assert.ok(Number.isInteger(worker.pid) && worker.pid > 0);
+        const pid = worker.pid;
+        await worker.close();
+        assert.equal(worker.pid, pid);
+        assert.deepEqual(await readdir(root), []);
+      } finally {
+        await worker.close();
+      }
+    }),
+);
 async function fixture(body) {
   const build = resolve('build');
   await mkdir(build, { recursive: true });

@@ -34,6 +34,10 @@ export class NativeSessionWorker implements SessionWorker {
   private readonly events = new EventEmitter();
   private startup: Promise<void> | undefined;
   private closing = false;
+  /** Host-side child identity for lifecycle/resource probes; not a liveness guarantee. */
+  get pid(): number | undefined {
+    return this.worker.pid;
+  }
   constructor(options: WorkerOptions) {
     this.worker = new WorkerProcess(options);
     this.worker.on('rdp-state', (event: NativeConnectionState) => {

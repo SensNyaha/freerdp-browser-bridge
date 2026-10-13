@@ -1092,6 +1092,11 @@ window.bridgeViewer = {
     const times = [...decodeTimes].sort((a, b) => a - b);
     return {
       ...stats,
+      queuedFrames: current?.queued ?? 0,
+      queuedBytes: current?.queuedBytes ?? 0,
+      decoding: current?.decoding ?? false,
+      decoderQueueSize: current?.decoder?.decodeQueueSize ?? 0,
+      mediaBufferedBytes: current?.media?.bufferedAmount ?? 0,
       audio: current?.playback?.snapshot() ?? stats.audio,
       microphone: microphoneSnapshot(current) ?? stats.microphone,
       decodeMeanMs: times.length

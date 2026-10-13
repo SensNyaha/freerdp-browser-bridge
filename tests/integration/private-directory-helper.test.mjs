@@ -46,6 +46,31 @@ async function fixture(body) {
   }
 }
 test(
+  'native host helper: resident metadata uses limited query access with strict numeric PID grammar',
+  { skip: process.platform !== 'win32' },
+  async () => {
+    const result = await run(['--process-resident-bytes', String(process.pid)]);
+    assert.equal(result.code, 0);
+    assert.equal(result.stderr, '');
+    const record = JSON.parse(result.stdout);
+    assert.deepEqual(Object.keys(record).sort(), ['bytes', 'error', 'v']);
+    assert.equal(record.v, 1);
+    assert.equal(record.error, 0);
+    assert.ok(Number.isSafeInteger(record.bytes) && record.bytes > 0);
+    for (const pid of ['0', '-1', '1x', '4294967296', '12345678901'])
+      assert.deepEqual(await run(['--process-resident-bytes', pid]), {
+        stdout: '',
+        stderr: '',
+        code: 2,
+      });
+    const missing = await run(['--process-resident-bytes', '4294967295']);
+    assert.equal(missing.code, 1);
+    const refused = JSON.parse(missing.stdout);
+    assert.equal(refused.bytes, 0);
+    assert.ok(Number.isSafeInteger(refused.error) && refused.error > 0);
+  },
+);
+test(
   'native directory helper: UTF16 creation and collision preserve bounded nonsecret results',
   { skip: process.platform !== 'win32' },
   async () =>
