@@ -79,3 +79,16 @@ after PreConnect. Guarded channel registration belongs in LoadChannels; register
 it in PreConnect immediately retires the single-use gate and prevents the fresh
 load. Static descriptors can be declared in PreConnect. Worker registration uses
 this ordering; unexpected reopening/reconnect remains unsupported.
+
+## Static audio-off fallback admission — iteration 167
+
+The synchronous worker now checks all selected static `rdpsnd` records before
+its original ReceiveChannelData callback, including the automatic fake backend.
+Pinned `rdpsnd_virtual_channel_event_data_received` takes a pool stream using
+the first fragment's actual size, then grows/copies later fragments before
+checking cumulative and advertised totals. Complete bounded assembly ahead of
+that callback prevents those copies for refused totals/framing. Format-table
+claims are validated before its parser. Notifications do not reset only one
+side of the legacy Wave state. [Placement and evidence](RDPSND_RECEIVE_PLACEMENT.md).
+Dynamic RDPSND still needs its own bounded callback before its StreamPool_Take
+and parser. No retained-pool or whole-process memory acceptance is claimed.

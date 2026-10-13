@@ -24,3 +24,7 @@ callback faults and retirement. Windows foundation CTest 9/9 and bundled CTest
 21/21 pass. A libFuzzer/ASan/UBSan target and four seed records are prepared;
 compiler/CI execution and actual hostile transport acceptance remain open.
 Production static/dynamic fallback placement is the next block.
+
+Iteration 167 installs this owner in the worker's static RDPSND receive path.
+The isolated status above is historical; dynamic placement remains open.
+[Production placement](RDPSND_RECEIVE_PLACEMENT.md).

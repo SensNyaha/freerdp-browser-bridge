@@ -1134,8 +1134,10 @@ void Connection::run() noexcept {
     dvc_channels_ = std::make_unique<channels::DvcChannelRegistry>(clock);
     dvc_plugins_ = std::make_unique<channels::DvcPluginRegistry>(*dvc_channels_, clock);
     receive_original_ = receive_delegate;
-    dvc_receive_ =
-        std::make_unique<channels::DvcReceiveGuard>(*context_->instance, receive_delegated);
+    dvc_receive_ = std::make_unique<channels::DvcReceiveGuard>(
+        *context_->instance, receive_delegated, channels::DvcAllocationLimits{},
+        channels::DvcReceiveGuard::resolve_channel,
+        channels::DvcReceiveGuard::resolve_audio_channel);
     context_->instance->ReceiveChannelData = receive_channels;
     receive_installed = true;
 #ifdef CHANNEL_RDPEI_CLIENT

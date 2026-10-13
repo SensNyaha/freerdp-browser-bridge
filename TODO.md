@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Production static RDPSND receive placement now checks
+  complete bounded records before SDK pool/assembly/parser, including audio-off
+  fake fallback. Eight public/actual-linked-fake-SVC cases / 189 assertions,
+  linked DVC 135 cases / 7,759 assertions and bundled CTest 21/21 pass. Dynamic
+  audio, core/pool/RSS/remote/platform/fuzz/soak gates remain open.
+  [Iteration 167](docs/ITERATION_167.md).
+
 - [~] IN PROGRESS — Isolated complete RDPSND owner composes fixed 64 KiB /
   4,096-fragment assembly and bounded PDU validation with one nonrenewing deadline
   over fragments and legacy WaveInfo/Wave. Nine portable cases / 8,358 assertions,

@@ -47,3 +47,8 @@ Linux/sanitizers/fuzz and soak remain open.
 Iteration 149 installs this adapter in the [worker receive path](DVC_WORKER_INGRESS.md)
 and adds actual pinned drdynvc/fake-SVC tests. The historical unactivated
 foundation description above is retained; cumulative and nested limits remain open.
+
+Iteration 167 adds an optional independent static RDPSND resolver/owner, selected
+by the production worker even for audio-off fallback. The historical description
+of forwarding other SVC IDs now excludes that explicitly selected channel.
+[Current static audio placement and retained limits](RDPSND_RECEIVE_PLACEMENT.md).

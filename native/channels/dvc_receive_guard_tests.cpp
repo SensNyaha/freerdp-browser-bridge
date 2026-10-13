@@ -1,4 +1,5 @@
 #include "dvc_receive_guard.hpp"
+#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <freerdp/client.h>
 #include <memory>
@@ -14,6 +15,7 @@ struct Fixture {
   } context{{}, this};
   freerdp instance{};
   UINT16 resolved = 1004, received_id = 0;
+  UINT16 audio_resolved = 1006;
   UINT32 received_flags = 0;
   std::size_t received_size = 0, received_total = 0;
   const BYTE *received_pointer = nullptr;
@@ -22,7 +24,10 @@ struct Fixture {
   bool accept = true, throw_call = false, throw_resolve = false;
   enum class Reentry { none, close, receive, poll, resolve_close } reentry = Reentry::none;
   DvcReceiveGuard guard;
-  Fixture() : guard(instance, delegate, {}, resolve) { instance.context = &context.base; }
+  explicit Fixture(bool audio = false)
+      : guard(instance, delegate, {}, resolve, audio ? resolve_audio : nullptr) {
+    instance.context = &context.base;
+  }
   static Fixture &owner(freerdp *instance) {
     return *reinterpret_cast<Context *>(instance->context)->owner;
   }
@@ -34,6 +39,7 @@ struct Fixture {
       f.guard.close();
     return f.resolved;
   }
+  static UINT16 resolve_audio(freerdp *instance) { return owner(instance).audio_resolved; }
   static BOOL delegate(freerdp *instance, UINT16 id, const BYTE *data, std::size_t size,
                        UINT32 flags, std::size_t total) {
     auto &f = owner(instance);
@@ -62,6 +68,7 @@ struct Fixture {
   }
 };
 constexpr BYTE data[]{0x30, 0x42, 0xab, 0xcd};
+constexpr BYTE volume[]{3, 0, 4, 0, 1, 2, 3, 4};
 } // namespace
 
 TEST_CASE("Public DVC receive guard forwards only complete inspected input with normalized flags") {
@@ -217,4 +224,90 @@ TEST_CASE("Public DVC guard validates its delegates and uses public channel look
       freerdp_client_context_new(&entry), freerdp_client_context_free);
   REQUIRE(context);
   REQUIRE(DvcReceiveGuard::resolve_channel(context->instance) == 0);
+  REQUIRE(DvcReceiveGuard::resolve_audio_channel(context->instance) == 0);
+}
+
+TEST_CASE("Public static RDPSND receive guard stages bounded complete PDUs before dispatch") {
+  for (std::size_t split = 1; split < sizeof(volume); ++split) {
+    Fixture f(true);
+    REQUIRE(f.guard.receive(1006, volume, split, CHANNEL_FLAG_FIRST | CHANNEL_FLAG_SHOW_PROTOCOL,
+                            sizeof(volume), 1));
+    REQUIRE(f.calls == 0);
+    REQUIRE(f.guard.stats().audio.stored_bytes == split);
+    REQUIRE(f.guard.receive(1006, volume + split, sizeof(volume) - split,
+                            CHANNEL_FLAG_LAST | CHANNEL_FLAG_SHADOW_PERSISTENT, sizeof(volume), 2));
+    REQUIRE(f.calls == 1);
+    REQUIRE(f.received_flags ==
+            (CHANNEL_FLAG_ONLY | CHANNEL_FLAG_SHOW_PROTOCOL | CHANNEL_FLAG_SHADOW_PERSISTENT));
+    REQUIRE(f.received_id == 1006);
+    REQUIRE(f.received_total == sizeof(volume));
+    REQUIRE(f.copied == std::vector<BYTE>(std::begin(volume), std::end(volume)));
+    REQUIRE(f.guard.stats().audio.stored_bytes == 0);
+    REQUIRE(f.guard.stats().audio.forwarded == 1);
+    REQUIRE(f.receive(data, CHANNEL_FLAG_ONLY, 4, 3)); // Separate DVC owner remains healthy.
+    REQUIRE(f.guard.stats().assembly.forwarded == 1);
+  }
+}
+TEST_CASE("Public static RDPSND receive guard refuses raw flags claims and malformed PDUs") {
+  for (const UINT32 flags : std::array<UINT32, 3>{CHANNEL_FLAG_ONLY | UINT32{0x00200000},
+                                                  CHANNEL_FLAG_SUSPEND | CHANNEL_FLAG_FIRST,
+                                                  CHANNEL_FLAG_SUSPEND | CHANNEL_FLAG_RESUME}) {
+    Fixture f(true);
+    REQUIRE_FALSE(f.guard.receive(1006, volume, sizeof(volume), flags, sizeof(volume), 1));
+    REQUIRE(f.calls == 0);
+  }
+  Fixture oversized(true);
+  REQUIRE_FALSE(oversized.guard.receive(1006, volume, 1, CHANNEL_FLAG_FIRST, 65537, 1));
+  REQUIRE(oversized.calls == 0);
+  Fixture malformed(true);
+  const BYTE bad[]{7, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0};
+  REQUIRE_FALSE(malformed.guard.receive(1006, bad, sizeof(bad), CHANNEL_FLAG_ONLY, sizeof(bad), 1));
+  REQUIRE(malformed.calls == 0);
+  Fixture pointer(true);
+  REQUIRE_FALSE(pointer.guard.receive(1006, nullptr, 8, CHANNEL_FLAG_ONLY, 8, 1));
+  REQUIRE(pointer.calls == 0);
+}
+TEST_CASE("Public static RDPSND notifications preserve partial and legacy deadlines") {
+  Fixture partial(true);
+  REQUIRE(partial.guard.receive(1006, volume, 1, CHANNEL_FLAG_FIRST, sizeof(volume), 1));
+  REQUIRE(partial.guard.receive(1006, nullptr, 0, CHANNEL_FLAG_SUSPEND, 0, 100));
+  REQUIRE(partial.guard.receive(1006, nullptr, 0, CHANNEL_FLAG_RESUME, 0, 2000));
+  REQUIRE_FALSE(partial.receive(data, CHANNEL_FLAG_ONLY, 4, 2001));
+  REQUIRE(partial.calls == 2);
+  REQUIRE(partial.guard.stats().audio.abandoned == 1);
+  Fixture legacy(true);
+  const BYTE info[]{2, 0, 16, 0, 1, 0, 0, 0, 1, 0, 0, 0, 10, 11, 12, 13};
+  REQUIRE(legacy.guard.receive(1006, info, sizeof(info), CHANNEL_FLAG_ONLY, sizeof(info), 1));
+  REQUIRE(legacy.guard.stats().audio.awaiting_wave);
+  REQUIRE(legacy.guard.receive(1006, nullptr, 0, CHANNEL_FLAG_RESUME, 0, 2000));
+  REQUIRE_FALSE(legacy.guard.poll(2001));
+  REQUIRE(legacy.calls == 2);
+  REQUIRE(legacy.guard.stats().audio.abandoned == 1);
+}
+TEST_CASE("Public static RDPSND retirement preserves callback borrow and prevents replay") {
+  for (const auto mode :
+       {Fixture::Reentry::close, Fixture::Reentry::receive, Fixture::Reentry::poll}) {
+    Fixture f(true);
+    f.reentry = mode;
+    REQUIRE_FALSE(
+        f.guard.receive(1006, volume, sizeof(volume), CHANNEL_FLAG_ONLY, sizeof(volume), 1));
+    REQUIRE(f.copied == std::vector<BYTE>(std::begin(volume), std::end(volume)));
+    REQUIRE(f.guard.stats().audio.stored_bytes == 0);
+    REQUIRE(f.guard.stats().closed);
+    REQUIRE(f.guard.stats().failed == (mode != Fixture::Reentry::close));
+    REQUIRE_FALSE(
+        f.guard.receive(1006, volume, sizeof(volume), CHANNEL_FLAG_ONLY, sizeof(volume), 2));
+    REQUIRE(f.calls == 1);
+  }
+}
+TEST_CASE("Public static RDPSND resolution refuses migration and channel identity aliases") {
+  Fixture f(true);
+  REQUIRE(f.guard.receive(1006, volume, sizeof(volume), CHANNEL_FLAG_ONLY, sizeof(volume), 1));
+  f.audio_resolved = 1007;
+  REQUIRE_FALSE(f.receive(data));
+  REQUIRE(f.calls == 1);
+  Fixture alias(true);
+  alias.audio_resolved = 1004;
+  REQUIRE_FALSE(alias.receive(data));
+  REQUIRE(alias.calls == 0);
 }
