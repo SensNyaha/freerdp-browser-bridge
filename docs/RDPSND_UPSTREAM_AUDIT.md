@@ -23,7 +23,13 @@ gateway, codec, cryptographic and transport paths. Those earlier allocations and
 actual hostile/lost-transport verification remain retained requirements. The
 pinned static RDPSND channel requests initialized/encrypted options without static
 channel compression; the bridge rejects unsupported raw compression flags.
-Dynamic RDPSND remains refused. The existing 64 KiB/4,096-fragment, fixed format
+At the original audit, dynamic RDPSND was refused. Iteration 163 preserves the
+pinned automatic static/dynamic `rdpsnd,sys:fake` fallback when audio is off;
+its subsystem lookup has a device ABI, not a DVC plugin ABI. The fake backend
+does not capture or play host audio. That fallback is not the guarded browser
+PCM path: earlier assembly, format-table and stream-pool bounds require their
+own receive placement. [Isolated complete-message owner](AUDIO_SVC_INGRESS.md).
+The existing 64 KiB/4,096-fragment, fixed format
 table, supported PCM, whole-frame/100 ms and DSP policy guards remain necessary.
 
 ## Completion and final callback ownership

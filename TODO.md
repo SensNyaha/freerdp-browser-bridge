@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Isolated complete RDPSND owner composes fixed 64 KiB /
+  4,096-fragment assembly and bounded PDU validation with one nonrenewing deadline
+  over fragments and legacy WaveInfo/Wave. Nine portable cases / 8,358 assertions,
+  foundation CTest 9/9 and bundled 21/21 pass. Automatic audio-off fake fallback
+  placement, core/pool/remote/platform/fuzz/soak gates remain open; no worker
+  callback is installed by this block. [Iteration 166](docs/ITERATION_166.md).
+
 - [~] IN PROGRESS — Production Graphics completion now owns bounded decoded
   batch inspection before original metadata parsing, preserves pending-close
   borrows and consumes zero-output messages before the pinned null-buffer
