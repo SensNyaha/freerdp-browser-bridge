@@ -7,6 +7,8 @@ export default tseslint.config(
       'build/**',
       '.tools/**',
       '.deps/**',
+      '.local-tests/**',
+      '.runtime/**',
       '**/node_modules/**',
     ],
   },

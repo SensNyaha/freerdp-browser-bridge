@@ -3,6 +3,8 @@ dist
 build
 .tools
 .deps
+.local-tests
+.runtime
 pnpm-lock.yaml
 *.md
 native

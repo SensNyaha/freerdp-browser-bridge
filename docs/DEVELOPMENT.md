@@ -77,6 +77,13 @@ node examples/lifecycle.mjs
 pnpm --filter @freerdp-bridge/api start
 ```
 
+Lint/format exclude `.local-tests` and `.runtime`. The format commands name the
+maintained source roots (`apps`, `packages`, `scripts`, `tests`, `examples`,
+`.github`) and root configuration/code files explicitly, so Prettier does not
+walk private development directories even when their ACL denies enumeration.
+Add a new source root to both format commands when introducing one. This does
+not change directory permissions or the native clang-format workflow.
+
 API listens on localhost:8080 and exposes /healthz, /readyz, /v1/build and /v1/capabilities.
 Foundation readiness means the native lifecycle executable can be started and negotiated,
 not that an RDP connection can be created. RDP is reported false.
