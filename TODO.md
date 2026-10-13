@@ -1075,6 +1075,9 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   startup, trusted parent, cancellation/cleanup, packaging and actual multi-user/
   service isolation remain open. Traces to ARCHITECTURE §2 and SECURITY §2/6.
   [Iteration 170](docs/ITERATION_170.md).
+  The native helper is now installed beside the worker; three actual process
+  cases and explicit relocated helper execution pass with minimal PATH.
+  WorkerProcess still does not select it. [Iteration 171](docs/ITERATION_171.md).
 - [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
 - [~] IN PROGRESS — Registry now retains capacity through native forced-termination completion with a separate bounded deadline; filesystem/HELLO cancellation guards prevent late spawn/readiness. Pure completion/fault tests, compiled fake-worker/native-adapter join and actual linked unsupported-config cleanup pass. Forced-deadline expiry, legacy void backends, OS/filesystem failures and orphan acceptance remain open. [Evidence](docs/ITERATION_056.md). Observed race: [iteration 55](docs/ITERATION_055.md), `46245b2`.
 - [~] IN PROGRESS — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Windows native ZIP and relocation are verified; [manual bundled CI](.github/workflows/bundled-native.yml) is prepared, not run. Linux, Node.js distribution, MSI/EXE/DEB/RPM installer integration and clean-machine tests remain open.

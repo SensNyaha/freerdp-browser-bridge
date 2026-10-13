@@ -36,3 +36,6 @@ per-session isolation between processes using the same Windows account.
 API authority: Microsoft documents [creation-time file/directory security](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights),
 [protected DACL control](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-setsecuritydescriptorcontrol)
 and [handle-based persistent ACL capability](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew).
+
+Iteration 171 adds the [packaged internal CLI](WINDOWS_DIRECTORY_HELPER.md)
+and verifies its process/relocation behavior. Production startup remains open.

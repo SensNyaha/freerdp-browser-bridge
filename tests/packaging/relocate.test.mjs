@@ -25,6 +25,27 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     await cp(source, relocated, { recursive: true });
     const files = await readdir(relocated, { recursive: true });
     assert.ok(files.every((file) => !/\.(pdb|obj|lib)$/i.test(file)));
+    if (windows) {
+      const directory = join(temporary, 'приватный runtime с пробелами');
+      const creation = await promisify(execFile)(
+        join(relocated, 'bin', 'rdp-runtime-directory.exe'),
+        ['--create-private-directory', directory],
+        {
+          env,
+          cwd: temporary,
+          windowsHide: true,
+          timeout: 5000,
+          maxBuffer: 128,
+        },
+      );
+      assert.equal(creation.stderr, '');
+      assert.deepEqual(JSON.parse(creation.stdout), {
+        v: 1,
+        created: true,
+        error: 0,
+      });
+      assert.deepEqual(await readdir(directory), []);
+    }
     const probe = await promisify(execFile)(
       join(relocated, 'bin', 'rdp-runtime-check' + suffix),
       [],
