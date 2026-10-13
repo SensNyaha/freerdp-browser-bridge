@@ -1,4 +1,5 @@
 #include "dvc_completion_hook.hpp"
+#include "gfx_message_gate.hpp"
 #include <exception>
 #include <stdexcept>
 #include <type_traits>
@@ -11,10 +12,12 @@ DvcCompletionHook::DvcCompletionHook(DvcMessageBudget &budget, std::uint32_t cha
                                      void *clock_context, bool gfx_zgfx,
                                      DvcAllocationLimits allocations)
     : box_{{}, this}, budget_(budget), channel_(channel), original_(&original), clock_(clock),
-      clock_context_(clock_context), gfx_zgfx_(gfx_zgfx), allocations_(allocations) {
+      clock_context_(clock_context) {
   static_assert(std::is_standard_layout_v<Box>);
   if (!clock || !original.OnDataReceived || !allocations.valid())
     throw std::invalid_argument("Invalid DVC completion hook");
+  if (gfx_zgfx)
+    graphics_ = std::make_unique<media::GfxMessageGate>(allocations);
   box_.api.OnOpen = on_open;
   box_.api.OnDataReceived = on_data;
   box_.api.OnClose = on_close;
@@ -75,13 +78,8 @@ UINT DvcCompletionHook::on_data(IWTSVirtualChannelCallback *p, wStream *stream) 
   self.busy_ = true;
   UINT status = CHANNEL_RC_OK;
   try {
-    const auto size = Stream_GetRemainingLength(stream);
-    const auto *bytes = static_cast<const BYTE *>(Stream_ConstPointer(stream));
-    if (self.gfx_zgfx_ &&
-        ((!bytes && size) || !inspect_zgfx_allocations({bytes, size}, self.allocations_)))
-      status = ERROR_INVALID_DATA;
-    else
-      status = self.original_->OnDataReceived(self.original_, stream);
+    status = self.graphics_ ? self.graphics_->forward(*self.original_, *stream)
+                            : self.original_->OnDataReceived(self.original_, stream);
   } catch (...) {
     status = ERROR_INTERNAL_ERROR;
   }
@@ -109,6 +107,8 @@ UINT DvcCompletionHook::finish_close() noexcept {
   closing_ = closed_ = true;
   busy_ = true;
   UINT status = CHANNEL_RC_OK;
+  if (graphics_ && graphics_->retire() != CHANNEL_RC_OK)
+    (void)fault();
   try {
     if (callback)
       status = callback(original);

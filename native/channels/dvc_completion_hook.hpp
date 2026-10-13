@@ -1,6 +1,11 @@
 #pragma once
 #include "dvc_message_budget.hpp"
 #include <freerdp/dvc.h>
+#include <memory>
+
+namespace bridge::media {
+class GfxMessageGate;
+}
 
 namespace bridge::channels {
 // Public callback proxy only. The caller must retain this proxy and budget until
@@ -28,8 +33,7 @@ private:
   IWTSVirtualChannelCallback *original_;
   const Clock clock_;
   void *const clock_context_;
-  const bool gfx_zgfx_;
-  const DvcAllocationLimits allocations_;
+  std::unique_ptr<media::GfxMessageGate> graphics_;
   bool published_ = false, busy_ = false, closing_ = false, closed_ = false, failed_ = false;
   UINT close_status_ = 0;
   static DvcCompletionHook &owner(IWTSVirtualChannelCallback *) noexcept;

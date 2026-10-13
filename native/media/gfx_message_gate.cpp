@@ -13,8 +13,6 @@ void append(std::vector<BYTE> &bytes, std::uint32_t value, unsigned count) {
     bytes.push_back(static_cast<BYTE>(value >> (8U * i)));
 }
 std::vector<BYTE> literal(std::span<const BYTE> decoded) {
-  if (decoded.empty())
-    return {ZGFX_SEGMENTED_MULTIPART, 0, 0, 0, 0, 0, 0};
   constexpr std::size_t segment = ZGFX_SEGMENTED_MAXSIZE;
   const auto count = (decoded.size() + segment - 1U) / segment;
   std::vector<BYTE> bytes;
@@ -64,6 +62,8 @@ UINT GfxMessageGate::process(IWTSVirtualChannelCallback &target, wStream &stream
     return ERROR_INVALID_DATA;
   if (retiring_ || failed_)
     return ERROR_INVALID_STATE;
+  if (!size)
+    return CHANNEL_RC_OK; // Pinned rdpgfx creates a static stream from null zero-output storage.
   // The original decoder receives only literal segments. Independent ingress dictionary
   // progression stays with this owner; no private SDK parser/ABI is used.
   auto forwarded = literal({raw, size});

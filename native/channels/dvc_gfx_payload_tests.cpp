@@ -1,5 +1,6 @@
 #include "dvc_channel_registry.hpp"
 #include "gfx_pdu_admission.hpp"
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
 #include <freerdp/channels/rdpgfx.h>
@@ -36,7 +37,8 @@ struct Fixture {
   bool throw_name = false;
   unsigned deliveries = 0, closes = 0;
   std::vector<BYTE> output;
-  const BYTE *observed = nullptr;
+  const BYTE *input = nullptr;
+  bool copied = false;
   explicit Fixture(DvcAllocationLimits limits = {}) : registry(clock, nullptr, {}, limits) {
     if (!codec)
       throw std::runtime_error("Missing public ZGFX fixture codec");
@@ -51,10 +53,11 @@ struct Fixture {
     target.OnDataReceived = [](IWTSVirtualChannelCallback *p, wStream *stream) -> UINT {
       auto &f = *static_cast<Fixture *>(p->pInterface);
       ++f.deliveries;
-      f.observed = static_cast<const BYTE *>(Stream_ConstPointer(stream));
+      const auto *observed = static_cast<const BYTE *>(Stream_ConstPointer(stream));
+      f.copied = observed != f.input;
       BYTE *decoded = nullptr;
       UINT32 length = 0;
-      const auto status = zgfx_decompress(f.codec.get(), f.observed,
+      const auto status = zgfx_decompress(f.codec.get(), observed,
                                           static_cast<UINT32>(Stream_GetRemainingLength(stream)),
                                           &decoded, &length, 0);
       const std::unique_ptr<BYTE, decltype(&std::free)> allocation(decoded, std::free);
@@ -89,21 +92,23 @@ struct Fixture {
     auto *borrow = Stream_StaticConstInit(&stream, bytes.data(), bytes.size());
     if (!borrow)
       return ERROR_INVALID_PARAMETER;
+    input = bytes.data();
     const auto status = proxy->OnDataReceived(proxy, borrow);
+    input = nullptr;
     REQUIRE(Stream_GetPosition(borrow) == 0);
     return status;
   }
 };
 } // namespace
 TEST_CASE(
-    "Named graphics DVC inspects nested ZGFX before actual public decoder and preserves stream") {
+    "Named graphics DVC inspects decoded GFX before actual public decoder and preserves input") {
   Fixture f;
   REQUIRE(f.bind() == CHANNEL_RC_OK);
-  const BYTE raw[]{0xe0, 4, 'a', 'b', 'c'};
+  const BYTE raw[]{0xe0, 4, 19, 0, 0, 0, 20, 0, 0, 0, 4, 0, 8, 0, 4, 0, 0, 0, 0, 0, 0, 0};
   REQUIRE(f.data(raw) == CHANNEL_RC_OK);
   REQUIRE(f.deliveries == 1);
-  REQUIRE(f.observed == raw);
-  REQUIRE(f.output == std::vector<BYTE>{'a', 'b', 'c'});
+  REQUIRE(f.copied);
+  REQUIRE(f.output == std::vector<BYTE>(std::begin(raw) + 2, std::end(raw)));
   REQUIRE(f.registry.stats().budget.releases == 1);
   REQUIRE_FALSE(f.registry.stats().failed);
 }
@@ -139,26 +144,44 @@ TEST_CASE("Named graphics DVC honors trusted smaller nested output budget before
   REQUIRE(f.data(raw) == ERROR_INVALID_DATA);
   REQUIRE(f.deliveries == 0);
 }
-TEST_CASE("Named graphics DVC preserves a legitimate twelve MiB multipart codec payload") {
+TEST_CASE("Named graphics DVC preserves a twelve MiB two-command literal graphics batch") {
   Fixture f;
   REQUIRE(f.bind() == CHANNEL_RC_OK);
-  constexpr UINT32 length = 12U * 1024U * 1024U;
-  constexpr UINT32 segment_bytes = 65536;
-  constexpr UINT32 count = length / segment_bytes;
+  constexpr UINT32 bitmap_length = 6U * 1024U * 1024U;
+  constexpr UINT32 length = 2U * (25U + bitmap_length);
+  std::vector<BYTE> decoded(length, 0x5a);
+  for (UINT32 index = 0; index < 2; ++index) {
+    const auto at = static_cast<std::size_t>(index) * (25U + bitmap_length);
+    std::fill(decoded.begin() + at, decoded.begin() + at + 25, 0);
+    const auto put = [&](std::size_t offset, UINT32 value, unsigned width = 4) {
+      for (unsigned i = 0; i < width; ++i)
+        decoded[at + offset + i] = static_cast<BYTE>(value >> (i * 8U));
+    };
+    put(0, 1, 2);
+    put(4, 25U + bitmap_length);
+    put(8, index, 2);
+    decoded[at + 12] = 0x21;
+    put(17, 1536, 2);
+    put(19, 1024, 2);
+    put(21, bitmap_length);
+  }
+  constexpr UINT32 segment_bytes = 65535;
+  constexpr UINT32 count = (length + segment_bytes - 1U) / segment_bytes;
   std::vector<BYTE> encoded{0xe1, static_cast<BYTE>(count), static_cast<BYTE>(count >> 8)};
   for (unsigned at = 0; at < 4; ++at)
     encoded.push_back(static_cast<BYTE>(length >> (8 * at)));
   for (UINT32 index = 0; index < count; ++index) {
+    const auto offset = static_cast<std::size_t>(index) * segment_bytes;
+    const auto size = (std::min)(static_cast<std::size_t>(segment_bytes), decoded.size() - offset);
     for (unsigned at = 0; at < 4; ++at)
-      encoded.push_back(static_cast<BYTE>((segment_bytes + 1) >> (8 * at)));
+      encoded.push_back(static_cast<BYTE>((size + 1) >> (8 * at)));
     encoded.push_back(4);
-    encoded.insert(encoded.end(), segment_bytes, 0x5a);
+    encoded.insert(encoded.end(), decoded.begin() + offset, decoded.begin() + offset + size);
   }
   REQUIRE(f.data(encoded) == CHANNEL_RC_OK);
   REQUIRE(f.deliveries == 1);
   REQUIRE(f.output.size() == length);
-  REQUIRE(f.output.front() == 0x5a);
-  REQUIRE(f.output.back() == 0x5a);
+  REQUIRE(f.output == decoded);
   REQUIRE(f.registry.stats().budget.releases == 1);
 }
 TEST_CASE("Graphics payload classification uses exact public DVC name rather than addin name") {
@@ -182,7 +205,7 @@ TEST_CASE("Public DVC channel name failure cannot publish a graphics proxy with 
     REQUIRE(f.closes == 0); // Direct rejected bind leaves original callback with caller.
   }
 }
-TEST_CASE("Prepared GFX metadata admission inspects actual public ZGFX decoded output") {
+TEST_CASE("Named GFX metadata admission rejects excessive claims before original callback") {
   const BYTE caps[]{0xe0, 4, 19, 0, 0, 0, 20, 0, 0, 0, 4, 0, 8, 0, 4, 0, 0, 0, 0, 0, 0, 0};
   Fixture valid;
   REQUIRE(valid.bind() == CHANNEL_RC_OK);
@@ -196,7 +219,7 @@ TEST_CASE("Prepared GFX metadata admission inspects actual public ZGFX decoded o
   invalid.insert(invalid.end(), {0xff, 0xff, 0xff, 0xff});
   Fixture malformed;
   REQUIRE(malformed.bind() == CHANNEL_RC_OK);
-  REQUIRE(malformed.data(invalid) == CHANNEL_RC_OK); // Valid ZGFX, opaque codec fixture.
-  REQUIRE_FALSE(bridge::media::admit_gfx_pdus(malformed.output));
-  REQUIRE(malformed.deliveries == 1); // No production metadata placement is claimed yet.
+  REQUIRE(malformed.data(invalid) == ERROR_INVALID_DATA); // Valid ZGFX, invalid GFX metadata.
+  REQUIRE(malformed.output.empty());
+  REQUIRE(malformed.deliveries == 0);
 }

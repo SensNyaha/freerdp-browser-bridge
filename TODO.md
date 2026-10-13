@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Production Graphics completion now owns bounded decoded
+  batch inspection before original metadata parsing, preserves pending-close
+  borrows and consumes zero-output messages before the pinned null-buffer
+  assertion. Public binding and actual rdpgfx/drdynvc/fake-SVC counter/lifetime
+  cases pass. Large literal CPU, total RSS, multiple-channel/remote/platform /
+  allocator/fuzzer/soak remain open. [Iteration 165](docs/ITERATION_165.md).
+
 - [~] IN PROGRESS — Isolated owner now decodes bounded ZGFX through public APIs,
   inspects each PDU before target metadata parsing and forwards only inspected
   literal segments with independent dictionary/borrow/retirement ownership.

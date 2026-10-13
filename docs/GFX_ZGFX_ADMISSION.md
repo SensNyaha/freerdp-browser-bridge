@@ -1,5 +1,9 @@
 # Nested graphics ZGFX admission
 
+Current Graphics dispatch: [iteration 165](GFX_MESSAGE_PLACEMENT.md) adds decoded
+PDU inspection and temporary literal forwarding. It preserves caller input but
+supersedes the original target-stream/no-copy contract recorded below.
+
 Iteration 160 implements SPECIFICATION §3.1/3.3 and ARCHITECTURE §11/12 after
 `d1efcac`. Pinned rdpgfx_on_data_received decompresses its own ZGFX stream before
 parsing graphics PDUs or invoking the bridge's public renderer callbacks. Outer

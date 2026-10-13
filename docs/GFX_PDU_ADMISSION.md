@@ -1,5 +1,9 @@
 # Prepared decoded GFX PDU admission
 
+Current placement: [iteration 165](GFX_MESSAGE_PLACEMENT.md) now invokes this
+inspector before original Graphics metadata parsing through the bounded decoded
+owner. The historical prepared-only status below records iteration 162.
+
 Iteration 162 implements the portable count/framing foundation of SPECIFICATION
 §3.1/3.3 and ARCHITECTURE §4/11 after `2d69844`. It does not activate another
 production receive adapter yet. Production nested ZGFX claim admission and

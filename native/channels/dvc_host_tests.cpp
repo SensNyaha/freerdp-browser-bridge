@@ -18,6 +18,8 @@
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
 #include <freerdp/client/cmdline.h>
+#include <freerdp/client/drdynvc.h>
+#include <freerdp/client/rdpgfx.h>
 #include <freerdp/svc.h>
 #include <memory>
 #include <stdexcept>
@@ -56,6 +58,7 @@ struct Host {
   bool scoped_registration = false;
   std::unique_ptr<DvcProvider> dvc_provider;
   bool actual_gfx = false;
+  RdpgfxClientContext *graphics_context = nullptr;
   UINT plugin_registry_retirement_status = CHANNEL_RC_OK;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
@@ -296,14 +299,27 @@ struct Host {
     points.protocolVersion = VIRTUAL_CHANNEL_VERSION_WIN2000;
     points.MagicNumber = FREERDP_CHANNEL_MAGIC_NUMBER;
     points.context = context.get();
-    points.pVirtualChannelInitEx = [](LPVOID user, LPVOID, LPVOID handle, PCHANNEL_DEF definitions,
-                                      INT count, ULONG,
+    points.pVirtualChannelInitEx = [](LPVOID user, LPVOID client_interface, LPVOID handle,
+                                      PCHANNEL_DEF definitions, INT count, ULONG,
                                       PCHANNEL_INIT_EVENT_EX_FN callback) -> UINT {
       auto &host = *static_cast<Host *>(handle);
       if (count != 1 || std::strcmp(definitions->name, "drdynvc") != 0)
         return ERROR_INVALID_PARAMETER;
       host.plugin = user;
       host.init = callback;
+      if (host.actual_gfx) {
+        auto *dynamic_context = static_cast<DrdynvcClientContext *>(client_interface);
+        if (!dynamic_context)
+          return ERROR_INVALID_DATA;
+        dynamic_context->custom = &host;
+        dynamic_context->OnChannelConnected = [](DrdynvcClientContext *ctx, const char *name,
+                                                 void *value) -> UINT {
+          if (name && std::strcmp(name, RDPGFX_DVC_CHANNEL_NAME) == 0)
+            static_cast<Host *>(ctx->custom)->graphics_context =
+                static_cast<RdpgfxClientContext *>(value);
+          return CHANNEL_RC_OK;
+        };
+      }
       return CHANNEL_RC_OK;
     };
     points.pVirtualChannelOpenEx = [](LPVOID handle, LPDWORD result, PCHAR name,
@@ -368,6 +384,13 @@ struct Host {
     (void)provider.close();
     active = nullptr;
   }
+  std::uint64_t graphics_wire_commands() {
+    REQUIRE(graphics_context);
+    for (std::size_t index = 0; index < rdpgfx_stats_max_index(); ++index)
+      if (std::strcmp(rdpgfx_stats_name_for_index(index), "RDPGFX_CMDID_WIRETOSURFACE_1") == 0)
+        return rdpgfx_stats_value_for_index(graphics_context, index);
+    throw std::runtime_error("Missing pinned public graphics command statistic");
+  }
   void shutdown() noexcept {
     if (guard)
       guard->close();
@@ -378,6 +401,7 @@ struct Host {
         init(plugin, this, CHANNEL_EVENT_DISCONNECTED, nullptr, 0);
       init(plugin, this, CHANNEL_EVENT_TERMINATED, nullptr, 0);
       plugin = nullptr;
+      graphics_context = nullptr;
       connected = false;
     }
     if (registry)
@@ -866,4 +890,91 @@ TEST_CASE(
     REQUIRE(host.registry->stats().resources_retired);
     REQUIRE(host.plugin_registry->stats().host_unpublished);
   }
+}
+TEST_CASE("Actual pinned rdpgfx metadata dispatch advances only for a complete admitted PDU") {
+  Host host(false, true, false, false, false, false, false, false, true, true);
+  REQUIRE(host.graphics_wire_commands() == 0);
+  std::vector<BYTE> pdu(44);
+  const auto put = [&](std::vector<BYTE> &bytes, std::size_t at, UINT32 value, unsigned width = 4) {
+    for (unsigned i = 0; i < width; ++i)
+      bytes[at + i] = static_cast<BYTE>(value >> (8U * i));
+  };
+  put(pdu, 0, 1, 2);
+  put(pdu, 4, static_cast<UINT32>(pdu.size()));
+  put(pdu, 10, 11, 2);
+  pdu[12] = 0x21;
+  put(pdu, 17, 64, 2);
+  put(pdu, 19, 32, 2);
+  put(pdu, 21, 19);
+  put(pdu, 25, 1);
+  put(pdu, 33, 64, 2);
+  put(pdu, 35, 32, 2);
+  pdu[37] = 20;
+  pdu[38] = 90;
+  pdu[41] = 1;
+  pdu[42] = 0x41;
+  pdu[43] = 0x80; // Synthetic opaque slice; this fixture has no renderer/AVC decoder.
+  std::vector<BYTE> encoded{0xe0, 4};
+  encoded.insert(encoded.end(), pdu.begin(), pdu.end());
+  REQUIRE(host.send(first(2, 0x42, static_cast<UINT32>(encoded.size()), encoded)));
+  REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.graphics_wire_commands() == 1);
+  REQUIRE_FALSE(host.registry->stats().failed);
+  std::vector<BYTE> bad(29 + 1025 * 10 + 5);
+  put(bad, 0, 1, 2);
+  put(bad, 4, static_cast<UINT32>(bad.size()));
+  put(bad, 10, 11, 2);
+  bad[12] = 0x21;
+  put(bad, 21, static_cast<UINT32>(bad.size() - 25));
+  put(bad, 25, 1025);
+  encoded = {0xe0, 4};
+  encoded.insert(encoded.end(), bad.begin(), bad.end());
+  REQUIRE(host.send(first(2, 0x42, static_cast<UINT32>(encoded.size()), encoded)));
+  REQUIRE(host.graphics_wire_commands() == 1); // Refused before original rdpgfx_recv_pdu.
+  REQUIRE_FALSE(host.registry->poll(host.now_ms));
+  REQUIRE(host.registry->stats().budget.reserved_bytes == 0);
+  REQUIRE(host.registry->stats().budget.releases == 2);
+  host.shutdown();
+  REQUIRE(host.registry->stats().resources_retired);
+  REQUIRE(host.plugin_registry->stats().host_unpublished);
+}
+TEST_CASE("Actual pinned rdpgfx cannot borrow following PDU bytes before metadata allocation") {
+  Host host(false, true, false, false, false, false, false, false, true, true);
+  REQUIRE(host.graphics_wire_commands() == 0);
+  std::vector<BYTE> decoded(29);
+  decoded[0] = 1;
+  decoded[4] = 29;
+  decoded[10] = 11;
+  decoded[12] = 0x21;
+  decoded[21] = 4;
+  decoded[25] = 1; // Its claimed rectangle/quantizer could fit only across the next PDU.
+  const BYTE next[]{19, 0, 0, 0, 20, 0, 0, 0, 4, 0, 8, 0, 4, 0, 0, 0, 0, 0, 0, 0};
+  decoded.insert(decoded.end(), std::begin(next), std::end(next));
+  std::vector<BYTE> encoded{0xe0, 4};
+  encoded.insert(encoded.end(), decoded.begin(), decoded.end());
+  REQUIRE(host.send(first(2, 0x42, static_cast<UINT32>(encoded.size()), encoded)));
+  REQUIRE(host.graphics_wire_commands() == 0);
+  REQUIRE_FALSE(host.registry->poll(host.now_ms));
+  REQUIRE(host.registry->stats().budget.releases == 1);
+  host.shutdown();
+  REQUIRE(host.registry->stats().resources_retired);
+  REQUIRE(host.plugin_registry->stats().host_unpublished);
+}
+TEST_CASE(
+    "Actual pinned rdpgfx zero-output input is consumed without null static stream creation") {
+  Host host(false, true, false, false, false, false, false, false, true, true);
+  for (const auto &encoded :
+       std::vector<std::vector<BYTE>>{{0xe1, 0, 0, 0, 0, 0, 0}, {0xe0, 0x24, 0}}) {
+    REQUIRE(host.send(first(2, 0x42, static_cast<UINT32>(encoded.size()), encoded)));
+    REQUIRE(host.graphics_wire_commands() == 0);
+    REQUIRE_FALSE(host.registry->stats().failed);
+    REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  }
+  const BYTE packet[]{0xe0, 4, 19, 0, 0, 0, 20, 0, 0, 0, 4, 0, 8, 0, 4, 0, 0, 0, 0, 0, 0, 0};
+  REQUIRE(host.send(first(2, 0x42, sizeof(packet), packet)));
+  REQUIRE_FALSE(host.registry->stats().failed);
+  REQUIRE(host.registry->stats().budget.releases == 3);
+  host.shutdown();
+  REQUIRE(host.registry->stats().resources_retired);
+  REQUIRE(host.plugin_registry->stats().host_unpublished);
 }

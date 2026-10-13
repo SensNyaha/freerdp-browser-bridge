@@ -73,6 +73,13 @@ open rather than inferred from these guards.
 
 ## Build and acceptance limits
 
+Iteration 165 selects [decoded-message admission](GFX_MESSAGE_PLACEMENT.md)
+before the original graphics metadata parser, retaining all existing public
+surface/SPS and declaration limits. Valid zero-output messages are consumed
+without entering the pinned null-buffer static-stream path. Additional bounded
+dictionary/copy/CPU costs are documented; total memory/performance and broader
+remote GFX acceptance remain open.
+
 Iteration 160 adds [nested ZGFX admission](GFX_ZGFX_ADMISSION.md) before the
 actual graphics DVC decoder callback through the public scoped ownership chain.
 The earlier preallocation gap is now covered for bounded ZGFX allocation claims;

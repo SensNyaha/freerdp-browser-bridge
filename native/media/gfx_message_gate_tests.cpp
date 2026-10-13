@@ -184,7 +184,7 @@ TEST_CASE("Isolated GFX message owner preserves zero-output messages without met
   REQUIRE(f.decoded.empty());
   REQUIRE(f.data(compressed({})) == CHANNEL_RC_OK);
   REQUIRE(f.decoded.empty());
-  REQUIRE(f.calls == 2);
+  REQUIRE(f.calls == 0); // Empty decoded batches cannot enter pinned rdpgfx's null stream init.
   REQUIRE(f.data(compressed(caps)) == CHANNEL_RC_OK);
   REQUIRE(f.data(history_caps()) == CHANNEL_RC_OK);
   REQUIRE(f.decoded == caps);

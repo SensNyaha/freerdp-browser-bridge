@@ -1,5 +1,11 @@
 # Isolated decoded GFX message owner
 
+Current selection: [iteration 165 production placement](GFX_MESSAGE_PLACEMENT.md)
+supersedes this historical isolated activation state and forwarded zero-output
+behavior. Valid zero-output messages are now consumed before the original parser
+to avoid its pinned WinPR null-buffer assertion. Storage/cost/lifetime findings
+below remain relevant.
+
 Iteration 164 implements SPECIFICATION §3.1/3.3 and ARCHITECTURE §4/11/12 after
 `a6c60e2`, composing the already verified ZGFX claim and decoded-PDU inspectors.
 The module is tested independently and is not selected by production callbacks
