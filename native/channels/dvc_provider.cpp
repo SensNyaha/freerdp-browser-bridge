@@ -39,7 +39,9 @@ PVIRTUALCHANNELENTRY DvcProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR typ
                                        DWORD flags) noexcept {
   auto *self = active_.load();
   const auto refused = std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(denied));
-  const bool dynamic = (flags & FREERDP_ADDIN_CHANNEL_DYNAMIC) != 0;
+  // Pinned dynamic rdpsnd also uses this flag for device entrypoints. A subsystem/type
+  // selects a different ABI, which must remain with the previous scoped provider.
+  const bool dynamic = (flags & FREERDP_ADDIN_CHANNEL_DYNAMIC) != 0 && !subsystem && !type;
   if (!self || !self->on_thread() || !self->scope_.active() || self->loading_ ||
       !self->scope_.previous())
     return dynamic ? refused : nullptr;

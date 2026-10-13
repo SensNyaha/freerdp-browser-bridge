@@ -60,6 +60,14 @@ const options = {
   runtimeRoot: resolve('.runtime/viewer-lab'),
 };
 const nativeWorker = new NativeSessionWorker(options);
+let nativeState = 'created';
+let nativeFailure;
+const releaseNativeState = nativeWorker.onState((state) => {
+  nativeState = state;
+});
+const releaseNativeFailure = nativeWorker.onFailure((code) => {
+  nativeFailure = /^[A-Z_]{1,64}$/.test(code ?? '') ? code : 'UNCLASSIFIED';
+});
 let cursorUpdates = 0,
   nativeCursorShapes = 0,
   lastCursorId = 0n;
@@ -594,12 +602,22 @@ try {
   const stats = await page
     ?.evaluate(() => window.bridgeViewer?.stats)
     .catch(() => undefined);
-  console.error(JSON.stringify({ type: 'lab.browser.failure', phase, stats }));
+  console.error(
+    JSON.stringify({
+      type: 'lab.browser.failure',
+      phase,
+      stats,
+      nativeState,
+      nativeFailure,
+    }),
+  );
   console.error(
     'Local XRDP browser check failed; credentials and raw diagnostics omitted',
   );
   process.exitCode = 1;
 } finally {
+  releaseNativeState();
+  releaseNativeFailure();
   delete credentials.password;
   if (restoreNeeded) {
     let result;

@@ -26,6 +26,8 @@ struct Fixture {
   char *values[1]{name};
   ADDIN_ARGV args{1, values};
   unsigned loads = 0, enters = 0;
+  DWORD last_flags = 0;
+  const char *last_subsystem = nullptr, *last_type = nullptr;
   bool wrong_context = false;
   static inline thread_local Fixture *active = nullptr;
   Fixture() {
@@ -70,9 +72,12 @@ struct Fixture {
     ++active->enters;
     return ERROR_ACCESS_DENIED; // No plugin allocation/transfer in this fixture.
   }
-  static PVIRTUALCHANNELENTRY load(LPCSTR name, LPCSTR, LPCSTR, DWORD flags) {
+  static PVIRTUALCHANNELENTRY load(LPCSTR name, LPCSTR subsystem, LPCSTR type, DWORD flags) {
     ++active->loads;
-    if (flags != FREERDP_ADDIN_CHANNEL_DYNAMIC)
+    active->last_flags = flags;
+    active->last_subsystem = subsystem;
+    active->last_type = type;
+    if (subsystem || type || flags != FREERDP_ADDIN_CHANNEL_DYNAMIC)
       return static_entry;
     if (!name || std::strcmp(name, "missing") == 0)
       return nullptr;
@@ -116,6 +121,24 @@ TEST_CASE(
   REQUIRE(entry);
   REQUIRE(entry(nullptr) == ERROR_NOT_SUPPORTED);
   REQUIRE(f.enters == 0);
+}
+TEST_CASE("Scoped DVC provider preserves nested dynamic backend ABI and original selectors") {
+  Fixture f;
+  REQUIRE(f.provider.bind(*f.context) == CHANNEL_RC_OK);
+  const auto current = freerdp_get_current_addin_provider();
+  for (unsigned i = 0; i < 40; ++i) {
+    REQUIRE(current("rdpsnd", "fake", nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC) == static_entry);
+    REQUIRE(f.last_flags == FREERDP_ADDIN_CHANNEL_DYNAMIC);
+    REQUIRE(std::strcmp(f.last_subsystem, "fake") == 0);
+    REQUIRE(f.last_type == nullptr);
+  }
+  REQUIRE(current("fixture", nullptr, "decoder", FREERDP_ADDIN_CHANNEL_DYNAMIC) == static_entry);
+  REQUIRE(f.last_subsystem == nullptr);
+  REQUIRE(std::strcmp(f.last_type, "decoder") == 0);
+  REQUIRE(f.enters == 0);
+  REQUIRE(f.registry.stats().retained_plugins == 0);
+  REQUIRE(f.select("fixture")); // Backend lookups have not consumed the 32 DVC entry slots.
+  REQUIRE(f.provider.close() == CHANNEL_RC_OK);
 }
 TEST_CASE(
     "Scoped public DVC provider bounds fixed cached addin inventory before another delegate load") {

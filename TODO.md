@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Scoped DVC selection now distinguishes bare dynamic plugin
+  requests from subsystem/type backend ABIs sharing the DYNAMIC flag. This fixes
+  actual XRDP `rdpsnd,sys:fake` Open refusal with browser audio off, preserving
+  previous backend policy and strict DVC admission. Six provider cases and
+  restored H.264 resize/reattachment pass; fake-backend resource, actual audio,
+  remote GFX/platform/soak gates remain open. [Iteration 163](docs/ITERATION_163.md).
+
 - [~] IN PROGRESS — Portable decoded GFX batch inspection bounds each PDU before
   array/bitmap count checks, refusing cross-PDU borrowing and excessive AVC420
   metadata. Five portable and one public ZGFX-output cases pass; production

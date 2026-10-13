@@ -11,6 +11,15 @@ thunk with the original addin; foreign thread, reentrant DVC selection and stale
 entry calls are refused. Nested synchronous device loading still uses the previous
 provider during DVC entry. No arbitrary external/multi-plugin addins are accepted.
 
+Iteration 163 corrects the earlier flag-only ABI classification: pinned dynamic
+RDPSND uses the same DYNAMIC flag for subsystem device entrypoints. Requests with
+subsystem/type selectors retain the previous provider and exact flags; only bare
+dynamic plugin requests use this DVC registry. The actual XRDP audio-off profile
+can load the pinned `sys:fake` fallback through RDPDR/network feature dependencies.
+This fixes an Open refusal without changing backend/capture policy. Earlier
+synthetic other-ABI coverage used flags 0 and missed this case.
+[Source audit and restored regression](ITERATION_163.md).
+
 The worker now owns a channel registry and plugin registry before its context
 member, preserving wrappers through context destruction. The receive guard's
 complete-message delegate reserves known live DATA_FIRST declarations before
