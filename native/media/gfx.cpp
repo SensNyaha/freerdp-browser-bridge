@@ -1,4 +1,5 @@
 #include "gfx.hpp"
+#include "avc_admission.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <freerdp/settings.h>
@@ -202,6 +203,12 @@ UINT Gfx::command(RdpgfxClientContext *context, const RDPGFX_SURFACE_COMMAND *pd
           r.bottom > surface->height)
         return ERROR_INVALID_DATA;
     }
+    AvcDecodeLimits limits;
+    // OpenH264 allocates from coded macroblock dimensions before applying SPS cropping.
+    limits.width = (surface->width + 15U) & ~15U;
+    limits.height = (surface->height + 15U) & ~15U;
+    if (!admit_avc_decode({bs.data, bs.length}, limits))
+      return ERROR_INVALID_DATA;
   }
   return self->command_(context, pdu);
 }

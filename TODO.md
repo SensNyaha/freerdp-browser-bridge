@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Allocation-free complete Annex-B SPS/subset-SPS inspection
+  now bounds coded dimensions to the public GFX surface before AVC420 decoder
+  creation/dispatch. Profiles/scaling/POC/escape/UE and byte/NAL boundaries plus
+  actual private SDK prediction/refusal/recovery fixtures cover the new path.
+  Total reference/working memory, aggregate surfaces/RSS, remote GFX, platforms,
+  sanitizer/fuzzer and soak gates remain open. [Iteration 161](docs/ITERATION_161.md).
+
 - [~] IN PROGRESS — Exact public graphics DVC name selects nested ZGFX inspection
   before the codec callback; malformed/excessive output/count claims are refused
   without decode, with complete-message reservation release and owned close.

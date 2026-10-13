@@ -402,15 +402,14 @@ TEST_CASE("Public GFX AVC420 decodes IDR and predictive regions into the canonic
   std::array<BYTE, 6> corrupt{0, 0, 0, 1, 0x67, 0};
   changed.command.data = changed.stream.data = corrupt.data();
   changed.command.length = changed.stream.length = static_cast<UINT32>(corrupt.size());
-  REQUIRE(f.channel.SurfaceCommand(&f.channel, &changed.command) == CHANNEL_RC_OK);
-  // Pinned OpenH264 can return zero for an incomplete SPS. Upstream GDI then
-  // invalidates the region without new pixels; retain and test that behavior.
-  REQUIRE(f.dirty.revision() > revision);
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &changed.command) == ERROR_INVALID_DATA);
+  // Incomplete SPS now stops before the decoder/paint, preserving predictive ownership.
+  REQUIRE(f.dirty.revision() == revision);
   REQUIRE(f.pixels == pixels);
-  REQUIRE(f.paints == 3);
+  REQUIRE(f.paints == 2);
   AvcCommand recovery(encoder.encode({source, 64, 32, 64 * 4, 67666}, true), {0, 0, 64, 32});
   REQUIRE(f.channel.SurfaceCommand(&f.channel, &recovery.command) == CHANNEL_RC_OK);
-  REQUIRE(f.paints == 4);
+  REQUIRE(f.paints == 3);
   REQUIRE(f.dirty.revision() > revision);
   REQUIRE(std::abs(static_cast<int>(f.pixels[(9 * 80 + 7) * 4]) - 222) <= 5);
   REQUIRE(f.gfx.unbind());
@@ -418,7 +417,47 @@ TEST_CASE("Public GFX AVC420 decodes IDR and predictive regions into the canonic
   REQUIRE(f.create(0, 64, 32) == CHANNEL_RC_OK);
   REQUIRE(f.channel.MapSurfaceToOutput(&f.channel, &mapping) == CHANNEL_RC_OK);
   REQUIRE(f.channel.SurfaceCommand(&f.channel, &recovery.command) == CHANNEL_RC_OK);
-  REQUIRE(f.paints == 5); // Fresh surface/decoder accepts the config + IDR.
+  REQUIRE(f.paints == 4); // Fresh surface/decoder accepts the config + IDR.
+}
+TEST_CASE("GFX refuses oversized actual SDK SPS before decoder creation or prediction mutation") {
+  auto fixture = std::make_unique<Fixture>();
+  auto &f = *fixture;
+  REQUIRE(f.bind());
+  REQUIRE(f.create(0, 64, 32) == CHANNEL_RC_OK);
+  const RDPGFX_MAP_SURFACE_TO_OUTPUT_PDU mapping{0, 0, 0, 0};
+  REQUIRE(f.channel.MapSurfaceToOutput(&f.channel, &mapping) == CHANNEL_RC_OK);
+  const auto *surface = static_cast<gdiGfxSurface *>(f.channel.GetSurfaceData(&f.channel, 0));
+  SoftwareH264Encoder large_encoder;
+  std::vector<BYTE> large_source(128 * 64 * 4, 40);
+  AvcCommand large(large_encoder.encode({large_source, 128, 64, 128 * 4, 1000}, true),
+                   {0, 0, 64, 32});
+  const auto rejected = [&](AvcCommand &cmd) {
+    const auto revision = f.dirty.revision();
+    const auto pixels = f.pixels;
+    const auto paints = f.paints;
+    auto *decoder = surface->h264;
+    REQUIRE(f.channel.SurfaceCommand(&f.channel, &cmd.command) == ERROR_INVALID_DATA);
+    REQUIRE(surface->h264 == decoder);
+    REQUIRE(f.dirty.revision() == revision);
+    REQUIRE(f.pixels == pixels);
+    REQUIRE(f.paints == paints);
+  };
+  REQUIRE(surface->h264 == nullptr);
+  rejected(large);
+  SoftwareH264Encoder encoder;
+  std::vector<BYTE> source(64 * 32 * 4, 40);
+  AvcCommand initial(encoder.encode({source, 64, 32, 64 * 4, 1000}, true), {0, 0, 64, 32});
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &initial.command) == CHANNEL_RC_OK);
+  REQUIRE(surface->h264 != nullptr);
+  rejected(large);
+  // Scan all parameters before forwarding any of the unit, including a later replacement SPS.
+  initial.bytes.insert(initial.bytes.end(), large.bytes.begin(), large.bytes.end());
+  initial.command.data = initial.stream.data = initial.bytes.data();
+  initial.command.length = initial.stream.length = static_cast<UINT32>(initial.bytes.size());
+  rejected(initial);
+  AvcCommand predicted(encoder.encode({source, 64, 32, 64 * 4, 34333}, false), {0, 0, 64, 32});
+  REQUIRE(f.channel.SurfaceCommand(&f.channel, &predicted.command) == CHANNEL_RC_OK);
+  REQUIRE(f.paints == 2);
 }
 TEST_CASE("GFX AVC420 rejects malformed commands before allocating a decoder or mutating pixels") {
   auto fixture = std::make_unique<Fixture>();

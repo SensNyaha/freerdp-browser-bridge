@@ -49,6 +49,11 @@ SurfaceCommand additionally checks surface existence, 16-bit identifiers and an
 the bitstream range inside the command, bounded surface coordinates, at most
 1024 update rectangles and their required metadata pointers/geometry before
 upstream creates the surface decoder. AVC444/v2 commands return unsupported.
+Iteration 161 adds [SPS coded-dimension admission](AVC_DECODE_ADMISSION.md) before
+renderer/decoder dispatch: all SPS/subset SPS prefixes in the complete Annex-B
+unit must fit the surface's macroblock-rounded dimensions. Incomplete prefixes
+are refused before dirty invalidation. Reference/working memory and total RSS
+acceptance remain separate; this is not a full H.264 validator.
 These callbacks run after upstream DVC/ZGFX parsing and metadata allocation;
 they do not provide pre-allocation transport limits for those upstream layers.
 
@@ -100,7 +105,8 @@ decoder allocation, incomplete SPS behavior, IDR recovery and fresh decoder
 rebinding. Pixel checks account explicitly for the test encoder's limited-range
 luma versus RDP's full-range YUV conversion. Incomplete SPS can produce no new
 pixels yet still trigger an upstream invalidation; that pinned behavior is
-tested, not represented as a successful decoded update.
+tested historically, not represented as a successful decoded update. Iteration
+161 now refuses incomplete SPS before entering that upstream path.
 
 Real XRDP browser regression is recorded separately; it does not establish that
 XRDP negotiated GFX. A Windows/GFX server, AVC444/other compressed-codec fixtures,
