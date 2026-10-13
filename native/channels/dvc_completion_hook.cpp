@@ -3,15 +3,17 @@
 #include <stdexcept>
 #include <type_traits>
 #include <winpr/error.h>
+#include <winpr/stream.h>
 
 namespace bridge::channels {
 DvcCompletionHook::DvcCompletionHook(DvcMessageBudget &budget, std::uint32_t channel,
                                      IWTSVirtualChannelCallback &original, Clock clock,
-                                     void *clock_context)
+                                     void *clock_context, bool gfx_zgfx,
+                                     DvcAllocationLimits allocations)
     : box_{{}, this}, budget_(budget), channel_(channel), original_(&original), clock_(clock),
-      clock_context_(clock_context) {
+      clock_context_(clock_context), gfx_zgfx_(gfx_zgfx), allocations_(allocations) {
   static_assert(std::is_standard_layout_v<Box>);
-  if (!clock || !original.OnDataReceived)
+  if (!clock || !original.OnDataReceived || !allocations.valid())
     throw std::invalid_argument("Invalid DVC completion hook");
   box_.api.OnOpen = on_open;
   box_.api.OnDataReceived = on_data;
@@ -73,7 +75,13 @@ UINT DvcCompletionHook::on_data(IWTSVirtualChannelCallback *p, wStream *stream) 
   self.busy_ = true;
   UINT status = CHANNEL_RC_OK;
   try {
-    status = self.original_->OnDataReceived(self.original_, stream);
+    const auto size = Stream_GetRemainingLength(stream);
+    const auto *bytes = static_cast<const BYTE *>(Stream_ConstPointer(stream));
+    if (self.gfx_zgfx_ &&
+        ((!bytes && size) || !inspect_zgfx_allocations({bytes, size}, self.allocations_)))
+      status = ERROR_INVALID_DATA;
+    else
+      status = self.original_->OnDataReceived(self.original_, stream);
   } catch (...) {
     status = ERROR_INTERNAL_ERROR;
   }

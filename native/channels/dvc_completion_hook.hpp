@@ -9,7 +9,7 @@ class DvcCompletionHook final {
 public:
   using Clock = std::uint64_t (*)(void *);
   DvcCompletionHook(DvcMessageBudget &, std::uint32_t channel, IWTSVirtualChannelCallback &, Clock,
-                    void *clock_context = nullptr);
+                    void *clock_context = nullptr, bool gfx_zgfx = false, DvcAllocationLimits = {});
   ~DvcCompletionHook();
   DvcCompletionHook(const DvcCompletionHook &) = delete;
   DvcCompletionHook &operator=(const DvcCompletionHook &) = delete;
@@ -28,6 +28,8 @@ private:
   IWTSVirtualChannelCallback *original_;
   const Clock clock_;
   void *const clock_context_;
+  const bool gfx_zgfx_;
+  const DvcAllocationLimits allocations_;
   bool published_ = false, busy_ = false, closing_ = false, closed_ = false, failed_ = false;
   UINT close_status_ = 0;
   static DvcCompletionHook &owner(IWTSVirtualChannelCallback *) noexcept;

@@ -14,6 +14,7 @@
 #include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
+#include <freerdp/channels/rdpgfx.h>
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
 #include <freerdp/client/cmdline.h>
@@ -54,6 +55,7 @@ struct Host {
   bool wrap_registration = false;
   bool scoped_registration = false;
   std::unique_ptr<DvcProvider> dvc_provider;
+  bool actual_gfx = false;
   UINT plugin_registry_retirement_status = CHANNEL_RC_OK;
   DvcAcceptedChannelResult handoff_result{CHANNEL_RC_OK, CHANNEL_RC_OK, nullptr};
   UINT registry_retirement_status = CHANNEL_RC_OK;
@@ -131,15 +133,17 @@ struct Host {
                 bool pinned_manager_observation = false, bool handoff_observation = false,
                 bool listener_proxy_observation = false, bool listener_manager_observation = false,
                 bool plugin_proxy_observation = false, bool plugin_registry_observation = false,
-                bool provider_observation = false)
+                bool provider_observation = false, bool gfx_observation = false)
       : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
         use_handoff(handoff_observation), wrap_listener(listener_proxy_observation),
         wrap_listeners(listener_manager_observation), wrap_plugin(plugin_proxy_observation),
-        wrap_registration(plugin_registry_observation), scoped_registration(provider_observation) {
+        wrap_registration(plugin_registry_observation), scoped_registration(provider_observation),
+        actual_gfx(gfx_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,
-          DvcMessageBudgetLimits{handoff_observation || listener_proxy_observation ? 1U : 2U, 8, 8,
+          DvcMessageBudgetLimits{handoff_observation || listener_proxy_observation ? 1U : 2U,
+                                 actual_gfx ? 1024U * 1024U : 8U, actual_gfx ? 1024U * 1024U : 8U,
                                  100});
     RDP_CLIENT_ENTRY_POINTS entry_points{};
     entry_points.Size = sizeof(entry_points);
@@ -151,7 +155,9 @@ struct Host {
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_SynchronousDynamicChannels, TRUE));
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_AsyncChannels, FALSE));
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_AsyncUpdate, FALSE));
-    const char *arguments[]{plugin_name};
+    REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_BitmapCachePersistEnabled, FALSE));
+    REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_GfxSmallCache, TRUE));
+    const char *arguments[]{actual_gfx ? RDPGFX_CHANNEL_NAME : plugin_name};
     REQUIRE(freerdp_client_add_dynamic_channel(context->settings, 1, arguments));
     dynamic.pInterface = listener_callback.pInterface = this;
     dynamic.Initialize = [](IWTSPlugin *p, IWTSVirtualChannelManager *m) -> UINT {
@@ -398,10 +404,14 @@ struct Host {
   }
   void create(BYTE id) {
     std::vector<BYTE> bytes{0x10, id};
-    bytes.insert(bytes.end(), channel_name, channel_name + std::strlen(channel_name) + 1);
+    const auto *endpoint = actual_gfx ? RDPGFX_DVC_CHANNEL_NAME : channel_name;
+    bytes.insert(bytes.end(), endpoint, endpoint + std::strlen(endpoint) + 1);
     REQUIRE(send(bytes));
     REQUIRE(getChannelError(context.get()) == CHANNEL_RC_OK);
-    REQUIRE(channels[id - 0x42].opens == 1);
+    if (actual_gfx)
+      REQUIRE(registry->contains(id));
+    else
+      REQUIRE(channels[id - 0x42].opens == 1);
   }
 };
 std::vector<BYTE> first(BYTE command, BYTE id, UINT32 size, std::span<const BYTE> body) {
@@ -818,4 +828,42 @@ TEST_CASE("Actual drdynvc plugin proxy resolves bounded manager and survives del
   auto *api = host.plugin_proxy->interface();
   REQUIRE(api->Terminated(api) == CHANNEL_RC_OK);
   REQUIRE(host.terminated == 1);
+}
+
+TEST_CASE("Actual pinned rdpgfx receives bounded nested single and multipart ZGFX through scoped "
+          "public DVC owner") {
+  for (bool multipart : {false, true}) {
+    Host host(false, true, false, false, false, false, false, false, true, true);
+    const BYTE caps[]{0x13, 0, 0, 0, 20, 0, 0, 0, 4, 0, 8, 0, 4, 0, 0, 0, 0, 0, 0, 0};
+    std::vector<BYTE> encoded = multipart
+                                    ? std::vector<BYTE>{0xe1, 1, 0, 20, 0, 0, 0, 21, 0, 0, 0, 4}
+                                    : std::vector<BYTE>{0xe0, 4};
+    encoded.insert(encoded.end(), std::begin(caps), std::end(caps));
+    REQUIRE(host.send(first(2, 0x42, static_cast<UINT32>(encoded.size()), encoded)));
+    REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+    REQUIRE(host.registry->stats().budget.releases == 1);
+    REQUIRE_FALSE(host.registry->stats().failed);
+    REQUIRE(host.dvc_provider->close() == CHANNEL_RC_OK);
+    REQUIRE(host.registry->stats().resources_retired);
+    host.shutdown();
+    REQUIRE(host.plugin_registry->stats().host_unpublished);
+    REQUIRE_FALSE(host.plugin_registry->stats().failed);
+  }
+}
+TEST_CASE(
+    "Actual pinned rdpgfx nested oversized claims are refused before graphics decoder dispatch") {
+  for (bool segment_count : {false, true}) {
+    Host host(false, true, false, false, false, false, false, false, true, true);
+    const std::vector<BYTE> encoded = segment_count
+                                          ? std::vector<BYTE>{0xe1, 1, 0x10, 0, 0, 0, 0}
+                                          : std::vector<BYTE>{0xe1, 1, 0, 0xff, 0xff, 0xff, 0xff};
+    REQUIRE(host.send(first(2, 0x42, static_cast<UINT32>(encoded.size()), encoded)));
+    REQUIRE(host.registry->stats().budget.releases == 1);
+    REQUIRE_FALSE(host.registry->poll(host.now_ms));
+    REQUIRE(host.registry->stats().failed);
+    REQUIRE(host.plugin_registry->stats().failed);
+    host.shutdown();
+    REQUIRE(host.registry->stats().resources_retired);
+    REQUIRE(host.plugin_registry->stats().host_unpublished);
+  }
 }

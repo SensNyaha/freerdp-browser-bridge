@@ -87,6 +87,7 @@ struct Fixture {
       return ERROR_INVALID_PARAMETER;
     };
     manager.api.GetChannelId = [](IWTSVirtualChannel *) -> UINT32 { return 42; };
+    manager.api.GetChannelName = [](IWTSVirtualChannel *) -> const char * { return "fixture"; };
     callbacks.OnDataReceived = [](IWTSVirtualChannelCallback *, wStream *) -> UINT {
       return CHANNEL_RC_OK;
     };
@@ -239,5 +240,18 @@ TEST_CASE("Public DVC entry registry validates name boundary before retaining fa
       REQUIRE(f.registrations == 0);
       REQUIRE(f.registry.stats().retained_plugins == 0);
     }
+  }
+}
+TEST_CASE("Production DVC manager resolver requires public channel identity and name APIs") {
+  for (bool missing_name : {false, true}) {
+    Fixture f;
+    REQUIRE(f.install("first") == CHANNEL_RC_OK);
+    if (missing_name)
+      f.manager.api.GetChannelName = nullptr;
+    else
+      f.manager.api.GetChannelId = nullptr;
+    REQUIRE(f.published[0]->Initialize(f.published[0], &f.manager.api) == ERROR_INVALID_DATA);
+    REQUIRE(f.creates == 0);
+    REQUIRE(f.registry.stats().failed);
   }
 }

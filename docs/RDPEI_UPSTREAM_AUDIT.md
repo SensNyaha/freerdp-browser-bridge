@@ -93,3 +93,10 @@ plugin teardown. [Current contract](DVC_PROVIDER.md). Cached pool/total RSS,
 nested GFX/control/codec limits, actual allocator faults and lost-transport terminal
 release remain independent open gates. The new actual XRDP attempt could not
 reach TCP 3389; no new remote resource acceptance is inferred.
+
+Iteration 160 adds exact public graphics-channel selection and nested ZGFX
+allocation-claim inspection before actual rdpgfx callback dispatch, with linked
+rdpgfx/drdynvc fake-SVC and large public-codec evidence. [Nested contract](GFX_ZGFX_ADMISSION.md).
+This closes that declared-size/count placement slice; dictionary/scratch,
+transient realloc, other metadata/codec working memory, pool/total RSS and actual
+remote/lost-terminal-release acceptance remain open.

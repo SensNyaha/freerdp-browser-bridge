@@ -887,6 +887,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Exact public graphics DVC name selects nested ZGFX inspection
+  before the codec callback; malformed/excessive output/count claims are refused
+  without decode, with complete-message reservation release and owned close.
+  Six public/codec, one required identity-API and two actual rdpgfx/drdynvc/fake-SVC
+  cases pass, including 12 MiB codec output and valid CapsConfirm. Dictionary/
+  metadata/codec working memory, pool/total RSS and actual remote/platform/soak
+  gates remain open. [Iteration 160](docs/ITERATION_160.md).
+
 - [~] IN PROGRESS — Production synchronous scoped DVC provider now selects the
   bounded public entry/plugin/shared-manager/listener/channel ownership chain.
   Worker reserves up to 32 known logical declarations / 64 MiB before host

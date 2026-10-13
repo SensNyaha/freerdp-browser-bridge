@@ -68,6 +68,12 @@ open rather than inferred from these guards.
 
 ## Build and acceptance limits
 
+Iteration 160 adds [nested ZGFX admission](GFX_ZGFX_ADMISSION.md) before the
+actual graphics DVC decoder callback through the public scoped ownership chain.
+The earlier preallocation gap is now covered for bounded ZGFX allocation claims;
+dictionary/scratch/transient realloc, other metadata/codec working memory,
+retained pools/total RSS and actual remote resource acceptance remain open.
+
 The private FreeRDP build now links the pinned private OpenH264 provider with
 `WITH_OPENH264=ON`, `WITH_OPENH264_LOADING=OFF` and
 `WITH_MEDIA_FOUNDATION=OFF`. Software GDI and incoming AVC420 are enabled;

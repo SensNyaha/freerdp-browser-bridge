@@ -51,3 +51,8 @@ RDPGFX ZGFX and codec/control allocations remain independent gaps. Actual Window
 RDP/GFX, adversarial/lost transport, remote cumulative memory, Linux, sanitizers,
 fuzz and soak acceptance remain open. Transport success is still not proof of
 remote terminal touch release. Existing requirements are retained.
+
+Iteration 160 subsequently bounds nested RDPGFX ZGFX allocation claims through
+exact public channel-name selection before the codec callback. [Current nested
+contract](GFX_ZGFX_ADMISSION.md). Dictionary/scratch/transient realloc, other
+metadata/codec working memory, retained pools/total RSS and remote gates remain open.

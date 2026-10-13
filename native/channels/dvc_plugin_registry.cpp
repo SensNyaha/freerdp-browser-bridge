@@ -156,6 +156,8 @@ IWTSVirtualChannelManager *DvcPluginRegistry::resolve(void *p, IWTSVirtualChanne
   auto &self = *static_cast<DvcPluginRegistry *>(p);
   if (self.closed_ || self.busy_ || self.resolving_)
     return nullptr;
+  if (!native.GetChannelId || !native.GetChannelName)
+    return nullptr;
   if (self.manager_)
     return self.native_manager_ == &native ? self.manager_->interface() : nullptr;
   self.resolving_ = true;

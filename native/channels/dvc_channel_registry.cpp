@@ -1,7 +1,9 @@
 #include "dvc_channel_registry.hpp"
 #include <algorithm>
+#include <freerdp/channels/rdpgfx.h>
 #include <limits>
 #include <stdexcept>
+#include <string_view>
 #include <winpr/error.h>
 
 namespace bridge::channels {
@@ -9,6 +11,19 @@ namespace {
 void increment(std::uint64_t &value) noexcept {
   if (value != (std::numeric_limits<std::uint64_t>::max)())
     ++value;
+}
+std::optional<bool> gfx_payload(IWTSVirtualChannelManager &manager, IWTSVirtualChannel &channel) {
+  if (!manager.GetChannelName)
+    return false; // Lower-level fixture/custom facade; production resolver requires this API.
+  const auto *name = manager.GetChannelName(&channel);
+  if (!name)
+    return std::nullopt;
+  std::size_t length = 0;
+  while (length < 128 && name[length])
+    ++length;
+  if (!length || length == 128)
+    return std::nullopt;
+  return std::string_view(name, length) == RDPGFX_DVC_CHANNEL_NAME;
 }
 } // namespace
 DvcChannelRegistry::DvcChannelRegistry(DvcCompletionHook::Clock clock, void *clock_context,
@@ -65,7 +80,11 @@ DvcChannelBinding DvcChannelRegistry::bind(IWTSVirtualChannelManager &manager,
   DvcChannelBinding result{ERROR_INVALID_STATE, nullptr};
   try {
     const auto id = manager.GetChannelId(&channel);
-    if (!closed_) {
+    const auto gfx = gfx_payload(manager, channel);
+    if (!gfx) {
+      (void)fail(ERROR_INVALID_DATA);
+      result.status = ERROR_INVALID_DATA;
+    } else if (!closed_) {
       if (contains(id) || owns_callback(original)) {
         (void)fail(ERROR_ALREADY_EXISTS);
         result.status = ERROR_ALREADY_EXISTS;
@@ -78,8 +97,8 @@ DvcChannelBinding DvcChannelRegistry::bind(IWTSVirtualChannelManager &manager,
           (void)fail(ERROR_TOO_MANY_OPEN_FILES);
           result.status = ERROR_TOO_MANY_OPEN_FILES;
         } else {
-          auto hook =
-              std::make_unique<DvcCompletionHook>(budget_, id, original, clock_, clock_context_);
+          auto hook = std::make_unique<DvcCompletionHook>(budget_, id, original, clock_,
+                                                          clock_context_, *gfx, allocations_);
           if (free->hook)
             increment(reused_);
           free->id = id;
