@@ -1,8 +1,9 @@
 # Windows private-directory foundation
 
 2026-10-13. Implements ARCHITECTURE §2 and SECURITY §2/6 after `ebc2d99`.
-This isolated component is not yet selected by WorkerProcess startup. The
-existing Windows runtime-directory/multi-user acceptance gate remains open.
+WorkerProcess selects this component through the colocated helper before marker
+creation/spawn. The Windows runtime-directory/multi-user acceptance gate remains
+open; [startup contract and retained gaps](WINDOWS_DIRECTORY_STARTUP.md).
 
 `create_private_directory` accepts a bounded drive-absolute UTF-16 path under
 a caller-trusted parent. It opens that parent without following an immediate
@@ -28,9 +29,9 @@ invalid names and a file parent. UTF-16 directory names are exercised. Foundatio
 CTest 10/10 and bundled 22/22 pass with MSVC /analyze /W4 /WX and clang-format.
 Test cleanup removes only its known direct children, without recursive traversal.
 
-Atomic Node placement before owner-marker creation/spawn, cancellation/cleanup,
-trusted parent validation, packaging/helper discovery, other filesystems and
-actual second-account/service isolation remain open. ACLs alone do not establish
+Atomic Node placement, normal cancellation/cleanup and colocated helper discovery
+are implemented. Uncertain bootstrap outcomes, trusted parent validation, other
+filesystems and actual second-account/service isolation remain open. ACLs alone do not establish
 per-session isolation between processes using the same Windows account.
 
 API authority: Microsoft documents [creation-time file/directory security](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights),
@@ -38,4 +39,5 @@ API authority: Microsoft documents [creation-time file/directory security](https
 and [handle-based persistent ACL capability](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew).
 
 Iteration 171 adds the [packaged internal CLI](WINDOWS_DIRECTORY_HELPER.md)
-and verifies its process/relocation behavior. Production startup remains open.
+and verifies its process/relocation behavior. Iteration 172 adds Node startup;
+production isolation acceptance remains open.

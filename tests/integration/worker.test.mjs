@@ -453,7 +453,7 @@ test(
 test('missing executable fails with a sanitized error and cleans its private directory', async () => {
   await withRoot(async (runtimeRoot) => {
     const worker = new WorkerProcess({
-      workerPath: join(runtimeRoot, 'sentinel-NONEXISTENT'),
+      workerPath: join(binaryDir, 'sentinel-NONEXISTENT'),
       runtimeRoot,
     });
     await assert.rejects(

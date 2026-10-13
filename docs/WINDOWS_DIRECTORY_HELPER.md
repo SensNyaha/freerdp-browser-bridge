@@ -2,8 +2,9 @@
 
 2026-10-13. Implements ARCHITECTURE §2 and SECURITY §2/6 after `8aaa379`.
 `rdp-runtime-directory.exe` is a short-lived internal host bootstrap, not an RDP
-worker or an arbitrary FreeRDP command runner. WorkerProcess does not select it
-yet; [native creation policy](WINDOWS_PRIVATE_DIRECTORY.md) and caller-trusted
+worker or an arbitrary FreeRDP command runner. WorkerProcess selects it before
+marker creation/spawn as documented in [startup ownership](WINDOWS_DIRECTORY_STARTUP.md).
+[Native creation policy](WINDOWS_PRIVATE_DIRECTORY.md) and caller-trusted
 parent requirements remain unchanged.
 
 The only command is `--create-private-directory <absolute UTF-16 path>`.
@@ -24,8 +25,8 @@ Foundation CTest 10/10 and bundled 22/22 pass. The relocation test explicitly
 executes the installed helper from a copied bundle with minimal PATH, creates
 a fresh Unicode directory, then verifies the usual private runtime dependencies.
 
-Next work must bind this helper to startup before owner-marker creation/spawn,
-hold one child/cancellation/cleanup owner, reject malformed/uncertain output and
-preserve ownership on collision. Parent namespace trust, simultaneous hard-kill
+Startup now joins creation/receipt ownership before worker spawn and cleanup,
+rejects malformed/uncertain output and preserves collision ownership. Parent
+namespace trust, uncertain-result reclamation, simultaneous hard-kill
 reclamation, clean-machine and actual second-account/service acceptance remain
 open. No production ACL capability or completed isolation gate is claimed here.

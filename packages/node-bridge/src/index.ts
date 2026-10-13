@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { randomBytes } from 'node:crypto';
 export * from './session-manager.js';
 export * from './native-session.js';
 export * from './pcm-delivery.js';
@@ -14,7 +15,7 @@ import { OpusSource } from './opus-source.js';
 export type { PcmSourceEvent } from './pcm-source.js';
 export type { OpusSourceEvent } from './opus-source.js';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import {
   Kind,
   PacketDecoder,
@@ -112,6 +113,38 @@ type Status =
   | 'closing'
   | 'closed'
   | 'failed';
+type DirectoryHelperResult = {
+  stdout: string;
+  stderr: string;
+  code: number | null;
+};
+function directoryReceipt(result: DirectoryHelperResult) {
+  if (
+    typeof result.stdout !== 'string' ||
+    result.stdout.length > 128 ||
+    Buffer.byteLength(result.stdout) > 128
+  )
+    return undefined;
+  try {
+    const value: unknown = JSON.parse(result.stdout);
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+      return undefined;
+    const record = value as Record<string, unknown>;
+    if (
+      Object.keys(record).sort().join(',') !== 'created,error,v' ||
+      record.v !== 1 ||
+      typeof record.created !== 'boolean' ||
+      !Number.isSafeInteger(record.error) ||
+      (record.error as number) < 0 ||
+      (record.error as number) > 0xffffffff ||
+      (record.created ? record.error !== 0 : record.error === 0)
+    )
+      return undefined;
+    return { created: record.created, error: record.error as number };
+  } catch {
+    return undefined;
+  }
+}
 type Pending = {
   expected: Kind;
   resolve: (packet: Packet) => void;
@@ -128,6 +161,7 @@ export class WorkerProcess extends EventEmitter {
   private heartbeat: NodeJS.Timeout | undefined;
   private closedPromise: Promise<void> | undefined;
   private closePromise: Promise<void> | undefined;
+  private startCompletion: Promise<void> | undefined;
   private status: Status = 'created';
   private report: WorkerBuild | undefined;
   private connectionRequested = false;
@@ -237,14 +271,79 @@ export class WorkerProcess extends EventEmitter {
     });
   }
 
+  /** Trusted colocated helper only; normal cancellation waits for its ownership receipt. */
+  protected async createWindowsRuntimeDirectory(
+    directory: string,
+  ): Promise<DirectoryHelperResult> {
+    try {
+      const result = await promisify(execFile)(
+        join(dirname(this.options.workerPath), 'rdp-runtime-directory.exe'),
+        ['--create-private-directory', directory],
+        {
+          windowsHide: true,
+          timeout: 5000,
+          maxBuffer: 128,
+          encoding: 'utf8',
+          env: {
+            SystemRoot: process.env.SystemRoot,
+            WINDIR: process.env.WINDIR,
+            PATH: '',
+          },
+        },
+      );
+      return { ...result, code: 0 };
+    } catch (error) {
+      if (error && typeof error === 'object') {
+        const value = error as {
+          code?: unknown;
+          stdout?: unknown;
+          stderr?: unknown;
+        };
+        if (value.code === 'ENOENT')
+          throw new WorkerError('RUNTIME_DIRECTORY_UNAVAILABLE');
+        return {
+          code: typeof value.code === 'number' ? value.code : null,
+          stdout: typeof value.stdout === 'string' ? value.stdout : '',
+          stderr: typeof value.stderr === 'string' ? value.stderr : '',
+        };
+      }
+      return { code: null, stdout: '', stderr: '' };
+    }
+  }
+
+  private async prepareRuntimeDirectory(): Promise<void> {
+    await mkdir(this.options.runtimeRoot, { recursive: true, mode: 0o700 });
+    this.requireStarting();
+    if (process.platform !== 'win32') {
+      this.directory = await mkdtemp(join(this.options.runtimeRoot, 'worker-'));
+      return;
+    }
+    const candidate = join(
+      this.options.runtimeRoot,
+      'worker-' + randomBytes(16).toString('hex'),
+    );
+    const result = await this.createWindowsRuntimeDirectory(candidate);
+    const receipt = directoryReceipt(result);
+    // A valid creation receipt proves ownership even if exit/output subsequently faults.
+    // A collision or uncertain result never authorizes deleting the candidate.
+    if (receipt?.created) this.directory = candidate;
+    if (!receipt) throw new WorkerError('RUNTIME_DIRECTORY_UNCERTAIN');
+    if (!receipt.created) throw new WorkerError('RUNTIME_DIRECTORY_REFUSED');
+    if (result.code !== 0 || result.stderr !== '')
+      throw new WorkerError('RUNTIME_DIRECTORY_FAILED');
+  }
+
   async start(): Promise<WorkerBuild> {
     if (this.status !== 'created') throw new WorkerError('INVALID_STATE');
-    this.setState('starting');
+    let settled!: () => void;
+    this.startCompletion = new Promise<void>((done) => {
+      settled = done;
+    });
     try {
-      await mkdir(this.options.runtimeRoot, { recursive: true, mode: 0o700 });
+      this.setState('starting');
+      await this.prepareRuntimeDirectory();
       this.requireStarting();
-      this.directory = await mkdtemp(join(this.options.runtimeRoot, 'worker-'));
-      this.requireStarting();
+      if (!this.directory) throw new WorkerError('RUNTIME_DIRECTORY_UNCERTAIN');
       await writeFile(join(this.directory, '.rdp-worker-owned'), 'runtime-v1', {
         flag: 'wx',
         mode: 0o600,
@@ -327,6 +426,8 @@ export class WorkerProcess extends EventEmitter {
       throw error instanceof WorkerError
         ? error
         : new WorkerError('WORKER_START_FAILED');
+    } finally {
+      settled();
     }
   }
 
@@ -994,7 +1095,10 @@ export class WorkerProcess extends EventEmitter {
         if (this.closedPromise) await this.closedPromise;
         clearTimeout(force);
       }
-    } else if (this.closedPromise) await this.closedPromise;
+    } else {
+      if (this.startCompletion) await this.startCompletion;
+      if (this.closedPromise) await this.closedPromise;
+    }
   }
 
   private async cleanup(): Promise<void> {

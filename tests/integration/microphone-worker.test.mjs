@@ -59,10 +59,12 @@ async function run(body, peer = 'fixture-microphone') {
       ? SyntheticMicrophoneWorker
       : WorkerProcess;
   const worker = new Worker({
-    workerPath:
-      peer === 'fixture-microphone-reset'
-        ? process.execPath
-        : resolve(directory, peer + suffix),
+    // The synthetic spawn seam still uses the trusted native bundle for bootstrap.
+    workerPath: resolve(
+      directory,
+      (peer === 'fixture-microphone-reset' ? 'fixture-microphone' : peer) +
+        suffix,
+    ),
     runtimeRoot,
     heartbeatIntervalMs: 60000,
   });
