@@ -1,12 +1,18 @@
 /** Local viewer modes; input and output codec choices are independent. */
 export function viewerMediaOptions(flag) {
   const listenPreview = flag === '--audio-opus-compat-listen';
+  const audioRecoveryTest = [
+    '--audio-compat-recovery-test',
+    '--audio-opus-compat-recovery-test',
+  ].includes(flag);
   const compatibility = [
     '--audio-compat-manual',
     '--audio-compat-test',
     '--audio-opus-compat-manual',
     '--audio-opus-compat-test',
     '--audio-opus-compat-listen',
+    '--audio-compat-recovery-test',
+    '--audio-opus-compat-recovery-test',
   ].includes(flag);
   const opusInput = [
     '--microphone-opus-input-manual',
@@ -32,12 +38,15 @@ export function viewerMediaOptions(flag) {
     '--microphone-opus-manual',
   ].includes(flag);
   const audioTest = [
+    '--audio-compat-recovery-test',
+    '--audio-opus-compat-recovery-test',
     '--audio-test',
     '--audio-opus-test',
     '--audio-compat-test',
     '--audio-opus-compat-test',
   ].includes(flag);
   const audioOutput = [
+    '--audio-opus-compat-recovery-test',
     '--audio-opus-compat-listen',
     '--audio-opus-compat-manual',
     '--audio-opus-compat-test',
@@ -59,6 +68,7 @@ export function viewerMediaOptions(flag) {
     audioOutput,
     ...(compatibility ? { audioOutputBufferMs: 200 } : {}),
     ...(listenPreview ? { listenPreview: true } : {}),
+    ...(audioRecoveryTest ? { audioRecoveryTest: true } : {}),
     manual: flag === '--manual' || audioManual || microphoneManual,
   };
 }

@@ -32,6 +32,7 @@ const {
   audioOutput,
   audioOutputBufferMs,
   listenPreview,
+  audioRecoveryTest,
   manual,
 } = viewerMediaOptions(process.argv[4]);
 const qualityTest = process.argv[4] === '--quality-test';
@@ -114,6 +115,17 @@ nativeWorker.sendInput = async (event) => {
   if (event.type === 'move') inputMoves++;
   else inputResets++;
 };
+let audioResetRequests = 0;
+let audioResetScheduled = 0;
+if (audioRecoveryTest) {
+  const resetAudio = nativeWorker.resetAudio.bind(nativeWorker);
+  nativeWorker.resetAudio = async (epoch) => {
+    audioResetRequests++;
+    const result = await resetAudio(epoch);
+    if (result === 'scheduled') audioResetScheduled++;
+    return result;
+  };
+}
 const server = await createSessionServer({
   worker: options,
   allowedOrigins: [origin],
@@ -537,6 +549,18 @@ try {
       ),
     });
     phase = 'reattach';
+    const audioBeforeReattach = audioRecoveryTest
+      ? await page.evaluate(() => window.bridgeViewer.stats.audio)
+      : undefined;
+    const resetsBeforeReattach = audioResetScheduled;
+    if (
+      audioRecoveryTest &&
+      (audioBeforeReattach?.source?.availability !== 'ready' ||
+        !audioBeforeReattach.source.enabled ||
+        !(audioBeforeReattach.remote?.packets > 0) ||
+        !(audioBeforeReattach.remote?.playedFrames > 0))
+    )
+      throw new Error('LAB_AUDIO_SOURCE_NOT_READY');
     await page.evaluate(() => window.bridgeViewer.detach());
     let nativeCaptureMinIntervalUs;
     if (qualityTest) {
@@ -592,6 +616,47 @@ try {
       },
     );
     if (audioTest) await page.click('#audio-start');
+    let audioReplayEvidence;
+    if (audioRecoveryTest) {
+      phase = 'audio-replay';
+      const deadline = performance.now() + 15000;
+      do {
+        await page.evaluate(() => window.bridgeViewer.requestAudioStats());
+        await delay(200);
+        const audio = await page.evaluate(
+          () => window.bridgeViewer.stats.audio,
+        );
+        if (
+          audio?.source?.enabled &&
+          audio.source.availability === 'ready' &&
+          !audio.source.awaitingConfig &&
+          !audio.closed &&
+          audio.remote?.configurations > 0 &&
+          audio.remote.packets > 0 &&
+          audio.remote.playedFrames > 0 &&
+          audio.remote.invalidCalls === 0 &&
+          (audioOutput !== 'opus' ||
+            (audio.decoded > 0 &&
+              BigInt(audio.source.epoch) >
+                BigInt(audioBeforeReattach.source.epoch) &&
+              audioResetScheduled > resetsBeforeReattach))
+        ) {
+          audioReplayEvidence = {
+            codec: audioOutput,
+            previousEpoch: audioBeforeReattach.source.epoch,
+            currentEpoch: audio.source.epoch,
+            resetRequests: audioResetRequests,
+            scheduledSinceDetach: audioResetScheduled - resetsBeforeReattach,
+            configurations: audio.remote.configurations,
+            packets: audio.remote.packets,
+            playedFrames: audio.remote.playedFrames,
+            ...(audioOutput === 'opus' ? { decoded: audio.decoded } : {}),
+          };
+          break;
+        }
+      } while (performance.now() < deadline);
+      if (!audioReplayEvidence) throw new Error('LAB_AUDIO_REPLAY_FAILED');
+    }
     await page.waitForFunction(
       () =>
         window.bridgeViewer.stats.frames > 0 &&
@@ -678,6 +743,7 @@ try {
               browserAudioActivated: true,
               audibleAcceptance: false,
               remoteAudioGenerated: false,
+              ...(audioRecoveryTest ? { audioReplayEvidence } : {}),
             }
           : {}),
         ...(microphoneTest

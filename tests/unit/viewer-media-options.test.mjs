@@ -8,6 +8,8 @@ test('compatibility viewer selects exactly 200 ms output without microphone capt
     ['--audio-opus-compat-test', 'opus', false],
     ['--audio-opus-compat-manual', 'opus', true],
     ['--audio-opus-compat-listen', 'opus', true],
+    ['--audio-compat-recovery-test', 'pcm', false],
+    ['--audio-opus-compat-recovery-test', 'opus', false],
   ]) {
     const value = viewerMediaOptions(flag);
     assert.equal(value.audioOutputBufferMs, 200);
@@ -17,6 +19,17 @@ test('compatibility viewer selects exactly 200 ms output without microphone capt
   }
   assert.equal(
     viewerMediaOptions('--audio-opus-test').audioOutputBufferMs,
+    undefined,
+  );
+  for (const flag of [
+    '--audio-compat-recovery-test',
+    '--audio-opus-compat-recovery-test',
+  ]) {
+    assert.equal(viewerMediaOptions(flag).audioRecoveryTest, true);
+    assert.equal(viewerMediaOptions(flag).audioTest, true);
+  }
+  assert.equal(
+    viewerMediaOptions('--audio-opus-test').audioRecoveryTest,
     undefined,
   );
 });

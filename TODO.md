@@ -325,6 +325,7 @@ broader format profiles and end-to-end acceptance are separate open work.
 | Volume mapping | DONE — independent stereo perceptual gains, mute/full identity, exhaustive and linked fake-SVC fixtures | [44](docs/ITERATION_044.md) |
 | Native PCM queue and packetization | DONE — fixed 120 ms ring and 20 ms publication, underflow/overflow/reset fixtures | [37](docs/ITERATION_037.md), [49](docs/ITERATION_049.md), [62](docs/ITERATION_062.md) |
 | Native output buffer selection | DONE on Windows — immutable 120/200 ms profiles, bounded queue/configuration, legacy refusal, actual XRDP PCM/Opus selection and reset; not total latency acceptance | [179](docs/ITERATION_179.md), [ADR-012](docs/adr/ADR-012-audio-compatibility-buffer.md) |
+| Ready output attachment recovery | DONE on Windows/XRDP — actual PCM/Opus 200 ms browser detach/reattach, fresh Worklet samples and scheduled Opus native reset; not general reconnect or loss/latency acceptance | [181](docs/ITERATION_181.md) |
 | Private Opus output codec | DONE on Windows — pinned SDK encode/decode/reset/bounds and DLL relocation | [73](docs/ITERATION_073.md), [75](docs/ITERATION_075.md) |
 | PCM/Opus record codecs | DONE — bounded native/Node/browser wire vectors and malformed-record fixtures | [50](docs/ITERATION_050.md), [75](docs/ITERATION_075.md), [76](docs/ITERATION_076.md) |
 | Browser PCM playback owner | DONE in Edge synthetic fixtures — queue, Worklet admission ACK, gesture and cleanup | [70](docs/ITERATION_070.md), [71](docs/ITERATION_071.md) |
@@ -342,8 +343,9 @@ broader format profiles and end-to-end acceptance are separate open work.
   viewer PCM/Opus path and guarded static/dynamic ingress are implemented.
   Real XRDP negotiation and PCM/Opus browser admission pass; Opus is audible and
   the user accepts current 200 ms quality for development. Uninterrupted playback,
-  burst quality and public attachment recovery remain open. Private ready-source
-  reset passes both codecs on this lab.
+  burst quality and broader transport/platform recovery remain open. Private
+  ready-source reset and public PCM/Opus 200 ms attachment recovery pass on this lab.
+  [181](docs/ITERATION_181.md).
   [175](docs/ITERATION_175.md), [94](docs/ITERATION_094.md),
   [167](docs/ITERATION_167.md), [168](docs/ITERATION_168.md).
 - [~] Custom `audin-browser` source, browser microphone capture and packet
@@ -363,8 +365,9 @@ broader format profiles and end-to-end acceptance are separate open work.
   Worklet/capture fixtures pass; connected ready-source scheduling, callback CPU/
   wakeup budgets and real transport behavior remain open.
 - [~] Audio reconnect/discontinuity reset: epoch, Close/reset, reattachment and
-  ownership barriers pass fixtures; actual ready-source recovery and connection
-  reconnect remain open. General reconnect is still unsupported in Stage 3.
+  ownership barriers pass fixtures; actual XRDP private reset and ready-source
+  browser attachment recovery pass for the named profiles. Broader recovery and
+  connection reconnect remain open. General reconnect is still unsupported in Stage 3.
 - [ ] Actual remote output is audible and microphone recording usable, including
   stop/restart, controller/transport loss and no stale audio after reset.
 - [ ] Measure the bounded <150 ms LAN queue target with active real sources.

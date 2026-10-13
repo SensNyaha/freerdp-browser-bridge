@@ -41,3 +41,5 @@ Foundation CTest passes 10/10, final bundled CTest 22/22, and full `pnpm check`
 520/520. Final LF/CRLF fragmentation checks pass 9/9; clang-format, Prettier and
 diff checks pass. Actual diagnostic/recovery results will be recorded after
 completion; an instrumentation change is not a fix or an accepted rerun.
+
+Implementation/evidence commit: `c8e8467`.
