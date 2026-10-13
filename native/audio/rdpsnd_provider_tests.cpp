@@ -387,6 +387,33 @@ TEST_CASE("Actual pinned static RDPSND registers browser sink and delivers PCM W
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
   REQUIRE(fixture.sink.retired());
 }
+TEST_CASE("Guarded pinned RDPSND confirms XRDP-style padded Training then delivers legacy PCM") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  const auto before = host.writes.size();
+  std::vector<BYTE> training(1028, 0xa7);
+  training[0] = SNDC_TRAINING;
+  training[2] = 0;
+  training[3] = 4;
+  training[4] = 0x34;
+  training[5] = 0x12;
+  training[6] = 0;
+  training[7] = 4;
+  host.raw(training, static_cast<UINT>(training.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.writes.size() == before + 1);
+  const std::vector<BYTE> expected{SNDC_TRAINING, 0, 4, 0, 0x34, 0x12, 0, 4};
+  REQUIRE(host.writes.back() == expected);
+  emit_pcm(host, 100, 1, {0, 128, 255, 127}, true);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == 960);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
 
 TEST_CASE("RDPSND provider binds actual opaque plugin to its owning client context") {
   Fixture fixture, foreign;
@@ -1042,7 +1069,6 @@ TEST_CASE("Guarded RDPSND validates PCM packet alignment and duration before dev
   host.connect();
   const auto configuration = formats();
   host.raw(configuration, static_cast<UINT>(configuration.size()));
-  SECTION("over 100 ms Wave2") { emit_pcm(host, 100, 1, {0, 0, 0, 0}, false, 4801); }
   SECTION("unaligned Wave2") {
     const std::vector<BYTE> packet{SNDC_WAVE2, 0, 19, 0, 100, 0, 0, 0, 1, 0, 0, 0,
                                    100,        0, 0,  0, 1,   2, 3, 4, 5, 6, 7};
@@ -1062,6 +1088,29 @@ TEST_CASE("Guarded RDPSND validates PCM packet alignment and duration before dev
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
 
+TEST_CASE("Guarded RDPSND normalizes XRDP-size legacy PCM with bounded newest-data storage") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  auto configuration = formats();
+  configuration[28] = 0x44;
+  configuration[29] = 0xac; // 44100
+  configuration[32] = 0x10;
+  configuration[33] = 0xb1;
+  configuration[34] = 2; // 176400 bytes/sec
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  emit_pcm(host, 100, 1, {255, 255, 255, 255}, true, 8192);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == 8916);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 5760);
+  REQUIRE(fixture.sink.stats()->queue.playback_skipped_frames == 3156);
+  REQUIRE(fixture.sink.stats()->chunked_packets == 1);
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::ready);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
 TEST_CASE("Guarded RDPSND refuses replacement format tables before upstream state mutation") {
   Fixture fixture;
   GateScope scope(fixture);
@@ -1071,7 +1120,12 @@ TEST_CASE("Guarded RDPSND refuses replacement format tables before upstream stat
   auto configuration = formats();
   host.raw(configuration, static_cast<UINT>(configuration.size()));
   bool played = false;
-  SECTION("identical table before Open") {}
+  SECTION("changed protocol version before Open") { configuration[21] ^= 1; }
+  SECTION("changed table count before Open") {
+    configuration.resize(24);
+    configuration[2] = 20;
+    configuration[18] = 0;
+  }
   SECTION("changed table after Open") {
     emit_pcm(host, 100, 1, {0, 128, 255, 127});
     REQUIRE(fixture.sink.stats()->queue.queued_frames == 960);
@@ -1092,6 +1146,50 @@ TEST_CASE("Guarded RDPSND refuses replacement format tables before upstream stat
   emit_pcm(host, 120, 2, {1, 0, 1, 0});
   REQUIRE(host.writes.size() == writes);
   REQUIRE(fixture.sink.stats()->queue.accepted_frames == accepted);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
+
+TEST_CASE("Guarded RDPSND reannounces identical PCM tables with reset and fresh legacy playback") {
+  Fixture fixture;
+  GateScope scope(fixture);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);
+  host.connect();
+  auto configuration = formats();
+  bool played = false;
+  SECTION("before Open") {}
+  SECTION("after Open") { played = true; }
+  SECTION("XRDP version five after Open") {
+    configuration[21] = 5;
+    played = true;
+  }
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  if (played)
+    emit_pcm(host, 100, 1, {0, 128, 255, 127}, true);
+  const auto accepted = fixture.sink.stats()->queue.accepted_frames;
+  const auto writes = host.writes.size();
+  configuration[1] = 0xa7; // Protocol padding is arbitrary.
+  configuration[20] = 3;   // Last-confirmed block is not format identity.
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(host.writes.size() == writes + (configuration[21] >= 6 ? 2U : 1U));
+  REQUIRE(host.writes[writes][0] == SNDC_FORMATS);
+  REQUIRE(fixture.sink.stats()->queue.queued_frames == 0);
+  REQUIRE(fixture.sink.stats()->queue.reset_discarded_frames == (played ? 960U : 0U));
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::waiting);
+  emit_pcm(host, 200, 4, {1, 0, 1, 0}, true);
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(fixture.sink.stats()->queue.accepted_frames == accepted + 960);
+  REQUIRE(fixture.sink.stats()->availability == SourceAvailability::ready);
+  std::vector<BYTE> output(3840);
+  const auto read = fixture.sink.read(output);
+  REQUIRE(read.status == QueueStatus::accepted);
+  REQUIRE(read.discontinuity);
+  for (std::size_t at = 0; at < output.size(); at += 2) {
+    REQUIRE(output[at] == 1);
+    REQUIRE(output[at + 1] == 0);
+  }
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
 

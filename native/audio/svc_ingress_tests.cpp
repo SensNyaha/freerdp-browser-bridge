@@ -32,6 +32,25 @@ struct Fixture {
   }
 };
 } // namespace
+TEST_CASE("Audio SVC owner preserves padded Training across fragmented delivery and releases its "
+          "deadline") {
+  std::vector<std::uint8_t> packet(1028, 0xa7);
+  packet[0] = 6;
+  packet[2] = 0;
+  packet[3] = 4;
+  for (const auto split : {std::size_t{1}, std::size_t{7}, std::size_t{512}, std::size_t{1027}}) {
+    Fixture f;
+    REQUIRE(f.ingress.receive({std::span(packet).first(split), packet.size(), true, false}, 1));
+    REQUIRE(f.calls == 0);
+    REQUIRE(f.ingress.receive({std::span(packet).subspan(split), packet.size(), false, true}, 2));
+    REQUIRE(f.observed == packet);
+    REQUIRE(f.calls == 1);
+    REQUIRE_FALSE(f.ingress.stats().awaiting_wave);
+    REQUIRE(f.ingress.poll(10000));
+    REQUIRE(f.whole(volume, 10001));
+    REQUIRE(f.calls == 2);
+  }
+}
 TEST_CASE("Audio SVC owner assembles bounded whole and fragmented PDUs before dispatch") {
   Fixture whole;
   REQUIRE(whole.whole(volume));

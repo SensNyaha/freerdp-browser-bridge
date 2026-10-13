@@ -5,6 +5,7 @@
 #include "gdi_dirty.hpp"
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <freerdp/channels/channels.h>
 #include <freerdp/client/cmdline.h>
@@ -1303,6 +1304,9 @@ void Connection::run() noexcept {
         capture_pending();
       }
       connected_ = false;
+      if (!healthy)
+        (void)std::fprintf(stderr, "bridge.rdp.channel_error=%u\n",
+                           static_cast<unsigned>(getChannelError(context_.get())));
       resize_pending(true);
       input_pending(true);
       capture_pending(true);
@@ -1397,6 +1401,17 @@ void Connection::run() noexcept {
     const auto stats = audio_->stats();
     if (!stats || !stats->resources_retired)
       std::terminate(); // Owned worker fault; never free live host callback targets.
+    // Fixed lifetime counters only; never emit sample, credential or peer data.
+    (void)std::fprintf(stderr,
+                       "bridge.audio.summary chunks=%llu overflow=%llu skipped=%llu late=%llu "
+                       "revisions=%llu resets=%llu packets=%llu\n",
+                       static_cast<unsigned long long>(stats->source.chunked_packets),
+                       static_cast<unsigned long long>(stats->source.overflow_resets),
+                       static_cast<unsigned long long>(stats->source.queue.playback_skipped_frames),
+                       static_cast<unsigned long long>(stats->source.packets.skipped_intervals),
+                       static_cast<unsigned long long>(stats->source.stream_revision),
+                       static_cast<unsigned long long>(stats->publisher.consumer_resets),
+                       static_cast<unsigned long long>(stats->publisher.sent_packets));
     if (retired != bridge::audio::RetireStatus::done) {
       terminal_state = RdpState::failed;
       terminal_error = RdpError::protocol;

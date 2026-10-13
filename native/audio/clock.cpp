@@ -1,10 +1,11 @@
 #include "clock.hpp"
+#include "pcm.hpp"
 
 namespace bridge::audio {
 std::optional<bool> AudioClock::observe(const AudioStamp &stamp) noexcept {
   if ((stamp.bits != 16 && stamp.bits != 32) || (stamp.bits == 16 && stamp.timestamp > 65535) ||
       stamp.rate < 8000 || stamp.rate > 48000 || stamp.frames == 0 ||
-      stamp.frames > stamp.rate / 10)
+      stamp.frames > PcmNormalizer::max_input_bytes)
     return {};
   bool discontinuous = !active_;
   if (active_) {

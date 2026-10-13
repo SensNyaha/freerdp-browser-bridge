@@ -1,4 +1,5 @@
 #include "rdpsnd_sink.hpp"
+#include <algorithm>
 #include <bit>
 #include <limits>
 
@@ -83,30 +84,52 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
     sink->discontinuity(SourceAvailability::failed);
     return 0;
   }
-  const auto normalized = pipeline.pcm.process(std::span(data, size));
-  if (normalized.status != PcmStatus::accepted) {
+  const auto format = pipeline.pcm.format();
+  const auto align = format ? static_cast<std::size_t>(format->channels) * (format->bits / 8U) : 0;
+  if (!format || !align || size % align) {
     increment(sink->stats_.rejected_packets);
     sink->discontinuity(SourceAvailability::failed);
     return 0;
   }
-  for (std::size_t at = 0; at < normalized.bytes.size(); at += 2) {
-    const auto word =
-        static_cast<std::uint16_t>(static_cast<unsigned>(normalized.bytes[at]) |
-                                   (static_cast<unsigned>(normalized.bytes[at + 1]) << 8));
-    const auto sample = std::bit_cast<std::int16_t>(word);
-    const auto scaled = sink->volume_.apply(sample, at / 2 % 2 != 0);
-    const auto bits = static_cast<std::uint16_t>(scaled);
-    pipeline.volume[at] = static_cast<std::uint8_t>(bits);
-    pipeline.volume[at + 1] = static_cast<std::uint8_t>(bits >> 8);
+  const auto quantum = static_cast<std::size_t>(format->rate / 10U) * align;
+  const bool chunked = size > quantum;
+  if (chunked)
+    increment(sink->stats_.chunked_packets);
+  // A whole bounded PCM callback is validated above. Reuse the fixed 100 ms
+  // normalizer arena; large callbacks retain only the newest 120 ms in the ring.
+  // No consumer can borrow this serialized owner in the middle of the callback.
+  for (std::size_t offset = 0; offset < size;) {
+    const auto count = (std::min)(quantum, size - offset);
+    const auto normalized = pipeline.pcm.process(std::span(data + offset, count));
+    if (normalized.status != PcmStatus::accepted) {
+      increment(sink->stats_.rejected_packets);
+      sink->discontinuity(SourceAvailability::failed);
+      return 0;
+    }
+    for (std::size_t at = 0; at < normalized.bytes.size(); at += 2) {
+      const auto word =
+          static_cast<std::uint16_t>(static_cast<unsigned>(normalized.bytes[at]) |
+                                     (static_cast<unsigned>(normalized.bytes[at + 1]) << 8));
+      const auto sample = std::bit_cast<std::int16_t>(word);
+      const auto scaled = sink->volume_.apply(sample, at / 2 % 2 != 0);
+      const auto bits = static_cast<std::uint16_t>(scaled);
+      pipeline.volume[at] = static_cast<std::uint8_t>(bits);
+      pipeline.volume[at + 1] = static_cast<std::uint8_t>(bits >> 8);
+    }
+    if (!normalized.bytes.empty()) {
+      const auto free = PcmQueue::capacity_frames - pipeline.queue.stats().queued_frames;
+      if (chunked && normalized.frames > free)
+        (void)pipeline.queue.discard(normalized.frames - free);
+      if (pipeline.queue.push(std::span(pipeline.volume).first(normalized.bytes.size())) !=
+          QueueStatus::accepted) {
+        increment(sink->stats_.overflow_resets);
+        sink->discontinuity(SourceAvailability::waiting);
+        return 0;
+      }
+      sink->stats_.availability = SourceAvailability::ready;
+    }
+    offset += count;
   }
-  if (pipeline.queue.push(std::span(pipeline.volume).first(normalized.bytes.size())) !=
-      QueueStatus::accepted) {
-    increment(sink->stats_.overflow_resets);
-    sink->discontinuity(SourceAvailability::waiting);
-    return 0;
-  }
-  if (!normalized.bytes.empty())
-    sink->stats_.availability = SourceAvailability::ready;
   // The public Play return value is queued latency in milliseconds, not a Win32 status.
   const auto frames = pipeline.queue.stats().queued_frames;
   return static_cast<UINT>((frames * 1000 + PcmNormalizer::output_rate - 1) /

@@ -1,5 +1,6 @@
 #include "static_gate.hpp"
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <exception>
 #include <freerdp/freerdp.h>
@@ -27,7 +28,10 @@ bool AudioStaticGate::on_thread() const noexcept { return thread_ == std::this_t
 bool AudioStaticGate::ready_for(const rdpContext &context, const RdpsndSink &sink) const noexcept {
   return on_thread() && context_ == &context && &sink_ == &sink && !attempted_ && !retired();
 }
-void AudioStaticGate::fail() noexcept {
+void AudioStaticGate::fail(unsigned reason) noexcept {
+  // Fixed fault classification only: no audio, format data, session or credentials.
+  if (!failed_)
+    (void)std::fprintf(stderr, "bridge.audio.guard fault=%u\n", reason);
   failed_ = true;
   (void)sink_.reset_stream(SourceAvailability::failed);
   if (context_)
@@ -237,20 +241,20 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
         gate->assembler_.push(std::span(static_cast<const BYTE *>(data), size), total,
                               (flags & CHANNEL_FLAG_FIRST) != 0, (flags & CHANNEL_FLAG_LAST) != 0);
     if (joined.status == FragmentStatus::invalid) {
-      gate->fail();
+      gate->fail(1);
       return;
     }
     if (joined.status == FragmentStatus::collecting)
       return;
     const auto pdu = gate->validator_.validate(joined.bytes);
     if (!pdu) {
-      gate->fail();
+      gate->fail(2);
       return;
     }
     if ((pdu->kind == AudioPduKind::wave_info || pdu->kind == AudioPduKind::wave ||
          pdu->kind == AudioPduKind::wave2) &&
         pdu->format_index >= gate->selected_count_) {
-      gate->fail();
+      gate->fail(3);
       return;
     }
     if (pdu->kind == AudioPduKind::close) {
@@ -261,14 +265,17 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       const auto &format = gate->selected_formats_[pdu->format_index];
       const auto align = format.channels * (format.bits / 8U);
       if (!align || pdu->sample_bytes % align) {
-        gate->fail();
+        gate->fail(4);
         return;
       }
       const auto reset = gate->clock_.observe(
           {pdu->timestamp, format.rate, static_cast<std::uint32_t>(pdu->sample_bytes / align),
            pdu->format_index, pdu->timestamp_bits, pdu->block, GetTickCount64()});
       if (!reset) {
-        gate->fail();
+        (void)std::fprintf(stderr, "bridge.audio.clock rate=%u frames=%zu align=%u\n",
+                           static_cast<unsigned>(format.rate), pdu->sample_bytes / align,
+                           static_cast<unsigned>(align));
+        gate->fail(5);
         return;
       }
       if (*reset)
@@ -277,20 +284,26 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
     data = const_cast<BYTE *>(joined.bytes.data());
     size = total = static_cast<UINT>(joined.bytes.size());
     if (pdu->kind == AudioPduKind::formats) {
-      if (gate->negotiated_) {
-        // Same-index upstream reopen is not reliable for a replacement table.
-        // The baseline profile keeps one negotiated table for the connection.
+      std::array<BYTE, max_pcm_offer_bytes> candidate{};
+      const auto selected = select_pcm_offers(joined.bytes, candidate);
+      if (!selected) {
+        gate->fail(6);
+        return;
+      }
+      if (gate->negotiated_ && (selected->count != gate->selected_count_ ||
+                                u16(selected->bytes, 21) != u16(gate->offers_, 21) ||
+                                !std::equal(selected->bytes.begin() + 24, selected->bytes.end(),
+                                            gate->offers_.begin() + 24))) {
+        // Same-index reopen is safe only for the identical supported PCM table.
+        // Do not mutate upstream/device format ownership for a replacement.
         gate->failed_ = true;
+        (void)std::fprintf(stderr, "bridge.audio.guard fault=7\n");
         (void)gate->sink_.reset_stream(SourceAvailability::failed);
         setChannelError(gate->context_, ERROR_NOT_SUPPORTED,
                         "Audio format table renegotiation is unsupported");
         return;
       }
-      const auto selected = select_pcm_offers(joined.bytes, gate->offers_);
-      if (!selected) {
-        gate->fail();
-        return;
-      }
+      std::copy(selected->bytes.begin(), selected->bytes.end(), gate->offers_.begin());
       gate->negotiated_ = true;
       gate->selected_count_ = selected->count;
       gate->clock_.reset();
@@ -302,7 +315,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
                                        u16(selected->bytes, offset + 2),
                                        u16(selected->bytes, offset + 14)};
       }
-      data = const_cast<BYTE *>(selected->bytes.data());
+      data = gate->offers_.data();
       size = total = static_cast<UINT>(selected->bytes.size());
       if (selected->count == 0) {
         // Pinned rdpsnd requires 30 bytes for the 20-byte fixed Formats body.

@@ -28,3 +28,10 @@ Production static/dynamic fallback placement is the next block.
 Iteration 167 installs this owner in the worker's static RDPSND receive path.
 The isolated status above is historical; dynamic placement remains open.
 [Production placement](RDPSND_RECEIVE_PLACEMENT.md).
+
+Training accepts the four fixed body bytes plus opaque padding within the same
+64 KiB complete-record bound. Header body size must still exactly match the
+received record. `wPackSize` is echoed by the pinned channel, not used as an
+allocation claim. A real XRDP 1,028-byte Training record previously failed the
+four-byte-only check; fragmented portable and actual linked channel fixtures now
+cover padding and the exact confirmation. [Iteration 175](ITERATION_175.md).

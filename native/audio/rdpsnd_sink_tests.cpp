@@ -1,4 +1,5 @@
 #include "rdpsnd_sink.hpp"
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
@@ -236,6 +237,64 @@ TEST_CASE("RDPSND overflow clears stale PCM and marks recovery as discontinuous"
   REQUIRE(output == one);
 }
 
+TEST_CASE("RDPSND large identity PCM retains newest bounded audio without intermediate delivery") {
+  RdpsndSink sink;
+  auto &device = sink.device();
+  const auto pcm = format();
+  REQUIRE(device.Open(&device, &pcm, 0));
+  const std::vector<std::uint8_t> old(3840, 0xa7);
+  REQUIRE(play(device, old) == 20);
+  std::vector<std::uint8_t> input;
+  for (unsigned frame = 0; frame < 10000; ++frame) {
+    const auto right = static_cast<std::uint16_t>(-static_cast<int>(frame));
+    input.insert(input.end(),
+                 {static_cast<std::uint8_t>(frame), static_cast<std::uint8_t>(frame >> 8),
+                  static_cast<std::uint8_t>(right), static_cast<std::uint8_t>(right >> 8)});
+  }
+  REQUIRE(play(device, input) == 120);
+  const auto stats = *sink.stats();
+  REQUIRE(stats.chunked_packets == 1);
+  REQUIRE(stats.rejected_packets == 0);
+  REQUIRE(stats.overflow_resets == 0);
+  REQUIRE(stats.queue.high_water_frames <= PcmQueue::capacity_frames);
+  REQUIRE(stats.queue.queued_frames == 5760);
+  REQUIRE(stats.queue.playback_skipped_frames == 5200);
+  std::vector<std::uint8_t> first(4800 * 4), second(960 * 4);
+  REQUIRE(sink.read(first).discontinuity);
+  REQUIRE_FALSE(sink.read(second).discontinuity);
+  first.insert(first.end(), second.begin(), second.end());
+  REQUIRE(std::equal(first.begin(), first.end(), input.begin() + 4240 * 4));
+  REQUIRE(sink.stats()->queue.queued_frames == 0);
+}
+
+TEST_CASE(
+    "RDPSND large XRDP and maximum low-rate PCM batches preserve fixed scratch and queue bounds") {
+  RdpsndSink sink;
+  auto &device = sink.device();
+  bool low_rate = false;
+  SECTION("XRDP 8192 stereo frames at 44100") {}
+  SECTION("maximum 65536 mono PCM8 bytes at 8000") { low_rate = true; }
+  const auto pcm = low_rate ? format(8000, 1, 8) : format(44100);
+  REQUIRE(device.Open(&device, &pcm, 0));
+  std::vector<std::uint8_t> input(low_rate ? 65536 : 8192 * 4, 255);
+  REQUIRE(play(device, input) == 120);
+  const auto stats = *sink.stats();
+  const auto expected = low_rate ? 393211U : 8916U;
+  REQUIRE(stats.queue.accepted_frames == expected);
+  REQUIRE(stats.queue.queued_frames == 5760);
+  REQUIRE(stats.queue.playback_skipped_frames == expected - 5760);
+  REQUIRE(stats.rejected_packets == 0);
+  REQUIRE(stats.chunked_packets == 1);
+  REQUIRE(stats.queue.high_water_frames == 5760);
+  REQUIRE(stats.availability == SourceAvailability::ready);
+  std::vector<std::uint8_t> output(4800 * 4);
+  REQUIRE(sink.read(output).discontinuity);
+  for (std::size_t at = 0; at < output.size(); at += 2) {
+    REQUIRE(output[at] == (low_rate ? 0 : 255));
+    REQUIRE(output[at + 1] == (low_rate ? 127 : 255));
+  }
+}
+
 TEST_CASE("RDPSND malformed or over-capacity packets reset interpolation history") {
   RdpsndSink sink;
   auto &device = sink.device();
@@ -244,10 +303,6 @@ TEST_CASE("RDPSND malformed or over-capacity packets reset interpolation history
   const std::array<std::uint8_t, 2> first{0, 128}, next{255, 127};
   REQUIRE(play(device, first) == 1);
   SECTION("misaligned") { REQUIRE(play(device, std::span(first).first(1)) == 0); }
-  SECTION("normalized capacity") {
-    const std::vector<std::uint8_t> input(1602);
-    REQUIRE(play(device, input) == 0);
-  }
   SECTION("input capacity") {
     const std::vector<std::uint8_t> input(65538);
     REQUIRE(play(device, input) == 0);

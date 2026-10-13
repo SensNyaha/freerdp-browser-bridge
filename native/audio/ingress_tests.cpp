@@ -128,6 +128,37 @@ TEST_CASE("RDPSND validator recognizes baseline controls and Wave2 metadata") {
   REQUIRE(result->block == 9);
   REQUIRE(result->sample_bytes == 8);
 }
+TEST_CASE("RDPSND server Training accepts bounded opaque padding without widening other controls") {
+  for (const auto length : {std::size_t{8}, std::size_t{1028}, AudioAssembler::max_bytes}) {
+    std::vector<std::uint8_t> packet(length, 0xa7);
+    packet[0] = 6;
+    packet[2] = static_cast<std::uint8_t>(length - 4);
+    packet[3] = static_cast<std::uint8_t>((length - 4) >> 8);
+    AudioPduValidator validator;
+    const auto result = validator.validate(packet);
+    REQUIRE(result);
+    REQUIRE(result->kind == AudioPduKind::training);
+    REQUIRE_FALSE(validator.awaiting_wave());
+    REQUIRE_FALSE(validator.failed());
+  }
+  for (std::size_t length = 4; length < 8; ++length) {
+    std::vector<std::uint8_t> packet(length, 0);
+    packet[0] = 6;
+    packet[2] = static_cast<std::uint8_t>(length - 4);
+    AudioPduValidator validator;
+    REQUIRE_FALSE(validator.validate(packet));
+    REQUIRE(validator.failed());
+  }
+  std::vector<std::uint8_t> excessive(AudioAssembler::max_bytes + 1, 0);
+  excessive[0] = 6;
+  excessive[2] = 253;
+  excessive[3] = 255;
+  AudioPduValidator validator;
+  REQUIRE_FALSE(validator.validate(excessive));
+  validator.reset();
+  std::vector<std::uint8_t> mismatch{6, 0, 5, 0, 1, 2, 3, 4};
+  REQUIRE_FALSE(validator.validate(mismatch));
+}
 
 TEST_CASE("RDPSND formats have bounded counts, complete descriptors and bounded extras") {
   AudioPduValidator validator;

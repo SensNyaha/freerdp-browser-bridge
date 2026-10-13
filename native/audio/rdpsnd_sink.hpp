@@ -11,6 +11,7 @@ struct SinkStats {
   QueueStats queue;
   PacketStats packets;
   std::uint64_t rejected_packets = 0, overflow_resets = 0, stream_revision = 0;
+  std::uint64_t chunked_packets = 0;
   SourceAvailability availability = SourceAvailability::waiting;
 };
 // Public device ABI adapter, not an installed addin. One serialized RDP owner.

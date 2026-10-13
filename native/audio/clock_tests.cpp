@@ -82,6 +82,22 @@ TEST_CASE("Audio continuity allows bounded jitter and same-clock batches at exac
   REQUIRE(clock.observe(gap) == true);
 }
 
+TEST_CASE("Audio continuity accepts large bounded PCM batches and uses their actual duration") {
+  AudioClock clock;
+  AudioStamp first{100, 44100, 8192, 0, 16, 1, 100};
+  REQUIRE(clock.observe(first) == true);
+  first.timestamp += 186;
+  first.arrival_ms += 186;
+  ++first.block;
+  REQUIRE(clock.observe(first) == false);
+  AudioStamp largest{1000, 8000, 65536, 0, 32, 3, 1000};
+  REQUIRE(clock.observe(largest) == true);
+  largest.timestamp += 8192;
+  largest.arrival_ms += 8192;
+  ++largest.block;
+  REQUIRE(clock.observe(largest) == false);
+}
+
 TEST_CASE("Audio continuity rejects invalid metadata atomically") {
   AudioClock clock;
   const auto stamp = first();
@@ -96,7 +112,7 @@ TEST_CASE("Audio continuity rejects invalid metadata atomically") {
   SECTION("low rate") { invalid.rate = 7999; }
   SECTION("high rate") { invalid.rate = 48001; }
   SECTION("zero frames") { invalid.frames = 0; }
-  SECTION("over-duration") { invalid.frames = 4801; }
+  SECTION("over bounded source frames") { invalid.frames = 65537; }
   SECTION("maximum frames") { invalid.frames = 0xffffffffU; }
   REQUIRE_FALSE(clock.observe(invalid).has_value());
   REQUIRE(clock.observe(next(stamp)) == false);

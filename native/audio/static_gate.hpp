@@ -34,7 +34,7 @@ class AudioStaticGate {
   bool busy_ = false, writing_ = false;
   std::atomic<bool> retired_{false}, host_terminated_{false};
   bool on_thread() const noexcept;
-  void fail() noexcept;
+  void fail(unsigned reason = 0) noexcept;
   static UINT VCAPITYPE init(LPVOID, LPVOID, LPVOID, PCHANNEL_DEF, INT, ULONG,
                              PCHANNEL_INIT_EVENT_EX_FN) noexcept;
   static UINT VCAPITYPE open(LPVOID, LPDWORD, PCHAR, PCHANNEL_OPEN_EVENT_EX_FN) noexcept;

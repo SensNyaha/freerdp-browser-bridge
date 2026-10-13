@@ -813,13 +813,18 @@ audible remote/browser volume or activate worker audio.
 
 ## Packet continuity
 
-The guarded PCM path checks whole source frames and its current 100 ms per-PDU
-conversion budget before upstream device Open/Play. Selected descriptors are kept
+The guarded PCM path checks whole source frames and the fixed 64 KiB ingress
+budget before upstream device Open/Play. Selected descriptors are kept
 in a fixed 64-entry table. A bounded `AudioClock` receives source rate/frame count,
 negotiated index, block number, timestamp width/value and owner monotonic arrival
 milliseconds. Invalid metadata leaves history unchanged and fails the channel.
-Larger valid server bursts still require bounded splitting before worker activation;
-this profile limit does not mean the complete RDP protocol limits packets to 100 ms.
+The sink splits larger callbacks into at most 100 ms conversion spans, reusing
+the fixed normalizer arena. Interpolation persists across spans. The 120 ms ring
+retains the newest samples for large callbacks and counts discarded old frames;
+ordinary callbacks preserve packet-atomic overflow rejection. No growing storage
+or additional publication is introduced inside Play. A 186 ms server burst still
+exceeds this ring and can cause playback gaps; packet acceptance is not smooth
+audio or measured latency acceptance. [Actual XRDP correction](ITERATION_175.md).
 
 The first packet requests a sink reset. Subsequent packets reset interpolation and
 queued PCM on a format/rate/clock-type change, a missing/repeated block, backward
@@ -842,16 +847,20 @@ to a future consumer; counters retain discarded PCM frame totals.
 [Iteration 46](ITERATION_046.md) checks pure clocks and actual linked RDPSND with
 fake SVC. Server format-table replacement is explicitly refused by the baseline
 policy below, preventing upstream reuse of an incompatible already-open index.
-Native overrun heuristics, burst splitting,
-earlier RDP core allocation bounds, worker shutdown/IPC, browser PTS/playback and
+Native overrun heuristics, callback CPU budgets,
+earlier RDP core allocation bounds, browser PTS/playback and
 actual audio/microphone acceptance remain open.
 
 ## Connection format-table policy
 
-The guarded baseline accepts exactly one valid Server Formats exchange per
-connection, including a zero-common-format response. Later valid table replacements
-or repetitions fail with `ERROR_NOT_SUPPORTED`, reset queued PCM and never reach
-upstream or mutate selected descriptors. Close and suspend/resume keep the initial
+The guarded baseline fixes the supported PCM table for one connection, including
+a zero-common-format response. An identical selected table and protocol version
+may be reannounced: a fixed candidate buffer verifies count, descriptor order and
+all descriptor bytes before upstream dispatch. It resets stale samples/clock and
+permits the pinned channel to resend its negotiation reply. Other header metadata
+does not redefine descriptor identity. Changed supported tables or protocol versions
+fail with `ERROR_NOT_SUPPORTED`, reset queued PCM and never reach upstream or mutate
+selected descriptors. Close and suspend/resume keep the initial
 negotiated table. A new connection gets a fresh gate. This is an explicit bridge
 profile restriction; broader server renegotiation support remains future work.
 It prevents the pinned channel from keeping the old Open format at an unchanged

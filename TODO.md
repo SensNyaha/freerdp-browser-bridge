@@ -45,9 +45,14 @@ verified; broader cursor gates, Unicode/IME, audio, platforms and devices remain
 Stage 6 has guarded static RDPSND PCM/Opus worker activation, public media
 negotiation and gesture/decoder/Worklet admission ownership on Windows. Actual
 linked channel data tests use simulated SVC transport; browser PCM fixtures use
-synthetic samples and Opus fixtures use the pinned SDK. Actual XRDP viewers pass
-with idle/waiting audio. Audible RDP, ready-source reset, microphone and
+synthetic samples and Opus fixtures use the pinned SDK. Active actual XRDP now
+delivers PCM and Opus through Node and browser Worklet admission after padded
+Training, identical format-table and large-callback corrections. Frequent epoch
+changes and large-burst discard remain quality gaps. Private ready-source reset
+passes for both codecs on this lab. The user hears Opus but reports interruptions;
+uninterrupted audio, broader recovery, microphone and
 latency/resource/platform acceptance remain open.
+[Actual source evidence](docs/ITERATION_175.md).
 
 Microphone foundations now include private Windows worker dispatch/reset,
 bounded Node ingress and exclusive control/media session ownership. Restored
@@ -291,8 +296,9 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 ## Stage 6 — audio output and microphone
 
 **Overall: IN PROGRESS.** Windows PCM/Opus output and input paths are implemented;
-fixtures exercise their composition. Actual XRDP connects with waiting sources,
-so real playback/recording and the LAN queue gate have not passed. Synthetic
+fixtures exercise their composition. Actual XRDP output now supplies real PCM/Opus
+and browser decoder/Worklet admission; audible quality, recording and the LAN
+queue gate have not passed. Synthetic
 browser samples and linked SDK channels with simulated transport establish
 component behavior, not remote or physical-device acceptance.
 
@@ -321,8 +327,10 @@ broader format profiles and end-to-end acceptance are separate open work.
 
 - [~] Custom `rdpsnd-browser` virtual sink: selected Windows worker/native/Node/
   viewer PCM/Opus path and guarded static/dynamic ingress are implemented.
-  Real server format negotiation, audible playback and ready-source reset/
-  attachment recovery remain unverified. [94](docs/ITERATION_094.md),
+  Real XRDP negotiation and PCM/Opus browser admission pass; audible playback,
+  burst quality and public attachment recovery remain open. Private ready-source
+  reset passes both codecs on this lab.
+  [175](docs/ITERATION_175.md), [94](docs/ITERATION_094.md),
   [167](docs/ITERATION_167.md), [168](docs/ITERATION_168.md).
 - [~] Custom `audin-browser` source, browser microphone capture and packet
   transport: selected Windows PCM/Opus AUDIN/worker/Node/viewer path is implemented.
@@ -330,8 +338,9 @@ broader format profiles and end-to-end acceptance are separate open work.
   permission/device capture and remote application recording remain unverified.
   [144](docs/ITERATION_144.md), [169](docs/ITERATION_169.md).
 - [~] PCM normalization/resampling and Opus compatibility beyond the accepted
-  fixed profiles: wider/higher-rate formats, larger packet splitting, server
-  format-table renegotiation and other browser/device sample rates remain open.
+  fixed profiles: larger callbacks split within fixed storage and identical
+  selected tables can repeat. Wider/higher-rate formats, changed server tables,
+  callback CPU/quality and other browser/device sample rates remain open.
   Existing explicit profile refusals do not remove these retained requirements.
 - [~] Audio queue/jitter/backpressure metrics: transport metrics exist; native/
   browser underflow, jitter, encode and host-queue export and measured LAN queue/

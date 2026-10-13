@@ -92,7 +92,9 @@ std::optional<AudioPdu> AudioPduValidator::validate(std::span<const std::uint8_t
       return reject();
     return AudioPdu{AudioPduKind::volume};
   case 6:
-    if (body != 4)
+    // Server Training includes two fixed words followed by optional opaque
+    // padding. wPackSize is echoed by FreeRDP, never used for allocation here.
+    if (body < 4)
       return reject();
     return AudioPdu{AudioPduKind::training};
   case 7: {
