@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { viewerMediaOptions } from '../../scripts/viewer-media-options.mjs';
+test('compatibility viewer selects exactly 200 ms output without microphone capture', () => {
+  for (const [flag, codec, manual] of [
+    ['--audio-compat-test', 'pcm', false],
+    ['--audio-compat-manual', 'pcm', true],
+    ['--audio-opus-compat-test', 'opus', false],
+    ['--audio-opus-compat-manual', 'opus', true],
+    ['--audio-opus-compat-listen', 'opus', true],
+  ]) {
+    const value = viewerMediaOptions(flag);
+    assert.equal(value.audioOutputBufferMs, 200);
+    assert.equal(value.audioOutput, codec);
+    assert.equal(value.manual, manual);
+    assert.equal(value.microphone, 'off');
+  }
+  assert.equal(
+    viewerMediaOptions('--audio-opus-test').audioOutputBufferMs,
+    undefined,
+  );
+});
 
 test('lab viewer options: explicit Opus input remains independent of output and automated capture stays disabled', () => {
   for (const [flag, manual] of [

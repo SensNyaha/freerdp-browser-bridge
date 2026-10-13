@@ -8,6 +8,32 @@ using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
     0x3d, 4, 0, 3, 0,   0,   32,  2,   1,   2,   0,   0,   0,   0x13, 0x88, 0,   0, 3, 0xe8};
+TEST_CASE("connection v9 compatibility buffer requires exactly one output and keeps legacy masks") {
+  auto bytes = connection;
+  bytes[1] = 9;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 0});
+  for (unsigned flags = 0; flags < 256; ++flags) {
+    bytes.back() = static_cast<std::uint8_t>(flags);
+    const bool valid = flags <= 127 && (flags & 12U) != 12U && (flags & 48U) != 48U &&
+                       (!(flags & 64U) || (flags & 12U));
+    if (!valid)
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+    else {
+      const auto decoded = decode_connection_config(bytes);
+      REQUIRE(decoded.audio_buffer_200 == ((flags & 64U) != 0));
+      REQUIRE(decoded.pcm_output == ((flags & 4U) != 0));
+      REQUIRE(decoded.opus_output == ((flags & 8U) != 0));
+    }
+  }
+  bytes.back() = 68;
+  for (unsigned schema = 1; schema < 9; ++schema) {
+    bytes[1] = static_cast<std::uint8_t>(schema);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes[1] = 9;
+  for (std::size_t length = 0; length < bytes.size(); ++length)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+}
 TEST_CASE(
     "connection v8 Opus microphone flags preserve independent exclusive input and output codecs") {
   auto bytes = connection;

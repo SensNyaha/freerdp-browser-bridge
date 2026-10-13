@@ -18,6 +18,97 @@ import {
   decodeAvcFrame,
   encodeAvcRecords,
 } from '../../packages/protocol/dist/index.js';
+test('audio buffer: schema-9 golden selection, output dependency and legacy HELLO default', () => {
+  const settings = {
+    host: 'localhost',
+    username: 'u',
+    domain: '',
+    port: 3389,
+    width: 1024,
+    height: 768,
+    colorDepth: 32,
+    security: 2,
+    certificatePolicy: 1,
+    minimumTls: 2,
+    connectMs: 5000,
+    tcpAckMs: 1000,
+  };
+  const encoded = encodeConnectionSettings({
+    ...settings,
+    pcmOutput: true,
+    audioBuffer200: true,
+  });
+  assert.equal(
+    encoded.toString('hex'),
+    '000900096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e81e145000003d0900003d090000000044',
+  );
+  assert.equal(
+    encodeConnectionSettings({
+      ...settings,
+      opusOutput: true,
+      audioBuffer200: true,
+    }).at(-1),
+    72,
+  );
+  assert.equal(
+    encodeConnectionSettings({
+      ...settings,
+      pcmOutput: true,
+      audioBuffer200: false,
+    }).readUInt16BE(0),
+    5,
+  );
+  assert.throws(
+    () => encodeConnectionSettings({ ...settings, audioBuffer200: true }),
+    ProtocolError,
+  );
+  assert.throws(
+    () =>
+      encodeConnectionSettings({
+        ...settings,
+        pcmOutput: true,
+        audioBuffer200: 200,
+      }),
+    ProtocolError,
+  );
+  const strings = [
+    '0.1.0',
+    'fixture',
+    '3.32.1',
+    '3.32.1',
+    'windows',
+    'x64',
+    'framed-pipes',
+  ].flatMap((text) => {
+    const value = Buffer.from(text),
+      length = Buffer.alloc(2);
+    length.writeUInt16BE(value.length);
+    return [length, value];
+  });
+  const report = Buffer.concat([Buffer.from('00011005', 'hex'), ...strings]);
+  assert.equal(decodeBuild(report).capabilities.audioBuffer200, false);
+  assert.equal(
+    decodeBuild(Buffer.concat([report, Buffer.from('0001000000000004', 'hex')]))
+      .capabilities.audioBuffer200,
+    true,
+  );
+  assert.throws(
+    () =>
+      decodeBuild(
+        Buffer.concat([report, Buffer.from('0001000000000008', 'hex')]),
+      ),
+    ProtocolError,
+  );
+  const absent = Buffer.from(report);
+  absent.writeUInt16BE(5, 2);
+  assert.throws(
+    () =>
+      decodeBuild(
+        Buffer.concat([absent, Buffer.from('0001000000000004', 'hex')]),
+      ),
+    ProtocolError,
+  );
+});
 
 test('AVC IPC/RWB1 independent vectors, parameter sets, keyframe classification and allocation bounds', () => {
   const config = '0142c01effe100046742c01e01000468ce3c80';

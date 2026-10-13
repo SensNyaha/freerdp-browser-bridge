@@ -6,6 +6,30 @@
 
 using namespace bridge::audio;
 
+TEST_CASE("Compatibility PCM queue is a fixed 200 ms ring with wrap and reset ownership") {
+  PcmQueue queue(OutputBufferProfile::compatibility);
+  REQUIRE(queue.capacity() == 9600);
+  REQUIRE(PcmQueue{}.capacity() == 5760);
+  REQUIRE_THROWS(PcmQueue(static_cast<OutputBufferProfile>(99)));
+  std::vector<std::uint8_t> first(4800 * 4, 1), second(4800 * 4, 2), next(4800 * 4, 3);
+  std::vector<std::uint8_t> output(4800 * 4), excess(4);
+  REQUIRE(queue.push(first) == QueueStatus::accepted);
+  REQUIRE(queue.push(second) == QueueStatus::accepted);
+  REQUIRE(queue.push(excess) == QueueStatus::full);
+  REQUIRE(queue.read(output).frames == 4800);
+  REQUIRE(output == first);
+  REQUIRE(queue.push(next) == QueueStatus::accepted);
+  REQUIRE(queue.read(output).frames == 4800);
+  REQUIRE(output == second);
+  REQUIRE(queue.read(output).frames == 4800);
+  REQUIRE(output == next);
+  REQUIRE(queue.stats().high_water_frames == 9600);
+  REQUIRE(queue.push(first) == QueueStatus::accepted);
+  queue.reset();
+  REQUIRE(queue.read(output).silence_frames == 4800);
+  REQUIRE(std::all_of(output.begin(), output.end(), [](auto byte) { return byte == 0; }));
+}
+
 TEST_CASE("Raw unstamped trimming counts loss without erasing an existing boundary") {
   PcmQueue queue;
   std::vector<std::uint8_t> samples(1920 * 4, 1);

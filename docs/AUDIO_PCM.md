@@ -884,3 +884,21 @@ defines client indices into the exchanged list. [Iteration 47](ITERATION_047.md)
 checks 48 kHz stereo PCM16 to 8 kHz mono PCM8/PCM16 conversion through actual linked
 RDPSND/fake SVC, plus replacement rejection before and after Open. Queue and source
 packet budgets are unchanged. This is not actual remote/browser audible acceptance.
+
+## Optional native compatibility storage
+
+Accepted [ADR-012](adr/ADR-012-audio-compatibility-buffer.md) adds explicit
+`media.audioOutputBufferMs: 200` for PCM/Opus. The immutable native ring uses
+9600 stereo 48 kHz frames instead of the default 5760; backing storage is a
+fixed 38,400-byte maximum, with active capacity used for wrap/full/discard logic.
+Reset wipes the full allocation. The normalizer still uses 100 ms spans, and
+RWI1/RWB1 packets remain 20 ms. Browser Worklet and microphone capacities do not
+change. This is not a total latency guarantee. Standard LAN target remains
+<150 ms; the compatibility native 200 ms exception is explicit.
+
+Trimming unencoded/unstamped source PCM counts every skipped frame but does not
+by itself invalidate already delivered Opus history. Existing reset markers are
+preserved. Timestamped interval skips, source/format changes and dropped encoded
+prediction retain the existing discontinuity/reset barriers. No lost compressed
+packet is treated as continuous. This avoids an unnecessary browser prebuffer
+restart after each native raw trim while keeping loss visible.

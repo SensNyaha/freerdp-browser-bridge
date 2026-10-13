@@ -1167,7 +1167,9 @@ void Connection::run() noexcept {
             return true;
           },
           audio_discard_, bridge::audio::AudioSession::Drain{}, 1000000,
-          config_->opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm);
+          config_->opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm,
+          config_->audio_buffer_200 ? bridge::audio::OutputBufferProfile::compatibility
+                                    : bridge::audio::OutputBufferProfile::low_latency);
     if (config_->pcm_input || config_->opus_input)
       microphone_ =
           std::make_unique<bridge::audio::MicrophoneSession>(*context_, publish_microphone, this);

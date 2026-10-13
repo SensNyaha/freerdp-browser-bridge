@@ -10,6 +10,25 @@ const base = () => ({
   target: { host: 'rdp.example.internal' },
   auth: { username: 'example', password: 'sentinel-PASSWORD' },
 });
+test('audio buffer selection accepts only the explicit 120 and 200 ms output profiles', () => {
+  for (const audioOutputBufferMs of [120, 200])
+    assert.equal(
+      validateSessionConfig({
+        ...base(),
+        media: { audioOutput: 'opus', audioOutputBufferMs },
+      }).media.audioOutputBufferMs,
+      audioOutputBufferMs,
+    );
+  for (const audioOutputBufferMs of [0, 119, 121, 150, 199, 201, '200', true])
+    assert.throws(
+      () =>
+        validateSessionConfig({
+          ...base(),
+          media: { audioOutput: 'pcm', audioOutputBufferMs },
+        }),
+      ConfigError,
+    );
+});
 
 test('video quality profiles preserve defaults, clamp only FPS ceilings and resolve bitrate overrides', () => {
   assert.deepEqual(resolveVideoQuality(), {

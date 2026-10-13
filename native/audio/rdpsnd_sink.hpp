@@ -26,6 +26,7 @@ class RdpsndSink {
     PcmQueue queue;
     PcmPacketizer packets;
     std::array<std::uint8_t, PcmNormalizer::max_output_bytes> volume{};
+    explicit Pipeline(OutputBufferProfile profile) : queue(profile) {}
   };
   std::unique_ptr<Pipeline> pipeline_;
   std::thread::id thread_;
@@ -46,7 +47,7 @@ class RdpsndSink {
   static BOOL default_format(rdpsndDevicePlugin *, const AUDIO_FORMAT *, AUDIO_FORMAT *) noexcept;
 
 public:
-  RdpsndSink();
+  explicit RdpsndSink(OutputBufferProfile profile = OutputBufferProfile::low_latency);
   RdpsndSink(const RdpsndSink &) = delete;
   RdpsndSink &operator=(const RdpsndSink &) = delete;
   rdpsndDevicePlugin &device() noexcept { return device_; }

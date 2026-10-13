@@ -334,6 +334,7 @@ export interface WorkerBuild {
     pcmInput: boolean;
     microphoneReset: boolean;
     opusInput: boolean;
+    audioBuffer200: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -388,9 +389,10 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~3) !== 0 ||
+      (extensions & ~7) !== 0 ||
       ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
-      ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4)))
+      ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4))) ||
+      ((extensions & 4) !== 0 && !(capabilities & 4096))
     )
       throw new ProtocolError();
     offset += 8;
@@ -421,6 +423,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       pcmInput: Boolean(capabilities & 32768),
       microphoneReset: Boolean(extensions & 1),
       opusInput: Boolean(extensions & 2),
+      audioBuffer200: Boolean(extensions & 4),
       penInput: false,
     },
     bridgeVersion,
@@ -530,6 +533,7 @@ export interface ConnectionSettings {
   opusOutput?: boolean;
   pcmInput?: boolean;
   opusInput?: boolean;
+  audioBuffer200?: boolean;
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -548,25 +552,29 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     (c.opusOutput !== undefined && typeof c.opusOutput !== 'boolean') ||
     (c.pcmInput !== undefined && typeof c.pcmInput !== 'boolean') ||
     (c.opusInput !== undefined && typeof c.opusInput !== 'boolean') ||
+    (c.audioBuffer200 !== undefined && typeof c.audioBuffer200 !== 'boolean') ||
+    (c.audioBuffer200 === true && !c.pcmOutput && !c.opusOutput) ||
     (c.pcmOutput === true && c.opusOutput === true) ||
     (c.pcmInput === true && c.opusInput === true)
   )
     throw new ProtocolError();
-  const schema = c.opusInput
-    ? 8
-    : c.pcmInput
-      ? 7
-      : c.opusOutput
-        ? 6
-        : c.pcmOutput
-          ? 5
-          : c.touch
-            ? 4
-            : c.dynamicResolution
-              ? 3
-              : c.videoQuality
-                ? 2
-                : 1;
+  const schema = c.audioBuffer200
+    ? 9
+    : c.opusInput
+      ? 8
+      : c.pcmInput
+        ? 7
+        : c.opusOutput
+          ? 6
+          : c.pcmOutput
+            ? 5
+            : c.touch
+              ? 4
+              : c.dynamicResolution
+                ? 3
+                : c.videoQuality
+                  ? 2
+                  : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -664,7 +672,8 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
           (c.pcmOutput ? 4 : 0) |
           (c.opusOutput ? 8 : 0) |
           (c.pcmInput ? 16 : 0) |
-          (c.opusInput ? 32 : 0),
+          (c.opusInput ? 32 : 0) |
+          (c.audioBuffer200 ? 64 : 0),
       ]),
     );
   return Buffer.concat(parts);

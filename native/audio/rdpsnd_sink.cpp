@@ -21,8 +21,8 @@ void increment(std::uint64_t &counter) noexcept {
     ++counter;
 }
 } // namespace
-RdpsndSink::RdpsndSink()
-    : pipeline_(std::make_unique<Pipeline>()), thread_(std::this_thread::get_id()) {
+RdpsndSink::RdpsndSink(OutputBufferProfile profile)
+    : pipeline_(std::make_unique<Pipeline>(profile)), thread_(std::this_thread::get_id()) {
   device_.FormatSupported = supported;
   device_.Open = open;
   device_.GetVolume = get_volume;
@@ -117,7 +117,7 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
       pipeline.volume[at + 1] = static_cast<std::uint8_t>(bits >> 8);
     }
     if (!normalized.bytes.empty()) {
-      const auto free = PcmQueue::capacity_frames - pipeline.queue.stats().queued_frames;
+      const auto free = pipeline.queue.capacity() - pipeline.queue.stats().queued_frames;
       if (chunked && normalized.frames > free)
         (void)pipeline.queue.discard_unstamped(normalized.frames - free);
       if (pipeline.queue.push(std::span(pipeline.volume).first(normalized.bytes.size())) !=

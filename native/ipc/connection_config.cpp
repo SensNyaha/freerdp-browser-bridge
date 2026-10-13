@@ -64,7 +64,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 8)
+  if (schema < 1 || schema > 9)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -100,7 +100,8 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
                  : schema == 5 ? 7U
                  : schema == 6 ? 15U
                  : schema == 7 ? 31U
-                               : 63U) ||
+                 : schema == 8 ? 63U
+                               : 127U) ||
         (flags & 12U) == 12U || (flags & 48U) == 48U)
       throw ProtocolError();
     config.dynamic_resolution = (flags & 1U) != 0;
@@ -109,6 +110,9 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     config.opus_output = (flags & 8U) != 0;
     config.pcm_input = (flags & 16U) != 0;
     config.opus_input = (flags & 32U) != 0;
+    config.audio_buffer_200 = (flags & 64U) != 0;
+    if (config.audio_buffer_200 && !(config.pcm_output || config.opus_output))
+      throw ProtocolError();
   }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),

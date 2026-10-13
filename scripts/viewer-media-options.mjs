@@ -1,5 +1,13 @@
 /** Local viewer modes; input and output codec choices are independent. */
 export function viewerMediaOptions(flag) {
+  const listenPreview = flag === '--audio-opus-compat-listen';
+  const compatibility = [
+    '--audio-compat-manual',
+    '--audio-compat-test',
+    '--audio-opus-compat-manual',
+    '--audio-opus-compat-test',
+    '--audio-opus-compat-listen',
+  ].includes(flag);
   const opusInput = [
     '--microphone-opus-input-manual',
     '--microphone-opus-input-test',
@@ -15,13 +23,24 @@ export function viewerMediaOptions(flag) {
     '--microphone-opus-input-test',
   ].includes(flag);
   const audioManual = [
+    '--audio-opus-compat-listen',
+    '--audio-compat-manual',
+    '--audio-opus-compat-manual',
     '--audio-manual',
     '--audio-opus-manual',
     '--microphone-pcm-manual',
     '--microphone-opus-manual',
   ].includes(flag);
-  const audioTest = ['--audio-test', '--audio-opus-test'].includes(flag);
+  const audioTest = [
+    '--audio-test',
+    '--audio-opus-test',
+    '--audio-compat-test',
+    '--audio-opus-compat-test',
+  ].includes(flag);
   const audioOutput = [
+    '--audio-opus-compat-listen',
+    '--audio-opus-compat-manual',
+    '--audio-opus-compat-test',
     '--audio-opus-manual',
     '--audio-opus-test',
     '--microphone-opus-manual',
@@ -38,6 +57,8 @@ export function viewerMediaOptions(flag) {
     audioManual,
     audioTest,
     audioOutput,
+    ...(compatibility ? { audioOutputBufferMs: 200 } : {}),
+    ...(listenPreview ? { listenPreview: true } : {}),
     manual: flag === '--manual' || audioManual || microphoneManual,
   };
 }

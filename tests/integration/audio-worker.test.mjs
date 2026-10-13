@@ -67,6 +67,7 @@ test('fake PCM peer: unsupported codecs, microphone, latency and legacy capabili
       { audioOutput: 'opus' },
       { audioOutput: 'pcm', microphone: 'pcm' },
       { audioOutput: 'pcm', audioLatencyMs: 40 },
+      { audioOutput: 'pcm', audioOutputBufferMs: 200 },
     ])
       await assert.rejects(worker.connect(configuration('valid', media)), {
         code: 'RDP_SETTING_NOT_IMPLEMENTED',

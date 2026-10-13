@@ -528,3 +528,19 @@ Public error structure:
 ```
 
 Never include password, gateway password, smart-card PIN, access token, pass-the-hash material or complete command lines in `details`.
+
+## Optional native output buffer profile
+
+`SessionCreate.media.audioOutputBufferMs` is an additive optional `120 | 200`.
+Omission/120 preserves the native 120 ms profile. 200 requires explicit PCM/Opus
+output and `audioBuffer200` worker capability; unavailable peers are refused
+before configure/secret. This is native handoff capacity, not end-to-end latency
+or microphone/Worklet storage. [Accepted ADR-012](docs/adr/ADR-012-audio-compatibility-buffer.md).
+
+Private settings schema 9 retains the schema-8 layout and adds flags bit 6 (64),
+requiring exactly one output codec. Older schema masks, other field bounds and
+the 2048-byte envelope remain unchanged. The eight-byte schema-1 HELLO suffix
+adds flags bit 2 (4) for `audioBuffer200`, requiring PCM output capability.
+Absent suffix/bit means unsupported. Old strict decoders can reject this new bit;
+upgrade the private Node/native pair together. RWB1 audio records, browser codec
+negotiation, packet credit/ACK and 20 ms frames do not change.

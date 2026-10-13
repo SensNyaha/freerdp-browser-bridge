@@ -1003,6 +1003,7 @@ export class WorkerProcess extends EventEmitter {
         this.report.capabilities.pcmInput,
         this.report.capabilities.opusInput,
         this.report.capabilities.microphoneReset,
+        this.report.capabilities.audioBuffer200,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -1135,6 +1136,7 @@ function connectionPayload(
   pcmInput: boolean,
   opusInput: boolean,
   microphoneReset: boolean,
+  audioBuffer200: boolean,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -1160,7 +1162,12 @@ function connectionPayload(
     'dynamicResolution',
   ]);
   allowed(config.input, ['touch']);
-  allowed(config.media, ['audioOutput', 'microphone', 'audioLatencyMs']);
+  allowed(config.media, [
+    'audioOutput',
+    'microphone',
+    'audioLatencyMs',
+    'audioOutputBufferMs',
+  ]);
   if (
     (config.media?.audioOutput &&
       !['off', 'pcm', 'opus'].includes(config.media.audioOutput)) ||
@@ -1171,7 +1178,10 @@ function connectionPayload(
       !['pcm', 'opus'].includes(config.media.microphone)) ||
     (config.media?.microphone === 'pcm' && !pcmInput) ||
     (config.media?.microphone === 'opus' && (!opusInput || !microphoneReset)) ||
-    config.media?.audioLatencyMs !== undefined
+    config.media?.audioLatencyMs !== undefined ||
+    (config.media?.audioOutputBufferMs === 200 &&
+      (!audioBuffer200 ||
+        !['pcm', 'opus'].includes(config.media?.audioOutput ?? 'off')))
   )
     throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
   if (config.input?.touch && !touchInput)
@@ -1224,6 +1234,9 @@ function connectionPayload(
     ...(config.input?.touch ? { touch: true } : {}),
     ...(config.media?.audioOutput === 'pcm' ? { pcmOutput: true } : {}),
     ...(config.media?.audioOutput === 'opus' ? { opusOutput: true } : {}),
+    ...(config.media?.audioOutputBufferMs === 200
+      ? { audioBuffer200: true }
+      : {}),
     ...(config.media?.microphone === 'pcm' ? { pcmInput: true } : {}),
     ...(config.media?.microphone === 'opus' ? { opusInput: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),

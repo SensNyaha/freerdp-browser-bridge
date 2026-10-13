@@ -109,6 +109,7 @@ test('private Opus selection: legacy peers and unsupported microphone latency or
       { audioOutput: 'pcm' },
       { audioOutput: 'opus', microphone: 'pcm' },
       { audioOutput: 'opus', audioLatencyMs: 40 },
+      { audioOutput: 'opus', audioOutputBufferMs: 200 },
     ])
       await assert.rejects(worker.connect(configuration('valid', media)), {
         code: 'RDP_SETTING_NOT_IMPLEMENTED',

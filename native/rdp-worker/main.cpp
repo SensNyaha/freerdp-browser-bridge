@@ -109,11 +109,19 @@ std::vector<std::uint8_t> build_payload() {
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
                             platform, arch, "framed-pipes"})
     append_string(bytes, value);
-#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
-  // Fixed schema-1 extension: microphone reset and Opus input.
+#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) &&                                             \
+    (defined(CHANNEL_AUDIN_CLIENT) || defined(CHANNEL_RDPSND_CLIENT))
+  unsigned extensions = 0;
+#ifdef CHANNEL_AUDIN_CLIENT
+  extensions |= 3;
+#endif
+#ifdef CHANNEL_RDPSND_CLIENT
+  extensions |= 4;
+#endif
+  // Fixed schema-1 extension; unknown feature bits remain refused by old peers.
   append_be(bytes, 1, 2);
   append_be(bytes, 0, 2);
-  append_be(bytes, 3, 4);
+  append_be(bytes, extensions, 4);
 #endif
   return bytes;
 }
@@ -333,6 +341,11 @@ int main(int argc, char **argv) {
                  "\"microphoneReset\":true,\"opusInput\":true,"
 #else
                  "\"microphoneReset\":false,\"opusInput\":false,"
+#endif
+#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+                 "\"audioBuffer200\":true,"
+#else
+                 "\"audioBuffer200\":false,"
 #endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP

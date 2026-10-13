@@ -400,3 +400,22 @@ Dedicated lab viewer `--audio-manual` / `--audio-opus-manual` performs the outpu
 activation button click so certificate approval cannot expire while waiting for
 it. The product viewer retains its gesture gate; this does not request microphone
 permission. Audible quality remains a user check. [Current XRDP corrections](ITERATION_175.md).
+
+## Explicit 200 ms output compatibility profile
+
+The selected native output capacity can be set independently for PCM/Opus:
+
+```powershell
+node scripts/test-xrdp-audio.mjs $fingerprint pcm 200
+node scripts/test-xrdp-audio.mjs $fingerprint opus 200
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-test
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-manual
+```
+
+PCM viewer modes are `--audio-compat-test` / `--audio-compat-manual`. Manual output
+activation is performed by the dedicated lab helper; no microphone is requested.
+Run actual RDP modes sequentially. Programmatic creation uses
+`media: { audioOutput: 'opus', audioOutputBufferMs: 200 }`; omission or 120 keeps
+the original capacity. This is native handoff storage, not total playback latency.
+The private Node/native pair must both support the new gated schema.
+[Accepted scope](adr/ADR-012-audio-compatibility-buffer.md).

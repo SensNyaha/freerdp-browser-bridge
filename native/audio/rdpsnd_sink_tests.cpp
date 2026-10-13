@@ -20,6 +20,27 @@ UINT play(rdpsndDevicePlugin &device, std::span<const std::uint8_t> bytes) {
 }
 } // namespace
 
+TEST_CASE("RDPSND compatibility buffer retains a whole 186 ms XRDP callback") {
+  RdpsndSink sink(OutputBufferProfile::compatibility);
+  auto &device = sink.device();
+  const auto pcm = format(44100);
+  REQUIRE(device.Open(&device, &pcm, 0));
+  const std::vector<std::uint8_t> input(8192 * 4, 255);
+  REQUIRE(play(device, input) <= 200);
+  REQUIRE(sink.stats()->queue.queued_frames == 8916);
+  REQUIRE(sink.stats()->queue.playback_skipped_frames == 0);
+  REQUIRE(sink.stats()->queue.high_water_frames == 8916);
+  std::size_t frames = 0;
+  for (unsigned packet = 0; packet < 10; ++packet) {
+    const auto value = sink.packet(packet * 20000ULL);
+    REQUIRE(value.status == PacketStatus::ready);
+    REQUIRE(value.discontinuity == (packet == 0));
+    frames += value.frames;
+  }
+  REQUIRE(frames == 8916);
+  REQUIRE(sink.stats()->queue.queued_frames == 0);
+}
+
 TEST_CASE("RDPSND availability separates source samples from open device ownership") {
   RdpsndSink sink;
   auto &device = sink.device();

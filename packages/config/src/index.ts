@@ -123,6 +123,9 @@ export const SessionCreateSchema = object({
       videoCodec: Type.Optional(choice('h264', 'jpeg')),
       hardwareEncode: Type.Optional(choice('auto', 'off', 'prefer')),
       audioOutput: Type.Optional(choice('opus', 'pcm', 'off')),
+      audioOutputBufferMs: Type.Optional(
+        Type.Union([Type.Literal(120), Type.Literal(200)]),
+      ),
       microphone: Type.Optional(choice('opus', 'pcm', 'off')),
       audioLatencyMs: number(10, 150),
     }),

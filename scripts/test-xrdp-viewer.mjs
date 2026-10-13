@@ -26,6 +26,8 @@ const {
   audioManual,
   audioTest,
   audioOutput,
+  audioOutputBufferMs,
+  listenPreview,
   manual,
 } = viewerMediaOptions(process.argv[4]);
 const qualityTest = process.argv[4] === '--quality-test';
@@ -176,7 +178,11 @@ try {
         dynamicResolution: resizeTest || soakTest || manual,
       },
       input: { touch: manual || touchInventory },
-      media: { audioOutput, microphone },
+      media: {
+        audioOutput,
+        microphone,
+        ...(audioOutputBufferMs ? { audioOutputBufferMs } : {}),
+      },
       security: { certificatePolicy: 'prompt' },
       timeouts: { connectMs: audioManual ? 120000 : 20000, tcpAckMs: 10000 },
       ...(quality ? { quality } : {}),
@@ -285,7 +291,17 @@ try {
       console.log(
         'Микрофон включается только отдельной кнопкой после готовности удалённого канала.',
       );
-    await waitForViewerClose(browser, page);
+    if (listenPreview) {
+      const timer = new AbortController();
+      try {
+        await Promise.race([
+          waitForViewerClose(browser, page),
+          delay(60000, undefined, { signal: timer.signal }),
+        ]);
+      } finally {
+        timer.abort();
+      }
+    } else await waitForViewerClose(browser, page);
   } else {
     phase = 'pixels';
     await delay(15000); // Let the remote login/desktop finish painting before visual verification.

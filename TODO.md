@@ -53,6 +53,12 @@ passes for both codecs on this lab. The user hears Opus but reports interruption
 uninterrupted audio, broader recovery, microphone and
 latency/resource/platform acceptance remain open.
 [Actual source evidence](docs/ITERATION_175.md).
+The user accepts current Opus output quality for local development: the explicit
+200 ms profile sounds smoother, with remaining interruptions. A slow tunnel is
+the user's hypothesis, not a measured cause. Native 120/200 ms selection, actual
+PCM/Opus reception and ready reset pass; uninterrupted quality, measured latency
+and the remaining audio gates are not waived. [ADR-012](docs/adr/ADR-012-audio-compatibility-buffer.md),
+[current evidence](docs/ITERATION_179.md).
 
 Microphone foundations now include private Windows worker dispatch/reset,
 bounded Node ingress and exclusive control/media session ownership. Restored
@@ -79,7 +85,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 507/507 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 518/518 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -297,8 +303,9 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 **Overall: IN PROGRESS.** Windows PCM/Opus output and input paths are implemented;
 fixtures exercise their composition. Actual XRDP output now supplies real PCM/Opus
-and browser decoder/Worklet admission; audible quality, recording and the LAN
-queue gate have not passed. Synthetic
+and browser decoder/Worklet admission. The user accepts smoother Opus output
+with the 200 ms profile for local development; uninterrupted quality, recording
+and the measured LAN queue gate remain open. Synthetic
 browser samples and linked SDK channels with simulated transport establish
 component behavior, not remote or physical-device acceptance.
 
@@ -312,6 +319,7 @@ broader format profiles and end-to-end acceptance are separate open work.
 | PCM normalization/resampling | DONE — bounded native PCM8/PCM16 mono/stereo 8..48 kHz to S16LE 48 kHz stereo, portable fixtures | [36](docs/ITERATION_036.md), [47](docs/ITERATION_047.md) |
 | Volume mapping | DONE — independent stereo perceptual gains, mute/full identity, exhaustive and linked fake-SVC fixtures | [44](docs/ITERATION_044.md) |
 | Native PCM queue and packetization | DONE — fixed 120 ms ring and 20 ms publication, underflow/overflow/reset fixtures | [37](docs/ITERATION_037.md), [49](docs/ITERATION_049.md), [62](docs/ITERATION_062.md) |
+| Native output buffer selection | DONE on Windows — immutable 120/200 ms profiles, bounded queue/configuration, legacy refusal, actual XRDP PCM/Opus selection and reset; not total latency acceptance | [179](docs/ITERATION_179.md), [ADR-012](docs/adr/ADR-012-audio-compatibility-buffer.md) |
 | Private Opus output codec | DONE on Windows — pinned SDK encode/decode/reset/bounds and DLL relocation | [73](docs/ITERATION_073.md), [75](docs/ITERATION_075.md) |
 | PCM/Opus record codecs | DONE — bounded native/Node/browser wire vectors and malformed-record fixtures | [50](docs/ITERATION_050.md), [75](docs/ITERATION_075.md), [76](docs/ITERATION_076.md) |
 | Browser PCM playback owner | DONE in Edge synthetic fixtures — queue, Worklet admission ACK, gesture and cleanup | [70](docs/ITERATION_070.md), [71](docs/ITERATION_071.md) |
@@ -327,7 +335,8 @@ broader format profiles and end-to-end acceptance are separate open work.
 
 - [~] Custom `rdpsnd-browser` virtual sink: selected Windows worker/native/Node/
   viewer PCM/Opus path and guarded static/dynamic ingress are implemented.
-  Real XRDP negotiation and PCM/Opus browser admission pass; audible playback,
+  Real XRDP negotiation and PCM/Opus browser admission pass; Opus is audible and
+  the user accepts current 200 ms quality for development. Uninterrupted playback,
   burst quality and public attachment recovery remain open. Private ready-source
   reset passes both codecs on this lab.
   [175](docs/ITERATION_175.md), [94](docs/ITERATION_094.md),
@@ -364,6 +373,9 @@ release gates. Current evidence supersedes their earlier inactive-path wording;
 unresolved compatibility/resource/device requirements remain required work.
 
 **Gate:** remote audio audible and microphone usable with bounded <150 ms queue target in LAN test.
+ADR-012 explicitly permits a 200 ms native output ring in the optional
+compatibility profile; it does not establish total latency or waive the ordinary
+profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 7 — clipboard and managed drives
 

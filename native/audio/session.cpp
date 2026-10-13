@@ -12,8 +12,9 @@ void increment(std::uint64_t &counter) noexcept {
 } // namespace
 AudioSession::AudioSession(rdpContext &context, PcmPublisher::TrySend send,
                            PcmPublisher::TryDiscard discard, Drain drain,
-                           std::uint64_t retire_window_us, ipc::OutputAudioCodec codec)
-    : gate_(context, source_), send_(std::move(send)), drain_(std::move(drain)),
+                           std::uint64_t retire_window_us, ipc::OutputAudioCodec codec,
+                           OutputBufferProfile buffer)
+    : source_(buffer), gate_(context, source_), send_(std::move(send)), drain_(std::move(drain)),
       thread_(std::this_thread::get_id()), retire_window_us_(retire_window_us), codec_(codec) {
   if (!send_ || !context.instance || retire_window_us_ < ipc::audio::interval_us ||
       retire_window_us_ > 1000000 ||

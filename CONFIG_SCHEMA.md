@@ -78,6 +78,7 @@ type SessionCreate = {
     videoCodec?: 'h264' | 'jpeg';
     hardwareEncode?: 'auto' | 'off' | 'prefer';
     audioOutput?: 'opus' | 'pcm' | 'off';
+    audioOutputBufferMs?: 120 | 200; // immutable native RDPSND handoff profile
     microphone?: 'opus' | 'pcm' | 'off';
     audioLatencyMs?: number;
   };

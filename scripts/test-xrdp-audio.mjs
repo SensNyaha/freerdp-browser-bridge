@@ -4,13 +4,15 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 
 // Authorized local lab only. No remote input or sound-generation commands.
-const [fingerprint, audioOutput = 'pcm', ...extra] = process.argv.slice(2);
+const [fingerprint, audioOutput = 'pcm', bufferMs = '120', ...extra] =
+  process.argv.slice(2);
 if (
   extra.length ||
   !['pcm', 'opus'].includes(audioOutput) ||
+  !['120', '200'].includes(bufferMs) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
 )
-  throw new Error('Use sha256:<verified-lab-fingerprint> [pcm|opus]');
+  throw new Error('Use sha256:<verified-lab-fingerprint> [pcm|opus] [120|200]');
 async function localJson(path) {
   try {
     return JSON.parse(
@@ -25,6 +27,7 @@ const credentials = await localJson('.local-tests/xrdp-lab.secrets.json');
 const report = {
   actualRdp: true,
   audioOutput,
+  audioOutputBufferMs: Number(bufferMs),
   browserPlayback: false,
   audibleAcceptance: false,
   states: [],
@@ -209,7 +212,7 @@ try {
     auth: { username: credentials.username, password: credentials.password },
     security: { certificatePolicy: 'prompt' },
     display: { width: 1920, height: 1080 },
-    media: { audioOutput },
+    media: { audioOutput, audioOutputBufferMs: Number(bufferMs) },
     timeouts: { connectMs: 20000, tcpAckMs: 10000 },
   });
   delete credentials.password;
@@ -248,9 +251,10 @@ try {
   if (!report.closed) throw new Error('LAB_CLEANUP_FAILED');
   await writeFile(
     resolve(
-      audioOutput === 'opus'
-        ? '.local-tests/xrdp-audio-opus-report.json'
-        : '.local-tests/xrdp-audio-report.json',
+      '.local-tests/xrdp-audio' +
+        (audioOutput === 'opus' ? '-opus' : '') +
+        (bufferMs === '200' ? '-200' : '') +
+        '-report.json',
     ),
     JSON.stringify(report, null, 2) + '\n',
   );
