@@ -1,4 +1,5 @@
 #include "dvc_completion_hook.hpp"
+#include "../audio/audin_ingress.hpp"
 #include "../audio/svc_ingress.hpp"
 #include "gfx_message_gate.hpp"
 #include <exception>
@@ -17,7 +18,7 @@ DvcCompletionHook::DvcCompletionHook(DvcMessageBudget &budget, std::uint32_t cha
   static_assert(std::is_standard_layout_v<Box>);
   if (!clock || !original.OnDataReceived || !allocations.valid() ||
       (payload != DvcPayload::opaque && payload != DvcPayload::graphics &&
-       payload != DvcPayload::audio))
+       payload != DvcPayload::audio && payload != DvcPayload::microphone))
     throw std::invalid_argument("Invalid DVC completion hook");
   if (payload == DvcPayload::graphics)
     graphics_ = std::make_unique<media::GfxMessageGate>(allocations);
@@ -98,7 +99,10 @@ UINT DvcCompletionHook::on_data(IWTSVirtualChannelCallback *p, wStream *stream) 
   self.busy_ = true;
   UINT status = CHANNEL_RC_OK;
   try {
-    if (self.audio_) {
+    if (self.payload_ == DvcPayload::microphone &&
+        Stream_GetRemainingLength(stream) > audio::AudinIngress::max_bytes) {
+      status = ERROR_INVALID_DATA;
+    } else if (self.audio_) {
       const auto size = Stream_GetRemainingLength(stream);
       const auto *bytes = static_cast<const BYTE *>(Stream_ConstPointer(stream));
       self.audio_status_ = CHANNEL_RC_OK;

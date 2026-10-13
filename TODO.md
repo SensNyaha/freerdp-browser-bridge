@@ -887,6 +887,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Cross-cutting checklist — apply at every stage
 
+- [~] IN PROGRESS — Exact AUDIN name now selects 64 KiB message/codec output /
+  128 KiB encoded admission before native host assembly/decompression, preserving
+  guarded negotiation/capture ownership. Four public cases / 30 assertions and
+  two actual linked AUDIN/fake-DVC cases / 61 assertions pass; linked DVC 147 /
+  7,909 and bundled CTest 21/21 pass. Actual microphone/core/pool/RSS/CPU/platform/
+  fuzz/soak gates remain open. [Iteration 169](docs/ITERATION_169.md).
+
 - [~] IN PROGRESS — Exact audio DVC name now selects 64 KiB message/output /
   128 KiB encoded admission before host assembly/decompression and complete
   RDPSND validation before pool copying. Eight public/actual-linked-fake-SVC

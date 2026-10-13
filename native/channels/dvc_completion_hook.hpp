@@ -11,7 +11,7 @@ class AudioSvcIngress;
 }
 
 namespace bridge::channels {
-enum class DvcPayload { opaque, graphics, audio };
+enum class DvcPayload { opaque, graphics, audio, microphone };
 // Public callback proxy only. The caller must retain this proxy and budget until
 // the host has closed it and all delegated callbacks have returned.
 class DvcCompletionHook final {

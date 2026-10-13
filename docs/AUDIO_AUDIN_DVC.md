@@ -1,5 +1,10 @@
 # Guarded AUDIN public DVC callback
 
+Current update — iteration 169: exact public AUDIN channel identity now also
+selects bounded DATA_FIRST/DATA inspection before native host allocation and
+decompression. The original guarded complete parser remains responsible for
+negotiation/capture. [Early admission and retained gates](AUDIN_EARLY_ADMISSION.md).
+
 Current update — iteration 101: owner tick/deadline snapshots apply exact rational
 capture cadence and bounded stale PCM skipping. Production polling/CPU budgets
 and worker/browser activation remain open. [Cadence contract](AUDIO_CAPTURE_CADENCE.md).

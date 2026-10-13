@@ -1,3 +1,4 @@
+#include "../channels/dvc_channel_registry.hpp"
 #include "audin_dvc.hpp"
 #include "audin_ingress.hpp"
 #include "audin_plugin.hpp"
@@ -332,6 +333,56 @@ bridge::ipc::microphone::Result submit_capture(void *owner,
   return Result::invalid;
 }
 } // namespace
+TEST_CASE("Actual guarded AUDIN negotiates beneath public early DVC audio allocation profile") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  host.manager.api.GetChannelId = [](IWTSVirtualChannel *) -> UINT32 { return 7; };
+  host.manager.api.GetChannelName = [](IWTSVirtualChannel *) { return AUDIN_DVC_CHANNEL_NAME; };
+  bridge::channels::DvcChannelRegistry registry([](void *) -> std::uint64_t { return 1; });
+  const auto binding = registry.bind(host.manager.api, host.channel.api, *host.callback, 1);
+  REQUIRE(binding.status == CHANNEL_RC_OK);
+  host.callback = binding.callback;
+  negotiate(host);
+  REQUIRE(registration.gate().ready());
+  REQUIRE(fixture.source.stats()->opened);
+  const auto attempts = host.attempts;
+  const auto epoch = fixture.source.stats()->epoch;
+  const BYTE claim[]{0x28, 7, 1, 0, 1, 0}; // 65,537 before native reassembly allocation.
+  REQUIRE_FALSE(registry.admit(claim, 1));
+  REQUIRE(host.attempts == attempts);
+  REQUIRE(fixture.source.stats()->epoch == epoch);
+  REQUIRE(fixture.source.stats()->opened);
+  REQUIRE(registry.stats().budget.reservations == 0);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE_FALSE(fixture.source.stats()->opened);
+  REQUIRE(registry.retire() != CHANNEL_RC_OK); // Admission error survives completed cleanup.
+  REQUIRE(registry.stats().resources_retired);
+}
+TEST_CASE("Actual guarded AUDIN normal close retires early DVC ownership without a false fault") {
+  Fixture fixture;
+  AudinRegistration registration(*fixture.context, fixture.source);
+  REQUIRE(fixture.provider.bind(*fixture.context, fixture.source, &registration) == CHANNEL_RC_OK);
+  Host host(fixture, false, false, &registration);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  host.manager.api.GetChannelId = [](IWTSVirtualChannel *) -> UINT32 { return 7; };
+  host.manager.api.GetChannelName = [](IWTSVirtualChannel *) { return AUDIN_DVC_CHANNEL_NAME; };
+  bridge::channels::DvcChannelRegistry registry([](void *) -> std::uint64_t { return 1; });
+  const auto binding = registry.bind(host.manager.api, host.channel.api, *host.callback, 1);
+  REQUIRE(binding.status == CHANNEL_RC_OK);
+  host.callback = binding.callback;
+  negotiate(host);
+  REQUIRE(registration.gate().ready());
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE_FALSE(fixture.source.stats()->opened);
+  REQUIRE(registry.retire() == CHANNEL_RC_OK);
+  REQUIRE_FALSE(registry.stats().failed);
+  REQUIRE(registry.stats().resources_retired);
+}
 TEST_CASE("Microphone reset control clears actual source before fresh admitted authority") {
   Fixture fixture;
   struct Probe {

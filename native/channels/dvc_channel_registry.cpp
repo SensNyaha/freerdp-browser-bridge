@@ -1,6 +1,8 @@
 #include "dvc_channel_registry.hpp"
+#include "../audio/audin_ingress.hpp"
 #include "../audio/ingress.hpp"
 #include <algorithm>
+#include <freerdp/channels/audin.h>
 #include <freerdp/channels/rdpgfx.h>
 #include <freerdp/channels/rdpsnd.h>
 #include <limits>
@@ -31,6 +33,8 @@ std::optional<DvcPayload> channel_payload(IWTSVirtualChannelManager &manager,
     return DvcPayload::graphics;
   if (value == RDPSND_DVC_CHANNEL_NAME)
     return DvcPayload::audio;
+  if (value == AUDIN_DVC_CHANNEL_NAME)
+    return DvcPayload::microphone;
   return DvcPayload::opaque;
 }
 } // namespace
@@ -134,14 +138,15 @@ bool DvcChannelRegistry::admit(std::span<const std::uint8_t> payload, std::uint6
     const auto entry = std::find_if(entries_.begin(), entries_.end(), [&](const auto &item) {
       return item.hook && !item.hook->closed() && item.id == *info->channel_id;
     });
-    if (entry != entries_.end() && entry->hook->payload() == DvcPayload::audio) {
+    if (entry != entries_.end() && (entry->hook->payload() == DvcPayload::audio ||
+                                    entry->hook->payload() == DvcPayload::microphone)) {
+      const auto maximum = entry->hook->payload() == DvcPayload::microphone
+                               ? audio::AudinIngress::max_bytes
+                               : audio::AudioAssembler::max_bytes;
       auto audio_limits = allocations_;
-      audio_limits.message_bytes =
-          (std::min)(audio_limits.message_bytes, audio::AudioAssembler::max_bytes);
-      audio_limits.codec_bytes =
-          (std::min)(audio_limits.codec_bytes, audio::AudioAssembler::max_bytes);
-      audio_limits.encoded_bytes =
-          (std::min)(audio_limits.encoded_bytes, audio::AudioAssembler::max_bytes * 2);
+      audio_limits.message_bytes = (std::min)(audio_limits.message_bytes, maximum);
+      audio_limits.codec_bytes = (std::min)(audio_limits.codec_bytes, maximum);
+      audio_limits.encoded_bytes = (std::min)(audio_limits.encoded_bytes, maximum * 2);
       if (!inspect_dvc_allocations(payload, audio_limits))
         return fail(ERROR_INVALID_DATA);
     }
