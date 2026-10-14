@@ -409,9 +409,15 @@ TEST_CASE("Guarded pinned RDPSND confirms XRDP-style padded Training then delive
   REQUIRE(host.writes.size() == before + 1);
   const std::vector<BYTE> expected{SNDC_TRAINING, 0, 4, 0, 0x34, 0x12, 0, 4};
   REQUIRE(host.writes.back() == expected);
+  REQUIRE(scope.gate.stats()->server_formats == 1);
+  REQUIRE(scope.gate.stats()->client_formats == 1);
+  REQUIRE(scope.gate.stats()->training == 1);
+  REQUIRE(scope.gate.stats()->writes == host.writes.size());
+  REQUIRE(scope.gate.stats()->write_failures == 0);
   emit_pcm(host, 100, 1, {0, 128, 255, 127}, true);
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
   REQUIRE(fixture.sink.stats()->queue.accepted_frames == 960);
+  REQUIRE(scope.gate.stats()->waves == 1);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
 

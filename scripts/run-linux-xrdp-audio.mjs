@@ -2,14 +2,21 @@ import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 
-const [container, fingerprint, codec = 'pcm', bufferMs = '120', ...extra] =
-  process.argv.slice(2);
+const [
+  container,
+  fingerprint,
+  codec = 'pcm',
+  bufferMs = '120',
+  carrier,
+  ...extra
+] = process.argv.slice(2);
 if (
   extra.length ||
   !/^freerdp-bridge-linux-rdp-[0-9]+$/.test(container ?? '') ||
   !/^sha256:[a-f0-9]{64}$/.test(fingerprint ?? '') ||
   !['pcm', 'opus'].includes(codec) ||
-  !['120', '200'].includes(bufferMs)
+  !['120', '200'].includes(bufferMs) ||
+  (carrier !== undefined && carrier !== '--framed')
 )
   throw new Error(
     'Use owned Linux lab container, approved fingerprint, pcm/opus and 120/200',
@@ -51,7 +58,7 @@ const child = spawn(
     fingerprint,
     codec,
     bufferMs,
-    '--private-stdin',
+    carrier ? '--private-stdin-framed' : '--private-stdin',
   ],
   { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
 );

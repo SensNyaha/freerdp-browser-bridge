@@ -2,6 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
+import { audioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs';
+import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
 
 // Authorized local lab only. No remote input or sound-generation commands.
 const [
@@ -16,7 +18,8 @@ if (
   !['pcm', 'opus'].includes(audioOutput) ||
   !['120', '200'].includes(bufferMs) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '') ||
-  (inputMode !== undefined && inputMode !== '--private-stdin')
+  (inputMode !== undefined &&
+    !['--private-stdin', '--private-stdin-framed'].includes(inputMode))
 )
   throw new Error('Use sha256:<verified-lab-fingerprint> [pcm|opus] [120|200]');
 async function localJson(path) {
@@ -84,10 +87,14 @@ class LabWorker extends WorkerProcess {
   spawnWorker(directory, env) {
     const child = super.spawnWorker(directory, env);
     child.stderr.on('data', (bytes) => {
+      rdpDiagnostics.push(bytes);
+      report.rdpFailure = rdpDiagnostics.snapshot();
       // Match only fixed code-owned fault messages. Never retain/forward raw upstream logs.
       const summaryAt = bytes.indexOf(
         Buffer.from('bridge.audio.summary chunks='),
       );
+      const negotiation = audioNegotiationDiagnostics(bytes);
+      if (negotiation) report.negotiation = negotiation;
       const summary =
         summaryAt < 0
           ? null
@@ -180,11 +187,14 @@ class LabWorker extends WorkerProcess {
     return child;
   }
 }
+const rdpDiagnostics = new LabRdpDiagnostics();
 const worker = new LabWorker({
   workerPath: resolve(
     'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
   ),
   runtimeRoot: resolve('.runtime/lab-audio'),
+  ipcTransport:
+    inputMode === '--private-stdin-framed' ? 'framed-pipes' : 'auto',
 });
 let timer,
   resetEpoch,

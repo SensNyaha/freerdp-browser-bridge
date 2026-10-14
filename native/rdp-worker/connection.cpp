@@ -1456,6 +1456,17 @@ void Connection::run() noexcept {
                        static_cast<unsigned long long>(stats->publisher.consumer_resets),
                        static_cast<unsigned long long>(stats->publisher.sent_packets));
     const auto &clock = stats->ingress.clock;
+    const auto &gate = stats->ingress;
+    (void)std::fprintf(
+        stderr,
+        "bridge.audio.negotiation v=1 server=%u client=%u training=%llu waves=%llu "
+        "writes=%llu completed=%llu cancelled=%llu failures=%llu\n",
+        static_cast<unsigned>(gate.server_formats), static_cast<unsigned>(gate.client_formats),
+        static_cast<unsigned long long>(gate.training), static_cast<unsigned long long>(gate.waves),
+        static_cast<unsigned long long>(gate.writes),
+        static_cast<unsigned long long>(gate.completions),
+        static_cast<unsigned long long>(gate.cancellations),
+        static_cast<unsigned long long>(gate.write_failures));
     (void)std::fprintf(
         stderr,
         "bridge.audio.causes first=%llu profile=%llu block=%llu arrivalBackward=%llu "

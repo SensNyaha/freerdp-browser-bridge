@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <exception>
+#include <freerdp/channels/rdpsnd.h>
 #include <freerdp/freerdp.h>
 #include <limits>
 #include <winpr/error.h>
@@ -151,6 +152,10 @@ UINT VCAPITYPE AudioStaticGate::write(LPVOID opaque, DWORD handle, LPVOID data, 
   if (slot == gate->writes_.end())
     return ERROR_NOT_ENOUGH_MEMORY;
   *slot = completion;
+  increment(gate->stats_.writes);
+  const auto record = std::span<const BYTE>(static_cast<const BYTE *>(data), size);
+  if (size >= 20 && record[0] == SNDC_FORMATS) // Scalar client count, not payload logging.
+    gate->stats_.client_formats = u16(record, 18);
   UINT status = ERROR_INTERNAL_ERROR;
   gate->writing_ = true;
   try {
@@ -159,6 +164,7 @@ UINT VCAPITYPE AudioStaticGate::write(LPVOID opaque, DWORD handle, LPVOID data, 
   }
   gate->writing_ = false;
   if (status != CHANNEL_RC_OK) {
+    increment(gate->stats_.write_failures);
     if (!*slot) {
       // Completion already freed the upstream stream. Never return a second-free status.
       gate->fail();
@@ -214,6 +220,8 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       return;
     }
     *slot = nullptr;
+    increment(event == CHANNEL_EVENT_WRITE_COMPLETE ? gate->stats_.completions
+                                                    : gate->stats_.cancellations);
     try {
       gate->delegate_open_(gate->delegate_user_, handle, event, data, size, total, flags);
     } catch (...) {
@@ -296,6 +304,10 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
     }
     data = const_cast<BYTE *>(joined.bytes.data());
     size = total = static_cast<UINT>(joined.bytes.size());
+    if (pdu->kind == AudioPduKind::training)
+      increment(gate->stats_.training);
+    if (pdu->kind == AudioPduKind::wave || pdu->kind == AudioPduKind::wave2)
+      increment(gate->stats_.waves);
     if (pdu->kind == AudioPduKind::formats) {
       std::array<BYTE, max_pcm_offer_bytes> candidate{};
       const auto selected = select_pcm_offers(joined.bytes, candidate);
@@ -321,6 +333,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       const bool repeated = gate->negotiated_;
       gate->negotiated_ = true;
       gate->selected_count_ = selected->count;
+      gate->stats_.server_formats = selected->count;
       // Identical negotiation metadata does not change an already-owned PCM stream.
       // Resetting here causes gaps when XRDP periodically reannounces its table.
       if (!repeated) {

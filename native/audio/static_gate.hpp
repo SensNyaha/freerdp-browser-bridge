@@ -8,6 +8,9 @@
 namespace bridge::audio {
 struct AudioGateStats {
   std::uint64_t formats = 0, closes = 0;
+  std::uint64_t training = 0, waves = 0, writes = 0, write_failures = 0;
+  std::uint64_t completions = 0, cancellations = 0;
+  std::uint16_t server_formats = 0, client_formats = 0;
   AudioClockStats clock;
 };
 // Pinned public static-channel adapter. Must outlive the host's Terminated event.
