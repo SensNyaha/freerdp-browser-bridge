@@ -34,6 +34,33 @@ async function withRoot(run) {
     await rm(root, { recursive: true, force: true });
   }
 }
+test(
+  'actual matching bundle: Linux default selects packet and explicit framed override stays available',
+  { skip, timeout: 10000 },
+  async () => {
+    await withRoot(async (runtimeRoot) => {
+      assert.equal(existsSync(workerPath + '.ipc.json'), true);
+      for (const requested of ['auto', 'framed-pipes']) {
+        const worker = new WorkerProcess({
+          workerPath,
+          runtimeRoot,
+          ipcTransport: requested,
+        });
+        try {
+          const build = await worker.start();
+          assert.equal(
+            build.transport,
+            requested === 'auto' ? transport : 'framed-pipes',
+          );
+          await worker.ping();
+        } finally {
+          await worker.close();
+        }
+      }
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    });
+  },
+);
 
 test(
   'actual Node packet supervisor: 100 sequential native workers, heartbeat, close and no descriptor/runtime leak',

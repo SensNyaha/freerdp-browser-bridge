@@ -12,11 +12,12 @@ export * from './microphone-ownership.js';
 import { EventEmitter } from 'node:events';
 import type { Writable } from 'node:stream';
 import { SeqpacketOwner, loadPacketAddon } from './seqpacket-owner.js';
+import { selectWorkerIpc, type WorkerIpcTransport } from './ipc-selection.js';
 import { PcmSource } from './pcm-source.js';
 import { OpusSource } from './opus-source.js';
 export type { PcmSourceEvent } from './pcm-source.js';
 export type { OpusSourceEvent } from './opus-source.js';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile, realpath } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import {
   Kind,
@@ -106,7 +107,7 @@ export interface WorkerOptions {
   heartbeatIntervalMs?: number;
   maxPendingRequests?: number;
   maxWriteBytes?: number;
-  ipcTransport?: 'framed-pipes' | 'unix-seqpacket-rws1';
+  ipcTransport?: WorkerIpcTransport;
 }
 
 type Status =
@@ -206,10 +207,10 @@ export class WorkerProcess extends EventEmitter {
       heartbeatIntervalMs: options.heartbeatIntervalMs ?? 1000,
       maxPendingRequests: options.maxPendingRequests ?? 32,
       maxWriteBytes: options.maxWriteBytes ?? 65536,
-      ipcTransport: options.ipcTransport ?? 'framed-pipes',
+      ipcTransport: options.ipcTransport ?? 'auto',
     };
     if (
-      !['framed-pipes', 'unix-seqpacket-rws1'].includes(
+      !['auto', 'framed-pipes', 'unix-seqpacket-rws1'].includes(
         this.options.ipcTransport,
       ) ||
       (this.options.ipcTransport === 'unix-seqpacket-rws1' &&
@@ -295,7 +296,9 @@ export class WorkerProcess extends EventEmitter {
   /** Private transport factory seam; failure joins native descriptor ownership. */
   protected async createPacketOwner(): Promise<SeqpacketOwner> {
     return SeqpacketOwner.open(
-      loadPacketAddon(join(dirname(this.options.workerPath), 'rdp-ipc.node')),
+      loadPacketAddon(
+        join(dirname(await realpath(this.options.workerPath)), 'rdp-ipc.node'),
+      ),
       {
         maxRecords: this.options.maxPendingRequests,
         maxBytes: this.options.maxWriteBytes,
@@ -386,7 +389,12 @@ export class WorkerProcess extends EventEmitter {
         mode: 0o600,
       });
       this.requireStarting();
-      if (this.options.ipcTransport === 'unix-seqpacket-rws1') {
+      const transport = await selectWorkerIpc(
+        this.options.workerPath,
+        this.options.ipcTransport,
+      );
+      this.requireStarting();
+      if (transport === 'unix-seqpacket-rws1') {
         this.packetOwner = await this.createPacketOwner();
         this.packetOwner.on('error', () => this.fail('IPC_TRANSPORT_FAILED'));
         this.requireStarting();

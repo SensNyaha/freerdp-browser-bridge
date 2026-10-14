@@ -1,5 +1,13 @@
 # Linux primary IPC carrier
 
+Current activation — iteration 200: Node prefers this carrier automatically on
+Linux for a verified private worker/addon pair, or uses framed legacy fallback
+when pairing metadata is absent. Explicit host overrides remain supported.
+The historical codec/endpoint-only limitations below are superseded by the
+current Node/native Release lifecycle gate; remote RDP/resource and broader
+acceptance are not inferred. [Current selector](NODE_SEQPACKET_SUPERVISOR.md),
+[evidence](ITERATION_200.md).
+
 Iteration 195 selects this carrier in Linux worker only with the exact private
 argument `--ipc-seqpacket-fd=3`, an already connected inherited AF_UNIX packet
 descriptor. HELLO then reports `unix-seqpacket-rws1`. Default invocation/CLI/Node

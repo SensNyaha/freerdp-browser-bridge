@@ -1,6 +1,7 @@
 // Independent artifact-only fixture: no workspace packages, RDP server or devices.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { readSync } from 'node:fs';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -11,6 +12,7 @@ import {
   access,
   rm,
   realpath,
+  readFile,
 } from 'node:fs/promises';
 import { join, relative, isAbsolute, sep } from 'node:path';
 
@@ -20,6 +22,24 @@ assert.notEqual(process.getuid(), 0);
 assert.equal(process.argv.length, 3);
 const root = await realpath(process.argv[2]);
 const workerPath = join(root, 'bin', 'rdp-worker');
+const pairMetadata = JSON.parse(
+  await readFile(workerPath + '.ipc.json', 'utf8'),
+);
+assert.equal(pairMetadata.v, 1);
+assert.equal(pairMetadata.transport, 'unix-seqpacket-rws1');
+assert.equal(pairMetadata.worker, 'rdp-worker');
+assert.equal(pairMetadata.adapter, 'rdp-ipc.node');
+assert.equal(pairMetadata.maxPairs, 32);
+for (const [file, key] of [
+  [workerPath, 'workerSha256'],
+  [join(root, 'bin', 'rdp-ipc.node'), 'adapterSha256'],
+])
+  assert.equal(
+    createHash('sha256')
+      .update(await readFile(file))
+      .digest('hex'),
+    pairMetadata[key],
+  );
 // Prepared IPC-only addon relocates independently of the source/SDK. It does not
 // load RDP code into this Node process; the actual RDP probe stays a child.
 const ipc = createRequire(import.meta.url)(join(root, 'bin', 'rdp-ipc.node'));
@@ -169,6 +189,7 @@ try {
       acknowledgements: 3,
       cleanup: true,
       ipcPairs: 1,
+      ipcPairing: true,
     }),
   );
 } finally {

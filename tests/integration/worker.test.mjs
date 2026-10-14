@@ -95,7 +95,9 @@ test(
           assert.ok(pid);
           assert.equal(build.targetFreeRdpVersion, '3.32.1');
           assert.equal(build.capabilities.rdp, false);
-          assert.equal(build.transport, 'framed-pipes');
+          assert.ok(
+            ['framed-pipes', 'unix-seqpacket-rws1'].includes(build.transport),
+          );
           await worker.ping();
           await worker.close();
           await worker.close();
@@ -160,7 +162,9 @@ test('native integration: build REST is backed by actual handshake and CLI repor
       ['--version', '--capabilities'],
       { windowsHide: true },
     );
-    assert.deepEqual(JSON.parse(cli.stdout), build);
+    const standalone = JSON.parse(cli.stdout);
+    assert.equal(standalone.transport, 'framed-pipes');
+    assert.deepEqual({ ...standalone, transport: build.transport }, build);
     const featureCli = await promisify(execFile)(
       workerPath,
       ['--build-features'],
@@ -244,7 +248,7 @@ test('native integration: build REST is backed by actual handshake and CLI repor
 });
 
 test(
-  'native integration: parent death closes inherited pipes, worker and empty runtime directory',
+  'native integration: parent death closes inherited IPC, worker and empty runtime directory',
   { timeout: 10000 },
   async () => {
     await withRoot(async (runtimeRoot) => {

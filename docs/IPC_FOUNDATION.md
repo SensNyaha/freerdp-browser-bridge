@@ -1,5 +1,15 @@
 # RWI1 foundation wire contract
 
+Current Linux primary — iteration 200: matching private worker/addon metadata
+selects automatic RWS1 SOCK_SEQPACKET; legacy builds without that manifest retain
+framed streams. Native/Node lifecycle, 100 workers, parent/worker loss, bounded
+output, independent deadlines, descriptor joins and installed selection pass.
+Historical statements below describing an unimplemented Linux primary are
+superseded in this Release IPC scope. Connected RDP/audio/resource and broader
+platform/sanitizer acceptance remain separate.
+[Carrier](LINUX_SEQPACKET.md), [Node selector](NODE_SEQPACKET_SUPERVISOR.md),
+[current evidence](ITERATION_200.md).
+
 Linux primary carrier preparation — iteration 193: fixed-state RWS1 chunk
 validation bounds packet sizes and checks the inner header before body exposure.
 Portable/fuzz gates pass; real sockets and worker/Node selection remain open.

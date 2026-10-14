@@ -155,6 +155,15 @@ if(WIN32)
   install(TARGETS rdp-runtime-directory RUNTIME DESTINATION bin)
 endif()
 target_compile_definitions(rdp-worker PRIVATE BRIDGE_VERSION="${PROJECT_VERSION}" BRIDGE_GIT_COMMIT="${BRIDGE_GIT_COMMIT}")
+if(BRIDGE_NODE_IPC)
+  add_custom_target(bridge-ipc-manifest ALL
+    COMMAND "${CMAKE_COMMAND}"
+      "-DIPC_WORKER=$<TARGET_FILE:rdp-worker>"
+      "-DIPC_ADAPTER=$<TARGET_FILE:rdp-ipc>"
+      "-DIPC_MANIFEST=$<TARGET_FILE:rdp-worker>.ipc.json"
+      -P "${CMAKE_SOURCE_DIR}/native/ipc/write_manifest.cmake"
+    DEPENDS rdp-worker rdp-ipc VERBATIM)
+endif()
 set(BRIDGE_BUILD_FEATURES "{\"enabledChannels\":[],\"codecProviders\":[],\"dependencies\":{}}")
 if(BRIDGE_WITH_FREERDP)
   find_package(FreeRDP 3.32.1 EXACT CONFIG REQUIRED)
@@ -510,6 +519,10 @@ if(BRIDGE_FUZZ)
   target_link_options(audio-svc-fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
 endif()
 install(TARGETS rdp-worker RUNTIME DESTINATION bin)
+if(BRIDGE_NODE_IPC)
+  configure_file(native/ipc/install_manifest.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/install_packet_manifest.cmake" @ONLY)
+  install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/install_packet_manifest.cmake")
+endif()
 if(BUILD_TESTING AND BRIDGE_WITH_FREERDP AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # The build uses separate private SDK/runtime prefixes. ELF RUNPATH is not
   # transitive; scope both prefixes to CTest, never the installed application.

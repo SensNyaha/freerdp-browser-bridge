@@ -1,0 +1,13 @@
+# Private, non-secret pairing metadata; never inspect the runtime session tree.
+get_filename_component(worker_directory "${IPC_WORKER}" DIRECTORY)
+get_filename_component(adapter_directory "${IPC_ADAPTER}" DIRECTORY)
+get_filename_component(worker_name "${IPC_WORKER}" NAME)
+get_filename_component(adapter_name "${IPC_ADAPTER}" NAME)
+get_filename_component(manifest_directory "${IPC_MANIFEST}" DIRECTORY)
+get_filename_component(manifest_name "${IPC_MANIFEST}" NAME)
+if(NOT worker_directory STREQUAL adapter_directory OR NOT worker_directory STREQUAL manifest_directory OR NOT manifest_name STREQUAL "rdp-worker.ipc.json" OR NOT worker_name STREQUAL "rdp-worker" OR NOT adapter_name STREQUAL "rdp-ipc.node")
+  message(FATAL_ERROR "Expected colocated packet runtime artifacts")
+endif()
+file(SHA256 "${IPC_WORKER}" worker_hash)
+file(SHA256 "${IPC_ADAPTER}" adapter_hash)
+file(WRITE "${IPC_MANIFEST}" "{\"v\":1,\"transport\":\"unix-seqpacket-rws1\",\"worker\":\"${worker_name}\",\"adapter\":\"${adapter_name}\",\"workerSha256\":\"${worker_hash}\",\"adapterSha256\":\"${adapter_hash}\",\"maxPairs\":32}\n")

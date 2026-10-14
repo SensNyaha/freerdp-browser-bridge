@@ -1,5 +1,13 @@
 # Explicit packet transport in the Node supervisor
 
+Current default — iteration 200: WorkerOptions also accepts auto, now the default.
+Linux prefers primary after exact private pairing/hash verification; no pairing
+metadata preserves legacy framed transport. A present malformed/mismatched
+manifest refuses startup before credentials. Windows remains framed. Installed
+hashes are regenerated after RPATH rewrite; the loaded addon comes from the
+canonical worker directory. The explicit selector semantics below remain valid.
+[Automatic preference evidence](ITERATION_200.md).
+
 Iteration 199 exposes trusted-host `WorkerOptions.ipcTransport` with two exact
 values: `framed-pipes` (current default) and `unix-seqpacket-rws1` (Linux only).
 This is not a browser/session RDP setting and never maps to arbitrary FreeRDP
@@ -37,7 +45,6 @@ refusal from fake legacy peers and synthetic metadata mutation. No connected
 Linux remote desktop/audio/device or changed-certificate integration is claimed.
 [Evidence](ITERATION_199.md).
 
-STACK's preferred Linux primary remains required. Automatic default selection /
-matching-bundle and old-peer fallback policy, including larger capacity handling,
-is the next activation step; current explicit selection does not complete that
-preference gate or the entire Stage 1.
+The historical iteration-199 default-preference gate is now implemented by
+iteration 200. Larger configured-capacity admission, connected resource/release,
+sanitizer/platform/CI and broader Stage 1 acceptance remain open.

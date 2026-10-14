@@ -14,7 +14,7 @@ Current stage acceptance:
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
 | 0 — build | IN PROGRESS | Fresh-checkout/distro matrix, CI execution and standard PIE sanitizer environment; linked Linux CTest, ELF closure and independent Bookworm native runtime pass |
-| 1 — worker/IPC | IN PROGRESS | Linux primary seqpacket transport, connected output/release/resource gates, broader isolation and abnormal cleanup; bounded Linux stream output now passes |
+| 1 — worker/IPC | IN PROGRESS | Primary/fallback Release IPC lifecycle passes on Linux/Windows; connected output/release/resource, addon sanitizer, configured capacity, broader isolation and abnormal cleanup remain |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent soak failure; one XRDP 30-minute observation passes |
@@ -34,6 +34,16 @@ All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-14
+
+Current IPC evidence: Linux automatically selects paired private RWS1
+SOCK_SEQPACKET and keeps explicit/legacy framed fallback. Actual Node/native
+100-worker lifecycles, parent/worker death, cancellation, independent deadlines,
+private settings/secret, descriptor joins and installed/independent archive checks
+pass. Full Node: Windows 537 passed / 25 platform skips; Linux 487 passed / 75
+platform skips, 562 cases, zero failures. [Iteration 200](docs/ITERATION_200.md).
+This completes the named Release transport component, not all Stage 1:
+configured-capacity admission, addon sanitizer baseline, broader isolation /
+abnormal cleanup and connected-RDP/resource gates remain explicitly open.
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
 Actual Linux amd64 foundation now passes ASan/UBSan CTest 8/8, seven bounded
@@ -209,10 +219,12 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
 - **Retained acceptance:** Windows RDP lab is unavailable. Linux runtime/Clang
   are now available and portable checks pass in iteration 184; linked Linux
-  FreeRDP/private dependencies, primary transport and actual RDP/device gates remain.
+  FreeRDP/private dependency and primary IPC Release checks now pass locally;
+  actual Linux RDP/device and broader platform/resource gates remain.
   The XRDP lab has passed strict certificate rejection and explicitly
   user-approved session-only trust, activation, heartbeat and cleanup checks.
-  [Iteration 4](docs/ITERATION_004.md). Linux SOCK_SEQPACKET remains unimplemented.
+  [Iteration 4](docs/ITERATION_004.md) records the historical absent-Linux scope;
+  primary Linux IPC is implemented and verified in [iteration 200](docs/ITERATION_200.md).
   CI jobs are prepared but have not run; local sanitizer/fuzz execution is separate
   evidence and does not establish CI or linked Linux integration acceptance.
 
@@ -274,7 +286,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 - [x] DONE — Implement worker process entrypoint with no RDP connection yet. Real C++ executable, not a fake RDP client; `1672590`.
 - [x] DONE — Implement versioned `RWI1` IPC envelope. [Native](native/ipc/tests.cpp) and [Node](tests/unit/protocol.test.mjs) boundary/golden/fragmentation tests; `1672590`.
-- [~] IN PROGRESS — Linux `SOCK_SEQPACKET` transport + framed-stream abstraction/fallback. Explicit primary WorkerProcess selection is DONE for current native lifecycle/IPC scope: 100 Node/worker runs, parent/worker death, held-start cancellation, handshake/refusal/private settings-secret and joined cleanup pass. Framed legacy/fake regressions also pass. Automatic matching-bundle Linux preference and configured-capacity policy remain open; connected RDP/resource acceptance is separate. [Contract](docs/LINUX_SEQPACKET.md), [worker](docs/ITERATION_195.md), [owner](docs/ITERATION_198.md), [supervisor](docs/ITERATION_199.md).
+- [x] DONE for Linux amd64 Release IPC lifecycle — Primary `SOCK_SEQPACKET`/RWS1, automatic verified-bundle selection and framed legacy/explicit fallback. Actual 100-worker Node/native runs, parent/worker death, startup cancellation, pre-secret identity/refusal, independent record deadlines, bounded queue/output and joined cleanup pass. Installed RPATH pairing, relocation and independent archive smoke pass. This is transport acceptance; larger configured-capacity admission, addon sanitizer, connected RDP/resource and broader platform gates remain separately tracked. [Contract](docs/LINUX_SEQPACKET.md), [owner](docs/ITERATION_198.md), [explicit activation](docs/ITERATION_199.md), [default/packaging](docs/ITERATION_200.md).
 - [x] DONE — HELLO/HELLO_ACK capability negotiation. Real worker capability/CLI checks; incompatible version/required-feature native tests; `1672590`, `316cdc0`.
 - [x] DONE — Heartbeat and graceful shutdown. Real-worker and adversarial fake-worker deadline/watchdog tests; `316cdc0`.
 - [x] DONE — Length limits and parser unit tests. Header checked before body allocation; malformed/truncated inputs fail without input disclosure. `1672590`.
