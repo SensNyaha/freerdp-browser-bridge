@@ -13,7 +13,7 @@ Current stage acceptance:
 
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
-| 0 — build | IN PROGRESS | Fresh-checkout/clean-machine, complete Linux dependency closure, CI execution and standard PIE sanitizer environment; linked Linux CTest now passes |
+| 0 — build | IN PROGRESS | Fresh-checkout/clean-machine, CI execution and standard PIE sanitizer environment; linked Linux CTest and current ELF dependency closure pass |
 | 1 — worker/IPC | IN PROGRESS | Linux primary transport/priority output, broader Windows isolation and abnormal cleanup; portable fuzz smoke passes |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
@@ -43,9 +43,10 @@ pipes. Windows Node check passes 522/522. The local sanitizer placement workarou
 retained failed PIE runs and platform boundaries are recorded in
 [iteration 184](docs/ITERATION_184.md); no linked Linux RDP/device acceptance is claimed.
 Linked Linux Release FreeRDP/worker now passes CTest 20/20 and full Node check
-(448 passed / 76 skipped / zero failures, 524 total). Native relocation passes
-1/1, but the ELF audit retains host libudev as an open dependency-closure gate.
-[Current Linux build evidence](docs/ITERATION_187.md). No actual Linux RDP/device
+(452 passed / 76 skipped / zero failures, 528 total). Private eudev/libusb and
+complete staged ELF closure pass; canonical relocation passes 1/1. Windows Node
+check passes 528/528. [Current closure evidence](docs/ITERATION_189.md),
+[build evidence](docs/ITERATION_187.md). No actual Linux RDP/device
 acceptance or clean-machine portability is claimed.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
@@ -97,7 +98,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
   [native tests](native/ipc/tests.cpp). Latest bundled Windows `pnpm check`:
-  **524/524**. Bounded browser fixture ports resolve the random 2049 refusal;
+  **528/528**. Bounded browser fixture ports resolve the random 2049 refusal;
   focused Edge/socket 6/6 and full repeat pass. Earlier failures are preserved in
   [iteration 186](docs/ITERATION_186.md) and [iteration 188](docs/ITERATION_188.md).
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
@@ -220,12 +221,21 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for current Linux native ELF profile — Private eudev 3.2.14 keeps
+  libusb udev enabled. Pre-CPack bounded canonical dependency/origin-path checks
+  pass 33 ELF files / 268 edges, plus codec/libudev-context/lifecycle relocation
+  1/1. Four portable ownership/parser cases pass. Independent clean-runtime,
+  fresh-checkout/CI and actual device/platform gates remain separate.
+  [Evidence](docs/ITERATION_189.md). Prior linked build: `a825c18`;
+  IPC exact allocation: `4152919`; browser port correction: `194562d`.
+
 - [x] DONE for local Linux dependency compilation — Pinned private ZLIB/OpenSSL/
   libusb/JPEG/libspng/OpenH264/Opus build, plus required Linux-only Kerberos 1.22.2
   and ICU 78.3, now CUPS 2.4.20, libfuse 3.18.3 and numactl 2.0.19. Exact
   FreeRDP/worker Release build and CTest 20/20 pass; private discovery, metadata,
-  licenses and codec relocation are verified. Host libudev closure, fresh-build
-  and actual remote/device gates remain open. [Current evidence](docs/ITERATION_187.md),
+  licenses and codec relocation are verified. eudev closure now passes in
+  iteration 189; fresh-build and actual remote/device gates remain open.
+  [Build evidence](docs/ITERATION_187.md),
   [previous reboot checkpoint](docs/ITERATION_186.md).
 - [x] DONE — Create pnpm monorepo layout from `STACK.md` (core packages/apps/native; future component directories are created with their implementations). `9517003`.
 - [x] DONE — Add TypeScript strict config, lint/format, CI skeleton. `pnpm check`; `9517003`.

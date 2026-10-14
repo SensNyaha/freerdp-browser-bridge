@@ -21,7 +21,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build build-essential autoconf autoconf-archive automake libtool libltdl-dev libudev-dev pkg-config nasm perl bison openssl
+          sudo apt-get install -y ninja-build build-essential autoconf autoconf-archive automake libtool libltdl-dev pkg-config nasm perl bison openssl binutils
       - uses: actions/cache@v4
         with:
           path: .tools/vcpkg-cache

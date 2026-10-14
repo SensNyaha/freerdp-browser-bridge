@@ -15,6 +15,9 @@
 #include <turbojpeg.h>
 #include <vector>
 #include <zlib.h>
+#if defined(__linux__)
+#include <libudev.h>
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -152,6 +155,12 @@ int main() {
     return 7;
   if (!opus_roundtrip())
     return 8;
+#if defined(__linux__)
+  const auto udev_path = module_path(reinterpret_cast<const void *>(&udev_new));
+  const std::unique_ptr<udev, decltype(&udev_unref)> udev_context(udev_new(), udev_unref);
+  if (udev_path.empty() || !udev_context)
+    return 9;
+#endif
   const auto h264_version = WelsGetCodecVersion();
   const std::unique_ptr<FREERDP_ADDIN *, decltype(&freerdp_channels_addin_list_free)> addins(
       freerdp_channels_list_addins(nullptr, nullptr, nullptr,
@@ -177,5 +186,8 @@ int main() {
   for (const auto &channel : channels)
     std::cout << channel << ',';
   std::cout << '\n';
+#if defined(__linux__)
+  std::cout << "udevRuntime=" << utf8(udev_path) << "\nudevContextRoundtrip=true\n";
+#endif
   return 0;
 }

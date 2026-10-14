@@ -47,6 +47,8 @@ if (!stage.startsWith(resolve('build') + (windows ? '\\' : '/')))
   throw new Error('Invalid native staging directory');
 rmSync(stage, { recursive: true, force: true });
 run('cmake', ['--install', 'build/bundled', '--prefix', stage]);
+if (process.platform === 'linux')
+  run(process.execPath, ['scripts/verify-linux-runtime.mjs', stage]);
 run('cpack', [
   '--config',
   'build/bundled/CPackConfig.cmake',

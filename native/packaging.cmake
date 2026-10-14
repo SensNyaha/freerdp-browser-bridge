@@ -19,7 +19,7 @@ if(BRIDGE_WITH_FREERDP)
   endif()
   set(bridge_license_dependencies zlib openssl libusb libjpeg-turbo libspng openh264 opus)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND bridge_license_dependencies krb5 icu cups libfuse numactl)
+    list(APPEND bridge_license_dependencies krb5 icu cups libfuse numactl eudev)
   endif()
   foreach(dependency IN LISTS bridge_license_dependencies)
     install(FILES "${BRIDGE_DEPENDENCY_PREFIX}/share/${dependency}/copyright"
@@ -29,10 +29,10 @@ if(BRIDGE_WITH_FREERDP)
     DESTINATION share/freerdp-bridge/licenses/freerdp)
   install(FILES "${CMAKE_SOURCE_DIR}/native/dependencies.json" "${CMAKE_SOURCE_DIR}/native/vcpkg/vcpkg.json"
     DESTINATION share/freerdp-bridge)
-  install(DIRECTORY "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/openh264" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/opus"
+  install(DIRECTORY "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/openh264" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/opus" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/libusb"
     DESTINATION share/freerdp-bridge/ports)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/cups"
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/cups" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/eudev"
       DESTINATION share/freerdp-bridge/ports)
   endif()
   if(EXISTS "${CMAKE_SOURCE_DIR}/build/freerdp-local/CMakeCache.txt")

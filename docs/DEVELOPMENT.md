@@ -457,6 +457,7 @@ runs without dependency PATH and validates the staged installed layout instead.
 The Linux worker inherits normal HOME unchanged for the pinned settings
 initializer, then selects its private cwd through public HomePath/ConfigPath
 settings. Do not replace HOME with a project/test directory. Linked Linux
-CTest 20/20, Node 448 passed / 76 skipped, and codec/lifecycle relocation 1/1
-pass locally; host libudev closure and actual Linux RDP/device acceptance remain
-open. [Evidence and boundaries](ITERATION_187.md).
+CTest 20/20, Node 452 passed / 76 skipped, and canonical codec/libudev-context /
+lifecycle relocation 1/1 pass locally. Private ELF closure is enforced before
+CPack; clean-machine and actual Linux RDP/device acceptance remain open.
+[Build evidence](ITERATION_187.md), [closure boundaries](ITERATION_189.md).

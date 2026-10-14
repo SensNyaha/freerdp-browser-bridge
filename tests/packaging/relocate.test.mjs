@@ -7,6 +7,7 @@ import { resolve, join, relative, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
+import { verifyLinuxRuntime } from '../../scripts/linux-runtime.mjs';
 
 const source = resolve(process.env.BRIDGE_NATIVE_STAGE ?? 'build/native-stage');
 const windows = process.platform === 'win32';
@@ -22,7 +23,11 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       }
     : { PATH: '/usr/bin:/bin' };
   try {
-    await cp(source, relocated, { recursive: true });
+    await cp(source, relocated, { recursive: true, verbatimSymlinks: true });
+    if (process.platform === 'linux') {
+      const closure = await verifyLinuxRuntime(relocated);
+      assert.ok(closure.files >= 2 && closure.dependencies >= closure.files);
+    }
     const files = await readdir(relocated, { recursive: true });
     assert.ok(files.every((file) => !/\.(pdb|obj|lib)$/i.test(file)));
     if (windows) {
@@ -104,6 +109,7 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       lines.jpegRuntime,
       lines.openh264Runtime,
       lines.opusRuntime,
+      ...(process.platform === 'linux' ? [lines.udevRuntime] : []),
     ]) {
       const loadedPath = relative(relocated, resolve(runtime));
       assert.ok(
@@ -172,6 +178,8 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       features.portOverlays.openh264.simdPatchSha256,
     );
     if (process.platform === 'linux') {
+      assert.equal(lines.udevContextRoundtrip, 'true');
+      assert.match(basename(lines.udevRuntime), /^libudev\.so(?:\..*)?$/);
       const lock = JSON.parse(
         await readFile(
           join(relocated, 'share', 'freerdp-bridge', 'dependencies.json'),
@@ -190,11 +198,41 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       );
       assert.equal(features.dependencies.cups, lock.cups.version);
       assert.equal(features.portOverlays.cups.sourceCommit, lock.cups.commit);
+      assert.equal(features.dependencies.eudev, lock.eudev.version);
+      assert.equal(features.portOverlays.eudev.sourceCommit, lock.eudev.commit);
+      const eudevPort = await readFile(
+        join(
+          relocated,
+          'share',
+          'freerdp-bridge',
+          'ports',
+          'eudev',
+          'portfile.cmake',
+        ),
+      );
+      assert.equal(
+        createHash('sha256').update(eudevPort).digest('hex'),
+        features.portOverlays.eudev.portfileSha256,
+      );
       assert.equal(
         createHash('sha256').update(cupsPatch).digest('hex'),
         features.portOverlays.cups.localQueuesPatchSha256,
       );
     }
+    const usbPort = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'libusb',
+        'portfile.cmake',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(usbPort).digest('hex'),
+      features.portOverlays.libusb.portfileSha256,
+    );
     for (const dependency of [
       'zlib',
       'openssl',
@@ -205,7 +243,7 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       'openh264',
       'opus',
       ...(process.platform === 'linux'
-        ? ['krb5', 'icu', 'cups', 'libfuse', 'numactl']
+        ? ['krb5', 'icu', 'cups', 'libfuse', 'numactl', 'eudev']
         : []),
     ]) {
       assert.ok(

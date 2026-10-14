@@ -26,8 +26,11 @@ Linux builder prerequisites include Bison for the Kerberos source grammar.
 [Historical dependency checkpoint](docs/ITERATION_186.md).
 Linux now also builds private CUPS 2.4.20, libfuse 3.18.3 and numactl 2.0.19;
 linked Release CTest and the current codec/lifecycle relocation probe pass.
-The transitive libusb → host libudev dependency remains an open closure gate.
-[Current build evidence](docs/ITERATION_187.md).
+Pinned private eudev 3.2.14 now resolves libusb's udev dependency. Before Linux
+CPack, every shipped ELF executable/library passes bounded canonical dependency
+and origin-relative loader-path checks. Canonical relocated codec/lifecycle and
+libudev-context checks pass. This is separate from clean-machine/device acceptance.
+[Build evidence](docs/ITERATION_187.md), [closure evidence](docs/ITERATION_189.md).
 
 Expose compile-time feature report in build logs and `/v1/build`.
 

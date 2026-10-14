@@ -6,6 +6,12 @@
     "commit": "bf217a504e54cc719880c228e82353382cd7d4fa"
   },
   "catch2": { "version": "3.8.1" },
+  "eudev": {
+    "version": "3.2.14",
+    "repository": "https://github.com/eudev-project/eudev.git",
+    "commit": "9e7c4e744b9e7813af9acee64b5e8549ea1fbaa3",
+    "sourceSha512": "343b29a8db9ce2e1d136fe3049f2ad492ebd96804eca149e0fadc88a2e92b7fa0dd57c1ce4cb13d9d184d76cee06bcaa69f064b0c90d0cf99a322941944a7678"
+  },
   "cups": {
     "version": "2.4.20",
     "repository": "https://github.com/OpenPrinting/cups.git",

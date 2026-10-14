@@ -40,7 +40,7 @@ for (const name of [
   'openh264',
   'opus',
   ...(process.platform === 'linux'
-    ? ['krb5', 'icu', 'cups', 'libfuse', 'numactl']
+    ? ['krb5', 'icu', 'cups', 'libfuse', 'numactl', 'eudev']
     : []),
 ]) {
   const block = status
@@ -60,6 +60,8 @@ if (dependencies.opus !== lock.opus.version)
   throw new Error('Installed Opus receipt does not match the pinned version');
 if (process.platform === 'linux' && dependencies.cups !== lock.cups.version)
   throw new Error('Installed CUPS receipt does not match the pinned version');
+if (process.platform === 'linux' && dependencies.eudev !== lock.eudev.version)
+  throw new Error('Installed eudev receipt does not match the pinned version');
 const opusPort = readFileSync(
   resolve('native/vcpkg/ports/opus/portfile.cmake'),
   'utf8',
@@ -67,6 +69,15 @@ const opusPort = readFileSync(
 if (!opusPort.includes(`SHA512 ${lock.opus.sourceSha512}`))
   throw new Error('Opus port source hash does not match the dependency lock');
 if (process.platform === 'linux') {
+  const eudevPort = readFileSync(
+    resolve('native/vcpkg/ports/eudev/portfile.cmake'),
+    'utf8',
+  );
+  if (
+    !eudevPort.includes(`REF ${lock.eudev.commit}`) ||
+    !eudevPort.includes(`SHA512 ${lock.eudev.sourceSha512}`)
+  )
+    throw new Error('eudev port source does not match the dependency lock');
   const cupsPort = readFileSync(
     resolve('native/vcpkg/ports/cups/portfile.cmake'),
     'utf8',
@@ -83,6 +94,16 @@ const report = {
   portOverlays: {
     ...(process.platform === 'linux'
       ? {
+          eudev: {
+            sourceCommit: lock.eudev.commit,
+            portfileSha256: createHash('sha256')
+              .update(
+                readFileSync(
+                  resolve('native/vcpkg/ports/eudev/portfile.cmake'),
+                ),
+              )
+              .digest('hex'),
+          },
           cups: {
             sourceCommit: lock.cups.commit,
             localQueuesPatchSha256: createHash('sha256')
@@ -97,6 +118,14 @@ const report = {
           },
         }
       : {}),
+    libusb: {
+      basePort: '1.0.30',
+      portfileSha256: createHash('sha256')
+        .update(
+          readFileSync(resolve('native/vcpkg/ports/libusb/portfile.cmake')),
+        )
+        .digest('hex'),
+    },
     opus: {
       basePort: '1.6.1',
       versionPatchSha256: createHash('sha256')
