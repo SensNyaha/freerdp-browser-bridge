@@ -35,6 +35,14 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-14
 
+Actual Linux amd64/XRDP now passes strict certificate rejection and the previously
+approved session-only fingerprint over automatically selected primary IPC.
+1920×1080 JPEG/H.264 IDR, confirmed 1280×720 resize/restoration with fresh IDRs,
+heartbeat and empty-runtime cleanup pass. This is private Node/native RDP
+integration; browser, audio/devices and sustained resource/soak acceptance remain
+open. [Iteration 201](docs/ITERATION_201.md). Earlier Linux build-only statements
+below describe their historical evidence and are superseded only for this slice.
+
 Current IPC evidence: Linux automatically selects paired private RWS1
 SOCK_SEQPACKET and keeps explicit/legacy framed fallback. Actual Node/native
 100-worker lifecycles, parent/worker death, cancellation, independent deadlines,

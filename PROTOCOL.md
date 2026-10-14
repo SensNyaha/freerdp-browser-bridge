@@ -480,7 +480,10 @@ All `length` values are checked against message-class maxima before allocation. 
 Linux primary packet-carrier framing is specified in
 [LINUX_SEQPACKET.md](docs/LINUX_SEQPACKET.md). Its versioned RWS1 prefix wraps
 bounded chunks of this unchanged envelope. Iteration 193 verifies the codec;
-workers still use the framed-stream fallback pending socket/Node activation.
+iteration 200 activates automatic primary selection for a verified private
+worker/addon pair, preserving explicit and legacy framed fallback. Actual
+Linux/XRDP connected graphics and resize pass in iteration 201; this does not
+change the browser protocol or establish the remaining resource/device gates.
 
 The additive private reset kinds 37/38 are fixed, correlated RWI1 messages;
 see [audio reset contract](docs/AUDIO_RESET.md). Iteration 87 prepares the codec

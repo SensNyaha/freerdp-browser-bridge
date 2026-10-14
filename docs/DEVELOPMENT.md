@@ -462,6 +462,22 @@ lifecycle relocation 1/1 pass locally. Private ELF closure is enforced before
 CPack; clean-machine and actual Linux RDP/device acceptance remain open.
 [Build evidence](ITERATION_187.md), [closure boundaries](ITERATION_189.md).
 
+The actual Linux/XRDP transport helper uses a separately owned Linux lab container
+with the current built source and private dependencies. The host reads ignored
+lab credentials and forwards one bounded private stdin object:
+
+```powershell
+node scripts/run-linux-xrdp-transport.mjs freerdp-bridge-linux-rdp-201 strict
+node scripts/run-linux-xrdp-transport.mjs freerdp-bridge-linux-rdp-201 connect sha256:<previously-approved-fingerprint>
+```
+
+Use only an explicitly authorized certificate fingerprint; the helper never
+accepts another certificate. Run modes sequentially. The connected mode requires
+actual JPEG/H.264 and negotiated resize/restoration, writes no desktop images,
+and performs no remote keyboard/mouse, audio generation or microphone capture.
+It is a private native integration check, separate from browser acceptance.
+[Actual evidence](ITERATION_201.md).
+
 The independent native archive check uses only three explicitly selected files:
 
 ```sh

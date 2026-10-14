@@ -1,5 +1,11 @@
 # Linux primary IPC carrier
 
+Actual connected Linux/XRDP graphics, strict certificate rejection, approved
+session-only trust, heartbeat and confirmed resize/restoration now pass through
+this carrier. This is private Node/native evidence, separate from browser,
+device/audio, sustained resource and full stage acceptance.
+[Connected evidence](ITERATION_201.md).
+
 Current activation — iteration 200: Node prefers this carrier automatically on
 Linux for a verified private worker/addon pair, or uses framed legacy fallback
 when pairing metadata is absent. Explicit host overrides remain supported.
