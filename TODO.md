@@ -13,7 +13,7 @@ Current stage acceptance:
 
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
-| 0 — build | IN PROGRESS | Fresh-checkout/clean-machine, CI execution and standard PIE sanitizer environment; linked Linux CTest and current ELF dependency closure pass |
+| 0 — build | IN PROGRESS | Fresh-checkout/distro matrix, CI execution and standard PIE sanitizer environment; linked Linux CTest, ELF closure and independent Bookworm native runtime pass |
 | 1 — worker/IPC | IN PROGRESS | Linux primary transport/priority output, broader Windows isolation and abnormal cleanup; portable fuzz smoke passes |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
@@ -220,6 +220,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for independent Linux native archive smoke — Pinned Node 24 Bookworm
+  verifier uses only TGZ/probe, with no SDK/system FreeRDP/libudev, UID 1000,
+  read-only root, no network and bounded tmpfs. Six private loaded modules,
+  codec/libudev context roundtrips, exact HELLO/heartbeat/shutdown and worker
+  directory cleanup pass. Full Node service image, distro/fresh-build/installer
+  gates remain separate. [Evidence](docs/ITERATION_190.md). ELF closure: `8a51dc3`.
 
 - [x] DONE for current Linux native ELF profile — Private eudev 3.2.14 keeps
   libusb udev enabled. Pre-CPack bounded canonical dependency/origin-path checks

@@ -61,6 +61,12 @@ this is a failed cleanup condition. [Evidence and retained deployment gates](doc
 The local verification image contains build/test tools and no linked FreeRDP;
 it does not satisfy the multi-stage production service-image requirement above.
 
+An independent native-only TGZ check now passes in a pinned Node 24 Bookworm
+image without SDK/system FreeRDP/libudev, under UID 1000 and the restricted
+runtime flags above. The probe checks canonical private modules, codecs and real
+worker lifecycle/cleanup. This verifies the archive, not the complete API/service
+deployment image. [Evidence and reproducible checks](docs/ITERATION_190.md).
+
 ## 4. Reverse proxy
 
 Terminate HTTPS at Nginx/Caddy/Traefik or Node in simple deployments. Requirements:

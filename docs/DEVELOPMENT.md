@@ -461,3 +461,19 @@ CTest 20/20, Node 452 passed / 76 skipped, and canonical codec/libudev-context /
 lifecycle relocation 1/1 pass locally. Private ELF closure is enforced before
 CPack; clean-machine and actual Linux RDP/device acceptance remain open.
 [Build evidence](ITERATION_187.md), [closure boundaries](ITERATION_189.md).
+
+The independent native archive check uses only three explicitly selected files:
+
+```sh
+node scripts/prepare-native-runtime-check.mjs
+docker build -t freerdp-bridge-native-check build/native-runtime-check
+docker run --rm --network none --init --read-only --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --tmpfs /run/rdp-bridge-tests:rw,noexec,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=700 \
+  freerdp-bridge-native-check
+```
+
+Preparation defaults to `build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz`;
+one alternate archive below the project's build directory can be supplied.
+The verifier removes its own pinned base's system libudev fallback and changes
+no host libraries. [Actual restricted native-runtime evidence](ITERATION_190.md).

@@ -40,6 +40,14 @@ jobs:
         env:
           BRIDGE_TEST_BINARY_DIR: build/bundled
       - run: pnpm test:bundle
+      - name: Prepare native-only clean runtime context
+        if: runner.os == 'Linux'
+        run: node scripts/prepare-native-runtime-check.mjs
+      - name: Verify native archive in restricted clean Linux runtime
+        if: runner.os == 'Linux'
+        run: |
+          docker build -t freerdp-bridge-native-check build/native-runtime-check
+          docker run --rm --network none --init --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /run/rdp-bridge-tests:rw,noexec,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=700 freerdp-bridge-native-check
       - uses: actions/upload-artifact@v4
         with:
           name: native-runtime-${{ runner.os }}
