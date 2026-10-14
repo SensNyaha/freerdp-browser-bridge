@@ -39,6 +39,7 @@ for (const name of [
   'libspng',
   'openh264',
   'opus',
+  ...(process.platform === 'linux' ? ['krb5', 'icu'] : []),
 ]) {
   const block = status
     .split(/\r?\n\r?\n/)

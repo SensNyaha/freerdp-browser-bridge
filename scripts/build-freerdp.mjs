@@ -2,10 +2,11 @@ import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 
-const triplet =
-  process.platform === 'win32' ? 'x64-windows-bundled' : 'x64-linux-bundled';
+const windows = process.platform === 'win32';
+const triplet = windows ? 'x64-windows-bundled' : 'x64-linux-bundled';
 const prefix = resolve('.deps/installed', triplet);
 const freerdpPrefix = resolve('.deps/freerdp-install');
+const krb5Config = join(prefix, 'tools', 'krb5', 'bin', 'krb5-config');
 function run(command, args) {
   const result = spawnSync(command, args, {
     stdio: 'inherit',
@@ -15,6 +16,27 @@ function run(command, args) {
     throw new Error('Pinned FreeRDP build failed; inspect the build log');
 }
 run(process.execPath, [resolve('scripts/fetch-freerdp.mjs')]);
+if (!windows) {
+  for (const mode of ['--cflags', '--libs']) {
+    const result = spawnSync(krb5Config, [mode], {
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer: 65536,
+    });
+    const paths = result.stdout
+      ?.trim()
+      .split(/\s+/)
+      .filter((flag) => /^-[IL]/.test(flag));
+    if (
+      result.status !== 0 ||
+      !paths?.length ||
+      paths.some((flag) => !resolve(flag.slice(2)).startsWith(prefix + '/'))
+    )
+      throw new Error(
+        'Kerberos configuration escaped the private dependency prefix',
+      );
+  }
+}
 run('cmake', [
   '-S',
   '.deps/FreeRDP',
@@ -36,6 +58,7 @@ run('cmake', [
   `-DZLIB_ROOT=${prefix}`,
   `-DOPENSSL_ROOT_DIR=${prefix}`,
   `-DOPENH264_ROOT=${prefix}`,
+  ...(!windows ? [`-DKRB5_ROOT_CONFIG=${krb5Config}`] : []),
   '-DCMAKE_INSTALL_RPATH=$ORIGIN;$ORIGIN/../lib',
   '-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF',
 ]);
@@ -50,6 +73,15 @@ for (const key of [
   'LIBUSB_1_INCLUDE_DIR',
   'OPENH264_INCLUDE_DIR',
   'OPENH264_LIBRARY',
+  ...(!windows
+    ? [
+        'ICU_INCLUDE_DIR',
+        'ICU_I18N_LIBRARY_RELEASE',
+        'ICU_UC_LIBRARY_RELEASE',
+        'ICU_IO_LIBRARY_RELEASE',
+        'ICU_DATA_LIBRARY_RELEASE',
+      ]
+    : []),
 ]) {
   const line = cache.split('\n').find((value) => value.startsWith(key + ':'));
   const value = line?.slice(line.indexOf('=') + 1).trim();
@@ -59,6 +91,16 @@ for (const key of [
       !resolve(value).startsWith(prefix + '/'))
   )
     throw new Error(`Dependency escaped local prefix: ${key}`);
+}
+if (!windows) {
+  if (
+    !cache
+      .split('\n')
+      .some((line) => line.trim() === `KRB5_ROOT_CONFIG:STRING=${krb5Config}`)
+  )
+    throw new Error(
+      'Kerberos configuration does not use the private dependency tool',
+    );
 }
 for (const [key, expected] of [
   ['WITH_OPENH264', 'ON'],

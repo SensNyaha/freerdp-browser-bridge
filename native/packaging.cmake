@@ -17,7 +17,11 @@ if(BRIDGE_WITH_FREERDP)
     install(DIRECTORY "${BRIDGE_DEPENDENCY_PREFIX}/lib/" "${BRIDGE_FREERDP_PREFIX}/lib/"
       DESTINATION lib FILES_MATCHING PATTERN "*.so" PATTERN "*.so.*")
   endif()
-  foreach(dependency zlib openssl libusb libjpeg-turbo libspng openh264 opus)
+  set(bridge_license_dependencies zlib openssl libusb libjpeg-turbo libspng openh264 opus)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND bridge_license_dependencies krb5 icu)
+  endif()
+  foreach(dependency IN LISTS bridge_license_dependencies)
     install(FILES "${BRIDGE_DEPENDENCY_PREFIX}/share/${dependency}/copyright"
       DESTINATION "share/freerdp-bridge/licenses/${dependency}")
   endforeach()

@@ -91,7 +91,10 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 522/522 Node tests.
+  [native tests](native/ipc/tests.cpp). Recorded bundled `pnpm check`: 522/522
+  Node tests (iteration 184). Latest iteration 186 full run: 521 passed / one
+  Edge `ERR_UNSAFE_PORT` failure at random port 2049; unchanged focused repeat
+  passes 6/6. No new green full-run claim. [Checkpoint](docs/ITERATION_186.md).
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -212,6 +215,12 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for local Linux dependency compilation — Pinned private ZLIB/OpenSSL/
+  libusb/JPEG/libspng/OpenH264/Opus build, plus required Linux-only Kerberos 1.22.2
+  and ICU 78.3. Bison prerequisite and private discovery/metadata/license rules
+  are added. Exact FreeRDP configure now stops at CUPS for the retained printer
+  channel; linked worker, dependency closure/relocation and fresh-build gates
+  remain open. [Evidence and reboot checkpoint](docs/ITERATION_186.md).
 - [x] DONE — Create pnpm monorepo layout from `STACK.md` (core packages/apps/native; future component directories are created with their implementations). `9517003`.
 - [x] DONE — Add TypeScript strict config, lint/format, CI skeleton. `pnpm check`; `9517003`.
 - [x] DONE — Add CMake/Ninja native workspace. MSVC x64 build + CTest; `9517003`, `1672590`.
