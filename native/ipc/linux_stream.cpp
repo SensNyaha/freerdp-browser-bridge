@@ -1,4 +1,5 @@
 #include "linux_stream.hpp"
+#include "linux_seqpacket.hpp"
 #include <algorithm>
 #include <cerrno>
 #include <climits>
@@ -34,11 +35,14 @@ public:
 bool valid_timeout(std::chrono::milliseconds period, std::int64_t maximum) noexcept {
   return period.count() >= 20 && period.count() <= maximum;
 }
-int checked_duplicate(int fd, std::chrono::milliseconds period) {
+int checked_duplicate(int fd, std::chrono::milliseconds period, LinuxOutputTransport transport) {
   struct stat info{};
   const int flags = ::fcntl(fd, F_GETFL);
   if (!valid_timeout(period, 5000) || flags < 0 || (flags & O_ACCMODE) == O_RDONLY ||
-      ::fstat(fd, &info) != 0 || (!S_ISFIFO(info.st_mode) && !S_ISSOCK(info.st_mode)))
+      ::fstat(fd, &info) != 0 || (!S_ISFIFO(info.st_mode) && !S_ISSOCK(info.st_mode)) ||
+      (transport != LinuxOutputTransport::framed_stream &&
+       transport != LinuxOutputTransport::seqpacket) ||
+      (transport == LinuxOutputTransport::seqpacket && !S_ISSOCK(info.st_mode)))
     throw ProtocolError();
   if (S_ISSOCK(info.st_mode)) {
     sockaddr_storage address{};
@@ -47,7 +51,8 @@ int checked_duplicate(int fd, std::chrono::milliseconds period) {
     socklen_t type_size = sizeof(type);
     if (::getsockname(fd, reinterpret_cast<sockaddr *>(&address), &size) != 0 ||
         address.ss_family != AF_UNIX ||
-        ::getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &type_size) != 0 || type != SOCK_STREAM)
+        ::getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &type_size) != 0 ||
+        type != (transport == LinuxOutputTransport::seqpacket ? SOCK_SEQPACKET : SOCK_STREAM))
       throw ProtocolError();
   }
   return ::fcntl(fd, F_DUPFD_CLOEXEC, 0);
@@ -57,6 +62,8 @@ struct LinuxStreamOutput::Impl {
   Descriptor stream, wake{::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)};
   const int old_flags;
   const std::chrono::milliseconds write_timeout;
+  const LinuxOutputTransport transport;
+  std::stop_source cancellation;
   OutputDispatcher dispatcher;
   std::atomic<bool> aborting{false}, timeout{false};
   std::thread writer;
@@ -65,15 +72,17 @@ struct LinuxStreamOutput::Impl {
   std::condition_variable done_changed;
   bool done = false, joined = false;
 
-  Impl(int fd, std::chrono::milliseconds period)
-      : stream(checked_duplicate(fd, period)), old_flags(::fcntl(stream.get(), F_GETFL)),
-        write_timeout(period) {
-    if (old_flags < 0 || ::fcntl(stream.get(), F_SETFL, old_flags | O_NONBLOCK) != 0)
+  Impl(int fd, std::chrono::milliseconds period, LinuxOutputTransport mode)
+      : stream(checked_duplicate(fd, period, mode)), old_flags(::fcntl(stream.get(), F_GETFL)),
+        write_timeout(period), transport(mode) {
+    if (old_flags < 0 || (transport == LinuxOutputTransport::framed_stream &&
+                          ::fcntl(stream.get(), F_SETFL, old_flags | O_NONBLOCK) != 0))
       throw ProtocolError();
     try {
       writer = std::thread([this] { run(); });
     } catch (...) {
-      if (::fcntl(stream.get(), F_SETFL, old_flags) != 0)
+      if (transport == LinuxOutputTransport::framed_stream &&
+          ::fcntl(stream.get(), F_SETFL, old_flags) != 0)
         std::terminate();
       throw ProtocolError();
     }
@@ -148,7 +157,21 @@ struct LinuxStreamOutput::Impl {
         throw ProtocolError();
       // SIGPIPE is blocked only in this private writer thread and disappears
       // with that thread; neither global disposition nor caller mask changes.
-      const OutputDispatcher::Write send = [this](auto header, auto body) {
+      std::unique_ptr<LinuxSeqpacketEndpoint> packet;
+      if (transport == LinuxOutputTransport::seqpacket)
+        packet = std::make_unique<LinuxSeqpacketEndpoint>(stream.get());
+      const OutputDispatcher::Write send = [this, &packet](auto header, auto body) {
+        if (packet) {
+          const auto due = Clock::now() + write_timeout;
+          try {
+            packet->send(header, body, write_timeout, cancellation.get_token());
+          } catch (...) {
+            if (Clock::now() >= due)
+              timeout = true;
+            throw;
+          }
+          return true;
+        }
         const auto due = Clock::now() + write_timeout;
         return write_bytes(header, due) && write_bytes(body, due);
       };
@@ -188,6 +211,7 @@ struct LinuxStreamOutput::Impl {
       if (!done_changed.wait_for(lock, period, [this] { return done; })) {
         timeout = true;
         aborting = true;
+        cancellation.request_stop();
         dispatcher.abort();
         signal();
         if (!done_changed.wait_for(lock, std::chrono::milliseconds(250), [this] { return done; }))
@@ -196,7 +220,8 @@ struct LinuxStreamOutput::Impl {
       lock.unlock();
       writer.join();
       joined = true;
-      if (::fcntl(stream.get(), F_SETFL, old_flags) != 0) {
+      if (transport == LinuxOutputTransport::framed_stream &&
+          ::fcntl(stream.get(), F_SETFL, old_flags) != 0) {
         dispatcher.abort();
         return false;
       }
@@ -216,8 +241,9 @@ struct LinuxStreamOutput::Impl {
       std::terminate();
   }
 };
-LinuxStreamOutput::LinuxStreamOutput(int fd, std::chrono::milliseconds period)
-    : impl_(std::make_unique<Impl>(fd, period)) {}
+LinuxStreamOutput::LinuxStreamOutput(int fd, std::chrono::milliseconds period,
+                                     LinuxOutputTransport mode)
+    : impl_(std::make_unique<Impl>(fd, period, mode)) {}
 LinuxStreamOutput::~LinuxStreamOutput() = default;
 DispatchAdmission LinuxStreamOutput::try_send(Kind kind, std::uint64_t id,
                                               std::span<const std::uint8_t> bytes) {

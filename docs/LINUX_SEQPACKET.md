@@ -1,5 +1,14 @@
 # Linux primary IPC carrier
 
+Iteration 195 selects this carrier in Linux worker only with the exact private
+argument `--ipc-seqpacket-fd=3`, an already connected inherited AF_UNIX packet
+descriptor. HELLO then reports `unix-seqpacket-rws1`. Default invocation/CLI/Node
+remain framed pipes. The priority output owner retains its fixed queues, 1 s
+write deadline and finite drain/cancellation. The receive owner observes idle
+output failures and parent loss before processing further input. Actual process
+tests pass; Node integration and connected RDP acceptance remain open.
+[Worker evidence](ITERATION_195.md).
+
 Iteration 194 adds the tested `LinuxSeqpacketEndpoint` kernel-socket adapter.
 It duplicates only connected Unix packet sockets, preserves descriptor flags,
 uses fixed receive scratch and vectored borrowed writes, rejects truncation and

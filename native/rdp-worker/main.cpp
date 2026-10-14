@@ -4,6 +4,7 @@
 #include "microphone.hpp"
 #include "microphone_opus.hpp"
 #include "protocol.hpp"
+#include <algorithm>
 #include <csignal>
 #include <cstdio>
 #include <filesystem>
@@ -18,6 +19,7 @@
 #include <fcntl.h>
 #include <io.h>
 #elif defined(__linux__)
+#include "linux_seqpacket.hpp"
 #include "linux_stream.hpp"
 #include <sys/prctl.h>
 #include <unistd.h>
@@ -58,7 +60,8 @@ public:
   }
 };
 #if defined(__linux__)
-void parent_died(int) {} // Interrupt blocking stdio; run() unwinds and RuntimeGuard cleans up.
+volatile std::sig_atomic_t parent_lost = 0;
+void parent_died(int) { parent_lost = 1; } // Signal-safe; owned read loop unwinds.
 #endif
 constexpr const char *target_freerdp = "3.32.1";
 #ifdef _WIN32
@@ -86,7 +89,7 @@ void append_string(std::vector<std::uint8_t> &bytes, const std::string &text) {
   append_be(bytes, text.size(), 2);
   bytes.insert(bytes.end(), text.begin(), text.end());
 }
-std::vector<std::uint8_t> build_payload() {
+std::vector<std::uint8_t> build_payload(const char *transport) {
   std::vector<std::uint8_t> bytes;
   append_be(bytes, version, 2);
 #ifdef BRIDGE_WITH_FREERDP
@@ -108,7 +111,7 @@ std::vector<std::uint8_t> build_payload() {
   append_be(bytes, 1, 2);
 #endif
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
-                            platform, arch, "framed-pipes"})
+                            platform, arch, transport})
     append_string(bytes, value);
 #if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) &&                                             \
     (defined(CHANNEL_AUDIN_CLIENT) || defined(CHANNEL_RDPSND_CLIENT))
@@ -148,11 +151,54 @@ void send_sync(const Packet &packet) {
     throw ProtocolError();
 }
 #endif
-int run() {
+int run(int packet_fd = -1) {
+  (void)packet_fd;
 #ifdef _WIN32
   WindowsPipeOutput output(reinterpret_cast<void *>(_get_osfhandle(_fileno(stdout))));
 #elif defined(__linux__)
-  LinuxStreamOutput output(::fileno(stdout));
+  const bool packet_mode = packet_fd >= 0;
+  LinuxStreamOutput output(
+      packet_mode ? packet_fd : ::fileno(stdout), std::chrono::milliseconds(1000),
+      packet_mode ? LinuxOutputTransport::seqpacket : LinuxOutputTransport::framed_stream);
+  std::unique_ptr<LinuxSeqpacketEndpoint> packet_reader;
+  if (packet_mode)
+    packet_reader = std::make_unique<LinuxSeqpacketEndpoint>(packet_fd);
+  std::span<const std::uint8_t> pending;
+  const auto read = [&](std::span<std::uint8_t> bytes, bool allow_eof = false) {
+    if (!packet_reader)
+      return read_exact(bytes, allow_eof);
+    std::size_t used = 0;
+    while (used < bytes.size()) {
+      if (parent_lost)
+        throw ProtocolError();
+      const auto stats = output.try_stats();
+      if (stats && stats->failed)
+        throw ProtocolError();
+      if (pending.empty()) {
+        const auto result = packet_reader->read();
+        if (result.state == SeqpacketReadState::idle)
+          continue;
+        if (result.state == SeqpacketReadState::closed) {
+          if (allow_eof && used == 0)
+            return false;
+          throw ProtocolError();
+        }
+        pending = result.bytes;
+      }
+      const auto count = std::min(bytes.size() - used, pending.size());
+      std::copy_n(pending.begin(), count, bytes.begin() + used);
+      pending = pending.subspan(count);
+      used += count;
+    }
+    return true;
+  };
+  const char *transport = packet_mode ? "unix-seqpacket-rws1" : "framed-pipes";
+#else
+  (void)packet_fd;
+#endif
+#if !defined(__linux__)
+  const auto read = read_exact;
+  const char *transport = "framed-pipes";
 #endif
 #if defined(_WIN32) || defined(__linux__)
   const auto send = [&output](const Packet &packet) {
@@ -197,7 +243,7 @@ int run() {
 #endif
     bool ready = false;
     std::array<std::uint8_t, header_bytes> buffer{};
-    while (read_exact(buffer, true)) {
+    while (read(buffer, true)) {
       const auto header = decode_header(buffer); // Validate class limit before allocation.
       if (header.request_id == 0)
         throw ProtocolError();
@@ -212,7 +258,7 @@ int run() {
       } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text ||
                            header.kind == Kind::microphone_pcm ||
                            header.kind == Kind::microphone_opus};
-      (void)read_exact(payload);
+      (void)read(payload, false);
       if (header.kind == Kind::hello && !ready) {
         try {
           validate_hello(payload);
@@ -221,7 +267,7 @@ int run() {
           return 2;
         }
         ready = true;
-        send({Kind::hello_ack, header.request_id, build_payload()});
+        send({Kind::hello_ack, header.request_id, build_payload(transport)});
       } else if (header.kind == Kind::heartbeat && ready) {
         send({Kind::heartbeat_ack, header.request_id, {}});
       } else if (header.kind == Kind::audio_reset && ready) {
@@ -390,7 +436,12 @@ int main(int argc, char **argv) {
               << "\",\"transport\":\"framed-pipes\"}\n";
     return 0;
   }
-  if (argc != 1) {
+  int packet_fd = -1;
+#ifdef __linux__
+  if (argc == 2 && std::string(argv[1]) == "--ipc-seqpacket-fd=3")
+    packet_fd = 3;
+#endif
+  if (argc != 1 && packet_fd < 0) {
     std::fputs("Unsupported worker arguments\n", stderr);
     return 2;
   }
@@ -410,7 +461,7 @@ int main(int argc, char **argv) {
 #endif
   try {
     const RuntimeGuard runtime;
-    return run();
+    return run(packet_fd);
   } catch (const std::exception &) {
     std::fputs("Worker IPC failure\n", stderr);
     return 2;

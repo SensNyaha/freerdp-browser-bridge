@@ -4,13 +4,15 @@
 #include <memory>
 
 namespace bridge::ipc {
-// Framed-stream fallback for inherited FIFO/AF_UNIX SOCK_STREAM descriptors.
+enum class LinuxOutputTransport { framed_stream, seqpacket };
+// Bounded priority writer for inherited streams or opt-in AF_UNIX SOCK_SEQPACKET.
 // The caller retains its descriptor and gives this owner exclusive write use
 // until finish/destruction. Producers must retire before owner teardown.
 class LinuxStreamOutput {
 public:
   explicit LinuxStreamOutput(
-      int write_fd, std::chrono::milliseconds write_timeout = std::chrono::milliseconds(1000));
+      int write_fd, std::chrono::milliseconds write_timeout = std::chrono::milliseconds(1000),
+      LinuxOutputTransport transport = LinuxOutputTransport::framed_stream);
   ~LinuxStreamOutput();
   LinuxStreamOutput(const LinuxStreamOutput &) = delete;
   LinuxStreamOutput &operator=(const LinuxStreamOutput &) = delete;
