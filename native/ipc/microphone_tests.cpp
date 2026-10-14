@@ -58,8 +58,8 @@ TEST_CASE(
                         ProtocolError);
     }
   }
-  for (const auto [kind, length] : {std::pair{Kind::microphone_reset, std::size_t{12}},
-                                    {Kind::microphone_reset_result, std::size_t{4}}}) {
+  for (const auto &[kind, length] : {std::pair{Kind::microphone_reset, std::size_t{12}},
+                                     {Kind::microphone_reset_result, std::size_t{4}}}) {
     auto bytes = encode({kind, UINT64_MAX, std::vector<std::uint8_t>(length)});
     bytes.resize(header_bytes);
     REQUIRE(decode_header(bytes).request_id == UINT64_MAX);

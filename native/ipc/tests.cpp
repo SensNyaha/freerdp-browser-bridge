@@ -191,15 +191,15 @@ TEST_CASE("connection settings v2 independently encoded quality and rejection bo
   REQUIRE(config.max_bitrate == 2000000);
   for (std::size_t i = 0; i < bytes.size(); ++i)
     REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(i)), ProtocolError);
-  for (const auto [index, value] : {std::pair<std::size_t, std::uint8_t>{38, 0},
-                                    {38, 31},
-                                    {39, 0},
-                                    {39, 21},
-                                    {40, 0},
-                                    {40, 101},
-                                    {41, 1},
-                                    {42, 255},
-                                    {46, 255}}) {
+  for (const auto &[index, value] : {std::pair<std::size_t, std::uint8_t>{38, 0},
+                                     {38, 31},
+                                     {39, 0},
+                                     {39, 21},
+                                     {40, 0},
+                                     {40, 101},
+                                     {41, 1},
+                                     {42, 255},
+                                     {46, 255}}) {
     auto invalid = bytes;
     invalid[index] = value;
     REQUIRE_THROWS_AS(decode_connection_config(invalid), ProtocolError);
@@ -330,9 +330,9 @@ TEST_CASE("display IPC independent vectors and exact class bounds before allocat
   REQUIRE(decode_display_resize(std::vector<std::uint8_t>(4)).width == 0);
   REQUIRE(encode_resize_result(ResizeResult::timeout) == std::vector<std::uint8_t>{0, 6, 0, 0});
   REQUIRE_THROWS_AS(encode_resize_result(static_cast<ResizeResult>(8)), ProtocolError);
-  for (const auto [kind, length] : {std::pair{Kind::display_update, std::size_t{32}},
-                                    {Kind::display_resize, 4},
-                                    {Kind::display_resize_result, 4}}) {
+  for (const auto &[kind, length] : {std::pair{Kind::display_update, std::size_t{32}},
+                                     {Kind::display_resize, 4},
+                                     {Kind::display_resize_result, 4}}) {
     auto header = encode({kind, 1, std::vector<std::uint8_t>(length)});
     header.resize(header_bytes);
     REQUIRE(decode_header(header).length == length);
@@ -373,12 +373,12 @@ TEST_CASE("secret class limits, canonical UTF-8, embedded NUL and overwrite") {
   REQUIRE_NOTHROW(validate_secret({}));
   REQUIRE_NOTHROW(validate_secret(std::vector<std::uint8_t>(4096, 'x')));
   REQUIRE_THROWS_AS(validate_secret(std::vector<std::uint8_t>(4097, 'x')), ProtocolError);
-  for (const std::vector<std::uint8_t> bad : {std::vector<std::uint8_t>{'a', 0, 'b'},
-                                              {0xc0, 0xaf},
-                                              {0xed, 0xa0, 0x80},
-                                              {0xf4, 0x90, 0x80, 0x80},
-                                              {0xf0, 0x9f, 0x98},
-                                              {0x80}})
+  for (const std::vector<std::uint8_t> &bad : {std::vector<std::uint8_t>{'a', 0, 'b'},
+                                               {0xc0, 0xaf},
+                                               {0xed, 0xa0, 0x80},
+                                               {0xf4, 0x90, 0x80, 0x80},
+                                               {0xf0, 0x9f, 0x98},
+                                               {0x80}})
     REQUIRE_THROWS_AS(validate_secret(bad), ProtocolError);
   std::vector<std::uint8_t> secret{0xf0, 0x9f, 0x98, 0x80};
   REQUIRE_NOTHROW(validate_secret(secret));

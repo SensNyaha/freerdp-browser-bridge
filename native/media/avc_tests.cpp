@@ -24,14 +24,14 @@ TEST_CASE("AVC packetizer creates deterministic config and length-prefixed acces
 TEST_CASE("AVC packetizer rejects missing configs, wrong NALs and oversized output") {
   bridge::media::AvcPacketizer packetizer;
   REQUIRE_THROWS_AS(packetizer.finish(), bridge::ipc::ProtocolError);
-  for (const std::vector<std::uint8_t> bad : {std::vector<std::uint8_t>{},
-                                              {0, 0, 1},
-                                              {0, 0, 1, 0x65},
-                                              {0, 1, 0x65, 0x88},
-                                              {0, 0, 1, 0xe5, 0x88},
-                                              {0, 0, 1, 0x74, 0x88},
-                                              {0, 0, 1, 0x67, 0x42},
-                                              {0, 0, 1, 0x65, 0x88, 0, 0, 1, 0x41, 0x9a}})
+  for (const std::vector<std::uint8_t> &bad : {std::vector<std::uint8_t>{},
+                                               {0, 0, 1},
+                                               {0, 0, 1, 0x65},
+                                               {0, 1, 0x65, 0x88},
+                                               {0, 0, 1, 0xe5, 0x88},
+                                               {0, 0, 1, 0x74, 0x88},
+                                               {0, 0, 1, 0x67, 0x42},
+                                               {0, 0, 1, 0x65, 0x88, 0, 0, 1, 0x41, 0x9a}})
     REQUIRE_THROWS_AS(packetizer.append(bad), bridge::ipc::ProtocolError);
   std::vector<std::uint8_t> oversized(bridge::media::max_access_unit_bytes + 4, 1);
   oversized[0] = oversized[1] = oversized[2] = 0;

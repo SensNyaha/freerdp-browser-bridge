@@ -194,7 +194,7 @@ TEST_CASE("AUDIN ingress limits format counts extras lengths and complete-record
     REQUIRE_FALSE(parser.inspect(std::span(complete).first(size)));
     REQUIRE(parser.format_count() == 0);
   }
-  for (const auto record : {format(2, 16, 48000, 6, 1025), format(2, 16, 48000, 0xfffe, 21)}) {
+  for (const auto &record : {format(2, 16, 48000, 6, 1025), format(2, 16, 48000, 0xfffe, 21)}) {
     AudinIngress parser;
     version(parser);
     REQUIRE_FALSE(parser.inspect(offers({record})));
@@ -266,7 +266,7 @@ TEST_CASE(
     ready(parser);
     REQUIRE_FALSE(parser.inspect(std::span(complete).first(size)));
   }
-  for (const auto record : {format(2, 16, 48000, 6, 1025), format(2, 16, 48000, 0xfffe, 23)}) {
+  for (const auto &record : {format(2, 16, 48000, 6, 1025), format(2, 16, 48000, 0xfffe, 23)}) {
     AudinIngress parser;
     ready(parser);
     REQUIRE_FALSE(parser.inspect(open(960, 0, record)));
@@ -278,8 +278,9 @@ TEST_CASE(
   REQUIRE_FALSE(extra.inspect(data));
 }
 TEST_CASE("AUDIN ingress enforces ordered fixed negotiation and selected format changes") {
-  for (const auto data : {offers(), open(), std::vector<std::uint8_t>{7, 0, 0, 0, 0},
-                          std::vector<std::uint8_t>{4, 0, 0, 0, 0}, std::vector<std::uint8_t>{5}}) {
+  for (const auto &data :
+       {offers(), open(), std::vector<std::uint8_t>{7, 0, 0, 0, 0},
+        std::vector<std::uint8_t>{4, 0, 0, 0, 0}, std::vector<std::uint8_t>{5}}) {
     AudinIngress parser;
     REQUIRE_FALSE(parser.inspect(data));
   }
@@ -293,8 +294,8 @@ TEST_CASE("AUDIN ingress enforces ordered fixed negotiation and selected format 
   REQUIRE(change->frames_per_packet == 4800);
   REQUIRE_FALSE(parser.inspect(std::vector<std::uint8_t>{7, 2, 0, 0, 0}));
   REQUIRE(parser.phase() == AudinPhase::failed);
-  for (const auto data : {offers(), open(), std::vector<std::uint8_t>{1, 2, 0, 0, 0},
-                          std::vector<std::uint8_t>{7, 1, 0, 0, 0, 0}}) {
+  for (const auto &data : {offers(), open(), std::vector<std::uint8_t>{1, 2, 0, 0, 0},
+                           std::vector<std::uint8_t>{7, 1, 0, 0, 0, 0}}) {
     AudinIngress duplicate;
     ready(duplicate);
     REQUIRE(duplicate.inspect(open()));

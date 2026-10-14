@@ -13,8 +13,8 @@ Current stage acceptance:
 
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
-| 0 — build | IN PROGRESS | Fresh-checkout/Linux build, channels and sanitizer execution |
-| 1 — worker/IPC | IN PROGRESS | Linux transport, fuzz execution, Windows isolation and abnormal cleanup |
+| 0 — build | IN PROGRESS | Fresh-checkout and linked Linux FreeRDP build/channels; CI execution and standard PIE sanitizer environment |
+| 1 — worker/IPC | IN PROGRESS | Linux primary transport/priority output, broader Windows isolation and abnormal cleanup; portable fuzz smoke passes |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent soak failure; one XRDP 30-minute observation passes |
@@ -33,9 +33,15 @@ instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/a
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
-## Implementation status — 2026-10-13
+## Implementation status — 2026-10-14
 
 Lifecycle and the Stage 2 fake-backend gate are verified on **Windows x64**.
+Actual Linux amd64 foundation now passes ASan/UBSan CTest 8/8, seven bounded
+libFuzzer smoke targets and Node check (439 passed / 83 skipped / zero failures).
+One hundred sequential workers and parent-death cleanup pass on Linux framed
+pipes. Windows Node check passes 522/522. The local sanitizer placement workaround,
+retained failed PIE runs and platform boundaries are recorded in
+[iteration 184](docs/ITERATION_184.md); no linked Linux RDP/device acceptance is claimed.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
 Stages 0/1/3/4/5/6 remain **IN PROGRESS**. Physical input and release ownership are
@@ -85,7 +91,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 520/520 Node tests.
+  [native tests](native/ipc/tests.cpp). Current bundled `pnpm check`: 522/522 Node tests.
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
@@ -192,11 +198,14 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   15,621,256 bytes. Earlier footprints remain in their historical reports.
   [Iteration 5](docs/ITERATION_005.md), [iteration 6](docs/ITERATION_006.md).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
-- **BLOCKED acceptance:** no Linux runtime/Clang compiler or Windows RDP lab is available
-  in this session. The XRDP lab has passed strict certificate rejection and explicitly
+- **Retained acceptance:** Windows RDP lab is unavailable. Linux runtime/Clang
+  are now available and portable checks pass in iteration 184; linked Linux
+  FreeRDP/private dependencies, primary transport and actual RDP/device gates remain.
+  The XRDP lab has passed strict certificate rejection and explicitly
   user-approved session-only trust, activation, heartbeat and cleanup checks.
-  [Iteration 4](docs/ITERATION_004.md). Linux SOCK_SEQPACKET remains unimplemented. Linux CI, ASan/UBSan and libFuzzer
-  jobs are prepared but have not run; they are not counted as passing integration gates.
+  [Iteration 4](docs/ITERATION_004.md). Linux SOCK_SEQPACKET remains unimplemented.
+  CI jobs are prepared but have not run; local sanitizer/fuzz execution is separate
+  evidence and does not establish CI or linked Linux integration acceptance.
 
 Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration report:
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
@@ -210,7 +219,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 - [~] IN PROGRESS — Enable required client channels; emit build feature report. Windows cache inventory matches actual static addins in the relocated bundle; CLI and REST expose it. Upstream 3.32.1 has no Windows serial/parallel clients; these are OFF explicitly. Linux inventory and all runtime device gates remain pending.
 - [x] DONE — Add `rdp-worker --version --capabilities`. Native CLI and handshake reports agree; absent library reported as null, RDP false. [Integration test](tests/integration/worker.test.mjs); `1672590`, `316cdc0`.
 - [x] DONE — Add Node `/v1/build` backed by real worker/build information. Fastify injection + native handshake/CLI comparison; `316cdc0`.
-- [~] IN PROGRESS — Add debug ASan/UBSan native CI job. [Workflow](.github/workflows/ci.yml) is configured; execution and sanitizer acceptance pending Linux CI.
+- [x] DONE for portable local Linux verification — Add debug ASan/UBSan job and execute native foundation: CTest 8/8 in the documented non-PIE Docker environment. [Workflow](.github/workflows/ci.yml) remains prepared; actual CI and standard PIE environment acceptance are open. [Evidence](docs/ITERATION_184.md).
 
 **Gate:** clean build from fresh checkout/container; exact FreeRDP version visible; no UI required.
 
@@ -222,8 +231,8 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 - [x] DONE — HELLO/HELLO_ACK capability negotiation. Real worker capability/CLI checks; incompatible version/required-feature native tests; `1672590`, `316cdc0`.
 - [x] DONE — Heartbeat and graceful shutdown. Real-worker and adversarial fake-worker deadline/watchdog tests; `316cdc0`.
 - [x] DONE — Length limits and parser unit tests. Header checked before body allocation; malformed/truncated inputs fail without input disclosure. `1672590`.
-- [~] IN PROGRESS — libFuzzer target for IPC envelope. [Target](native/ipc/fuzz.cpp) and seeded CI job exist; compile/run blocked locally by absent Clang compiler, not counted as fuzz verification.
-- [~] IN PROGRESS — Parent-death handling and private runtime directory cleanup. Windows EOF/cleanup test passes, including independent hidden worker process; Linux PDEATHSIG code awaits Linux verification. Explicit Windows private ACL policy remains TODO.
+- [x] DONE for bounded local Linux smoke — libFuzzer IPC target and seeded run: 2,074,807 executions in 21 seconds with ASan/UBSan and zero failure. Six other portable parser targets also pass. Extended/upstream fuzzing and actual CI remain open. [Target](native/ipc/fuzz.cpp), [evidence](docs/ITERATION_184.md).
+- [~] IN PROGRESS — Parent-death handling and private runtime directory cleanup. Windows and actual Linux framed-pipe parent-death/cleanup and 100 sequential worker tests pass. Windows private ACL creation/startup is implemented; broader multi-user isolation and simultaneous hard-kill cleanup remain open. [Linux evidence](docs/ITERATION_184.md).
 
 **Gate:** Node test supervisor can spawn 100 sequential workers, exchange heartbeats, kill/restart without leaked processes/files.
 
