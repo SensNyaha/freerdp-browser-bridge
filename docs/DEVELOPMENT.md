@@ -440,6 +440,13 @@ reattach, and fail for an idle source. Opus also requires an observed native
 reset result and a fresh epoch. Leave audio playing on the authorized lab; the
 helper does not start remote applications or record audio. [Verified scope](ITERATION_181.md).
 
+## Manual WEB connection example
+
+`node scripts/start-reference-harness.mjs` opens an empty, authenticated local
+Edge example. Enter RDP address, settings and credentials manually; choose strict
+validation or an explicit session-only certificate prompt. Window close stops the
+owned server/workers. [Detailed contract and launch](WEB_CONNECTION_EXAMPLE.md).
+
 ## Local linked Linux verification
 
 After `pnpm build:dependencies`, `pnpm build:freerdp` and `pnpm build:bundled`,

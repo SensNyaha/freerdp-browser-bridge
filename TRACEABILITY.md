@@ -18,6 +18,7 @@
 | Gateway/proxy/security | CONFIG_SCHEMA, FREERDP_MAPPING | 9 |
 | Dynamic resolution/multimon | CONFIG_SCHEMA, MEDIA_PIPELINE | 9 |
 | Remmina-like settings | CONFIG_SCHEMA, FREERDP_MAPPING | 9 |
+| Manual WEB connection/settings/credentials/certificate example (user 2026-10-14) | SPECIFICATION, SESSION_API, reference harness | 4/9 |
 | Camera/WebAuthn optional | DEVICE_REDIRECTION | 11 |
 | Crash isolation | ARCHITECTURE, SECURITY | 1–2 |
 | Backpressure | ARCHITECTURE, PERFORMANCE | 4, 6 |

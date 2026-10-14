@@ -146,6 +146,9 @@ const server = await createSessionServer({
 for (const [url, name, type] of [
   ['/harness/', 'index.html', 'text/html'],
   ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
+  ['/harness/session-form.js', 'session-form.js', 'text/javascript'],
+  ['/harness/connection-config.js', 'connection-config.js', 'text/javascript'],
+  ['/harness/connection-owner.js', 'connection-owner.js', 'text/javascript'],
   ['/harness/input.js', 'input.js', 'text/javascript'],
   ['/harness/modifiers.js', 'modifiers.js', 'text/javascript'],
   ['/harness/wheel.js', 'wheel.js', 'text/javascript'],

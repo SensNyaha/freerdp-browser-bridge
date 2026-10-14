@@ -35,6 +35,19 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-14
 
+Actual Linux producer/API/primary IPC now renders XRDP in Windows Edge through
+both H.264/WebCodecs and JPEG/canvas. Nonblank 1080p, public confirmed resize /
+restoration with fresh configs/IDRs and fresh-token reattachment replay pass;
+joined server/worker cleanup leaves an empty runtime. This adds the named browser
+smoke, not a Linux-browser/platform/audio or sustained resource gate.
+[Iteration 202](docs/ITERATION_202.md).
+
+Controlled actual Linux/XRDP loss now passes after real media and resize in both
+primary and explicit framed IPC: exact RDP_DISCONNECTED, continued heartbeat and
+empty-runtime/relay cleanup. This accepts the named private connected loss case;
+remote held-input/device release, browser failure state, reconnect and sustained
+resource acceptance remain open. [Iteration 203](docs/ITERATION_203.md).
+
 Actual Linux amd64/XRDP now passes strict certificate rejection and the previously
 approved session-only fingerprint over automatically selected primary IPC.
 1920×1080 JPEG/H.264 IDR, confirmed 1280×720 resize/restoration with fresh IDRs,
@@ -341,6 +354,19 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 ## Stage 4 — graphics, cursor and browser video
 
+- [x] DONE for supported-settings/manual WEB connection example (2026-10-14):
+  manual RDP host/port, username/domain/password, supported connection/display /
+  quality/media settings, explicit session-only certificate decision and connect /
+  disconnect actions. Hosting authentication stays separate from RDP credentials;
+  no password/profile persistence. Other Remmina-like functions follow their
+  backend stages and must show explicit unsupported state until implemented.
+  Form/schema, authorization refusal, secret clearing, late-create cancellation
+  and actual Edge/HTTP fixtures pass. Real Linux/XRDP H.264/JPEG creation through
+  the form, session-only certificate click, resize/replay and cleanup pass;
+  empty Windows launcher smoke passes. This accepts the named UI example, not
+  the pending backend functions. [Contract/run](docs/WEB_CONNECTION_EXAMPLE.md),
+  [evidence](docs/ITERATION_204.md).
+
 Current actual soak attempt stopped with `RDP_PROTOCOL_ERROR` after its last
 successful sample at 22 minutes 9 seconds. Memory/queue samples were within
 bounds. A full repeat now passes; the first failure's cause remains unverified.
@@ -352,7 +378,7 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
   and empty-runtime cleanup. This does not close broader interactive, Windows-server,
   resource or intermittent-failure acceptance. [Evidence](docs/ITERATION_182.md).
 
-- [x] DONE on Windows/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native JPEG roundtrip and real 1080p browser rendering verified; [evidence](docs/ITERATION_005.md).
+- [x] DONE on Windows and local Linux amd64/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native codec tests and real 1080p Edge rendering verified; [Windows evidence](docs/ITERATION_005.md), [Linux producer evidence](docs/ITERATION_202.md). Broader server/platform/resource acceptance remains open.
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
 - [~] IN PROGRESS — Native Display Control binds negotiated caps and one bounded layout; private IPC/Node and public control leases expose opt-in, typed results, server-observed generations and deadlines. Actual XRDP browser resize/restoration, display replay, fresh AVC IDRs/JPEG configs, nonfatal input pause and transmitted media ACK preservation pass. The single-primary layout at 100% scale satisfies ADR-011; Windows-server, DVC resource audit and soak acceptance remain open. Automatic viewport policy is optional follow-up; wider layouts are outside current scope. [Contract](docs/DISPLAY_CONTROL.md), [native evidence](docs/ITERATION_017.md), [IPC/XRDP evidence](docs/ITERATION_018.md), [public/browser evidence](docs/ITERATION_019.md).
 - [~] IN PROGRESS — Rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI/GFX callback tests pass; actual XRDP regression is recorded in [iteration 13](docs/ITERATION_013.md) and [iteration 14](docs/ITERATION_014.md). Partial-region encoding and actual negotiated GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
@@ -360,7 +386,7 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
 - [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture with render credit. Configurable FPS caps and quality/bitrate profiles reach native encoders; effective ceilings remain 20 JPEG / 30 AVC FPS. Native/fake and actual XRDP cap checks pass. Provider selection and adaptive congestion remain pending. [Contract](docs/VIDEO_QUALITY.md), [evidence](docs/ITERATION_016.md).
 - [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/ITERATION_006.md). Linux/hardware selection pending.
 - [x] DONE on Windows/XRDP — AVCC config/access-unit packetization, IPC/RWB1 bounds and actual browser decode verified; [evidence](docs/ITERATION_007.md).
-- [x] DONE on Windows/XRDP — Encoded JPEG/AVC worker→Node RWI1 and browser RWB1 forwarding, without raw frames in JS.
+- [x] DONE on Windows and local Linux amd64/XRDP — Encoded JPEG/AVC worker→Node RWI1 and browser RWB1 forwarding, without raw frames in JS. Linux primary IPC/public API/Windows Edge smoke passes [iteration 202](docs/ITERATION_202.md); sustained resource/platform gates remain open.
 - [x] DONE in Edge/Windows — Reference harness checks WebCodecs support, renders actual 1080p AVC/JPEG and closes VideoFrames/ImageBitmaps. Other browsers/platforms remain unverified.
 - [x] DONE in Edge/Windows — Independent binary shape stream and transparent overlay; local movement, CSS-scaled hotspot, hide/default and disposal tested. Actual XRDP shape and browser reattachment replay pass. [Evidence](docs/ITERATION_012.md). Full desktop soak remains open.
 - [x] DONE on Windows/XRDP — Native JPEG fallback and browser canvas path, private libjpeg-turbo, bounded allocation and relocation verified. [Contract](docs/MEDIA_JPEG.md).

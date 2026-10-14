@@ -7,14 +7,15 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import { assertLoopbackViewerPorts } from './linux-viewer-container.mjs';
 
-const [container, fingerprint, codec = 'h264', ...extra] =
+const [container, fingerprint, codec = 'h264', formMode, ...extra] =
   process.argv.slice(2);
 if (
   process.platform !== 'win32' ||
   extra.length ||
   !/^freerdp-bridge-linux-viewer-[0-9]+$/.test(container ?? '') ||
   !/^sha256:[a-f0-9]{64}$/.test(fingerprint ?? '') ||
-  !['h264', 'jpeg'].includes(codec)
+  !['h264', 'jpeg'].includes(codec) ||
+  (formMode !== undefined && formMode !== '--form')
 )
   throw new Error(
     'Use owned Linux viewer container, approved fingerprint and codec',
@@ -174,34 +175,78 @@ try {
   const lab = await local('xrdp-lab.json');
   const credentials = await local('xrdp-lab.secrets.json');
   let attachment;
-  try {
-    attachment = await request('/v1/sessions', 'POST', {
-      target: { host: lab.host, port: lab.port ?? 3389 },
-      auth: { username: credentials.username, password: credentials.password },
-      display: { width: 1920, height: 1080, dynamicResolution: true },
-      security: { certificatePolicy: 'prompt' },
-      timeouts: { connectMs: 20000, tcpAckMs: 10000 },
-    });
-  } finally {
-    delete credentials.password;
-  }
-  sessionId = attachment.sessionId;
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   page = await browser.newPage({ viewport: { width: 1980, height: 1240 } });
   await page.goto(origin + '/harness/');
   await page.waitForFunction(() => Boolean(window.bridgeViewer));
-  await page.evaluate(
-    ({ attachment, codec }) =>
-      window.bridgeViewer.attach(attachment, { codecs: [codec] }),
-    { attachment, codec },
-  );
+  try {
+    if (formMode) {
+      phase = 'manual-form';
+      await page.waitForFunction(
+        () =>
+          window.bridgeConnection &&
+          !document.querySelector('#connect-session').disabled,
+      );
+      await page.evaluate((bearer) => {
+        window.bridgeConnection.configure({
+          authorize: () => ({ authorization: 'Bearer ' + bearer }),
+        });
+        for (const details of document.querySelectorAll(
+          '#connection-form details',
+        ))
+          details.open = true;
+      }, bearer);
+      await page.locator('[name=host]').fill(lab.host);
+      await page.locator('[name=port]').fill(String(lab.port ?? 3389));
+      await page.locator('[name=username]').fill(credentials.username);
+      await page.locator('[name=password]').fill(credentials.password);
+      await page.locator('[name=certificatePolicy]').selectOption('prompt');
+      await page.locator('[name=video]').selectOption(codec);
+      const response = page.waitForResponse(
+        (response) =>
+          response.url() === origin + '/v1/sessions' &&
+          response.request().method() === 'POST',
+      );
+      await page.click('#connect-session');
+      const created = await response;
+      if (created.status() !== 202)
+        throw new Error('Manual form creation refused');
+      attachment = await created.json();
+      if ((await page.locator('[name=password]').inputValue()) !== '')
+        throw new Error('Password field not cleared');
+      report.manualForm = true;
+    } else
+      attachment = await request('/v1/sessions', 'POST', {
+        target: { host: lab.host, port: lab.port ?? 3389 },
+        auth: {
+          username: credentials.username,
+          password: credentials.password,
+        },
+        display: { width: 1920, height: 1080, dynamicResolution: true },
+        security: { certificatePolicy: 'prompt' },
+        timeouts: { connectMs: 20000, tcpAckMs: 10000 },
+      });
+  } finally {
+    delete credentials.password;
+  }
+  sessionId = attachment.sessionId;
+  if (!formMode)
+    await page.evaluate(
+      ({ attachment, codec }) =>
+        window.bridgeViewer.attach(attachment, { codecs: [codec] }),
+      { attachment, codec },
+    );
   phase = 'certificate';
   await page.waitForFunction(
     () => !document.querySelector('#certificate').hidden,
     undefined,
     { timeout: 20000 },
   );
-  if (
+  if (formMode) {
+    if ((await page.locator('#fingerprint').textContent()) !== fingerprint)
+      throw new Error('Approved certificate mismatch');
+    await page.click('#accept');
+  } else if (
     !(await page.evaluate(
       (fp) => window.bridgeViewer.acceptCertificate(fp),
       fingerprint,
@@ -267,6 +312,8 @@ try {
     await page
       .evaluate(() => window.bridgeViewer.resize(1920, 1080))
       .catch(() => {});
+  if (formMode)
+    await page?.evaluate(() => window.bridgeConnection.stop()).catch(() => {});
   await page?.evaluate(() => window.bridgeViewer.detach()).catch(() => {});
   await browser?.close();
   if (sessionId)

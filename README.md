@@ -8,6 +8,14 @@ Target baseline: FreeRDP 3.32.1, Node.js 24 LTS, Linux x86_64 first
 
 This package defines a cross-platform bridge that uses FreeRDP as the RDP protocol implementation and exposes a browser-consumable API for remote desktop image, cursor, audio and input. The bridge is not a Remmina clone and does not include a full visual application. A future web client may implement a Remmina-like UI on top of the API described here.
 
+Explicit user requirement (2026-10-14): the reference WEB visualization must also
+demonstrate manual RDP host/settings and username/password entry, an interactive
+certificate decision, and Remmina-like connection actions. This extends the
+integration harness into a reusable connection UI example; the original exclusion
+of a full production application/profile store remains. Unsupported backend
+features must remain explicit rather than being silently enabled by a UI control.
+[Manual WEB example and launch](docs/WEB_CONNECTION_EXAMPLE.md).
+
 The implementation must preserve broad FreeRDP capability coverage, including RDP Gateway/security/display options and device/channel redirection. Where the browser sandbox cannot expose a physical client device directly, the bridge must state the boundary explicitly and support one of three modes: bridge-host redirection, browser-mediated virtual redirection, or an optional local companion agent.
 
 ## 2. Required result
