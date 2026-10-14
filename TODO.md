@@ -91,10 +91,10 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   build/capability REST endpoints; reusable Node worker API and lifecycle example.
 - **Evidence:** [Node integration tests](tests/integration/worker.test.mjs),
   [protocol tests](tests/unit/protocol.test.mjs), [configuration tests](tests/unit/config.test.mjs),
-  [native tests](native/ipc/tests.cpp). Recorded bundled `pnpm check`: 522/522
-  Node tests (iteration 184). Latest iteration 186 full run: 521 passed / one
-  Edge `ERR_UNSAFE_PORT` failure at random port 2049; unchanged focused repeat
-  passes 6/6. No new green full-run claim. [Checkpoint](docs/ITERATION_186.md).
+  [native tests](native/ipc/tests.cpp). Latest bundled Windows `pnpm check`:
+  **524/524**. Bounded browser fixture ports resolve the random 2049 refusal;
+  focused Edge/socket 6/6 and full repeat pass. Earlier failures are preserved in
+  [iteration 186](docs/ITERATION_186.md) and [iteration 188](docs/ITERATION_188.md).
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;

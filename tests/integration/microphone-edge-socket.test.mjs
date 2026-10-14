@@ -7,6 +7,10 @@ import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
+import {
+  listenBrowserHttp,
+  listenBrowserLoopback,
+} from '../fixtures/browser-port.mjs';
 
 class SyntheticMicrophoneWorker extends FakeSessionWorker {
   source = {
@@ -115,7 +119,7 @@ for (const [codec, mode] of ['pcm', 'opus'].flatMap((codec) =>
             '<button id="start">Synthetic microphone</button>',
         );
       });
-      await new Promise((done) => staticServer.listen(0, '127.0.0.1', done));
+      await listenBrowserHttp(staticServer);
       const origin = 'http://127.0.0.1:' + staticServer.address().port;
       const runtimeRoot = await mkdtemp(
         join(tmpdir(), 'bridge-microphone-edge-'),
@@ -135,7 +139,9 @@ for (const [codec, mode] of ['pcm', 'opus'].flatMap((codec) =>
           allowedOrigins: [origin],
           sessions: { workerFactory: () => worker },
         });
-        await server.listen({ host: '127.0.0.1', port: 0 });
+        await listenBrowserLoopback((port) =>
+          server.listen({ host: '127.0.0.1', port }),
+        );
         const created = await server.inject({
           method: 'POST',
           url: '/v1/sessions',
