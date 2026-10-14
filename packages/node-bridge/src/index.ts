@@ -10,6 +10,8 @@ export * from './session-audio.js';
 export * from './microphone-ingress.js';
 export * from './microphone-ownership.js';
 import { EventEmitter } from 'node:events';
+import type { Writable } from 'node:stream';
+import { SeqpacketOwner, loadPacketAddon } from './seqpacket-owner.js';
 import { PcmSource } from './pcm-source.js';
 import { OpusSource } from './opus-source.js';
 export type { PcmSourceEvent } from './pcm-source.js';
@@ -104,6 +106,7 @@ export interface WorkerOptions {
   heartbeatIntervalMs?: number;
   maxPendingRequests?: number;
   maxWriteBytes?: number;
+  ipcTransport?: 'framed-pipes' | 'unix-seqpacket-rws1';
 }
 
 type Status =
@@ -188,6 +191,9 @@ export class WorkerProcess extends EventEmitter {
   private rdpConnected = false;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
+  private packetOwner: SeqpacketOwner | undefined;
+  private ipcInput: Writable | SeqpacketOwner | undefined;
+  private retirementFailed = false;
 
   constructor(options: WorkerOptions) {
     super();
@@ -200,7 +206,16 @@ export class WorkerProcess extends EventEmitter {
       heartbeatIntervalMs: options.heartbeatIntervalMs ?? 1000,
       maxPendingRequests: options.maxPendingRequests ?? 32,
       maxWriteBytes: options.maxWriteBytes ?? 65536,
+      ipcTransport: options.ipcTransport ?? 'framed-pipes',
     };
+    if (
+      !['framed-pipes', 'unix-seqpacket-rws1'].includes(
+        this.options.ipcTransport,
+      ) ||
+      (this.options.ipcTransport === 'unix-seqpacket-rws1' &&
+        process.platform !== 'linux')
+    )
+      throw new WorkerError('IPC_TRANSPORT_UNSUPPORTED');
     for (const value of [
       this.options.requestTimeoutMs,
       this.options.startupTimeoutMs,
@@ -249,6 +264,7 @@ export class WorkerProcess extends EventEmitter {
       pending.reject(error);
     }
     this.pending.clear();
+    this.packetOwner?.destroy();
     this.child?.kill('SIGKILL');
     this.emit('failure', error);
   }
@@ -262,13 +278,29 @@ export class WorkerProcess extends EventEmitter {
     directory: string,
     env: Record<string, string>,
   ): ChildProcessWithoutNullStreams {
-    return spawn(this.options.workerPath, [], {
-      cwd: directory,
-      env,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-      detached: process.platform === 'win32',
-    });
+    return spawn(
+      this.options.workerPath,
+      this.packetOwner ? ['--ipc-seqpacket-fd=3'] : [],
+      {
+        cwd: directory,
+        env,
+        stdio: this.packetOwner
+          ? ['pipe', 'pipe', 'pipe', this.packetOwner.childFd()]
+          : ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
+        detached: process.platform === 'win32',
+      },
+    ) as ChildProcessWithoutNullStreams;
+  }
+  /** Private transport factory seam; failure joins native descriptor ownership. */
+  protected async createPacketOwner(): Promise<SeqpacketOwner> {
+    return SeqpacketOwner.open(
+      loadPacketAddon(join(dirname(this.options.workerPath), 'rdp-ipc.node')),
+      {
+        maxRecords: this.options.maxPendingRequests,
+        maxBytes: this.options.maxWriteBytes,
+      },
+    );
   }
 
   /** Trusted colocated helper only; normal cancellation waits for its ownership receipt. */
@@ -354,6 +386,11 @@ export class WorkerProcess extends EventEmitter {
         mode: 0o600,
       });
       this.requireStarting();
+      if (this.options.ipcTransport === 'unix-seqpacket-rws1') {
+        this.packetOwner = await this.createPacketOwner();
+        this.packetOwner.on('error', () => this.fail('IPC_TRANSPORT_FAILED'));
+        this.requireStarting();
+      }
       const env = Object.fromEntries(
         [
           'SystemRoot',
@@ -369,6 +406,10 @@ export class WorkerProcess extends EventEmitter {
       // Connection then selects private paths through the public settings API.
       const child = this.spawnWorker(this.directory, env);
       this.child = child;
+      const input = this.packetOwner ?? child.stdin;
+      const output = this.packetOwner ?? child.stdout;
+      this.ipcInput = input;
+      if (this.packetOwner) child.stdout.resume();
       this.closedPromise = new Promise<void>((done) =>
         child.once('close', () => {
           if (this.status !== 'closing' && this.status !== 'failed')
@@ -392,24 +433,28 @@ export class WorkerProcess extends EventEmitter {
         }),
       );
       child.once('error', () => this.fail('WORKER_SPAWN_FAILED'));
-      child.stdin.on('error', () => this.fail('IPC_WRITE_FAILED'));
+      this.packetOwner?.closeChild();
+      input.on('error', () => this.fail('IPC_WRITE_FAILED'));
+      if (this.packetOwner)
+        child.stdin.on('error', () => this.fail('IPC_WRITE_FAILED'));
       // Drain stderr without retaining or forwarding upstream text that may contain future secrets.
       child.stderr.resume();
       const decoder = new PacketDecoder();
-      child.stdout.on('data', (chunk: Buffer) => {
+      output.on('data', (chunk: Buffer) => {
         try {
           decoder.push(chunk, (packet) => this.receive(packet));
         } catch {
           this.fail('IPC_PROTOCOL_ERROR');
         }
       });
-      child.stdout.once('end', () => {
+      output.once('end', () => {
         try {
           decoder.finish();
         } catch {
           this.fail('IPC_PROTOCOL_ERROR');
         }
       });
+      this.packetOwner?.resume();
       const hello = await this.request(
         Kind.Hello,
         Kind.HelloAck,
@@ -417,6 +462,8 @@ export class WorkerProcess extends EventEmitter {
       );
       this.requireStarting();
       this.report = decodeBuild(hello.payload);
+      if (this.packetOwner && this.report.transport !== 'unix-seqpacket-rws1')
+        throw new WorkerError('IPC_TRANSPORT_MISMATCH');
       this.setState('ready');
       let busy = false;
       this.heartbeat = setInterval(() => {
@@ -700,9 +747,11 @@ export class WorkerProcess extends EventEmitter {
     timeoutMs = this.options.requestTimeoutMs,
   ): Promise<Packet> {
     const child = this.child;
+    const input = this.ipcInput;
     if (
       !child ||
-      child.stdin.destroyed ||
+      !input ||
+      input.destroyed ||
       !['starting', 'ready', 'closing'].includes(this.status)
     )
       return Promise.reject(new WorkerError('INVALID_STATE'));
@@ -710,7 +759,7 @@ export class WorkerProcess extends EventEmitter {
       return Promise.reject(new WorkerError('IPC_QUEUE_FULL'));
     const requestId = ++this.sequence;
     const bytes = encodePacket({ kind, requestId, payload });
-    if (child.stdin.writableLength + bytes.length > this.options.maxWriteBytes)
+    if (input.writableLength + bytes.length > this.options.maxWriteBytes)
       return Promise.reject(new WorkerError('IPC_QUEUE_FULL'));
     return new Promise<Packet>((done, reject) => {
       const timer = setTimeout(
@@ -722,7 +771,7 @@ export class WorkerProcess extends EventEmitter {
         kind === Kind.Hello ? this.options.startupTimeoutMs : timeoutMs,
       );
       this.pending.set(requestId, { expected, resolve: done, reject, timer });
-      child.stdin.write(bytes, (error) => {
+      input.write(bytes, (error: Error | null | undefined) => {
         if (
           kind === Kind.Secret ||
           kind === Kind.InputText ||
@@ -1113,9 +1162,21 @@ export class WorkerProcess extends EventEmitter {
       if (this.startCompletion) await this.startCompletion;
       if (this.closedPromise) await this.closedPromise;
     }
+    if (this.retirementFailed) throw new WorkerError('IPC_CLOSE_FAILED');
   }
 
   private async cleanup(): Promise<void> {
+    if (this.packetOwner) {
+      this.packetOwner.destroy();
+      try {
+        await this.packetOwner.retired;
+      } catch {
+        this.retirementFailed = true;
+        throw new WorkerError('IPC_CLOSE_FAILED');
+      }
+      this.packetOwner = undefined;
+    }
+    this.ipcInput = undefined;
     this.cursorState = undefined;
     this.displayState = undefined;
     this.touchState = undefined;
