@@ -1,5 +1,13 @@
 # Native audio session codec ownership
 
+Current activation (iteration 205): guarded PCM/Opus output, reset and 120/200 ms
+selection are wired on Windows and Linux amd64 priority writers. Linux CLI/HELLO
+advertise the output-only extension; microphone remains Windows-only. Native /
+local TLS and packaging pass, but actual Linux XRDP still lacks source samples
+despite Formats, with one protocol failure under investigation. Historical
+Windows-only statements below are superseded only for the implemented slice.
+[Current evidence](ITERATION_205.md).
+
 Iteration 80 (2026-10-11) implements SPECIFICATION §2.6 and MEDIA_PIPELINE §6
 within the existing serialized `AudioSession` lifecycle. A final optional native
 constructor argument selects `OutputAudioCodec::pcm` (default) or `opus` once.

@@ -24,7 +24,7 @@ const workerPath = resolve(
   'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
 );
 const available =
-  process.platform === 'win32' &&
+  ['win32', 'linux'].includes(process.platform) &&
   JSON.parse(
     execFileSync(workerPath, ['--capabilities'], {
       encoding: 'utf8',

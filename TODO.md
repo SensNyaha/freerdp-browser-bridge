@@ -35,6 +35,14 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-14
 
+Guarded Linux amd64 PCM/Opus output, native reset and 120/200 ms selection are
+activated through the primary and framed priority writers. Eight native/TLS
+profile cases and full Node/native/relocation/independent archive checks pass.
+Actual XRDP receives Formats but Linux has no samples yet, including one
+RDP_PROTOCOL_ERROR; the Windows control receives active Opus. Linux source /
+browser/audio acceptance remains open pending negotiation diagnosis.
+[Iteration 205](docs/ITERATION_205.md).
+
 Actual Linux producer/API/primary IPC now renders XRDP in Windows Edge through
 both H.264/WebCodecs and JPEG/canvas. Nonblank 1080p, public confirmed resize /
 restoration with fresh configs/IDRs and fresh-token reattachment replay pass;

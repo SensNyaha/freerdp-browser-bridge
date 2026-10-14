@@ -16,7 +16,7 @@ import {
 } from '../../packages/protocol/dist/index.js';
 
 test(
-  'native lifecycle: private Opus configuration selects only guarded Windows output before connect',
+  'native lifecycle: private Opus configuration follows the actual guarded output capability before connect',
   { timeout: 10000 },
   async (t) => {
     const directory = await mkdtemp(join(tmpdir(), 'bridge-opus-config-'));
@@ -54,7 +54,7 @@ test(
       assert.equal(packets[0].kind, Kind.HelloAck);
       const capabilities = decodeBuild(packets[0].payload).capabilities;
       const core = capabilities.connectCore;
-      const selected = process.platform === 'win32' && capabilities.opusOutput;
+      const selected = capabilities.opusOutput;
       assert.equal(typeof capabilities.opusOutput, 'boolean');
       child.stdin.end(
         Buffer.concat([

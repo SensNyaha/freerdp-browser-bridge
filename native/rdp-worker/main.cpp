@@ -100,7 +100,7 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
 #ifdef CHANNEL_RDPEI_CLIENT
   capabilities |= 2048;
 #endif
-#if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)
   capabilities |= 4096 | 8192 | 16384;
 #endif
 #if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
@@ -113,10 +113,11 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
                             platform, arch, transport})
     append_string(bytes, value);
-#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) &&                                             \
-    (defined(CHANNEL_AUDIN_CLIENT) || defined(CHANNEL_RDPSND_CLIENT))
+#if defined(BRIDGE_WITH_FREERDP) &&                                                                \
+    ((defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)) ||                                         \
+     ((defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)))
   unsigned extensions = 0;
-#ifdef CHANNEL_AUDIN_CLIENT
+#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
   extensions |= 3;
 #endif
 #ifdef CHANNEL_RDPSND_CLIENT
@@ -225,7 +226,7 @@ int run(int packet_fd = -1) {
 #ifdef BRIDGE_WITH_FREERDP
     if (!WLog_SetLogLevel(WLog_GetRoot(), WLOG_OFF))
       throw std::runtime_error("FreeRDP logging initialization failed");
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
     bridge::Connection connection(
         send,
         [&output](Kind kind, std::span<const std::uint8_t> bytes) {
@@ -310,7 +311,7 @@ int run(int packet_fd = -1) {
         return 0;
 #ifdef BRIDGE_WITH_FREERDP
       } else if (header.kind == Kind::configure && ready) {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
         const auto config = decode_connection_config(payload);
         const auto codec = config.opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm;
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
@@ -393,7 +394,8 @@ int main(int argc, char **argv) {
 #else
                  "\"microphoneReset\":false,\"opusInput\":false,"
 #endif
-#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+#if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
+    defined(CHANNEL_RDPSND_CLIENT)
                  "\"audioBuffer200\":true,"
 #else
                  "\"audioBuffer200\":false,"
@@ -407,7 +409,7 @@ int main(int argc, char **argv) {
 #else
                  "\"pcmInput\":false,"
 #endif
-#if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)
                  "\"pcmOutput\":true,\"opusOutput\":true,\"audioReset\":true,"
 #else
                  "\"pcmOutput\":false,\"opusOutput\":false,\"audioReset\":false,"

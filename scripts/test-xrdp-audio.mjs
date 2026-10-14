@@ -4,13 +4,19 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 
 // Authorized local lab only. No remote input or sound-generation commands.
-const [fingerprint, audioOutput = 'pcm', bufferMs = '120', ...extra] =
-  process.argv.slice(2);
+const [
+  fingerprint,
+  audioOutput = 'pcm',
+  bufferMs = '120',
+  inputMode,
+  ...extra
+] = process.argv.slice(2);
 if (
   extra.length ||
   !['pcm', 'opus'].includes(audioOutput) ||
   !['120', '200'].includes(bufferMs) ||
-  !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
+  !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '') ||
+  (inputMode !== undefined && inputMode !== '--private-stdin')
 )
   throw new Error('Use sha256:<verified-lab-fingerprint> [pcm|opus] [120|200]');
 async function localJson(path) {
@@ -22,8 +28,38 @@ async function localJson(path) {
     throw new Error('Local lab configuration is missing or invalid');
   }
 }
-const config = await localJson('.local-tests/xrdp-lab.json');
-const credentials = await localJson('.local-tests/xrdp-lab.secrets.json');
+let config, credentials;
+if (inputMode) {
+  const bytes = Buffer.alloc(8192);
+  let length = 0;
+  try {
+    for await (const chunk of process.stdin) {
+      if (!Buffer.isBuffer(chunk) || chunk.length > bytes.length - length)
+        throw new Error('Invalid private lab input');
+      chunk.copy(bytes, length);
+      length += chunk.length;
+      chunk.fill(0);
+    }
+    const value = JSON.parse(bytes.subarray(0, length).toString('utf8'));
+    if (
+      !value ||
+      typeof value.host !== 'string' ||
+      typeof value.username !== 'string' ||
+      typeof value.password !== 'string'
+    )
+      throw new Error('Invalid private lab input');
+    config = { host: value.host, port: value.port ?? 3389 };
+    credentials = { username: value.username, password: value.password };
+    delete value.password;
+  } catch {
+    throw new Error('Invalid private lab input');
+  } finally {
+    bytes.fill(0);
+  }
+} else {
+  config = await localJson('.local-tests/xrdp-lab.json');
+  credentials = await localJson('.local-tests/xrdp-lab.secrets.json');
+}
 const report = {
   actualRdp: true,
   audioOutput,
@@ -145,7 +181,9 @@ class LabWorker extends WorkerProcess {
   }
 }
 const worker = new LabWorker({
-  workerPath: resolve('build/bundled/rdp-worker.exe'),
+  workerPath: resolve(
+    'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
+  ),
   runtimeRoot: resolve('.runtime/lab-audio'),
 });
 let timer,
@@ -205,7 +243,9 @@ worker.on('audio', (event) => {
   }
 });
 try {
-  await worker.start();
+  const build = await worker.start();
+  report.platform = build.os;
+  report.transport = build.transport;
   phase = 'connect';
   await worker.connect({
     target: { host: config.host, port: config.port },
@@ -249,17 +289,28 @@ try {
   report.closed = worker.state === 'closed';
   report.terminalSource = worker.audioState?.availability;
   if (!report.closed) throw new Error('LAB_CLEANUP_FAILED');
-  await writeFile(
-    resolve(
-      '.local-tests/xrdp-audio' +
-        (audioOutput === 'opus' ? '-opus' : '') +
-        (bufferMs === '200' ? '-200' : '') +
-        '-report.json',
-    ),
-    JSON.stringify(report, null, 2) + '\n',
-  );
+  if (!inputMode)
+    await writeFile(
+      resolve(
+        '.local-tests/xrdp-audio' +
+          (audioOutput === 'opus' ? '-opus' : '') +
+          (bufferMs === '200' ? '-200' : '') +
+          '-report.json',
+      ),
+      JSON.stringify(report, null, 2) + '\n',
+    );
   console.log(JSON.stringify(report));
 } catch {
+  if (inputMode)
+    console.log(
+      JSON.stringify({
+        ...report,
+        failedPhase: phase,
+        nativeState,
+        nativeError,
+        workerFailure,
+      }),
+    );
   console.error(
     JSON.stringify({
       type: 'lab.audio.failure',

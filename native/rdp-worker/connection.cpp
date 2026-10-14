@@ -138,7 +138,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
     throw ProtocolError();
   config_ = decode_connection_config(payload);
   const auto &c = *config_;
-#if defined(_WIN32) && defined(CHANNEL_RDPSND_CLIENT)
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)
   if ((c.pcm_output || c.opus_output) && (!audio_send_ || !audio_discard_))
     throw ProtocolError();
 #else
