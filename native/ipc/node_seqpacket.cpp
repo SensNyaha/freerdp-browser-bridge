@@ -10,6 +10,7 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <uv.h>
 
 namespace {
 using namespace bridge::ipc;
@@ -18,7 +19,12 @@ void checked(napi_status status) {
   if (status != napi_ok)
     throw ProtocolError();
 }
+struct Context;
+struct Pair;
+void poll_ready(uv_poll_t *, int, int) noexcept;
+void poll_closed(uv_handle_t *) noexcept;
 struct Pair {
+  Context *context;
   napi_env env;
   int fds[2]{-1, -1};
   std::uint32_t id;
@@ -31,9 +37,35 @@ struct Pair {
   Clock::time_point due{};
   std::optional<Clock::time_point> read_due;
   bool failed = false, eof = false;
-  Pair(napi_env environment, std::uint32_t identity) : env(environment), id(identity) {
+  bool polling = false, closing = false;
+  bool in_callback = false, listener_retiring = false;
+  uv_poll_t poll{};
+  napi_ref listener = nullptr;
+  napi_async_context async_context = nullptr;
+  Pair(Context *owner, napi_env environment, std::uint32_t identity)
+      : context(owner), env(environment), id(identity) {
     if (::socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, fds) != 0)
       throw ProtocolError();
+  }
+  void stop_listener() noexcept {
+    if (polling && !uv_is_closing(reinterpret_cast<uv_handle_t *>(&poll)) &&
+        uv_poll_stop(&poll) != 0)
+      failed = true;
+    if (in_callback) {
+      listener_retiring = true;
+      return;
+    }
+    listener_retiring = false;
+    if (async_context) {
+      if (napi_async_destroy(env, async_context) != napi_ok)
+        failed = true;
+      async_context = nullptr;
+    }
+    if (listener) {
+      if (napi_delete_reference(env, listener) != napi_ok)
+        failed = true;
+      listener = nullptr;
+    }
   }
   void discard() noexcept {
     if (pending) {
@@ -56,6 +88,7 @@ struct Pair {
   }
   [[noreturn]] void refuse() {
     failed = true;
+    stop_listener();
     discard();
     throw ProtocolError();
   }
@@ -153,16 +186,88 @@ struct Context {
   explicit Context(napi_env environment) : env(environment) {}
   std::array<std::unique_ptr<Pair>, 32> pairs;
   std::uint64_t next = 1;
+  bool cleaning = false;
+  napi_async_cleanup_hook_handle cleanup_hook = nullptr;
   Pair &get(std::uint32_t id) {
     for (auto &pair : pairs)
-      if (pair && pair->id == id)
+      if (pair && pair->id == id && !pair->closing)
         return *pair;
     throw ProtocolError();
   }
+  void close_pair(Pair &pair) {
+    if (pair.closing)
+      return;
+    pair.closing = true;
+    pair.stop_listener();
+    pair.discard();
+    if (pair.polling)
+      uv_close(reinterpret_cast<uv_handle_t *>(&pair.poll), poll_closed);
+    else
+      release(pair);
+  }
+  void release(Pair &pair) {
+    for (auto &slot : pairs)
+      if (slot.get() == &pair) {
+        slot.reset();
+        return;
+      }
+    std::terminate();
+  }
+  void finish_cleanup() {
+    if (!cleaning)
+      return;
+    for (const auto &pair : pairs)
+      if (pair)
+        return;
+    if (napi_remove_async_cleanup_hook(cleanup_hook) != napi_ok)
+      std::terminate();
+    delete this;
+  }
 };
+void poll_closed(uv_handle_t *handle) noexcept {
+  auto *pair = static_cast<Pair *>(handle->data);
+  auto *context = pair->context;
+  context->release(*pair);
+  context->finish_cleanup();
+}
+void poll_ready(uv_poll_t *handle, int status, int events) noexcept {
+  auto *pair = static_cast<Pair *>(handle->data);
+  if (pair->closing || pair->failed || !pair->listener)
+    return;
+  napi_handle_scope scope;
+  if (napi_open_handle_scope(pair->env, &scope) != napi_ok)
+    std::terminate();
+  pair->in_callback = true;
+  try {
+    napi_value callback, receiver, args[2], result;
+    checked(napi_get_reference_value(pair->env, pair->listener, &callback));
+    checked(napi_get_global(pair->env, &receiver));
+    checked(napi_create_int32(pair->env, status, &args[0]));
+    checked(napi_create_int32(pair->env, events, &args[1]));
+    checked(
+        napi_make_callback(pair->env, pair->async_context, receiver, callback, 2, args, &result));
+  } catch (...) {
+    bool exception = false;
+    if (napi_is_exception_pending(pair->env, &exception) != napi_ok)
+      std::terminate();
+    if (exception) {
+      napi_value ignored;
+      if (napi_get_and_clear_last_exception(pair->env, &ignored) != napi_ok)
+        std::terminate();
+    }
+    pair->failed = true;
+    pair->stop_listener();
+    pair->discard();
+  }
+  pair->in_callback = false;
+  if (pair->listener_retiring)
+    pair->stop_listener();
+  if (napi_close_handle_scope(pair->env, scope) != napi_ok)
+    std::terminate();
+}
 struct Call {
   Context *context;
-  std::array<napi_value, 2> args{};
+  std::array<napi_value, 3> args{};
   std::size_t count = args.size();
   Call(napi_env env, napi_callback_info info) {
     void *data;
@@ -201,7 +306,7 @@ napi_value create(napi_env env, napi_callback_info info) {
     for (auto &slot : context.pairs) {
       if (slot)
         continue;
-      auto pair = std::make_unique<Pair>(env, static_cast<std::uint32_t>(context.next++));
+      auto pair = std::make_unique<Pair>(&context, env, static_cast<std::uint32_t>(context.next++));
       napi_value result;
       checked(napi_create_uint32(env, pair->id, &result));
       slot = std::move(pair);
@@ -240,7 +345,9 @@ napi_value close(napi_env env, napi_callback_info info) {
     const auto id = call.id(env);
     for (auto &pair : call.context->pairs)
       if (pair && pair->id == id) {
-        pair.reset();
+        if (pair->closing)
+          return boolean(env, false);
+        call.context->close_pair(*pair);
         return boolean(env, true);
       }
     return boolean(env, false); // Stale close must never affect a replacement.
@@ -286,16 +393,76 @@ napi_value flush(napi_env env, napi_callback_info info) {
     return boolean(env, call.context->get(call.id(env)).flush());
   });
 }
-void cleanup(void *data) {
+void cleanup(napi_async_cleanup_hook_handle handle, void *data) {
   auto *context = static_cast<Context *>(data);
   const auto env = context->env;
   napi_handle_scope scope;
   // Environment hooks run outside a normal N-API callback handle scope.
   if (napi_open_handle_scope(env, &scope) != napi_ok)
     std::terminate();
-  delete context;
+  context->cleaning = true;
+  context->cleanup_hook = handle;
+  for (auto &pair : context->pairs)
+    if (pair)
+      context->close_pair(*pair);
   if (napi_close_handle_scope(env, scope) != napi_ok)
     std::terminate();
+  context->finish_cleanup();
+}
+napi_value watch(napi_env env, napi_callback_info info) {
+  return guarded(env, [&] {
+    Call call(env, info);
+    auto &pair = call.context->get(call.id(env));
+    napi_valuetype type;
+    if (call.count != 2 || pair.polling || pair.failed)
+      throw ProtocolError();
+    checked(napi_typeof(env, call.args[1], &type));
+    if (type != napi_function)
+      throw ProtocolError();
+    uv_loop_t *loop;
+    checked(napi_get_uv_event_loop(env, &loop));
+    if (uv_poll_init(loop, &pair.poll, pair.fds[0]) != 0)
+      pair.refuse();
+    pair.polling = true;
+    pair.poll.data = &pair;
+    uv_unref(reinterpret_cast<uv_handle_t *>(&pair.poll));
+    try {
+      checked(napi_create_reference(env, call.args[1], 1, &pair.listener));
+      napi_value name;
+      checked(napi_create_string_utf8(env, "BridgePacketIPC", NAPI_AUTO_LENGTH, &name));
+      checked(napi_async_init(env, call.args[1], name, &pair.async_context));
+    } catch (...) {
+      pair.refuse();
+    }
+    return boolean(env, true);
+  });
+}
+napi_value interest(napi_env env, napi_callback_info info) {
+  return guarded(env, [&] {
+    Call call(env, info);
+    auto &pair = call.context->get(call.id(env));
+    double mask;
+    if (call.count != 2 || !pair.polling || !pair.listener || pair.failed)
+      throw ProtocolError();
+    checked(napi_get_value_double(env, call.args[1], &mask));
+    if (!std::isfinite(mask) || mask < 0 || mask > 3 || std::floor(mask) != mask)
+      throw ProtocolError();
+    const auto result = mask == 0 ? uv_poll_stop(&pair.poll)
+                                  : uv_poll_start(&pair.poll, static_cast<int>(mask), poll_ready);
+    if (result != 0)
+      pair.refuse();
+    return boolean(env, true);
+  });
+}
+napi_value closed(napi_env env, napi_callback_info info) {
+  return guarded(env, [&] {
+    Call call(env, info);
+    const auto id = call.id(env);
+    for (const auto &pair : call.context->pairs)
+      if (pair && pair->id == id)
+        return boolean(env, false);
+    return boolean(env, true);
+  });
 }
 napi_value initialize(napi_env env, napi_value exports) {
   return guarded(env, [&] {
@@ -304,18 +471,21 @@ napi_value initialize(napi_env env, napi_value exports) {
     checked(napi_create_uint32(env, 1, &schema));
     checked(napi_set_named_property(env, exports, "schemaVersion", schema));
     for (const auto &[name, function] :
-         std::array<std::pair<const char *, napi_callback>, 7>{{{"create", create},
-                                                                {"childFd", child_fd},
-                                                                {"closeChild", close_child},
-                                                                {"close", close},
-                                                                {"read", read},
-                                                                {"write", write},
-                                                                {"flush", flush}}}) {
+         std::array<std::pair<const char *, napi_callback>, 10>{{{"create", create},
+                                                                 {"childFd", child_fd},
+                                                                 {"closeChild", close_child},
+                                                                 {"close", close},
+                                                                 {"read", read},
+                                                                 {"write", write},
+                                                                 {"flush", flush},
+                                                                 {"watch", watch},
+                                                                 {"interest", interest},
+                                                                 {"closed", closed}}}) {
       napi_value value;
       checked(napi_create_function(env, name, NAPI_AUTO_LENGTH, function, context.get(), &value));
       checked(napi_set_named_property(env, exports, name, value));
     }
-    checked(napi_add_env_cleanup_hook(env, cleanup, context.get()));
+    checked(napi_add_async_cleanup_hook(env, cleanup, context.get(), &context->cleanup_hook));
     context.release();
     return exports;
   });

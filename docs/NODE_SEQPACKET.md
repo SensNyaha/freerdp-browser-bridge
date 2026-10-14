@@ -1,5 +1,22 @@
 # Prepared Node packet IPC adapter
 
+Current readiness — iteration 197 adds `watch(handle, callback)`,
+`interest(handle, mask)` and `closed(handle)`. Masks are 0 pause, 1 read,
+2 write, 3 both. Each pair can bind one callback `(status, events)`; its async
+resource stays owned through callback return. Watched close immediately removes
+authority/refs/pending bytes, then preserves descriptor and capacity through
+actual uv_close completion. `closed` reports that completion, including stale
+handles; it does not close a replacement. Unwatched close stays synchronous.
+Async environment cleanup joins watched handles before disposing its context.
+Callback faults seal the pair and discard pending storage without forwarding
+exception contents. Poll handles are unreferenced, so they do not keep an empty
+environment alive. [Readiness evidence](ITERATION_197.md).
+
+Hosts must enable write interest only for a pending send and pause read interest
+when they cannot admit data. These level-triggered readiness calls add no
+native message queue and do not themselves enforce an independent timeout when
+the host is paused; bounded stream/timer/supervisor composition remains required.
+
 Iteration 196 adds Linux `rdp-ipc.node`, an IPC-only N-API schema-1 module built
 with public Node.js 24 headers. It links bridge framing/configuration utilities
 and C++/OS runtime only. It must never link/include/call FreeRDP or WinPR; all RDP

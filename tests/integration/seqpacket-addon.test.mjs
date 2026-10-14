@@ -25,6 +25,28 @@ const skip = process.platform !== 'linux' || !existsSync(modulePath);
 const addon = skip ? undefined : createRequire(import.meta.url)(modulePath);
 const workerPath = join(binaryDir, 'rdp-worker');
 const fdCount = async () => (await readdir('/proc/self/fd')).length;
+async function closeWatched(id) {
+  addon.close(id);
+  const due = Date.now() + 1000;
+  while (!addon.closed(id) && Date.now() < due) await delay(2);
+  assert.equal(addon.closed(id), true);
+}
+async function deadline(promise) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('readiness fixture deadline')),
+          3000,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 async function write(id, packet) {
   const due = Date.now() + 2000;
   let done = addon.write(id, packet);
@@ -285,5 +307,131 @@ test(
       assert.equal((await read(id)).kind, Kind.Error);
       assert.deepEqual(await closed, [2, null]); // Valid carrier, unavailable lifecycle message.
     });
+  },
+);
+
+test(
+  'Node packet readiness: paused read emits nothing, resume observes data and close inside callback joins retirement',
+  { skip, timeout: 10000 },
+  async () => {
+    const before = await fdCount();
+    const id = addon.create();
+    let callbacks = 0;
+    const observed = new Promise((resolve) =>
+      addon.watch(id, (status, events) => {
+        ++callbacks;
+        assert.equal(status, 0);
+        assert.ok(events & 1);
+        const chunk = addon.read(id);
+        assert.equal(chunk.length, 24);
+        assert.equal(addon.close(id), true);
+        assert.equal(addon.closed(id), false);
+        resolve();
+      }),
+    );
+    try {
+      const packet = encodePacket({
+        kind: Kind.HeartbeatAck,
+        requestId: 1n,
+        payload: Buffer.alloc(0),
+      });
+      const datagram = Buffer.alloc(16 + packet.length);
+      datagram.write('RWS1');
+      datagram.writeUInt32BE(1, 4);
+      datagram.writeUInt32BE(packet.length, 8);
+      packet.copy(datagram, 16);
+      addon.interest(id, 0);
+      assert.equal(writeSync(addon.childFd(id), datagram), datagram.length);
+      await delay(25);
+      assert.equal(callbacks, 0);
+      addon.interest(id, 1);
+      await deadline(observed);
+      await closeWatched(id);
+      assert.equal(callbacks, 1);
+      assert.equal(await fdCount(), before);
+    } finally {
+      await closeWatched(id);
+    }
+  },
+);
+test(
+  'Node packet readiness: callback fault retires listener once without leaking or forwarding exception text',
+  { skip, timeout: 10000 },
+  async () => {
+    const before = await fdCount();
+    const id = addon.create();
+    let calls = 0;
+    try {
+      addon.watch(id, () => {
+        ++calls;
+        throw new Error('synthetic host fault');
+      });
+      addon.interest(id, 2);
+      await delay(30);
+      assert.equal(calls, 1);
+      assert.throws(() => addon.flush(id), { code: 'IPC_ADAPTER_FAILURE' });
+    } finally {
+      await closeWatched(id);
+    }
+    assert.equal(await fdCount(), before);
+  },
+);
+test(
+  'Node packet readiness: actual worker drains maximum record through writable callbacks without polling sender',
+  { skip, timeout: 15000 },
+  async () => {
+    await withWorker(async (id, closed) => {
+      const wire = encodePacket({
+        kind: Kind.Frame,
+        requestId: 1n,
+        payload: Buffer.alloc(8 * 1024 * 1024),
+      });
+      let sent = addon.write(id, wire);
+      assert.equal(sent, false);
+      const decoder = new PacketDecoder();
+      const reply = new Promise((resolve) =>
+        addon.watch(id, (status, events) => {
+          assert.equal(status, 0);
+          if (events & 2 && !sent) {
+            sent = addon.flush(id);
+            if (sent) addon.interest(id, 1);
+          }
+          if (events & 1) {
+            for (let i = 0; i < 32; i++) {
+              const chunk = addon.read(id);
+              if (chunk === null) break;
+              if (chunk === undefined) {
+                addon.interest(id, 0);
+                break;
+              }
+              decoder.push(chunk, (packet) => {
+                addon.interest(id, 0);
+                resolve(packet);
+              });
+            }
+          }
+        }),
+      );
+      addon.interest(id, 3);
+      assert.equal((await deadline(reply)).kind, Kind.Error);
+      assert.equal(sent, true);
+      decoder.finish();
+      assert.deepEqual(await closed, [2, null]);
+      await closeWatched(id);
+    });
+  },
+);
+test(
+  'Node packet readiness: active unreferenced watchers and pending Buffer join async environment cleanup',
+  { skip, timeout: 10000 },
+  async () => {
+    const before = await fdCount();
+    const worker = new Worker(
+      `const {workerData}=require('node:worker_threads');const a=require(workerData);const ids=[];for(let i=0;i<32;i++){const id=a.create();ids.push(id);a.watch(id,()=>{});a.interest(id,1);}const wire=Buffer.alloc(24+8*1024*1024);wire.write('RWI1');wire.writeUInt16BE(1,4);wire.writeUInt16BE(19,6);wire.writeBigUInt64BE(1n,12);wire.writeUInt32BE(8*1024*1024,20);a.write(ids[0],wire);`,
+      { eval: true, workerData: modulePath },
+    );
+    assert.deepEqual(await deadline(once(worker, 'exit')), [0]);
+    await delay(30);
+    assert.equal(await fdCount(), before);
   },
 );
