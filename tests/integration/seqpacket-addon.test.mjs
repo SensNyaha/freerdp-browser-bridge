@@ -10,6 +10,10 @@ import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Worker } from 'node:worker_threads';
 import {
+  SeqpacketOwner,
+  loadPacketAddon,
+} from '../../packages/node-bridge/dist/seqpacket-owner.js';
+import {
   Kind,
   encodePacket,
   helloPayload,
@@ -432,6 +436,137 @@ test(
     );
     assert.deepEqual(await deadline(once(worker, 'exit')), [0]);
     await delay(30);
+    assert.equal(await fdCount(), before);
+  },
+);
+test(
+  'Node packet owner: actual worker lifecycle and private descriptor retirement repeats ten times',
+  { skip, timeout: 30000 },
+  async () => {
+    const before = await fdCount();
+    for (let i = 0; i < 10; i++) {
+      const root = await mkdtemp(join(tmpdir(), 'rdp-packet-owner-'));
+      const io = await SeqpacketOwner.open(loadPacketAddon(modulePath));
+      io.on('error', () => {});
+      let child, closed;
+      try {
+        await writeFile(join(root, '.rdp-worker-owned'), 'runtime-v1');
+        child = spawn(workerPath, ['--ipc-seqpacket-fd=3'], {
+          cwd: root,
+          stdio: ['ignore', 'ignore', 'pipe', io.childFd()],
+        });
+        closed = once(child, 'close');
+        child.stderr.resume();
+        io.closeChild();
+        const decoder = new PacketDecoder();
+        const pending = new Map();
+        io.on('data', (chunk) =>
+          decoder.push(chunk, (packet) => {
+            const entry = pending.get(packet.requestId);
+            assert.ok(entry);
+            pending.delete(packet.requestId);
+            entry(packet);
+          }),
+        );
+        io.on('end', () => decoder.finish());
+        io.resume();
+        const request = (kind, requestId, payload = Buffer.alloc(0)) =>
+          deadline(
+            new Promise((resolve, reject) => {
+              pending.set(requestId, resolve);
+              io.write(encodePacket({ kind, requestId, payload }), (error) => {
+                if (error) reject(error);
+              });
+            }),
+          );
+        const hello = await request(Kind.Hello, 1n, helloPayload());
+        assert.equal(
+          decodeBuild(hello.payload).transport,
+          'unix-seqpacket-rws1',
+        );
+        assert.equal(
+          (await request(Kind.Heartbeat, 2n)).kind,
+          Kind.HeartbeatAck,
+        );
+        assert.equal((await request(Kind.Shutdown, 3n)).kind, Kind.ShutdownAck);
+        assert.deepEqual(await closed, [0, null]);
+        io.destroy();
+        await io.retired;
+        assert.equal(io.snapshot.retired, true);
+        assert.equal(io.snapshot.bytes, 0);
+        assert.equal(existsSync(root), false);
+      } finally {
+        io.destroy();
+        await io.retired;
+        if (child && child.exitCode === null && child.signalCode === null)
+          child.kill('SIGKILL');
+        if (closed) await closed;
+        await rm(root, { recursive: true, force: true });
+      }
+    }
+    assert.equal(await fdCount(), before);
+  },
+);
+test(
+  'Node packet owner: real blocked peer is cancelled and private pending bytes wiped by independent timer',
+  { skip, timeout: 10000 },
+  async () => {
+    const before = await fdCount();
+    const io = await SeqpacketOwner.open(loadPacketAddon(modulePath), {
+      maxBytes: 9 * 1024 * 1024,
+      recordTimeoutMs: 20,
+    });
+    io.on('error', () => {});
+    const bytes = encodePacket({
+      kind: Kind.Frame,
+      requestId: 1n,
+      payload: Buffer.alloc(8 * 1024 * 1024, 0x55),
+    });
+    let result;
+    io.write(bytes, (error) => {
+      result = error;
+    });
+    await io.retired;
+    assert.equal(result.code, 'IPC_RECORD_TIMEOUT');
+    assert.ok(bytes.every((value) => value === 0));
+    assert.equal(io.snapshot.retired, true);
+    assert.equal(await fdCount(), before);
+  },
+);
+test(
+  'Node packet owner: real paused partial receive expires without additional reads and releases descriptors',
+  { skip, timeout: 10000 },
+  async () => {
+    const before = await fdCount();
+    const io = await SeqpacketOwner.open(loadPacketAddon(modulePath), {
+      recordTimeoutMs: 20,
+    });
+    let error,
+      chunks = 0;
+    io.on('error', (value) => {
+      error = value;
+    });
+    io.on('data', () => {
+      ++chunks;
+      io.pause();
+    });
+    const packet = encodePacket({
+      kind: Kind.Hello,
+      requestId: 1n,
+      payload: helloPayload(),
+    });
+    const first = Buffer.alloc(40);
+    first.write('RWS1');
+    first.writeUInt32BE(1, 4);
+    first.writeUInt32BE(packet.length, 8);
+    packet.copy(first, 16, 0, 24);
+    assert.equal(writeSync(io.childFd(), first), first.length);
+    io.resume();
+    await io.retired;
+    await delay(0);
+    assert.equal(chunks, 1);
+    assert.equal(error.code, 'IPC_RECORD_TIMEOUT');
+    assert.equal(io.snapshot.bytes, 0);
     assert.equal(await fdCount(), before);
   },
 );
