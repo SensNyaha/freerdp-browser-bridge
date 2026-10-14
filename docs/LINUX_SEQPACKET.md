@@ -1,7 +1,17 @@
 # Linux primary IPC carrier
 
+Iteration 194 adds the tested `LinuxSeqpacketEndpoint` kernel-socket adapter.
+It duplicates only connected Unix packet sockets, preserves descriptor flags,
+uses fixed receive scratch and vectored borrowed writes, rejects truncation and
+ancillary data, and distinguishes idle/EOF from partial failures. Reads retain
+the original partial-record deadline; writes have one finite whole-record
+deadline and optional cancellation checked within 20 ms while blocked. Both
+timeouts are 20..5,000 ms, default 1,000 ms. Each instance belongs to one thread;
+the caller retains its original descriptor. Socket creation/inheritance, worker
+and Node selection remain open. [Actual socket evidence](ITERATION_194.md).
+
 Iteration 193 implements the portable RWS1 carrier codec beneath the unchanged
-RWI1 envelope (PROTOCOL section 6). It is not selected by current workers or Node:
+RWI1 envelope (PROTOCOL section 6). Neither codec nor endpoint is selected by current workers or Node:
 the tested bounded framed-stream fallback remains active. Socket creation,
 descriptor inheritance, OS read/write deadlines and supervisor activation are
 separate required acceptance gates.
@@ -35,7 +45,8 @@ consume or copy that span before receiving again. Rejected RWI1 headers may use
 the existing exception path; this is not a claim that every error path avoids
 heap allocation. The OS adapter must reject MSG_TRUNC/MSG_CTRUNC, impose finite
 whole-record deadlines and preserve exclusive record-write ownership. Those OS
-properties are not established by codec fixtures.
+properties are not established by codec fixtures alone; iteration 194 verifies
+the endpoint against actual kernel sockets.
 
 The carrier adds no public browser fields, RWI1 kinds, session capabilities or
 FreeRDP arguments. It carries encoded media and private secret messages through
