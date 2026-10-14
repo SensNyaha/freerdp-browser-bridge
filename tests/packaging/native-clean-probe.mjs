@@ -1,5 +1,7 @@
 // Independent artifact-only fixture: no workspace packages, RDP server or devices.
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { readSync } from 'node:fs';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import {
@@ -18,6 +20,27 @@ assert.notEqual(process.getuid(), 0);
 assert.equal(process.argv.length, 3);
 const root = await realpath(process.argv[2]);
 const workerPath = join(root, 'bin', 'rdp-worker');
+// Prepared IPC-only addon relocates independently of the source/SDK. It does not
+// load RDP code into this Node process; the actual RDP probe stays a child.
+const ipc = createRequire(import.meta.url)(join(root, 'bin', 'rdp-ipc.node'));
+const pair = ipc.create();
+try {
+  const hello = Buffer.from([
+    82, 87, 73, 49, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 8,
+    0, 1, 0, 1, 0, 0, 0, 0,
+  ]);
+  assert.equal(ipc.write(pair, hello), true);
+  const datagram = Buffer.alloc(16400);
+  const size = readSync(ipc.childFd(pair), datagram);
+  assert.equal(size, 48);
+  assert.equal(datagram.subarray(0, 4).toString(), 'RWS1');
+  assert.equal(datagram.readUInt32BE(4), 1);
+  assert.equal(datagram.readUInt32BE(8), 32);
+  assert.equal(datagram.readUInt32BE(12), 0);
+  assert.deepEqual(datagram.subarray(16, size), hello);
+} finally {
+  ipc.close(pair);
+}
 const env = Object.fromEntries(
   ['PATH', 'HOME'].flatMap((key) =>
     process.env[key] === undefined ? [] : [[key, process.env[key]]],
@@ -145,6 +168,7 @@ try {
       modules: modules.length,
       acknowledgements: 3,
       cleanup: true,
+      ipcPairs: 1,
     }),
   );
 } finally {

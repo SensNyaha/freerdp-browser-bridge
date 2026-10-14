@@ -123,6 +123,10 @@ export async function verifyLinuxRuntime(directory) {
     join(root, 'bin', 'rdp-runtime-check'),
   ];
   const libraries = readdirSync(join(root, 'lib'));
+  const executables = readdirSync(join(root, 'bin'));
+  if (executables.length > 32) throw invalidReport();
+  for (const name of executables)
+    if (name.endsWith('.node')) files.push(join(root, 'bin', name));
   if (libraries.length > 128) throw invalidReport();
   for (const name of libraries)
     if (/^lib.+\.so(?:\..+)?$/.test(name)) files.push(join(root, 'lib', name));

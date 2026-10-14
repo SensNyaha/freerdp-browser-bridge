@@ -29,6 +29,7 @@ run('cmake', [
   'Ninja',
   '-DCMAKE_BUILD_TYPE=Release',
   '-DBRIDGE_WITH_FREERDP=ON',
+  `-DBRIDGE_NODE_IPC=${windows ? 'OFF' : 'ON'}`,
   `-DBRIDGE_DEPENDENCY_PREFIX=${prefix}`,
   `-DBRIDGE_FREERDP_PREFIX=${resolve('.deps/freerdp-install')}`,
   `-DCMAKE_PREFIX_PATH=${resolve('.deps/freerdp-install')};${prefix}`,
