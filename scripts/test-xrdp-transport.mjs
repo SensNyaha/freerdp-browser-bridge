@@ -3,19 +3,13 @@ import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
+import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
+import { labTransportOptions } from './lab-transport-options.mjs';
 
 // Authorized lab only: one bounded private stdin object, never argv/env/files.
-const [mode = 'strict', fingerprint, ...extra] = process.argv.slice(2);
-if (
-  extra.length ||
-  !['strict', 'connect'].includes(mode) ||
-  (mode === 'connect'
-    ? !/^sha256:[a-f0-9]{64}$/.test(fingerprint ?? '')
-    : fingerprint !== undefined)
-)
-  throw new Error(
-    'Use strict or connect sha256:<already-approved-fingerprint>',
-  );
+const { mode, fingerprint, ipcTransport } = labTransportOptions(
+  process.argv.slice(2),
+);
 let input;
 try {
   const scratch = Buffer.alloc(8192);
@@ -49,6 +43,7 @@ const worker = new WorkerProcess({
     'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
   ),
   runtimeRoot,
+  ipcTransport,
 });
 const report = {
   actualRdp: true,
@@ -74,13 +69,25 @@ const activation = new Promise((resolve, reject) => {
   rejectActivation = reject;
 });
 void activation.catch(() => {});
+let resolveLoss, rejectLoss, proxy;
+const loss = new Promise((resolve, reject) => {
+  resolveLoss = resolve;
+  rejectLoss = reject;
+});
+void loss.catch(() => {});
 const timer = setTimeout(() => {
   worker.terminate();
   rejectActivation(new Error('LAB_DEADLINE'));
+  rejectLoss(new Error('LAB_DEADLINE'));
 }, 40000);
-worker.on('failure', () => rejectActivation(new Error('WORKER_FAILED')));
+worker.on('failure', () => {
+  rejectActivation(new Error('WORKER_FAILED'));
+  rejectLoss(new Error('WORKER_FAILED'));
+});
 worker.on('rdp-state', (event) => {
   if (report.states.length < 32) report.states.push(event.state);
+  if (report.connected && ['closed', 'failed'].includes(event.state))
+    resolveLoss(event);
   if (event.state === 'connected') {
     report.connected = true;
     resolveActivation(event);
@@ -90,7 +97,7 @@ worker.on('certificate', (prompt) => {
   void worker
     .decideCertificate(
       prompt,
-      mode === 'connect' && prompt.fingerprint === fingerprint,
+      mode !== 'strict' && prompt.fingerprint === fingerprint,
     )
     .catch(() => rejectActivation(new Error('LAB_CERTIFICATE_FAILED')));
 });
@@ -98,9 +105,16 @@ let phase = 'start';
 try {
   const build = await worker.start();
   report.transport = build.transport;
+  if (ipcTransport === 'framed-pipes' && build.transport !== 'framed-pipes')
+    throw new Error('FALLBACK_NOT_SELECTED');
   phase = 'connect';
+  if (mode === 'loss')
+    proxy = await createLabRdpProxy(input.host, input.port ?? 3389);
   await worker.connect({
-    target: { host: input.host, port: input.port ?? 3389 },
+    target: {
+      host: proxy?.host ?? input.host,
+      port: proxy?.port ?? input.port ?? 3389,
+    },
     auth: { username: input.username, password: input.password },
     security: { certificatePolicy: mode === 'strict' ? 'strict' : 'prompt' },
     display: { width: 1920, height: 1080, dynamicResolution: true },
@@ -172,6 +186,17 @@ try {
         throw new Error('RESTORED_MEDIA_MISSING');
       report.restored = true;
     }
+    if (mode === 'loss') {
+      phase = 'transport-loss';
+      await delay(500);
+      proxy.interrupt();
+      const ended = await loss;
+      report.lossError = ended.error;
+      if (ended.state !== 'failed' || ended.error !== 'RDP_DISCONNECTED')
+        throw new Error('EXPECTED_RDP_DISCONNECT_MISSING');
+      report.lossObserved = true;
+      report.proxy = proxy.snapshot();
+    }
     await worker.ping();
     report.heartbeat = true;
   }
@@ -184,8 +209,12 @@ try {
   delete input.password;
   if (original?.negotiated && !restored && worker.state === 'ready')
     await worker.resizeDisplay(original.width, original.height).catch(() => {});
-  await worker.close();
-  report.cleanup = (await readdir(runtimeRoot)).length === 0;
-  await rm(runtimeRoot, { recursive: true, force: true });
-  console.log(JSON.stringify(report));
+  try {
+    await worker.close();
+    report.cleanup = (await readdir(runtimeRoot)).length === 0;
+    await rm(runtimeRoot, { recursive: true, force: true });
+  } finally {
+    await proxy?.close();
+    console.log(JSON.stringify(report));
+  }
 }

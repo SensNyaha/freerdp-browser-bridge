@@ -1,20 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
+import { labTransportOptions } from './lab-transport-options.mjs';
 
-const [container, mode = 'strict', fingerprint, ...extra] =
-  process.argv.slice(2);
-if (
-  extra.length ||
-  !/^freerdp-bridge-linux-rdp-[0-9]+$/.test(container ?? '') ||
-  !['strict', 'connect'].includes(mode) ||
-  (mode === 'connect'
-    ? !/^sha256:[a-f0-9]{64}$/.test(fingerprint ?? '')
-    : fingerprint !== undefined)
-)
-  throw new Error(
-    'Use the owned Linux RDP test container and strict/connect fingerprint',
-  );
+const [container, ...args] = process.argv.slice(2);
+if (!/^freerdp-bridge-linux-rdp-[0-9]+$/.test(container ?? ''))
+  throw new Error('Use the owned Linux RDP test container');
+const { mode, fingerprint, framed } = labTransportOptions(args);
 let bytes;
 try {
   const read = async (file) =>
@@ -51,6 +43,7 @@ const child = spawn(
     'scripts/test-xrdp-transport.mjs',
     mode,
     ...(fingerprint ? [fingerprint] : []),
+    ...(framed ? ['--framed'] : []),
   ],
   { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
 );
