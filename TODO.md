@@ -257,6 +257,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 1 — native worker process and IPC
 
+- [x] DONE for isolated Linux stream writer — Fixed dispatcher lanes, eventfd /
+  one-thread nonblocking FIFO/Unix-stream writes, whole-record/drain deadlines,
+  flags/SIGPIPE ownership and FD cleanup pass six real descriptor cases / 174
+  assertions in Release and local ASan/UBSan. Linked CTest 21/21 passes. Worker
+  selection/connected faults, primary seqpacket and broader gates remain open.
+  [Contract](docs/LINUX_STREAM_OUTPUT.md), [evidence](docs/ITERATION_191.md).
+
 - [x] DONE — Implement worker process entrypoint with no RDP connection yet. Real C++ executable, not a fake RDP client; `1672590`.
 - [x] DONE — Implement versioned `RWI1` IPC envelope. [Native](native/ipc/tests.cpp) and [Node](tests/unit/protocol.test.mjs) boundary/golden/fragmentation tests; `1672590`.
 - [~] IN PROGRESS — Linux `SOCK_SEQPACKET` transport + framed-stream abstraction/fallback. Framed inherited pipes verified on Windows; primary Linux transport remains TODO and needs Linux integration.
