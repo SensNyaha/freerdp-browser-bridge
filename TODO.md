@@ -460,6 +460,12 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for Linux foundation runtime smoke — Ordinary GCC CTest 8/8 and
+  actual worker suite 12 passed / one Windows skip under UID 1000, read-only
+  root, bounded runtime tmpfs, dropped capabilities/default seccomp and Docker
+  init. No-init orphan zombie failure is retained; init/reaping is an explicit
+  deployment requirement. This is separate from the production service image,
+  linked Linux RDP/devices and resource/soak acceptance. [Evidence](docs/ITERATION_185.md).
 - [ ] Non-root multi-stage Docker image.
 - [ ] Read-only root filesystem deployment example.
 - [ ] Optional USB/DRI/serial/PCSC device mappings documented.

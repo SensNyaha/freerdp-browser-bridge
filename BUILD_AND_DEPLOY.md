@@ -32,12 +32,21 @@ Multi-stage image:
 Runtime rules:
 
 - non-root user;
+- an init/subreaper that reaps adopted child processes when the service is PID 1
+  (Docker `--init`, Compose `init: true`, or an equivalent supervisor);
 - read-only root filesystem where possible;
 - writable `/run/freerdp-bridge` and optional persistent trust/audit path;
 - no Docker socket;
 - no privileged mode;
 - optional device mounts for `/dev/bus/usb`, `/dev/dri`, serial devices only when needed;
 - optional PCSC socket mount if smartcard deployment uses host pcscd.
+
+Actual Linux foundation verification passes under UID 1000, read-only root,
+bounded runtime tmpfs, dropped capabilities and the default Docker seccomp
+profile with init. Without init, an exited orphan worker remained a zombie;
+this is a failed cleanup condition. [Evidence and retained deployment gates](docs/ITERATION_185.md).
+The local verification image contains build/test tools and no linked FreeRDP;
+it does not satisfy the multi-stage production service-image requirement above.
 
 ## 4. Reverse proxy
 
