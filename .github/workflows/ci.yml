@@ -42,3 +42,4 @@ jobs:
       - run: node scripts/seed-avc-admission-fuzz.mjs && build/fuzz/avc-admission-fuzz build/fuzz/avc-admission-corpus -max_total_time=20
       - run: node scripts/seed-gfx-pdu-admission-fuzz.mjs && build/fuzz/gfx-pdu-admission-fuzz build/fuzz/gfx-pdu-admission-corpus -max_total_time=20
       - run: node scripts/seed-audio-svc-fuzz.mjs && build/fuzz/audio-svc-fuzz build/fuzz/audio-svc-corpus -max_total_time=20
+      - run: node scripts/seed-seqpacket-fuzz.mjs && build/fuzz/seqpacket-fuzz build/fuzz/seqpacket-corpus -max_total_time=20 -max_len=32768

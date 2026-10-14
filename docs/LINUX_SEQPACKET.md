@@ -1,0 +1,43 @@
+# Linux primary IPC carrier
+
+Iteration 193 implements the portable RWS1 carrier codec beneath the unchanged
+RWI1 envelope (PROTOCOL section 6). It is not selected by current workers or Node:
+the tested bounded framed-stream fallback remains active. Socket creation,
+descriptor inheritance, OS read/write deadlines and supervisor activation are
+separate required acceptance gates.
+
+Linux AF_UNIX SOCK_SEQPACKET preserves ordered message boundaries. Large encoded
+RWI1 records therefore need bounded carrier chunks rather than reliance on one
+multi-megabyte kernel message. [Linux unix(7)](https://man7.org/linux/man-pages/man7/unix.7.html).
+
+Each datagram begins with this 16-byte versioned prefix, all integers big endian:
+
+| Offset | Size | Field |
+| --- | --- | --- |
+| 0 | 4 | ASCII `RWS1` |
+| 4 | 4 | Logical message ID, first 1, strictly consecutive |
+| 8 | 4 | Total bytes of this RWI1 record, including its 24-byte header |
+| 12 | 4 | Offset of this chunk within the RWI1 record |
+
+The remainder is 1..16,384 record bytes: at most 16,400 bytes per datagram.
+Total record size is at least 24 and at most 8,390,719 bytes, encompassing the
+existing largest AVC envelope. The first chunk starts at offset zero and contains
+the entire RWI1 header. Its kind-specific length/version/flags are checked, and
+`length + 24` must equal the carrier total, before exposing data to a body parser.
+Subsequent chunks require the same total and exact next offset. Only one record
+may be partial. Interleaving, duplicates, omissions, replacement, restart or ID
+wrap/reuse permanently invalidate the transport; no resynchronization occurs.
+Clean EOF requires a record boundary; partial EOF is a framing failure.
+
+`SeqpacketInspector` retains fixed scalar state, no record/body storage, and
+returns a borrowed span into caller-owned bounded datagram scratch. Callers must
+consume or copy that span before receiving again. Rejected RWI1 headers may use
+the existing exception path; this is not a claim that every error path avoids
+heap allocation. The OS adapter must reject MSG_TRUNC/MSG_CTRUNC, impose finite
+whole-record deadlines and preserve exclusive record-write ownership. Those OS
+properties are not established by codec fixtures.
+
+The carrier adds no public browser fields, RWI1 kinds, session capabilities or
+FreeRDP arguments. It carries encoded media and private secret messages through
+the existing message-class bounds; it must never introduce credential logging or
+retry an uncertain partial secret write.

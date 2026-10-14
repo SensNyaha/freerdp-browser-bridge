@@ -1,5 +1,10 @@
 # RWI1 foundation wire contract
 
+Linux primary carrier preparation — iteration 193: fixed-state RWS1 chunk
+validation bounds packet sizes and checks the inner header before body exposure.
+Portable/fuzz gates pass; real sockets and worker/Node selection remain open.
+[Contract](LINUX_SEQPACKET.md), [evidence](ITERATION_193.md).
+
 Current Linux output — iteration 192: the inherited FIFO/Unix stream fallback
 now selects bounded priority lanes and a nonblocking writer with whole-record /
 drain deadlines. RWI1 fields and advertised capabilities remain unchanged.
