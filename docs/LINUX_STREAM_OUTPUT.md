@@ -2,7 +2,8 @@
 
 Implements ARCHITECTURE §2/§5 and Stage 1's bounded stream fallback. The primary
 Linux SOCK_SEQPACKET transport remains required and unimplemented. This driver
-is not yet selected by rdp-worker; it advertises no new capability or transport.
+is selected by Linux foundation/linked workers in iteration 192. It advertises
+no new RDP/audio capability or public wire format.
 
 `LinuxStreamOutput` accepts an inherited writable FIFO or AF_UNIX SOCK_STREAM
 descriptor, including Node's ordinary stdio socketpairs. Read-only, regular /
@@ -34,6 +35,6 @@ Six real FIFO/socketpair cases verify fragmented byte preservation, graceful /
 repeated close, descriptor flags, producer progress under a stalled peer,
 whole-record/drain deadlines, broken peers, signal-mask preservation, invalid
 descriptor/type/timeout/owner refusal and twenty lifetimes without leaked FDs.
-[Current evidence](ITERATION_191.md). Worker activation, actual connected-worker
+[Foundation evidence](ITERATION_191.md), [worker activation](ITERATION_192.md). Actual connected-worker
 failure/cleanup, primary seqpacket, real media/transport and broader platform /
 resource/soak gates remain open.

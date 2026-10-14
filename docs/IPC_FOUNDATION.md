@@ -1,5 +1,12 @@
 # RWI1 foundation wire contract
 
+Current Linux output — iteration 192: the inherited FIFO/Unix stream fallback
+now selects bounded priority lanes and a nonblocking writer with whole-record /
+drain deadlines. RWI1 fields and advertised capabilities remain unchanged.
+Actual lifecycle/paused-parent flood, sanitizers and private runtime relocation
+pass; primary SOCK_SEQPACKET and connected-media/release gates remain open.
+[Contract](LINUX_STREAM_OUTPUT.md), [evidence](ITERATION_192.md).
+
 Current Opus input preparation — iteration 134: RWI1 kind 44 and CONFIGURE
 schema 8 add bounded input framing and exclusive PCM/Opus flags. Current
 workers explicitly refuse dispatch/selection and advertise no Opus input;

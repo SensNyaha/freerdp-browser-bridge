@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <io.h>
 #elif defined(__linux__)
+#include "linux_stream.hpp"
 #include <sys/prctl.h>
 #include <unistd.h>
 #endif
@@ -31,7 +32,7 @@
 
 namespace {
 using namespace bridge::ipc;
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__linux__)
 std::mutex output_mutex;
 #endif
 class RuntimeGuard {
@@ -138,7 +139,7 @@ bool read_exact(std::span<std::uint8_t> bytes, bool allow_eof = false) {
   }
   return true;
 }
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__linux__)
 void send_sync(const Packet &packet) {
   const std::lock_guard lock(output_mutex);
   const auto bytes = encode(packet);
@@ -150,6 +151,10 @@ void send_sync(const Packet &packet) {
 int run() {
 #ifdef _WIN32
   WindowsPipeOutput output(reinterpret_cast<void *>(_get_osfhandle(_fileno(stdout))));
+#elif defined(__linux__)
+  LinuxStreamOutput output(::fileno(stdout));
+#endif
+#if defined(_WIN32) || defined(__linux__)
   const auto send = [&output](const Packet &packet) {
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(50);
     for (;;) {
@@ -308,7 +313,7 @@ int run() {
     return 0; // Parent disappeared; inherited input EOF is the portable parent-death path.
   };
   const auto result = control();
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
   return output.finish() ? result : 2;
 #else
   return result;

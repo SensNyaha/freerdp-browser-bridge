@@ -14,7 +14,7 @@ Current stage acceptance:
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
 | 0 — build | IN PROGRESS | Fresh-checkout/distro matrix, CI execution and standard PIE sanitizer environment; linked Linux CTest, ELF closure and independent Bookworm native runtime pass |
-| 1 — worker/IPC | IN PROGRESS | Linux primary transport/priority output, broader Windows isolation and abnormal cleanup; portable fuzz smoke passes |
+| 1 — worker/IPC | IN PROGRESS | Linux primary seqpacket transport, connected output/release/resource gates, broader isolation and abnormal cleanup; bounded Linux stream output now passes |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent soak failure; one XRDP 30-minute observation passes |
@@ -43,7 +43,7 @@ pipes. Windows Node check passes 522/522. The local sanitizer placement workarou
 retained failed PIE runs and platform boundaries are recorded in
 [iteration 184](docs/ITERATION_184.md); no linked Linux RDP/device acceptance is claimed.
 Linked Linux Release FreeRDP/worker now passes CTest 20/20 and full Node check
-(452 passed / 76 skipped / zero failures, 528 total). Private eudev/libusb and
+(453 passed / 75 skipped / zero failures, 528 total). Private eudev/libusb and
 complete staged ELF closure pass; canonical relocation passes 1/1. Windows Node
 check passes 528/528. [Current closure evidence](docs/ITERATION_189.md),
 [build evidence](docs/ITERATION_187.md). No actual Linux RDP/device
@@ -256,6 +256,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 **Gate:** clean build from fresh checkout/container; exact FreeRDP version visible; no UI required.
 
 ## Stage 1 — native worker process and IPC
+
+- [x] DONE for Linux worker bounded stream lifecycle slice — Foundation/linked
+  stdout now uses fixed priority lanes and finite nonblocking writer ownership.
+  Actual paused-parent flood exits natively and cleans runtime; lifecycle 13/13,
+  linked CTest 21/21, local non-PIE ASan/UBSan foundation 9/9, full Node 453 pass /
+  75 skip and independent restricted TGZ pass. Primary seqpacket, actual connected
+  media/release and broader resource/soak remain open. Driver: `9b4618f`.
+  [Evidence](docs/ITERATION_192.md).
 
 - [x] DONE for isolated Linux stream writer — Fixed dispatcher lanes, eventfd /
   one-thread nonblocking FIFO/Unix-stream writes, whole-record/drain deadlines,

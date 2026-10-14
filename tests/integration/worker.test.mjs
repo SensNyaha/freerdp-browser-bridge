@@ -415,9 +415,9 @@ test('native integration: malformed/truncated records and pre-handshake commands
 });
 
 test(
-  'native Windows IPC: paused output and raw parent flood fail within bounds and remove owned runtime',
+  'native queued IPC: paused output and raw parent flood fail within bounds and remove owned runtime',
   {
-    skip: process.platform !== 'win32',
+    skip: !['win32', 'linux'].includes(process.platform),
     timeout: 10000,
   },
   async () => {
