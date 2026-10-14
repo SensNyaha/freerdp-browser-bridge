@@ -23,7 +23,11 @@ The pinned Linux WinPR profile requires private Kerberos and ICU for its default
 authentication/Unicode implementations. These are Linux-only manifest entries;
 `build-freerdp.mjs` selects the local `krb5-config` and requires local ICU paths.
 Linux builder prerequisites include Bison for the Kerberos source grammar.
-[Dependency-build evidence and remaining CUPS/linked-runtime gate](docs/ITERATION_186.md).
+[Historical dependency checkpoint](docs/ITERATION_186.md).
+Linux now also builds private CUPS 2.4.20, libfuse 3.18.3 and numactl 2.0.19;
+linked Release CTest and the current codec/lifecycle relocation probe pass.
+The transitive libusb → host libudev dependency remains an open closure gate.
+[Current build evidence](docs/ITERATION_187.md).
 
 Expose compile-time feature report in build logs and `/v1/build`.
 

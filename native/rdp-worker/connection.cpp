@@ -101,6 +101,14 @@ Connection::Connection(std::function<void(const Packet &)> send,
   context_.reset(freerdp_client_context_new(&entry));
   if (!context_)
     throw std::runtime_error("FreeRDP context initialization failed");
+#if defined(__linux__)
+  // Settings creation requires the inherited HOME, but session files belong to
+  // the private worker cwd. Use the public settings API without changing HOME.
+  if (!freerdp_settings_set_string(context_->settings, FreeRDP_HomePath, ".") ||
+      !freerdp_settings_set_string(context_->settings, FreeRDP_ConfigPath, ".") ||
+      !freerdp_settings_set_string(context_->settings, FreeRDP_ActionScript, nullptr))
+    throw std::runtime_error("FreeRDP private paths initialization failed");
+#endif
   reinterpret_cast<Context *>(context_.get())->owner = this;
   auto *instance = context_->instance;
   instance->PreConnect = pre_connect;

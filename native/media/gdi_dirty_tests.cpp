@@ -91,7 +91,7 @@ struct ResizeFixture {
     gdi->primary_buffer = gdi->primary->bitmap->data;
     gdi->stride = gdi->primary->bitmap->scanline;
     gdi->drawing = gdi->primary;
-    context->update->EndPaint = [](rdpContext *ctx) {
+    context->update->EndPaint = [](rdpContext *ctx) -> BOOL {
       return end_gdi_paint(ctx->gdi, *reinterpret_cast<ResizeContext *>(ctx)->dirty) ? TRUE : FALSE;
     };
     settings(200, 200);

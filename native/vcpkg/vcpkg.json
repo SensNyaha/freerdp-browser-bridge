@@ -10,6 +10,8 @@
     "openh264",
     "opus",
     { "name": "krb5", "platform": "linux" },
-    { "name": "icu", "platform": "linux" }
+    { "name": "icu", "platform": "linux" },
+    { "name": "cups", "platform": "linux" },
+    { "name": "libfuse", "platform": "linux" }
   ]
 }

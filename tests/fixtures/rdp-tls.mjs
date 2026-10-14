@@ -36,7 +36,17 @@ export async function createRdpTlsFixture() {
         '-out',
         join(directory, 'fixture-cert.pem'),
       ],
-      { windowsHide: true, timeout: 15000 },
+      {
+        windowsHide: true,
+        timeout: 15000,
+        // The system CLI must use its own matching libraries, not the worker's
+        // private SDK LD_LIBRARY_PATH. This only generates a dummy certificate.
+        env: Object.fromEntries(
+          ['SystemRoot', 'WINDIR', 'PATH'].flatMap((key) =>
+            process.env[key] === undefined ? [] : [[key, process.env[key]]],
+          ),
+        ),
+      },
     );
     const secureContext = tls.createSecureContext({
       key: await readFile(join(directory, 'fixture-key.pem')),

@@ -80,6 +80,11 @@ for (const key of [
         'ICU_UC_LIBRARY_RELEASE',
         'ICU_IO_LIBRARY_RELEASE',
         'ICU_DATA_LIBRARY_RELEASE',
+        'CUPS_INCLUDE_DIR',
+        'CUPS_LIBRARIES',
+        'FUSE3_INCLUDEDIR',
+        'FUSE3_LIBDIR',
+        'pkgcfg_lib_FUSE3_fuse3',
       ]
     : []),
 ]) {

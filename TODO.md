@@ -13,7 +13,7 @@ Current stage acceptance:
 
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
-| 0 — build | IN PROGRESS | Fresh-checkout and linked Linux FreeRDP build/channels; CI execution and standard PIE sanitizer environment |
+| 0 — build | IN PROGRESS | Fresh-checkout/clean-machine, complete Linux dependency closure, CI execution and standard PIE sanitizer environment; linked Linux CTest now passes |
 | 1 — worker/IPC | IN PROGRESS | Linux primary transport/priority output, broader Windows isolation and abnormal cleanup; portable fuzz smoke passes |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
@@ -42,6 +42,11 @@ One hundred sequential workers and parent-death cleanup pass on Linux framed
 pipes. Windows Node check passes 522/522. The local sanitizer placement workaround,
 retained failed PIE runs and platform boundaries are recorded in
 [iteration 184](docs/ITERATION_184.md); no linked Linux RDP/device acceptance is claimed.
+Linked Linux Release FreeRDP/worker now passes CTest 20/20 and full Node check
+(448 passed / 76 skipped / zero failures, 524 total). Native relocation passes
+1/1, but the ELF audit retains host libudev as an open dependency-closure gate.
+[Current Linux build evidence](docs/ITERATION_187.md). No actual Linux RDP/device
+acceptance or clean-machine portability is claimed.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
 Stages 0/1/3/4/5/6 remain **IN PROGRESS**. Physical input and release ownership are
@@ -217,10 +222,11 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 - [x] DONE for local Linux dependency compilation — Pinned private ZLIB/OpenSSL/
   libusb/JPEG/libspng/OpenH264/Opus build, plus required Linux-only Kerberos 1.22.2
-  and ICU 78.3. Bison prerequisite and private discovery/metadata/license rules
-  are added. Exact FreeRDP configure now stops at CUPS for the retained printer
-  channel; linked worker, dependency closure/relocation and fresh-build gates
-  remain open. [Evidence and reboot checkpoint](docs/ITERATION_186.md).
+  and ICU 78.3, now CUPS 2.4.20, libfuse 3.18.3 and numactl 2.0.19. Exact
+  FreeRDP/worker Release build and CTest 20/20 pass; private discovery, metadata,
+  licenses and codec relocation are verified. Host libudev closure, fresh-build
+  and actual remote/device gates remain open. [Current evidence](docs/ITERATION_187.md),
+  [previous reboot checkpoint](docs/ITERATION_186.md).
 - [x] DONE — Create pnpm monorepo layout from `STACK.md` (core packages/apps/native; future component directories are created with their implementations). `9517003`.
 - [x] DONE — Add TypeScript strict config, lint/format, CI skeleton. `pnpm check`; `9517003`.
 - [x] DONE — Add CMake/Ninja native workspace. MSVC x64 build + CTest; `9517003`, `1672590`.

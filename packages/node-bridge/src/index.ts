@@ -355,10 +355,18 @@ export class WorkerProcess extends EventEmitter {
       });
       this.requireStarting();
       const env = Object.fromEntries(
-        ['SystemRoot', 'WINDIR', 'PATH', 'LD_LIBRARY_PATH'].flatMap((key) =>
+        [
+          'SystemRoot',
+          'WINDIR',
+          'PATH',
+          'LD_LIBRARY_PATH',
+          ...(process.platform === 'linux' ? ['HOME'] : []),
+        ].flatMap((key) =>
           process.env[key] === undefined ? [] : [[key, process.env[key]!]],
         ),
       );
+      // Pinned Linux FreeRDP needs the existing HOME during settings creation.
+      // Connection then selects private paths through the public settings API.
       const child = this.spawnWorker(this.directory, env);
       this.child = child;
       this.closedPromise = new Promise<void>((done) =>
@@ -1274,7 +1282,7 @@ export async function probeWorkerFeatures(
         timeout: options.startupTimeoutMs ?? 10000,
         maxBuffer: 16384,
         env: Object.fromEntries(
-          ['SystemRoot', 'WINDIR', 'PATH'].flatMap((key) =>
+          ['SystemRoot', 'WINDIR', 'PATH', 'LD_LIBRARY_PATH'].flatMap((key) =>
             process.env[key] === undefined ? [] : [[key, process.env[key]!]],
           ),
         ),

@@ -21,7 +21,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build build-essential autoconf autoconf-archive automake libtool libltdl-dev libudev-dev pkg-config nasm perl bison
+          sudo apt-get install -y ninja-build build-essential autoconf autoconf-archive automake libtool libltdl-dev libudev-dev pkg-config nasm perl bison openssl
       - uses: actions/cache@v4
         with:
           path: .tools/vcpkg-cache
@@ -31,6 +31,12 @@ jobs:
       - run: pnpm build:freerdp
       - run: pnpm build:bundled
       - run: pnpm check
+        if: runner.os == 'Windows'
+        env:
+          BRIDGE_TEST_BINARY_DIR: build/bundled
+      - name: Node checks with private Linux build prefixes
+        if: runner.os == 'Linux'
+        run: LD_LIBRARY_PATH="$PWD/.deps/freerdp-install/lib:$PWD/.deps/installed/x64-linux-bundled/lib" pnpm check
         env:
           BRIDGE_TEST_BINARY_DIR: build/bundled
       - run: pnpm test:bundle

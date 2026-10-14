@@ -230,9 +230,10 @@ TEST_CASE("Isolated GFX message owner measures bounded twelve MiB literal forwar
   put(19, 1024, 2);
   put(21, bitmap_size);
   std::fill(chunk.begin() + 25, chunk.end(), 0x5a);
-  auto batch = chunk;
+  std::vector<BYTE> batch(chunk.size() * 2);
+  std::copy(chunk.begin(), chunk.end(), batch.begin());
   chunk[8] = 1;
-  batch.insert(batch.end(), chunk.begin(), chunk.end());
+  std::copy(chunk.begin(), chunk.end(), batch.data() + chunk.size());
   REQUIRE(admit_gfx_pdus(batch));
   std::unique_ptr<ZGFX_CONTEXT, decltype(&zgfx_context_free)> encoder(zgfx_context_new(TRUE),
                                                                       zgfx_context_free);

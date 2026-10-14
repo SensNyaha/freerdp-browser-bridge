@@ -443,4 +443,13 @@ if(BRIDGE_FUZZ)
   target_link_options(audio-svc-fuzz PRIVATE -fsanitize=fuzzer,address,undefined)
 endif()
 install(TARGETS rdp-worker RUNTIME DESTINATION bin)
+if(BUILD_TESTING AND BRIDGE_WITH_FREERDP AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # The build uses separate private SDK/runtime prefixes. ELF RUNPATH is not
+  # transitive; scope both prefixes to CTest, never the installed application.
+  get_property(bridge_native_tests DIRECTORY PROPERTY TESTS)
+  foreach(bridge_native_test IN LISTS bridge_native_tests)
+    set_property(TEST ${bridge_native_test} APPEND PROPERTY ENVIRONMENT
+      "LD_LIBRARY_PATH=${BRIDGE_FREERDP_PREFIX}/lib:${BRIDGE_DEPENDENCY_PREFIX}/lib")
+  endforeach()
+endif()
 include(native/packaging.cmake)

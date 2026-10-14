@@ -141,11 +141,11 @@ struct Host {
                 bool plugin_proxy_observation = false, bool plugin_registry_observation = false,
                 bool provider_observation = false, bool gfx_observation = false,
                 bool audio_observation = false)
-      : observe_completion(completion_observation), wrap_manager(pinned_manager_observation),
-        use_handoff(handoff_observation), wrap_listener(listener_proxy_observation),
-        wrap_listeners(listener_manager_observation), wrap_plugin(plugin_proxy_observation),
-        wrap_registration(plugin_registry_observation), scoped_registration(provider_observation),
-        actual_gfx(gfx_observation), actual_audio(audio_observation) {
+      : wrap_manager(pinned_manager_observation), use_handoff(handoff_observation),
+        wrap_listener(listener_proxy_observation), wrap_listeners(listener_manager_observation),
+        wrap_plugin(plugin_proxy_observation), wrap_registration(plugin_registry_observation),
+        scoped_registration(provider_observation), actual_gfx(gfx_observation),
+        actual_audio(audio_observation), observe_completion(completion_observation) {
     if (registry_observation)
       registry = std::make_unique<DvcChannelRegistry>(
           [](void *p) -> std::uint64_t { return static_cast<Host *>(p)->now_ms; }, this,

@@ -75,15 +75,15 @@ struct Fixture {
     gdi.context = context.get();
     gdi.dstFormat = PIXEL_FORMAT_BGRA32;
     context->gdi = &gdi;
-    context->update->BeginPaint = [](rdpContext *ctx) {
+    context->update->BeginPaint = [](rdpContext *ctx) -> BOOL {
       return begin_gdi_paint(ctx->gdi) ? TRUE : FALSE;
     };
-    context->update->EndPaint = [](rdpContext *ctx) {
+    context->update->EndPaint = [](rdpContext *ctx) -> BOOL {
       auto &f = *reinterpret_cast<Client *>(ctx)->fixture;
       ++f.paints;
       return end_gdi_paint(ctx->gdi, f.dirty) ? TRUE : FALSE;
     };
-    context->update->DesktopResize = [](rdpContext *ctx) {
+    context->update->DesktopResize = [](rdpContext *ctx) -> BOOL {
       auto &f = *reinterpret_cast<Client *>(ctx)->fixture;
       f.resize(freerdp_settings_get_uint32(ctx->settings, FreeRDP_DesktopWidth),
                freerdp_settings_get_uint32(ctx->settings, FreeRDP_DesktopHeight));

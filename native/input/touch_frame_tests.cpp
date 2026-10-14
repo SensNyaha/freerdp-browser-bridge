@@ -5,8 +5,10 @@
 using namespace bridge::touch;
 namespace {
 std::vector<std::uint8_t> packet(std::span<const std::uint8_t> contacts, std::uint8_t count = 1) {
-  std::vector<std::uint8_t> bytes{3, 0, 0, 0, 0, 0, 0, 1, count, 0};
-  bytes.insert(bytes.end(), contacts.begin(), contacts.end());
+  const std::array<std::uint8_t, 10> header{3, 0, 0, 0, 0, 0, 0, 1, count, 0};
+  std::vector<std::uint8_t> bytes(header.size() + contacts.size());
+  std::copy(header.begin(), header.end(), bytes.begin());
+  std::copy(contacts.begin(), contacts.end(), bytes.data() + header.size());
   for (unsigned i = 0; i < 4; ++i)
     bytes[2 + i] = static_cast<std::uint8_t>(bytes.size() >> (i * 8));
   return bytes;

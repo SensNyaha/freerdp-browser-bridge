@@ -171,6 +171,30 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       createHash('sha256').update(simdPatch).digest('hex'),
       features.portOverlays.openh264.simdPatchSha256,
     );
+    if (process.platform === 'linux') {
+      const lock = JSON.parse(
+        await readFile(
+          join(relocated, 'share', 'freerdp-bridge', 'dependencies.json'),
+          'utf8',
+        ),
+      );
+      const cupsPatch = await readFile(
+        join(
+          relocated,
+          'share',
+          'freerdp-bridge',
+          'ports',
+          'cups',
+          '001-local-queues-without-dnssd.patch',
+        ),
+      );
+      assert.equal(features.dependencies.cups, lock.cups.version);
+      assert.equal(features.portOverlays.cups.sourceCommit, lock.cups.commit);
+      assert.equal(
+        createHash('sha256').update(cupsPatch).digest('hex'),
+        features.portOverlays.cups.localQueuesPatchSha256,
+      );
+    }
     for (const dependency of [
       'zlib',
       'openssl',
@@ -180,6 +204,9 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
       'libspng',
       'openh264',
       'opus',
+      ...(process.platform === 'linux'
+        ? ['krb5', 'icu', 'cups', 'libfuse', 'numactl']
+        : []),
     ]) {
       assert.ok(
         (

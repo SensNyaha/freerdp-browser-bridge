@@ -26,7 +26,8 @@ int main() {
       throw ProtocolError();
   };
   std::optional<ConnectionConfig> config;
-  std::optional<std::uint64_t> pending_reset;
+  // Reset request IDs are nonzero; zero means that no fixture reply is held.
+  std::uint64_t pending_reset = 0;
   const auto audio_record = [&](Kind kind, std::span<const std::uint8_t> body) {
     send({kind, 0, {body.begin(), body.end()}});
   };
@@ -157,8 +158,8 @@ int main() {
         send({Kind::heartbeat_ack, header.request_id, {}});
         if (pending_reset && config->host == "reset-delay") {
           const auto body = audio::encode_reset_result(audio::ResetResult::unavailable);
-          send({Kind::audio_reset_result, *pending_reset, {body.begin(), body.end()}});
-          pending_reset.reset();
+          send({Kind::audio_reset_result, pending_reset, {body.begin(), body.end()}});
+          pending_reset = 0;
         }
       } else if (header.kind == Kind::shutdown) {
         if (config && (opus_profile ? config->opus_output : config->pcm_output)) {

@@ -39,7 +39,9 @@ for (const name of [
   'libspng',
   'openh264',
   'opus',
-  ...(process.platform === 'linux' ? ['krb5', 'icu'] : []),
+  ...(process.platform === 'linux'
+    ? ['krb5', 'icu', 'cups', 'libfuse', 'numactl']
+    : []),
 ]) {
   const block = status
     .split(/\r?\n\r?\n/)
@@ -56,16 +58,45 @@ for (const name of [
 }
 if (dependencies.opus !== lock.opus.version)
   throw new Error('Installed Opus receipt does not match the pinned version');
+if (process.platform === 'linux' && dependencies.cups !== lock.cups.version)
+  throw new Error('Installed CUPS receipt does not match the pinned version');
 const opusPort = readFileSync(
   resolve('native/vcpkg/ports/opus/portfile.cmake'),
   'utf8',
 );
 if (!opusPort.includes(`SHA512 ${lock.opus.sourceSha512}`))
   throw new Error('Opus port source hash does not match the dependency lock');
+if (process.platform === 'linux') {
+  const cupsPort = readFileSync(
+    resolve('native/vcpkg/ports/cups/portfile.cmake'),
+    'utf8',
+  );
+  if (
+    !cupsPort.includes(`REF ${lock.cups.commit}`) ||
+    !cupsPort.includes(`SHA512 ${lock.cups.sourceSha512}`)
+  )
+    throw new Error('CUPS port source does not match the dependency lock');
+}
 const report = {
   enabledChannels,
   codecProviders: ['libjpeg-turbo', 'openh264', 'libopus'],
   portOverlays: {
+    ...(process.platform === 'linux'
+      ? {
+          cups: {
+            sourceCommit: lock.cups.commit,
+            localQueuesPatchSha256: createHash('sha256')
+              .update(
+                readFileSync(
+                  resolve(
+                    'native/vcpkg/ports/cups/001-local-queues-without-dnssd.patch',
+                  ),
+                ),
+              )
+              .digest('hex'),
+          },
+        }
+      : {}),
     opus: {
       basePort: '1.6.1',
       versionPatchSha256: createHash('sha256')

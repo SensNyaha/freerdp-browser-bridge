@@ -6,6 +6,12 @@
     "commit": "bf217a504e54cc719880c228e82353382cd7d4fa"
   },
   "catch2": { "version": "3.8.1" },
+  "cups": {
+    "version": "2.4.20",
+    "repository": "https://github.com/OpenPrinting/cups.git",
+    "commit": "ef80eeaea51430a055948240eea3f28ef5354edf",
+    "sourceSha512": "50d628f1c54d7f3ff7aa5819f4c79a5ee2cd192857e1ebda80ffc70eb1e17a3bbadb89917eba863656426bd576545c97f4b22991e73a725c20b794b6a56e7b52"
+  },
   "opus": {
     "version": "1.6.1",
     "repository": "https://github.com/xiph/opus",

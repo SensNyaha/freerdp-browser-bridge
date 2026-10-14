@@ -19,7 +19,8 @@ int main() {
       throw ProtocolError();
   };
   std::optional<ConnectionConfig> config;
-  std::optional<std::uint64_t> pending;
+  // Microphone request IDs are nonzero; zero means that no fixture reply is held.
+  std::uint64_t pending = 0;
   microphone::State status{true, audio::Availability::ready, 1, 1, 1000};
   const auto state = [&] {
     auto bytes = microphone::encode_state(status);
@@ -121,13 +122,13 @@ int main() {
       } else if (header.kind == Kind::heartbeat) {
         send({Kind::heartbeat_ack, header.request_id, {}});
         if (pending) {
-          result(*pending, microphone::Result::accepted);
-          pending.reset();
+          result(pending, microphone::Result::accepted);
+          pending = 0;
         }
       } else if (header.kind == Kind::shutdown) {
         if (pending) {
-          result(*pending, microphone::Result::unavailable);
-          pending.reset();
+          result(pending, microphone::Result::unavailable);
+          pending = 0;
         }
         if (config && config->pcm_input && status.enabled) {
           ++status.revision;

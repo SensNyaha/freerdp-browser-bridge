@@ -17,17 +17,17 @@ void header(std::vector<std::uint8_t> &bytes, std::size_t count) {
   bytes[19] = static_cast<std::uint8_t>(count >> 8);
 }
 std::vector<std::uint8_t> packet(std::span<const std::uint8_t> descriptor, std::size_t count = 1) {
-  std::vector<std::uint8_t> bytes(24);
+  std::vector<std::uint8_t> bytes(24 + count * descriptor.size());
   for (std::size_t i = 0; i < count; ++i)
-    bytes.insert(bytes.end(), descriptor.begin(), descriptor.end());
+    std::copy(descriptor.begin(), descriptor.end(), bytes.data() + 24 + i * descriptor.size());
   header(bytes, count);
   return bytes;
 }
 } // namespace
 
 TEST_CASE("PCM offer selection preserves supported source descriptors and metadata") {
-  auto input = packet(stereo48);
-  input.insert(input.end(), mono8.begin(), mono8.end());
+  auto input = packet(stereo48, 2);
+  std::copy(mono8.begin(), mono8.end(), input.data() + 24 + stereo48.size());
   header(input, 2);
   input[4] = 3;
   input[8] = 42;
@@ -46,13 +46,16 @@ TEST_CASE("PCM offer filtering removes unsupported and compressed entries in sta
   auto compressed = stereo48, wide = stereo48;
   compressed[0] = 2;
   wide[14] = 24;
-  std::vector<std::uint8_t> input(24);
-  for (const auto descriptor : {compressed, wide, mono8, compressed, stereo48})
-    input.insert(input.end(), descriptor.begin(), descriptor.end());
+  std::vector<std::uint8_t> input(24 + 5 * stereo48.size());
+  std::size_t offset = 24;
+  for (const auto &descriptor : {compressed, wide, mono8, compressed, stereo48}) {
+    std::copy(descriptor.begin(), descriptor.end(), input.data() + offset);
+    offset += descriptor.size();
+  }
   header(input, 5);
   const auto original = input;
-  auto expected = packet(mono8);
-  expected.insert(expected.end(), stereo48.begin(), stereo48.end());
+  auto expected = packet(mono8, 2);
+  std::copy(stereo48.begin(), stereo48.end(), expected.data() + 24 + mono8.size());
   header(expected, 2);
   std::array<std::uint8_t, max_pcm_offer_bytes> output{};
   const auto selected = select_pcm_offers(input, output);

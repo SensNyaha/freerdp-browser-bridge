@@ -187,8 +187,9 @@ TEST_CASE("RDPSND public Play returns bounded latency and copies PCM for the con
   const std::vector<std::uint8_t> first{0, 128, 255, 127, 255, 255, 0, 0}, second{1, 0, 254, 255};
   REQUIRE(play(device, first) == 1);
   REQUIRE(play(device, second) == 1);
-  std::vector<std::uint8_t> output(12), expected = first;
-  expected.insert(expected.end(), second.begin(), second.end());
+  std::vector<std::uint8_t> output(12), expected(first.size() + second.size());
+  std::copy(first.begin(), first.end(), expected.begin());
+  std::copy(second.begin(), second.end(), expected.data() + first.size());
   const auto result = sink.read(output);
   REQUIRE(result.status == QueueStatus::accepted);
   REQUIRE(result.frames == 3);

@@ -45,7 +45,16 @@ async function withRoot(run) {
 
 test('native lifecycle integration: pipeline diagnostics are capability gated and start empty', async () => {
   await withRoot(async (runtimeRoot) => {
-    const worker = new WorkerProcess({ workerPath, runtimeRoot });
+    const worker = new (class extends WorkerProcess {
+      spawnWorker(directory, env) {
+        if (process.platform === 'linux') {
+          assert.equal(env.HOME, process.env.HOME);
+          assert.equal(env.XDG_CONFIG_HOME, undefined);
+          assert.equal(env.XDG_CACHE_HOME, undefined);
+        }
+        return super.spawnWorker(directory, env);
+      }
+    })({ workerPath, runtimeRoot });
     try {
       const build = await worker.start();
       if (build.capabilities.pipelineStats) {

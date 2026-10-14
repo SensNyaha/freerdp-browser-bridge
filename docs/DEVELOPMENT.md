@@ -439,3 +439,24 @@ The recovery modes require real active output before and after browser detach/
 reattach, and fail for an idle source. Opus also requires an observed native
 reset result and a fresh epoch. Leave audio playing on the authorized lab; the
 helper does not start remote applications or record audio. [Verified scope](ITERATION_181.md).
+
+## Local linked Linux verification
+
+After `pnpm build:dependencies`, `pnpm build:freerdp` and `pnpm build:bundled`,
+the separate private SDK prefixes are used only for build-tree Node checks:
+
+```sh
+BRIDGE_TEST_BINARY_DIR=build/bundled \
+  LD_LIBRARY_PATH="$PWD/.deps/freerdp-install/lib:$PWD/.deps/installed/x64-linux-bundled/lib" \
+  pnpm check
+pnpm test:bundle
+```
+
+CMake scopes the same private lookup to linked CTest. The relocation command
+runs without dependency PATH and validates the staged installed layout instead.
+The Linux worker inherits normal HOME unchanged for the pinned settings
+initializer, then selects its private cwd through public HomePath/ConfigPath
+settings. Do not replace HOME with a project/test directory. Linked Linux
+CTest 20/20, Node 448 passed / 76 skipped, and codec/lifecycle relocation 1/1
+pass locally; host libudev closure and actual Linux RDP/device acceptance remain
+open. [Evidence and boundaries](ITERATION_187.md).
