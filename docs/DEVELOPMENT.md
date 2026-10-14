@@ -478,6 +478,24 @@ and performs no remote keyboard/mouse, audio generation or microphone capture.
 It is a private native integration check, separate from browser acceptance.
 [Actual evidence](ITERATION_201.md).
 
+To test a Linux producer with the local Windows Edge consumer, use a separate
+owned container built from the current verified SDK/source, publish its API only
+as `-p 127.0.0.1:47998:47999`, and copy
+`scripts/linux-xrdp-viewer-server.mjs` into the same `/work/scripts` location.
+Keep lab credential files on the host. Run codecs sequentially:
+
+```powershell
+node scripts/test-linux-xrdp-viewer.mjs freerdp-bridge-linux-viewer-202 sha256:<previously-approved-fingerprint> h264
+node scripts/test-linux-xrdp-viewer.mjs freerdp-bridge-linux-viewer-202 sha256:<previously-approved-fingerprint> jpeg
+```
+
+The helper verifies the actual loopback publication before authentication, starts
+the bounded Linux server through private stdin, and uses ordinary REST/control /
+media paths. It checks nonblank pixels, confirmed resize/restoration and fresh
+attachment replay; no microphone, audio or operational remote input is activated.
+The server is a disposable test host, not the production deployment image.
+[Browser evidence](ITERATION_202.md).
+
 The independent native archive check uses only three explicitly selected files:
 
 ```sh
