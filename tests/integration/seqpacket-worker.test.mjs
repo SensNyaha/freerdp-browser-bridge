@@ -94,6 +94,32 @@ test(
   },
 );
 test(
+  'actual Linux packet supervisor: automatic heartbeats survive idle poll boundaries and join repeated cleanup',
+  { skip, timeout: 20000 },
+  async () => {
+    await withRoot(async (runtimeRoot) => {
+      for (let i = 0; i < 3; i++) {
+        const worker = new WorkerProcess({
+          workerPath,
+          runtimeRoot,
+          ipcTransport: transport,
+          heartbeatIntervalMs: 1000,
+        });
+        try {
+          await worker.start();
+          await delay(3200);
+          assert.equal(worker.state, 'ready');
+          await worker.ping();
+          await worker.close();
+          assert.deepEqual(await readdir(runtimeRoot), []);
+        } finally {
+          await worker.close();
+        }
+      }
+    });
+  },
+);
+test(
   'actual Node packet supervisor: worker crash joins native socket cleanup before lifecycle completion',
   { skip, timeout: 10000 },
   async () => {

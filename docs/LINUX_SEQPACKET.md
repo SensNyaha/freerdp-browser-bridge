@@ -1,5 +1,12 @@
 # Linux primary IPC carrier
 
+Deadline correction (iteration 207): idle poll time is independent of assembly
+time. The first received datagram establishes the whole-record deadline; later
+chunks never extend it. A real socket regression fails before/passes after, and
+actual primary XRDP PCM/Opus source/reset now pass on successful lab runs.
+One RDP protocol failure remains unexplained; browser/resource/soak acceptance
+is separate. [Evidence](ITERATION_207.md).
+
 Actual connected Linux/XRDP graphics, strict certificate rejection, approved
 session-only trust, heartbeat and confirmed resize/restoration now pass through
 this carrier. This is private Node/native evidence, separate from browser,

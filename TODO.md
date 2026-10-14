@@ -35,6 +35,12 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-14
 
+Linux primary idle/assembly deadline separation now has a failing-before /
+passing-after socket regression, repeated idle heartbeats and Release/sanitizer
+checks. Actual primary XRDP receives PCM/Opus with ready reset/fresh config/data;
+one Opus protocol failure remains unexplained. Browser/audio quality, latency and
+resource/soak acceptance remain open. [Iteration 207](docs/ITERATION_207.md).
+
 Guarded Linux amd64 PCM/Opus output, native reset and 120/200 ms selection are
 activated through the primary and framed priority writers. Eight native/TLS
 profile cases and full Node/native/relocation/independent archive checks pass.

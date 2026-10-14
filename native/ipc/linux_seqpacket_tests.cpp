@@ -88,6 +88,37 @@ TEST_CASE("Linux seqpacket sends maximum frame as borrowed chunks and preserves 
   REQUIRE(::fcntl(pair.ends[0], F_GETFL) == flags);
   REQUIRE_FALSE(receiver.failed());
 }
+TEST_CASE("Linux seqpacket idle waiting does not consume the first partial record deadline") {
+  Pair pair;
+  LinuxSeqpacketEndpoint receiver(pair.ends[0]);
+  const auto record = encode({Kind::frame, 1, std::vector<std::uint8_t>(64, 0x5a)});
+  bool sent = false;
+  std::jthread writer([&] {
+    try {
+      std::this_thread::sleep_for(400ms);
+      raw(pair.ends[1], first(record, header_bytes));
+      std::this_thread::sleep_for(700ms);
+      const auto prefix = encode_seqpacket_prefix(1, static_cast<std::uint32_t>(record.size()),
+                                                  header_bytes, record.size() - header_bytes);
+      std::vector<std::uint8_t> tail(prefix.size() + record.size() - header_bytes);
+      std::copy(prefix.begin(), prefix.end(), tail.begin());
+      std::copy(record.begin() + header_bytes, record.end(), tail.begin() + prefix.size());
+      raw(pair.ends[1], tail);
+      sent = true;
+    } catch (...) {
+    }
+  });
+  const auto initial = receiver.read(1s);
+  REQUIRE(initial.state == SeqpacketReadState::data);
+  REQUIRE(initial.bytes.size() == header_bytes);
+  const auto rest = receiver.read(1s);
+  REQUIRE(rest.state == SeqpacketReadState::data);
+  REQUIRE(std::equal(rest.bytes.begin(), rest.bytes.end(), record.begin() + header_bytes,
+                     record.end()));
+  writer.join();
+  REQUIRE(sent);
+  REQUIRE_FALSE(receiver.failed());
+}
 TEST_CASE("Linux seqpacket distinguishes idle and clean EOF from partial EOF and empty datagram") {
   {
     Pair pair;

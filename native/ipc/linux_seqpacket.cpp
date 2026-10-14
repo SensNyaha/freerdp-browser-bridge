@@ -175,14 +175,17 @@ struct LinuxSeqpacketEndpoint::Impl {
         closed = true;
         return {SeqpacketReadState::closed, {}};
       }
+      // Idle waiting is not assembly time. A first datagram starts the whole-record
+      // deadline when received, even if it arrives near the idle poll deadline.
+      const auto arrived = Clock::now();
       const auto bytes =
           inspector.inspect(std::span(scratch).first(static_cast<std::size_t>(received)));
-      if (!bytes || Clock::now() >= due)
+      if (!bytes || (read_due && Clock::now() >= *read_due))
         refuse();
       if (inspector.at_record_boundary())
         read_due.reset();
       else if (!read_due)
-        read_due = due;
+        read_due = arrived + timeout;
       return {SeqpacketReadState::data, *bytes};
     }
   }
