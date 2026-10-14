@@ -79,6 +79,20 @@ TEST_CASE("network-order envelope roundtrip and maximum request id") {
   REQUIRE(header.request_id == UINT64_MAX);
   REQUIRE(header.length == 0);
 }
+TEST_CASE("envelope serialization preserves exact bounded payload bytes") {
+  for (const auto size : {std::size_t{1}, std::size_t{4096}}) {
+    Packet packet{Kind::hello_ack, 17, std::vector<std::uint8_t>(size)};
+    for (std::size_t i = 0; i < size; ++i)
+      packet.payload[i] = static_cast<std::uint8_t>(i);
+    const auto bytes = encode(packet);
+    REQUIRE(bytes.size() == header_bytes + size);
+    const auto header = decode_header(std::span(bytes).first(header_bytes));
+    REQUIRE(header.kind == packet.kind);
+    REQUIRE(header.request_id == packet.request_id);
+    REQUIRE(header.length == size);
+    REQUIRE(std::equal(packet.payload.begin(), packet.payload.end(), bytes.begin() + header_bytes));
+  }
+}
 TEST_CASE("connection v7 private microphone input is independent of the exclusive output codec") {
   auto bytes = connection;
   bytes[1] = 7;

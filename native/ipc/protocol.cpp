@@ -150,10 +150,9 @@ std::vector<std::uint8_t> encode(const Packet &packet) {
     throw ProtocolError();
   const auto header = encode_header(
       {packet.kind, packet.request_id, static_cast<std::uint32_t>(packet.payload.size())});
-  std::vector<std::uint8_t> bytes;
-  bytes.reserve(header_bytes + packet.payload.size());
-  bytes.insert(bytes.end(), header.begin(), header.end());
-  bytes.insert(bytes.end(), packet.payload.begin(), packet.payload.end());
+  std::vector<std::uint8_t> bytes(header_bytes + packet.payload.size());
+  std::copy(header.begin(), header.end(), bytes.begin());
+  std::copy(packet.payload.begin(), packet.payload.end(), bytes.begin() + header_bytes);
   return bytes;
 }
 void validate_hello(std::span<const std::uint8_t> payload) {
