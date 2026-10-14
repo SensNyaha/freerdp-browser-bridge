@@ -28,3 +28,5 @@ iteration 180. This closes the named actual XRDP ready-source attachment case,
 not general RDP reconnect, transport-loss/platform/failure injection, uninterrupted
 audio, measured LAN latency, microphone recording or sustained/concurrent use.
 The user accepts current smoother Opus/200 ms output for local development.
+
+Implementation/evidence commit: `ac23781`.

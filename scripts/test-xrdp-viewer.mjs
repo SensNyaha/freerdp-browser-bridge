@@ -10,6 +10,7 @@ import {
   WorkerProcess,
 } from '../packages/node-bridge/dist/index.js';
 import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
+import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
 import {
@@ -38,6 +39,7 @@ const {
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
 const soakTest = process.argv[4] === '--soak-test';
+const transportLossTest = process.argv[4] === '--transport-loss-test';
 const touchInventory = process.argv[4] === '--touch-inventory';
 const quality = qualityTest
   ? {
@@ -55,6 +57,7 @@ if (
     !qualityTest &&
     !resizeTest &&
     !soakTest &&
+    !transportLossTest &&
     !touchInventory &&
     !audioTest &&
     !microphoneTest) ||
@@ -192,15 +195,22 @@ let phase = 'create';
 const resizeEvidence = [];
 let soakEvidence;
 let failureEvidence;
+let transportEvidence;
+let transportProxy;
 let restoreNeeded = false;
 try {
+  if (transportLossTest)
+    transportProxy = await createLabRdpProxy(lab.host, lab.port ?? 3389);
   await server.listen({ host: '127.0.0.1', port: 47999 });
   const created = await server.inject({
     method: 'POST',
     url: '/v1/sessions',
     headers: { authorization: 'Bearer ' + bearer },
     payload: {
-      target: { host: lab.host, port: lab.port },
+      target: {
+        host: transportProxy?.host ?? lab.host,
+        port: transportProxy?.port ?? lab.port,
+      },
       auth: { username: credentials.username, password: credentials.password },
       display: {
         width: 1920,
@@ -309,7 +319,67 @@ try {
     )
       throw new Error('LAB_UNEXPECTED_MICROPHONE_CAPTURE');
   }
-  if (manual) {
+  if (transportLossTest) {
+    phase = 'transport-loss';
+    await delay(2000);
+    const before = await page.evaluate(() => {
+      const canvas = document.querySelector('#desktop');
+      const pixels = canvas
+        .getContext('2d')
+        .getImageData(0, 0, canvas.width, canvas.height).data;
+      let min = 255,
+        max = 0;
+      for (let i = 0; i < pixels.length; i += 64) {
+        min = Math.min(min, pixels[i]);
+        max = Math.max(max, pixels[i]);
+      }
+      return { ...window.bridgeViewer.stats, hasImage: max - min > 20 };
+    });
+    if (
+      nativeState !== 'connected' ||
+      nativeFailure ||
+      before.error ||
+      before.closed ||
+      !before.hasImage ||
+      before.frames < 1 ||
+      before.width !== 1920 ||
+      before.height !== 1080
+    )
+      throw new Error('LAB_PROXY_DESKTOP_NOT_ACTIVE');
+    transportProxy.interrupt();
+    const deadline = performance.now() + 7000;
+    let retired = false;
+    do {
+      const state = await server.inject({
+        method: 'GET',
+        url: '/v1/sessions/' + sessionId,
+        headers: { authorization: 'Bearer ' + bearer },
+      });
+      const view = await page.evaluate(() => window.bridgeViewer.stats);
+      if (
+        ['RDP_PROTOCOL_ERROR', 'RDP_DISCONNECTED'].includes(nativeFailure) &&
+        state.statusCode === 200 &&
+        state.json().state === 'failed' &&
+        view.closed
+      ) {
+        retired = true;
+        break;
+      }
+      await delay(50);
+    } while (performance.now() < deadline);
+    if (!retired) throw new Error('LAB_TRANSPORT_LOSS_NOT_RETIRED');
+    transportEvidence = {
+      type: 'lab.transport-loss',
+      actualRdp: true,
+      browserFramesBeforeLoss: before.frames,
+      width: before.width,
+      height: before.height,
+      nativeFailure,
+      proxy: transportProxy.snapshot(),
+      microphoneCaptured: false,
+      remoteInputSent: false,
+    };
+  } else if (manual) {
     phase = 'manual';
     console.log(
       'Ручной просмотр открыт в Edge. Щёлкните по рабочему столу для ввода.',
@@ -808,8 +878,15 @@ try {
       process.exitCode = 1;
     }
   }
-  await browser?.close();
-  await server.close();
+  try {
+    await browser?.close();
+  } finally {
+    try {
+      await server.close();
+    } finally {
+      await transportProxy?.close();
+    }
+  }
   if (failureEvidence)
     console.log(
       JSON.stringify({
@@ -823,4 +900,12 @@ try {
     console.error('LAB_RUNTIME_NOT_EMPTY');
     process.exitCode = 1;
   }
+  if (transportEvidence)
+    console.log(
+      JSON.stringify({
+        ...transportEvidence,
+        runtimeEmpty: leftovers.length === 0,
+        rdpDiagnostics: rdpDiagnostics.snapshot(),
+      }),
+    );
 }

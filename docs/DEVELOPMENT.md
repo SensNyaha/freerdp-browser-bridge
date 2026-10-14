@@ -383,6 +383,7 @@ lab fingerprint, run lab modes sequentially:
 
 ```powershell
 node scripts/test-xrdp-viewer.mjs $fingerprint h264 --soak-test
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --transport-loss-test
 ```
 
 This holds the actual 1920×1080 desktop for 30 minutes, prints fixed aggregates
@@ -391,6 +392,12 @@ It observes graphics with audio off and requests no microphone. Working-set
 measurements use the bundled limited-query helper. Do not rebuild native DLLs or
 run competing timing benchmarks during the observation. A reported failed memory
 budget or interrupted run is not acceptance. [Scope](ITERATION_174.md).
+
+The separate transport-loss mode uses one loopback relay to the configured lab
+IP, waits for real decoded desktop pixels, then breaks only that test connection.
+It requires an explicit RDP failure, closed viewer and ordinary cleanup. Extra
+peers are refused; no payloads are recorded or device permissions requested.
+Run it after the soak, not during another timing observation. [Verified scope](ITERATION_183.md).
 
 The private `test-xrdp-audio.mjs $fingerprint pcm` (or `opus`) now observes ten
 seconds of real source data and makes at most one reset attempt while ready.

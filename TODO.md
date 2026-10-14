@@ -257,6 +257,12 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 **Gate:** CLI-less worker connects to Windows and XRDP, reports state, rejects changed certificate correctly.
 
+- [x] DONE on Windows/XRDP — Named active transport-loss case: real decoded
+  desktop, controlled loss of only the test connection, `RDP_DISCONNECTED`, failed
+  public session, closed viewer and empty runtime after joined cleanup. Broader
+  error categories, reconnect and remote input/device release remain open.
+  [Evidence](docs/ITERATION_183.md).
+
 ## Stage 4 — graphics, cursor and browser video
 
 Current actual soak attempt stopped with `RDP_PROTOCOL_ERROR` after its last

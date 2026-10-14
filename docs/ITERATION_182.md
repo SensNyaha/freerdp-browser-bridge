@@ -34,3 +34,5 @@ Current Windows native archive is 6,266,183 bytes (about 6.0 MiB); installed
 native files total 15,621,256 bytes (about 14.9 MiB, 47 files). It includes Opus,
 private dependencies/CRT/licenses, and excludes Node.js and future installers.
 Earlier footprint reports are preserved as historical observations.
+
+Evidence commit: `547b126`.
