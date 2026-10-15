@@ -93,3 +93,8 @@ The new production Node archive, schema-validated application/native companion,
 final-image SPDX and restricted runtime receipt are recorded together in
 [Iteration 217](ITERATION_217.md). Earlier image receipts remain historical
 evidence; they do not contain that later logger correction.
+
+The subsequent image :223 also contains the AUDIN diagnostics and embedded
+vcpkg provenance. Its exact archive/image identities, schema-validated final
+SPDX, independent restricted execution and current known-password audits are
+recorded in [Iteration 223](ITERATION_223.md).

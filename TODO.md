@@ -40,7 +40,7 @@ read-only/no-network HTTP, default authorization refusal and synthetic host /
 native lifecycle/cleanup. Production Node deployment retains pinned versions
 and excludes source/devDependencies. The final runtime image is built; fresh
 source/distro/CI, installers and actual RDP/device/load gates remain open.
-[Iteration 211](docs/ITERATION_211.md), [corrected runtime/SBOM](docs/ITERATION_217.md),
+[Iteration 211](docs/ITERATION_211.md), [current runtime/SBOM](docs/ITERATION_223.md),
 [deployment](docs/CONTAINER_RUNTIME.md).
 
 Current Linux native archive again passes the independent non-root/read-only /
