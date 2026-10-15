@@ -2,14 +2,22 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
+import { readPrivateLabInput } from './private-lab-input.mjs';
 
 // Authorized lab inventory only: no microphone capture, sample submission or remote input.
-const [fingerprint, audioOutput = 'off', microphone = 'pcm', ...extra] =
-  process.argv.slice(2);
+const [
+  fingerprint,
+  audioOutput = 'off',
+  microphone = 'pcm',
+  inputMode,
+  ...extra
+] = process.argv.slice(2);
 if (
   extra.length ||
   !['off', 'pcm', 'opus'].includes(audioOutput) ||
   !['pcm', 'opus'].includes(microphone) ||
+  (inputMode !== undefined &&
+    !['--private-stdin', '--private-stdin-framed'].includes(inputMode)) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
 )
   throw new Error(
@@ -24,8 +32,16 @@ async function localJson(path) {
     throw new Error('Local lab configuration is missing or invalid');
   }
 }
-const lab = await localJson('.local-tests/xrdp-lab.json');
-const credentials = await localJson('.local-tests/xrdp-lab.secrets.json');
+let lab, credentials;
+if (inputMode) {
+  const value = await readPrivateLabInput(process.stdin);
+  lab = { host: value.host, port: value.port };
+  credentials = { username: value.username, password: value.password };
+  delete value.password;
+} else {
+  lab = await localJson('.local-tests/xrdp-lab.json');
+  credentials = await localJson('.local-tests/xrdp-lab.secrets.json');
+}
 const reportTag = microphone === 'pcm' ? audioOutput : 'opus-' + audioOutput;
 const runtimeRoot = resolve('.runtime/lab-microphone-' + reportTag);
 const worker = new WorkerProcess({
@@ -33,9 +49,12 @@ const worker = new WorkerProcess({
     'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
   ),
   runtimeRoot,
+  ipcTransport:
+    inputMode === '--private-stdin-framed' ? 'framed-pipes' : 'auto',
 });
 const report = {
   actualRdp: true,
+  platform: process.platform,
   microphone,
   audioOutput,
   microphoneStates: [],
@@ -71,6 +90,8 @@ const activation = new Promise((done, reject) => {
   timer = setTimeout(() => reject(new Error('LAB_DEADLINE')), 25000);
   worker.on('failure', () => reject(new Error('WORKER_FAILED')));
   worker.on('rdp-state', (event) => {
+    report.nativeState = event.state;
+    report.nativeError = event.error;
     if (event.state === 'connected') {
       connected = true;
       done();
@@ -91,6 +112,7 @@ const activation = new Promise((done, reject) => {
 void activation.catch(() => {});
 try {
   const build = await worker.start();
+  report.transport = build.transport;
   if (
     !build.capabilities.pcmInput ||
     !build.capabilities.microphoneReset ||
@@ -130,12 +152,17 @@ try {
   report.runtimeEmpty = (await readdir(runtimeRoot)).length === 0;
   if (!report.closed || !report.runtimeEmpty)
     throw new Error('LAB_CLEANUP_FAILED');
-  await writeFile(
-    resolve('.local-tests/xrdp-microphone-' + reportTag + '-report.json'),
-    JSON.stringify(report, null, 2) + '\n',
-  );
+  if (!inputMode)
+    await writeFile(
+      resolve('.local-tests/xrdp-microphone-' + reportTag + '-report.json'),
+      JSON.stringify(report, null, 2) + '\n',
+    );
   console.log(JSON.stringify(report));
 } catch {
+  await worker.close();
+  report.closed = worker.state === 'closed';
+  report.runtimeEmpty = (await readdir(runtimeRoot)).length === 0;
+  if (inputMode) console.log(JSON.stringify({ ...report, failed: true }));
   console.error(
     'XRDP microphone inventory failed; credentials and raw diagnostics omitted',
   );

@@ -510,6 +510,20 @@ check replay. Opus additionally requires a native reset/new epoch. Leave sound
 playing in the authorized XRDP session; an idle source fails the audio gate.
 No microphone or audio recording is requested. [Evidence](ITERATION_208.md).
 
+For microphone inventory without physical capture or sample submission, use:
+
+```powershell
+node scripts/run-linux-xrdp-microphone.mjs freerdp-bridge-linux-rdp-201 sha256:<previously-approved-fingerprint> off pcm
+node scripts/run-linux-xrdp-microphone.mjs freerdp-bridge-linux-rdp-201 sha256:<previously-approved-fingerprint> opus opus --framed
+```
+
+The owned container needs the current paired worker/addon/manifest, built Node
+packages, `test-xrdp-microphone.mjs` and `private-lab-input.mjs`. Credentials stay
+in ignored host lab files and are sent over private stdin. The helper only reads
+source status, pings, captures one desktop frame in memory and closes. Waiting
+or timed-out input is reported separately from ready AUDIN/recording acceptance.
+[Evidence and current network gap](ITERATION_210.md).
+
 The independent native archive check uses only three explicitly selected files:
 
 ```sh

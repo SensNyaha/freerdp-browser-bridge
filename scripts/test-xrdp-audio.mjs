@@ -4,6 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 import { audioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs';
 import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
+import { readPrivateLabInput } from './private-lab-input.mjs';
 
 // Authorized local lab only. No remote input or sound-generation commands.
 const [
@@ -33,32 +34,10 @@ async function localJson(path) {
 }
 let config, credentials;
 if (inputMode) {
-  const bytes = Buffer.alloc(8192);
-  let length = 0;
-  try {
-    for await (const chunk of process.stdin) {
-      if (!Buffer.isBuffer(chunk) || chunk.length > bytes.length - length)
-        throw new Error('Invalid private lab input');
-      chunk.copy(bytes, length);
-      length += chunk.length;
-      chunk.fill(0);
-    }
-    const value = JSON.parse(bytes.subarray(0, length).toString('utf8'));
-    if (
-      !value ||
-      typeof value.host !== 'string' ||
-      typeof value.username !== 'string' ||
-      typeof value.password !== 'string'
-    )
-      throw new Error('Invalid private lab input');
-    config = { host: value.host, port: value.port ?? 3389 };
-    credentials = { username: value.username, password: value.password };
-    delete value.password;
-  } catch {
-    throw new Error('Invalid private lab input');
-  } finally {
-    bytes.fill(0);
-  }
+  const value = await readPrivateLabInput(process.stdin);
+  config = { host: value.host, port: value.port };
+  credentials = { username: value.username, password: value.password };
+  delete value.password;
 } else {
   config = await localJson('.local-tests/xrdp-lab.json');
   credentials = await localJson('.local-tests/xrdp-lab.secrets.json');

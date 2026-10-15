@@ -35,6 +35,12 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-15
 
+Current Linux native archive again passes the independent non-root/read-only /
+no-network runtime smoke. A bounded private-stdin microphone inventory helper
+is available without physical capture or sample submission. Actual XRDP input
+verification is currently blocked by host TCP timeout; the worker reports
+RDP_CONNECT_TIMEOUT and cleans up normally. [Iteration 210](docs/ITERATION_210.md).
+
 Guarded Linux virtual PCM/Opus microphone selection now follows the existing
 typed HELLO/CLI/Node/public capability contract. Twelve actual process/TLS cases
 cover both IPC carriers and all input/output combinations; focused microphone
