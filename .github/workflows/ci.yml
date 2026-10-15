@@ -45,3 +45,4 @@ jobs:
       - run: node scripts/seed-seqpacket-fuzz.mjs && build/fuzz/seqpacket-fuzz build/fuzz/seqpacket-corpus -max_total_time=20 -max_len=32768
       - run: node scripts/seed-clipboard-fuzz.mjs && build/fuzz/clipboard-text-fuzz build/fuzz/clipboard-corpus -max_total_time=20 -max_len=16384 -rss_limit_mb=512
       - run: node scripts/seed-clipboard-ingress-fuzz.mjs && build/fuzz/clipboard-ingress-fuzz build/fuzz/clipboard-ingress-corpus -max_total_time=20 -max_len=16384 -rss_limit_mb=512
+      - run: node scripts/seed-clipboard-wire-fuzz.mjs && build/fuzz/clipboard-wire-fuzz build/fuzz/clipboard-wire-corpus -max_total_time=20 -max_len=16384 -rss_limit_mb=512

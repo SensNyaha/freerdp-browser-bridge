@@ -8,6 +8,7 @@ export * from './opus.js';
 export * from './audio-reset.js';
 export * from './microphone.js';
 export * from './microphone-opus.js';
+export * from './clipboard.js';
 import {
   MICROPHONE_OPUS_MIN_BYTES,
   MICROPHONE_OPUS_MAX_BYTES,

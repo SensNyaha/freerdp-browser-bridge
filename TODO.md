@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | IN PROGRESS | Unicode conversion passes native tests; CLIPRDR/transport/ownership and remote CRUD/clipboard gate remain |
+| 7 — clipboard/drives | IN PROGRESS | Native Unicode/CLIPRDR ownership and prepared payloads pass scoped tests; worker/Node/browser activation and remote clipboard/CRUD gate remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -583,6 +583,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   actual remote acceptance. [Contract](docs/CLIPBOARD_TEXT.md),
   [evidence](docs/ITERATION_224.md).
 - [ ] CLIPRDR Unicode text both directions.
+- [x] DONE for prepared private clipboard payloads — Independent bounded native /
+  TypeScript scalar-state and Unicode command/result codecs pass golden, malformed,
+  ownership and exact-size tests, local sanitizer/fuzz and full Node regression.
+  Active carrier/worker/Node/browser selection remains open.
+  [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/ITERATION_227.md).
 - [x] DONE for native public text owner — Independent direction policies,
   Unicode advertisement/ACK/data callbacks, one outstanding remote request and
   stale-response/timeout/retirement ownership pass actual pinned CLIPRDR with
