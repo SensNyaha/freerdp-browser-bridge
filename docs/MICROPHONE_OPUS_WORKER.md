@@ -1,5 +1,12 @@
 # Raw native Opus microphone dispatch
 
+Current update — iteration 209: guarded Linux/AUDIN worker activation now uses
+the existing immutable PCM/Opus input selection, decoder owner and reset path.
+Capability-gated typed Node and public session selection follow the same HELLO
+contract as Windows. No wire/schema, decoder budget, host capture backend or
+permission behavior changes. Native process/refusal evidence does not establish
+ready AUDIN, recording or physical microphone acceptance. [Evidence](ITERATION_209.md).
+
 Current update — iteration 140: NativeSessionWorker and matching explicit
 SessionCreate/media Opus input are enabled behind the negotiated worker
 capability/reset gate. Browser Opus permission/encoder/graph selection remains

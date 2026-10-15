@@ -145,8 +145,8 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   if (c.pcm_output || c.opus_output)
     throw ProtocolError();
 #endif
-  // Raw private schema-7/8 input only; typed/public Opus selection remains gated.
-#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+  // Only the guarded virtual AUDIN path may select private schema-7/8 input.
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   if ((c.pcm_input || c.opus_input) && !audio_send_)
     throw ProtocolError();
 #else

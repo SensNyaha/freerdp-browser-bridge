@@ -1,5 +1,13 @@
 # Experimental private microphone worker dispatch
 
+Current update — iteration 209: guarded Linux builds with CHANNEL_AUDIN_CLIENT
+now select the same virtual PCM/Opus source, bounded handoff, RDP-thread cadence
+and finite retirement as Windows. HELLO/CLI expose pcmInput, opusInput and
+microphoneReset consistently; existing typed Node/public selection uses these
+capabilities. No host audio device/server or browser permission is acquired by
+worker activation. Native TLS/refusal and simulated AUDIN transport evidence are
+separate from ready remote/physical capture acceptance. [Evidence](ITERATION_209.md).
+
 Current update — iteration 128: public NativeSessionWorker selection now
 requires pcmInput and microphoneReset before configuring PCM input. Opus input
 stays unsupported. The reference viewer has an explicit gesture path; actual

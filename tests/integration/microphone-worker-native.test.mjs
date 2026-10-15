@@ -31,14 +31,12 @@ const workerPath = resolve(
   process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
   'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
 );
-const available =
-  process.platform === 'win32' &&
-  JSON.parse(
-    execFileSync(workerPath, ['--capabilities'], {
-      encoding: 'utf8',
-      windowsHide: true,
-    }),
-  ).capabilities.pcmInput;
+const available = JSON.parse(
+  execFileSync(workerPath, ['--capabilities'], {
+    encoding: 'utf8',
+    windowsHide: true,
+  }),
+).capabilities.pcmInput;
 
 for (const input of ['pcm', 'opus'])
   for (const output of ['off', 'pcm', 'opus'])

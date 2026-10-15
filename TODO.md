@@ -33,7 +33,14 @@ instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/a
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
-## Implementation status — 2026-10-14
+## Implementation status — 2026-10-15
+
+Guarded Linux virtual PCM/Opus microphone selection now follows the existing
+typed HELLO/CLI/Node/public capability contract. Twelve actual process/TLS cases
+cover both IPC carriers and all input/output combinations; focused microphone
+tests pass 46/46. This verifies activation/refusal/cleanup without physical
+capture; ready AUDIN/recording/LAN acceptance remains open.
+[Iteration 209](docs/ITERATION_209.md).
 
 Actual Linux producer / Windows Edge now passes PCM/Opus packet decode and
 AudioWorklet sample rendering with the 200 ms native profile, video resize /

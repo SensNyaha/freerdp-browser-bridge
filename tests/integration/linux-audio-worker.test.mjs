@@ -54,10 +54,6 @@ for (const ipcTransport of ['auto', 'framed-pipes'])
             assert.deepEqual(build.capabilities, capabilities);
             assert.equal(build.capabilities.audioReset, true);
             assert.equal(build.capabilities.audioBuffer200, true);
-            // Output activation must not silently advertise unverified Linux capture.
-            assert.equal(build.capabilities.pcmInput, false);
-            assert.equal(build.capabilities.opusInput, false);
-            assert.equal(build.capabilities.microphoneReset, false);
             await worker.connect({
               target: { host: '127.0.0.1', port: endpoint.port },
               auth: {

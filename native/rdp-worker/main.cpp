@@ -103,7 +103,7 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)
   capabilities |= 4096 | 8192 | 16384;
 #endif
-#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   capabilities |= 32768;
 #endif
   append_be(bytes, capabilities, 2);
@@ -113,11 +113,10 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
                             platform, arch, transport})
     append_string(bytes, value);
-#if defined(BRIDGE_WITH_FREERDP) &&                                                                \
-    ((defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)) ||                                         \
-     ((defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)))
+#if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
+    (defined(CHANNEL_AUDIN_CLIENT) || defined(CHANNEL_RDPSND_CLIENT))
   unsigned extensions = 0;
-#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   extensions |= 3;
 #endif
 #ifdef CHANNEL_RDPSND_CLIENT
@@ -389,7 +388,8 @@ int main(int argc, char **argv) {
       std::cout << "null";
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
                  "\"rdp\":false,\"penInput\":false,"
-#if defined(BRIDGE_WITH_FREERDP) && defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+#if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
+    defined(CHANNEL_AUDIN_CLIENT)
                  "\"microphoneReset\":true,\"opusInput\":true,"
 #else
                  "\"microphoneReset\":false,\"opusInput\":false,"
@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
                  "\"unicodeInput\":true,"
-#if defined(_WIN32) && defined(CHANNEL_AUDIN_CLIENT)
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
                  "\"pcmInput\":true,"
 #else
                  "\"pcmInput\":false,"

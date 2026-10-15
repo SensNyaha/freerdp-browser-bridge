@@ -108,7 +108,7 @@ test(
     }),
 );
 test(
-  'actual native lifecycle: raw schema-8 Opus selection is Windows gated and inactive before RDP connect',
+  'actual native lifecycle: raw schema-8 Opus selection is capability gated and inactive before RDP connect',
   { timeout: 15000 },
   async (t) =>
     run(t, async ({ child, closed, build, request }) => {
