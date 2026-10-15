@@ -4,6 +4,8 @@ import { join, resolve } from 'node:path';
 import { Writable } from 'node:stream';
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
+import { linuxWorkerResidentBytes } from './linux-process-resident.mjs';
+import { soakDurationMs } from './viewer-soak.mjs';
 
 // Disposable lab container only. Docker must publish 47999 to HOST LOOPBACK 47998.
 // Private bootstrap carries an ephemeral host bearer, never RDP credentials.
@@ -12,6 +14,7 @@ if (process.platform !== 'linux' || process.argv.length !== 2)
 const scratch = Buffer.alloc(1024);
 let count = 0;
 let bearer;
+let soak = false;
 try {
   for await (const chunk of process.stdin) {
     if (!Buffer.isBuffer(chunk) || chunk.length > scratch.length - count)
@@ -22,11 +25,13 @@ try {
   }
   const value = JSON.parse(scratch.subarray(0, count).toString('utf8'));
   if (
-    Object.keys(value).length !== 1 ||
+    Object.keys(value).some((key) => !['bearer', 'soak'].includes(key)) ||
+    (value.soak !== undefined && typeof value.soak !== 'boolean') ||
     !/^[A-Za-z0-9_-]{43}$/.test(value.bearer ?? '')
   )
     throw new Error('Invalid bootstrap');
   bearer = value.bearer;
+  soak = value.soak === true;
 } finally {
   scratch.fill(0);
 }
@@ -34,6 +39,7 @@ const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-linux-browser-'));
 const worker = { workerPath: resolve('build/bundled/rdp-worker'), runtimeRoot };
 let server;
 const audioResets = { requested: 0, scheduled: 0 };
+let nativeWorker, nativeState;
 let finish;
 const finished = new Promise((done) => {
   finish = done;
@@ -57,9 +63,12 @@ const close = () =>
       finish();
     }
   })());
-const timer = setTimeout(() => {
-  void close();
-}, 90000);
+const timer = setTimeout(
+  () => {
+    void close();
+  },
+  (soak ? soakDurationMs : 0) + 90000,
+);
 process.once('SIGTERM', () => {
   void close();
 });
@@ -78,6 +87,13 @@ try {
       maxSessions: 1,
       workerFactory: () => {
         const session = new NativeSessionWorker(worker);
+        nativeWorker = session;
+        session.onState((state) => {
+          nativeState = state;
+        });
+        session.onFailure(() => {
+          nativeState = 'failed';
+        });
         const reset = session.resetAudio.bind(session);
         session.resetAudio = async (epoch) => {
           audioResets.requested++;
@@ -127,6 +143,23 @@ try {
     if (request.headers.authorization !== 'Bearer ' + bearer)
       return reply.code(401).send();
     return { ...audioResets };
+  });
+  server.get('/lab/resources', async (request, reply) => {
+    if (request.headers.authorization !== 'Bearer ' + bearer)
+      return reply.code(401).send();
+    const pid = nativeWorker?.pid;
+    if (nativeState !== 'connected' || !pid) return reply.code(503).send();
+    try {
+      const workerResidentBytes = await linuxWorkerResidentBytes(pid);
+      if (nativeState !== 'connected' || nativeWorker.pid !== pid)
+        return reply.code(503).send();
+      return {
+        workerResidentBytes,
+        nodeResidentBytes: process.memoryUsage().rss,
+      };
+    } catch {
+      return reply.code(503).send();
+    }
   });
   await server.listen({ host: '0.0.0.0', port: 47999 });
   console.log(JSON.stringify({ type: 'lab.server.ready' }));

@@ -510,6 +510,22 @@ check replay. Opus additionally requires a native reset/new epoch. Leave sound
 playing in the authorized XRDP session; an idle source fails the audio gate.
 No microphone or audio recording is requested. [Evidence](ITERATION_208.md).
 
+The Linux 30-minute H.264 observation uses `--soak-test` in place of `--form`:
+
+```powershell
+node scripts/test-linux-xrdp-viewer.mjs freerdp-bridge-linux-viewer-202 sha256:<previously-approved-fingerprint> h264 --soak-test
+```
+
+Copy scripts/linux-process-resident.mjs and scripts/viewer-soak.mjs into the same
+Linux /work/scripts tree as the lab server. The private bootstrap selects a
+finite 30-minute observation window plus cleanup time. It samples copied viewer
+queues, protected render credit and worker/Node RSS every 30 seconds, retains
+only fixed aggregates, then checks resize/restoration and fresh attachment.
+The resource endpoint requires the ephemeral host bearer and rechecks the same
+connected worker owner. It activates neither audio nor physical microphone.
+This is one actual viewer, not concurrent/interactive/LAN quality acceptance.
+[Actual result and bounds](ITERATION_220.md).
+
 For microphone inventory without physical capture or sample submission, use:
 
 ```powershell

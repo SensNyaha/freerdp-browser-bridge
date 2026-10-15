@@ -6,6 +6,12 @@ import { promisify } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import { assertLoopbackViewerPorts } from './linux-viewer-container.mjs';
+import {
+  ViewerSoak,
+  mediaCredit,
+  soakDurationMs,
+  soakIntervalMs,
+} from './viewer-soak.mjs';
 
 const [container, fingerprint, codec = 'h264', formMode, ...extra] =
   process.argv.slice(2);
@@ -16,12 +22,15 @@ if (
   !/^sha256:[a-f0-9]{64}$/.test(fingerprint ?? '') ||
   !['h264', 'jpeg'].includes(codec) ||
   (formMode !== undefined &&
-    !['--form', '--audio-pcm', '--audio-opus'].includes(formMode))
+    !['--form', '--audio-pcm', '--audio-opus', '--soak-test'].includes(
+      formMode,
+    ))
 )
   throw new Error(
     'Use owned Linux viewer container, approved fingerprint and codec',
   );
 const origin = 'http://127.0.0.1:47998';
+const soakTest = formMode === '--soak-test';
 const audioOutput =
   formMode === '--audio-pcm'
     ? 'pcm'
@@ -59,7 +68,9 @@ const child = spawn(
   ],
   { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
 );
-const bootstrap = Buffer.from(JSON.stringify({ bearer }));
+const bootstrap = Buffer.from(
+  JSON.stringify({ bearer, ...(soakTest ? { soak: true } : {}) }),
+);
 child.stdin.on('error', () => {});
 child.stdin.end(bootstrap, () => bootstrap.fill(0));
 child.stderr.resume();
@@ -97,10 +108,13 @@ const exited = new Promise((done) => {
     done(code ?? 1);
   });
 });
-const timer = setTimeout(() => {
-  child.kill();
-  failed(new Error('Lab deadline'));
-}, 100000);
+const timer = setTimeout(
+  () => {
+    child.kill();
+    failed(new Error('Lab deadline'));
+  },
+  (soakTest ? soakDurationMs : 0) + 100000,
+);
 const startupTimer = setTimeout(
   () => failed(new Error('Startup deadline')),
   15000,
@@ -118,7 +132,7 @@ const report = {
   reattached: false,
   cleanup: false,
 };
-async function request(path, method = 'GET', body) {
+async function request(path, method = 'GET', body, format = 'json') {
   const response = await fetch(origin + path, {
     method,
     headers: {
@@ -129,7 +143,16 @@ async function request(path, method = 'GET', body) {
     signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) throw new Error('Lab HTTP failed');
-  return response.status === 204 ? undefined : response.json();
+  if (response.status === 204) return undefined;
+  const chunks = [];
+  let length = 0;
+  for await (const chunk of response.body) {
+    if ((length += chunk.length) > 131072)
+      throw new Error('Lab HTTP size limit');
+    chunks.push(chunk);
+  }
+  const text = Buffer.concat(chunks).toString('utf8');
+  return format === 'text' ? text : JSON.parse(text);
 }
 async function image(width, height, previous = 0) {
   await page.waitForFunction(
@@ -294,6 +317,32 @@ try {
     throw new Error('Approved certificate mismatch');
   phase = 'render';
   await image(1920, 1080);
+  if (soakTest) {
+    phase = 'soak';
+    const collector = new ViewerSoak();
+    const started = performance.now();
+    for (;;) {
+      const elapsedMs = Math.floor(performance.now() - started);
+      const view = await page.evaluate(() => window.bridgeViewer.stats);
+      const resources = await request('/lab/resources');
+      const metrics = await request('/metrics', 'GET', undefined, 'text');
+      collector.observe(
+        elapsedMs,
+        view,
+        resources.workerResidentBytes,
+        resources.nodeResidentBytes,
+        mediaCredit(metrics, codec),
+      );
+      report.soakEvidence = collector.snapshot();
+      console.log(
+        JSON.stringify({ type: 'lab.soak.progress', ...report.soakEvidence }),
+      );
+      if (elapsedMs >= soakDurationMs) break;
+      await delay(Math.min(soakIntervalMs, soakDurationMs - elapsedMs));
+    }
+    if (!report.soakEvidence.workerMemoryBudgetPassed)
+      throw new Error('Lab soak memory budget');
+  }
   if (audioOutput !== 'off') {
     phase = 'audio-play';
     report.audio = await audioReady();

@@ -17,7 +17,7 @@ Current stage acceptance:
 | 1 — worker/IPC | IN PROGRESS | Primary/fallback Release IPC lifecycle passes on Linux/Windows; connected output/release/resource, addon sanitizer, configured capacity, broader isolation and abnormal cleanup remain |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
-| 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent soak failure; one XRDP 30-minute observation passes |
+| 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
 | 7 — clipboard/drives | TODO | Implementation and remote CRUD/clipboard gate |
@@ -432,6 +432,13 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
   sampled bounded queues/worker memory, resize/restoration, cursor/attachment replay
   and empty-runtime cleanup. This does not close broader interactive, Windows-server,
   resource or intermittent-failure acceptance. [Evidence](docs/ITERATION_182.md).
+
+- [x] DONE for local Linux producer/Windows Edge — Actual H.264 1080p XRDP
+  observation lasts 30 minutes with 61 bounded queue/RSS/credit samples,
+  5,163 frames, worker RSS below 256 MiB, confirmed resize/restoration,
+  fresh-token replay and clean shutdown. This does not close broader interactive,
+  audio/device, total per-session memory, latency, Windows-server or load gates.
+  [Evidence](docs/ITERATION_220.md).
 
 - [x] DONE on Windows and local Linux amd64/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native codec tests and real 1080p Edge rendering verified; [Windows evidence](docs/ITERATION_005.md), [Linux producer evidence](docs/ITERATION_202.md). Broader server/platform/resource acceptance remains open.
 - [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
