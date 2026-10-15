@@ -55,6 +55,16 @@ Messages supplied explicitly by trusted application code must still be constant
 and must never interpolate credentials; key-based redaction cannot identify
 secrets embedded in arbitrary free text. [Regression evidence](docs/ITERATION_216.md).
 
+For authorized local development, `node scripts/audit-local-artifact-secrets.mjs`
+checks the current Linux release inputs and SPDX artifacts for the ignored lab
+password in UTF8 and UTF16LE. It streams decompressed archive contents without
+extracting files or printing matches. Password bytes stay in process memory;
+reports contain only fixed artifact paths, hashes, scanned byte counts and pass
+state. This is an exact known-value regression, not an unknown-secret detector.
+Its lab-file read requires the existing local-development exception; the helper
+is not a production credential store or a CI credential provisioning mechanism.
+[Bounds and actual scope](docs/ITERATION_217.md).
+
 ## 4. Certificate validation
 
 Strict is default. `ignore certificate` is not a normal product mode and must require privileged deployment policy. Prompt/TOFU stores only certificate identity/fingerprint metadata.

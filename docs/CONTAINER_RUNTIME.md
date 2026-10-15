@@ -85,3 +85,11 @@ docker run --rm --network none --init --read-only --cap-drop ALL \
 It checks actual HTTP readiness/build, default auth refusal, synthetic host /
 native connection failure, primary IPC, SIGTERM and empty runtime without lab
 credentials, outside network or physical capture. [Evidence](ITERATION_211.md).
+
+## Current verified image refresh
+
+The local runtime image was refreshed after the logger correction in c1cc41a.
+The new production Node archive, schema-validated application/native companion,
+final-image SPDX and restricted runtime receipt are recorded together in
+[Iteration 217](ITERATION_217.md). Earlier image receipts remain historical
+evidence; they do not contain that later logger correction.
