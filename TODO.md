@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | TODO | Implementation and remote CRUD/clipboard gate |
+| 7 — clipboard/drives | IN PROGRESS | Unicode conversion passes native tests; CLIPRDR/transport/ownership and remote CRUD/clipboard gate remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -577,6 +577,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 7 — clipboard and managed drives
 
+- [x] DONE for isolated native conversion — Allocation-free bounded UTF-8/CF_UNICODETEXT
+  conversion, CRLF normalization and atomic refusal pass Windows/Linux native,
+  local ASan/UBSan and seeded Clang fuzz checks. This is not channel/browser or
+  actual remote acceptance. [Contract](docs/CLIPBOARD_TEXT.md),
+  [evidence](docs/ITERATION_224.md).
 - [ ] CLIPRDR Unicode text both directions.
 - [ ] Clipboard policy directions/size caps.
 - [ ] HTML clipboard.
