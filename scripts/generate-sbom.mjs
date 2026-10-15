@@ -238,22 +238,22 @@ for (const [name, version] of dependencyEntries.sort(([a], [b]) =>
   a.localeCompare(b),
 )) {
   const pkg = packageRecord(name, version, 'SPDXRef-native-' + name);
-  const source = resolve(
-    windows
-      ? '.deps/installed/x64-windows-bundled/share'
-      : '.deps/installed/x64-linux-bundled/share',
-    name,
-    'vcpkg.spdx.json',
-  );
+  const source = resolve(metadata, 'sbom/vcpkg', name + '.spdx.json');
   if (
     !/^[a-z0-9-]{1,64}$/.test(name) ||
+    !inside(nativeRoot, realpathSync(source)) ||
     !statSync(source).isFile() ||
     statSync(source).size > 8 * 1024 * 1024 ||
     (documentBytes += statSync(source).size) > 32 * 1024 * 1024
   )
     throw fail();
   const bytes = readFileSync(source);
-  const external = externalNativeDocument(name, version, bytes);
+  const external = externalNativeDocument(
+    name,
+    version,
+    bytes,
+    windows ? 'x64-windows-bundled' : 'x64-linux-bundled',
+  );
   externalDocumentRefs.push(external);
   nativePackages.push(pkg);
   writeFileSync(join(output, 'vcpkg', name + '.spdx.json'), bytes);

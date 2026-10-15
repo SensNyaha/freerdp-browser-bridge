@@ -24,6 +24,8 @@ if(BRIDGE_WITH_FREERDP)
   foreach(dependency IN LISTS bridge_license_dependencies)
     install(FILES "${BRIDGE_DEPENDENCY_PREFIX}/share/${dependency}/copyright"
       DESTINATION "share/freerdp-bridge/licenses/${dependency}")
+    install(FILES "${BRIDGE_DEPENDENCY_PREFIX}/share/${dependency}/vcpkg.spdx.json"
+      DESTINATION share/freerdp-bridge/sbom/vcpkg RENAME "${dependency}.spdx.json")
   endforeach()
   install(FILES "${CMAKE_SOURCE_DIR}/.deps/FreeRDP/LICENSE"
     DESTINATION share/freerdp-bridge/licenses/freerdp)

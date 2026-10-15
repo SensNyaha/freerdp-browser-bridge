@@ -135,7 +135,7 @@ test('SBOM native companion: exact identity/version/target and checksum bind unm
     documentNamespace: 'https://spdx.org/spdxdocs/zlib-fixture',
     packages: [
       { SPDXID: 'SPDXRef-port', name: 'zlib', versionInfo: '1.3.2#2' },
-      { SPDXID: 'SPDXRef-binary' },
+      { SPDXID: 'SPDXRef-binary', name: 'zlib:x64-linux-bundled' },
     ],
   };
   const bytes = Buffer.from(JSON.stringify(doc));
@@ -145,6 +145,13 @@ test('SBOM native companion: exact identity/version/target and checksum bind unm
     createHash('sha256').update(bytes).digest('hex'),
   );
   assert.equal(reference.externalDocumentId, 'DocumentRef-vcpkg-zlib');
+  assert.doesNotThrow(() =>
+    externalNativeDocument('zlib', '1.3.2', bytes, 'x64-linux-bundled'),
+  );
+  assert.throws(
+    () => externalNativeDocument('zlib', '1.3.2', bytes, 'x64-windows-bundled'),
+    { message: 'SBOM_INPUT_INVALID' },
+  );
   assert.throws(() => externalNativeDocument('zlib', '1.3.3', bytes), {
     message: 'SBOM_INPUT_INVALID',
   });

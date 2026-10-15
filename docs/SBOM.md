@@ -36,6 +36,16 @@ upstream documents are written under build/sbom-linux and collected into
 `build/packages/freerdp-bridge-sbom-linux.tar.gz`. This is a companion artifact;
 neither application archive is rewritten.
 
+Current bundled archives also include their original vcpkg provenance under
+share/freerdp-bridge/sbom/vcpkg. Generation reads these extracted bytes and checks
+the expected binary triplet as well as port identity/version. It no longer
+consults the mutable installed SDK for companions. Older native archives without
+these embedded documents must be rebuilt; no silent SDK fallback is performed.
+`node scripts/test-sbom-artifacts.mjs` repeats generation in a separate tree with
+only the exact archives, scripts/schema and pinned source metadata, without
+.deps or native staging. JavaScript validator dependencies come from the parent
+frozen installation. [Artifact-only verification](ITERATION_222.md).
+
 The root uses [SPDX 2.3 JSON](https://github.com/spdx/spdx-spec/tree/v2.3/schemas).
 It is validated offline against the unmodified, hash-pinned official schema and
 then checked for duplicate identifiers and unresolved local/external references.

@@ -113,7 +113,7 @@ export function nodeInventory(records, loadManifest) {
   };
 }
 
-export function externalNativeDocument(name, version, bytes) {
+export function externalNativeDocument(name, version, bytes, triplet) {
   if (
     !nameValid(name) ||
     !versionValid(version) ||
@@ -144,6 +144,13 @@ export function externalNativeDocument(name, version, bytes) {
     typeof port.versionInfo !== 'string' ||
     port.versionInfo.replace(/#[0-9]+$/, '') !== version ||
     !value.packages.some((pkg) => pkg.SPDXID === 'SPDXRef-binary')
+  )
+    throw invalid();
+  if (
+    triplet !== undefined &&
+    (!['x64-linux-bundled', 'x64-windows-bundled'].includes(triplet) ||
+      value.packages.find((pkg) => pkg.SPDXID === 'SPDXRef-binary')?.name !==
+        name + ':' + triplet)
   )
     throw invalid();
   return {

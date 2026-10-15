@@ -42,7 +42,9 @@ jobs:
       - run: pnpm test:bundle
       - name: Inventory exact Windows native archive and packaged CRT
         if: runner.os == 'Windows'
-        run: node scripts/generate-sbom.mjs
+        run: |
+          node scripts/generate-sbom.mjs
+          node scripts/test-sbom-artifacts.mjs
       - name: Prepare native-only clean runtime context
         if: runner.os == 'Linux'
         run: node scripts/prepare-native-runtime-check.mjs
@@ -57,6 +59,7 @@ jobs:
           node scripts/test-node-clean-build.mjs
           node scripts/package-node-runtime.mjs
           node scripts/generate-sbom.mjs
+          node scripts/test-sbom-artifacts.mjs
           node scripts/prepare-service-runtime.mjs
       - name: Verify API and native worker in restricted service runtime
         if: runner.os == 'Linux'
