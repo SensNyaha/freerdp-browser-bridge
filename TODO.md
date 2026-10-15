@@ -583,6 +583,12 @@ profile's target, microphone, recovery, resource or platform acceptance.
   actual remote acceptance. [Contract](docs/CLIPBOARD_TEXT.md),
   [evidence](docs/ITERATION_224.md).
 - [ ] CLIPRDR Unicode text both directions.
+- [x] DONE for native public text owner — Independent direction policies,
+  Unicode advertisement/ACK/data callbacks, one outstanding remote request and
+  stale-response/timeout/retirement ownership pass actual pinned CLIPRDR with
+  simulated SVC on Windows/Linux. Worker/Node/browser activation and actual
+  remote acceptance remain open. [Contract](docs/CLIPBOARD_TEXT_SESSION.md),
+  [evidence](docs/ITERATION_226.md).
 - [x] DONE for prepared CLIPRDR ingress — Header admission before fragmented-body
   allocation, bounded tables/names and public receive routing pass Windows/Linux
   native and actual pinned-channel/fake-SVC checks plus seeded sanitizer fuzz.
