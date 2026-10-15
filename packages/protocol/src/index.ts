@@ -354,6 +354,7 @@ export interface WorkerBuild {
     microphoneReset: boolean;
     opusInput: boolean;
     audioBuffer200: boolean;
+    clipboardText: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -408,10 +409,11 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~7) !== 0 ||
+      (extensions & ~15) !== 0 ||
       ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
       ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4))) ||
-      ((extensions & 4) !== 0 && !(capabilities & 4096))
+      ((extensions & 4) !== 0 && !(capabilities & 4096)) ||
+      ((extensions & 8) !== 0 && !(capabilities & 4))
     )
       throw new ProtocolError();
     offset += 8;
@@ -443,6 +445,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       microphoneReset: Boolean(extensions & 1),
       opusInput: Boolean(extensions & 2),
       audioBuffer200: Boolean(extensions & 4),
+      clipboardText: Boolean(extensions & 8),
       penInput: false,
     },
     bridgeVersion,
@@ -553,6 +556,7 @@ export interface ConnectionSettings {
   pcmInput?: boolean;
   opusInput?: boolean;
   audioBuffer200?: boolean;
+  clipboard?: { toServer: boolean; fromServer: boolean; maximum: number };
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -577,23 +581,37 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     (c.pcmInput === true && c.opusInput === true)
   )
     throw new ProtocolError();
-  const schema = c.audioBuffer200
-    ? 9
-    : c.opusInput
-      ? 8
-      : c.pcmInput
-        ? 7
-        : c.opusOutput
-          ? 6
-          : c.pcmOutput
-            ? 5
-            : c.touch
-              ? 4
-              : c.dynamicResolution
-                ? 3
-                : c.videoQuality
-                  ? 2
-                  : 1;
+  if (
+    c.clipboard &&
+    (typeof c.clipboard !== 'object' ||
+      typeof c.clipboard.toServer !== 'boolean' ||
+      typeof c.clipboard.fromServer !== 'boolean' ||
+      (!c.clipboard.toServer && !c.clipboard.fromServer) ||
+      !Number.isInteger(c.clipboard.maximum) ||
+      c.clipboard.maximum < 1 ||
+      c.clipboard.maximum > 16777216)
+  )
+    throw new ProtocolError();
+  if (c.clipboard !== undefined && !c.clipboard) throw new ProtocolError();
+  const schema = c.clipboard
+    ? 10
+    : c.audioBuffer200
+      ? 9
+      : c.opusInput
+        ? 8
+        : c.pcmInput
+          ? 7
+          : c.opusOutput
+            ? 6
+            : c.pcmOutput
+              ? 5
+              : c.touch
+                ? 4
+                : c.dynamicResolution
+                  ? 3
+                  : c.videoQuality
+                    ? 2
+                    : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -680,21 +698,26 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     media.writeUInt32BE(q.maxBitrate, 8);
     parts.push(media);
   }
-  if (schema >= 3)
-    parts.push(
-      Buffer.from([
-        0,
-        0,
-        0,
-        (c.dynamicResolution ? 1 : 0) |
-          (c.touch ? 2 : 0) |
-          (c.pcmOutput ? 4 : 0) |
-          (c.opusOutput ? 8 : 0) |
-          (c.pcmInput ? 16 : 0) |
-          (c.opusInput ? 32 : 0) |
-          (c.audioBuffer200 ? 64 : 0),
-      ]),
+  if (schema >= 3) {
+    const flags = Buffer.alloc(4);
+    flags.writeUInt32BE(
+      (c.dynamicResolution ? 1 : 0) |
+        (c.touch ? 2 : 0) |
+        (c.pcmOutput ? 4 : 0) |
+        (c.opusOutput ? 8 : 0) |
+        (c.pcmInput ? 16 : 0) |
+        (c.opusInput ? 32 : 0) |
+        (c.audioBuffer200 ? 64 : 0) |
+        (c.clipboard?.toServer ? 128 : 0) |
+        (c.clipboard?.fromServer ? 256 : 0),
     );
+    parts.push(flags);
+  }
+  if (c.clipboard) {
+    const maximum = Buffer.alloc(4);
+    maximum.writeUInt32BE(c.clipboard.maximum);
+    parts.push(maximum);
+  }
   return Buffer.concat(parts);
 }
 

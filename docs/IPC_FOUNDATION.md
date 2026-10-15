@@ -2,9 +2,10 @@
 
 Current clipboard framing: additive kinds 45/46/47 carry fixed
 state and bounded Unicode command/result payloads. Iteration 231 activates the
-guarded native channel only by explicit raw connection schema 10; unselected,
-pre-connect and retired owners return unavailable. No clipboard HELLO or
-public capability is advertised. A dedicated latest state and one correlated
+guarded native channel by explicit connection schema 10; unselected,
+pre-connect and retired owners return unavailable. Iteration 232 adds private
+typed Node selection and HELLO extension bit 8; public session/browser selection
+remains disabled. A dedicated latest state and one correlated
 result slot preserve the control FIFO; the carrier accepts a maximum 16 MiB
 text record while every other class retains its existing limit.
 [Contract](CLIPBOARD_IPC.md), [evidence](ITERATION_228.md).

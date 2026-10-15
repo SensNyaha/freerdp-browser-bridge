@@ -5,8 +5,9 @@ codecs are implemented independently in C++20 and strict TypeScript. Iteration
 227 prepared these payloads; Iteration 228 assigns additive RWI1 kinds below
 and bounded output/carrier storage. Both workers validate unselected commands
 and return unavailable. Iteration 231 selects guarded native dispatch through
-explicit raw schema 10; clipboard HELLO, typed Node and public/browser selection
-remain disabled. Unselected workers still return unavailable.
+explicit raw schema 10. Iteration 232 adds capability-gated typed `WorkerProcess`
+selection/read/write; public session/browser selection remains disabled.
+Unselected workers still return unavailable.
 
 | RWI1 kind | Request ID | Payload bound |
 | --- | --- | --- |
@@ -77,8 +78,8 @@ fields, extends the four-byte flag mask to 511, adds bit 128 browser-to-server /
 bit 256 server-to-browser and appends one big-endian u32 maximum. A selected
 direction requires 1..16 MiB; both directions off requires zero. Earlier schema
 masks and exclusive audio profiles remain unchanged. Foundation/non-channel
-builds refuse selection before secret/connect. This is raw private activation;
-HELLO and typed Node selection are not yet enabled.
+builds refuse selection before secret/connect. This was raw private activation;
+the typed selection below supersedes the historical HELLO/Node restriction.
 
 Explicit selection enables only the custom public Unicode callback owner and
 guarded receive route. It forces synchronous public channel dispatch, independently
@@ -94,6 +95,45 @@ scalar state is not proof of a live source after terminal state. UTF-8 expansion
 above the item quota also completes a read as refused without channel failure.
 Whole-session/total-RSS and real remote clipboard acceptance remain open.
 
-No secrets/content may enter errors, metrics or logs. Ownership/revocation,
-publication credit, native source progression, channel retirement, active IPC
-header/carrier bounds, public framing and actual remote tests remain required.
+## Private typed Node selection (Iteration 232)
+
+The optional fixed schema-1 HELLO extension adds bit 8 `clipboardText`, requiring
+connectCore. CLI/build diagnostics agree; old workers with no bit report false.
+Unknown extension bits remain rejected. Old strict Node decoders reject the new
+flag; install the matching worker/Node packages together. This is a private native
+capability, not a public session/browser or host clipboard claim.
+
+`WorkerProcess.connect` requires an explicit clipboard mode: bidirectional,
+server-to-browser or browser-to-server. Omitted/off stays disabled. The selected
+initial profile accepts text/Unicode only; text=false, HTML/images/files or an
+absent explicit mode fail before CONFIGURE/SECRET. Its maximum defaults to 1 MiB
+and permits the schema's 1..16 MiB range. No arbitrary channel arguments or OS
+clipboard backend are exposed. A maximum below the Unicode terminator cannot
+accept a text item. Existing Node write budgets still apply; larger private sets
+need an explicit finite `maxWriteBytes`, with no automatic budget increase.
+
+`clipboardState` and `clipboard` events expose copied scalar metadata. Policy,
+maximum and generation remain immutable; revisions never move backwards. Ready
+authority requires an actual connected RDP session. `readClipboardText(revision)`
+and `writeClipboardText(Buffer)` share one flight, recheck current authority and
+never retry content. The seven-second private deadline covers native dispatch /
+peer completion / publication and fails uncertain IPC. Set accepted means native
+peer ACK, not confirmation of a remote application's consumption.
+
+Read returns `{status, text: Buffer}`; negative results have empty text. An
+accepted read copies text only after matching operation/generation/revision and
+current policy/offer checks. The caller owns and should clear that returned
+buffer after use. Transport payloads are cleared after copying/discard; caller
+write buffers are preserved. RDP/source retirement immediately rejects the one
+pending read/write as disconnected, retains one scalar late-reply correlation
+and drains its text without delivery. Already queued ready events cannot revive
+retired authority. Wrong/duplicate/malformed replies fail IPC without text in
+diagnostics. Process close retains its existing finite cleanup contract.
+
+`NativeSessionWorker` still refuses non-off clipboard before startup. Controller /
+media authority, public framing, browser permission/gesture integration and actual
+remote transfer remain required. The inventory lab helper never reads clipboard
+contents; optional `set-sentinel` explicitly writes one fixed synthetic value,
+waits for the server ACK and clears it. It does not establish application reads.
+No content enters errors, metrics or logs; total RSS and network latency remain
+separate acceptance gates.

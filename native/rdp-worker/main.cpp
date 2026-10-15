@@ -115,13 +115,17 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
                             platform, arch, transport})
     append_string(bytes, value);
 #if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
-    (defined(CHANNEL_AUDIN_CLIENT) || defined(CHANNEL_RDPSND_CLIENT))
+    (defined(CHANNEL_AUDIN_CLIENT) || defined(CHANNEL_RDPSND_CLIENT) ||                            \
+     defined(CHANNEL_CLIPRDR_CLIENT))
   unsigned extensions = 0;
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   extensions |= 3;
 #endif
 #ifdef CHANNEL_RDPSND_CLIENT
   extensions |= 4;
+#endif
+#ifdef CHANNEL_CLIPRDR_CLIENT
+  extensions |= 8;
 #endif
   // Fixed schema-1 extension; unknown feature bits remain refused by old peers.
   append_be(bytes, 1, 2);
@@ -421,6 +425,12 @@ int main(int argc, char **argv) {
                  "\"audioBuffer200\":true,"
 #else
                  "\"audioBuffer200\":false,"
+#endif
+#if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
+    defined(CHANNEL_CLIPRDR_CLIENT)
+                 "\"clipboardText\":true,"
+#else
+                 "\"clipboardText\":false,"
 #endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP

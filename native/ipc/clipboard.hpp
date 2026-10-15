@@ -31,8 +31,8 @@ struct Result {
   std::uint64_t generation, revision;
   std::span<const std::uint8_t> text;
 };
-// Prepared schema-1 payloads. Text borrows the immutable input; encoders copy only
-// after validation. Not assigned a RWI1 kind until transport/worker activation.
+// Schema-1 payloads for RWI1 kinds 45/46/47. Text borrows immutable input;
+// encoders copy only after validation. Ownership/capability checks are separate.
 std::array<std::uint8_t, metadata_bytes> encode_state(const State &);
 State decode_state(std::span<const std::uint8_t>);
 std::vector<std::uint8_t> encode_command(const Command &);

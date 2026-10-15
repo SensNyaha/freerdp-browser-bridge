@@ -84,6 +84,8 @@ export class NativeSessionWorker implements SessionWorker {
     const abort = () => this.worker.terminate();
     try {
       if (signal.aborted) throw new SessionError('WORKER_START_FAILED');
+      if (config.clipboard && config.clipboard.mode !== 'off')
+        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (
         config.media?.microphone &&
         !['off', 'pcm', 'opus'].includes(config.media.microphone)

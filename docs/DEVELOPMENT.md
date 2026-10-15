@@ -1,5 +1,27 @@
 # Building the foundation
 
+## Private clipboard lab probe
+
+With the paired current worker/Node build and ignored authorized lab files:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe .\scripts\test-xrdp-clipboard.mjs $fingerprint inventory
+```
+
+Use the previously verified SHA-256 fingerprint. Inventory reports source
+readiness, scalar offer metadata, heartbeat and cleanup; it never reads remote
+clipboard contents or accesses the host OS clipboard. The optional action
+`set-sentinel` explicitly replaces the remote text offer with a fixed synthetic
+value, waits for the native peer ACK, then clears it. This changes clipboard
+state and does not prove that a remote application consumed it. Do not run that
+action against a session whose clipboard must be preserved. Linux bootstrap can
+use `--private-stdin` or `--private-stdin-framed` after the action; credentials
+still travel only in bounded private stdin/worker IPC. The SDK build container
+must not receive lab secrets. Run lab modes sequentially.
+
+These are private `WorkerProcess` probes. Public session/control/browser clipboard
+activation remains gated. [Private API contract](CLIPBOARD_IPC.md#private-typed-node-selection-iteration-232).
+
 ## Manual Windows/XRDP viewer
 
 From the project root in PowerShell, with the existing local toolchain and

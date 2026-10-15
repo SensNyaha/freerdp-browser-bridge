@@ -71,10 +71,17 @@ export function validateClipboardState(s: ClipboardState): void {
     throw new ProtocolError();
 }
 /** Validate immutable UTF-8 and its normalized terminated UTF-16 size without a string copy. */
-function text(bytes: Buffer): void {
+export function validateClipboardText(
+  bytes: Buffer,
+  maximum = CLIPBOARD_MAX_TEXT_BYTES,
+): void {
   if (
     !Buffer.isBuffer(bytes) ||
-    bytes.length > CLIPBOARD_MAX_TEXT_BYTES ||
+    !Number.isInteger(maximum) ||
+    maximum < 1 ||
+    maximum > CLIPBOARD_MAX_TEXT_BYTES ||
+    bytes.length > maximum ||
+    maximum < 2 ||
     !isUtf8(bytes) ||
     bytes.includes(0)
   )
@@ -89,7 +96,7 @@ function text(bytes: Buffer): void {
       i += first < 0x80 ? 1 : first < 0xe0 ? 2 : first < 0xf0 ? 3 : 4;
       utf16 += first < 0xf0 ? 2 : 4;
     }
-    if (utf16 > CLIPBOARD_MAX_TEXT_BYTES) throw new ProtocolError();
+    if (utf16 > maximum) throw new ProtocolError();
   }
 }
 function identity(c: ClipboardCommand): void {
@@ -104,13 +111,14 @@ function identity(c: ClipboardCommand): void {
 }
 function command(c: ClipboardCommand): void {
   identity(c);
-  if (c.operation === 'set') text(c.text);
+  if (c.operation === 'set') validateClipboardText(c.text);
   else if (c.text.length) throw new ProtocolError();
 }
 function result(r: ClipboardResult): void {
   identity(r);
   if (!clipboardStatuses.includes(r.status)) throw new ProtocolError();
-  if (r.operation === 'read' && r.status === 'accepted') text(r.text);
+  if (r.operation === 'read' && r.status === 'accepted')
+    validateClipboardText(r.text);
   else if (r.text.length) throw new ProtocolError();
 }
 function header(b: Buffer): void {

@@ -2,8 +2,8 @@
 
 Implements the native text/channel ownership portion of SPECIFICATION §2.7.
 `TextSession` composes with [guarded ingress](CLIPBOARD_INGRESS.md) and the
-[Unicode codec](CLIPBOARD_TEXT.md). Raw schema-10 worker opt-in now selects it;
-typed Node and public/browser clipboard selection remain open.
+[Unicode codec](CLIPBOARD_TEXT.md). Explicit schema-10 worker opt-in and private
+typed Node selection now use it; public/browser clipboard selection remains open.
 
 The constructing RDP thread exclusively binds one otherwise unowned public
 `CliprdrClientContext`. Binding refuses existing callbacks/custom ownership,

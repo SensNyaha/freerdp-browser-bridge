@@ -95,7 +95,7 @@ test('audio buffer: schema-9 golden selection, output dependency and legacy HELL
   assert.throws(
     () =>
       decodeBuild(
-        Buffer.concat([report, Buffer.from('0001000000000008', 'hex')]),
+        Buffer.concat([report, Buffer.from('0001000000000010', 'hex')]),
       ),
     ProtocolError,
   );

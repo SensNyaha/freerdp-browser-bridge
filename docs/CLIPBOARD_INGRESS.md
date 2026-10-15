@@ -1,8 +1,9 @@
 # Guarded CLIPRDR ingress
 
 Prepares SPECIFICATION §2.7 and the parser/allocation requirements of SECURITY.
-The worker selects this path only through raw schema-10 opt-in (Iteration 231);
-typed Node/public/browser selection is not yet enabled.
+The worker selects this path only through explicit schema-10 opt-in, now exposed
+by capability-gated private `WorkerProcess` (Iteration 232). Public/browser
+selection is not yet enabled.
 
 `ClipboardIngress` stages the eight-byte CLIPRDR header in fixed storage before
 allocating a fragmented body. The complete outer length must match `dataLen`.

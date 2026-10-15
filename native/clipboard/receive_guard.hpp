@@ -4,7 +4,8 @@
 
 namespace bridge::clipboard {
 // Public ReceiveChannelData adapter. The RDP owner installs/routes/polls it and
-// retains it through synchronous delegated callbacks. Not selected by the worker.
+// retains it through synchronous delegated callbacks. Explicit schema-10 worker
+// clipboard selection installs this route before the pinned CLIPRDR parser.
 class ClipboardReceiveGuard final {
 public:
   using Resolve = UINT16 (*)(freerdp *);

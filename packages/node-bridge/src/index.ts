@@ -51,6 +51,14 @@ import {
   decodeMicrophoneResult,
   encodeMicrophoneReset,
   decodeMicrophoneResetResult,
+  decodeClipboardState,
+  decodeClipboardResult,
+  encodeClipboardCommand,
+  validateClipboardText,
+  type ClipboardState,
+  type ClipboardOperation,
+  type ClipboardStatus,
+  type ConnectionSettings,
   type MicrophoneResetResult,
   type MicrophoneState,
   type MicrophonePcmPacket,
@@ -90,7 +98,15 @@ export type {
   MicrophoneOpusPacket,
   MicrophoneResult,
   MicrophoneResetResult,
+  ClipboardState,
+  ClipboardStatus,
 } from '@freerdp-bridge/protocol';
+
+type ClipboardSelection = NonNullable<ConnectionSettings['clipboard']>;
+export interface ClipboardReadResult {
+  status: ClipboardStatus;
+  text: Buffer;
+}
 
 export class WorkerError extends Error {
   constructor(readonly code: string) {
@@ -190,6 +206,20 @@ export class WorkerProcess extends EventEmitter {
   private microphoneResetting = false;
   private scheduledMicrophoneEpoch: bigint | undefined;
   private rdpConnected = false;
+  private clipboardProfile: ClipboardSelection | undefined;
+  private clipboardStatus: ClipboardState | undefined;
+  private clipboardTerminal = false;
+  private clipboardRequest:
+    | { operation: ClipboardOperation; generation: bigint; revision: bigint }
+    | undefined;
+  private clipboardLate:
+    | {
+        id: bigint;
+        operation: ClipboardOperation;
+        generation: bigint;
+        revision: bigint;
+      }
+    | undefined;
   private capturing = false;
   private readonly options: Required<WorkerOptions>;
   private packetOwner: SeqpacketOwner | undefined;
@@ -251,6 +281,7 @@ export class WorkerProcess extends EventEmitter {
   }
 
   private setState(state: Status): void {
+    if (state !== 'ready') this.clipboardStatus = undefined;
     this.status = state;
     this.emit('state', state);
   }
@@ -500,6 +531,57 @@ export class WorkerProcess extends EventEmitter {
   }
 
   private receive(packet: Packet): void {
+    if (packet.kind === Kind.ClipboardState) {
+      const profile = this.clipboardProfile;
+      if (
+        packet.requestId !== 0n ||
+        !profile ||
+        !this.connectionRequested ||
+        !this.report?.capabilities.clipboardText ||
+        !['ready', 'closing'].includes(this.status)
+      )
+        throw new WorkerError('IPC_UNEXPECTED_EVENT');
+      const next = decodeClipboardState(packet.payload);
+      if (
+        next.maximum !== profile.maximum ||
+        next.toServer !== profile.toServer ||
+        next.fromServer !== profile.fromServer
+      )
+        throw new WorkerError('IPC_UNEXPECTED_EVENT');
+      // Control has priority over queued source state. Terminal lifecycle cannot
+      // be undone by a ready state that was already accepted for writing.
+      if (this.clipboardTerminal || this.status === 'closing') return;
+      const old = this.clipboardStatus;
+      if (
+        (next.ready && !this.rdpConnected) ||
+        (old &&
+          (next.generation !== old.generation || next.revision < old.revision))
+      )
+        throw new WorkerError('IPC_UNEXPECTED_EVENT');
+      this.clipboardStatus = next;
+      if (old?.ready && !next.ready) this.retireClipboard();
+      this.emit('clipboard', Object.freeze({ ...next }));
+      return;
+    }
+    if (
+      packet.kind === Kind.ClipboardResult &&
+      this.clipboardLate?.id === packet.requestId
+    ) {
+      try {
+        const result = decodeClipboardResult(packet.payload),
+          late = this.clipboardLate;
+        if (
+          result.operation !== late.operation ||
+          result.generation !== late.generation ||
+          result.revision !== late.revision
+        )
+          throw new WorkerError('IPC_UNEXPECTED_REPLY');
+        this.clipboardLate = undefined;
+      } finally {
+        packet.payload.fill(0);
+      }
+      return;
+    }
     if (packet.kind === Kind.MicrophoneState) {
       if (
         packet.requestId !== 0n ||
@@ -589,6 +671,7 @@ export class WorkerProcess extends EventEmitter {
       if (packet.kind === Kind.State) {
         const value = decodeConnectionState(packet.payload);
         this.rdpConnected = value.state === 'connected';
+        if (['failed', 'closed'].includes(value.state)) this.retireClipboard();
         if (['failed', 'closed'].includes(value.state))
           this.displayState = undefined;
         if (['failed', 'closed'].includes(value.state))
@@ -716,8 +799,18 @@ export class WorkerProcess extends EventEmitter {
       );
       return;
     }
-    if (!pending || packet.kind !== pending.expected)
+    if (!pending || packet.kind !== pending.expected) {
+      if (packet.kind === Kind.ClipboardResult) packet.payload.fill(0);
       throw new WorkerError('IPC_UNEXPECTED_REPLY');
+    }
+    if (packet.kind === Kind.ClipboardResult) {
+      try {
+        decodeClipboardResult(packet.payload);
+      } catch (error) {
+        packet.payload.fill(0);
+        throw error;
+      }
+    }
     if (packet.kind === Kind.Frame) decodeCapturedFrame(packet.payload);
     if (packet.kind === Kind.FrameAvc) decodeAvcFrame(packet.payload);
     if (packet.kind === Kind.PipelineStatsAck)
@@ -767,8 +860,10 @@ export class WorkerProcess extends EventEmitter {
       return Promise.reject(new WorkerError('IPC_QUEUE_FULL'));
     const requestId = ++this.sequence;
     const bytes = encodePacket({ kind, requestId, payload });
-    if (input.writableLength + bytes.length > this.options.maxWriteBytes)
+    if (input.writableLength + bytes.length > this.options.maxWriteBytes) {
+      if (kind === Kind.ClipboardCommand) bytes.fill(0);
       return Promise.reject(new WorkerError('IPC_QUEUE_FULL'));
+    }
     return new Promise<Packet>((done, reject) => {
       const timer = setTimeout(
         () => {
@@ -784,7 +879,8 @@ export class WorkerProcess extends EventEmitter {
           kind === Kind.Secret ||
           kind === Kind.InputText ||
           kind === Kind.MicrophonePcm ||
-          kind === Kind.MicrophoneOpus
+          kind === Kind.MicrophoneOpus ||
+          kind === Kind.ClipboardCommand
         )
           bytes.fill(0);
         if (error) this.fail('IPC_WRITE_FAILED');
@@ -795,6 +891,125 @@ export class WorkerProcess extends EventEmitter {
   async ping(): Promise<void> {
     if (this.status !== 'ready') throw new WorkerError('INVALID_STATE');
     await this.request(Kind.Heartbeat, Kind.HeartbeatAck);
+  }
+
+  /** Copied scalar authority only; this does not read an OS clipboard. */
+  get clipboardState(): ClipboardState | undefined {
+    return this.clipboardStatus ? { ...this.clipboardStatus } : undefined;
+  }
+  private retireClipboard(): void {
+    this.clipboardTerminal = true;
+    this.clipboardStatus = undefined;
+    for (const [id, pending] of this.pending) {
+      if (pending.expected !== Kind.ClipboardResult) continue;
+      if (this.clipboardRequest)
+        this.clipboardLate = { id, ...this.clipboardRequest };
+      clearTimeout(pending.timer);
+      this.pending.delete(id);
+      pending.reject(new WorkerError('RDP_DISCONNECTED'));
+    }
+  }
+  /** Explicit current-offer read; no polling, automatic retry or host clipboard. */
+  readClipboardText(revision: bigint): Promise<ClipboardReadResult> {
+    return this.clipboardTransfer('read', revision, Buffer.alloc(0));
+  }
+  async writeClipboardText(text: Buffer): Promise<ClipboardStatus> {
+    return (await this.clipboardTransfer('set', 0n, text)).status;
+  }
+  private async clipboardTransfer(
+    operation: ClipboardOperation,
+    revision: bigint,
+    text: Buffer,
+  ): Promise<ClipboardReadResult> {
+    if (!this.report?.capabilities.clipboardText)
+      throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
+    if (
+      typeof revision !== 'bigint' ||
+      revision < (operation === 'read' ? 1n : 0n) ||
+      revision > 0xffffffffffffffffn
+    )
+      throw new WorkerError('CLIPBOARD_INVALID_REQUEST');
+    const negative = (status: ClipboardStatus): ClipboardReadResult => ({
+      status,
+      text: Buffer.alloc(0),
+    });
+    const source = this.clipboardStatus,
+      profile = this.clipboardProfile;
+    if (
+      this.status !== 'ready' ||
+      !this.rdpConnected ||
+      !source?.ready ||
+      !profile
+    )
+      return negative('unavailable');
+    if (this.clipboardRequest) return negative('busy');
+    if (operation === 'read' && revision !== source.revision)
+      return negative('stale');
+    if (
+      operation === 'read'
+        ? !source.fromServer || !source.remoteText || source.remotePending
+        : !source.toServer || source.localPending
+    )
+      return negative('refused');
+    if (operation === 'set') {
+      try {
+        validateClipboardText(text, profile.maximum);
+      } catch {
+        throw new WorkerError('CLIPBOARD_INVALID_TEXT');
+      }
+    }
+    const identity = { operation, generation: source.generation, revision };
+    const payload = encodeClipboardCommand({ ...identity, text });
+    this.clipboardRequest = identity;
+    let response: Packet | undefined;
+    try {
+      let completion: Promise<Packet>;
+      try {
+        completion = this.request(
+          Kind.ClipboardCommand,
+          Kind.ClipboardResult,
+          payload,
+          7000,
+        );
+      } finally {
+        payload.fill(0);
+      }
+      response = await completion;
+      const result = decodeClipboardResult(response.payload);
+      if (
+        result.operation !== operation ||
+        result.generation !== identity.generation ||
+        result.revision !== revision
+      ) {
+        this.fail('IPC_UNEXPECTED_REPLY');
+        throw new WorkerError('IPC_UNEXPECTED_REPLY');
+      }
+      const current = this.clipboardStatus;
+      if (this.status !== 'ready' || !this.rdpConnected || !current?.ready)
+        return negative('disconnected');
+      if (
+        current.generation !== identity.generation ||
+        (operation === 'read' && current.revision !== revision)
+      )
+        return negative('stale');
+      if (operation === 'read' && result.status === 'accepted') {
+        try {
+          validateClipboardText(result.text, profile.maximum);
+        } catch {
+          this.fail('IPC_UNEXPECTED_REPLY');
+          throw new WorkerError('IPC_UNEXPECTED_REPLY');
+        }
+        return { status: 'accepted', text: Buffer.from(result.text) };
+      }
+      return negative(result.status);
+    } catch (error) {
+      if (error instanceof WorkerError && error.code === 'RDP_DISCONNECTED')
+        return negative('disconnected');
+      throw error;
+    } finally {
+      response?.payload.fill(0);
+      this.clipboardRequest = undefined;
+    }
   }
 
   /** Acceptance is source admission, not remote delivery. Neither codec is retried. */
@@ -1058,6 +1273,10 @@ export class WorkerProcess extends EventEmitter {
       throw new WorkerError('RDP_NOT_IMPLEMENTED');
     const config = validateSessionConfig(value);
     try {
+      const clipboard = clipboardSelection(
+        config,
+        this.report.capabilities.clipboardText,
+      );
       const payload = connectionPayload(
         config,
         this.report.capabilities.videoQuality,
@@ -1069,6 +1288,7 @@ export class WorkerProcess extends EventEmitter {
         this.report.capabilities.opusInput,
         this.report.capabilities.microphoneReset,
         this.report.capabilities.audioBuffer200,
+        clipboard,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -1085,6 +1305,7 @@ export class WorkerProcess extends EventEmitter {
         password.fill(0);
       }
       this.connectionRequested = true;
+      this.clipboardProfile = clipboard;
       this.dynamicResolution = config.display?.dynamicResolution === true;
       this.touchEnabled = config.input?.touch === true;
       this.microphoneCodec =
@@ -1191,6 +1412,10 @@ export class WorkerProcess extends EventEmitter {
     this.microphoneStatus = undefined;
     this.microphoneCodec = undefined;
     this.microphoneEnabled = false;
+    this.clipboardStatus = undefined;
+    this.clipboardProfile = undefined;
+    this.clipboardLate = undefined;
+    this.clipboardTerminal = true;
     if (this.directory) {
       await rm(this.directory, {
         recursive: true,
@@ -1203,6 +1428,27 @@ export class WorkerProcess extends EventEmitter {
   }
 }
 
+function clipboardSelection(
+  config: SessionCreate,
+  available: boolean,
+): ClipboardSelection | undefined {
+  const c = config.clipboard;
+  if (!c || c.mode === 'off') return undefined;
+  if (
+    !available ||
+    !c.mode ||
+    c.text === false ||
+    c.html ||
+    c.images ||
+    c.files
+  )
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
+  return {
+    toServer: c.mode !== 'server-to-browser',
+    fromServer: c.mode !== 'browser-to-server',
+    maximum: c.maxItemBytes ?? 1048576,
+  };
+}
 function connectionPayload(
   config: SessionCreate,
   videoQuality: boolean,
@@ -1214,6 +1460,7 @@ function connectionPayload(
   opusInput: boolean,
   microphoneReset: boolean,
   audioBuffer200: boolean,
+  clipboard: ClipboardSelection | undefined,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -1228,6 +1475,7 @@ function connectionPayload(
     'quality',
     'input',
     'media',
+    'clipboard',
   ]);
   allowed(config.target, ['host', 'port']);
   allowed(config.auth, ['username', 'domain', 'password', 'mode']);
@@ -1317,6 +1565,7 @@ function connectionPayload(
     ...(config.media?.microphone === 'pcm' ? { pcmInput: true } : {}),
     ...(config.media?.microphone === 'opus' ? { opusInput: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),
+    ...(clipboard ? { clipboard } : {}),
   });
 }
 

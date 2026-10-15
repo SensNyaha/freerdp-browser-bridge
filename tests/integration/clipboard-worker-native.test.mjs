@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
 import {
   Kind,
   PacketDecoder,
@@ -29,6 +30,71 @@ const available = JSON.parse(
     windowsHide: true,
   }),
 ).capabilities.connectCore;
+
+for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
+  test(
+    'actual typed native clipboard: ' +
+      mode +
+      ' keeps strict TLS, heartbeat and cleanup',
+    { skip: !available, timeout: 15000 },
+    async () => {
+      const endpoint = await createRdpTlsFixture();
+      const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-clipboard-typed-'));
+      const worker = new WorkerProcess({ workerPath, runtimeRoot });
+      const snapshots = [];
+      worker.on('clipboard', (state) => snapshots.push(state));
+      let terminal;
+      worker.on('rdp-state', (state) => {
+        if (['failed', 'closed'].includes(state.state)) terminal = state;
+      });
+      try {
+        assert.equal((await worker.start()).capabilities.clipboardText, true);
+        await worker.connect({
+          target: { host: '127.0.0.1', port: endpoint.port },
+          auth: { username: 'synthetic', password: 'synthetic IPC sentinel' },
+          security: { protocol: 'tls', certificatePolicy: 'strict' },
+          timeouts: { connectMs: 5000 },
+          clipboard: { mode, text: true, maxItemBytes: 1024 },
+        });
+        const deadline = Date.now() + 6000;
+        while (!terminal) {
+          if (Date.now() >= deadline)
+            throw new Error('Typed native fixture deadline');
+          await delay(5);
+        }
+        assert.equal(terminal.error, 'RDP_CERTIFICATE_REJECTED');
+        // Failed startup may end before waiting-state credit is admitted, or
+        // terminal control may overtake its queued state. Neither grants access.
+        assert.ok(snapshots.length <= 1);
+        for (const source of snapshots) {
+          assert.equal(source.ready, false);
+          assert.equal(source.maximum, 1024);
+          assert.equal(source.toServer, mode !== 'server-to-browser');
+          assert.equal(source.fromServer, mode !== 'browser-to-server');
+        }
+        assert.equal(worker.clipboardState, undefined);
+        assert.equal(
+          (await worker.readClipboardText(1n)).status,
+          'unavailable',
+        );
+        assert.equal(
+          await worker.writeClipboardText(Buffer.from('synthetic')),
+          'unavailable',
+        );
+        assert.equal(endpoint.applicationBytes, 0);
+        await worker.ping();
+        await worker.close();
+        assert.deepEqual(await readdir(runtimeRoot), []);
+      } finally {
+        await worker.close();
+        await endpoint.close();
+        const root = resolve(runtimeRoot);
+        if (!root.startsWith(resolve(tmpdir()) + sep + 'rdp-clipboard-typed-'))
+          throw new Error('Invalid owned test directory');
+        await rm(root, { recursive: true, force: true, maxRetries: 3 });
+      }
+    },
+  );
 
 for (const mode of ['to', 'from', 'both', 'cancel'])
   test(
@@ -162,14 +228,16 @@ for (const mode of ['to', 'from', 'both', 'cancel'])
           assert.equal(states.at(-1).error, 'RDP_CERTIFICATE_REJECTED');
         }
         const snapshots = packets.filter((p) => p.kind === Kind.ClipboardState);
-        assert.equal(snapshots.length, 1);
-        assert.equal(snapshots[0].requestId, 0n);
-        const state = decodeClipboardState(snapshots[0].payload);
-        assert.equal(state.generation, 1n);
-        assert.equal(state.maximum, 1024);
-        assert.equal(state.ready, false);
-        assert.equal(state.toServer, mode !== 'from');
-        assert.equal(state.fromServer, mode !== 'to');
+        assert.ok(snapshots.length <= 1);
+        for (const snapshot of snapshots) {
+          assert.equal(snapshot.requestId, 0n);
+          const state = decodeClipboardState(snapshot.payload);
+          assert.equal(state.generation, 1n);
+          assert.equal(state.maximum, 1024);
+          assert.equal(state.ready, false);
+          assert.equal(state.toServer, mode !== 'from');
+          assert.equal(state.fromServer, mode !== 'to');
+        }
         const late = await request(
           Kind.ClipboardCommand,
           Kind.ClipboardResult,
