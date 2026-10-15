@@ -1,5 +1,10 @@
 import { EventEmitter } from 'node:events';
 import { MicrophoneOwnership } from './microphone-ownership.js';
+import {
+  ClipboardOwnership,
+  type ClipboardGrant,
+} from './clipboard-ownership.js';
+import type { ClipboardReadResult } from './index.js';
 import type {
   MicrophoneIngress,
   MicrophoneAdmission,
@@ -20,6 +25,7 @@ import {
   encodeAudioReset,
   encodeMicrophoneState,
   validateMicrophoneStateProgress,
+  validateClipboardState,
 } from '@freerdp-bridge/protocol';
 import {
   ConfigError,
@@ -45,9 +51,17 @@ import type {
   MicrophoneOpusPacket,
   MicrophoneResult,
   MicrophoneResetResult,
+  ClipboardState,
+  ClipboardStatus,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
+  CLIPBOARD_NOT_IMPLEMENTED: [
+    501,
+    'Clipboard is unavailable in this backend',
+    false,
+  ],
+  CLIPBOARD_FAILED: [502, 'Clipboard ownership failed', false],
   INPUT_TOUCH_UNAVAILABLE: [409, 'Touch input is unavailable or paused', true],
   INPUT_TOUCH_INVALID_TRANSITION: [
     409,
@@ -155,6 +169,11 @@ export interface SessionMicrophoneSnapshot {
   granted: boolean;
   retiring: boolean;
 }
+export interface SessionClipboardSnapshot {
+  state?: ClipboardState;
+  granted: boolean;
+  retiring: boolean;
+}
 export interface SessionSnapshot {
   sessionId: string;
   state: SessionState;
@@ -203,6 +222,10 @@ export interface SessionWorker {
   onAudio?(listener: (event: SessionAudioEvent) => void): () => void;
   resetAudio?(expectedEpoch: bigint): Promise<AudioResetResult>;
   onMicrophone?(listener: (state: MicrophoneState) => void): () => void;
+  onClipboard?(listener: (state: ClipboardState) => void): () => void;
+  readClipboardText?(revision: bigint): Promise<ClipboardReadResult>;
+  writeClipboardText?(text: Buffer): Promise<ClipboardStatus>;
+  revokeClipboardText?(): Promise<ClipboardStatus>;
   sendMicrophone?(packet: MicrophonePcmPacket): Promise<MicrophoneResult>;
   sendMicrophoneOpus?(packet: MicrophoneOpusPacket): Promise<MicrophoneResult>;
   resetMicrophone?(epoch: bigint): Promise<MicrophoneResetResult>;
@@ -233,6 +256,15 @@ export interface SessionManagerOptions {
 }
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
+  clipboardPolicy?: { toServer: boolean; fromServer: boolean; maximum: number };
+  clipboard?: ClipboardState;
+  clipboardOwnership?: ClipboardOwnership;
+  clipboardGrant?: { control: symbol; grant: ClipboardGrant };
+  clipboardRetirement?: { control: symbol; promise: Promise<boolean> };
+  clipboardListener?: {
+    control: symbol;
+    sink: (snapshot: SessionClipboardSnapshot) => void;
+  };
   videoQuality: VideoQuality;
   dynamicResolution: boolean;
   touchEnabled: boolean;
@@ -272,6 +304,22 @@ type Entry = {
   inputPending: number;
   cleanup?: Promise<void>;
 };
+function clipboardSnapshot(
+  entry: Entry,
+  control: symbol,
+): SessionClipboardSnapshot {
+  return {
+    ...(entry.clipboard ? { state: { ...entry.clipboard } } : {}),
+    granted: Boolean(
+      entry.clipboardGrant?.control === control &&
+        entry.attachments.get('control') === control &&
+        !entry.released &&
+        entry.snapshot.state === 'connected' &&
+        entry.clipboardOwnership?.status === 'active',
+    ),
+    retiring: entry.clipboardOwnership?.status === 'retiring',
+  };
+}
 function microphoneSnapshot(
   entry: Entry,
   lease: symbol,
@@ -439,6 +487,15 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         throw new SessionError('WORKER_START_FAILED');
       this.ownedWorkers.add(worker);
       const entry: Entry = {
+        ...(config.clipboard && config.clipboard.mode !== 'off'
+          ? {
+              clipboardPolicy: {
+                toServer: config.clipboard.mode !== 'server-to-browser',
+                fromServer: config.clipboard.mode !== 'browser-to-server',
+                maximum: config.clipboard.maxItemBytes ?? 1048576,
+              },
+            }
+          : {}),
         videoQuality: resolveVideoQuality(config.quality),
         dynamicResolution: config.display?.dynamicResolution === true,
         touchEnabled: config.input?.touch === true,
@@ -629,6 +686,89 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
               });
             }),
           );
+        if (entry.clipboardPolicy) {
+          const selected = config.clipboard!;
+          if (
+            !selected.mode ||
+            selected.text === false ||
+            selected.html ||
+            selected.images ||
+            selected.files ||
+            !worker.onClipboard ||
+            !worker.readClipboardText ||
+            !worker.writeClipboardText ||
+            !worker.revokeClipboardText
+          )
+            throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+          entry.clipboardOwnership = new ClipboardOwnership({
+            source: () => entry.clipboard,
+            read: (revision) => worker.readClipboardText!(revision),
+            write: (text) => worker.writeClipboardText!(text),
+            revoke: () => worker.revokeClipboardText!(),
+            terminate: () => {
+              if (
+                !entry.released &&
+                !terminal(entry.snapshot.state) &&
+                entry.snapshot.state !== 'closing'
+              )
+                this.fail(entry, 'CLIPBOARD_FAILED');
+            },
+          });
+          entry.unsubscribers.push(
+            worker.onClipboard((value) => {
+              if (
+                entry.released ||
+                terminal(entry.snapshot.state) ||
+                entry.snapshot.state === 'closing'
+              )
+                return;
+              try {
+                const {
+                  generation,
+                  revision,
+                  maximum,
+                  ready,
+                  toServer,
+                  fromServer,
+                  remoteText,
+                  localAccepted,
+                  localPending,
+                  remotePending,
+                } = value;
+                const state = {
+                  generation,
+                  revision,
+                  maximum,
+                  ready,
+                  toServer,
+                  fromServer,
+                  remoteText,
+                  localAccepted,
+                  localPending,
+                  remotePending,
+                };
+                const old = entry.clipboard,
+                  policy = entry.clipboardPolicy!;
+                validateClipboardState(state);
+                if (
+                  (state.ready && entry.snapshot.state !== 'connected') ||
+                  state.maximum !== policy.maximum ||
+                  state.toServer !== policy.toServer ||
+                  state.fromServer !== policy.fromServer ||
+                  (old &&
+                    (state.generation !== old.generation ||
+                      state.revision < old.revision ||
+                      (old.ready && !state.ready)))
+                )
+                  throw new Error();
+                entry.clipboard = state;
+                this.clipboardEvent(entry);
+              } catch {
+                this.fail(entry, 'WORKER_INVALID_STATE');
+              }
+            }),
+          );
+        }
         if (
           entry.microphoneEnabled &&
           (typeof worker.onMicrophone !== 'function' ||
@@ -823,6 +963,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       return;
     }
     if (state === entry.snapshot.state) return;
+    if (
+      entry.clipboardOwnership &&
+      entry.snapshot.state === 'connected' &&
+      !['closing', 'closed'].includes(state)
+    ) {
+      this.fail(entry, 'CLIPBOARD_FAILED');
+      return;
+    }
     if (state !== 'awaiting-user') delete entry.certificate;
     if (
       !Object.hasOwn(transitions, state) ||
@@ -866,6 +1014,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.abort.abort();
     entry.tokens.clear();
     const microphoneClose = entry.microphoneOwnership?.close();
+    const clipboardClose = entry.clipboardOwnership?.close();
+    delete entry.clipboardGrant;
+    delete entry.clipboard;
+    delete entry.clipboardListener;
     delete entry.microphoneGrant;
     delete entry.microphone;
     delete entry.microphoneListener;
@@ -889,6 +1041,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
           Promise.all([
             Promise.resolve().then(() => entry.worker.close()),
             microphoneClose,
+            clipboardClose,
           ]),
           new Promise<never>((_, reject) => {
             timer = setTimeout(
@@ -987,6 +1140,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     ) => () => void;
     startMicrophone: () => boolean;
     stopMicrophone: () => Promise<boolean>;
+    readonly clipboardSnapshot: SessionClipboardSnapshot;
+    onClipboard: (
+      listener: (snapshot: SessionClipboardSnapshot) => void,
+    ) => () => void;
+    startClipboard: () => boolean;
+    stopClipboard: () => Promise<boolean>;
+    readClipboardText: (revision: bigint) => Promise<ClipboardReadResult>;
+    writeClipboardText: (text: Buffer) => Promise<ClipboardStatus>;
     sendMicrophone: (bytes: Buffer) => Promise<MicrophoneAdmission>;
     resizeDisplay: (
       request: DisplayResizeRequest,
@@ -1022,6 +1183,19 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     let capturing = false;
     let audioFailed = false;
     let microphoneFailed = false;
+    let clipboardFailed = false;
+    const requireClipboardLease = () => {
+      if (
+        channel !== 'control' ||
+        entry.attachments.get('control') !== lease ||
+        entry.released ||
+        terminal(entry.snapshot.state) ||
+        entry.snapshot.state === 'closing'
+      )
+        throw new SessionError('ATTACH_INVALID');
+      if (!entry.clipboardOwnership)
+        throw new SessionError('CLIPBOARD_NOT_IMPLEMENTED');
+    };
     const requireAudioLease = () => {
       if (
         channel !== 'media' ||
@@ -1038,6 +1212,98 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         throw new SessionError('MEDIA_NOT_IMPLEMENTED');
     };
     return {
+      get clipboardSnapshot() {
+        requireClipboardLease();
+        return clipboardSnapshot(entry, lease);
+      },
+      onClipboard: (listener) => {
+        requireClipboardLease();
+        if (
+          typeof listener !== 'function' ||
+          clipboardFailed ||
+          entry.clipboardListener
+        )
+          throw new SessionError('CLIPBOARD_FAILED');
+        const registration = {
+          control: lease,
+          sink: (snapshot: SessionClipboardSnapshot) => {
+            try {
+              listener(snapshot);
+            } catch {
+              clipboardFailed = true;
+              if (entry.clipboardListener === registration)
+                delete entry.clipboardListener;
+              const grant = entry.clipboardGrant;
+              if (grant?.control === lease)
+                void this.retireClipboard(entry, grant);
+            }
+          },
+        };
+        entry.clipboardListener = registration;
+        return () => {
+          if (entry.clipboardListener === registration) {
+            delete entry.clipboardListener;
+            const grant = entry.clipboardGrant;
+            if (grant?.control === lease)
+              void this.retireClipboard(entry, grant);
+          }
+        };
+      },
+      startClipboard: () => {
+        requireClipboardLease();
+        if (clipboardFailed) throw new SessionError('CLIPBOARD_FAILED');
+        if (entry.snapshot.state !== 'connected' || entry.clipboardGrant)
+          return false;
+        const grant = entry.clipboardOwnership!.acquire(
+          () =>
+            entry.clipboardGrant?.grant === grant &&
+            entry.attachments.get('control') === lease &&
+            entry.snapshot.state === 'connected' &&
+            !entry.released,
+        );
+        if (!grant) return false;
+        entry.clipboardGrant = { control: lease, grant };
+        this.clipboardEvent(entry);
+        return entry.clipboardGrant?.grant === grant;
+      },
+      stopClipboard: () => {
+        requireClipboardLease();
+        if (entry.clipboardRetirement?.control === lease)
+          return entry.clipboardRetirement.promise;
+        const grant = entry.clipboardGrant;
+        return grant?.control === lease
+          ? this.retireClipboard(entry, grant)
+          : Promise.resolve(false);
+      },
+      readClipboardText: async (revision) => {
+        requireClipboardLease();
+        const grant = entry.clipboardGrant;
+        if (clipboardFailed || grant?.control !== lease)
+          return { status: 'unavailable', text: Buffer.alloc(0) };
+        const result = await grant.grant.read(revision);
+        if (
+          entry.attachments.get('control') !== lease ||
+          entry.clipboardGrant !== grant ||
+          entry.snapshot.state !== 'connected' ||
+          entry.released
+        ) {
+          result.text.fill(0);
+          return { status: 'disconnected', text: Buffer.alloc(0) };
+        }
+        return result;
+      },
+      writeClipboardText: async (text) => {
+        requireClipboardLease();
+        const grant = entry.clipboardGrant;
+        if (clipboardFailed || grant?.control !== lease) return 'unavailable';
+        const result = await grant.grant.write(text);
+        return entry.attachments.get('control') === lease &&
+          entry.clipboardGrant === grant &&
+          entry.snapshot.state === 'connected' &&
+          !entry.released
+          ? result
+          : 'disconnected';
+      },
       get microphoneCodec() {
         requireMicrophoneLease();
         return entry.microphoneCodec!;
@@ -1304,6 +1570,13 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       release: () => {
         if (entry.attachments.get(channel) === lease) {
           entry.attachments.delete(channel);
+          if (channel === 'control') {
+            if (entry.clipboardListener?.control === lease)
+              delete entry.clipboardListener;
+            const clipboard = entry.clipboardGrant;
+            if (clipboard?.control === lease)
+              void this.retireClipboard(entry, clipboard);
+          }
           if (channel === 'media' && entry.microphoneListener?.lease === lease)
             delete entry.microphoneListener;
           const grant = entry.microphoneGrant;
@@ -1325,6 +1598,35 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         }
       },
     };
+  }
+  private retireClipboard(
+    entry: Entry,
+    grant: NonNullable<Entry['clipboardGrant']>,
+  ): Promise<boolean> {
+    if (entry.clipboardGrant === grant) delete entry.clipboardGrant;
+    const reservation = {
+      control: grant.control,
+      promise: entry.clipboardOwnership!.release(grant.grant),
+    };
+    entry.clipboardRetirement = reservation;
+    this.clipboardEvent(entry);
+    void reservation.promise.then(() => {
+      if (entry.clipboardRetirement === reservation)
+        delete entry.clipboardRetirement;
+      this.clipboardEvent(entry);
+    });
+    return reservation.promise;
+  }
+  private clipboardEvent(entry: Entry): void {
+    const listener = entry.clipboardListener;
+    if (
+      listener &&
+      entry.attachments.get('control') === listener.control &&
+      !entry.released &&
+      !terminal(entry.snapshot.state) &&
+      entry.snapshot.state !== 'closing'
+    )
+      listener.sink(clipboardSnapshot(entry, listener.control));
   }
   private retireMicrophone(
     entry: Entry,

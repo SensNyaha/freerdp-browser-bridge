@@ -66,6 +66,14 @@ actual RDP/media support. Cursor records do not contribute to video credit metri
 
 ## Backend and diagnostics
 
+Prepared clipboard control-lease methods now require explicit policy and backend
+read/write/revoke/source hooks. Immediate revocation, finite drain/native ACK and
+late-content wiping are described in [CLIPBOARD_SESSION.md](CLIPBOARD_SESSION.md).
+Only known scalar source fields reach metadata; fixed `CLIPBOARD_FAILED` fails
+unsafe ownership, and `CLIPBOARD_NOT_IMPLEMENTED` refuses an absent backend.
+Production native selection still refuses before startup until public framing /
+browser integration is installed. No clipboard WS command is activated here.
+
 Iteration 116 prepares media-lease microphone methods bound to both current
 control and media identities, with immediate revocation and observed native
 epoch retirement before transfer. It introduces no socket/capture activation;

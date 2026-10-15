@@ -1,6 +1,11 @@
 import { EventEmitter } from 'node:events';
 import type { CursorState } from '@freerdp-bridge/protocol';
-import { WorkerProcess, WorkerError, type WorkerOptions } from './index.js';
+import {
+  WorkerProcess,
+  WorkerError,
+  type WorkerOptions,
+  type ClipboardReadResult,
+} from './index.js';
 import {
   SessionError,
   type SessionErrorCode,
@@ -26,6 +31,8 @@ import type {
   MicrophoneOpusPacket,
   MicrophoneResult,
   MicrophoneResetResult,
+  ClipboardState,
+  ClipboardStatus,
 } from '@freerdp-bridge/protocol';
 
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
@@ -62,6 +69,9 @@ export class NativeSessionWorker implements SessionWorker {
     });
     this.worker.on('microphone', (state: MicrophoneState) => {
       if (!this.closing) this.events.emit('microphone', state);
+    });
+    this.worker.on('clipboard', (state: ClipboardState) => {
+      if (!this.closing) this.events.emit('clipboard', state);
     });
     this.worker.on('failure', () => {
       if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
@@ -211,6 +221,27 @@ export class NativeSessionWorker implements SessionWorker {
           : 'MEDIA_FAILED',
       );
     }
+  }
+  onClipboard(listener: (state: ClipboardState) => void): () => void {
+    this.events.on('clipboard', listener);
+    return () => {
+      this.events.off('clipboard', listener);
+    };
+  }
+  readClipboardText(revision: bigint): Promise<ClipboardReadResult> {
+    if (this.closing)
+      return Promise.resolve({ status: 'unavailable', text: Buffer.alloc(0) });
+    return this.worker.readClipboardText(revision);
+  }
+  writeClipboardText(text: Buffer): Promise<ClipboardStatus> {
+    return this.closing
+      ? Promise.resolve('unavailable')
+      : this.worker.writeClipboardText(text);
+  }
+  revokeClipboardText(): Promise<ClipboardStatus> {
+    return this.closing
+      ? Promise.resolve('unavailable')
+      : this.worker.revokeClipboardText();
   }
   onCursor(listener: (cursor: CursorState) => void): () => void {
     this.events.on('cursor', listener);

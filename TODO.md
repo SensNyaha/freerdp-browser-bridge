@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | IN PROGRESS | Native Unicode/CLIPRDR and typed private Node ownership pass scoped tests; public/browser activation and remote clipboard/CRUD gate remain |
+| 7 — clipboard/drives | IN PROGRESS | Native/private Unicode and prepared controller ownership pass scoped tests; public/browser activation and remote clipboard/CRUD gate remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -593,7 +593,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   [typed API and actual XRDP offer/empty-text ACK evidence](docs/ITERATION_232.md).
   Native offer revocation now has a separate content-free schema-2 command and
   checked public send/ACK path; unlike empty text, it removes all offered formats.
-  Controller transfer and actual remote revoke remain open.
+  Prepared manager control grants now drain prior work and require native revoke
+  completion before replacement; fake/backend and synthetic process composition
+  pass. Public/native-adapter activation, browser and actual remote transfer /
+  revoke remain open. [Controller contract](docs/CLIPBOARD_SESSION.md),
+  [evidence](docs/ITERATION_234.md).
   [Revocation evidence](docs/ITERATION_233.md).
 - [x] DONE for clipboard private transport — Versioned RWI1 class/correlation
   bounds, dedicated latest-state/one-result output and full 16 MiB command delivery
