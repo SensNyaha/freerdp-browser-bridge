@@ -2,6 +2,12 @@
   "name": "@freerdp-bridge/config",
   "version": "0.1.0",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

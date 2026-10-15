@@ -18,6 +18,6 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const)
     void server.close();
   });
 await server.listen({
-  host: '127.0.0.1',
+  host: process.env.BRIDGE_LISTEN_HOST ?? '127.0.0.1',
   port: Number(process.env.BRIDGE_LISTEN_PORT ?? 8080),
 });

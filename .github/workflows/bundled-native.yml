@@ -48,6 +48,17 @@ jobs:
         run: |
           docker build -t freerdp-bridge-native-check build/native-runtime-check
           docker run --rm --network none --init --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /run/rdp-bridge-tests:rw,noexec,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=700 freerdp-bridge-native-check
+      - name: Assemble production Node runtime and service context
+        if: runner.os == 'Linux'
+        run: |
+          node scripts/package-node-runtime.mjs
+          node scripts/prepare-service-runtime.mjs
+      - name: Verify API and native worker in restricted service runtime
+        if: runner.os == 'Linux'
+        run: |
+          docker build --target runtime -t freerdp-bridge-service build/service-runtime
+          docker build --target verification -t freerdp-bridge-service-check build/service-runtime
+          docker run --rm --network none --init --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /run/freerdp-bridge:rw,noexec,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=700 freerdp-bridge-service-check
       - uses: actions/upload-artifact@v4
         with:
           name: native-runtime-${{ runner.os }}

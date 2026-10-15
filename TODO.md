@@ -35,6 +35,13 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-15
 
+Linux API/private-native service runtime now passes independent non-root /
+read-only/no-network HTTP, default authorization refusal and synthetic host /
+native lifecycle/cleanup. Production Node deployment retains pinned versions
+and excludes source/devDependencies. The final runtime image is built; fresh
+source/distro/CI, installers and actual RDP/device/load gates remain open.
+[Iteration 211](docs/ITERATION_211.md), [deployment](docs/CONTAINER_RUNTIME.md).
+
 Current Linux native archive again passes the independent non-root/read-only /
 no-network runtime smoke. A bounded private-stdin microphone inventory helper
 is available without physical capture or sample submission. Actual XRDP input
@@ -601,8 +608,14 @@ profile's target, microphone, recovery, resource or platform acceptance.
   init. No-init orphan zombie failure is retained; init/reaping is an explicit
   deployment requirement. This is separate from the production service image,
   linked Linux RDP/devices and resource/soak acceptance. [Evidence](docs/ITERATION_185.md).
-- [ ] Non-root multi-stage Docker image.
-- [ ] Read-only root filesystem deployment example.
+- [x] DONE — Linux amd64 non-root multi-stage API/native artifact runtime.
+  UID1000, production JS/dependency closure, private worker, actual HTTP/build /
+  auth refusal and synthetic host/native lifecycle pass with primary IPC.
+  Upstream source/fresh-checkout/distro builds and CI execution remain separate
+  open gates. [Deployment](docs/CONTAINER_RUNTIME.md), [evidence](docs/ITERATION_211.md).
+- [x] DONE — Read-only-root/init/cap-drop/no-new-privileges deployment example
+  with bounded private runtime tmpfs passes the actual service fixture. Additional
+  device mappings and broader load/resource acceptance remain open. [Evidence](docs/ITERATION_211.md).
 - [ ] Optional USB/DRI/serial/PCSC device mappings documented.
 - [ ] seccomp/AppArmor recommendation and tested baseline profile if feasible.
 - [ ] Resource watchdogs and cleanup on abnormal exit.

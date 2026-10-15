@@ -7,7 +7,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "pnpm -r build",
     "test": "node --test --test-concurrency=1 tests/unit/*.test.mjs tests/integration/*.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write apps packages scripts tests examples .github \"*.{json,yaml,yml,mjs,js,cjs,ts,html,css}\" .prettierrc.json",

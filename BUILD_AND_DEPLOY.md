@@ -36,6 +36,12 @@ Expose compile-time feature report in build logs and `/v1/build`.
 
 ## 3. Docker image strategy
 
+Current runtime: [artifact-based API/native service image](docs/CONTAINER_RUNTIME.md).
+The final non-root/read-only image and separate host/native HTTP fixture pass
+locally on Bookworm. Source/native building and frozen Node installation remain
+upstream steps; fresh-checkout/distro and CI execution are still open. Historical
+foundation/native-only checkpoints below retain their original scope.
+
 Multi-stage image:
 
 1. native builder: FreeRDP + worker;
