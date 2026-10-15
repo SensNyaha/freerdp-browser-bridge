@@ -54,3 +54,10 @@ remains heartbeat-responsive and cleans up. It sends no RDP application bytes.
 These are synthetic IPC/lifetime tests, not negotiated microphone or audible
 acceptance. Actual remote/physical microphone, LAN latency, platforms, upstream
 core allocation/lost-write limits and connected-worker wakeup remain open.
+## Current Linux actual connection evidence
+
+The guarded Linux worker accepts both typed PCM and Opus input selection.
+Restored actual XRDP now passes all six input/output combinations on both primary
+and framed fallback IPC, with heartbeat/1080p capture/cleanup and no sample send.
+Input remains waiting at epoch 0; ready AUDIN and recording remain unverified.
+[Actual twelve-connection inventory](ITERATION_218.md).

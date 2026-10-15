@@ -40,13 +40,16 @@ read-only/no-network HTTP, default authorization refusal and synthetic host /
 native lifecycle/cleanup. Production Node deployment retains pinned versions
 and excludes source/devDependencies. The final runtime image is built; fresh
 source/distro/CI, installers and actual RDP/device/load gates remain open.
-[Iteration 211](docs/ITERATION_211.md), [deployment](docs/CONTAINER_RUNTIME.md).
+[Iteration 211](docs/ITERATION_211.md), [corrected runtime/SBOM](docs/ITERATION_217.md),
+[deployment](docs/CONTAINER_RUNTIME.md).
 
 Current Linux native archive again passes the independent non-root/read-only /
 no-network runtime smoke. A bounded private-stdin microphone inventory helper
-is available without physical capture or sample submission. Actual XRDP input
-verification is currently blocked by host TCP timeout; the worker reports
-RDP_CONNECT_TIMEOUT and cleans up normally. [Iteration 210](docs/ITERATION_210.md).
+is available without physical capture or sample submission. The earlier host
+TCP timeout/RDP_CONNECT_TIMEOUT is retained in [Iteration 210](docs/ITERATION_210.md).
+Restored XRDP now passes twelve actual input/output/carrier combinations with
+heartbeat, 1080p JPEG and empty-runtime cleanup. Input remains waiting at epoch
+0, so ready AUDIN/recording remains open. [Current evidence](docs/ITERATION_218.md).
 
 Guarded Linux virtual PCM/Opus microphone selection now follows the existing
 typed HELLO/CLI/Node/public capability contract. Twelve actual process/TLS cases
