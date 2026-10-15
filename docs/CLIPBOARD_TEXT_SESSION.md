@@ -47,3 +47,34 @@ change ownership. Close restores only owned server callbacks/custom state and
 preserves the SDK client functions. Content is never included in result codes,
 diagnostics or metrics. Buffers are cleared on consumption/retirement; total
 process/core memory and SDK-internal copies remain separate acceptance work.
+
+## Serialized worker handoff
+
+`WorkerSession` composes this owner with the bounded private clipboard records.
+It is not yet selected by `Connection`. Construction may occur on the IPC thread;
+start/bind/pump/retire run on one RDP thread. Retirement destroys the inner public
+callback owner there, before joining the thread or freeing the SDK context. The
+wrapper can then be destroyed on the original thread. Clock callbacks must be
+thread-safe, side-effect-free monotonic millisecond queries.
+
+Producer admission uses a try-lock, only successfully published scalar authority,
+immutable direction/size policy and one shared read/set reservation. Successful
+admission moves one IPC payload; failures leave it with the caller for wiping.
+Dispatch rechecks actual readiness/revision and a fixed 250 ms arrival deadline.
+Expiry before dispatch returns timeout without issuing RDP work. Local set waits
+for the actual peer format-list ACK; read waits for the requested response.
+
+The read callback copies once into one prepared result. Busy output retains this
+result and its correlation without another remote request. A changed offer turns
+a waiting result into stale without text. Source state must reach the output
+queue before new producer authority is granted. State and result backpressure
+share a fixed one-second publication deadline which traffic does not extend.
+Transport callbacks run outside the producer mutex. Exceptions, clock regression,
+native timeout or publication expiry retire authority and clear owned text.
+Reentrant retirement waits until the output borrow returns.
+
+Retirement does not invent an unobserved remote completion: the containing worker
+lifecycle must reject pending private calls when the RDP connection ends. The
+wrapper cannot restart or move a live callback owner to another thread. No public
+control/media transfer, browser clipboard API or automatic OS clipboard access is
+introduced. Linked fake-SVC evidence is distinct from actual remote acceptance.

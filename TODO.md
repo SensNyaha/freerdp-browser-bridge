@@ -599,7 +599,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   stale-response/timeout/retirement ownership pass actual pinned CLIPRDR with
   simulated SVC on Windows/Linux. Worker/Node/browser activation and actual
   remote acceptance remain open. [Contract](docs/CLIPBOARD_TEXT_SESSION.md),
-  [evidence](docs/ITERATION_226.md).
+  [channel evidence](docs/ITERATION_226.md). Serialized IPC/RDP handoff now retains
+  one command/result with admitted authority, peer completion and finite dispatch /
+  publication deadlines; linked fixtures also verify RDP-thread cleanup before
+  root-thread destruction. [Handoff evidence](docs/ITERATION_230.md).
 - [x] DONE for prepared CLIPRDR ingress — Header admission before fragmented-body
   allocation, bounded tables/names and public receive routing pass Windows/Linux
   native and actual pinned-channel/fake-SVC checks plus seeded sanitizer fuzz.
