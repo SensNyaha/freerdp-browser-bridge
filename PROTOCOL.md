@@ -6,9 +6,10 @@ Guarded native workers accept explicit raw connection schema-10 selection
 (Iteration 231); unselected/pre-connect/retired dispatch returns unavailable.
 Private typed Node selection/read/write now requires HELLO extension bit 8
 `clipboardText` (Iteration 232). Content-free schema-2 revoke separately requires
-bit 16 `clipboardRevoke` (Iteration 233). Production native selection and browser
-integration remain gated. Explicit custom backends now support server control
-clipboard transport with the existing WebSocket body limit (Iteration 236).
+bit 16 `clipboardRevoke` (Iteration 233). Native adapter selection now requires
+both capabilities and a matching finite item reservation (Iteration 237).
+Server control transport retains the WebSocket body limit (Iteration 236);
+reference browser integration remains gated.
 [Private contract](docs/CLIPBOARD_IPC.md).
 RWC1 version-1 byte chunks fit the existing 4 KiB message bound.
 [Layout](docs/CLIPBOARD_CHUNKS.md), [commands/credit/deadlines](docs/CLIPBOARD_CONTROL.md).

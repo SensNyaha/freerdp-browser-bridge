@@ -266,7 +266,7 @@ test(
     });
   },
 );
-test('public native clipboard remains gated before backend spawn pending controller/browser ownership', async () => {
+test('public native clipboard without an item reservation refuses before backend spawn', async () => {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-clipboard-public-'));
   const worker = new NativeSessionWorker({ workerPath, runtimeRoot });
   try {

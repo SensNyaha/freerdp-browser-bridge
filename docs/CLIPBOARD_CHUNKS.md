@@ -2,8 +2,9 @@
 
 Implements byte framing/reservation for SPECIFICATION §2.7. Iteration 235 prepared
 independent Node/browser codecs; Iteration 236 installs the server transfer/credit
-owner for explicit backends. Production native selection and browser integration
-remain gated. A codec alone grants no authority.
+owner for explicit backends. Iteration 237 activates the native adapter with a
+matching reservation and both HELLO capabilities. Browser integration remains
+gated. A codec alone grants no authority.
 [Controller ownership](CLIPBOARD_SESSION.md), [private transport](CLIPBOARD_IPC.md).
 
 All integers are big-endian. Each record is at most 4,096 bytes:
@@ -42,11 +43,13 @@ Node IPC write bytes (RWI1 envelope 24 + clipboard metadata 24). The largest pro
 is 16,842,800 bytes: one clipboard record plus ordinary control headroom. Pending
 request/carrier limits remain. Explicit host `maxWriteBytes` is preserved when
 sufficient; a smaller override refuses before private process construction.
-Defaults without reservation retain 64 KiB. Supplying limits does not activate
-native clipboard; updated example factories only forward numeric reservations.
+Defaults without reservation retain 64 KiB. Explicit text selection now requires
+a matching reservation and both `clipboardText` / `clipboardRevoke` capabilities;
+updated example factories forward numeric reservations. Unsupported formats and
+old peers fail before private settings/secret submission.
 
-A synthetic child/private framed-IPC test uses the reserved process directly for
-full valid 16 MiB UTF-8 set/revoke, heartbeat and empty-runtime cleanup. It neither
-invokes public native start nor claims actual RDP/OS clipboard support. Existing
+A synthetic child/private framed-IPC test now uses actual native-adapter start for
+full valid 16 MiB UTF-8 set/revoke, heartbeat and empty-runtime cleanup. This does
+not claim actual RDP/OS clipboard support. Existing
 framing cannot preempt a transmitted record; total memory/CPU, latency, real
 network and platform acceptance remain open.

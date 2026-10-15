@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | IN PROGRESS | Native/private Unicode and prepared controller ownership pass scoped tests; public/browser activation and remote clipboard/CRUD gate remain |
+| 7 — clipboard/drives | IN PROGRESS | Native/private Unicode and server control transfer pass scoped tests; browser activation and remote clipboard/CRUD gate remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -595,15 +595,19 @@ profile's target, microphone, recovery, resource or platform acceptance.
   checked public send/ACK path; unlike empty text, it removes all offered formats.
   Prepared manager control grants now drain prior work and require native revoke
   completion before replacement; fake/backend and synthetic process composition
-  pass. Public/native-adapter activation, browser and actual remote transfer /
-  revoke remain open. [Controller contract](docs/CLIPBOARD_SESSION.md),
+  pass. The native adapter now accepts matching numeric item reservations and
+  both clipboard HELLO capabilities; legacy refusal precedes settings/secrets.
+  Browser and actual remote transfer/revoke remain open.
+  [Native adapter evidence](docs/ITERATION_237.md),
+  [Controller contract](docs/CLIPBOARD_SESSION.md),
   [evidence](docs/ITERATION_234.md).
   Explicit nonsecret factory/IPC reservations and independent prepared RWC1
   byte chunks now cover the full 16 MiB item without larger control messages;
   Server control reassembly/credit now passes both-way 16 MiB virtual-clock and
   multi-window Unicode actual-socket/fake-RDP fixtures, with input interleave,
-  independent deadlines and controller retirement. Production native/browser
-  activation and actual remote transfer remain open.
+  independent deadlines and controller retirement. Native adapter selection
+  passes synthetic full-item and actual worker TLS checks; browser activation
+  and actual remote transfer remain open.
   [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/ITERATION_236.md).
   [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
   [evidence](docs/ITERATION_235.md).

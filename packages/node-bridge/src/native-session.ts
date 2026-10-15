@@ -44,6 +44,7 @@ import type {
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
 export class NativeSessionWorker implements SessionWorker {
   private readonly worker: WorkerProcess;
+  private readonly clipboardMaximum: number | undefined;
   private readonly events = new EventEmitter();
   private startup: Promise<void> | undefined;
   private closing = false;
@@ -73,6 +74,7 @@ export class NativeSessionWorker implements SessionWorker {
       options.maxWriteBytes < required
     )
       throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+    this.clipboardMaximum = maximum;
     this.worker = this.createWorkerProcess({
       ...options,
       ...(required === undefined
@@ -126,7 +128,17 @@ export class NativeSessionWorker implements SessionWorker {
     const abort = () => this.worker.terminate();
     try {
       if (signal.aborted) throw new SessionError('WORKER_START_FAILED');
-      if (config.clipboard && config.clipboard.mode !== 'off')
+      const clipboard = config.clipboard;
+      const selectedClipboard = clipboard && clipboard.mode !== 'off';
+      if (
+        selectedClipboard &&
+        (!clipboard.mode ||
+          clipboard.text === false ||
+          clipboard.html ||
+          clipboard.images ||
+          clipboard.files ||
+          this.clipboardMaximum !== (clipboard.maxItemBytes ?? 1048576))
+      )
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (
         config.media?.microphone &&
@@ -135,6 +147,12 @@ export class NativeSessionWorker implements SessionWorker {
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       signal.addEventListener('abort', abort, { once: true });
       const build = await this.worker.start();
+      if (
+        selectedClipboard &&
+        (!build.capabilities.clipboardText ||
+          !build.capabilities.clipboardRevoke)
+      )
+        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (
         (config.media?.microphone === 'pcm' ||
           config.media?.microphone === 'opus') &&

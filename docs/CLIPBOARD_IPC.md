@@ -163,11 +163,14 @@ rechecked after that dispatch. No SDK structs, private plugin fields or arbitrar
 raw channel data are exposed to callers. This does not bound SDK queues/CPU/RSS
 or establish actual remote revocation; those acceptance gates remain open.
 
-`NativeSessionWorker` still refuses non-off clipboard before startup. Prepared
+`NativeSessionWorker` now accepts explicit text policy only with a matching
+numeric item reservation and both HELLO capabilities (Iteration 237). Missing /
+mismatched reservations refuse before spawn; old/read-set-only peers refuse
+before CONFIGURE/SECRET. Prepared
 [controller ownership](CLIPBOARD_SESSION.md) now binds manager operations to the
 current control lease and joins drain/revoke before replacement. Server
 [control framing/credit](CLIPBOARD_CONTROL.md) is implemented for explicit backend
-hooks; production native activation, browser permission/gesture integration and actual
+hooks and the selected native adapter; browser permission/gesture integration and actual
 remote transfer remain required. The inventory lab helper never reads clipboard
 contents; optional `set-sentinel` explicitly writes one fixed synthetic value,
 waits for the server ACK and clears it. It does not establish application reads.

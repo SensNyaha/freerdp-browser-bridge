@@ -72,8 +72,10 @@ late-content wiping are described in [CLIPBOARD_SESSION.md](CLIPBOARD_SESSION.md
 Only known scalar source fields reach metadata; fixed `CLIPBOARD_FAILED` fails
 unsafe ownership, and `CLIPBOARD_NOT_IMPLEMENTED` refuses an absent backend.
 Server control clipboard commands/credit are now implemented for explicit backend
-hooks in [CLIPBOARD_CONTROL.md](CLIPBOARD_CONTROL.md). Production native selection
-still refuses before startup until browser integration is installed.
+hooks in [CLIPBOARD_CONTROL.md](CLIPBOARD_CONTROL.md). Native selection now requires
+a matching numeric item reservation plus both clipboard HELLO capabilities;
+missing reservations refuse before spawn, old peers before CONFIGURE/SECRET.
+Reference browser activation remains open.
 Worker factories now receive frozen numeric `SessionWorkerLimits`, without
 credentials/configuration references, to reserve explicit per-item IPC capacity.
 [Reservation and prepared chunk format](CLIPBOARD_CHUNKS.md).

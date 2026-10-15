@@ -60,7 +60,7 @@ test('clipboard reservation: exact finite item-plus-envelope-and-control budget,
   );
   assert.equal(captured.maxWriteBytes, 100000);
   await explicit.close();
-  const gated = new Inspect(workerOptions, { clipboardItemBytes: 1024 });
+  const gated = new Inspect(workerOptions, { clipboardItemBytes: 2048 });
   const before = constructed;
   await assert.rejects(
     gated.start(

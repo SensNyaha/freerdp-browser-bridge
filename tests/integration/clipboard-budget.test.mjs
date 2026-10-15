@@ -47,23 +47,25 @@ test(
       pattern = Buffer.from('界');
     bytes.fill(pattern, 0, bytes.length - (bytes.length % 3));
     try {
-      // Probe only the reserved private process. Public native start stays gated.
-      await processOwner.start();
-      await processOwner.connect({
-        target: { host: 'synthetic' },
-        auth: {},
-        clipboard: {
-          mode: 'bidirectional',
-          text: true,
-          maxItemBytes: bytes.length,
+      // Actual adapter start, with a synthetic child/private IPC peer only.
+      await native.start(
+        {
+          target: { host: 'synthetic' },
+          auth: {},
+          clipboard: {
+            mode: 'bidirectional',
+            text: true,
+            maxItemBytes: bytes.length,
+          },
         },
-      });
+        new AbortController().signal,
+      );
       await eventually(() => processOwner.clipboardState?.ready);
-      assert.equal(await processOwner.writeClipboardText(bytes), 'accepted');
+      assert.equal(await native.writeClipboardText(bytes), 'accepted');
       assert.equal(bytes[0], pattern[0]);
       assert.equal(bytes.at(-1), 65);
       await processOwner.ping();
-      assert.equal(await processOwner.revokeClipboardText(), 'accepted');
+      assert.equal(await native.revokeClipboardText(), 'accepted');
       assert.equal(processOwner.clipboardState.localAccepted, false);
       await native.close();
       assert.equal(processOwner.state, 'closed');

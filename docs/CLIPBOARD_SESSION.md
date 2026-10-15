@@ -4,8 +4,9 @@ Implements the private session/controller portion of SPECIFICATION §2.7, using
 the [typed native API and revoke barrier](CLIPBOARD_IPC.md). This is prepared
 manager/native-adapter plumbing. Server control framing/credit now uses
 [RWC1](CLIPBOARD_CONTROL.md); browser activation and actual remote/application
-ownership acceptance remain open. The production
-`NativeSessionWorker` still refuses non-off clipboard before worker startup.
+ownership acceptance remain open. The production `NativeSessionWorker` now
+accepts explicit text selection with a matching item reservation and both
+`clipboardText` / `clipboardRevoke` HELLO capabilities (Iteration 237).
 
 Selection requires an explicit direction mode, text enabled, no unsupported
 HTML/images/files and a finite item maximum (default 1 MiB, range 1..16 MiB).
@@ -16,7 +17,10 @@ methods are `clipboardSnapshot`, `onClipboard`, `startClipboard`, `stopClipboard
 cannot call them. No public wire grammar or larger control body is added here.
 The factory can now receive a frozen nonsecret item-size reservation and pass it
 to `NativeSessionWorker`; [chunk/reservation scope](CLIPBOARD_CHUNKS.md) documents
-its finite IPC budget. This reservation alone does not enable public selection.
+its finite IPC budget. Missing/mismatched reservations and unsupported formats
+refuse before startup; a legacy/read-set-only peer refuses before CONFIGURE /
+SECRET. Direct factories must forward the numeric limits explicitly. Omitted/off
+selection retains its previous budget and behavior.
 
 `ClipboardOwnership` keeps one opaque grant, one optional in-flight operation,
 scalar source state and one retirement promise. It keeps no content queue or

@@ -2,8 +2,9 @@
 
 Implements the server control transport portion of SPECIFICATION §2.7. It is
 available only with explicit text policy and complete session backend hooks.
-Production native selection and reference browser integration remain gated at
-Iteration 236. Fake RDP/actual socket evidence does not establish remote clipboard
+Native selection requires the explicit reservation and both HELLO capabilities
+from Iteration 237. Reference browser integration remains gated. Fake RDP/actual
+socket evidence does not establish remote clipboard
 or physical/OS clipboard access. [Ownership](CLIPBOARD_SESSION.md),
 [binary record layout](CLIPBOARD_CHUNKS.md).
 
