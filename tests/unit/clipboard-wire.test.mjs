@@ -23,6 +23,61 @@ const empty = Buffer.alloc(0);
 const get = { operation: 'read', generation: 1n, revision: 2n, text: empty };
 const set = { operation: 'set', generation: 1n, revision: 0n, text: unicode };
 
+test('clipboard revoke: schema-2 golden vector cannot be confused with empty schema-1 set', () => {
+  const value = {
+    operation: 'revoke',
+    generation: 1n,
+    revision: 0n,
+    text: empty,
+  };
+  const golden = Buffer.from(
+    '000200030000000000000000000000010000000000000000',
+    'hex',
+  );
+  assert.deepEqual(encodeClipboardCommand(value), golden);
+  assert.deepEqual(decodeClipboardCommand(golden), value);
+  assert.deepEqual(
+    encodeClipboardResult({ ...value, status: 'accepted' }),
+    golden,
+  );
+  assert.deepEqual(decodeClipboardResult(golden), {
+    ...value,
+    status: 'accepted',
+  });
+  for (let n = 0; n < golden.length; ++n)
+    assert.throws(
+      () => decodeClipboardCommand(golden.subarray(0, n)),
+      ProtocolError,
+    );
+  for (const schema of [0, 1, 3]) {
+    const bytes = Buffer.from(golden);
+    bytes.writeUInt16BE(schema);
+    assert.throws(() => decodeClipboardCommand(bytes), ProtocolError);
+    assert.throws(() => decodeClipboardResult(bytes), ProtocolError);
+  }
+  for (const operation of [1, 2, 4]) {
+    const bytes = Buffer.from(golden);
+    bytes.writeUInt16BE(operation, 2);
+    assert.throws(() => decodeClipboardCommand(bytes), ProtocolError);
+    assert.throws(() => decodeClipboardResult(bytes), ProtocolError);
+  }
+  assert.throws(
+    () => encodeClipboardCommand({ ...value, revision: 1n }),
+    ProtocolError,
+  );
+  assert.throws(
+    () => encodeClipboardCommand({ ...value, text: unicode }),
+    ProtocolError,
+  );
+  assert.throws(
+    () => decodeClipboardCommand(Buffer.concat([golden, unicode])),
+    ProtocolError,
+  );
+  assert.throws(
+    () => decodeClipboardResult(Buffer.concat([golden, unicode])),
+    ProtocolError,
+  );
+});
 test('clipboard private state: independent schema/flag/max/generation/revision vector', () => {
   const expected = {
     generation: 1n,

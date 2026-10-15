@@ -14,10 +14,11 @@ void wipe(std::vector<std::uint8_t> &b) noexcept {
 }
 constexpr std::uint64_t dispatch_ms = 250, publication_ms = 1000;
 } // namespace
-WorkerSession::WorkerSession(TextPolicy policy, Send send, Clock clock)
-    : policy_(policy), send_(std::move(send)), clock_(std::move(clock)) {
+WorkerSession::WorkerSession(TextPolicy policy, Send send, Clock clock,
+                             TextSession::Resolve resolve)
+    : policy_(policy), send_(std::move(send)), clock_(std::move(clock)), resolve_(resolve) {
   if ((!policy.to_server && !policy.from_server) || !policy.maximum ||
-      policy.maximum > max_item_bytes || !send_ || !clock_)
+      policy.maximum > max_item_bytes || !send_ || !clock_ || !resolve_)
     throw std::invalid_argument("Invalid clipboard worker owner");
 }
 WorkerSession::~WorkerSession() {
@@ -52,7 +53,8 @@ bool WorkerSession::start(std::uint64_t generation) noexcept {
   try {
     text_ = std::make_unique<TextSession>(
         policy_, [](auto, auto) { return true; },
-        [this](auto id, auto status, auto bytes) { return reply(id, status, bytes); }, clock_);
+        [this](auto id, auto status, auto bytes) { return reply(id, status, bytes); }, clock_,
+        resolve_);
   } catch (...) {
     return false;
   }
@@ -92,7 +94,8 @@ std::optional<wire::Status> WorkerSession::submit(std::uint64_t id,
       return wire::Status::busy;
     if (c.operation == wire::Operation::read
             ? (!policy_.from_server || !admitted_->remote_text || admitted_->remote_pending)
-            : (!policy_.to_server || admitted_->local_pending))
+            : ((c.operation == wire::Operation::set && !policy_.to_server) ||
+               admitted_->local_pending))
       return wire::Status::refused;
     queued_.emplace(
         Job{c.operation, c.generation, c.revision, id, t + dispatch_ms, std::move(payload)});
@@ -187,9 +190,10 @@ bool WorkerSession::pump() noexcept {
             return false;
         } else {
           const auto rc =
-              job.operation == wire::Operation::read
-                  ? text_->request(job.revision, job.id)
-                  : text_->set_local(std::span(job.payload).subspan(wire::metadata_bytes));
+              job.operation == wire::Operation::read ? text_->request(job.revision, job.id)
+              : job.operation == wire::Operation::set
+                  ? text_->set_local(std::span(job.payload).subspan(wire::metadata_bytes))
+                  : text_->revoke_local();
           // The delegate may synchronously complete a read into result_.
           if (rc != CHANNEL_RC_OK)
             return false;
@@ -199,9 +203,9 @@ bool WorkerSession::pump() noexcept {
         if (!s || s->failed)
           return false;
       }
-      if (active_ && active_->operation == wire::Operation::set && result_.empty() &&
+      if (active_ && active_->operation != wire::Operation::read && result_.empty() &&
           !s->awaiting_local &&
-          !complete(s->local_accepted ? wire::Status::accepted : wire::Status::refused))
+          !complete(s->local_response_ok ? wire::Status::accepted : wire::Status::refused))
         return false;
       // An offered value can change while an encoded result awaits output.
       if (active_ && active_->operation == wire::Operation::read && !result_.empty() &&

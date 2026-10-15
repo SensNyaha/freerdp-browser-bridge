@@ -5,7 +5,8 @@ Current private clipboard transport assigns RWI1 kinds
 Guarded native workers accept explicit raw connection schema-10 selection
 (Iteration 231); unselected/pre-connect/retired dispatch returns unavailable.
 Private typed Node selection/read/write now requires HELLO extension bit 8
-`clipboardText` (Iteration 232). Public session/browser selection remains disabled.
+`clipboardText` (Iteration 232). Content-free schema-2 revoke separately requires
+bit 16 `clipboardRevoke` (Iteration 233). Public session/browser selection remains disabled.
 This adds no public clipboard commands or larger WebSocket body allowance.
 The required public clipboard events/commands below remain unfinished.
 [Private contract](docs/CLIPBOARD_IPC.md).

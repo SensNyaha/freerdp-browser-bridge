@@ -79,12 +79,70 @@ test('fake clipboard IPC: explicit profiles, copied scalar state and Unicode rea
       await worker.ping();
     });
 });
+test('fake clipboard IPC: explicit revoke uses its capability, clears offer authority and preserves reuse', async () => {
+  for (const mode of [
+    'bidirectional',
+    'server-to-browser',
+    'browser-to-server',
+  ])
+    await run('valid', async (worker) => {
+      assert.equal(worker.build.capabilities.clipboardRevoke, true);
+      assert.equal(await worker.revokeClipboardText(), 'unavailable');
+      await worker.connect(config(mode));
+      await eventually(() => worker.clipboardState?.ready);
+      if (mode !== 'server-to-browser') {
+        assert.equal(
+          await worker.writeClipboardText(Buffer.from('A')),
+          'accepted',
+        );
+        assert.equal(worker.clipboardState.localAccepted, true);
+      }
+      assert.equal(await worker.revokeClipboardText(), 'accepted');
+      assert.equal(worker.clipboardState.localAccepted, false);
+      assert.equal(worker.clipboardState.localPending, false);
+      if (mode !== 'server-to-browser')
+        assert.equal(
+          await worker.writeClipboardText(Buffer.from('B')),
+          'accepted',
+        );
+      await worker.ping();
+    });
+  await run('no-revoke', async (worker) => {
+    await worker.connect(config());
+    await eventually(() => worker.clipboardState?.ready);
+    assert.equal(worker.build.capabilities.clipboardText, true);
+    await assert.rejects(worker.revokeClipboardText(), {
+      code: 'CLIPBOARD_NOT_IMPLEMENTED',
+    });
+    assert.equal(await worker.writeClipboardText(Buffer.from('A')), 'accepted');
+    await worker.ping();
+  });
+  await run('revoke-stale', async (worker) => {
+    await worker.connect(config());
+    await eventually(() => worker.clipboardState?.ready);
+    await assert.rejects(worker.revokeClipboardText(), {
+      code: 'IPC_UNEXPECTED_REPLY',
+    });
+    assert.equal(worker.clipboardState, undefined);
+  });
+  await run('hold', async (worker) => {
+    await worker.connect(config());
+    await eventually(() => worker.clipboardState?.ready);
+    const revoke = worker.revokeClipboardText();
+    assert.equal(await worker.revokeClipboardText(), 'busy');
+    assert.equal(await worker.writeClipboardText(Buffer.from('A')), 'busy');
+    assert.equal((await worker.readClipboardText(1n)).status, 'busy');
+    await worker.ping();
+    assert.equal(await revoke, 'accepted');
+  });
+});
 test('fake clipboard IPC: one flight preserves heartbeat and output; offer change discards stale text', async () => {
   await run('hold', async (worker) => {
     await worker.connect(config());
     await eventually(() => worker.clipboardState?.ready);
     const read = worker.readClipboardText(1n);
     assert.equal(await worker.writeClipboardText(Buffer.from('A')), 'busy');
+    assert.equal(await worker.revokeClipboardText(), 'busy');
     assert.equal((await worker.readClipboardText(1n)).status, 'busy');
     await worker.ping();
     const result = await read;

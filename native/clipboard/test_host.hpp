@@ -64,6 +64,14 @@ struct Host {
     context.reset(freerdp_client_context_new(&entry));
     REQUIRE(context);
     reinterpret_cast<Context *>(context.get())->owner = this;
+    context->instance->SendChannelData = [](freerdp *i, UINT16 id, const BYTE *bytes,
+                                            std::size_t size) -> BOOL {
+      auto &h = get(i);
+      if (id != h.resolved || !bytes || size != 8)
+        return FALSE;
+      h.writes.emplace_back(bytes, bytes + size);
+      return TRUE;
+    };
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_SynchronousStaticChannels, TRUE));
     REQUIRE(freerdp_settings_set_bool(context->settings, FreeRDP_AsyncChannels, FALSE));
     REQUIRE(freerdp_settings_set_uint32(context->settings, FreeRDP_ThreadingFlags,

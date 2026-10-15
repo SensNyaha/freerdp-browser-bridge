@@ -5,7 +5,7 @@ export const CLIPBOARD_METADATA_BYTES = 24;
 export const CLIPBOARD_MAX_TEXT_BYTES = 16 * 1024 * 1024;
 export const CLIPBOARD_MAX_RECORD_BYTES =
   CLIPBOARD_METADATA_BYTES + CLIPBOARD_MAX_TEXT_BYTES;
-export type ClipboardOperation = 'read' | 'set';
+export type ClipboardOperation = 'read' | 'set' | 'revoke';
 export const clipboardStatuses = [
   'accepted',
   'refused',
@@ -103,8 +103,8 @@ function identity(c: ClipboardCommand): void {
   u64(c.generation, true);
   u64(c.revision, c.operation === 'read');
   if (
-    (c.operation !== 'read' && c.operation !== 'set') ||
-    (c.operation === 'set' && c.revision !== 0n) ||
+    !['read', 'set', 'revoke'].includes(c.operation) ||
+    (c.operation !== 'read' && c.revision !== 0n) ||
     !Buffer.isBuffer(c.text)
   )
     throw new ProtocolError();
@@ -126,15 +126,18 @@ function header(b: Buffer): void {
     !Buffer.isBuffer(b) ||
     b.length < CLIPBOARD_METADATA_BYTES ||
     b.length > CLIPBOARD_MAX_RECORD_BYTES ||
-    b.readUInt16BE(0) !== 1 ||
+    b.readUInt16BE(0) !== (b.readUInt16BE(2) === 3 ? 2 : 1) ||
     b.readUInt16BE(6) !== 0
   )
     throw new ProtocolError();
 }
 function encode(c: ClipboardCommand, status: number): Buffer {
   const b = Buffer.alloc(CLIPBOARD_METADATA_BYTES + c.text.length);
-  b.writeUInt16BE(1, 0);
-  b.writeUInt16BE(c.operation === 'read' ? 1 : 2, 2);
+  b.writeUInt16BE(c.operation === 'revoke' ? 2 : 1, 0);
+  b.writeUInt16BE(
+    c.operation === 'read' ? 1 : c.operation === 'set' ? 2 : 3,
+    2,
+  );
   b.writeUInt16BE(status, 4);
   b.writeBigUInt64BE(c.generation, 8);
   b.writeBigUInt64BE(c.revision, 16);
@@ -143,9 +146,9 @@ function encode(c: ClipboardCommand, status: number): Buffer {
 }
 function decode(b: Buffer): ClipboardCommand {
   const op = b.readUInt16BE(2);
-  if (op !== 1 && op !== 2) throw new ProtocolError();
+  if (op !== 1 && op !== 2 && op !== 3) throw new ProtocolError();
   return {
-    operation: op === 1 ? 'read' : 'set',
+    operation: op === 1 ? 'read' : op === 2 ? 'set' : 'revoke',
     generation: b.readBigUInt64BE(8),
     revision: b.readBigUInt64BE(16),
     text: b.subarray(CLIPBOARD_METADATA_BYTES),

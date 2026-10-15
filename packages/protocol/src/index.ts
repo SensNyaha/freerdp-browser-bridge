@@ -355,6 +355,7 @@ export interface WorkerBuild {
     opusInput: boolean;
     audioBuffer200: boolean;
     clipboardText: boolean;
+    clipboardRevoke: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -409,11 +410,12 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~15) !== 0 ||
+      (extensions & ~31) !== 0 ||
       ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
       ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4))) ||
       ((extensions & 4) !== 0 && !(capabilities & 4096)) ||
-      ((extensions & 8) !== 0 && !(capabilities & 4))
+      ((extensions & 8) !== 0 && !(capabilities & 4)) ||
+      ((extensions & 16) !== 0 && !(extensions & 8))
     )
       throw new ProtocolError();
     offset += 8;
@@ -446,6 +448,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       opusInput: Boolean(extensions & 2),
       audioBuffer200: Boolean(extensions & 4),
       clipboardText: Boolean(extensions & 8),
+      clipboardRevoke: Boolean(extensions & 16),
       penInput: false,
     },
     bridgeVersion,

@@ -125,7 +125,7 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
   extensions |= 4;
 #endif
 #ifdef CHANNEL_CLIPRDR_CLIENT
-  extensions |= 8;
+  extensions |= 8 | 16;
 #endif
   // Fixed schema-1 extension; unknown feature bits remain refused by old peers.
   append_be(bytes, 1, 2);
@@ -428,9 +428,9 @@ int main(int argc, char **argv) {
 #endif
 #if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
     defined(CHANNEL_CLIPRDR_CLIENT)
-                 "\"clipboardText\":true,"
+                 "\"clipboardText\":true,\"clipboardRevoke\":true,"
 #else
-                 "\"clipboardText\":false,"
+                 "\"clipboardText\":false,\"clipboardRevoke\":false,"
 #endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP

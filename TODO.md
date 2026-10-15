@@ -590,7 +590,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   current source/offer authority, one flight and late-result disposal; synthetic
   IPC and actual native TLS checks pass. Public/browser selection, remote clipboard
   and total-resource acceptance remain open. [Native evidence](docs/ITERATION_231.md),
-  [typed API evidence](docs/ITERATION_232.md).
+  [typed API and actual XRDP offer/empty-text ACK evidence](docs/ITERATION_232.md).
+  Native offer revocation now has a separate content-free schema-2 command and
+  checked public send/ACK path; unlike empty text, it removes all offered formats.
+  Controller transfer and actual remote revoke remain open.
+  [Revocation evidence](docs/ITERATION_233.md).
 - [x] DONE for clipboard private transport — Versioned RWI1 class/correlation
   bounds, dedicated latest-state/one-result output and full 16 MiB command delivery
   pass actual Windows/Linux process/carrier tests, native/Node regression and

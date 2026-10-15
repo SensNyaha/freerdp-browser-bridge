@@ -16,6 +16,7 @@ struct TextSnapshot {
   std::uint64_t revision = 0;
   bool ready = false, remote_text = false, local_accepted = false;
   bool awaiting_local = false, awaiting_remote = false, failed = false;
+  bool local_response_ok = false;
 };
 // Exclusive public CLIPRDR text callback owner. Bind/dispatch/poll/close on the
 // constructing RDP thread with a synchronous SDK; context must outlive close.
@@ -25,12 +26,17 @@ public:
   using Clock = std::function<std::uint64_t()>;
   using Offer = std::function<bool(std::uint64_t, bool)>;
   using Reply = std::function<bool(std::uint64_t, TextReply, std::span<const std::uint8_t>)>;
-  TextSession(TextPolicy, Offer, Reply, Clock);
+  using Resolve = UINT16 (*)(freerdp *);
+  static UINT16 resolve_channel(freerdp *);
+  TextSession(TextPolicy, Offer, Reply, Clock, Resolve = resolve_channel);
   ~TextSession();
   TextSession(const TextSession &) = delete;
   TextSession &operator=(const TextSession &) = delete;
   UINT bind(CliprdrClientContext &) noexcept;
   UINT set_local(std::span<const std::uint8_t>) noexcept;
+  // No formats, distinct from offering an empty Unicode value. One local ACK
+  // must finish before revocation; cached text is wiped before the SDK call.
+  UINT revoke_local() noexcept;
   UINT request(std::uint64_t revision, std::uint64_t request_id) noexcept;
   bool poll() noexcept;
   bool close() noexcept;
@@ -42,6 +48,8 @@ private:
   Offer offer_;
   Reply reply_;
   Clock clock_;
+  Resolve resolve_;
+  UINT16 revoke_channel_ = 0;
   const std::thread::id thread_ = std::this_thread::get_id();
   CliprdrClientContext *context_ = nullptr;
   CliprdrClientContext saved_{};

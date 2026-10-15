@@ -89,6 +89,17 @@ test('clipboard HELLO: optional versioned capability requires connection core an
   });
   const base = Buffer.concat([Buffer.from([0, 1, 0, 5]), ...strings]);
   assert.equal(decodeBuild(base).capabilities.clipboardText, false);
+  assert.equal(decodeBuild(base).capabilities.clipboardRevoke, false);
+  assert.equal(
+    decodeBuild(Buffer.concat([base, Buffer.from([0, 1, 0, 0, 0, 0, 0, 24])]))
+      .capabilities.clipboardRevoke,
+    true,
+  );
+  assert.equal(
+    decodeBuild(Buffer.concat([base, Buffer.from([0, 1, 0, 0, 0, 0, 0, 8])]))
+      .capabilities.clipboardRevoke,
+    false,
+  );
   assert.equal(
     decodeBuild(Buffer.concat([base, Buffer.from([0, 1, 0, 0, 0, 0, 0, 8])]))
       .capabilities.clipboardText,

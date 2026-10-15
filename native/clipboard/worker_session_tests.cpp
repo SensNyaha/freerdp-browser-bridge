@@ -32,7 +32,7 @@ struct Owner {
               records.push_back({kind, id, {bytes.begin(), bytes.end()}});
               return true;
             },
-            [this] { return now.load(); }) {}
+            [this] { return now.load(); }, [](freerdp *i) { return Host::get(i).resolved; }) {}
   ~Owner() { session.retire(); }
   void start(Host &h) {
     REQUIRE(session.start(1));
@@ -107,6 +107,58 @@ TEST_CASE("Clipboard worker set completes only after peer ACK and preserves text
   REQUIRE(o.session.pump());
   REQUIRE(o.result(10).status == wire::Status::refused);
   REQUIRE_FALSE(o.session.admitted()->local_accepted);
+}
+TEST_CASE("Clipboard worker revoke owns one empty-list ACK through result backpressure") {
+  for (unsigned mode = 0; mode < 4; ++mode) {
+    Host h(false);
+    Owner o;
+    o.start(h);
+    auto bytes = o.set(std::vector<BYTE>{65});
+    REQUIRE_FALSE(o.session.submit(1, bytes));
+    REQUIRE(o.session.pump());
+    auto revoke = wire::encode_command({wire::Operation::revoke, 1, 0, {}});
+    REQUIRE(o.session.submit(2, revoke) == wire::Status::busy);
+    REQUIRE(h.send(record(3, 1)));
+    REQUIRE(o.session.pump());
+    REQUIRE(o.result(1).status == wire::Status::accepted);
+    REQUIRE_FALSE(o.session.submit(2, revoke));
+    REQUIRE(o.session.pump());
+    REQUIRE(h.writes.back() == record(2, 0));
+    REQUIRE_FALSE(o.session.admitted()->local_accepted);
+    REQUIRE(o.session.admitted()->local_pending);
+    REQUIRE(h.send(record(4, 0, {13, 0, 0, 0})));
+    REQUIRE(h.writes.back() == record(5, 2));
+    if (mode == 3) {
+      o.now = 5001;
+      REQUIRE_FALSE(o.session.pump());
+      REQUIRE_FALSE(o.session.admitted());
+      continue;
+    }
+    o.result_credit = mode != 1;
+    REQUIRE(h.send(record(3, mode == 2 ? 2 : 1)));
+    REQUIRE(o.session.pump());
+    if (mode == 1) {
+      bytes = o.set({});
+      REQUIRE(o.session.submit(3, bytes) == wire::Status::busy);
+      REQUIRE(h.send(record(4, 0, {13, 0, 0, 0})));
+      REQUIRE(h.writes.back() == record(5, 2));
+      o.result_credit = true;
+      REQUIRE(o.session.pump());
+    }
+    REQUIRE(o.result(2).operation == wire::Operation::revoke);
+    REQUIRE(o.result(2).status == (mode == 2 ? wire::Status::refused : wire::Status::accepted));
+    REQUIRE_FALSE(o.session.admitted()->local_accepted);
+    REQUIRE_FALSE(o.session.admitted()->local_pending);
+  }
+  Host h(false);
+  Owner o({false, true, 1});
+  o.start(h);
+  auto revoke = wire::encode_command({wire::Operation::revoke, 1, 0, {}});
+  REQUIRE_FALSE(o.session.submit(1, revoke));
+  const auto writes = h.writes.size();
+  REQUIRE(o.session.pump());
+  REQUIRE(o.result(1).status == wire::Status::accepted);
+  REQUIRE(h.writes.size() == writes);
 }
 TEST_CASE(
     "Clipboard worker admission uses published authority and dispatch rechecks current offers") {

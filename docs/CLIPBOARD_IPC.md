@@ -1,4 +1,4 @@
-# Clipboard private payload schema 1
+# Clipboard private payload schemas
 
 Prepares the private Node/worker portion of SPECIFICATION §2.7. The payload
 codecs are implemented independently in C++20 and strict TypeScript. Iteration
@@ -6,7 +6,8 @@ codecs are implemented independently in C++20 and strict TypeScript. Iteration
 and bounded output/carrier storage. Both workers validate unselected commands
 and return unavailable. Iteration 231 selects guarded native dispatch through
 explicit raw schema 10. Iteration 232 adds capability-gated typed `WorkerProcess`
-selection/read/write; public session/browser selection remains disabled.
+selection/read/write. Iteration 233 adds separately gated schema-2 offer
+revocation; public session/browser selection remains disabled.
 Unselected workers still return unavailable.
 
 | RWI1 kind | Request ID | Payload bound |
@@ -24,7 +25,7 @@ packet owner needs an explicit finite budget. No write-budget bypass is added.
 
 All integers are big-endian. Identity fields are unsigned 64-bit (Node bigint).
 Generation is nonzero and identifies one native channel lifetime. Offer revision
-is nonzero for reads and zero for local sets. Codecs validate structure only;
+is nonzero for reads and zero for local sets/revocation. Codecs validate structure only;
 the eventual active owner must separately verify observed generation/revision, capability,
 current attachment/grant, direction policy, rate/queue/size and finite deadlines.
 Ready metadata alone confers no clipboard authority.
@@ -44,12 +45,13 @@ available/pending flags. Local accepted and pending cannot coexist. Remote text
 or a pending remote request requires a nonzero revision; a later offer without
 Unicode may clear remote-text while the old response remains pending.
 
-Command/result metadata is also 24 bytes, followed by raw UTF-8 text:
+Command/result metadata is also 24 bytes, followed by raw UTF-8 text. Schema 1
+retains read/set; the content-free revoke operation below requires schema 2:
 
 | Offset | Size | Value |
 | --- | --- | --- |
-| 0 | 2 | schema = 1 |
-| 2 | 2 | operation: read=1, set=2 |
+| 0 | 2 | schema = 1 for read/set; 2 for revoke |
+| 2 | 2 | operation: read=1, set=2, revoke=3 |
 | 4 | 2 | command: zero; result status below |
 | 6 | 2 | reserved zero |
 | 8 | 8 | expected/native generation |
@@ -129,6 +131,37 @@ pending read/write as disconnected, retains one scalar late-reply correlation
 and drains its text without delivery. Already queued ready events cannot revive
 retired authority. Wrong/duplicate/malformed replies fail IPC without text in
 diagnostics. Process close retains its existing finite cleanup contract.
+
+## Native offer revocation (Iteration 233)
+
+The optional HELLO extension adds bit 16 `clipboardRevoke`, requiring bit 8
+`clipboardText`. Old read/set-only peers remain usable privately; the revoke
+method refuses before dispatch if this capability is absent. Matching packages
+are required for new worker extension bits. State/read/set bytes remain schema 1.
+Revoke command/result are exactly 24 bytes with schema 2, operation 3, generation
+and zero revision; no text, reserved flags or other schema/operation combinations
+are accepted. Envelope/carrier maxima and output slots do not change.
+
+`revokeClipboardText()` shares the existing single flight. A pending local ACK
+or another operation returns busy; no second uncorrelated request is queued and
+the caller must drain its previous operation before revoking. On the RDP thread,
+revocation wipes the retained value before transport work. It advertises no
+formats, unlike `writeClipboardText(Buffer.alloc(0))`, which offers empty Unicode.
+Successful completion requires the empty-list peer ACK and a published state
+with local accepted/pending both false. Receive-only profiles, which cannot own
+local text, complete without changing the remote clipboard after their initial
+empty-list ACK. Negative ACK leaves no retained value and returns refused;
+uncertain send, timeout or channel identity failure retires the native owner.
+
+Pinned FreeRDP 3.32.1 `cliprdr_client_format_list` silently skips empty lists after
+the first one while returning success. Therefore this one fixed 8-byte PDU uses
+public `SendChannelData`, on the RDP thread, with a nonzero stable public
+`cliprdr` channel ID and checked return. Before it sends, the public SDK channel
+dispatcher drains previously accepted queued replies; the empty-list ACK must
+not be overtaken by an older queued value response. Retirement and channel ID are
+rechecked after that dispatch. No SDK structs, private plugin fields or arbitrary
+raw channel data are exposed to callers. This does not bound SDK queues/CPU/RSS
+or establish actual remote revocation; those acceptance gates remain open.
 
 `NativeSessionWorker` still refuses non-off clipboard before startup. Controller /
 media authority, public framing, browser permission/gesture integration and actual

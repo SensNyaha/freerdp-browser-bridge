@@ -12,7 +12,7 @@ class WorkerSession final {
 public:
   using Send = std::function<bool(ipc::Kind, std::uint64_t, std::span<const std::uint8_t>)>;
   using Clock = TextSession::Clock;
-  WorkerSession(TextPolicy, Send, Clock);
+  WorkerSession(TextPolicy, Send, Clock, TextSession::Resolve = TextSession::resolve_channel);
   ~WorkerSession();
   WorkerSession(const WorkerSession &) = delete;
   WorkerSession &operator=(const WorkerSession &) = delete;
@@ -35,6 +35,7 @@ private:
   const TextPolicy policy_;
   Send send_;
   Clock clock_;
+  TextSession::Resolve resolve_;
   mutable std::mutex mutex_;
   std::optional<ipc::clipboard::State> admitted_;
   std::optional<Job> queued_, active_;

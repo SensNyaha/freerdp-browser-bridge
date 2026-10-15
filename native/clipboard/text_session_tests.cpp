@@ -1,7 +1,9 @@
 #include "test_host.hpp"
 #include "text_session.hpp"
+#include <freerdp/channels/channels.h>
 #include <string_view>
 #include <thread>
+#include <winpr/synch.h>
 using namespace bridge::clipboard;
 using namespace bridge::clipboard::test;
 namespace {
@@ -29,7 +31,7 @@ struct Observer {
               replies.push_back({id, status, {text.begin(), text.end()}});
               return true;
             },
-            [this] { return now; }) {}
+            [this] { return now; }, [](freerdp *i) { return Host::get(i).resolved; }) {}
 };
 void start(Host &h, TextSession &owner, bool long_names = true) {
   REQUIRE(owner.bind(*h.clip) == CHANNEL_RC_OK);
@@ -102,6 +104,110 @@ TEST_CASE(
     }
     REQUIRE_FALSE(o.owner.snapshot()->failed);
   }
+}
+TEST_CASE("Actual CLIPRDR revoke removes formats and never serves the previous or empty value") {
+  for (unsigned mode = 0; mode < 4; ++mode) {
+    Host h(false);
+    Observer o;
+    start(h, o.owner);
+    REQUIRE(o.owner.set_local(mode == 0 ? utf8("") : utf8("private synthetic")) == CHANNEL_RC_OK);
+    const auto writes = h.writes.size();
+    REQUIRE(o.owner.revoke_local() != CHANNEL_RC_OK); // No second uncorrelated ACK.
+    REQUIRE(h.writes.size() == writes);
+    REQUIRE(h.send(record(3, 1)));
+    REQUIRE(o.owner.snapshot()->local_accepted);
+    REQUIRE(o.owner.revoke_local() == CHANNEL_RC_OK);
+    REQUIRE(h.writes.back() == record(2, 0)); // No formats, not CF13 + empty UTF16.
+    REQUIRE_FALSE(o.owner.snapshot()->local_accepted);
+    REQUIRE(o.owner.snapshot()->awaiting_local);
+    REQUIRE(h.send(record(4, 0, {13, 0, 0, 0})));
+    REQUIRE(h.writes.back() == record(5, 2));
+    if (mode == 3) {
+      o.now = 5001;
+      REQUIRE_FALSE(o.owner.poll());
+      REQUIRE(o.owner.snapshot()->failed);
+      REQUIRE(h.clip->custom == nullptr);
+      continue;
+    }
+    REQUIRE(h.send(record(3, mode == 2 ? 2 : 1)));
+    REQUIRE(o.owner.snapshot()->local_response_ok == (mode != 2));
+    REQUIRE_FALSE(o.owner.snapshot()->local_accepted);
+    REQUIRE(h.send(record(4, 0, {13, 0, 0, 0})));
+    REQUIRE(h.writes.back() == record(5, 2));
+    REQUIRE(o.owner.set_local(utf8("new owner")) == CHANNEL_RC_OK);
+    REQUIRE(h.send(record(3, 1)));
+    REQUIRE(h.send(record(4, 0, {13, 0, 0, 0})));
+    REQUIRE(h.writes.back() == record(5, 1, {110, 0, 101, 0, 119, 0, 32,  0, 111, 0,
+                                             119, 0, 110, 0, 101, 0, 114, 0, 0,   0}));
+  }
+  Host h(false);
+  Observer o({false, true, 1});
+  start(h, o.owner);
+  const auto writes = h.writes.size();
+  REQUIRE(o.owner.revoke_local() == CHANNEL_RC_OK);
+  REQUIRE(o.owner.snapshot()->local_response_ok);
+  REQUIRE(h.writes.size() == writes); // Receive-only never offers local content.
+}
+TEST_CASE("CLIPRDR revoke checks public send failure and stable channel identity without retry") {
+  for (unsigned mode = 0; mode < 5; ++mode) {
+    Host h(false);
+    Observer o;
+    start(h, o.owner);
+    REQUIRE(o.owner.set_local(utf8("synthetic")) == CHANNEL_RC_OK);
+    REQUIRE(h.send(record(3, 1)));
+    if (mode == 0)
+      h.resolved = 0;
+    else if (mode == 1)
+      h.context->instance->SendChannelData = nullptr;
+    else if (mode == 2)
+      h.context->instance->SendChannelData = [](auto *, auto, auto *, auto) -> BOOL {
+        return FALSE;
+      };
+    else if (mode == 3)
+      h.context->instance->SendChannelData = [](auto *, auto, auto *, auto) -> BOOL {
+        throw std::runtime_error("Synthetic revoke transport fault");
+      };
+    else {
+      REQUIRE(o.owner.revoke_local() == CHANNEL_RC_OK);
+      REQUIRE(h.send(record(3, 1)));
+      h.resolved = 1006;
+    }
+    const auto writes = h.writes.size();
+    REQUIRE(o.owner.revoke_local() != CHANNEL_RC_OK);
+    REQUIRE(h.writes.size() == writes);
+    REQUIRE(o.owner.snapshot()->failed);
+    REQUIRE_FALSE(o.owner.snapshot()->local_accepted);
+    REQUIRE(h.clip->custom == nullptr);
+    REQUIRE(o.owner.revoke_local() != CHANNEL_RC_OK);
+  }
+}
+TEST_CASE("CLIPRDR revoke drains the public SDK channel dispatcher before direct send") {
+  Host h(false);
+  Observer o;
+  start(h, o.owner);
+  struct Pending {
+    Host *host;
+    unsigned calls = 0;
+    static BOOL run(rdpContext *, void *userdata) {
+      auto &self = *static_cast<Pending *>(userdata);
+      ++self.calls;
+      self.host->writes.push_back(record(5, 2));
+      return TRUE;
+    }
+  } pending{&h};
+  const auto event = CreateEvent(nullptr, TRUE, TRUE, nullptr);
+  if (!event)
+    throw std::runtime_error("Synthetic dispatcher event unavailable");
+  REQUIRE(freerdp_client_channel_register(h.context->channels, event, Pending::run, &pending));
+  const auto rc = o.owner.revoke_local();
+  REQUIRE(freerdp_client_channel_unregister(h.context->channels, event));
+  REQUIRE(CloseHandle(event));
+  REQUIRE(rc == CHANNEL_RC_OK);
+  REQUIRE(pending.calls == 1);
+  REQUIRE(h.writes[h.writes.size() - 2] == record(5, 2));
+  REQUIRE(h.writes.back() == record(2, 0));
+  REQUIRE(h.send(record(3, 1)));
+  REQUIRE_FALSE(o.owner.snapshot()->local_accepted);
 }
 TEST_CASE("Actual CLIPRDR new offers preserve one pending response and discard its stale text") {
   Host h(false);

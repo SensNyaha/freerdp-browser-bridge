@@ -95,7 +95,37 @@ TEST_CASE("Clipboard private malformed metadata and text never disclose their in
                     ProtocolError);
   REQUIRE_THROWS_AS(encode_result({Operation::read, static_cast<Status>(8), 1, 2, {}}),
                     ProtocolError);
-  REQUIRE_THROWS_AS(encode_command({static_cast<Operation>(3), 1, 0, {}}), ProtocolError);
+  REQUIRE_THROWS_AS(encode_command({static_cast<Operation>(4), 1, 0, {}}), ProtocolError);
+}
+TEST_CASE("Clipboard revoke is an exact schema-2 content-free command and result") {
+  const std::vector<std::uint8_t> golden{0, 2, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0,
+                                         0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+  REQUIRE(encode_command({Operation::revoke, 1, 0, {}}) == golden);
+  REQUIRE(decode_command(golden).operation == Operation::revoke);
+  REQUIRE(encode_result({Operation::revoke, Status::accepted, 1, 0, {}}) == golden);
+  REQUIRE(decode_result(golden).operation == Operation::revoke);
+  for (std::size_t n = 0; n < golden.size(); ++n)
+    REQUIRE_THROWS_AS(decode_command(std::span(golden).first(n)), ProtocolError);
+  for (unsigned status = 0; status <= 7; ++status) {
+    auto bytes = golden;
+    bytes[5] = static_cast<std::uint8_t>(status);
+    REQUIRE(encode_result(decode_result(bytes)) == bytes);
+    bytes.push_back(65);
+    REQUIRE_THROWS_AS(decode_result(bytes), ProtocolError);
+    REQUIRE_THROWS_AS(decode_command(bytes), ProtocolError);
+  }
+  for (const auto schema : {0U, 1U, 3U}) {
+    auto bytes = golden;
+    bytes[1] = static_cast<std::uint8_t>(schema);
+    REQUIRE_THROWS_AS(decode_command(bytes), ProtocolError);
+    REQUIRE_THROWS_AS(decode_result(bytes), ProtocolError);
+  }
+  auto old = read_vector;
+  old[1] = 2;
+  REQUIRE_THROWS_AS(decode_command(old), ProtocolError);
+  REQUIRE_THROWS_AS(decode_result(old), ProtocolError);
+  REQUIRE_THROWS_AS(encode_command({Operation::revoke, 1, 1, {}}), ProtocolError);
+  REQUIRE_THROWS_AS(encode_command({Operation::revoke, 1, 0, unicode}), ProtocolError);
 }
 TEST_CASE(
     "Clipboard private text boundaries include normalized UTF16 terminator and full u64 identity") {

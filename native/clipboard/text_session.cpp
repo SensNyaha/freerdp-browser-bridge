@@ -2,6 +2,7 @@
 #include "ingress.hpp"
 #include <algorithm>
 #include <exception>
+#include <freerdp/channels/channels.h>
 #include <freerdp/freerdp.h>
 #include <limits>
 #include <stdexcept>
@@ -23,10 +24,14 @@ struct TextSession::Operation {
   }
   explicit operator bool() const noexcept { return entered; }
 };
-TextSession::TextSession(TextPolicy policy, Offer offer, Reply reply, Clock clock)
-    : policy_(policy), offer_(std::move(offer)), reply_(std::move(reply)),
-      clock_(std::move(clock)) {
-  if (!policy.maximum || policy.maximum > max_item_bytes || !offer_ || !reply_ || !clock_)
+UINT16 TextSession::resolve_channel(freerdp *instance) {
+  return freerdp_channels_get_id_by_name(instance, "cliprdr");
+}
+TextSession::TextSession(TextPolicy policy, Offer offer, Reply reply, Clock clock, Resolve resolve)
+    : policy_(policy), offer_(std::move(offer)), reply_(std::move(reply)), clock_(std::move(clock)),
+      resolve_(resolve) {
+  if (!policy.maximum || policy.maximum > max_item_bytes || !offer_ || !reply_ || !clock_ ||
+      !resolve_)
     throw std::invalid_argument("Invalid clipboard text owner");
 }
 TextSession::~TextSession() {
@@ -43,6 +48,7 @@ void TextSession::release() noexcept {
   wipe_local();
   request_ = request_revision_ = 0;
   state_.ready = state_.remote_text = state_.awaiting_local = state_.awaiting_remote = false;
+  state_.local_response_ok = false;
   if (context_ && context_->custom == this) {
     context_->ServerCapabilities = saved_.ServerCapabilities;
     context_->MonitorReady = saved_.MonitorReady;
@@ -133,6 +139,7 @@ UINT TextSession::advertise() noexcept {
   list.formats = list.numFormats ? &format : nullptr;
   state_.awaiting_local = true;
   state_.local_accepted = false;
+  state_.local_response_ok = false;
   local_deadline_ = now_ + timeout_ms;
   try {
     const auto rc = context_->ClientFormatList(context_, &list);
@@ -209,6 +216,49 @@ UINT TextSession::set_local(std::span<const std::uint8_t> text) noexcept {
     return fail();
   }
 }
+UINT TextSession::revoke_local() noexcept {
+  Operation op(*this);
+  if (!op || !state_.ready || state_.awaiting_local)
+    return ERROR_INVALID_STATE;
+  wipe_local();
+  // A receive-only profile never retains or advertises a local value. Its
+  // initial empty-list ACK has already completed at this admission point.
+  if (!policy_.to_server) {
+    state_.local_response_ok = true;
+    return CHANNEL_RC_OK;
+  }
+  // Pinned 3.32.1 ClientFormatList silently suppresses every empty list after
+  // the initial one. Send only this fixed PDU through the public RDP-thread API;
+  // never borrow plugin internals or leave a fictitious ACK pending.
+  try {
+    auto *instance = context_->rdpcontext->instance;
+    if (!instance)
+      return fail();
+    const auto channel = resolve_(instance);
+    if (closed_)
+      return CHANNEL_RC_OK;
+    if (!channel || (revoke_channel_ && channel != revoke_channel_) || !instance->SendChannelData)
+      return fail();
+    revoke_channel_ = channel;
+    // SDK replies use a channel write queue. Drain accepted older writes before
+    // the direct empty list so none can overtake its peer-ACK barrier.
+    if (freerdp_channels_process_pending_messages(instance) != 1)
+      return fail();
+    if (closed_)
+      return CHANNEL_RC_OK;
+    if (resolve_(instance) != channel)
+      return fail();
+    static constexpr BYTE empty_list[8]{CB_FORMAT_LIST, 0, 0, 0, 0, 0, 0, 0};
+    state_.awaiting_local = true;
+    state_.local_response_ok = false;
+    local_deadline_ = now_ + timeout_ms;
+    return instance->SendChannelData(instance, channel, empty_list, sizeof(empty_list))
+               ? CHANNEL_RC_OK
+               : fail();
+  } catch (...) {
+    return fail();
+  }
+}
 UINT TextSession::acknowledged(CliprdrClientContext *c,
                                const CLIPRDR_FORMAT_LIST_RESPONSE *r) noexcept {
   auto *s = owner(c);
@@ -221,7 +271,8 @@ UINT TextSession::acknowledged(CliprdrClientContext *c,
       (r->common.msgFlags != CB_RESPONSE_OK && r->common.msgFlags != CB_RESPONSE_FAIL))
     return s->fail();
   s->state_.awaiting_local = false;
-  s->state_.local_accepted = r->common.msgFlags == CB_RESPONSE_OK && !s->local_.empty();
+  s->state_.local_response_ok = r->common.msgFlags == CB_RESPONSE_OK;
+  s->state_.local_accepted = s->state_.local_response_ok && !s->local_.empty();
   if (!s->state_.local_accepted)
     s->wipe_local();
   return CHANNEL_RC_OK;

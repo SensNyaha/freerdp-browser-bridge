@@ -49,6 +49,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
       });
       try {
         assert.equal((await worker.start()).capabilities.clipboardText, true);
+        assert.equal(worker.build.capabilities.clipboardRevoke, true);
         await worker.connect({
           target: { host: '127.0.0.1', port: endpoint.port },
           auth: { username: 'synthetic', password: 'synthetic IPC sentinel' },
@@ -73,6 +74,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           assert.equal(source.fromServer, mode !== 'browser-to-server');
         }
         assert.equal(worker.clipboardState, undefined);
+        assert.equal(await worker.revokeClipboardText(), 'unavailable');
         assert.equal(
           (await worker.readClipboardText(1n)).status,
           'unavailable',

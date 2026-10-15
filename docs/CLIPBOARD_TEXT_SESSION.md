@@ -59,11 +59,16 @@ wrapper can then be destroyed on the original thread. Clock callbacks must be
 thread-safe, side-effect-free monotonic millisecond queries.
 
 Producer admission uses a try-lock, only successfully published scalar authority,
-immutable direction/size policy and one shared read/set reservation. Successful
+immutable direction/size policy and one shared read/set/revoke reservation. Successful
 admission moves one IPC payload; failures leave it with the caller for wiping.
 Dispatch rechecks actual readiness/revision and a fixed 250 ms arrival deadline.
 Expiry before dispatch returns timeout without issuing RDP work. Local set waits
 for the actual peer format-list ACK; read waits for the requested response.
+Revoke wipes the local value and sends no formats through the checked public
+channel path described in [the private contract](CLIPBOARD_IPC.md#native-offer-revocation-iteration-233).
+It waits for that list's ACK; empty Unicode set remains a distinct operation.
+The old local ACK must be drained before revocation. This primitive alone does
+not transfer controller ownership.
 
 The read callback copies once into one prepared result. Busy output retains this
 result and its correlation without another remote request. A changed offer turns

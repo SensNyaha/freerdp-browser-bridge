@@ -33,13 +33,17 @@ const reply = (p, command) => {
     state.localAccepted = true;
     source();
   }
+  if (command.operation === 'revoke') {
+    state.localAccepted = mode === 'revoke-stale';
+    source();
+  }
   const payload = encodeClipboardResult({
     operation: mode === 'mismatch' ? 'set' : command.operation,
     generation: command.generation,
     revision: mode === 'mismatch' ? 0n : command.revision,
     status: 'accepted',
     text:
-      mode === 'mismatch' || command.operation === 'set'
+      mode === 'mismatch' || command.operation !== 'read'
         ? Buffer.alloc(0)
         : mode === 'overquota'
           ? Buffer.alloc(1024, 65)
@@ -75,7 +79,18 @@ process.stdin.on('data', (b) => {
             ...strings,
             ...(mode === 'legacy'
               ? []
-              : [Buffer.from([0, 1, 0, 0, 0, 0, 0, 8])]),
+              : [
+                  Buffer.from([
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    mode === 'no-revoke' ? 8 : 24,
+                  ]),
+                ]),
           ]),
         );
       } else if (p.kind === Kind.Configure) {

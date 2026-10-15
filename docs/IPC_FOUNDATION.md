@@ -4,7 +4,8 @@ Current clipboard framing: additive kinds 45/46/47 carry fixed
 state and bounded Unicode command/result payloads. Iteration 231 activates the
 guarded native channel by explicit connection schema 10; unselected,
 pre-connect and retired owners return unavailable. Iteration 232 adds private
-typed Node selection and HELLO extension bit 8; public session/browser selection
+typed Node selection and HELLO extension bit 8. Iteration 233 adds capability bit
+16 and content-free schema-2 native offer revocation; public session/browser selection
 remains disabled. A dedicated latest state and one correlated
 result slot preserve the control FIFO; the carrier accepts a maximum 16 MiB
 text record while every other class retains its existing limit.

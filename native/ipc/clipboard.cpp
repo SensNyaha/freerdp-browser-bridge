@@ -17,7 +17,7 @@ void validate(const State &s) {
     throw ProtocolError();
 }
 void validate(Operation op, std::uint64_t generation, std::uint64_t revision) {
-  if (!generation || (op != Operation::read && op != Operation::set) ||
+  if (!generation || (op != Operation::read && op != Operation::set && op != Operation::revoke) ||
       (op == Operation::read ? !revision : revision != 0))
     throw ProtocolError();
 }
@@ -28,7 +28,7 @@ void text(std::span<const std::uint8_t> bytes) {
 }
 void validate(const Command &c) {
   validate(c.operation, c.generation, c.revision);
-  if (c.operation == Operation::read) {
+  if (c.operation != Operation::set) {
     if (!c.text.empty())
       throw ProtocolError();
   } else
@@ -44,14 +44,14 @@ void validate(const Result &r) {
     throw ProtocolError();
 }
 void header(std::span<const std::uint8_t> b) {
-  if (b.size() < metadata_bytes || b.size() > max_record_bytes || read_be(b.first(2)) != 1 ||
-      read_be(b.subspan(6, 2)))
+  if (b.size() < metadata_bytes || b.size() > max_record_bytes || read_be(b.subspan(6, 2)) ||
+      read_be(b.first(2)) != (read_be(b.subspan(2, 2)) == 3 ? 2u : 1u))
     throw ProtocolError();
 }
 std::vector<std::uint8_t> encode(Operation op, Status status, std::uint64_t generation,
                                  std::uint64_t revision, std::span<const std::uint8_t> text) {
   std::vector<std::uint8_t> b(metadata_bytes + text.size());
-  put(b, 0, 1, 2);
+  put(b, 0, op == Operation::revoke ? 2 : 1, 2);
   put(b, 2, static_cast<std::uint16_t>(op), 2);
   put(b, 4, static_cast<std::uint16_t>(status), 2);
   put(b, 8, generation, 8);

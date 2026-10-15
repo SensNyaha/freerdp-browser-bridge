@@ -916,6 +916,12 @@ export class WorkerProcess extends EventEmitter {
   async writeClipboardText(text: Buffer): Promise<ClipboardStatus> {
     return (await this.clipboardTransfer('set', 0n, text)).status;
   }
+  /** Wipe the native offer and wait for its empty-format-list ACK. Never retries. */
+  async revokeClipboardText(): Promise<ClipboardStatus> {
+    if (!this.report?.capabilities.clipboardRevoke)
+      throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
+    return (await this.clipboardTransfer('revoke', 0n, Buffer.alloc(0))).status;
+  }
   private async clipboardTransfer(
     operation: ClipboardOperation,
     revision: bigint,
@@ -945,10 +951,11 @@ export class WorkerProcess extends EventEmitter {
     if (this.clipboardRequest) return negative('busy');
     if (operation === 'read' && revision !== source.revision)
       return negative('stale');
+    if (operation === 'revoke' && source.localPending) return negative('busy');
     if (
       operation === 'read'
         ? !source.fromServer || !source.remoteText || source.remotePending
-        : !source.toServer || source.localPending
+        : operation === 'set' && (!source.toServer || source.localPending)
     )
       return negative('refused');
     if (operation === 'set') {
@@ -992,6 +999,14 @@ export class WorkerProcess extends EventEmitter {
         (operation === 'read' && current.revision !== revision)
       )
         return negative('stale');
+      if (
+        operation === 'revoke' &&
+        result.status === 'accepted' &&
+        (current.localAccepted || current.localPending)
+      ) {
+        this.fail('IPC_UNEXPECTED_REPLY');
+        throw new WorkerError('IPC_UNEXPECTED_REPLY');
+      }
       if (operation === 'read' && result.status === 'accepted') {
         try {
           validateClipboardText(result.text, profile.maximum);
