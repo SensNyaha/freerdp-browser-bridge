@@ -15,12 +15,19 @@ if (
   !/^freerdp-bridge-linux-viewer-[0-9]+$/.test(container ?? '') ||
   !/^sha256:[a-f0-9]{64}$/.test(fingerprint ?? '') ||
   !['h264', 'jpeg'].includes(codec) ||
-  (formMode !== undefined && formMode !== '--form')
+  (formMode !== undefined &&
+    !['--form', '--audio-pcm', '--audio-opus'].includes(formMode))
 )
   throw new Error(
     'Use owned Linux viewer container, approved fingerprint and codec',
   );
 const origin = 'http://127.0.0.1:47998';
+const audioOutput =
+  formMode === '--audio-pcm'
+    ? 'pcm'
+    : formMode === '--audio-opus'
+      ? 'opus'
+      : 'off';
 // Check the actual owned container before creating/sending any authentication material.
 try {
   const { stdout } = await promisify(execFile)(
@@ -153,6 +160,33 @@ async function image(width, height, previous = 0) {
     { timeout: 15000 },
   );
 }
+async function audioReady(previousEpoch) {
+  const due = performance.now() + 15000;
+  do {
+    await page.evaluate(() => window.bridgeViewer.requestAudioStats());
+    await delay(200);
+    const value = await page.evaluate(() => window.bridgeViewer.stats.audio);
+    if (
+      value?.source?.availability === 'ready' &&
+      !value.closed &&
+      value.remote?.packets > 0 &&
+      value.remote?.playedFrames > 0 &&
+      value.remote?.invalidCalls === 0 &&
+      (audioOutput !== 'opus' || value.decoded > 0) &&
+      (previousEpoch === undefined ||
+        BigInt(value.source.epoch) > BigInt(previousEpoch))
+    )
+      return {
+        codec: audioOutput,
+        epoch: value.source.epoch,
+        records: value.records,
+        packets: value.remote.packets,
+        playedFrames: value.remote.playedFrames,
+        decoded: value.decoded,
+      };
+  } while (performance.now() < due);
+  throw new Error('Actual active audio admission missing');
+}
 try {
   await readiness;
   clearTimeout(startupTimer);
@@ -202,6 +236,10 @@ try {
       await page.locator('[name=password]').fill(credentials.password);
       await page.locator('[name=certificatePolicy]').selectOption('prompt');
       await page.locator('[name=video]').selectOption(codec);
+      if (audioOutput !== 'off') {
+        await page.locator('[name=audio]').selectOption(audioOutput);
+        await page.locator('[name=audioBuffer]').selectOption('200');
+      }
       const response = page.waitForResponse(
         (response) =>
           response.url() === origin + '/v1/sessions' &&
@@ -237,6 +275,7 @@ try {
       { attachment, codec },
     );
   phase = 'certificate';
+  if (audioOutput !== 'off') await page.click('#audio-start');
   await page.waitForFunction(
     () => !document.querySelector('#certificate').hidden,
     undefined,
@@ -255,6 +294,11 @@ try {
     throw new Error('Approved certificate mismatch');
   phase = 'render';
   await image(1920, 1080);
+  if (audioOutput !== 'off') {
+    phase = 'audio-play';
+    report.audio = await audioReady();
+    report.audibleAcceptance = false;
+  }
   for (const [width, height] of [
     [1280, 720],
     [1920, 1080],
@@ -283,6 +327,13 @@ try {
     if (width === 1920) restorationNeeded = false;
   }
   phase = 'reattach';
+  const audioEpoch =
+    audioOutput === 'opus'
+      ? (await page.evaluate(() => window.bridgeViewer.stats.audio))?.source
+          ?.epoch
+      : undefined;
+  const resetBefore =
+    audioOutput === 'opus' ? await request('/lab/stats') : undefined;
   await page.evaluate(() => window.bridgeViewer.detach());
   await delay(200);
   const attach = {};
@@ -293,11 +344,24 @@ try {
       { channel },
     );
   await page.evaluate(
-    ({ created, codec }) =>
-      window.bridgeViewer.attach(created, { codecs: [codec] }),
-    { created: { sessionId, attach }, codec },
+    ({ created, codec, audioOutput }) =>
+      window.bridgeViewer.attach(created, { codecs: [codec], audioOutput }),
+    { created: { sessionId, attach }, codec, audioOutput },
   );
+  if (audioOutput !== 'off') await page.click('#audio-start');
   await image(1920, 1080);
+  if (audioOutput !== 'off') {
+    phase = 'audio-replay';
+    report.audioReplay = await audioReady(audioEpoch);
+    if (audioOutput === 'opus') {
+      const resetAfter = await request('/lab/stats');
+      if (resetAfter.scheduled <= resetBefore.scheduled)
+        throw new Error('Observed native attachment reset missing');
+      report.audioBeforeReattachEpoch = audioEpoch;
+      report.scheduledAttachmentResets =
+        resetAfter.scheduled - resetBefore.scheduled;
+    }
+  }
   const stats = await page.evaluate(() => window.bridgeViewer.stats);
   report.frames = stats.frames;
   report.configurations = stats.configurations;
@@ -305,6 +369,22 @@ try {
   report.reattached = true;
 } catch {
   report.failedPhase = phase;
+  if (audioOutput !== 'off' && page) {
+    report.audioFailure = await page
+      .evaluate(() => {
+        const a = window.bridgeViewer.stats.audio;
+        return {
+          closed: a?.closed,
+          records: a?.records,
+          decoded: a?.decoded,
+          source: a?.source,
+          packets: a?.remote?.packets,
+          playedFrames: a?.remote?.playedFrames,
+          invalidCalls: a?.remote?.invalidCalls,
+        };
+      })
+      .catch(() => undefined);
+  }
   process.exitCode = 1;
 } finally {
   clearTimeout(startupTimer);

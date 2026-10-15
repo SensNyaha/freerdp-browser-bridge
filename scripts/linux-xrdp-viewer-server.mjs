@@ -33,6 +33,7 @@ try {
 const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-linux-browser-'));
 const worker = { workerPath: resolve('build/bundled/rdp-worker'), runtimeRoot };
 let server;
+const audioResets = { requested: 0, scheduled: 0 };
 let finish;
 const finished = new Promise((done) => {
   finish = done;
@@ -75,7 +76,17 @@ try {
         : undefined,
     sessions: {
       maxSessions: 1,
-      workerFactory: () => new NativeSessionWorker(worker),
+      workerFactory: () => {
+        const session = new NativeSessionWorker(worker);
+        const reset = session.resetAudio.bind(session);
+        session.resetAudio = async (epoch) => {
+          audioResets.requested++;
+          const result = await reset(epoch);
+          if (result === 'scheduled') audioResets.scheduled++;
+          return result;
+        };
+        return session;
+      },
     },
     logDestination: new Writable({
       write(_bytes, _encoding, done) {
@@ -111,6 +122,11 @@ try {
       void close();
     });
     return reply.code(202).send({ stopping: true });
+  });
+  server.get('/lab/stats', (request, reply) => {
+    if (request.headers.authorization !== 'Bearer ' + bearer)
+      return reply.code(401).send();
+    return { ...audioResets };
   });
   await server.listen({ host: '0.0.0.0', port: 47999 });
   console.log(JSON.stringify({ type: 'lab.server.ready' }));

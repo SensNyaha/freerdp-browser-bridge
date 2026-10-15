@@ -503,6 +503,13 @@ attachment replay; no microphone, audio or operational remote input is activated
 The server is a disposable test host, not the production deployment image.
 [Browser evidence](ITERATION_202.md).
 
+Active Linux audio checks use `--audio-pcm` or `--audio-opus` instead of `--form`
+on `test-linux-xrdp-viewer.mjs`. These explicitly select the 200 ms output profile
+and activation gesture, require actual ready packets/Worklet rendering, then
+check replay. Opus additionally requires a native reset/new epoch. Leave sound
+playing in the authorized XRDP session; an idle source fails the audio gate.
+No microphone or audio recording is requested. [Evidence](ITERATION_208.md).
+
 The independent native archive check uses only three explicitly selected files:
 
 ```sh

@@ -35,6 +35,13 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-14
 
+Actual Linux producer / Windows Edge now passes PCM/Opus packet decode and
+AudioWorklet sample rendering with the 200 ms native profile, video resize /
+restoration and fresh-token replay. Opus replay observes one actual scheduled
+native reset and source epoch 8→10. First Opus admission attempt failed; repeats
+pass. This is the named E2E smoke, not human audible/latency/quality/soak or all
+audio-stage acceptance. [Iteration 208](docs/ITERATION_208.md).
+
 Linux primary idle/assembly deadline separation now has a failing-before /
 passing-after socket regression, repeated idle heartbeats and Release/sanitizer
 checks. Actual primary XRDP receives PCM/Opus with ready reset/fresh config/data;
@@ -436,6 +443,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.
 
 ## Stage 6 — audio output and microphone
+
+- [x] DONE for Linux amd64 producer / Windows Edge PCM/Opus output smoke —
+  Real XRDP packets, Opus decode, Worklet played samples, 200 ms profile, video
+  resize/restoration, fresh-token replay and observed native Opus reset/new epoch
+  pass. Native source/TLS/IPC, private relocation and cleanup are verified.
+  Human audible quality, latency, intermittent protocol-failure diagnosis,
+  prolonged resource/soak and remaining platform/microphone gates stay open.
+  [Evidence](docs/ITERATION_208.md), [deadline fix](docs/ITERATION_207.md).
 
 **Overall: IN PROGRESS.** Windows PCM/Opus output and input paths are implemented;
 fixtures exercise their composition. Actual XRDP output now supplies real PCM/Opus
