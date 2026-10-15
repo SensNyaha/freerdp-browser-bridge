@@ -51,6 +51,7 @@ jobs:
       - name: Assemble production Node runtime and service context
         if: runner.os == 'Linux'
         run: |
+          node scripts/test-node-clean-build.mjs
           node scripts/package-node-runtime.mjs
           node scripts/prepare-service-runtime.mjs
       - name: Verify API and native worker in restricted service runtime

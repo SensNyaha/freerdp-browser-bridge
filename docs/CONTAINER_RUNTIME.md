@@ -19,6 +19,11 @@ The Node packager builds workspaces in dependency order and runs offline
 synchronization are explicit; `files: [dist]` limits deployed workspace content.
 Registry versions/integrities are unchanged. See the [pnpm deployment contract](https://pnpm.io/10.x/cli/deploy).
 
+`node scripts/test-node-clean-build.mjs` separately verifies a fresh source-only
+workspace, frozen offline install, build and production deployment/import with
+an unchanged lockfile. It requires the build packages in pnpm's cache and leaves
+its generated fixture under build. [Evidence](ITERATION_213.md).
+
 Context preparation copies only two bounded project-local archives, Dockerfile
 and a separate probe into a whitelist context. Two explicit alternate archive
 paths below the build directory can be supplied when exporting Linux artifacts.

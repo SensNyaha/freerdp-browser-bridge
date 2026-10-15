@@ -295,6 +295,11 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for clean Linux Node workspace — New source-only fixture has no dist /
+  node_modules; frozen offline installation, all four TypeScript builds and fresh
+  production deployment/import pass with unchanged lockfile. Native fresh-checkout
+  and distro matrix remain open. [Evidence](docs/ITERATION_213.md).
+
 - [x] DONE for independent Linux native archive smoke — Pinned Node 24 Bookworm
   verifier uses only TGZ/probe, with no SDK/system FreeRDP/libudev, UID 1000,
   read-only root, no network and bounded tmpfs. Six private loaded modules,
