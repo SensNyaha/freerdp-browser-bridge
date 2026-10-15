@@ -10,7 +10,7 @@
 #include "protocol.hpp"
 #include "touch_ipc.hpp"
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
-  // Prepared input payload has no RWI1 kind; fuzz its bounded grammar directly.
+  // Also exercise the bounded raw input grammar before framed dispatch.
   try {
     (void)bridge::ipc::microphone::opus::decode_packet(std::span(data, size));
   } catch (const bridge::ipc::ProtocolError &) {
@@ -74,6 +74,12 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)microphone::decode_reset(payload);
         else if (header.kind == Kind::microphone_reset_result)
           (void)microphone::decode_reset_result(payload);
+        else if (header.kind == Kind::clipboard_command)
+          (void)clipboard::decode_command(payload);
+        else if (header.kind == Kind::clipboard_result)
+          (void)clipboard::decode_result(payload);
+        else if (header.kind == Kind::clipboard_state)
+          (void)clipboard::decode_state(payload);
         else if (header.kind == Kind::input_text)
           (void)bridge::input::decode_text(payload);
         else if (header.kind == Kind::input_touch) {

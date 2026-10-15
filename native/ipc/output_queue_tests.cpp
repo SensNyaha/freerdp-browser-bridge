@@ -151,17 +151,74 @@ TEST_CASE("Output refusal validates limits and direction before ownership; exact
   cursor.position(1, 1);
   REQUIRE(push(*queue, config(1)) == EnqueueStatus::accepted);
   REQUIRE(push(*queue, pcm(1, 0, true)) == EnqueueStatus::accepted);
+  const auto clipboard_state =
+      clipboard::encode_state({1, 1, static_cast<std::uint32_t>(clipboard::max_text_bytes), true,
+                               true, true, true, false, false, false});
+  REQUIRE(queue->push(Kind::clipboard_state, 0, clipboard_state) == EnqueueStatus::accepted);
+  std::vector<std::uint8_t> text(clipboard::max_text_bytes);
+  constexpr std::uint8_t han[]{0xe4, 0xb8, 0xad};
+  for (std::size_t i = 0; i + 1 < text.size(); ++i)
+    text[i] = han[i % 3];
+  text.back() = 65;
+  const auto clipboard_reply = clipboard::encode_result(
+      {clipboard::Operation::read, clipboard::Status::accepted, 1, 1, text});
+  REQUIRE(queue->push(Kind::clipboard_result, 77, clipboard_reply) == EnqueueStatus::accepted);
   for (std::size_t i = 0; i < OutputQueue::control_capacity; ++i)
     REQUIRE(queue->push(Kind::hello_ack, i, std::array<std::uint8_t, 4096>{}) ==
             EnqueueStatus::accepted);
   REQUIRE(queue->stats().records == OutputQueue::max_records);
-  REQUIRE(queue->stats().bytes == 9248283);
-  REQUIRE(queue->stats().high_water_bytes == 9248283);
+  REQUIRE(queue->stats().bytes == 26025595);
+  REQUIRE(queue->stats().high_water_bytes == 26025595);
   std::optional<Packet> final;
   while (auto record = queue->take())
     final = std::move(record);
   REQUIRE(final->kind == Kind::frame_avc);
   REQUIRE(final->payload[0] == 0); // Producer mutation did not change owned output.
   REQUIRE(queue->stats().bytes == 0);
-  REQUIRE(queue->stats().high_water_bytes == 9248283);
+  REQUIRE(queue->stats().high_water_bytes == 26025595);
+}
+TEST_CASE("Clipboard output owns one correlated result and latest scalar state outside control "
+          "capacity") {
+  OutputQueue queue;
+  const auto state = clipboard::State{1, 1, 1024, true, true, true, true, false, false, false};
+  REQUIRE(queue.push(Kind::clipboard_state, 0, clipboard::encode_state(state)) ==
+          EnqueueStatus::accepted);
+  auto next = state;
+  next.revision = 2;
+  REQUIRE(queue.push(Kind::clipboard_state, 0, clipboard::encode_state(next)) ==
+          EnqueueStatus::accepted);
+  REQUIRE(queue.stats().records == 1);
+  for (auto bad : {state, next}) {
+    if (bad.revision == 1)
+      bad.generation = 2;
+    else
+      bad.maximum = 2048;
+    REQUIRE(queue.push(Kind::clipboard_state, 0, clipboard::encode_state(bad)) ==
+            EnqueueStatus::invalid);
+  }
+  REQUIRE(queue.push(Kind::clipboard_state, 0, clipboard::encode_state(state)) ==
+          EnqueueStatus::invalid);
+  const std::vector<std::uint8_t> text{0xd0, 0x96};
+  auto result = clipboard::encode_result(
+      {clipboard::Operation::read, clipboard::Status::accepted, 1, 2, text});
+  REQUIRE(queue.push(Kind::clipboard_result, 7, result) == EnqueueStatus::accepted);
+  result.back() = 65;
+  REQUIRE(queue.push(Kind::clipboard_result, 8,
+                     clipboard::encode_result(
+                         {clipboard::Operation::read, clipboard::Status::refused, 1, 2, {}})) ==
+          EnqueueStatus::full);
+  REQUIRE(queue.push(Kind::heartbeat_ack, 99, {}) == EnqueueStatus::accepted);
+  REQUIRE(queue.take()->kind == Kind::heartbeat_ack);
+  const auto observed = queue.take();
+  REQUIRE(observed->kind == Kind::clipboard_state);
+  REQUIRE(clipboard::decode_state(observed->payload).revision == 2);
+  const auto reply = queue.take();
+  REQUIRE(reply->request_id == 7);
+  const auto decoded = clipboard::decode_result(reply->payload);
+  REQUIRE(std::equal(decoded.text.begin(), decoded.text.end(), text.begin(), text.end()));
+  REQUIRE(queue.stats().bytes == 0);
+  REQUIRE(queue.push(Kind::clipboard_command, 1,
+                     clipboard::encode_command({clipboard::Operation::read, 1, 2, {}})) ==
+          EnqueueStatus::invalid);
+  REQUIRE(queue.push(Kind::clipboard_result, 0, reply->payload) == EnqueueStatus::invalid);
 }

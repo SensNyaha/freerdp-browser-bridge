@@ -1,6 +1,7 @@
 #include "protocol.hpp"
 #include "audio.hpp"
 #include "audio_reset.hpp"
+#include "clipboard.hpp"
 #include "cursor.hpp"
 #include "display.hpp"
 #include "microphone.hpp"
@@ -92,6 +93,11 @@ static std::uint32_t limit(Kind kind) {
     return static_cast<std::uint32_t>(audio::opus::max_packet_bytes);
   case Kind::microphone_opus:
     return static_cast<std::uint32_t>(microphone::opus::max_packet_bytes);
+  case Kind::clipboard_state:
+    return static_cast<std::uint32_t>(clipboard::metadata_bytes);
+  case Kind::clipboard_command:
+  case Kind::clipboard_result:
+    return static_cast<std::uint32_t>(clipboard::max_record_bytes);
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);
   }
@@ -115,9 +121,13 @@ void validate_header(const Header &header) {
                         kind == Kind::secret || kind == Kind::frame || kind == Kind::frame_avc ||
                         kind == Kind::cursor_update || kind == Kind::input_text ||
                         kind == Kind::input_touch || kind == Kind::audio_opus ||
-                        kind == Kind::microphone_opus;
+                        kind == Kind::microphone_opus || kind == Kind::clipboard_command ||
+                        kind == Kind::clipboard_result;
   if (length > maximum || (!variable && length != maximum) ||
       (kind == Kind::microphone_state && header.request_id) ||
+      (kind == Kind::clipboard_state && header.request_id) ||
+      ((kind == Kind::clipboard_command || kind == Kind::clipboard_result) &&
+       (length < clipboard::metadata_bytes || !header.request_id)) ||
       (kind == Kind::frame && length < frame_metadata_bytes) ||
       (kind == Kind::frame_avc && length < avc_metadata_bytes) ||
       (kind == Kind::cursor_update && length < cursor::metadata_bytes) ||

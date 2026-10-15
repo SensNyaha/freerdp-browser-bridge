@@ -1,5 +1,13 @@
 # RWI1 foundation wire contract
 
+Current clipboard framing — iteration 228: additive kinds 45/46/47 carry fixed
+state and bounded Unicode command/result payloads. Workers currently return
+unavailable without selecting an RDP clipboard channel. No clipboard HELLO or
+public capability is advertised. A dedicated latest state and one correlated
+result slot preserve the control FIFO; the carrier accepts a maximum 16 MiB
+text record while every other class retains its existing limit.
+[Contract](CLIPBOARD_IPC.md), [evidence](ITERATION_228.md).
+
 Current Linux primary — iteration 200: matching private worker/addon metadata
 selects automatic RWS1 SOCK_SEQPACKET; legacy builds without that manifest retain
 framed streams. Native/Node lifecycle, 100 workers, parent/worker loss, bounded
@@ -412,6 +420,16 @@ container overhead. Stats expose current records/bytes, byte high water and audi
 cursor replacements/audio reset discards. A future writer additionally owns one
 in-flight record. Pipe deadlines/cancellation, drain/failure policy and activation
 are not supplied by this pure component. [Evidence](ITERATION_054.md).
+
+Current iteration 228 extends that historical inventory with two dedicated
+clipboard slots: latest typed scalar state and one nonreplaceable correlated
+result. Current take order is control, clipboard state, audio config/packet,
+clipboard result, cursor shape/metadata, video. At most **71 records /
+26,025,595 wire bytes** are queued; the writer can additionally own one record
+up to 16,777,264 wire bytes. This is bounded output storage, not a total-RSS or
+latency acceptance claim. The source generation, policy and item maximum remain
+immutable in a queue lifetime; source revisions cannot go backward. No priority
+can preempt bytes already being written. [Current clipboard evidence](ITERATION_228.md).
 
 ## Producer/writer ownership foundation (Iteration 55)
 

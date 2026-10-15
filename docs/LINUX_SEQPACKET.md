@@ -60,8 +60,10 @@ Each datagram begins with this 16-byte versioned prefix, all integers big endian
 | 12 | 4 | Offset of this chunk within the RWI1 record |
 
 The remainder is 1..16,384 record bytes: at most 16,400 bytes per datagram.
-Total record size is at least 24 and at most 8,390,719 bytes, encompassing the
-existing largest AVC envelope. The first chunk starts at offset zero and contains
+The initial Iteration 193 limit was 8,390,719 bytes, encompassing the AVC envelope.
+Iteration 228 raises the carrier maximum to **16,777,264 bytes** for clipboard
+records; total size is still at least 24. AVC/JPEG/control retain their existing
+kind-specific limits. The first chunk starts at offset zero and contains
 the entire RWI1 header. Its kind-specific length/version/flags are checked, and
 `length + 24` must equal the carrier total, before exposing data to a body parser.
 Subsequent chunks require the same total and exact next offset. Only one record

@@ -111,6 +111,21 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
       Packet packet{kind, request_id, {bytes.begin(), bytes.end()}};
       control_[(head_ + count_) % control_capacity] = std::move(packet);
       ++count_;
+    } else if (kind == Kind::clipboard_state) {
+      const auto state = clipboard::decode_state(bytes);
+      if (clipboard_observed_ && (state.generation != clipboard_observed_->generation ||
+                                  state.revision < clipboard_observed_->revision ||
+                                  state.maximum != clipboard_observed_->maximum ||
+                                  state.to_server != clipboard_observed_->to_server ||
+                                  state.from_server != clipboard_observed_->from_server))
+        return EnqueueStatus::invalid;
+      clipboard_state_ = Packet{kind, 0, {bytes.begin(), bytes.end()}};
+      clipboard_observed_ = state;
+    } else if (kind == Kind::clipboard_result) {
+      (void)clipboard::decode_result(bytes);
+      if (clipboard_result_)
+        return EnqueueStatus::full;
+      clipboard_result_ = Packet{kind, request_id, {bytes.begin(), bytes.end()}};
     } else if (kind == Kind::frame || kind == Kind::frame_avc) {
       if (video_)
         return EnqueueStatus::full; // Correlated captures must not be silently replaced.
@@ -211,7 +226,8 @@ std::optional<Packet> OutputQueue::take() {
     head_ = (head_ + 1) % control_capacity;
     --count_;
   } else {
-    for (auto *slot : {&audio_config_, &audio_pcm_, &cursor_shape_, &cursor_meta_, &video_}) {
+    for (auto *slot : {&clipboard_state_, &audio_config_, &audio_pcm_, &clipboard_result_,
+                       &cursor_shape_, &cursor_meta_, &video_}) {
       if (*slot) {
         result = std::move(*slot);
         slot->reset();
@@ -238,6 +254,8 @@ void OutputQueue::discard_all() noexcept {
   cursor_shape_.reset();
   cursor_meta_.reset();
   video_.reset();
+  clipboard_state_.reset();
+  clipboard_result_.reset();
   refresh();
 }
 void OutputQueue::refresh() noexcept {
@@ -251,7 +269,8 @@ void OutputQueue::refresh() noexcept {
   };
   for (const auto &slot : control_)
     add(slot);
-  for (const auto *slot : {&audio_config_, &audio_pcm_, &cursor_shape_, &cursor_meta_, &video_})
+  for (const auto *slot : {&clipboard_state_, &audio_config_, &audio_pcm_, &clipboard_result_,
+                           &cursor_shape_, &cursor_meta_, &video_})
     add(*slot);
   if (stats_.bytes > stats_.high_water_bytes)
     stats_.high_water_bytes = stats_.bytes;

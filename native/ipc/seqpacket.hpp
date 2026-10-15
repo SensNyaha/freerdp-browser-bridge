@@ -1,4 +1,5 @@
 #pragma once
+#include "clipboard.hpp"
 #include "protocol.hpp"
 #include <optional>
 
@@ -8,8 +9,7 @@ namespace bridge::ipc {
 constexpr std::size_t seqpacket_prefix_bytes = 16;
 constexpr std::size_t seqpacket_chunk_bytes = 16384;
 constexpr std::size_t seqpacket_datagram_bytes = seqpacket_prefix_bytes + seqpacket_chunk_bytes;
-constexpr std::size_t max_seqpacket_record_bytes =
-    header_bytes + max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes;
+constexpr std::size_t max_seqpacket_record_bytes = header_bytes + clipboard::max_record_bytes;
 
 std::array<std::uint8_t, seqpacket_prefix_bytes> encode_seqpacket_prefix(std::uint32_t message_id,
                                                                          std::uint32_t total_bytes,

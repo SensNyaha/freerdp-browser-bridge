@@ -127,3 +127,22 @@ TEST_CASE("RWS1 rejects reordered interleaved replaced and repeated partial reco
   REQUIRE(inspector.inspect(chunk(record, 1, 24, 8)));
   REQUIRE(inspector.at_record_boundary());
 }
+TEST_CASE("RWS1 admits clipboard logical maxima only after the kind-specific RWI1 header") {
+  const auto total = static_cast<std::uint32_t>(max_seqpacket_record_bytes);
+  const auto prefix = encode_seqpacket_prefix(1, total, 0, header_bytes);
+  for (const auto kind : {Kind::clipboard_command, Kind::clipboard_result, Kind::frame}) {
+    std::array<std::uint8_t, seqpacket_prefix_bytes + header_bytes> first{};
+    std::copy(prefix.begin(), prefix.end(), first.begin());
+    // Independent raw RWI1 header, including a class that must remain too large.
+    std::array<std::uint8_t, header_bytes> header{'R', 'W', 'I', '1', 0, 1};
+    header[7] = static_cast<std::uint8_t>(kind);
+    header[19] = 1;
+    const auto size = total - header_bytes;
+    for (unsigned i = 0; i < 4; ++i)
+      header[20 + i] = static_cast<std::uint8_t>(size >> ((3 - i) * 8));
+    std::copy(header.begin(), header.end(), first.begin() + seqpacket_prefix_bytes);
+    SeqpacketInspector inspector;
+    REQUIRE(inspector.inspect(first).has_value() == (kind != Kind::frame));
+    REQUIRE(inspector.failed() == (kind == Kind::frame));
+  }
+}

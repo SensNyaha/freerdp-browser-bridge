@@ -20,3 +20,21 @@ await writeFile(`${root}/hello`, hello);
 await writeFile(`${root}/fragmented-hello`, sequence);
 await writeFile(`${root}/header-only`, first);
 await writeFile(`${root}/bad-order`, second);
+// A large logical clipboard record still starts with one inspected RWI1 header;
+// this seed stores only that first bounded datagram, never a 16 MiB corpus file.
+for (const [name, kind, total] of [
+  ['clipboard-maximum-first', 46, 16777264],
+  ['oversized-video-first', 19, 16777264],
+  ['clipboard-excess-first', 46, 16777265],
+]) {
+  const b = Buffer.alloc(40);
+  b.write('RWS1', 0);
+  b.writeUInt32BE(1, 4);
+  b.writeUInt32BE(total, 8);
+  b.write('RWI1', 16);
+  b.writeUInt16BE(1, 20);
+  b.writeUInt16BE(kind, 22);
+  b.writeBigUInt64BE(1n, 28);
+  b.writeUInt32BE(total - 24, 36);
+  await writeFile(`${root}/${name}`, b);
+}

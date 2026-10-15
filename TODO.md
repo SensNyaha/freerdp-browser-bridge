@@ -583,6 +583,12 @@ profile's target, microphone, recovery, resource or platform acceptance.
   actual remote acceptance. [Contract](docs/CLIPBOARD_TEXT.md),
   [evidence](docs/ITERATION_224.md).
 - [ ] CLIPRDR Unicode text both directions.
+- [x] DONE for clipboard private transport — Versioned RWI1 class/correlation
+  bounds, dedicated latest-state/one-result output and full 16 MiB command delivery
+  pass actual Windows/Linux process/carrier tests, native/Node regression and
+  local sanitizer/fuzz checks. Workers explicitly return unavailable; channel /
+  Node/browser selection and actual remote acceptance remain open.
+  [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/ITERATION_228.md).
 - [x] DONE for prepared private clipboard payloads — Independent bounded native /
   TypeScript scalar-state and Unicode command/result codecs pass golden, malformed,
   ownership and exact-size tests, local sanitizer/fuzz and full Node regression.

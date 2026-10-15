@@ -1,16 +1,29 @@
-# Prepared clipboard payload schema 1
+# Clipboard private payload schema 1
 
 Prepares the private Node/worker portion of SPECIFICATION §2.7. The payload
-codecs are implemented independently in C++20 and strict TypeScript. **No RWI1
-kind, HELLO capability, settings flag, worker command, public message or browser
-path is assigned/activated by this preparation.** Existing RWI1 and WebSocket
-preallocation limits remain unchanged. The eventual transport must admit these
-logical records with bounded storage before claiming support for their maximum.
+codecs are implemented independently in C++20 and strict TypeScript. Iteration
+227 prepared these payloads; Iteration 228 assigns additive RWI1 kinds below
+and bounded output/carrier storage. Both workers validate unselected commands
+and return unavailable. **No clipboard HELLO capability, connection selection,
+RDP command dispatch, high-level Node or public/browser path is activated.**
+
+| RWI1 kind | Request ID | Payload bound |
+| --- | --- | --- |
+| 45 CLIPBOARD_STATE | zero | exactly 24 bytes |
+| 46 CLIPBOARD_COMMAND | nonzero | 24..16,777,240 bytes |
+| 47 CLIPBOARD_RESULT | matching nonzero command ID | 24..16,777,240 bytes |
+
+Bounds/correlation are checked in the envelope before body allocation. Source
+state is not emitted by the unselected worker. Commands are single-flight;
+negative replies contain no text. The framed/RWS1 carriers now accept the maximum
+logical clipboard command; public control/media WebSocket limits are unchanged.
+Caller-side Node write budgets still apply (default 64 KiB); a larger private
+packet owner needs an explicit finite budget. No write-budget bypass is added.
 
 All integers are big-endian. Identity fields are unsigned 64-bit (Node bigint).
 Generation is nonzero and identifies one native channel lifetime. Offer revision
 is nonzero for reads and zero for local sets. Codecs validate structure only;
-the active owner must separately verify observed generation/revision, capability,
+the eventual active owner must separately verify observed generation/revision, capability,
 current attachment/grant, direction policy, rate/queue/size and finite deadlines.
 Ready metadata alone confers no clipboard authority.
 

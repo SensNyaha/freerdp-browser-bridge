@@ -1,5 +1,12 @@
 # Browser API and native IPC protocol
 
+Current private clipboard preparation (Iteration 228) assigns RWI1 kinds
+45/46/47 with header preallocation bounds and dedicated bounded output slots.
+Workers return unavailable while clipboard selection/dispatch remains disabled.
+This adds no public clipboard commands or larger WebSocket body allowance.
+The required public clipboard events/commands below remain unfinished.
+[Private contract](docs/CLIPBOARD_IPC.md).
+
 ## 1. API versioning
 
 All public endpoints use `/v1`. Protocol version is independent of application semantic version. Breaking changes require `/v2` or an explicit negotiated protocol version.

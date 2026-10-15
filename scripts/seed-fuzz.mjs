@@ -12,9 +12,58 @@ import {
   encodeMicrophoneReset,
   encodeMicrophoneResetResult,
   encodeConnectionSettings,
+  encodeClipboardState,
+  encodeClipboardCommand,
+  encodeClipboardResult,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+for (const [name, kind, requestId, payload] of [
+  [
+    'clipboard-state',
+    Kind.ClipboardState,
+    0n,
+    encodeClipboardState({
+      generation: 1n,
+      revision: 0n,
+      maximum: 1048576,
+      ready: false,
+      toServer: true,
+      fromServer: true,
+      remoteText: false,
+      localAccepted: false,
+      localPending: false,
+      remotePending: false,
+    }),
+  ],
+  [
+    'clipboard-set',
+    Kind.ClipboardCommand,
+    1n,
+    encodeClipboardCommand({
+      operation: 'set',
+      generation: 1n,
+      revision: 0n,
+      text: Buffer.from('Ж😀\n'),
+    }),
+  ],
+  [
+    'clipboard-result',
+    Kind.ClipboardResult,
+    1n,
+    encodeClipboardResult({
+      operation: 'read',
+      status: 'accepted',
+      generation: 1n,
+      revision: 1n,
+      text: Buffer.from('Ж😀\n'),
+    }),
+  ],
+])
+  await writeFile(
+    'build/fuzz/corpus/' + name,
+    encodePacket({ kind, requestId, payload }),
+  );
 await writeFile(
   'build/fuzz/corpus/microphone-reset',
   encodePacket({

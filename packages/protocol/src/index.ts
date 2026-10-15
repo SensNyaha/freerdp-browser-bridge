@@ -34,6 +34,10 @@ import {
 import { TOUCH_INPUT_BYTES } from './touch.js';
 import { DISPLAY_UPDATE_BYTES } from './display.js';
 import { CURSOR_METADATA_BYTES, MAX_CURSOR_BYTES } from './cursor.js';
+import {
+  CLIPBOARD_METADATA_BYTES,
+  CLIPBOARD_MAX_RECORD_BYTES,
+} from './clipboard.js';
 export const IPC_VERSION = 1;
 export const HEADER_BYTES = 24;
 export const MAX_CONTROL_BYTES = 4096;
@@ -83,7 +87,10 @@ export enum Kind {
   MicrophoneState = 41,
   MicrophoneReset = 42,
   MicrophoneResetResult = 43,
-  MicrophoneOpus = 44, // Prepared envelope; no selected worker dispatch.
+  MicrophoneOpus = 44,
+  ClipboardState = 45,
+  ClipboardCommand = 46,
+  ClipboardResult = 47,
 }
 
 export interface Packet {
@@ -172,6 +179,11 @@ function payloadLimit(kind: number): number {
       return OPUS_AUDIO_MAX_PACKET_BYTES;
     case Kind.MicrophoneOpus:
       return MICROPHONE_OPUS_MAX_BYTES;
+    case Kind.ClipboardState:
+      return CLIPBOARD_METADATA_BYTES;
+    case Kind.ClipboardCommand:
+    case Kind.ClipboardResult:
+      return CLIPBOARD_MAX_RECORD_BYTES;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:
@@ -197,6 +209,10 @@ export function decodeHeader(header: Buffer): {
   if (
     length > payloadLimit(kind) ||
     (kind === Kind.MicrophoneState && header.readBigUInt64BE(12) !== 0n) ||
+    (kind === Kind.ClipboardState && header.readBigUInt64BE(12) !== 0n) ||
+    ((kind === Kind.ClipboardCommand || kind === Kind.ClipboardResult) &&
+      (length < CLIPBOARD_METADATA_BYTES ||
+        header.readBigUInt64BE(12) === 0n)) ||
     (![
       Kind.HelloAck,
       Kind.Configure,
@@ -208,6 +224,8 @@ export function decodeHeader(header: Buffer): {
       Kind.InputTouch,
       Kind.AudioOpus,
       Kind.MicrophoneOpus,
+      Kind.ClipboardCommand,
+      Kind.ClipboardResult,
     ].includes(kind) &&
       length !== payloadLimit(kind)) ||
     (kind === Kind.Frame && length < 24) ||

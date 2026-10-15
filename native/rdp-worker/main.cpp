@@ -1,5 +1,6 @@
 #include "audio_reset.hpp"
 #include "build_features.hpp"
+#include "clipboard.hpp"
 #include "connection_config.hpp"
 #include "microphone.hpp"
 #include "microphone_opus.hpp"
@@ -257,7 +258,8 @@ int run(int packet_fd = -1) {
         }
       } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text ||
                            header.kind == Kind::microphone_pcm ||
-                           header.kind == Kind::microphone_opus};
+                           header.kind == Kind::microphone_opus ||
+                           header.kind == Kind::clipboard_command};
       (void)read(payload, false);
       if (header.kind == Kind::hello && !ready) {
         try {
@@ -302,6 +304,14 @@ int run(int packet_fd = -1) {
         const auto result = microphone::encode_reset_result(microphone::ResetResult::unavailable);
         send({Kind::microphone_reset_result, header.request_id, {result.begin(), result.end()}});
 #endif
+      } else if (header.kind == Kind::clipboard_command && ready) {
+        const auto command = clipboard::decode_command(payload);
+        send({Kind::clipboard_result, header.request_id,
+              clipboard::encode_result({command.operation,
+                                        clipboard::Status::unavailable,
+                                        command.generation,
+                                        command.revision,
+                                        {}})});
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.stop();

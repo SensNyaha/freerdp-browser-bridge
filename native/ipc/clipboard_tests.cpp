@@ -113,3 +113,21 @@ TEST_CASE(
   REQUIRE_THROWS_AS(decode_command(text), ProtocolError);
   REQUIRE(encode_command({Operation::set, 1, 0, {}}).size() == metadata_bytes);
 }
+TEST_CASE("Clipboard RWI1 header limits and correlation precede payload allocation") {
+  using namespace bridge::ipc;
+  for (const auto kind : {Kind::clipboard_command, Kind::clipboard_result}) {
+    for (const auto size : {metadata_bytes, max_record_bytes}) {
+      const auto h = decode_header(encode_header({kind, 1, static_cast<std::uint32_t>(size)}));
+      REQUIRE(h.length == size);
+    }
+    for (const auto size : {std::size_t{0}, metadata_bytes - 1, max_record_bytes + 1})
+      REQUIRE_THROWS_AS(validate_header({kind, 1, static_cast<std::uint32_t>(size)}),
+                        ProtocolError);
+    REQUIRE_THROWS_AS(validate_header({kind, 0, metadata_bytes}), ProtocolError);
+  }
+  REQUIRE_NOTHROW(validate_header({Kind::clipboard_state, 0, metadata_bytes}));
+  REQUIRE_THROWS_AS(validate_header({Kind::clipboard_state, 1, metadata_bytes}), ProtocolError);
+  REQUIRE_THROWS_AS(validate_header({Kind::clipboard_state, 0, metadata_bytes + 1}), ProtocolError);
+  REQUIRE_THROWS_AS(validate_header({Kind::frame, 1, static_cast<std::uint32_t>(max_record_bytes)}),
+                    ProtocolError);
+}
