@@ -1,8 +1,9 @@
-# Prepared RWC1 clipboard chunks and IPC reservation
+# RWC1 clipboard chunks and IPC reservation
 
-Implements byte framing/reservation for SPECIFICATION §2.7. Independent Node and
-browser codecs exist; no active WebSocket transfer, credit or browser clipboard
-API is installed by them. Public native selection still refuses before startup.
+Implements byte framing/reservation for SPECIFICATION §2.7. Iteration 235 prepared
+independent Node/browser codecs; Iteration 236 installs the server transfer/credit
+owner for explicit backends. Production native selection and browser integration
+remain gated. A codec alone grants no authority.
 [Controller ownership](CLIPBOARD_SESSION.md), [private transport](CLIPBOARD_IPC.md).
 
 All integers are big-endian. Each record is at most 4,096 bytes:
@@ -25,11 +26,11 @@ normalized/terminated UTF-16 quotas before native dispatch. Do not decode each
 chunk separately to a string. Independent vectors and a full 16 MiB / 4,117-record
 hash reconstruction pass; that is byte framing, not socket flow control.
 
-The reserved window is eight chunks, at most 32,768 wire / 32,608 payload bytes.
+The window is eight chunks, at most 32,768 wire / 32,608 payload bytes.
 The codec allocates no total-item buffer or queue and does not enforce credit.
-The future transfer owner must admit one item before allocation, bind current
-control/source identities, validate sequence/offset/ACKs, bound queued records and
-apply finite whole-transfer/progress deadlines. A codec success grants no authority.
+The server owner admits one item before allocation, binds current control/source
+identities, validates sequence/offset/ACKs and applies finite transfer/progress
+deadlines. [Active control contract](CLIPBOARD_CONTROL.md).
 
 `SessionManagerOptions.workerFactory` receives frozen `SessionWorkerLimits`:
 only `clipboardItemBytes` for non-off selection (default 1 MiB, range 1..16 MiB),

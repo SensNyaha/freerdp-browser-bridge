@@ -10,6 +10,7 @@ export * from './session-audio.js';
 export * from './microphone-ingress.js';
 export * from './microphone-ownership.js';
 export * from './clipboard-ownership.js';
+export * from './clipboard-transfer.js';
 import { EventEmitter } from 'node:events';
 import type { Writable } from 'node:stream';
 import { SeqpacketOwner, loadPacketAddon } from './seqpacket-owner.js';

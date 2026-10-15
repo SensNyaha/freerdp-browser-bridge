@@ -165,8 +165,9 @@ or establish actual remote revocation; those acceptance gates remain open.
 
 `NativeSessionWorker` still refuses non-off clipboard before startup. Prepared
 [controller ownership](CLIPBOARD_SESSION.md) now binds manager operations to the
-current control lease and joins drain/revoke before replacement. Public framing,
-browser permission/gesture integration and actual
+current control lease and joins drain/revoke before replacement. Server
+[control framing/credit](CLIPBOARD_CONTROL.md) is implemented for explicit backend
+hooks; production native activation, browser permission/gesture integration and actual
 remote transfer remain required. The inventory lab helper never reads clipboard
 contents; optional `set-sentinel` explicitly writes one fixed synthetic value,
 waits for the server ACK and clears it. It does not establish application reads.

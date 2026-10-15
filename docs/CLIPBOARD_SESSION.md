@@ -2,8 +2,9 @@
 
 Implements the private session/controller portion of SPECIFICATION §2.7, using
 the [typed native API and revoke barrier](CLIPBOARD_IPC.md). This is prepared
-manager/native-adapter plumbing. Public WebSocket commands, browser activation
-and actual remote/application ownership acceptance remain open. The production
+manager/native-adapter plumbing. Server control framing/credit now uses
+[RWC1](CLIPBOARD_CONTROL.md); browser activation and actual remote/application
+ownership acceptance remain open. The production
 `NativeSessionWorker` still refuses non-off clipboard before worker startup.
 
 Selection requires an explicit direction mode, text enabled, no unsupported

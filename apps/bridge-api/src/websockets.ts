@@ -4,6 +4,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { Type } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
 import { installMedia } from './media.js';
+import { installClipboard } from './clipboard.js';
 import { displayData } from './display.js';
 import { normalizeInput } from './input.js';
 import type { MediaMetrics } from './metrics.js';
@@ -41,6 +42,7 @@ const knownCommands = new Set([
   'display.resize.request',
   'clipboard.set',
   'clipboard.request',
+  'clipboard.ack',
   'auth.response',
   'certificate.response',
   'media.request-keyframe',
@@ -291,6 +293,9 @@ export function installSessionWebSockets(
           return;
         }
         send(ws, 'session.state', lease.session);
+        const clipboard = installClipboard(ws, lease, (type, data) =>
+          send(ws, type, data),
+        );
         if (lease.display)
           send(ws, 'display.info', displayData(lease.display, lease.resizing));
         if (lease.cursor) sendCursor(ws, lease.cursor);
@@ -301,14 +306,25 @@ export function installSessionWebSockets(
         let window = Date.now();
         let received = 0;
         let commands = 0;
+        let binaryReceived = 0;
         ws.on('message', (buffer, binary) => {
           if (Date.now() - window >= 1000) {
             window = Date.now();
             received = 0;
             commands = 0;
+            binaryReceived = 0;
           }
           if (++received > 256) {
             ws.close(1008, 'message rate limit');
+            return;
+          }
+          if (binary && Buffer.isBuffer(buffer) && clipboard) {
+            if (++binaryReceived > 128) {
+              buffer.fill(0);
+              clipboard.dispose();
+              lease.release();
+              ws.close(1008, 'clipboard message rate limit');
+            } else clipboard.binary(buffer);
             return;
           }
           if (binary || !Buffer.isBuffer(buffer)) {
@@ -419,6 +435,7 @@ export function installSessionWebSockets(
             ws.close(1008, 'message rate limit');
             return;
           }
+          if (clipboard?.command(data.type, data.seq, data.data)) return;
           if (data.type === 'display.resize.request') {
             const requestSeq = data.seq;
             if (!displayRequest.Check(data.data)) {

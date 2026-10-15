@@ -71,8 +71,9 @@ read/write/revoke/source hooks. Immediate revocation, finite drain/native ACK an
 late-content wiping are described in [CLIPBOARD_SESSION.md](CLIPBOARD_SESSION.md).
 Only known scalar source fields reach metadata; fixed `CLIPBOARD_FAILED` fails
 unsafe ownership, and `CLIPBOARD_NOT_IMPLEMENTED` refuses an absent backend.
-Production native selection still refuses before startup until public framing /
-browser integration is installed. No clipboard WS command is activated here.
+Server control clipboard commands/credit are now implemented for explicit backend
+hooks in [CLIPBOARD_CONTROL.md](CLIPBOARD_CONTROL.md). Production native selection
+still refuses before startup until browser integration is installed.
 Worker factories now receive frozen numeric `SessionWorkerLimits`, without
 credentials/configuration references, to reserve explicit per-item IPC capacity.
 [Reservation and prepared chunk format](CLIPBOARD_CHUNKS.md).

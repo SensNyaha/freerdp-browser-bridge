@@ -600,7 +600,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   [evidence](docs/ITERATION_234.md).
   Explicit nonsecret factory/IPC reservations and independent prepared RWC1
   byte chunks now cover the full 16 MiB item without larger control messages;
-  socket credit/reassembly and browser activation remain open.
+  Server control reassembly/credit now passes both-way 16 MiB virtual-clock and
+  multi-window Unicode actual-socket/fake-RDP fixtures, with input interleave,
+  independent deadlines and controller retirement. Production native/browser
+  activation and actual remote transfer remain open.
+  [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/ITERATION_236.md).
   [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
   [evidence](docs/ITERATION_235.md).
   [Revocation evidence](docs/ITERATION_233.md).
