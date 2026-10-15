@@ -604,7 +604,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   allocation, bounded tables/names and public receive routing pass Windows/Linux
   native and actual pinned-channel/fake-SVC checks plus seeded sanitizer fuzz.
   Worker selection and actual clipboard acceptance remain open.
-  [Contract](docs/CLIPBOARD_INGRESS.md), [evidence](docs/ITERATION_225.md).
+  Valid over-policy data is drained without body allocation and completes only
+  the read as refused; the full wire maximum fits classic SVC fragmentation.
+  [Contract](docs/CLIPBOARD_INGRESS.md), [initial evidence](docs/ITERATION_225.md),
+  [quota/fragment evidence](docs/ITERATION_229.md).
 - [ ] Clipboard policy directions/size caps.
 - [ ] HTML clipboard.
 - [ ] Image clipboard where negotiated.

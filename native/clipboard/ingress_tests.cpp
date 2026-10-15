@@ -26,7 +26,7 @@ TEST_CASE("Clipboard PDU inspection bounds capabilities headers and baseline con
   REQUIRE(inspect_pdu(pdu(4, 0, {13, 0, 0, 0}), false, 1));
   REQUIRE(inspect_pdu(pdu(5, 1, {65}), false, 1));
   REQUIRE(inspect_pdu(pdu(5, 2), false, 1));
-  REQUIRE_FALSE(inspect_pdu(pdu(5, 1, {65, 0}), false, 1));
+  REQUIRE(inspect_pdu(pdu(5, 1, {65, 0}), false, 1)->quota_refused);
   REQUIRE_FALSE(inspect_pdu(pdu(5, 2, {0}), false, 1));
   for (const auto kind : {0, 6, 8, 9, 10, 11, 65535})
     REQUIRE_FALSE(inspect_pdu(pdu(static_cast<std::uint16_t>(kind), 0), false, 1024));
@@ -187,10 +187,102 @@ TEST_CASE("Clipboard ingress framing clock reentry retirement and consumer fault
     FAIL("Excessive fragments reached SDK");
     return true;
   });
-  const auto large = pdu(5, 1, std::vector<std::uint8_t>(5000));
+  const auto large = pdu(5, 1, std::vector<std::uint8_t>(ClipboardIngress::max_fragments + 16));
   REQUIRE(many.receive({std::span(large).first(1), large.size(), true, false}, 1));
-  for (std::size_t i = 1; i < 4096; ++i)
+  for (std::size_t i = 1; i < ClipboardIngress::max_fragments; ++i)
     REQUIRE(many.receive({std::span(large).subspan(i, 1), large.size(), false, false}, 1));
-  REQUIRE_FALSE(many.receive({std::span(large).subspan(4096, 1), large.size(), false, false}, 1));
+  REQUIRE_FALSE(many.receive(
+      {std::span(large).subspan(ClipboardIngress::max_fragments, 1), large.size(), false, false},
+      1));
   REQUIRE(many.stats().allocated == 0);
+}
+TEST_CASE("Clipboard item quota substitutes one failure without retaining oversized content") {
+  const auto over = pdu(5, 1, std::vector<std::uint8_t>(16, 65));
+  const auto small = pdu(5, 1, {65, 0, 0, 0});
+  const auto failure = pdu(5, 2);
+  for (std::size_t split = 0; split < over.size(); ++split) {
+    unsigned calls = 0;
+    ClipboardIngress *ptr = nullptr;
+    ClipboardIngress owner(
+        [&](auto data) {
+          const auto &expected = calls++ == 0 ? failure : small;
+          REQUIRE(std::equal(data.begin(), data.end(), expected.begin(), expected.end()));
+          REQUIRE(ptr->stats().allocated == 0);
+          return true;
+        },
+        8);
+    ptr = &owner;
+    if (split) {
+      REQUIRE(owner.receive({std::span(over).first(split), over.size(), true, false}, 1));
+      REQUIRE(owner.stats().allocated == 0);
+      REQUIRE(owner.stats().stored <= 8);
+      REQUIRE(owner.receive({std::span(over).subspan(split), over.size(), false, true}, 2));
+    } else
+      REQUIRE(owner.receive({over, over.size(), true, true}, 1));
+    REQUIRE(owner.stats().quota_refused == 1);
+    REQUIRE_FALSE(owner.stats().failed);
+    REQUIRE(owner.poll(3));
+    REQUIRE(owner.receive({small, small.size(), true, true}, 3));
+    REQUIRE(calls == 2);
+    REQUIRE(owner.stats().forwarded == 2);
+    REQUIRE(owner.stats().allocated == 0);
+  }
+}
+TEST_CASE("Clipboard oversized-item discard preserves deadline and borrowed failure lifetime") {
+  const auto over = pdu(5, 1, std::vector<std::uint8_t>(32, 65));
+  ClipboardIngress abandoned(
+      [](auto) {
+        FAIL("Incomplete quota record forwarded");
+        return true;
+      },
+      8, 10);
+  REQUIRE(abandoned.receive({std::span(over).first(8), over.size(), true, false}, 1));
+  REQUIRE(abandoned.stats().discarding);
+  REQUIRE(abandoned.stats().stored == 8);
+  REQUIRE(abandoned.stats().allocated == 0);
+  REQUIRE(abandoned.receive({std::span(over).subspan(8, 1), over.size(), false, false}, 10));
+  REQUIRE_FALSE(abandoned.poll(11));
+  REQUIRE(abandoned.stats().quota_refused == 0);
+  REQUIRE(abandoned.stats().failed);
+  REQUIRE(abandoned.stats().stored == 0);
+  for (bool reenter : {false, true}) {
+    ClipboardIngress *ptr = nullptr;
+    ClipboardIngress owner(
+        [&](auto data) {
+          if (reenter)
+            REQUIRE_FALSE(ptr->poll(2));
+          else
+            ptr->close();
+          const auto failure = pdu(5, 2);
+          REQUIRE(std::equal(data.begin(), data.end(), failure.begin(), failure.end()));
+          return true;
+        },
+        8);
+    ptr = &owner;
+    REQUIRE(owner.receive({std::span(over).first(8), over.size(), true, false}, 1));
+    REQUIRE_FALSE(owner.receive({std::span(over).subspan(8), over.size(), false, true}, 2));
+    REQUIRE(owner.stats().failed == reenter);
+    REQUIRE(owner.stats().quota_refused == 1);
+    REQUIRE(owner.stats().allocated == 0);
+  }
+}
+TEST_CASE("Clipboard hard maximum supports bounded classic 1600-byte fragmentation") {
+  const auto data = pdu(5, 1, std::vector<std::uint8_t>(max_item_bytes));
+  unsigned calls = 0;
+  ClipboardIngress owner([&](auto message) {
+    REQUIRE(std::equal(message.begin(), message.end(), data.begin(), data.end()));
+    ++calls;
+    return true;
+  });
+  for (std::size_t offset = 0; offset < data.size();) {
+    const auto n = (std::min)(std::size_t{1600}, data.size() - offset);
+    REQUIRE(owner.receive(
+        {std::span(data).subspan(offset, n), data.size(), offset == 0, n == data.size() - offset},
+        1));
+    offset += n;
+  }
+  REQUIRE(calls == 1);
+  REQUIRE(owner.stats().quota_refused == 0);
+  REQUIRE(owner.stats().allocated == 0);
+  REQUIRE_FALSE(owner.stats().failed);
 }

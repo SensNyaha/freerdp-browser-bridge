@@ -5,13 +5,25 @@ The worker does not yet select this channel path or advertise clipboard support.
 
 `ClipboardIngress` stages the eight-byte CLIPRDR header in fixed storage before
 allocating a fragmented body. The complete outer length must match `dataLen`.
-Data responses have an explicit 1..16 MiB item cap; format/capability controls
-have a separate 64 KiB cap. Unsupported file/lock/temp-directory records are
+Data responses have an absolute 16 MiB wire cap and a configured 1..16 MiB item
+quota; format/capability controls have a separate 64 KiB cap. Unsupported file/lock/temp-directory records are
 refused. A whole message is borrowed without staging allocation. Fragmented
-messages own one bounded vector, at most 4,096 fragments and a fixed two-second
+messages own one bounded vector, at most 16,384 fragments and a fixed two-second
 deadline (configurable to at most five seconds). Neither traffic nor notification
 resets that deadline. Completion, rejection and retirement clear/free storage.
 Reentrant retirement preserves a borrowed span until the delegate returns.
+
+A structurally valid successful data response above the configured item quota
+is drained without allocating or copying its body. Only after exact complete
+framing does the guard forward a fixed eight-byte failed data response, so the
+pending text read completes as refused and the channel remains usable. The
+allocation-free inspector marks this case `quota_refused`; callers must replace
+the original response rather than forwarding it. Scalar counters expose quota
+refusals and whether a drain is active, without contents. Malformed framing,
+the absolute cap, fragment-count excess and the original deadline remain hard
+faults. A partial discarded response never completes a read. The fragment budget
+admits a full 16 MiB response in classic 1,600-byte fragments; this does not prove
+that a slow network can transfer it within the configured deadline.
 
 Allocation-free inspection precedes the pinned parser. Short names use fixed
 36-byte records, including the bounded unterminated names emitted by mstsc/RDSH.

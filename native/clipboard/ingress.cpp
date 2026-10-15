@@ -32,7 +32,7 @@ bool header(std::span<const std::uint8_t> b, std::size_t total, std::size_t maxi
   case 4:
     return !flags && size == 4;
   case 5:
-    return (flags == 1 && size <= maximum) || (flags == 2 && !size);
+    return (flags == 1 && size <= max_item_bytes) || (flags == 2 && !size);
   case 7:
     return !flags && size >= 4 && size <= max_control_bytes;
   default:
@@ -97,7 +97,7 @@ std::optional<PduInfo> inspect_pdu(std::span<const std::uint8_t> b, bool long_na
       }
     }
   }
-  return PduInfo{kind, long_names};
+  return PduInfo{kind, long_names, kind == 5 && u16(b, 2) == 1 && body.size() > maximum};
 }
 ClipboardIngress::ClipboardIngress(Forward forward, std::size_t maximum, std::uint64_t timeout)
     : forward_(std::move(forward)), maximum_(maximum), timeout_(timeout) {
@@ -114,6 +114,7 @@ void ClipboardIngress::release() noexcept {
   std::vector<std::uint8_t>{}.swap(bytes_);
   header_.fill(0);
   used_ = total_ = fragments_ = 0;
+  discarding_ = false;
   deadline_.reset();
 }
 void ClipboardIngress::close() noexcept {
@@ -139,14 +140,19 @@ bool ClipboardIngress::poll(std::uint64_t now) noexcept {
   observed_ = now;
   return true;
 }
-bool ClipboardIngress::dispatch(std::span<const std::uint8_t> b) noexcept {
+bool ClipboardIngress::dispatch(std::span<const std::uint8_t> b, bool quota_refused) noexcept {
   const auto info = inspect_pdu(b, long_names_, maximum_);
   if (!info)
     return fail();
+  const std::array<std::uint8_t, 8> refused{5, 0, 2, 0, 0, 0, 0, 0};
+  quota_refused = quota_refused || info->quota_refused;
+  if (quota_refused)
+    increment(counters_.quota_refused);
+  discarding_ = quota_refused;
   busy_ = true;
   bool accepted = false;
   try {
-    accepted = forward_(b);
+    accepted = forward_(quota_refused ? std::span<const std::uint8_t>(refused) : b);
   } catch (...) {
     (void)fail();
   }
@@ -163,8 +169,8 @@ bool ClipboardIngress::dispatch(std::span<const std::uint8_t> b) noexcept {
 bool ClipboardIngress::receive(SvcFragment f, std::uint64_t now) noexcept {
   if (!poll(now))
     return false;
-  if (f.total < 8 || f.total > (std::max)(maximum_, max_control_bytes) + 8 || f.bytes.empty() ||
-      f.bytes.size() > f.total || (f.first && deadline_) || (!f.first && !deadline_))
+  if (f.total < 8 || f.total > max_item_bytes + 8 || f.bytes.empty() || f.bytes.size() > f.total ||
+      (f.first && deadline_) || (!f.first && !deadline_))
     return fail();
   if (f.first && f.last) {
     if (f.bytes.size() != f.total)
@@ -175,7 +181,7 @@ bool ClipboardIngress::receive(SvcFragment f, std::uint64_t now) noexcept {
     total_ = f.total;
     deadline_ = now + timeout_;
   }
-  if (f.total != total_ || ++fragments_ > 4096 || f.bytes.size() > total_ - used_)
+  if (f.total != total_ || ++fragments_ > max_fragments || f.bytes.size() > total_ - used_)
     return fail();
   auto remaining = f.bytes;
   if (used_ < 8) {
@@ -186,32 +192,41 @@ bool ClipboardIngress::receive(SvcFragment f, std::uint64_t now) noexcept {
     if (used_ == 8) {
       if (!header(header_, total_, maximum_))
         return fail();
-      try {
-        bytes_.resize(total_);
-      } catch (...) {
-        return fail();
+      discarding_ = u16(header_, 0) == 5 && u16(header_, 2) == 1 && total_ - 8 > maximum_;
+      if (!discarding_) {
+        try {
+          bytes_.resize(total_);
+        } catch (...) {
+          return fail();
+        }
+        std::copy(header_.begin(), header_.end(), bytes_.begin());
       }
-      std::copy(header_.begin(), header_.end(), bytes_.begin());
     }
   }
   if (!remaining.empty()) {
-    std::copy(remaining.begin(), remaining.end(), bytes_.begin() + used_);
+    if (!discarding_)
+      std::copy(remaining.begin(), remaining.end(), bytes_.begin() + used_);
     used_ += remaining.size();
   }
   if (!f.last)
     return true;
   if (used_ != total_)
     return fail();
+  if (discarding_) {
+    const std::array<std::uint8_t, 8> refused{5, 0, 2, 0, 0, 0, 0, 0};
+    return dispatch(refused, true);
+  }
   return dispatch(bytes_);
 }
 IngressStats ClipboardIngress::stats() const noexcept {
   auto result = counters_;
-  result.stored = used_;
+  result.stored = discarding_ ? (std::min)(used_, header_.size()) : used_;
   result.allocated = bytes_.capacity();
   result.fragments = fragments_;
   result.partial = deadline_.has_value();
   result.closed = closed_;
   result.failed = failed_;
+  result.discarding = discarding_;
   return result;
 }
 } // namespace bridge::clipboard

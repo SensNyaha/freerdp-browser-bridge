@@ -288,3 +288,35 @@ TEST_CASE("CLIPRDR text callback faults retire ownership and preserve a borrowed
   REQUIRE(h.clip->custom == nullptr);
   REQUIRE_FALSE(o.owner.snapshot()->failed);
 }
+TEST_CASE("Actual CLIPRDR refuses over-policy text without retiring the Unicode owner") {
+  for (bool fragmented : {false, true}) {
+    Host h(false);
+    Observer o;
+    start(h, o.owner);
+    offer(h);
+    REQUIRE(o.owner.request(1, 1) == CHANNEL_RC_OK);
+    const auto over = record(5, 1, std::vector<BYTE>(2048, 65));
+    if (fragmented) {
+      REQUIRE(h.send(std::span(over).first(8), CHANNEL_FLAG_FIRST, over.size()));
+      REQUIRE(h.guard->stats().allocated == 0);
+      REQUIRE(h.guard->stats().discarding);
+      REQUIRE(h.send(std::span(over).subspan(8), CHANNEL_FLAG_LAST, over.size()));
+    } else
+      REQUIRE(h.send(over));
+    REQUIRE(o.replies.size() == 1);
+    REQUIRE(o.replies[0].id == 1);
+    REQUIRE(o.replies[0].status == TextReply::refused);
+    REQUIRE(o.replies[0].text.empty());
+    REQUIRE(o.owner.snapshot()->ready);
+    REQUIRE_FALSE(o.owner.snapshot()->failed);
+    REQUIRE(h.guard->stats().quota_refused == 1);
+    REQUIRE_FALSE(h.guard->stats().failed);
+    REQUIRE(getChannelError(h.context.get()) == CHANNEL_RC_OK);
+    offer(h);
+    REQUIRE(o.owner.request(1, 2) != CHANNEL_RC_OK);
+    REQUIRE(o.owner.request(2, 2) == CHANNEL_RC_OK);
+    REQUIRE(h.send(record(5, 1, {65, 0, 0, 0})));
+    REQUIRE(o.replies.back().status == TextReply::ok);
+    REQUIRE(o.replies.back().text == std::vector<BYTE>{65});
+  }
+}

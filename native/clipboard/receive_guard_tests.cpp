@@ -41,7 +41,8 @@ TEST_CASE("Actual pinned CLIPRDR never sees excessive table data or raw flag cla
     if (mode == 0)
       REQUIRE_FALSE(h.send(record(2, 0, std::vector<BYTE>(36 * 65))));
     if (mode == 1)
-      REQUIRE_FALSE(h.send(record(5, 1, std::vector<BYTE>(1025))));
+      REQUIRE_FALSE(h.send(std::vector<BYTE>{5, 0, 1, 0, 1, 0, 0, 1}, CHANNEL_FLAG_FIRST,
+                           max_item_bytes + 9));
     if (mode == 2)
       REQUIRE_FALSE(h.send(record(1, 0), CHANNEL_FLAG_ONLY | 0x80000000U));
     if (mode == 3)
