@@ -45,6 +45,16 @@ Rules:
 - keep secret lifetime short;
 - do not persist credentials in core bridge by default.
 
+The API logger applies recursive key-based redaction to each completed JSON
+record, including child bindings and later setBindings values. Error-only calls
+use a fixed message instead of Pino's implicit error.message. The default
+request serializer omits URLs/headers/bodies; public errors use stable codes.
+Malformed or over-64-KiB serialized log records become a fixed rejection record.
+This bounds destination output, not Pino's preceding formatting allocation.
+Messages supplied explicitly by trusted application code must still be constant
+and must never interpolate credentials; key-based redaction cannot identify
+secrets embedded in arbitrary free text. [Regression evidence](docs/ITERATION_216.md).
+
 ## 4. Certificate validation
 
 Strict is default. `ignore certificate` is not a normal product mode and must require privileged deployment policy. Prompt/TOFU stores only certificate identity/fingerprint metadata.

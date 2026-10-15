@@ -633,7 +633,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.
-- [ ] Secret scanning/log snapshot tests.
+- [~] IN PROGRESS — Current API diagnostic snapshots pass for malformed/oversized
+  requests, credentials in URL/header/body, backend failure and metric privacy.
+  Completed-record redaction now covers child/setBindings and implicit Error
+  messages; oversized records are replaced with a fixed event. Release-artifact
+  secret scanning remains open. [Evidence](docs/ITERATION_216.md).
 - [~] IN PROGRESS — Linux application/native artifact SPDX 2.3 collection is
   generated and root-schema validated: actual Node graph, native versions/source,
   13 original vcpkg documents, 101 runtime files and exact artifact hashes.

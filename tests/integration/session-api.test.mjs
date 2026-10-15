@@ -542,9 +542,122 @@ test('secure logger: recursive credential redaction and URL/header omission', ()
     },
     'redaction test',
   );
+  logger
+    .child({ gateway: { password: secret }, accessToken: secret })
+    .info({ err: new Error(secret) }, 'child redaction test');
+  const child = logger.child({ component: 'safe-child' });
+  child.setBindings({ nested: [{ pin: secret }] });
+  child
+    .child({ proxy: { password: secret } })
+    .warn('grandchild redaction test');
+  logger.info({ value: 'x'.repeat(65536) }, 'oversized record');
+  logger.error(new Error(secret));
+  child.error({ err: new Error(secret) });
+  assert.ok(
+    lines.some((line) => JSON.parse(line).code === 'LOG_RECORD_REJECTED'),
+  );
   assert.ok(!lines.join('').includes(secret));
   assert.ok(!lines.join('').includes('/control?token='));
   assert.ok(lines.join('').includes('[REDACTED]'));
+});
+
+test('fake-backend diagnostics: HTTP rejection, backend failure and metrics contain no credential canaries', async () => {
+  await withServer({}, async ({ request, server, factory, logs, a }) => {
+    const input = config();
+    const canary = randomBytes(32).toString('base64url');
+    input.auth.password = canary;
+    const responses = [];
+    responses.push(
+      await request('POST', '/v1/sessions', { ...input, unknown: canary }),
+    );
+    responses.push(
+      await request(
+        'POST',
+        '/v1/sessions',
+        '{"password":"' + canary,
+        undefined,
+        { 'content-type': 'application/json' },
+      ),
+    );
+    responses.push(
+      await request('POST', '/v1/sessions', canary, undefined, {
+        'content-type': 'application/unrecognized',
+      }),
+    );
+    responses.push(
+      await request('POST', '/v1/sessions', {
+        ...input,
+        unknown: canary.repeat(2048),
+      }),
+    );
+    responses.push(
+      await request(
+        'GET',
+        '/v1/sessions/' + 'a'.repeat(32) + '?token=' + canary,
+        undefined,
+        canary,
+      ),
+    );
+    responses.push(
+      await request('GET', '/missing/' + canary + '?token=' + canary),
+    );
+    assert.deepEqual(
+      responses.map((response) => response.statusCode),
+      [400, 400, 415, 413, 401, 404],
+    );
+    const one = (await request('POST', '/v1/sessions', input)).json();
+    await eventually(
+      () => factory.workers.length === 1 && factory.workers[0].started === 1,
+    );
+    factory.workers[0].emit('failure', new Error(canary));
+    await eventually(() => factory.workers[0].closed === 1);
+    const failed = await request('GET', '/v1/sessions/' + one.sessionId);
+    assert.deepEqual(failed.json().error, {
+      code: 'WORKER_FAILED',
+      message: 'Session worker failed',
+      retryable: true,
+    });
+    responses.push(failed);
+    const metrics = await request('GET', '/metrics');
+    for (const value of [
+      canary,
+      a,
+      input.gateway.password,
+      input.gateway.accessToken,
+    ]) {
+      assert.ok(
+        !logs.join('').includes(value),
+        'log contains credential canary',
+      );
+      assert.ok(
+        !metrics.body.includes(value),
+        'metric contains credential canary',
+      );
+      assert.ok(
+        responses.every((response) => !response.body.includes(value)),
+        'error response contains credential canary',
+      );
+    }
+    for (const value of [
+      input.auth.username,
+      input.target.host,
+      one.sessionId,
+      one.attach.control.token,
+      one.attach.media.token,
+    ])
+      assert.ok(!metrics.body.includes(value));
+    const rejectionSnapshot = logs
+      .flatMap((line) => line.trim().split('\n'))
+      .map((line) => JSON.parse(line))
+      .filter((record) => record.msg === 'request rejected')
+      .map((record) => ({ code: record.code, msg: record.msg }));
+    assert.deepEqual(rejectionSnapshot, [
+      { code: 'INVALID_SESSION_CONFIG', msg: 'request rejected' },
+      { code: 'INVALID_SESSION_CONFIG', msg: 'request rejected' },
+      { code: 'AUTH_REQUIRED', msg: 'request rejected' },
+    ]);
+    assert.equal((await server.inject({ url: '/healthz' })).statusCode, 200);
+  });
 });
 
 test('HTTP regression: MIME edge cases and malformed/encoded routes cannot bypass authorization or schemas', async () => {
