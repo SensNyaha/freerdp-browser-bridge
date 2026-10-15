@@ -1,5 +1,28 @@
 # Application artifact SPDX inventory
 
+On Windows x64 the same `node scripts/generate-sbom.mjs` command inventories
+the exact generated native ZIP without requiring a Node application archive.
+It writes build/sbom-win64/native.spdx.json plus the original seven vcpkg
+companions, collected into build/packages/freerdp-bridge-sbom-win64.zip. The
+document explicitly describes the native artifact only. The archive is hashed
+before extraction and after inventory; every packaged bin file is hashed.
+
+A fixed PowerShell file reads version resources from the eight packaged MSVC
+CRT DLLs in the extracted artifact, using Get-Item/VersionInfo. It does not
+evaluate script text, compile dynamic code or run a packaged DLL/executable.
+The bounded projection rejects missing/duplicate/unrecognized records and
+invalid version components. Files with the same four-part file version share
+one CRT package, with separate file relationships. These are file versions,
+not redistributable installer versions or verified publisher signatures.
+CRT license conclusions remain NOASSERTION pending licensing review. Windows
+OS/Node distribution/application packaging, installers and a precise native
+dependency graph remain outside this native-only report.
+[Actual Windows and Linux regression evidence](ITERATION_221.md).
+The optional local lab audit `node scripts/audit-local-artifact-secrets.mjs
+--windows` checks both Windows ZIPs against the authorized ignored password,
+without putting its value in reports, argv or environment. It is separate from
+the default Linux artifact audit and from unknown-secret discovery.
+
 On Linux amd64, after the verified native and production Node packages exist:
 
 ```sh

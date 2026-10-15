@@ -40,6 +40,9 @@ jobs:
         env:
           BRIDGE_TEST_BINARY_DIR: build/bundled
       - run: pnpm test:bundle
+      - name: Inventory exact Windows native archive and packaged CRT
+        if: runner.os == 'Windows'
+        run: node scripts/generate-sbom.mjs
       - name: Prepare native-only clean runtime context
         if: runner.os == 'Linux'
         run: node scripts/prepare-native-runtime-check.mjs

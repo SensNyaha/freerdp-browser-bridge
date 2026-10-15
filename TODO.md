@@ -639,25 +639,28 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.
-- [x] DONE for current API/Linux artifacts — Credential diagnostic snapshots pass for malformed/oversized
+- [x] DONE for current API/release artifacts — Credential diagnostic snapshots pass for malformed/oversized
   requests, credentials in URL/header/body, backend failure and metric privacy.
   Completed-record redaction now covers child/setBindings and implicit Error
   messages; oversized records are replaced with a fixed event. The exact Iteration 217
   Linux native/Node/application-SBOM/image-SPDX artifacts pass a streamed search
   for the authorized lab password in UTF8/UTF16LE, with boundary/size tests.
-  This is a known-value regression gate, not discovery of arbitrary unknown
-  credentials or a Windows archive scan. [Log evidence](docs/ITERATION_216.md),
-  [artifact scope/evidence](docs/ITERATION_217.md).
+  The Windows native/SBOM ZIPs also pass the same known-value scan. This is a
+  regression gate, not discovery of arbitrary unknown credentials.
+  [Log evidence](docs/ITERATION_216.md), [Linux scope/evidence](docs/ITERATION_217.md),
+  [Windows scope/evidence](docs/ITERATION_221.md).
 - [~] IN PROGRESS — Linux application/native artifact SPDX 2.3 collection is
   generated and root-schema validated: actual Node graph, native versions/source,
   13 original vcpkg documents, 101 runtime files and exact artifact hashes.
   Five portable privacy/boundary/reference cases and full platform Node checks
   pass. Host export now passes after the initial review-service usage limit.
   A separate Syft final-image inventory adds Debian and Node distribution
-  packages with digest-verified OCI index/config/layer ownership. Windows
-  CRT/native inventory, complete embedded Node/native edges and licensing /
+  packages with digest-verified OCI index/config/layer ownership. Windows native
+  ZIP inventory now binds 24 runtime files, seven vcpkg companions and eight
+  packaged CRT version resources. Complete embedded Node/native edges and licensing /
   vulnerability review remain open.
-  [Contract](docs/SBOM.md), [evidence](docs/ITERATION_214.md).
+  [Contract](docs/SBOM.md), [Linux evidence](docs/ITERATION_214.md),
+  [Windows native evidence](docs/ITERATION_221.md).
 - [ ] Performance report against `PERFORMANCE.md` metrics.
 - [ ] Full Windows + XRDP regression.
 

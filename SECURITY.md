@@ -64,6 +64,9 @@ state. This is an exact known-value regression, not an unknown-secret detector.
 Its lab-file read requires the existing local-development exception; the helper
 is not a production credential store or a CI credential provisioning mechanism.
 [Bounds and actual scope](docs/ITERATION_217.md).
+On Windows, the explicit `--windows` profile scans the native and companion
+SBOM ZIPs with the same in-memory known-password policy and bounds; it writes
+a separate scalar receipt. [Windows evidence](docs/ITERATION_221.md).
 
 ## 4. Certificate validation
 

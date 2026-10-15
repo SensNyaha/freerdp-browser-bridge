@@ -126,8 +126,9 @@ Session migration between bridge instances is out of v1 scope because RDP client
 Linux application/native packages now have a separate schema-validated SPDX 2.3
 companion generated from the exact archives and supplied vcpkg provenance.
 The final Linux image also has a digest-bound Syft inventory for Debian and the
-Node distribution. Windows runtime inventory and complete embedded dependency /
-licensing review remain open.
+Node distribution. Windows native ZIP inventory includes packaged CRT file
+versions and hashes. Windows application/Node packaging and complete embedded
+dependency/licensing review remain open.
 [Generation and scope](docs/SBOM.md), [evidence](docs/ITERATION_214.md).
 
 The private bundle also includes pinned libopus 1.6.1 and its BSD copyright.

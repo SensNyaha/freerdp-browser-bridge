@@ -11,7 +11,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { resolve, join, sep } from 'node:path';
+import { resolve, join, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   nodeInventory,
@@ -19,19 +19,29 @@ import {
   externalNativeDocument,
   validateSpdx,
 } from './sbom-model.mjs';
+import { windowsRuntimeInventory } from './windows-runtime-model.mjs';
 
 const fail = () => new Error('SBOM_BUILD_INVALID');
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const windows = process.platform === 'win32';
 if (
-  process.platform !== 'linux' ||
+  !['linux', 'win32'].includes(process.platform) ||
+  process.versions.node.split('.')[0] !== '24' ||
   process.arch !== 'x64' ||
   resolve('.') !== project ||
   process.argv.length !== 2
 )
   throw fail();
 const build = realpathSync(resolve('build'));
+if (build !== resolve('build') || !build.startsWith(project + sep))
+  throw fail();
 const inside = (root, path) => path === root || path.startsWith(root + sep);
-const archive = resolve('build/packages/freerdp-bridge-sbom-linux.tar.gz');
+const archive = resolve(
+  windows
+    ? 'build/packages/freerdp-bridge-sbom-win64.zip'
+    : 'build/packages/freerdp-bridge-sbom-linux.tar.gz',
+);
+if (realpathSync(dirname(archive)) !== dirname(archive)) throw fail();
 rmSync(archive, { force: true }); // Never retain a stale success archive after failure.
 const readJson = (path, maximum = 65536) => {
   try {
@@ -66,16 +76,26 @@ const extracted = mkdtempSync(join(build, 'sbom-input-'));
 const inputs = [
   {
     name: 'native',
-    path: resolve('build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz'),
+    path: resolve(
+      windows
+        ? 'build/packages/freerdp-bridge-native-0.1.0-win64.zip'
+        : 'build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz',
+    ),
     maximum: 128 * 1024 * 1024,
-    strip: true,
+    strip: windows ? 1 : 3,
   },
-  {
-    name: 'node',
-    path: resolve('build/packages/freerdp-bridge-node-0.1.0-linux.tar.gz'),
-    maximum: 64 * 1024 * 1024,
-    strip: false,
-  },
+  ...(!windows
+    ? [
+        {
+          name: 'node',
+          path: resolve(
+            'build/packages/freerdp-bridge-node-0.1.0-linux.tar.gz',
+          ),
+          maximum: 64 * 1024 * 1024,
+          strip: 0,
+        },
+      ]
+    : []),
 ];
 for (const input of inputs) {
   if (!inside(build, realpathSync(input.path))) throw fail();
@@ -86,7 +106,7 @@ for (const input of inputs) {
     [
       '-xf',
       input.path,
-      ...(input.strip ? ['--strip-components=3'] : []),
+      ...(input.strip ? ['--strip-components=' + input.strip] : []),
       '-C',
       join(extracted, input.name),
     ],
@@ -94,39 +114,43 @@ for (const input of inputs) {
   );
   if (result.status !== 0) throw fail();
 }
-const nodeRoot = realpathSync(join(extracted, 'node'));
 const nativeRoot = realpathSync(join(extracted, 'native'));
-if (!inside(build, nodeRoot) || !inside(build, nativeRoot)) throw fail();
-const listed = spawnSync(
-  'pnpm',
-  [
-    '--ignore-workspace',
-    '--dir',
-    nodeRoot,
-    'list',
-    '--prod',
-    '--depth',
-    'Infinity',
-    '--json',
-  ],
-  { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, timeout: 30000 },
-);
-if (listed.status !== 0 || Buffer.byteLength(listed.stdout) > 4 * 1024 * 1024)
-  throw fail();
-const manifestCache = new Map();
-let records;
-try {
-  records = JSON.parse(listed.stdout);
-} catch {
-  throw fail();
+if (!inside(build, nativeRoot)) throw fail();
+let node;
+if (!windows) {
+  const nodeRoot = realpathSync(join(extracted, 'node'));
+  if (!inside(build, nodeRoot)) throw fail();
+  const listed = spawnSync(
+    'pnpm',
+    [
+      '--ignore-workspace',
+      '--dir',
+      nodeRoot,
+      'list',
+      '--prod',
+      '--depth',
+      'Infinity',
+      '--json',
+    ],
+    { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, timeout: 30000 },
+  );
+  if (listed.status !== 0 || Buffer.byteLength(listed.stdout) > 4 * 1024 * 1024)
+    throw fail();
+  const manifestCache = new Map();
+  let records;
+  try {
+    records = JSON.parse(listed.stdout);
+  } catch {
+    throw fail();
+  }
+  node = nodeInventory(records, (path) => {
+    const canonical = realpathSync(path);
+    if (!inside(nodeRoot, canonical)) throw fail();
+    if (!manifestCache.has(canonical))
+      manifestCache.set(canonical, readJson(join(canonical, 'package.json')));
+    return manifestCache.get(canonical);
+  });
 }
-const node = nodeInventory(records, (path) => {
-  const canonical = realpathSync(path);
-  if (!inside(nodeRoot, canonical)) throw fail();
-  if (!manifestCache.has(canonical))
-    manifestCache.set(canonical, readJson(join(canonical, 'package.json')));
-  return manifestCache.get(canonical);
-});
 const metadata = join(nativeRoot, 'share/freerdp-bridge');
 const features = readJson(join(metadata, 'native-features.json'));
 const lock = readJson(join(metadata, 'dependencies.json'));
@@ -166,29 +190,29 @@ const nodeArtifact = packageRecord(
   projectVersion,
   'SPDXRef-node-artifact',
 );
-for (const [pkg, path, maximum] of [
-  [
-    nativeArtifact,
-    'build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz',
-    128 * 1024 * 1024,
-  ],
-  [
-    nodeArtifact,
-    'build/packages/freerdp-bridge-node-0.1.0-linux.tar.gz',
-    64 * 1024 * 1024,
-  ],
+for (const [pkg, input] of [
+  [nativeArtifact, inputs[0]],
+  ...(!windows ? [[nodeArtifact, inputs[1]]] : []),
 ])
   pkg.checksums = [
     {
       algorithm: 'SHA256',
-      checksumValue: await digest(resolve(path), maximum),
+      checksumValue: input.hash,
     },
   ];
 const relationships = [
-  ['SPDXRef-DOCUMENT', 'DESCRIBES', service.SPDXID],
-  [service.SPDXID, 'CONTAINS', nativeArtifact.SPDXID],
-  [service.SPDXID, 'CONTAINS', nodeArtifact.SPDXID],
-  [nodeArtifact.SPDXID, 'CONTAINS', node.root],
+  [
+    'SPDXRef-DOCUMENT',
+    'DESCRIBES',
+    windows ? nativeArtifact.SPDXID : service.SPDXID,
+  ],
+  ...(!windows
+    ? [
+        [service.SPDXID, 'CONTAINS', nativeArtifact.SPDXID],
+        [service.SPDXID, 'CONTAINS', nodeArtifact.SPDXID],
+        [nodeArtifact.SPDXID, 'CONTAINS', node.root],
+      ]
+    : []),
   [nativeArtifact.SPDXID, 'CONTAINS', worker.SPDXID],
   [worker.SPDXID, 'DEPENDS_ON', freerdp.SPDXID],
 ].map(([spdxElementId, relationshipType, relatedSpdxElement]) => ({
@@ -196,8 +220,8 @@ const relationships = [
   relationshipType,
   relatedSpdxElement,
 }));
-relationships.push(...node.relationships);
-const output = resolve(build, 'sbom-linux');
+if (node) relationships.push(...node.relationships);
+const output = resolve(build, windows ? 'sbom-win64' : 'sbom-linux');
 try {
   if (realpathSync(output) !== output) throw fail();
 } catch (error) {
@@ -215,7 +239,9 @@ for (const [name, version] of dependencyEntries.sort(([a], [b]) =>
 )) {
   const pkg = packageRecord(name, version, 'SPDXRef-native-' + name);
   const source = resolve(
-    '.deps/installed/x64-linux-bundled/share',
+    windows
+      ? '.deps/installed/x64-windows-bundled/share'
+      : '.deps/installed/x64-linux-bundled/share',
     name,
     'vcpkg.spdx.json',
   );
@@ -288,49 +314,84 @@ async function collectFiles(directory, depth = 0) {
     });
   }
 }
-for (const directory of ['bin', 'lib']) await collectFiles(directory);
+for (const directory of windows ? ['bin'] : ['bin', 'lib'])
+  await collectFiles(directory);
+let crt = { packages: [], relationships: [] };
+if (windows) {
+  const versions = spawnSync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-File',
+      resolve('scripts/windows-runtime-versions.ps1'),
+      '-Directory',
+      join(nativeRoot, 'bin'),
+    ],
+    { encoding: 'utf8', maxBuffer: 16384, timeout: 10000, windowsHide: true },
+  );
+  if (versions.status !== 0) throw fail();
+  crt = windowsRuntimeInventory(JSON.parse(versions.stdout), files);
+  relationships.push(...crt.relationships);
+  for (const pkg of crt.packages)
+    relationships.push({
+      spdxElementId: nativeArtifact.SPDXID,
+      relationshipType: 'CONTAINS',
+      relatedSpdxElement: pkg.SPDXID,
+    });
+}
 const document = validateSpdx({
   spdxVersion: 'SPDX-2.3',
   dataLicense: 'CC0-1.0',
   SPDXID: 'SPDXRef-DOCUMENT',
-  name: 'FreeRDP Node Bridge Linux application artifacts',
+  name: windows
+    ? 'FreeRDP Node Bridge Windows native artifact'
+    : 'FreeRDP Node Bridge Linux application artifacts',
   documentNamespace:
-    'https://spdx.org/spdxdocs/freerdp-node-bridge-linux-' + randomUUID(),
+    'https://spdx.org/spdxdocs/freerdp-node-bridge-' +
+    (windows ? 'win64-' : 'linux-') +
+    randomUUID(),
   creationInfo: {
     created: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
     creators: ['Tool: freerdp-bridge-sbom-0.1.0'],
   },
   comment:
-    'Application/native artifact inventory. Container base OS and Node runtime distribution are outside scope. Native component membership is flattened; upstream vcpkg documents describe complete installed packages, not only runtime files. Unresolved license declarations remain NOASSERTION.',
-  documentDescribes: [service.SPDXID],
+    (windows
+      ? 'Windows native artifact only; no Node application/distribution or system Windows inventory. CRT grouping uses packaged PE file versions, not installer versions or verified publisher signatures. '
+      : 'Application/native artifact inventory. Container base OS and Node runtime distribution are outside scope. ') +
+    'Native component membership is flattened; upstream vcpkg documents describe complete installed packages, not only runtime files. Unresolved license declarations remain NOASSERTION.',
+  documentDescribes: [windows ? nativeArtifact.SPDXID : service.SPDXID],
   packages: [
-    service,
+    ...(!windows ? [service, nodeArtifact, ...node.packages] : []),
     worker,
     freerdp,
     nativeArtifact,
-    nodeArtifact,
-    ...node.packages,
     ...nativePackages,
+    ...crt.packages,
   ],
   externalDocumentRefs,
   files,
   relationships,
 });
 writeFileSync(
-  join(output, 'application.spdx.json'),
+  join(output, windows ? 'native.spdx.json' : 'application.spdx.json'),
   JSON.stringify(document, null, 2) + '\n',
 );
 for (const input of inputs)
   if ((await digest(input.path, input.maximum)) !== input.hash) throw fail();
-const packed = spawnSync('tar', ['-czf', archive, '-C', output, '.'], {
-  stdio: 'ignore',
-  timeout: 30000,
-});
+const packed = spawnSync(
+  'tar',
+  [...(windows ? ['-a', '-cf'] : ['-czf']), archive, '-C', output, '.'],
+  {
+    stdio: 'ignore',
+    timeout: 30000,
+  },
+);
 if (packed.status !== 0) throw fail();
 rmSync(extracted, { recursive: true, force: true }); // Known mkdtemp child of verified build root.
 console.log(
   JSON.stringify({
-    platform: 'linux-x64',
+    platform: process.platform + '-x64',
     packages: document.packages.length,
     nativeDocuments: externalDocumentRefs.length,
     files: files.length,
