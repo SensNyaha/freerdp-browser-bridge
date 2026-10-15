@@ -638,8 +638,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   generated and root-schema validated: actual Node graph, native versions/source,
   13 original vcpkg documents, 101 runtime files and exact artifact hashes.
   Five portable privacy/boundary/reference cases and full platform Node checks
-  pass. Host export is pending a review-service usage limit. Base OS/Node.js,
-  Windows CRT/native inventory and precise native dependency edges remain open.
+  pass. Host export now passes after the initial review-service usage limit.
+  A separate Syft final-image inventory adds Debian and Node distribution
+  packages with digest-verified OCI index/config/layer ownership. Windows
+  CRT/native inventory, complete embedded Node/native edges and licensing /
+  vulnerability review remain open.
   [Contract](docs/SBOM.md), [evidence](docs/ITERATION_214.md).
 - [ ] Performance report against `PERFORMANCE.md` metrics.
 - [ ] Full Windows + XRDP regression.

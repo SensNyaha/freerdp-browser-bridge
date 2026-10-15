@@ -1,0 +1,16 @@
+{
+  "syft": {
+    "version": "1.54.1",
+    "release": "https://github.com/anchore/syft/releases/tag/v1.54.1",
+    "platforms": {
+      "win32-x64": {
+        "file": "syft_1.54.1_windows_amd64.zip",
+        "sha256": "8b56e8285e295e0bbed26eeea9b16ed51c493be97ccdf42dae6326c84fe8e19f"
+      },
+      "linux-x64": {
+        "file": "syft_1.54.1_linux_amd64.tar.gz",
+        "sha256": "c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47"
+      }
+    }
+  }
+}

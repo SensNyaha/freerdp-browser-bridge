@@ -30,7 +30,11 @@ SHA-256: 04d2ec6a73adbd93585e2a69f0544b98928f036b4db6d20ff60b02ad45cd9ee4.
 It exists in the isolated SDK at build/packages/freerdp-bridge-sbom-linux.tar.gz.
 The host export action was not executed because automatic approval review hit
 its usage limit; this was a review-service failure, not an unsafe-action ruling.
-No export or host-copy acceptance is claimed.
+At that point no export or host-copy acceptance was claimed. After commit
+b26d66c, review service availability returned and the exact export succeeded:
+the host archive has the SHA-256 above and the exported tree retains 76 packages,
+101 files, 206 relationships and 13 companion documents. No application archive
+was changed by this export.
 
 Five portable tests verify privacy/projection, duplicate dependency edges,
 malformed identity/callback errors, recursion/record/unique-package bounds,
