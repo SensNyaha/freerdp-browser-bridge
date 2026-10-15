@@ -17,6 +17,8 @@ struct ConnectionConfig {
   bool pcm_input = false;
   bool opus_input = false;
   bool audio_buffer_200 = false;
+  bool clipboard_to_server = false, clipboard_from_server = false;
+  std::uint32_t clipboard_maximum = 0;
 };
 ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes);
 void validate_secret(std::span<const std::uint8_t> bytes);

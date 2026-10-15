@@ -2,8 +2,8 @@
 
 Implements the native text/channel ownership portion of SPECIFICATION §2.7.
 `TextSession` composes with [guarded ingress](CLIPBOARD_INGRESS.md) and the
-[Unicode codec](CLIPBOARD_TEXT.md). It remains unselected by the worker; there
-is no public/browser clipboard capability yet.
+[Unicode codec](CLIPBOARD_TEXT.md). Raw schema-10 worker opt-in now selects it;
+typed Node and public/browser clipboard selection remain open.
 
 The constructing RDP thread exclusively binds one otherwise unowned public
 `CliprdrClientContext`. Binding refuses existing callbacks/custom ownership,
@@ -51,7 +51,8 @@ process/core memory and SDK-internal copies remain separate acceptance work.
 ## Serialized worker handoff
 
 `WorkerSession` composes this owner with the bounded private clipboard records.
-It is not yet selected by `Connection`. Construction may occur on the IPC thread;
+It is selected only by explicit raw schema-10 `Connection` configuration.
+Construction may occur on the IPC thread;
 start/bind/pump/retire run on one RDP thread. Retirement destroys the inner public
 callback owner there, before joining the thread or freeing the SDK context. The
 wrapper can then be destroyed on the original thread. Clock callbacks must be

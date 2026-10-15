@@ -237,7 +237,15 @@ int run(int packet_fd = -1) {
             return false;
           throw ProtocolError();
         },
-        [&output] { return output.try_discard_audio(); });
+        [&output] { return output.try_discard_audio(); },
+        [&output](Kind kind, std::uint64_t id, std::span<const std::uint8_t> bytes) {
+          const auto result = output.try_send(kind, id, bytes);
+          if (result == DispatchAdmission::accepted)
+            return true;
+          if (result == DispatchAdmission::busy || result == DispatchAdmission::full)
+            return false;
+          throw ProtocolError();
+        });
 #else
     bridge::Connection connection(send);
 #endif
@@ -305,6 +313,9 @@ int run(int packet_fd = -1) {
         send({Kind::microphone_reset_result, header.request_id, {result.begin(), result.end()}});
 #endif
       } else if (header.kind == Kind::clipboard_command && ready) {
+#ifdef BRIDGE_WITH_FREERDP
+        connection.enqueue_clipboard(header.request_id, payload);
+#else
         const auto command = clipboard::decode_command(payload);
         send({Kind::clipboard_result, header.request_id,
               clipboard::encode_result({command.operation,
@@ -312,6 +323,7 @@ int run(int packet_fd = -1) {
                                         command.generation,
                                         command.revision,
                                         {}})});
+#endif
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.stop();

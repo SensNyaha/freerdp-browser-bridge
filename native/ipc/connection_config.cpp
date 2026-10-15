@@ -64,7 +64,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 9)
+  if (schema < 1 || schema > 10)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -101,7 +101,8 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
                  : schema == 6 ? 15U
                  : schema == 7 ? 31U
                  : schema == 8 ? 63U
-                               : 127U) ||
+                 : schema == 9 ? 127U
+                               : 511U) ||
         (flags & 12U) == 12U || (flags & 48U) == 48U)
       throw ProtocolError();
     config.dynamic_resolution = (flags & 1U) != 0;
@@ -111,7 +112,17 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     config.pcm_input = (flags & 16U) != 0;
     config.opus_input = (flags & 32U) != 0;
     config.audio_buffer_200 = (flags & 64U) != 0;
+    config.clipboard_to_server = (flags & 128U) != 0;
+    config.clipboard_from_server = (flags & 256U) != 0;
     if (config.audio_buffer_200 && !(config.pcm_output || config.opus_output))
+      throw ProtocolError();
+  }
+  if (schema >= 10) {
+    config.clipboard_maximum = static_cast<std::uint32_t>(number(4));
+    if (config.clipboard_to_server || config.clipboard_from_server) {
+      if (!config.clipboard_maximum || config.clipboard_maximum > 16 * 1024 * 1024)
+        throw ProtocolError();
+    } else if (config.clipboard_maximum)
       throw ProtocolError();
   }
   if (offset != bytes.size() || config.host.empty() ||

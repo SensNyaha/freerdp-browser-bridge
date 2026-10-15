@@ -320,3 +320,19 @@ TEST_CASE("Actual CLIPRDR refuses over-policy text without retiring the Unicode 
     REQUIRE(o.replies.back().text == std::vector<BYTE>{65});
   }
 }
+TEST_CASE("Actual CLIPRDR UTF8 expansion quota refuses text without retiring the channel") {
+  Host h(false);
+  Observer o({true, true, 8});
+  start(h, o.owner);
+  offer(h);
+  REQUIRE(o.owner.request(1, 1) == CHANNEL_RC_OK);
+  // Three BMP Han characters occupy eight terminated UTF16 bytes but nine UTF8.
+  REQUIRE(h.send(record(5, 1, {0x00, 0x4e, 0x01, 0x4e, 0x02, 0x4e, 0, 0})));
+  REQUIRE(o.replies.back().status == TextReply::refused);
+  REQUIRE(o.replies.back().text.empty());
+  REQUIRE(o.owner.snapshot()->ready);
+  REQUIRE_FALSE(o.owner.snapshot()->failed);
+  REQUIRE(o.owner.request(1, 2) == CHANNEL_RC_OK);
+  REQUIRE(h.send(record(5, 1, {65, 0, 0, 0})));
+  REQUIRE(o.replies.back().status == TextReply::ok);
+}

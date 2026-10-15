@@ -80,16 +80,21 @@ BOOL Connection::receive_delegated(freerdp *instance, UINT16 channel, const BYTE
       !(flags & (CHANNEL_FLAG_SUSPEND | CHANNEL_FLAG_RESUME)) &&
       !self.dvc_channels_->admit({data, size}, now))
     return FALSE;
-  const auto accepted = self.receive_original_(instance, channel, data, size, flags, total);
+  const auto accepted =
+      self.clipboard_receive_
+          ? self.clipboard_receive_->receive(channel, data, size, flags, total, now)
+          : self.receive_original_(instance, channel, data, size, flags, total);
   // Negative CREATE and some close paths leave the SDK global error zero.
   return accepted && self.dvc_channels_->poll(audio_time_us() / 1000) &&
          !self.dvc_plugins_->stats().failed;
 }
 Connection::Connection(std::function<void(const Packet &)> send,
                        bridge::audio::PcmPublisher::TrySend audio_send,
-                       bridge::audio::PcmPublisher::TryDiscard audio_discard)
+                       bridge::audio::PcmPublisher::TryDiscard audio_discard,
+                       bridge::clipboard::WorkerSession::Send clipboard_send)
     : context_(nullptr, freerdp_client_context_free), send_(std::move(send)),
-      audio_send_(std::move(audio_send)), audio_discard_(std::move(audio_discard)), cursor_(send_) {
+      audio_send_(std::move(audio_send)), audio_discard_(std::move(audio_discard)),
+      clipboard_send_(std::move(clipboard_send)), cursor_(send_) {
   RDP_CLIENT_ENTRY_POINTS entry{};
   entry.Size = sizeof(entry);
   entry.Version = RDP_CLIENT_INTERFACE_VERSION;
@@ -133,11 +138,36 @@ Connection::~Connection() {
     reason_ = RdpError::protocol;
   erase_password();
 }
+void Connection::enqueue_clipboard(std::uint64_t request, std::vector<std::uint8_t> &payload) {
+  const auto command = ipc::clipboard::decode_command(payload);
+  const auto status = clipboard_ && connected_ && !stopping_
+                          ? clipboard_->submit(request, payload)
+                          : std::optional{ipc::clipboard::Status::unavailable};
+  if (status) {
+    send_({Kind::clipboard_result, request,
+           ipc::clipboard::encode_result(
+               {command.operation, *status, command.generation, command.revision, {}})});
+  } else if (!SetEvent(media_event_))
+    throw ProtocolError();
+}
 void Connection::configure(std::span<const std::uint8_t> payload) {
   if (config_ || started_)
     throw ProtocolError();
   config_ = decode_connection_config(payload);
   const auto &c = *config_;
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_CLIPRDR_CLIENT)
+  if (c.clipboard_to_server || c.clipboard_from_server) {
+    if (!clipboard_send_)
+      throw ProtocolError();
+    clipboard_ = std::make_unique<bridge::clipboard::WorkerSession>(
+        bridge::clipboard::TextPolicy{c.clipboard_to_server, c.clipboard_from_server,
+                                      c.clipboard_maximum},
+        clipboard_send_, [] { return audio_time_us() / 1000; });
+  }
+#else
+  if (c.clipboard_to_server || c.clipboard_from_server)
+    throw ProtocolError();
+#endif
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)
   if ((c.pcm_output || c.opus_output) && (!audio_send_ || !audio_discard_))
     throw ProtocolError();
@@ -195,7 +225,13 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   boolean(FreeRDP_AutoAcceptCertificate, FALSE);
   boolean(FreeRDP_AutoReconnectionEnabled, FALSE);
   boolean(FreeRDP_AutoLogonEnabled, TRUE);
-  boolean(FreeRDP_RedirectClipboard, FALSE);
+  boolean(FreeRDP_RedirectClipboard, clipboard_ != nullptr);
+  if (clipboard_) {
+    number(FreeRDP_ThreadingFlags, THREADING_FLAGS_DISABLE_THREADS);
+    number(FreeRDP_ClipboardFeatureMask,
+           (c.clipboard_to_server ? CLIPRDR_FLAG_LOCAL_TO_REMOTE : 0U) |
+               (c.clipboard_from_server ? CLIPRDR_FLAG_REMOTE_TO_LOCAL : 0U));
+  }
   boolean(FreeRDP_RedirectDrives, FALSE);
   boolean(FreeRDP_RedirectPrinters, FALSE);
   boolean(FreeRDP_RedirectSmartCards, FALSE);
@@ -292,6 +328,15 @@ void Connection::channel_connected(void *context, const ChannelConnectedEventArg
   if (!event || !event->name)
     return;
   auto &self = owner(base->instance);
+  if (std::strcmp(event->name, "cliprdr") == 0) {
+    if (!self.clipboard_ || !event->pInterface ||
+        self.clipboard_->bind(*static_cast<CliprdrClientContext *>(event->pInterface)) !=
+            CHANNEL_RC_OK) {
+      self.reason_ = RdpError::protocol;
+      setChannelError(base, ERROR_BAD_CONFIGURATION, "Bridge clipboard initialization failed");
+    }
+    return;
+  }
   if (std::strcmp(event->name, DISP_DVC_CHANNEL_NAME) == 0) {
     if (!self.display_.bind(*base, static_cast<DispClientContext *>(event->pInterface))) {
       self.reason_ = RdpError::protocol;
@@ -309,6 +354,11 @@ void Connection::channel_disconnected(void *context, const ChannelDisconnectedEv
   if (!event || !event->name)
     return;
   auto &self = owner(base->instance);
+  if (std::strcmp(event->name, "cliprdr") == 0 && self.clipboard_) {
+    self.clipboard_->retire();
+    if (self.clipboard_receive_)
+      self.clipboard_receive_->close();
+  }
   if ((std::strcmp(event->name, DISP_DVC_CHANNEL_NAME) == 0 && !self.display_.unbind()) ||
       (std::strcmp(event->name, RDPGFX_DVC_CHANNEL_NAME) == 0 && !self.gfx_->unbind()))
     self.reason_ = RdpError::protocol;
@@ -1164,6 +1214,12 @@ void Connection::run() noexcept {
     dvc_channels_ = std::make_unique<channels::DvcChannelRegistry>(clock);
     dvc_plugins_ = std::make_unique<channels::DvcPluginRegistry>(*dvc_channels_, clock);
     receive_original_ = receive_delegate;
+    if (clipboard_) {
+      if (!clipboard_->start(1))
+        throw ProtocolError();
+      clipboard_receive_ = std::make_unique<bridge::clipboard::ClipboardReceiveGuard>(
+          *context_->instance, receive_original_, config_->clipboard_maximum);
+    }
     dvc_receive_ = std::make_unique<channels::DvcReceiveGuard>(
         *context_->instance, receive_delegated, channels::DvcAllocationLimits{},
         channels::DvcReceiveGuard::resolve_channel,
@@ -1222,6 +1278,8 @@ void Connection::run() noexcept {
       }
     });
     state(RdpState::connecting);
+    if (clipboard_ && !clipboard_->pump())
+      throw ProtocolError();
     const auto connected = !stopping_ && freerdp_connect(context_->instance);
     // The connect watchdog applies only until authentication/activation completes.
     watchdog.request_stop();
@@ -1263,6 +1321,8 @@ void Connection::run() noexcept {
           break;
         }
         input_pending();
+        if (clipboard_ && !clipboard_->pump())
+          throw ProtocolError();
         events[count] = media_event_;
         DWORD wait_ms = audio_ || microphone_ ? 20 : 50;
         {
@@ -1295,6 +1355,8 @@ void Connection::run() noexcept {
         if (!dvc_receive_->poll(audio_time_us() / 1000) ||
             !dvc_channels_->poll(audio_time_us() / 1000) || dvc_plugins_->stats().failed)
           throw ProtocolError();
+        if (clipboard_receive_ && !clipboard_receive_->poll(audio_time_us() / 1000))
+          throw ProtocolError();
         diagnostic_stage = 2;
         bool ready_ok = true;
         const auto batch = pump_ready_events(
@@ -1319,6 +1381,8 @@ void Connection::run() noexcept {
         if (stopping_ || freerdp_shall_disconnect_context(context_.get()))
           break;
         diagnostic_stage = 4;
+        if (clipboard_ && !clipboard_->pump())
+          throw ProtocolError();
         input_pending();
         diagnostic_stage = 5;
         resize_pending();
@@ -1351,6 +1415,8 @@ void Connection::run() noexcept {
       resize_pending(true);
       input_pending(true);
       capture_pending(true);
+      if (clipboard_)
+        clipboard_->retire();
       const auto retired = retire_dvc();
       const auto disconnected = freerdp_disconnect(context_->instance);
       explicitly_disconnected = true;
@@ -1385,6 +1451,10 @@ void Connection::run() noexcept {
   }
   // ContextFree does not synthesize host Terminated. Registered channels must
   // receive public disconnect even if connect failed before GDI was initialized.
+  if (clipboard_)
+    clipboard_->retire();
+  if (clipboard_receive_)
+    clipboard_receive_->close();
   if (retire_dvc() != CHANNEL_RC_OK) {
     terminal_state = RdpState::failed;
     terminal_error = RdpError::protocol;

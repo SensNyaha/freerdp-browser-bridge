@@ -1,8 +1,10 @@
 # Browser API and native IPC protocol
 
-Current private clipboard preparation (Iteration 228) assigns RWI1 kinds
+Current private clipboard transport assigns RWI1 kinds
 45/46/47 with header preallocation bounds and dedicated bounded output slots.
-Workers return unavailable while clipboard selection/dispatch remains disabled.
+Guarded native workers accept explicit raw connection schema-10 selection
+(Iteration 231); unselected/pre-connect/retired dispatch returns unavailable.
+Typed Node and public/browser selection remain disabled.
 This adds no public clipboard commands or larger WebSocket body allowance.
 The required public clipboard events/commands below remain unfinished.
 [Private contract](docs/CLIPBOARD_IPC.md).

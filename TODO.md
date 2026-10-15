@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | IN PROGRESS | Native Unicode/CLIPRDR ownership and prepared payloads pass scoped tests; worker/Node/browser activation and remote clipboard/CRUD gate remain |
+| 7 — clipboard/drives | IN PROGRESS | Native Unicode/CLIPRDR ownership and raw worker selection pass scoped tests; typed Node/browser activation and remote clipboard/CRUD gate remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -582,22 +582,28 @@ profile's target, microphone, recovery, resource or platform acceptance.
   local ASan/UBSan and seeded Clang fuzz checks. This is not channel/browser or
   actual remote acceptance. [Contract](docs/CLIPBOARD_TEXT.md),
   [evidence](docs/ITERATION_224.md).
-- [ ] CLIPRDR Unicode text both directions.
+- [~] IN PROGRESS — CLIPRDR Unicode text both directions: explicit raw schema-10
+  selection now maps guarded CLIPRDR
+  directions/size limits, serialized command dispatch and RDP-thread retirement.
+  Actual Windows/Linux worker strict TLS/cancellation and linked fake-channel
+  quota checks pass. HELLO/typed Node/public/browser selection, remote clipboard
+  and total-resource acceptance remain open. [Evidence](docs/ITERATION_231.md).
 - [x] DONE for clipboard private transport — Versioned RWI1 class/correlation
   bounds, dedicated latest-state/one-result output and full 16 MiB command delivery
   pass actual Windows/Linux process/carrier tests, native/Node regression and
-  local sanitizer/fuzz checks. Workers explicitly return unavailable; channel /
-  Node/browser selection and actual remote acceptance remain open.
+  local sanitizer/fuzz checks. Unselected workers explicitly return unavailable;
+  raw native selection is implemented above. Typed Node/browser selection and
+  actual remote acceptance remain open.
   [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/ITERATION_228.md).
 - [x] DONE for prepared private clipboard payloads — Independent bounded native /
   TypeScript scalar-state and Unicode command/result codecs pass golden, malformed,
   ownership and exact-size tests, local sanitizer/fuzz and full Node regression.
-  Active carrier/worker/Node/browser selection remains open.
+  Typed Node/browser selection and actual remote acceptance remain open.
   [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/ITERATION_227.md).
 - [x] DONE for native public text owner — Independent direction policies,
   Unicode advertisement/ACK/data callbacks, one outstanding remote request and
   stale-response/timeout/retirement ownership pass actual pinned CLIPRDR with
-  simulated SVC on Windows/Linux. Worker/Node/browser activation and actual
+  simulated SVC on Windows/Linux. Typed Node/browser activation and actual
   remote acceptance remain open. [Contract](docs/CLIPBOARD_TEXT_SESSION.md),
   [channel evidence](docs/ITERATION_226.md). Serialized IPC/RDP handoff now retains
   one command/result with admitted authority, peer completion and finite dispatch /
@@ -606,7 +612,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [x] DONE for prepared CLIPRDR ingress — Header admission before fragmented-body
   allocation, bounded tables/names and public receive routing pass Windows/Linux
   native and actual pinned-channel/fake-SVC checks plus seeded sanitizer fuzz.
-  Worker selection and actual clipboard acceptance remain open.
+  Typed Node/browser selection and actual clipboard acceptance remain open.
   Valid over-policy data is drained without body allocation and completes only
   the read as refused; the full wire maximum fits classic SVC fragmentation.
   [Contract](docs/CLIPBOARD_INGRESS.md), [initial evidence](docs/ITERATION_225.md),

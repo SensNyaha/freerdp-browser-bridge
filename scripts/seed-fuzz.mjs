@@ -18,6 +18,22 @@ import {
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+for (const [name, flags, maximum] of [
+  ['clipboard-both', 384, 1048576],
+  ['clipboard-from-max', 256, 16777216],
+  ['clipboard-no-direction-excess', 512, 1],
+]) {
+  const body = Buffer.from(
+    '000a00096c6f63616c686f737400017500000d3d0400030000200201020000001388000003e81e145000003d0900003d09000000000000000000',
+    'hex',
+  );
+  body.writeUInt32BE(flags, body.length - 8);
+  body.writeUInt32BE(maximum, body.length - 4);
+  await writeFile(
+    'build/fuzz/corpus/configure-' + name,
+    encodePacket({ kind: Kind.Configure, requestId: 1n, payload: body }),
+  );
+}
 for (const [name, kind, requestId, payload] of [
   [
     'clipboard-state',

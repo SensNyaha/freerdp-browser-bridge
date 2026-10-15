@@ -8,6 +8,53 @@ using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
     0x3d, 4, 0, 3, 0,   0,   32,  2,   1,   2,   0,   0,   0,   0x13, 0x88, 0,   0, 3, 0xe8};
+TEST_CASE("connection v10 clipboard direction and item quota preserve all legacy feature masks") {
+  auto bytes = connection;
+  bytes[1] = 10;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+  const auto at = bytes.size() - 8;
+  for (unsigned flags = 0; flags < 1024; ++flags) {
+    bytes[at + 2] = static_cast<std::uint8_t>(flags >> 8);
+    bytes[at + 3] = static_cast<std::uint8_t>(flags);
+    const bool selected = (flags & 384U) != 0;
+    bytes.back() = selected ? 1 : 0;
+    if (flags > 511 || (flags & 12U) == 12U || (flags & 48U) == 48U ||
+        ((flags & 64U) && !(flags & 12U))) {
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+      continue;
+    }
+    const auto c = decode_connection_config(bytes);
+    REQUIRE(c.clipboard_to_server == ((flags & 128U) != 0));
+    REQUIRE(c.clipboard_from_server == ((flags & 256U) != 0));
+    REQUIRE(c.clipboard_maximum == (selected ? 1U : 0U));
+    REQUIRE(c.audio_buffer_200 == ((flags & 64U) != 0));
+    REQUIRE(c.opus_input == ((flags & 32U) != 0));
+  }
+  bytes[at + 2] = 1;
+  bytes[at + 3] = 128;
+  for (const auto maximum : {0U, 1U, 16777216U, 16777217U, UINT32_MAX}) {
+    for (unsigned i = 0; i < 4; ++i)
+      bytes[at + 4 + i] = static_cast<std::uint8_t>(maximum >> ((3 - i) * 8));
+    if (!maximum || maximum > 16777216)
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+    else
+      REQUIRE(decode_connection_config(bytes).clipboard_maximum == maximum);
+  }
+  bytes[at + 2] = 0;
+  bytes[at + 3] = 0;
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  bytes[at + 2] = 1;
+  bytes[at + 4] = bytes[at + 5] = bytes[at + 6] = 0;
+  bytes.back() = 1;
+  for (std::size_t n = 0; n < bytes.size(); ++n)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(n)), ProtocolError);
+  for (unsigned schema = 1; schema < 10; ++schema) {
+    bytes[1] = static_cast<std::uint8_t>(schema);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  REQUIRE_FALSE(decode_connection_config(connection).clipboard_to_server);
+  REQUIRE_FALSE(decode_connection_config(connection).clipboard_from_server);
+}
 TEST_CASE("connection v9 compatibility buffer requires exactly one output and keeps legacy masks") {
   auto bytes = connection;
   bytes[1] = 9;

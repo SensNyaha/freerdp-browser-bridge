@@ -4,8 +4,9 @@ Prepares the private Node/worker portion of SPECIFICATION §2.7. The payload
 codecs are implemented independently in C++20 and strict TypeScript. Iteration
 227 prepared these payloads; Iteration 228 assigns additive RWI1 kinds below
 and bounded output/carrier storage. Both workers validate unselected commands
-and return unavailable. **No clipboard HELLO capability, connection selection,
-RDP command dispatch, high-level Node or public/browser path is activated.**
+and return unavailable. Iteration 231 selects guarded native dispatch through
+explicit raw schema 10; clipboard HELLO, typed Node and public/browser selection
+remain disabled. Unselected workers still return unavailable.
 
 | RWI1 kind | Request ID | Payload bound |
 | --- | --- | --- |
@@ -68,6 +69,30 @@ the native text owner. Encoders validate before allocation/copy. Decoders return
 a borrowed span/subarray; a retaining owner must copy only after admission and
 clear retained content on retirement. The maximum logical record is 16 MiB + 24
 bytes. The scalar state path never contains text.
+
+## Raw native selection (Iteration 231)
+
+Guarded Windows/Linux workers accept connection schema 10. It retains schema-9
+fields, extends the four-byte flag mask to 511, adds bit 128 browser-to-server /
+bit 256 server-to-browser and appends one big-endian u32 maximum. A selected
+direction requires 1..16 MiB; both directions off requires zero. Earlier schema
+masks and exclusive audio profiles remain unchanged. Foundation/non-channel
+builds refuse selection before secret/connect. This is raw private activation;
+HELLO and typed Node selection are not yet enabled.
+
+Explicit selection enables only the custom public Unicode callback owner and
+guarded receive route. It forces synchronous public channel dispatch, independently
+maps direction feature bits and polls ingress/owner deadlines on the RDP thread.
+No host clipboard backend is instantiated. IPC moves one accepted command into
+the owner and wakes the RDP loop. Native readiness, current generation/revision,
+policy and completion credit apply separately from the envelope. Unselected,
+pre-connect, stopping and retired owners return unavailable without text.
+
+Retirement destroys text callbacks on the RDP thread before SDK channel/context
+cleanup and the enclosing terminal lifecycle settles any pending call. A queued
+scalar state is not proof of a live source after terminal state. UTF-8 expansion
+above the item quota also completes a read as refused without channel failure.
+Whole-session/total-RSS and real remote clipboard acceptance remain open.
 
 No secrets/content may enter errors, metrics or logs. Ownership/revocation,
 publication credit, native source progression, channel retirement, active IPC

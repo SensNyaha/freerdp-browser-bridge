@@ -1,8 +1,9 @@
 # RWI1 foundation wire contract
 
-Current clipboard framing — iteration 228: additive kinds 45/46/47 carry fixed
-state and bounded Unicode command/result payloads. Workers currently return
-unavailable without selecting an RDP clipboard channel. No clipboard HELLO or
+Current clipboard framing: additive kinds 45/46/47 carry fixed
+state and bounded Unicode command/result payloads. Iteration 231 activates the
+guarded native channel only by explicit raw connection schema 10; unselected,
+pre-connect and retired owners return unavailable. No clipboard HELLO or
 public capability is advertised. A dedicated latest state and one correlated
 result slot preserve the control FIFO; the carrier accepts a maximum 16 MiB
 text record while every other class retains its existing limit.

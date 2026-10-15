@@ -1,7 +1,8 @@
 # Guarded CLIPRDR ingress
 
 Prepares SPECIFICATION §2.7 and the parser/allocation requirements of SECURITY.
-The worker does not yet select this channel path or advertise clipboard support.
+The worker selects this path only through raw schema-10 opt-in (Iteration 231);
+typed Node/public/browser selection is not yet enabled.
 
 `ClipboardIngress` stages the eight-byte CLIPRDR header in fixed storage before
 allocating a fragmented body. The complete outer length must match `dataLen`.
@@ -38,7 +39,8 @@ broader format compatibility remains required work rather than a claimed feature
 retains its channel identity, validates framing/notification/metadata flags and
 normalizes only inspected complete messages. Other channel arguments pass through.
 The RDP owner must serialize and route callbacks, poll deadlines and retain the
-guard through delegated callbacks. There is no worker installation yet.
+guard through delegated callbacks. Connection installs/polls/retires it only for
+the explicitly selected native profile.
 
 The pinned CLIPRDR helper creates an internal message thread unless public setting
 `FreeRDP_ThreadingFlags` includes `THREADING_FLAGS_DISABLE_THREADS`; setting

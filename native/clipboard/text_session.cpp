@@ -317,16 +317,19 @@ UINT TextSession::received(CliprdrClientContext *c,
   else if (r->common.msgFlags == CB_RESPONSE_OK) {
     const std::span<const std::uint8_t> wire{r->requestedFormatData, r->common.dataLen};
     const auto measured = decode_unicode_text(wire, {}, s->policy_.maximum);
-    if (measured.status != TextStatus::capacity && measured.status != TextStatus::ok)
+    if (measured.status != TextStatus::capacity && measured.status != TextStatus::ok &&
+        measured.status != TextStatus::too_large)
       return s->fail();
-    try {
-      text.resize(measured.bytes);
-    } catch (...) {
-      return s->fail();
+    if (measured.status != TextStatus::too_large) {
+      try {
+        text.resize(measured.bytes);
+      } catch (...) {
+        return s->fail();
+      }
+      if (decode_unicode_text(wire, text, s->policy_.maximum).status != TextStatus::ok)
+        return s->fail();
+      status = TextReply::ok;
     }
-    if (decode_unicode_text(wire, text, s->policy_.maximum).status != TextStatus::ok)
-      return s->fail();
-    status = TextReply::ok;
   }
   bool accepted = false;
   try {

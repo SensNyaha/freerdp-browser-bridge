@@ -6,6 +6,8 @@
 #include "../audio/session.hpp"
 #include "../channels/dvc_provider.hpp"
 #include "../channels/dvc_receive_guard.hpp"
+#include "../clipboard/receive_guard.hpp"
+#include "../clipboard/worker_session.hpp"
 #include "certificate.hpp"
 #include "connection_config.hpp"
 #include "contacts.hpp"
@@ -63,10 +65,13 @@ class Connection {
   std::unique_ptr<channels::DvcPluginRegistry> dvc_plugins_;
   std::unique_ptr<channels::DvcReceiveGuard> dvc_receive_;
   pReceiveChannelData receive_original_ = nullptr;
+  std::unique_ptr<clipboard::WorkerSession> clipboard_;
+  std::unique_ptr<clipboard::ClipboardReceiveGuard> clipboard_receive_;
   ContextPtr context_;
   std::function<void(const ipc::Packet &)> send_;
   audio::PcmPublisher::TrySend audio_send_;
   audio::PcmPublisher::TryDiscard audio_discard_;
+  clipboard::WorkerSession::Send clipboard_send_;
   std::mutex audio_reset_mutex_;
   audio::ResetControl audio_reset_;
   void service_audio_reset(bool ending = false);
@@ -160,7 +165,8 @@ class Connection {
 public:
   explicit Connection(std::function<void(const ipc::Packet &)> send,
                       audio::PcmPublisher::TrySend audio_send = {},
-                      audio::PcmPublisher::TryDiscard audio_discard = {});
+                      audio::PcmPublisher::TryDiscard audio_discard = {},
+                      clipboard::WorkerSession::Send clipboard_send = {});
   ~Connection();
   void configure(std::span<const std::uint8_t> payload);
   void secret(std::span<const std::uint8_t> payload);
@@ -175,6 +181,7 @@ public:
   void enqueue_microphone_reset(std::uint64_t request, std::span<const std::uint8_t> payload);
   void enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload,
                           bool opus = false);
+  void enqueue_clipboard(std::uint64_t request, std::vector<std::uint8_t> &payload);
   std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;
 };
