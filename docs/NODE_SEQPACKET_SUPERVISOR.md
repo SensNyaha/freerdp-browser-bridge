@@ -1,5 +1,12 @@
 # Explicit packet transport in the Node supervisor
 
+Current capacity evidence — iteration 212: 32 simultaneously live native workers
+pass automatic/manual heartbeat at the addon's exact fixed capacity. A 33rd
+request is refused before spawn with runtime cleanup; closing 16 and starting
+16 replacements preserves surviving owners. Full close restores parent FD count
+and empty runtime. This is unconnected worker/IPC evidence, not a 30-session RDP
+soak. Larger configured policies remain open. [Evidence](ITERATION_212.md).
+
 Current default — iteration 200: WorkerOptions also accepts auto, now the default.
 Linux prefers primary after exact private pairing/hash verification; no pairing
 metadata preserves legacy framed transport. A present malformed/mismatched

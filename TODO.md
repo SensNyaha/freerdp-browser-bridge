@@ -331,6 +331,12 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 1 — native worker process and IPC
 
+- [x] DONE for Linux default IPC capacity — 32 concurrent actual native workers,
+  automatic/manual heartbeat, refused pre-spawn 33rd owner, sixteen-slot
+  replacement and joined process/FD/runtime cleanup pass. This is unconnected
+  lifecycle evidence, separate from larger configured limits and 30+ connected
+  RDP soak. [Evidence](docs/ITERATION_212.md).
+
 - [x] DONE for Linux worker bounded stream lifecycle slice — Foundation/linked
   stdout now uses fixed priority lanes and finite nonblocking writer ownership.
   Actual paused-parent flood exits natively and cleans runtime; lifecycle 13/13,
