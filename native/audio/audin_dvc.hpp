@@ -7,6 +7,11 @@
 namespace bridge::audio {
 enum class AudinChannelPhase { closed, handshake, recording, unsupported, failed };
 enum class AudinScheduledStatus { inactive, waiting, delivered, failed };
+struct AudinNegotiationStats {
+  std::uint64_t channels = 0, versions = 0, offers = 0, opens = 0, refused = 0;
+  std::uint64_t recording = 0, failures = 0;
+  std::uint32_t server_formats = 0, client_formats = 0;
+};
 // One serialized public DVC callback/endpoint owner, with no worker activation.
 // Retire before plugin termination/thread join; wrapper outlives delayed OnClose.
 class AudinDvcGate {
@@ -20,6 +25,7 @@ class AudinDvcGate {
   AudinSource &source_;
   AudinIngress ingress_;
   CaptureCadence cadence_;
+  AudinNegotiationStats negotiation_;
   std::uint64_t scheduled_epoch_ = 0;
   IWTSVirtualChannel *transport_ = nullptr;
   IWTSVirtualChannelCallback *delegate_ = nullptr;
@@ -61,6 +67,7 @@ public:
   AudinCaptureReset reset_capture(std::uint64_t expected_epoch) noexcept;
   std::optional<std::uint64_t> capture_deadline() const noexcept;
   std::optional<CaptureCadenceStats> cadence_stats() const noexcept;
+  std::optional<AudinNegotiationStats> negotiation_stats() const noexcept;
   AudinChannelPhase phase() const noexcept;
   UINT last_error() const noexcept;
 };

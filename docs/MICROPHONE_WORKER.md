@@ -1,5 +1,25 @@
 # Experimental private microphone worker dispatch
 
+Current update — iteration 219: copied native session statistics include fixed
+AUDIN negotiation counters. After retirement an enabled microphone writes one
+`bridge.microphone.negotiation v=1` numeric record: channels, versions, offers,
+server, client, opens, refused, recording, failures. Channels count accepted DVC
+handoffs; versions/offers/opens count validated requests. Server/client are the
+last original/filtered format counts (0..64). Refused counts policy-rejected
+Open requests; recording counts completed Open/Format Change with fresh source
+authority; failures counts transitions into the gate's failed phase, not every
+API refusal. Lifetime counters saturate and survive Close/retirement. Snapshots
+require the quiescent RDP owner; no peer text, samples, credentials or device
+identity is recorded. No new public/IPC capability or message is introduced.
+
+The lab-only byte parser accepts this exact version/field order across arbitrary
+fragmentation and CRLF, retaining only one copied scalar snapshot. It bounds
+numbers before accumulation, refuses extra/unknown fields and keeps uint64 values
+as decimal strings. Other stderr text is discarded without retention. A zero
+channel count means no accepted AUDIN handoff was observed at this gate; it does
+not by itself assign blame to server configuration or establish recording.
+[Native/fake-DVC and restored XRDP evidence](ITERATION_219.md).
+
 Current update — iteration 209: guarded Linux builds with CHANNEL_AUDIN_CLIENT
 now select the same virtual PCM/Opus source, bounded handoff, RDP-thread cadence
 and finite retirement as Windows. HELLO/CLI expose pcmInput, opusInput and

@@ -1424,6 +1424,19 @@ void Connection::run() noexcept {
     const auto stats = microphone_->stats();
     if (!stats || !stats->resources_retired)
       std::terminate(); // Worker fault; preserve live callback targets until process exit.
+    const auto &negotiation = stats->negotiation;
+    (void)std::fprintf(stderr,
+                       "bridge.microphone.negotiation v=1 channels=%llu versions=%llu offers=%llu "
+                       "server=%u client=%u opens=%llu refused=%llu recording=%llu failures=%llu\n",
+                       static_cast<unsigned long long>(negotiation.channels),
+                       static_cast<unsigned long long>(negotiation.versions),
+                       static_cast<unsigned long long>(negotiation.offers),
+                       static_cast<unsigned>(negotiation.server_formats),
+                       static_cast<unsigned>(negotiation.client_formats),
+                       static_cast<unsigned long long>(negotiation.opens),
+                       static_cast<unsigned long long>(negotiation.refused),
+                       static_cast<unsigned long long>(negotiation.recording),
+                       static_cast<unsigned long long>(negotiation.failures));
     if (retired != bridge::audio::MicrophoneRetirement::done) {
       terminal_state = RdpState::failed;
       terminal_error = RdpError::protocol;

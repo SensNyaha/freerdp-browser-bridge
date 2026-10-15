@@ -168,10 +168,12 @@ std::optional<MicrophoneSessionStats> MicrophoneSession::stats() const noexcept 
   if (!on_thread() || busy_)
     return {};
   const auto source = source_.stats();
-  if (!source)
+  const auto negotiation = registration_.gate().negotiation_stats();
+  if (!source || !negotiation)
     return {};
   auto value = stats_;
   value.source = *source;
+  value.negotiation = *negotiation;
   value.publication = publisher_.stats();
   return value;
 }

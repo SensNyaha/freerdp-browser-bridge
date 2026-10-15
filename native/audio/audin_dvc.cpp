@@ -8,6 +8,10 @@
 
 namespace bridge::audio {
 namespace {
+void increment(std::uint64_t &value) noexcept {
+  if (value != UINT64_MAX)
+    ++value;
+}
 std::uint32_t little(std::span<const BYTE> bytes, std::size_t at) noexcept {
   std::uint32_t value = 0;
   for (unsigned i = 0; i < 4; ++i)
@@ -58,6 +62,8 @@ UINT AudinDvcGate::last_error() const noexcept {
   return on_thread() ? last_error_ : ERROR_INVALID_STATE;
 }
 UINT AudinDvcGate::fail(UINT error) noexcept {
+  if (phase_ != AudinChannelPhase::failed)
+    increment(negotiation_.failures);
   phase_ = AudinChannelPhase::failed;
   last_error_ = error;
   incoming_ = false;
@@ -103,6 +109,7 @@ UINT AudinDvcGate::open(rdpContext &context, IWTSListenerCallback *listener,
   }
   *accepted = TRUE;
   *out = &callback_.api;
+  increment(negotiation_.channels);
   return CHANNEL_RC_OK;
 }
 UINT AudinDvcGate::opened() noexcept {
@@ -125,10 +132,28 @@ UINT AudinDvcGate::receive(wStream *stream) noexcept {
   const auto before = source_.stats();
   if (!before)
     return fail(ERROR_INVALID_STATE);
-  const auto pdu = ingress_.inspect(
-      {static_cast<const BYTE *>(Stream_Pointer(stream)), Stream_GetRemainingLength(stream)});
+  const std::span<const BYTE> incoming_bytes{static_cast<const BYTE *>(Stream_Pointer(stream)),
+                                             Stream_GetRemainingLength(stream)};
+  const auto pdu = ingress_.inspect(incoming_bytes);
   if (!pdu)
     return fail(ERROR_INVALID_DATA);
+  switch (pdu->kind) {
+  case AudinPduKind::version:
+    increment(negotiation_.versions);
+    break;
+  case AudinPduKind::formats:
+    increment(negotiation_.offers);
+    negotiation_.server_formats = little(incoming_bytes, 1);
+    negotiation_.client_formats = pdu->format_count;
+    break;
+  case AudinPduKind::open:
+    increment(negotiation_.opens);
+    if (!pdu->forward)
+      increment(negotiation_.refused);
+    break;
+  case AudinPduKind::change:
+    break;
+  }
   pending_ = pdu;
   reply_ = 0;
   receiving_ = true;
@@ -179,6 +204,7 @@ UINT AudinDvcGate::receive(wStream *stream) noexcept {
     frames_ = pdu->frames_per_packet;
     data_bytes_ = 1 + static_cast<std::size_t>(frames_) * channels_[index_] * 2;
     phase_ = AudinChannelPhase::recording;
+    increment(negotiation_.recording);
   }
   return CHANNEL_RC_OK;
 }
@@ -297,6 +323,9 @@ std::optional<std::uint64_t> AudinDvcGate::capture_deadline() const noexcept {
 }
 std::optional<CaptureCadenceStats> AudinDvcGate::cadence_stats() const noexcept {
   return on_thread() ? std::optional{cadence_.stats()} : std::nullopt;
+}
+std::optional<AudinNegotiationStats> AudinDvcGate::negotiation_stats() const noexcept {
+  return quiescent() ? std::optional{negotiation_} : std::nullopt;
 }
 UINT AudinDvcGate::close() noexcept {
   if (retired())

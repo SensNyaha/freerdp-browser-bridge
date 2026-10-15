@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 import { readPrivateLabInput } from './private-lab-input.mjs';
+import { MicrophoneNegotiationDiagnostics } from './microphone-negotiation-diagnostics.mjs';
 
 // Authorized lab inventory only: no microphone capture, sample submission or remote input.
 const [
@@ -44,7 +45,15 @@ if (inputMode) {
 }
 const reportTag = microphone === 'pcm' ? audioOutput : 'opus-' + audioOutput;
 const runtimeRoot = resolve('.runtime/lab-microphone-' + reportTag);
-const worker = new WorkerProcess({
+const diagnostics = new MicrophoneNegotiationDiagnostics();
+class LabWorker extends WorkerProcess {
+  spawnWorker(directory, env) {
+    const child = super.spawnWorker(directory, env);
+    child.stderr.on('data', (bytes) => diagnostics.push(bytes));
+    return child;
+  }
+}
+const worker = new LabWorker({
   workerPath: resolve(
     'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
   ),
@@ -148,6 +157,7 @@ try {
   if (!frame.jpeg) throw new Error('LAB_FRAME_MISSING');
   report.display = { width: frame.width, height: frame.height };
   await worker.close();
+  report.negotiation = diagnostics.snapshot();
   report.closed = worker.state === 'closed';
   report.runtimeEmpty = (await readdir(runtimeRoot)).length === 0;
   if (!report.closed || !report.runtimeEmpty)
@@ -160,6 +170,7 @@ try {
   console.log(JSON.stringify(report));
 } catch {
   await worker.close();
+  report.negotiation = diagnostics.snapshot();
   report.closed = worker.state === 'closed';
   report.runtimeEmpty = (await readdir(runtimeRoot)).length === 0;
   if (inputMode) console.log(JSON.stringify({ ...report, failed: true }));

@@ -8,6 +8,7 @@ enum class MicrophonePump { idle, blocked, delivered, invalid, failed };
 enum class MicrophoneRetirement { active, pending, done, invalid, expired, failed };
 struct MicrophoneSessionStats {
   AudinSourceStats source;
+  AudinNegotiationStats negotiation;
   CaptureStateStats publication;
   std::uint64_t close_attempts = 0, invalid_calls = 0;
   UINT close_status = CHANNEL_RC_OK;

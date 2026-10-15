@@ -529,10 +529,13 @@ broader format profiles and end-to-end acceptance are separate open work.
   [175](docs/ITERATION_175.md), [94](docs/ITERATION_094.md),
   [167](docs/ITERATION_167.md), [168](docs/ITERATION_168.md).
 - [~] Custom `audin-browser` source, browser microphone capture and packet
-  transport: selected Windows PCM/Opus AUDIN/worker/Node/viewer path is implemented.
+  transport: selected Windows/Linux PCM/Opus AUDIN/worker/Node/viewer path is implemented.
   Actual XRDP input remains waiting epoch 0; negotiated ready input, physical
   permission/device capture and remote application recording remain unverified.
-  [144](docs/ITERATION_144.md), [169](docs/ITERATION_169.md).
+  Twelve real Linux carrier/codec combinations pass; bounded negotiation counters
+  now distinguish accepted DVC/validated formats/Open from waiting state.
+  [144](docs/ITERATION_144.md), [169](docs/ITERATION_169.md),
+  [218](docs/ITERATION_218.md), [219](docs/ITERATION_219.md).
 - [~] PCM normalization/resampling and Opus compatibility beyond the accepted
   fixed profiles: larger callbacks split within fixed storage and identical
   selected tables can repeat. Wider/higher-rate formats, changed server tables,
@@ -639,7 +642,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [x] DONE for current API/Linux artifacts — Credential diagnostic snapshots pass for malformed/oversized
   requests, credentials in URL/header/body, backend failure and metric privacy.
   Completed-record redaction now covers child/setBindings and implicit Error
-  messages; oversized records are replaced with a fixed event. The exact current
+  messages; oversized records are replaced with a fixed event. The exact Iteration 217
   Linux native/Node/application-SBOM/image-SPDX artifacts pass a streamed search
   for the authorized lab password in UTF8/UTF16LE, with boundary/size tests.
   This is a known-value regression gate, not discovery of arbitrary unknown

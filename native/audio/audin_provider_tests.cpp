@@ -745,7 +745,12 @@ TEST_CASE("Microphone worker profile refuses tiny callbacks and accepts a later 
   REQUIRE(session.pump(10011) == MicrophonePump::delivered);
   REQUIRE(session.published_state()->epoch == 2);
   REQUIRE(host.writes.back().size() == 961);
+  REQUIRE(session.stats()->negotiation.opens == 3);
+  REQUIRE(session.stats()->negotiation.refused == 2);
+  REQUIRE(session.stats()->negotiation.recording == 2);
+  REQUIRE(session.stats()->negotiation.failures == 0);
   REQUIRE(session.retire(10012) == MicrophoneRetirement::done);
+  REQUIRE(session.stats()->negotiation.refused == 2);
   REQUIRE(host.close() == CHANNEL_RC_OK);
 }
 TEST_CASE(
@@ -1542,6 +1547,37 @@ TEST_CASE("AUDIN DVC gate confirms negotiated capture pairs and survives delayed
   REQUIRE(terminated == CHANNEL_RC_OK);
   REQUIRE(host.destroyed == 1);
 }
+TEST_CASE("AUDIN negotiation diagnostics preserve validated lifecycle counts through close") {
+  Fixture fixture;
+  REQUIRE(fixture.bind() == CHANNEL_RC_OK);
+  Host host(fixture, false, true);
+  REQUIRE(host.gate.negotiation_stats()->channels == 0);
+  REQUIRE(host.install() == CHANNEL_RC_OK);
+  host.open();
+  REQUIRE(host.gate.negotiation_stats()->channels == 1);
+  REQUIRE(host.gate.negotiation_stats()->versions == 0);
+  negotiate(host);
+  const auto active = host.gate.negotiation_stats();
+  REQUIRE(active);
+  REQUIRE(active->versions == 1);
+  REQUIRE(active->offers == 1);
+  REQUIRE(active->server_formats == 2);
+  REQUIRE(active->client_formats == 2);
+  REQUIRE(active->opens == 1);
+  REQUIRE(active->refused == 0);
+  REQUIRE(active->recording == 1);
+  REQUIRE(active->failures == 0);
+  REQUIRE(host.send({7, 1, 0, 0, 0}) == CHANNEL_RC_OK);
+  REQUIRE(host.gate.negotiation_stats()->recording == 2);
+  REQUIRE(host.send({7, 99, 0, 0, 0}) == ERROR_INVALID_DATA);
+  REQUIRE(host.gate.negotiation_stats()->failures == 1);
+  REQUIRE(host.close() == CHANNEL_RC_OK);
+  REQUIRE(host.gate.negotiation_stats()->offers == 1);
+  REQUIRE(host.gate.negotiation_stats()->client_formats == 2);
+  REQUIRE(host.gate.negotiation_stats()->recording == 2);
+  REQUIRE(host.gate.negotiation_stats()->failures == 1);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
+}
 TEST_CASE("AUDIN DVC gate reports no common format without entering upstream zero-count parser") {
   Fixture fixture;
   REQUIRE(fixture.bind() == CHANNEL_RC_OK);
@@ -1556,6 +1592,9 @@ TEST_CASE("AUDIN DVC gate reports no common format without entering upstream zer
   REQUIRE(host.writes[1] == std::vector<BYTE>{5});
   REQUIRE(host.writes[2] == std::vector<BYTE>{2, 0, 0, 0, 0, 9, 0, 0, 0});
   REQUIRE(host.gate.phase() == AudinChannelPhase::unsupported);
+  REQUIRE(host.gate.negotiation_stats()->server_formats == 2);
+  REQUIRE(host.gate.negotiation_stats()->client_formats == 0);
+  REQUIRE(host.gate.negotiation_stats()->opens == 0);
   REQUIRE_FALSE(host.gate.ready());
   REQUIRE(host.gate.pump() == AudinPumpStatus::inactive);
   REQUIRE(fixture.source.stats()->epoch == 0);
@@ -1728,7 +1767,9 @@ TEST_CASE("AUDIN DVC gate refuses foreign calls before owner retirement and chan
   host.open();
   UINT close = CHANNEL_RC_OK, retire = CHANNEL_RC_OK;
   AudinPumpStatus pumped = AudinPumpStatus::delivered;
+  std::optional<AudinNegotiationStats> foreign_stats;
   std::thread thread([&] {
+    foreign_stats = host.gate.negotiation_stats();
     close = host.callback->OnClose(host.callback);
     retire = host.gate.retire();
     pumped = host.gate.pump();
@@ -1737,6 +1778,7 @@ TEST_CASE("AUDIN DVC gate refuses foreign calls before owner retirement and chan
   REQUIRE(close == ERROR_INVALID_STATE);
   REQUIRE(retire == ERROR_INVALID_STATE);
   REQUIRE(pumped == AudinPumpStatus::inactive);
+  REQUIRE_FALSE(foreign_stats);
   BOOL accepted = TRUE;
   IWTSVirtualChannelCallback *reopened = host.callback;
   REQUIRE(host.gate.open(*fixture.context, host.listener_callback, &host.channel.api, nullptr,
