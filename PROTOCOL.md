@@ -10,6 +10,9 @@ bit 16 `clipboardRevoke` (Iteration 233). Public session/browser selection remai
 This adds no public clipboard commands or larger WebSocket body allowance.
 The required public clipboard events/commands below remain unfinished.
 [Private contract](docs/CLIPBOARD_IPC.md).
+Prepared RWC1 version-1 byte chunks fit the existing 4 KiB message bound;
+their codecs do not activate control commands or socket transfer/credit.
+[Reserved layout and scope](docs/CLIPBOARD_CHUNKS.md).
 
 ## 1. API versioning
 

@@ -13,6 +13,9 @@ Omitted/off selection requires none of these hooks. Current control attachment
 methods are `clipboardSnapshot`, `onClipboard`, `startClipboard`, `stopClipboard`,
 `readClipboardText` and `writeClipboardText`; a media or stale control lease
 cannot call them. No public wire grammar or larger control body is added here.
+The factory can now receive a frozen nonsecret item-size reservation and pass it
+to `NativeSessionWorker`; [chunk/reservation scope](CLIPBOARD_CHUNKS.md) documents
+its finite IPC budget. This reservation alone does not enable public selection.
 
 `ClipboardOwnership` keeps one opaque grant, one optional in-flight operation,
 scalar source state and one retirement promise. It keeps no content queue or

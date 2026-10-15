@@ -73,6 +73,9 @@ Only known scalar source fields reach metadata; fixed `CLIPBOARD_FAILED` fails
 unsafe ownership, and `CLIPBOARD_NOT_IMPLEMENTED` refuses an absent backend.
 Production native selection still refuses before startup until public framing /
 browser integration is installed. No clipboard WS command is activated here.
+Worker factories now receive frozen numeric `SessionWorkerLimits`, without
+credentials/configuration references, to reserve explicit per-item IPC capacity.
+[Reservation and prepared chunk format](CLIPBOARD_CHUNKS.md).
 
 Iteration 116 prepares media-lease microphone methods bound to both current
 control and media identities, with immediate revocation and observed native

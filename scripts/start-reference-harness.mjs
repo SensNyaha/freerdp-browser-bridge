@@ -34,7 +34,7 @@ try {
         : undefined,
     sessions: {
       maxSessions: 1,
-      workerFactory: () => new NativeSessionWorker(worker),
+      workerFactory: (limits) => new NativeSessionWorker(worker, limits),
     },
     logDestination: new Writable({
       write(_bytes, _encoding, done) {

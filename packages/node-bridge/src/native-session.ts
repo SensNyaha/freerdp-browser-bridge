@@ -10,9 +10,15 @@ import {
   SessionError,
   type SessionErrorCode,
   type SessionWorker,
+  type SessionWorkerLimits,
 } from './session-manager.js';
 import type { SessionCreate } from '@freerdp-bridge/config';
 import type { SessionAudioEvent } from './session-audio.js';
+import {
+  CLIPBOARD_MAX_TEXT_BYTES,
+  CLIPBOARD_METADATA_BYTES,
+  HEADER_BYTES,
+} from '@freerdp-bridge/protocol';
 import type {
   CertificatePrompt,
   NativeConnectionState,
@@ -45,8 +51,34 @@ export class NativeSessionWorker implements SessionWorker {
   get pid(): number | undefined {
     return this.worker.pid;
   }
-  constructor(options: WorkerOptions) {
-    this.worker = this.createWorkerProcess(options);
+  constructor(
+    options: WorkerOptions,
+    limits: Readonly<SessionWorkerLimits> = {},
+  ) {
+    const maximum = limits.clipboardItemBytes;
+    if (
+      maximum !== undefined &&
+      (!Number.isInteger(maximum) ||
+        maximum < 1 ||
+        maximum > CLIPBOARD_MAX_TEXT_BYTES)
+    )
+      throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+    const required =
+      maximum === undefined
+        ? undefined
+        : 65536 + HEADER_BYTES + CLIPBOARD_METADATA_BYTES + maximum;
+    if (
+      required !== undefined &&
+      options.maxWriteBytes !== undefined &&
+      options.maxWriteBytes < required
+    )
+      throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+    this.worker = this.createWorkerProcess({
+      ...options,
+      ...(required === undefined
+        ? {}
+        : { maxWriteBytes: options.maxWriteBytes ?? required }),
+    });
     this.worker.on('rdp-state', (event: NativeConnectionState) => {
       if (this.closing) return;
       if (event.error !== 'NONE') this.events.emit('failure', event.error);

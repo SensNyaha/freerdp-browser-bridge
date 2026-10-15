@@ -9,6 +9,7 @@ export * from './audio-reset.js';
 export * from './microphone.js';
 export * from './microphone-opus.js';
 export * from './clipboard.js';
+export * from './clipboard-chunk.js';
 import {
   MICROPHONE_OPUS_MIN_BYTES,
   MICROPHONE_OPUS_MAX_BYTES,

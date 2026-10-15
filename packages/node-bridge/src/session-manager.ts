@@ -239,7 +239,7 @@ export interface SessionWorker {
   sendInput?(event: InputEvent): Promise<void>;
 }
 export interface SessionManagerOptions {
-  workerFactory?: () => SessionWorker;
+  workerFactory?: (limits: Readonly<SessionWorkerLimits>) => SessionWorker;
   maxSessions?: number;
   maxPerPrincipal?: number;
   maxRetained?: number;
@@ -253,6 +253,10 @@ export interface SessionManagerOptions {
   rateWindowMs?: number;
   maxRateKeys?: number;
   now?: () => number;
+}
+/** Nonsecret immutable reservations supplied before backend construction. */
+export interface SessionWorkerLimits {
+  readonly clipboardItemBytes?: number;
 }
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
@@ -382,7 +386,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
   private readonly options: Required<
     Omit<SessionManagerOptions, 'workerFactory'>
   >;
-  private readonly factory: (() => SessionWorker) | undefined;
+  private readonly factory: SessionManagerOptions['workerFactory'];
   private readonly sweep: NodeJS.Timeout;
   private stopping = false;
   private shutdownPromise: Promise<void> | undefined;
@@ -478,7 +482,13 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       )
         throw new SessionError('SESSION_LIMIT');
       const now = this.options.now();
-      const worker = this.factory();
+      const worker = this.factory(
+        Object.freeze({
+          ...(config.clipboard && config.clipboard.mode !== 'off'
+            ? { clipboardItemBytes: config.clipboard.maxItemBytes ?? 1048576 }
+            : {}),
+        }),
+      );
       if (
         !worker ||
         typeof worker !== 'object' ||

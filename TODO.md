@@ -598,6 +598,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   pass. Public/native-adapter activation, browser and actual remote transfer /
   revoke remain open. [Controller contract](docs/CLIPBOARD_SESSION.md),
   [evidence](docs/ITERATION_234.md).
+  Explicit nonsecret factory/IPC reservations and independent prepared RWC1
+  byte chunks now cover the full 16 MiB item without larger control messages;
+  socket credit/reassembly and browser activation remain open.
+  [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
+  [evidence](docs/ITERATION_235.md).
   [Revocation evidence](docs/ITERATION_233.md).
 - [x] DONE for clipboard private transport — Versioned RWI1 class/correlation
   bounds, dedicated latest-state/one-result output and full 16 MiB command delivery

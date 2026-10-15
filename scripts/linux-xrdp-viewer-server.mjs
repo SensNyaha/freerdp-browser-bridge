@@ -85,8 +85,8 @@ try {
         : undefined,
     sessions: {
       maxSessions: 1,
-      workerFactory: () => {
-        const session = new NativeSessionWorker(worker);
+      workerFactory: (limits) => {
+        const session = new NativeSessionWorker(worker, limits);
         nativeWorker = session;
         session.onState((state) => {
           nativeState = state;
