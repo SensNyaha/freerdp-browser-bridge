@@ -10,3 +10,4 @@ pnpm-lock.yaml
 native
 CMakeLists.txt
 *.cmake
+scripts/schemas/spdx-2.3.schema.json

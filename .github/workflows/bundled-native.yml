@@ -53,6 +53,7 @@ jobs:
         run: |
           node scripts/test-node-clean-build.mjs
           node scripts/package-node-runtime.mjs
+          node scripts/generate-sbom.mjs
           node scripts/prepare-service-runtime.mjs
       - name: Verify API and native worker in restricted service runtime
         if: runner.os == 'Linux'

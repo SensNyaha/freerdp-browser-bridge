@@ -123,6 +123,11 @@ Session migration between bridge instances is out of v1 scope because RDP client
 
 ## 7. Diagnostics
 
+Linux application/native packages now have a separate schema-validated SPDX 2.3
+companion generated from the exact archives and supplied vcpkg provenance.
+Base OS/Node distribution and Windows runtime inventory remain open.
+[Generation and scope](docs/SBOM.md), [evidence](docs/ITERATION_214.md).
+
 The private bundle also includes pinned libopus 1.6.1 and its BSD copyright.
 Its 20 ms encoder now supports explicit public Opus output with gesture-gated
 AudioDecoder/Worklet playback and native epoch recovery; audible RDP acceptance

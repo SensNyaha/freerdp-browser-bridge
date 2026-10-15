@@ -634,7 +634,13 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.
 - [ ] Secret scanning/log snapshot tests.
-- [ ] Dependency/SBOM generation.
+- [~] IN PROGRESS — Linux application/native artifact SPDX 2.3 collection is
+  generated and root-schema validated: actual Node graph, native versions/source,
+  13 original vcpkg documents, 101 runtime files and exact artifact hashes.
+  Five portable privacy/boundary/reference cases and full platform Node checks
+  pass. Host export is pending a review-service usage limit. Base OS/Node.js,
+  Windows CRT/native inventory and precise native dependency edges remain open.
+  [Contract](docs/SBOM.md), [evidence](docs/ITERATION_214.md).
 - [ ] Performance report against `PERFORMANCE.md` metrics.
 - [ ] Full Windows + XRDP regression.
 
