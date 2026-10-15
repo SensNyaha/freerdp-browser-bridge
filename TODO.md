@@ -583,6 +583,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   actual remote acceptance. [Contract](docs/CLIPBOARD_TEXT.md),
   [evidence](docs/ITERATION_224.md).
 - [ ] CLIPRDR Unicode text both directions.
+- [x] DONE for prepared CLIPRDR ingress — Header admission before fragmented-body
+  allocation, bounded tables/names and public receive routing pass Windows/Linux
+  native and actual pinned-channel/fake-SVC checks plus seeded sanitizer fuzz.
+  Worker selection and actual clipboard acceptance remain open.
+  [Contract](docs/CLIPBOARD_INGRESS.md), [evidence](docs/ITERATION_225.md).
 - [ ] Clipboard policy directions/size caps.
 - [ ] HTML clipboard.
 - [ ] Image clipboard where negotiated.
