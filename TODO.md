@@ -307,13 +307,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   dependency/distro/CI and remaining sanitizer/runtime gates stay open.
   [Evidence and artifact hashes](docs/ITERATION_248.md).
 
-- [x] DONE for local Linux isolated FreeRDP source rebuild — A new no-hardlink
+- [x] DONE for local Windows/Linux isolated FreeRDP source rebuild — A new no-hardlink
   clone of the exact clean pinned checkout compiles and installs into a new SDK
   prefix. Public runtime version/static inventory, three canonical module origins,
   foreign-prefix refusal and consumer CTest 1/1 pass. Existing private dependency /
-  toolchain inputs are reused; Windows execution/consumer and full fresh
+  toolchain inputs are reused; Windows project consumer and full fresh
   dependency/distro/CI and remaining sanitizer/runtime gates remain open.
-  [Evidence and hashes](docs/ITERATION_247.md).
+  [Linux evidence and hashes](docs/ITERATION_247.md),
+  [Windows evidence and hashes](docs/ITERATION_249.md).
 
 - [x] DONE for isolated Windows/Linux linked project-native source build — New Release
   build reuses the clean pinned SDK and external Catch2/toolchain, with no copied

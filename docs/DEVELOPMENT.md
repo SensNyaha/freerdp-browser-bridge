@@ -674,3 +674,18 @@ preceding actual source rebuild. It leaves both build trees for inspection.
 This accepts the named Linux consumer, with reused other dependencies, rather
 than complete fresh dependency/distro/CI or RDP/device acceptance.
 [Results and scope](ITERATION_248.md).
+
+The corresponding new Windows SDK source build uses the existing MSVC/ASCII
+alias wrapper:
+
+```powershell
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-freerdp
+```
+
+The alias stays alive through clone/build/install, DLL version/origin/static
+channel verification, foreign-prefix refusal and CTest. Existing dependency
+DLLs/toolchain are reused, not rebuilt. The independent probe explicitly uses
+the public shared WinPR import ABI; no production source is patched. This is a
+local SDK check, separate from a new Windows worker consumer and complete fresh
+dependency/clean-machine/distro/CI acceptance.
+[Windows result and retained first probe failure](ITERATION_249.md).

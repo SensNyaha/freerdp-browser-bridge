@@ -1,4 +1,4 @@
-param([ValidateSet('foundation', 'clean-foundation', 'clean-bundled', 'dependencies', 'freerdp', 'bundled')][string]$Task = 'dependencies')
+param([ValidateSet('foundation', 'clean-foundation', 'clean-bundled', 'clean-freerdp', 'dependencies', 'freerdp', 'bundled')][string]$Task = 'dependencies')
 
 $workspacePath = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
 $availableLetter = @('R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z') | Where-Object {
@@ -31,6 +31,10 @@ try {
     $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
     $scriptPath = $driveName + '\scripts\test-native-clean-build.mjs'
     & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && "' + $nodePath + '" "' + $scriptPath + '" "' + $catchSourcePath + '" ' + $cleanBuildMode)
+  } elseif ($Task -eq 'clean-freerdp') {
+    $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
+    $scriptPath = $driveName + '\scripts\build-freerdp.mjs'
+    & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && "' + $nodePath + '" "' + $scriptPath + '" --clean-local')
   } else {
     $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
     $scriptPath = $driveName + '\scripts\build-' + $Task + '.mjs'
