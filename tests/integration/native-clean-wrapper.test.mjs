@@ -7,12 +7,38 @@ test(
   'Windows clean SDK wrapper refuses wrong task, traversal and absolute receipt paths before toolchain setup',
   { skip: process.platform !== 'win32' },
   () => {
-    for (const [task, receipt] of [
-      ['foundation', 'build/freerdp-source-clean-example/receipt.json'],
-      ['clean-bundled', 'build/freerdp-source-clean-example/../receipt.json'],
+    for (const [parameter, task, receipt] of [
       [
+        '-RebuiltSdkReceipt',
+        'foundation',
+        'build/freerdp-source-clean-example/receipt.json',
+      ],
+      [
+        '-RebuiltSdkReceipt',
+        'clean-bundled',
+        'build/freerdp-source-clean-example/../receipt.json',
+      ],
+      [
+        '-RebuiltSdkReceipt',
         'clean-bundled',
         resolve('build/freerdp-source-clean-example/receipt.json'),
+      ],
+      [
+        '-DependencyReceipt',
+        'clean-bundled',
+        'build/dependencies-source-clean-example/installed/bridge-dependency-build.json',
+      ],
+      [
+        '-DependencyReceipt',
+        'clean-freerdp',
+        'build/dependencies-source-clean-example/installed/../bridge-dependency-build.json',
+      ],
+      [
+        '-DependencyReceipt',
+        'clean-freerdp',
+        resolve(
+          'build/dependencies-source-clean-example/installed/bridge-dependency-build.json',
+        ),
       ],
     ]) {
       const result = spawnSync(
@@ -23,7 +49,7 @@ test(
           resolve('scripts/native-build.ps1'),
           '-Task',
           task,
-          '-RebuiltSdkReceipt',
+          parameter,
           receipt,
         ],
         {
@@ -36,7 +62,9 @@ test(
       assert.equal(result.status, 1);
       assert.match(
         result.stderr,
-        /A rebuilt SDK receipt must name an isolated/,
+        parameter === '-DependencyReceipt'
+          ? /A source dependency receipt must name an isolated/
+          : /A rebuilt SDK receipt must name an isolated/,
       );
       assert.equal(result.stdout, '');
     }

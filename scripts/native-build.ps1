@@ -1,10 +1,14 @@
 param(
-  [ValidateSet('foundation', 'clean-foundation', 'clean-bundled', 'clean-freerdp', 'dependencies', 'freerdp', 'bundled')][string]$Task = 'dependencies',
-  [string]$RebuiltSdkReceipt = ''
+  [ValidateSet('foundation', 'clean-foundation', 'clean-bundled', 'clean-freerdp', 'clean-dependencies', 'dependencies', 'freerdp', 'bundled')][string]$Task = 'dependencies',
+  [string]$RebuiltSdkReceipt = '',
+  [string]$DependencyReceipt = ''
 )
 
 if ($RebuiltSdkReceipt -and ($Task -ne 'clean-bundled' -or $RebuiltSdkReceipt -notmatch '^build[\\/]freerdp-source-clean-[A-Za-z0-9_-]+[\\/]receipt\.json$')) {
   throw 'A rebuilt SDK receipt must name an isolated build/freerdp-source-clean-*/receipt.json and use clean-bundled'
+}
+if ($DependencyReceipt -and ($Task -ne 'clean-freerdp' -or $DependencyReceipt -notmatch '^build[\\/]dependencies-source-clean-[A-Za-z0-9_-]+[\\/]installed[\\/]bridge-dependency-build\.json$')) {
+  throw 'A source dependency receipt must name an isolated build/dependencies-source-clean-*/installed/bridge-dependency-build.json and use clean-freerdp'
 }
 
 $workspacePath = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
@@ -39,10 +43,12 @@ try {
     $scriptPath = $driveName + '\scripts\test-native-clean-build.mjs'
     $sdkReceiptArgument = if ($RebuiltSdkReceipt) { ' "' + $driveName + '\' + ($RebuiltSdkReceipt -replace '/', '\') + '"' } else { '' }
     & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && "' + $nodePath + '" "' + $scriptPath + '" "' + $catchSourcePath + '" ' + $cleanBuildMode + $sdkReceiptArgument)
-  } elseif ($Task -eq 'clean-freerdp') {
+  } elseif ($Task -eq 'clean-freerdp' -or $Task -eq 'clean-dependencies') {
     $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
-    $scriptPath = $driveName + '\scripts\build-freerdp.mjs'
-    & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && "' + $nodePath + '" "' + $scriptPath + '" --clean-local')
+    $cleanScript = if ($Task -eq 'clean-freerdp') { 'freerdp' } else { 'dependencies' }
+    $scriptPath = $driveName + '\scripts\build-' + $cleanScript + '.mjs'
+    $dependencyReceiptArgument = if ($DependencyReceipt) { ' "' + $driveName + '\' + ($DependencyReceipt -replace '/', '\') + '"' } else { '' }
+    & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && "' + $nodePath + '" "' + $scriptPath + '" --clean-local' + $dependencyReceiptArgument)
   } else {
     $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
     $scriptPath = $driveName + '\scripts\build-' + $Task + '.mjs'
