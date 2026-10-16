@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 
 test('isolated SDK consumer refuses mixed or incomplete SDK provenance before creating build output', async () => {
-  const root = await mkdtemp(resolve('build/sdk-receipt-guard-'));
+  const root = await mkdtemp(resolve('build/freerdp-source-clean-guard-'));
   assert.ok(root.startsWith(resolve('build') + sep));
   try {
     const catchSource = resolve(root, 'catch');
@@ -50,6 +50,11 @@ test('isolated SDK consumer refuses mixed or incomplete SDK provenance before cr
         'x'.repeat(65537),
         /Invalid rebuilt SDK receipt/,
       ],
+      [
+        'malformed content is not disclosed',
+        '"receipt-content-must-not-appear-in-errors',
+        /Invalid rebuilt SDK receipt/,
+      ],
     ]) {
       await writeFile(path, body);
       const result = spawnSync(
@@ -69,12 +74,29 @@ test('isolated SDK consumer refuses mixed or incomplete SDK provenance before cr
       );
       assert.equal(result.status, 1, description);
       assert.match(result.stderr, error, description);
+      assert.equal(
+        result.stderr.includes('receipt-content-must-not-appear-in-errors'),
+        false,
+      );
       assert.deepEqual(
         (await readdir(root)).sort(),
         ['catch', 'receipt.json'],
         description,
       );
     }
+    const outside = spawnSync(
+      process.execPath,
+      [
+        resolve('scripts/test-native-clean-build.mjs'),
+        catchSource,
+        'linked',
+        '.local-tests/never-open-this.json',
+      ],
+      { encoding: 'utf8', timeout: 10000, maxBuffer: 65536, windowsHide: true },
+    );
+    assert.equal(outside.status, 1);
+    assert.equal(outside.stdout, '');
+    assert.match(outside.stderr, /Invalid rebuilt SDK receipt path/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

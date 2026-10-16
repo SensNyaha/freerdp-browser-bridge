@@ -8,10 +8,11 @@ import {
   readFile,
   writeFile,
 } from 'node:fs/promises';
-import { resolve, dirname, relative, sep } from 'node:path';
+import { resolve, dirname, basename, relative, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { readDependencyReceipt } from './dependency-input.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const windows = process.platform === 'win32';
@@ -46,19 +47,44 @@ for (const [name, number] of [
   )
     throw new Error('Expected prepared Catch2 3.8.1 sources');
 const triplet = windows ? 'x64-windows-bundled' : 'x64-linux-bundled';
-const prefix = resolve('.deps/installed', triplet);
+let dependencyInstalledRoot = resolve('.deps/installed');
+let prefix = resolve(dependencyInstalledRoot, triplet);
+let dependencyInput, dependencyReceiptPath;
 let freerdpPrefix = resolve('.deps/freerdp-install');
 let sdkSourcePath = resolve('.deps/FreeRDP');
 let sdkCachePath = resolve('build/freerdp-local/CMakeCache.txt');
 let sdkReceiptBytes;
 if (sdkReceiptPath) {
   const path = resolve(sdkReceiptPath);
+  const root = dirname(path);
+  if (
+    !root.startsWith(resolve('build') + sep) ||
+    basename(path) !== 'receipt.json' ||
+    !/^freerdp-source-clean-[A-Za-z0-9_-]+$/.test(basename(root))
+  )
+    throw new Error('Invalid rebuilt SDK receipt path');
   const info = await lstat(path);
   if (!info.isFile() || info.isSymbolicLink() || info.size > 65536)
     throw new Error('Invalid rebuilt SDK receipt');
   sdkReceiptBytes = await readFile(path);
-  const receipt = JSON.parse(sdkReceiptBytes.toString('utf8'));
-  const root = dirname(path);
+  let receipt;
+  try {
+    receipt = JSON.parse(sdkReceiptBytes.toString('utf8'));
+  } catch {
+    throw new Error('Invalid rebuilt SDK receipt');
+  }
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt))
+    throw new Error('Invalid rebuilt SDK receipt');
+  if (receipt.dependencyBuildSourceRebuilt === true) {
+    dependencyReceiptPath = receipt.dependencyBuildReceipt;
+    if (typeof dependencyReceiptPath !== 'string')
+      throw new Error('Missing bound dependency receipt');
+    dependencyInput = readDependencyReceipt(dependencyReceiptPath, triplet);
+    if (dependencyInput.sha256 !== receipt.dependencyBuildReceiptHash)
+      throw new Error('SDK dependency receipt hash mismatch');
+    prefix = dependencyInput.prefix;
+    dependencyInstalledRoot = dependencyInput.installedRoot;
+  }
   if (
     !root.startsWith(resolve('build') + sep) ||
     receipt.source !== resolve(root, 'source') ||
@@ -196,6 +222,7 @@ if (linked) {
       sdkCachePath,
       freerdpPrefix,
       featuresPath,
+      dependencyInstalledRoot,
     ],
     process.env,
     project,
@@ -240,7 +267,7 @@ run('cmake', [
         '-DCMAKE_PREFIX_PATH=' + freerdpPrefix + ';' + prefix,
         '-DCMAKE_TOOLCHAIN_FILE=' +
           resolve('.deps/vcpkg/scripts/buildsystems/vcpkg.cmake'),
-        '-DVCPKG_INSTALLED_DIR=' + resolve('.deps/installed'),
+        '-DVCPKG_INSTALLED_DIR=' + dependencyInstalledRoot,
         '-DVCPKG_TARGET_TRIPLET=' + triplet,
         '-DVCPKG_MANIFEST_INSTALL=OFF',
       ]
@@ -395,6 +422,15 @@ const artifacts = {};
 if (linked) {
   checkSdkSource();
   if (
+    dependencyInput &&
+    !dependencyInput.bytes.equals(
+      readDependencyReceipt(dependencyReceiptPath, triplet).bytes,
+    )
+  )
+    throw new Error(
+      'Bound dependency receipt changed during consumer verification',
+    );
+  if (
     sdkReceiptBytes &&
     !sdkReceiptBytes.equals(await readFile(resolve(sdkReceiptPath)))
   )
@@ -438,6 +474,16 @@ const receipt = {
   ...(linked
     ? {
         sdkSourceCommit,
+        ...(dependencyInput
+          ? {
+              dependencyBuildReceipt: relative(
+                project,
+                resolve(dependencyReceiptPath),
+              ),
+              dependencyBuildReceiptHash: dependencyInput.sha256,
+              dependencyBuildSourceRebuilt: true,
+            }
+          : {}),
         ...(sdkReceiptBytes
           ? {
               rebuiltSdkReceipt: relative(project, resolve(sdkReceiptPath)),

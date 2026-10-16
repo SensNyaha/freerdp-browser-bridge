@@ -735,3 +735,17 @@ exact dependency root for configure/link/runtime and feature inspection, then
 binds the unchanged dependency receipt hash into the new SDK receipt. Omitting
 this argument retains the ordinary prepared dependency input. Neither path
 replaces the ordinary installed SDK. [Verified handoff](ITERATION_253.md).
+
+Pass that SDK's new receipt to the source-only project helper as before:
+
+```sh
+node scripts/test-native-clean-build.mjs /catch2-src linked \
+  build/freerdp-source-clean-EXAMPLE/receipt.json
+```
+
+If the SDK binds a source-rebuilt dependency receipt, the project helper checks
+that exact receipt/status/recipe input and uses its prefix throughout configure,
+inventory and runtime children. Both receipt hashes appear in the consumer
+receipt. The actual Linux source chain, codec/module-origin checks and full
+Node regression pass locally; fresh OS/distro/CI and RDP/device/release gates
+remain separate. [Complete consumer evidence](ITERATION_254.md).

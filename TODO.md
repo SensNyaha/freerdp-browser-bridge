@@ -33,6 +33,17 @@ instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/a
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
+## Implementation status — 2026-10-16
+
+Local Linux cached-source private dependencies, pinned FreeRDP and a new
+source-only worker/addon now pass the complete native build chain: 20 dependency
+packages, SDK identity/CTest, project CTest 30/30, process/TLS 40/40, codec/module
+origins and full Node 656 passed / 58 skips. The Windows rebuilt-SDK/project
+consumer also passes; its cold dependency chain remains open. Complete fresh
+checkout/distro/CI, standard PIE sanitizer, release packaging and actual
+RDP/device/resource gates remain open. [Dependencies](docs/ITERATION_252.md),
+[SDK handoff](docs/ITERATION_253.md), [complete Linux consumer](docs/ITERATION_254.md).
+
 ## Implementation status — 2026-10-15
 
 Linux API/private-native service runtime now passes independent non-root /
@@ -297,6 +308,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local Linux cached-source native chain — New source-built private
+  dependencies and FreeRDP feed a new source-only worker/addon with both bound
+  unchanged receipts and exact CMake/loaded-library origins. SDK CTest 1/1,
+  project 30/30, process/TLS 40/40, codec/context probe and full Node 656 passed /
+  58 skips / 714 pass. Build tools/Catch2/source archives remain prepared inputs;
+  Windows cold chain, complete fresh checkout/distro/CI and remaining acceptance
+  gates stay open. [Evidence](docs/ITERATION_254.md).
 
 - [x] DONE for local Linux isolated private dependency source rebuild — All 20
   planned packages compile/install with new work/package/installed trees,
