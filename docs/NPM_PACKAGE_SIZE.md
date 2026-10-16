@@ -36,3 +36,28 @@ pnpm --dir packages/config pack --pack-destination ../../build/npm-size-247
 The measured tarballs and per-file byte/hash receipt remain in the ignored
 `build/npm-size-247` directory. No source tree, development dependencies, lab
 files, browser binary or Node distribution is included in these three packs.
+
+An additional local snapshot of the already installed pinned TypeBox package
+was packed on Linux: 292,802 compressed bytes, 1,905,051 unpacked file bytes /
+1,070 files, SHA-256
+`5c87beea457ee3922a446f8fe7c6a2e81809ee5344983335881d5e804d7baa9a`.
+This is a repacked cached dependency, not a measurement of an independently
+downloaded registry tarball. The complete local JS input set therefore totals
+418,586 compressed bytes and 2,582,838 unpacked file bytes. Combined with the
+historical native archives above, estimates become approximately 6.7 MB on
+Windows and 25.3 MB on Linux, excluding Node/browser binaries and future work.
+
+The three measured own tarballs plus that explicit TypeBox input pass a separate
+offline production installation in `/work/build/npm-consumer-9SnFMb` in the
+network-disabled Linux verification container. Local tarball overrides stand in
+for unpublished workspace packages; all three public imports resolve canonically
+inside the new consumer and expose the Node WorkerProcess/SessionManager owners.
+No source workspace link, native SDK or RDP/device execution is used by this
+import smoke. Lifecycle scripts are disabled and development dependencies omitted.
+
+The first offline attempt lacked registry metadata for TypeBox and failed before
+installation. Its log is retained in `build/iteration-251-npm-consumer.log`.
+The explicit cached dependency pack makes the repeat independent of registry
+metadata; its success is in `build/iteration-251-npm-consumer-repeat.log`.
+This does not establish publication, ordinary registry resolution, final npm
+metadata/licensing or installed native runtime acceptance.
