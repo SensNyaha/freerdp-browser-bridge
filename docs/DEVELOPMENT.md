@@ -577,3 +577,21 @@ Preparation defaults to `build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz
 one alternate archive below the project's build directory can be supplied.
 The verifier removes its own pinned base's system libudev fallback and changes
 no host libraries. [Actual restricted native-runtime evidence](ITERATION_190.md).
+
+### Isolated Linux native foundation source build
+
+With Node 24, GCC, CMake/Ninja and an already prepared Catch2 3.8.1 source tree:
+
+```sh
+node scripts/test-native-clean-build.mjs /catch2-src
+```
+
+Run from the Linux project root after the ordinary Node build. The helper copies
+only project-native source and C++ fixtures into a unique ignored build tree,
+uses disconnected FetchContent, compiles a new foundation worker, checks native
+CTest/CLI and runs the existing framed Node lifecycle tests against that worker.
+It leaves the fixture and SHA-256 receipt for inspection. Existing objects,
+FreeRDP SDK, Node dependencies and lab files are not copied; lifecycle JS is
+loaded from the original built workspace. This is a local project-native source
+check, separate from fresh upstream dependency/FreeRDP, linked, distro and CI
+acceptance. [Exact evidence and retained first helper error](ITERATION_243.md).
