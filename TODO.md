@@ -51,9 +51,12 @@ RDP/device/resource gates remain open. [Linux chain](docs/ITERATION_254.md),
 A complete tracked-source Linux project export now also passes new offline Node
 installation/build/full regression, linked CTest 30/30, install/ELF closure,
 relocation and production deploy/import without prior build/dist/node_modules.
-Its native SDK/dependency/tool inputs remain external and verified; new OS/distro,
-Windows export, CI and sanitizer gates remain separate.
-[Evidence](docs/ITERATION_260.md).
+Its native SDK/dependency/tool inputs remain external and verified. A complete
+Windows export also passes offline install, linked CTest 30/30, full Node
+663 / 49 skips, relocation and production deploy/import after correcting the
+Node physical-path context. New OS/distro, CI and linked/upstream sanitizer
+gates remain separate. [Linux evidence](docs/ITERATION_260.md),
+[Windows evidence](docs/ITERATION_265.md).
 
 GNU builds now explicitly require GCC 12 and a matching C++20 standard library.
 A new actual GCC 12.2 linked consumer passes CTest 31/31, process/TLS 40/40 and
@@ -329,6 +332,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for complete tracked-source Windows project export — New archive
+  fixture has no prior build/dist/node_modules/.deps/lab files; frozen offline
+  install, new Release build, CTest 30/30, full Node 663 / 49 skips / 712,
+  install/relocation 1/1 and production deploy/import pass. Lockfile and external
+  source-built SDK/dependency receipts stay unchanged. Prepared tools/Catch2 and
+  public caches are reused; fresh OS/distro/CI and linked/upstream sanitizer
+  acceptance remain open. Alias-induced duplicate ESM identity and the passing
+  physical-path correction are retained. [Evidence](docs/ITERATION_265.md).
 
 - [x] DONE for local GNU 12 compiler baseline — Explicit GNU >=12 admission and
   actual C++20 library probe, policy boundary CTest, new GNU 12.2 linked source
