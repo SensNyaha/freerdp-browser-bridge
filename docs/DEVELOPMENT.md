@@ -749,3 +749,31 @@ inventory and runtime children. Both receipt hashes appear in the consumer
 receipt. The actual Linux source chain, codec/module-origin checks and full
 Node regression pass locally; fresh OS/distro/CI and RDP/device/release gates
 remain separate. [Complete consumer evidence](ITERATION_254.md).
+
+The same source dependency → SDK chain is available on Windows:
+
+```powershell
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-dependencies
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-freerdp `
+  -DependencyReceipt build/dependencies-source-clean-EXAMPLE/installed/bridge-dependency-build.json
+```
+
+Use the actual generated relative receipt path. Run Windows native wrappers
+sequentially so their temporary ASCII drive aliases cannot outlive one another.
+The dependency selector refuses other tasks and traversal/absolute paths before
+toolchain setup. Existing binary caches are disabled and source downloads are
+refused; the Windows host itself is not network isolated. The first sandboxed
+MSBuild FileTracker access failure and successful authorized repeat are retained
+in [dependency evidence](ITERATION_255.md). The new pinned SDK's module origins,
+static inventory, consumer CTest and receipt binding pass
+[separately](ITERATION_256.md). Use its receipt with `clean-bundled` as above.
+
+Source-only linked consumers pass their verified SDK source `LICENSE` through
+`BRIDGE_FREERDP_LICENSE_FILE`. Ordinary builds retain `.deps/FreeRDP/LICENSE`
+as the default. Linked packaging requires this input and the generated
+`build/native-features.json` at configure time; it installs both even when the
+source-only fixture contains no copied SDK CMake cache. New Linux install/ELF
+closure/TGZ/restricted native-only runtime and Windows install/ZIP checks pass
+[with the new source-built chain](ITERATION_258.md). To verify a particular TGZ,
+pass its actual project-local path to `prepare-native-runtime-check.mjs`; the
+default archive may belong to an older release cohort.

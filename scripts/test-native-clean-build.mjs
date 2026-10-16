@@ -264,6 +264,7 @@ run('cmake', [
     ? [
         '-DBRIDGE_DEPENDENCY_PREFIX=' + prefix,
         '-DBRIDGE_FREERDP_PREFIX=' + freerdpPrefix,
+        '-DBRIDGE_FREERDP_LICENSE_FILE=' + resolve(sdkSourcePath, 'LICENSE'),
         '-DCMAKE_PREFIX_PATH=' + freerdpPrefix + ';' + prefix,
         '-DCMAKE_TOOLCHAIN_FILE=' +
           resolve('.deps/vcpkg/scripts/buildsystems/vcpkg.cmake'),

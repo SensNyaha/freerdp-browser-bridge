@@ -10,6 +10,7 @@ option(BRIDGE_WITH_FREERDP "Link exact pinned FreeRDP libraries and experimental
 option(BRIDGE_NODE_IPC "Build the prepared IPC-only Node 24 packet adapter (Linux)" OFF)
 set(BRIDGE_DEPENDENCY_PREFIX "" CACHE PATH "Private native dependency runtime prefix")
 set(BRIDGE_FREERDP_PREFIX "" CACHE PATH "Private pinned FreeRDP/WinPR runtime prefix")
+set(BRIDGE_FREERDP_LICENSE_FILE "${CMAKE_SOURCE_DIR}/.deps/FreeRDP/LICENSE" CACHE FILEPATH "License from the verified pinned FreeRDP source")
 include(CTest)
 execute_process(COMMAND git rev-parse --short HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   OUTPUT_VARIABLE BRIDGE_GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
