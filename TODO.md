@@ -13,7 +13,7 @@ Current stage acceptance:
 
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
-| 0 — build | IN PROGRESS | Remaining checkout/distro/CI and linked/upstream sanitizer matrix; local GCC 12 linked chain, Ubuntu standard PIE foundation and independent Bookworm/Ubuntu native runtime pass |
+| 0 — build | IN PROGRESS | Remaining checkout/distro/CI and private-dependency/addon/upstream-test sanitizer matrix; GCC 12 linked Release, bridge + FreeRDP/WinPR PIE sanitizer fixtures and independent Bookworm/Ubuntu native runtime pass |
 | 1 — worker/IPC | IN PROGRESS | Primary/fallback Release IPC lifecycle passes on Linux/Windows; connected output/release/resource, addon sanitizer, configured capacity, broader isolation and abnormal cleanup remain |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
@@ -99,6 +99,14 @@ codec origins, actual IPC pairing, heartbeat/shutdown and empty runtime. SDK,
 workspace and lab files are absent. This adds current artifact evidence while
 fresh distro source builds, service/installer/CI and RDP/device/load gates stay
 open. [Independent runtime evidence](docs/ITERATION_271.md).
+
+A separate Ubuntu GCC 12.4 SDK now also instruments FreeRDP/WinPR themselves
+with ASan/UBSan. All 390 compile commands carry instrumentation; linked bridge
+verbose CTest passes 31/31, codec/module probe passes and full Node passes
+633 / 84 profile/platform skips, zero failures. Standard PIE/default sanitizer
+settings and ordinary parent Node remain; addon OFF. Private codec/crypto
+instrumentation, the upstream test/fuzz suite and wider distro/CI/RDP/device /
+resource gates remain open. [Instrumented SDK evidence](docs/ITERATION_272.md).
 
 ## Implementation status — 2026-10-15
 
@@ -364,6 +372,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local GCC 12 instrumented SDK / bridge fixture profile — Separate
+  pinned FreeRDP/WinPR + approved DSP correction compiles with ASan/UBSan;
+  actual SDK runtime dependencies, bridge PIE, verbose CTest 31/31, codec probe
+  and full Node 633 / 84 skips pass under the restricted Ubuntu fixture.
+  Private dependency/addon instrumentation, upstream tests/fuzz and actual
+  RDP/device/platform/CI gates remain separate. [Evidence](docs/ITERATION_272.md).
 
 - [x] DONE for pinned DSP reset ownership / local linked bridge sanitizer slice —
   Exact-source build-copy correction releases previous Opus state; bounded source

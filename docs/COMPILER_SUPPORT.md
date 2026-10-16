@@ -50,6 +50,14 @@ remain uninstrumented Release libraries and the addon is OFF. This is scoped
 linked bridge sanitizer evidence, separate from upstream/addon and connected
 audio/device acceptance. [Correction/evidence](ITERATION_269.md).
 
+An additional GCC 12.4 profile instruments FreeRDP/WinPR themselves with
+ASan/UBSan, then links the bridge sanitizer worker against that separate SDK.
+Verbose native CTest passes 31/31 and full Node passes 633 / 84 skips / 717.
+The worker remains standard PIE and parent Node has no preload. Private
+codec/crypto dependencies and the addon are not instrumented; the upstream
+project's own test/fuzz suite and connected RDP/device gates remain separate.
+[Instrumented SDK evidence](ITERATION_272.md).
+
 GCC 12 is a build-toolchain baseline. It is separate from the minimum glibc,
 libstdc++ symbol versions and distribution runtime closure of a particular
 binary archive. Installing a prebuilt npm/native artifact does not by itself
