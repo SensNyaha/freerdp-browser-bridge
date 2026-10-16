@@ -333,6 +333,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for Windows native-driver Node path ownership — Physical Node project,
+  test and binary paths preserve ESM error identity across SUBST/pnpm junctions;
+  CMake/SDK receipt aliases remain bound. Actual new linked consumer passes
+  CTest 30/30 and process/TLS/identity 27 / 1 skip. Full Windows 664 / 49 skips
+  and Linux GNU 12.2 657 / 59 skips pass. This is a local driver correction;
+  actual CI and broader platform/resource acceptance remain open.
+  [Evidence](docs/ITERATION_266.md).
+
 - [x] DONE for complete tracked-source Windows project export — New archive
   fixture has no prior build/dist/node_modules/.deps/lab files; frozen offline
   install, new Release build, CTest 30/30, full Node 663 / 49 skips / 712,

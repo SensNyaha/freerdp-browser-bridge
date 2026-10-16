@@ -6,7 +6,7 @@ The new `build/source-checkout-PBeAQy/source` initially contains no build,
 dist, node_modules, .deps, lab files or .git. It uses the separately verified
 Windows source-built SDK `freerdp-source-clean-MpfPs4` and cold dependencies
 `dependencies-source-clean-MypULr`, prepared MSVC/CMake/Ninja/Catch2 and the
-cached public pnpm store. No native source or compiled project output is reused.
+cached public pnpm store. No compiled project output is reused.
 
 Frozen offline Node installation with lifecycle scripts disabled installs all
 152 public packages. A new Release build completes 401 Ninja steps; the actual

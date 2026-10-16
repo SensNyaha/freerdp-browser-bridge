@@ -784,6 +784,17 @@ GDI/H.264 object dependencies after rebasing its cached ASCII alias. Both the
 ordinary prepared and isolated source-built SDK layouts pass; unknown layouts
 refuse. [Verification correction and full regression](ITERATION_261.md).
 
+For Windows native-build verification, keep CMake's temporary ASCII alias alive
+but run Node tests with physical project, entry-file and binary paths. The
+source-only driver uses `fs.realpathSync.native()` for this Node phase because
+pnpm junctions resolve to the physical drive. Mixing alias and physical module
+URLs can instantiate error classes twice and break constructor checks.
+Source/SDK receipt paths keep their original namespace. The bounded SUBST/pnpm
+identity regression and complete Windows/Linux checks pass
+[in iteration 266](ITERATION_266.md). A full tracked-source Windows export with
+offline install/build/relocation/production deploy also passes
+[in iteration 265](ITERATION_265.md).
+
 The GNU compiler minimum is GCC 12 with a matching C++20 library. The local
 Ubuntu builder now includes g++-12; select it explicitly in a new output tree:
 

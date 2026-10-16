@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { readDependencyReceipt } from './dependency-input.mjs';
+import { nodeTestDirectories } from './node-test-directories.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const windows = process.platform === 'win32';
@@ -384,31 +385,48 @@ if (linked && !windows) {
   )
     throw new Error('IPC-only Node addon import boundary failed');
 }
+const nodeDirectories = nodeTestDirectories(project, binary);
 run(
   process.execPath,
   [
     '--test',
     '--test-concurrency=1',
-    resolve(project, 'tests/integration/clipboard-codec.test.mjs'),
-    resolve(project, 'tests/integration/worker.test.mjs'),
+    resolve(
+      nodeDirectories.project,
+      'tests/integration/clipboard-codec.test.mjs',
+    ),
+    resolve(nodeDirectories.project, 'tests/integration/worker.test.mjs'),
+    ...(windows
+      ? [
+          resolve(
+            nodeDirectories.project,
+            'tests/integration/native-node-paths.test.mjs',
+          ),
+        ]
+      : []),
     ...(linked
       ? [
           resolve(
-            project,
+            nodeDirectories.project,
             'tests/integration/clipboard-worker-native.test.mjs',
           ),
           resolve(
-            project,
+            nodeDirectories.project,
             'tests/integration/clipboard-native-session.test.mjs',
           ),
           ...(!windows
-            ? [resolve(project, 'tests/integration/seqpacket-worker.test.mjs')]
+            ? [
+                resolve(
+                  nodeDirectories.project,
+                  'tests/integration/seqpacket-worker.test.mjs',
+                ),
+              ]
             : []),
         ]
       : []),
   ],
-  { ...runtimeEnvironment, BRIDGE_TEST_BINARY_DIR: binary },
-  project,
+  { ...runtimeEnvironment, BRIDGE_TEST_BINARY_DIR: nodeDirectories.binary },
+  nodeDirectories.project,
 );
 const after = createHash('sha256');
 for (const name of entries) {
