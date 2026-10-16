@@ -75,6 +75,13 @@ runs without preload and the addon is OFF. Separate Node-only preload controls
 still fail LSan; addon sanitizer acceptance remains open.
 [Evidence](docs/ITERATION_267.md).
 
+The new linked GCC 12 bridge sanitizer consumer compiles but fails CTest
+30/31: AUDIN assertions pass, then LSan reports six lost Opus encoders. A public
+DSP new/reset/free reproducer also leaks encoders/decoders without AUDIN or Node;
+the pinned reset overwrites prior codec pointers. A verified build-copy fix and
+passing repeat are required; this is not accepted linked sanitizer evidence.
+[Failure and source diagnosis](docs/ITERATION_268.md).
+
 ## Implementation status — 2026-10-15
 
 Linux API/private-native service runtime now passes independent non-root /
