@@ -98,6 +98,12 @@ checks; Ubuntu source compilation, complete fresh checkout/distro/CI and full
 service/device acceptance remain separate.
 [Packaging](docs/ITERATION_258.md), [Ubuntu runtime](docs/ITERATION_259.md).
 
+The corrected DSP SDK's new native archive also passes both independent
+Bookworm and Ubuntu runtime checks with the same restrictions, private module /
+codec checks, IPC pairing and joined cleanup. Its artifact hash and separate
+verifier image identities are retained in [iteration 271](docs/ITERATION_271.md).
+The historical release/service image cohort is unchanged.
+
 ## 4. Reverse proxy
 
 Terminate HTTPS at Nginx/Caddy/Traefik or Node in simple deployments. Requirements:

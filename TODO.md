@@ -93,6 +93,13 @@ reports absent override metadata. Full Node passes Windows 669 / 49 skips and
 Linux 662 / 59 skips, zero failures. Full release/license/vulnerability review
 remains open. [Artifact provenance evidence](docs/ITERATION_270.md).
 
+The same corrected Linux native archive passes independent pinned Bookworm and
+Ubuntu 24.04 runtime smoke checks: UID1000/read-only/no-network, private module /
+codec origins, actual IPC pairing, heartbeat/shutdown and empty runtime. SDK,
+workspace and lab files are absent. This adds current artifact evidence while
+fresh distro source builds, service/installer/CI and RDP/device/load gates stay
+open. [Independent runtime evidence](docs/ITERATION_271.md).
+
 ## Implementation status — 2026-10-15
 
 Linux API/private-native service runtime now passes independent non-root /
