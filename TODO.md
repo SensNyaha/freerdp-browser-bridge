@@ -298,12 +298,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
-- [x] DONE for isolated Linux project-native foundation source build — A new
+- [x] DONE for isolated Windows/Linux project-native foundation source build — New
   source-only fixture has no copied binary/cache/SDK/Node dependencies or lab
-  input. Ordinary GCC/Ninja CTest 15/15 and Node framed lifecycle 15 passed /
-  one absent-primary skip pass, with unchanged source hash. Local Catch2 source
-  is reused; upstream dependencies/FreeRDP, linked fresh project build, Windows /
-  distro/CI and remaining sanitizer gates stay open. [Evidence](docs/ITERATION_243.md).
+  input. MSVC/GCC CTest 14/14 and 15/15 and Node framed lifecycle 15 passed /
+  one absent-primary skip on each pass, with the same unchanged source hash.
+  Local Catch2 source is reused; upstream dependencies/FreeRDP, linked fresh
+  project build, distro/CI and remaining sanitizer gates stay open.
+  [Windows/Linux evidence](docs/ITERATION_244.md), [initial Linux](docs/ITERATION_243.md).
 
 - [x] DONE for current local foundation regression — Refreshed Windows/Linux
   foundation CTest passes 14/14 and 15/15; framed clipboard/worker lifecycle passes

@@ -13,16 +13,17 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const windows = process.platform === 'win32';
 const [catchSource, ...extra] = process.argv.slice(2);
 if (
-  process.platform !== 'linux' ||
+  (!windows && process.platform !== 'linux') ||
   process.versions.node.split('.')[0] !== '24' ||
   resolve('.') !== project ||
   !catchSource ||
   extra.length
 )
   throw new Error(
-    'Use the Linux project root and explicit offline Catch2 source',
+    'Use the Linux/Windows project root, Node 24 and explicit offline Catch2 source',
   );
 const version = await readFile(
   resolve(catchSource, 'src/catch2/catch_version_macros.hpp'),
@@ -107,7 +108,8 @@ run('cmake', [
   '-DBRIDGE_WITH_FREERDP=OFF',
   '-DBRIDGE_NODE_IPC=OFF',
   '-DFETCHCONTENT_FULLY_DISCONNECTED=ON',
-  '-DFETCHCONTENT_SOURCE_DIR_CATCH2=' + resolve(catchSource),
+  '-DFETCHCONTENT_SOURCE_DIR_CATCH2=' +
+    resolve(catchSource).replaceAll('\\', '/'),
 ]);
 run('cmake', ['--build', binary, '--parallel', '8']);
 const query = spawnSync(
@@ -124,25 +126,30 @@ if (query.status !== 0) throw new Error('Clean native inventory unavailable');
 const tests = JSON.parse(query.stdout).tests;
 if (
   !Array.isArray(tests) ||
-  tests.length < 15 ||
+  tests.length < (windows ? 14 : 15) ||
   tests.length > 128 ||
   ![
     'clipboard-text-tests',
     'clipboard-ingress-tests',
     'clipboard-wire-tests',
     'ipc-tests',
-    'linux-stream-tests',
-    'linux-seqpacket-worker-tests',
+    ...(windows
+      ? ['pipe-output-tests', 'private-directory-tests']
+      : ['linux-stream-tests', 'linux-seqpacket-worker-tests']),
   ].every((name) => tests.some((entry) => entry.name === name))
 )
   throw new Error('Clean native inventory incomplete');
 run('ctest', ['--test-dir', binary, '--output-on-failure', '--no-tests=error']);
-const cli = spawnSync(resolve(binary, 'rdp-worker'), ['--capabilities'], {
-  cwd: root,
-  encoding: 'utf8',
-  timeout: 10000,
-  maxBuffer: 8192,
-});
+const cli = spawnSync(
+  resolve(binary, 'rdp-worker' + (windows ? '.exe' : '')),
+  ['--capabilities'],
+  {
+    cwd: root,
+    encoding: 'utf8',
+    timeout: 10000,
+    maxBuffer: 8192,
+  },
+);
 if (cli.status !== 0) throw new Error('Clean native CLI unavailable');
 const build = JSON.parse(cli.stdout);
 if (
@@ -176,6 +183,7 @@ if (after.digest('hex') !== sourceHash)
   throw new Error('Native source fixture changed');
 const receipt = {
   cleanNativeSource: true,
+  platform: process.platform,
   sourceFiles: entries.length,
   sourceBytes: total,
   sourceHash,

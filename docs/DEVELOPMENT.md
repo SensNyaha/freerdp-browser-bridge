@@ -578,7 +578,7 @@ one alternate archive below the project's build directory can be supplied.
 The verifier removes its own pinned base's system libudev fallback and changes
 no host libraries. [Actual restricted native-runtime evidence](ITERATION_190.md).
 
-### Isolated Linux native foundation source build
+### Isolated native foundation source build
 
 With Node 24, GCC, CMake/Ninja and an already prepared Catch2 3.8.1 source tree:
 
@@ -595,3 +595,16 @@ FreeRDP SDK, Node dependencies and lab files are not copied; lifecycle JS is
 loaded from the original built workspace. This is a local project-native source
 check, separate from fresh upstream dependency/FreeRDP, linked, distro and CI
 acceptance. [Exact evidence and retained first helper error](ITERATION_243.md).
+
+On Windows x64, after preparing the ordinary foundation/Catch2 source, use:
+
+```powershell
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-foundation
+```
+
+The wrapper supplies the MSVC environment and temporary ASCII workspace alias
+through the entire new build/CTest/Node lifecycle run. It uses the same source
+copy/hash checks and platform-specific Windows pipe/private-directory inventory.
+It copies no old object or binary. This is local foundation source evidence;
+linked FreeRDP/dependencies, clean-machine/distro and actual CI remain separate.
+[Windows/Linux receipts](ITERATION_244.md).
