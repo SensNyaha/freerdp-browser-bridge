@@ -161,7 +161,10 @@ dispatcher drains previously accepted queued replies; the empty-list ACK must
 not be overtaken by an older queued value response. Retirement and channel ID are
 rechecked after that dispatch. No SDK structs, private plugin fields or arbitrary
 raw channel data are exposed to callers. This does not bound SDK queues/CPU/RSS
-or establish actual remote revocation; those acceptance gates remain open.
+or establish total resource acceptance. The named actual offer/revoke ACK slice
+now passes on [Linux primary/framed IPC](ITERATION_241.md) and through the
+[Windows/Edge public control path](ITERATION_240.md); remote application
+consumption and reverse readback remain open.
 
 `NativeSessionWorker` now accepts explicit text policy only with a matching
 numeric item reservation and both HELLO capabilities (Iteration 237). Missing /

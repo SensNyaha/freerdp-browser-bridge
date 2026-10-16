@@ -82,7 +82,10 @@ and mocked Clipboard API. They exercise all three directions, multi-window text,
 input, explicit local actions, denial, expiry, clear/detach late results, empty
 copy, native-revoke replacement cleanup and one JPEG frame.
 
-These fixtures access no real OS clipboard or remote clipboard. Actual RDP data
-consumption/readback/revoke, browser permission/device behavior, latency/network,
+These fixtures access no real OS clipboard or remote clipboard. A separately
+authorized [Windows/XRDP/Edge probe](ITERATION_240.md) now passes fixed Unicode
+offer ACK, no-format revoke ACK while ready, fresh-token replay and cleanup,
+with zero remote reads or host Clipboard API requests. Actual application data
+consumption/readback, browser permission/device behavior, latency/network,
 total RSS/CPU and managed-drive release gates remain open. The one-test XRDP
 mutation permission consumed in Iteration 232 is not reused.

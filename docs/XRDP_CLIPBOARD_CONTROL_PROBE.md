@@ -58,3 +58,20 @@ and retained failure evidence. Further controlled runs are covered by the user's
 subsequent repeated-test authorization. Neither an offer ACK nor a revoke ACK
 establishes actual application text consumption, reverse readback, physical OS
 permission, resource/network or complete Stage 7 acceptance.
+
+The separate private Linux carrier check uses the same fixed item and no-format
+revoke, without a browser:
+
+```powershell
+node scripts/run-linux-xrdp-clipboard.mjs freerdp-bridge-linux-rdp-201 <previously-approved-sha256-fingerprint>
+node scripts/run-linux-xrdp-clipboard.mjs freerdp-bridge-linux-rdp-201 <previously-approved-sha256-fingerprint> --framed
+```
+
+The owned container needs matching worker/addon/manifest, built protocol/Node
+packages, `test-xrdp-clipboard.mjs`, `private-lab-input.mjs` and
+`lab-rdp-diagnostics.mjs`. The host runner bounds and validates ignored lab input
+before Docker and transmits it only through private stdin. Both actual Linux
+carriers pass one set ACK, one no-format revoke ACK, ready source, heartbeat and
+joined cleanup; neither invokes a clipboard read. This is private Node/native
+evidence, not Linux browser or application-consumption acceptance.
+[Exact results](ITERATION_241.md).

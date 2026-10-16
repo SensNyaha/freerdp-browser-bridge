@@ -7,18 +7,20 @@ import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
 
 // Authorized lab only. Inventory never reads clipboard data. The optional action
 // writes one fixed synthetic value, waits for the peer ACK, then clears it.
+// offer-revoke uses the separately authorized fixed browser probe item and
+// removes all formats instead of offering empty Unicode. No content retries.
 // Neither action reads/writes the host OS clipboard or logs remote content.
 const [fingerprint, action = 'inventory', inputMode, ...extra] =
   process.argv.slice(2);
 if (
   extra.length ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '') ||
-  !['inventory', 'set-sentinel'].includes(action) ||
+  !['inventory', 'set-sentinel', 'offer-revoke'].includes(action) ||
   (inputMode !== undefined &&
     !['--private-stdin', '--private-stdin-framed'].includes(inputMode))
 )
   throw new Error(
-    'Use approved fingerprint, inventory/set-sentinel and optional private stdin',
+    'Use approved fingerprint, inventory/set-sentinel/offer-revoke and optional private stdin',
   );
 let lab;
 try {
@@ -44,6 +46,14 @@ try {
 } catch {
   throw new Error('Local lab input unavailable');
 }
+const revocationProbe = action === 'offer-revoke';
+if (
+  revocationProbe &&
+  (!inputMode || lab.host !== '192.168.21.149' || (lab.port ?? 3389) !== 3389)
+)
+  throw new Error(
+    'Offer/revoke requires private stdin and the authorized target',
+  );
 const runtimeRoot = resolve('.runtime/lab-clipboard');
 const diagnostics = new LabRdpDiagnostics();
 class LabWorker extends WorkerProcess {
@@ -51,6 +61,10 @@ class LabWorker extends WorkerProcess {
     const child = super.spawnWorker(...args);
     child.stderr.on('data', (b) => diagnostics.push(b));
     return child;
+  }
+  readClipboardText() {
+    ++report.readCalls;
+    throw new Error('LAB_CLIPBOARD_READ_DISABLED');
   }
 }
 const worker = new LabWorker({
@@ -70,6 +84,9 @@ const report = {
   heartbeat: false,
   closed: false,
   runtimeEmpty: false,
+  writeCalls: 0,
+  revokeCalls: 0,
+  readCalls: 0,
 };
 let phase = 'start',
   nativeState = 'created',
@@ -87,14 +104,21 @@ worker.on('certificate', (p) => {
     .decideCertificate(p, p.fingerprint === fingerprint)
     .catch(() => worker.terminate());
 });
-const timer = setTimeout(() => worker.terminate(), 30000);
+let revokeAttempted = false;
+const revoke = async () => {
+  if (revokeAttempted) throw new Error('Lab revoke already attempted');
+  revokeAttempted = true;
+  ++report.revokeCalls;
+  report.revoke = await worker.revokeClipboardText();
+};
+const timer = setTimeout(() => worker.terminate(), 45000);
 const wait = async (predicate) => {
-  const deadline = Date.now() + 22000;
+  const deadline = performance.now() + 22000;
   while (!predicate()) {
     if (
       failure ||
       ['failed', 'closed'].includes(nativeState) ||
-      Date.now() >= deadline
+      performance.now() >= deadline
     )
       throw new Error('Lab completion unavailable');
     await delay(10);
@@ -102,7 +126,10 @@ const wait = async (predicate) => {
 };
 try {
   const build = await worker.start();
-  if (!build.capabilities.clipboardText)
+  if (
+    !build.capabilities.clipboardText ||
+    (revocationProbe && !build.capabilities.clipboardRevoke)
+  )
     throw new Error('Lab profile unavailable');
   report.transport = build.transport;
   phase = 'connect';
@@ -112,27 +139,67 @@ try {
     security: { certificatePolicy: 'prompt' },
     display: { width: 1920, height: 1080 },
     timeouts: { connectMs: 20000, tcpAckMs: 10000 },
-    clipboard: { mode: 'bidirectional', text: true, maxItemBytes: 65536 },
+    clipboard: {
+      mode: revocationProbe ? 'browser-to-server' : 'bidirectional',
+      text: true,
+      maxItemBytes: revocationProbe ? 1024 : 65536,
+    },
   });
   delete lab.password;
   await wait(() => nativeState === 'connected');
   phase = 'clipboard';
   await wait(
-    () => worker.clipboardState?.ready && !worker.clipboardState.localPending,
+    () =>
+      worker.clipboardState?.ready &&
+      !worker.clipboardState.localPending &&
+      !worker.clipboardState.remotePending &&
+      !worker.clipboardState.localAccepted,
   );
   report.ready = true;
-  if (action === 'set-sentinel') {
+  const generation = worker.clipboardState.generation;
+  if (
+    revocationProbe &&
+    (worker.clipboardState.maximum !== 1024 ||
+      !worker.clipboardState.toServer ||
+      worker.clipboardState.fromServer)
+  )
+    throw new Error('Lab clipboard policy mismatch');
+  if (action === 'set-sentinel' || revocationProbe) {
     phase = 'set';
-    const text = Buffer.from('FreeRDP bridge clipboard smoke: Ж😀\n');
+    const text = Buffer.from(
+      revocationProbe
+        ? 'FreeRDP browser clipboard probe Ж😀\n'
+        : 'FreeRDP bridge clipboard smoke: Ж😀\n',
+    );
     try {
+      ++report.writeCalls;
       report.set = await worker.writeClipboardText(text);
     } finally {
       text.fill(0);
     }
     if (report.set !== 'accepted') throw new Error('Lab set not accepted');
-    phase = 'clear';
-    report.clear = await worker.writeClipboardText(Buffer.alloc(0));
-    if (report.clear !== 'accepted') throw new Error('Lab clear not accepted');
+    if (revocationProbe) {
+      if (!worker.clipboardState.localAccepted)
+        throw new Error('Lab accepted offer unavailable');
+      phase = 'revoke';
+      await revoke();
+      const source = worker.clipboardState;
+      report.readyAfterRevoke =
+        report.revoke === 'accepted' &&
+        nativeState === 'connected' &&
+        source?.ready &&
+        source.generation === generation &&
+        !source.localAccepted &&
+        !source.localPending &&
+        !source.remotePending;
+      if (!report.readyAfterRevoke) throw new Error('Lab revoke not accepted');
+    } else {
+      phase = 'clear';
+      ++report.writeCalls;
+      report.clear = await worker.writeClipboardText(Buffer.alloc(0));
+      if (report.clear !== 'accepted')
+        throw new Error('Lab clear not accepted');
+    }
   }
   const source = worker.clipboardState;
   report.source = {
@@ -155,6 +222,14 @@ try {
     throw new Error('Lab cleanup unavailable');
   console.log(JSON.stringify(report));
 } catch {
+  if (revocationProbe && report.writeCalls && !revokeAttempted) {
+    try {
+      // One cleanup attempt after an uncertain set, never a content retry.
+      await revoke();
+    } catch {
+      /* Failed/uncertain revoke remains a failed probe, never a disconnect ACK. */
+    }
+  }
   try {
     await worker.close();
     report.closed = worker.state === 'closed';
@@ -162,7 +237,7 @@ try {
   } catch {
     /* Report only observed cleanup; omit underlying errors. */
   }
-  console.error(
+  (revocationProbe ? console.log : console.error)(
     JSON.stringify({
       ...report,
       phase,

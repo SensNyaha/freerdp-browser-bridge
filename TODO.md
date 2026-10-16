@@ -622,6 +622,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   replay and joined cleanup, with zero remote reads or host Clipboard API requests.
   The first failed invocation is retained; application consumption/readback and
   OS clipboard acceptance remain open. [Probe/readiness evidence](docs/ITERATION_240.md).
+  Actual Linux primary and framed IPC now pass the same fixed Unicode offer /
+  no-format revoke ACK, ready-source barrier, heartbeat and empty-runtime cleanup,
+  with zero reads. This is private Node/native evidence, separate from browser /
+  application/OS acceptance. [Linux carrier evidence](docs/ITERATION_241.md).
   [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/ITERATION_236.md).
   [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
   [evidence](docs/ITERATION_235.md).
