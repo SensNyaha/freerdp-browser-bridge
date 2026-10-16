@@ -705,3 +705,20 @@ checks linked CTest/Node process lifecycle without replacing the ordinary SDK.
 Compilation has a separate finite ten-minute budget; CTest and process/IPC
 checks retain their existing deadlines. The prepared dependency/toolchain inputs
 remain reused. [Current Windows/Linux acceptance](ITERATION_250.md).
+
+For an isolated local Linux private dependency rebuild from cached source/tool
+downloads:
+
+```sh
+node scripts/build-dependencies.mjs --clean-local
+```
+
+Prepare the ordinary pinned vcpkg checkout/tool first. The helper uses unique
+install/buildtrees/packages directories, disables binary caches, refuses new
+source downloads and limits compilation to two jobs. It checks the clean vcpkg
+pin and bounded unchanged recipe input, then writes
+`installed/bridge-dependency-build.json` with source-only settings and the
+installed-status hash. The original dependency prefix remains separate.
+Compiler/build tools and source archives are reused; this is local source
+rebuild evidence, separate from Windows/distro/CI and final runtime acceptance.
+[Results and provenance](ITERATION_252.md).

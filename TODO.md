@@ -298,6 +298,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for local Linux isolated private dependency source rebuild — All 20
+  planned packages compile/install with new work/package/installed trees,
+  disabled binary caches, no downloads/network and concurrency two. Current
+  pinned recipes and 22 installed status records are bound by a checked receipt.
+  Compiler/vcpkg tools and cached source archives are reused; Windows cold build,
+  complete fresh checkout/distro/CI and remaining acceptance gates stay open.
+  [Evidence and input hashes](docs/ITERATION_252.md).
+
 - [x] DONE for local Windows/Linux fresh project consumer of the rebuilt SDK — Another
   source-only Release worker/addon tree resolves all three CMake packages from
   the new SDK, with a bound unchanged SDK receipt. Windows/Linux CTest 29/29 and
