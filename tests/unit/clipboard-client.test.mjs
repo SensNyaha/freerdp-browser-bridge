@@ -184,6 +184,32 @@ test('browser clipboard text: scalar validation, independent UTF8/UTF16 quotas, 
   assert.throws(() => measureClipboardText('a'.repeat(10000), 4));
 });
 
+test('browser clipboard readiness: initial native ACK and previous offer must drain before a fresh grant', async () => {
+  const f = fixture();
+  f.offer({ localPending: true });
+  assert.equal(f.client.snapshot.available, true);
+  assert.equal(f.client.snapshot.canSet, false);
+  assert.equal(f.client.snapshot.canRead, false);
+  assert.equal((await f.client.set('local')).status, 'refused');
+  assert.equal((await f.client.read()).status, 'refused');
+  assert.equal(f.seq, 0);
+  f.offer({ localPending: false });
+  assert.equal(f.client.snapshot.canSet, true);
+  assert.equal(f.client.snapshot.canRead, true);
+  f.offer({ localAccepted: true });
+  assert.equal(f.client.snapshot.canSet, false);
+  assert.equal(f.client.snapshot.canRead, false);
+  f.granted = true;
+  f.offer();
+  assert.equal(f.client.snapshot.canSet, true);
+  assert.equal(f.client.snapshot.canRead, true);
+  f.offer({ remotePending: true });
+  assert.equal(f.client.snapshot.canSet, false);
+  assert.equal(f.client.snapshot.canRead, false);
+  f.client.dispose();
+  f.server.dispose();
+});
+
 test('browser/server clipboard composition: multi-window Unicode, exact ACK, frozen read and empty items', async () => {
   const f = fixture();
   const text = '\ufeff界😀\n'.repeat(6000);

@@ -40,9 +40,8 @@ export function installClipboardView(panel, client) {
     const busy = s.busy || Boolean(permission);
     draft.disabled = !s.available || busy || !s.toServer;
     draft.maxLength = s.maximum ?? 1;
-    buttons.send.disabled = !s.available || busy || !s.toServer;
-    buttons.read.disabled =
-      !s.available || busy || !s.fromServer || !s.remoteText;
+    buttons.send.disabled = busy || !s.canSet;
+    buttons.read.disabled = busy || !s.canRead;
     buttons.paste.disabled =
       !s.available ||
       busy ||

@@ -39,9 +39,22 @@ export class ClipboardClient {
   }
   get snapshot() {
     const s = this.source;
+    const available = Boolean(
+      !this.closed && this.host.authorized() && s?.ready && !s.retiring,
+    );
+    const admission =
+      available && (s.granted || (!s.localAccepted && !s.localPending));
     return {
-      available: Boolean(
-        !this.closed && this.host.authorized() && s?.ready && !s.retiring,
+      available,
+      canSet: Boolean(
+        admission && s.toServer && !s.localPending && !s.remotePending,
+      ),
+      canRead: Boolean(
+        admission &&
+          s.fromServer &&
+          s.remoteText &&
+          !s.localPending &&
+          !s.remotePending,
       ),
       busy: Boolean(this.active),
       maximum: s?.maximum,
@@ -162,6 +175,8 @@ export class ClipboardClient {
           fromServer: s.fromServer,
           remoteText: s.remoteText,
           localPending: s.localPending,
+          localAccepted: s.localAccepted,
+          granted: data.granted,
           remotePending: s.remotePending,
           maximum: s.maximum,
           generation: u64(s.generation),
@@ -193,11 +208,7 @@ export class ClipboardClient {
     if (time === undefined || !this.snapshot.available)
       return Promise.resolve({ status: 'unavailable' });
     if (this.active) return Promise.resolve({ status: 'busy' });
-    if (
-      operation === 'set'
-        ? !s.toServer || s.localPending
-        : !s.fromServer || !s.remoteText || s.remotePending
-    )
+    if (operation === 'set' ? !this.snapshot.canSet : !this.snapshot.canRead)
       return Promise.resolve({ status: 'refused' });
     let buffer;
     try {

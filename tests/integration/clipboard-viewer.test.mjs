@@ -85,6 +85,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
     async () => {
       const worker = new ClipboardViewerWorker(),
         ports = Array.from({ length: 8 }, () => randomInt(49152, 65536));
+      worker.source.localPending = mode === 'browser-to-server';
       const server = await createSessionServer({
         worker: {
           workerPath: resolve(
@@ -191,6 +192,11 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           clear = page.locator('[data-clipboard=clear]');
         const draft = page.locator('[data-clipboard-draft]'),
           received = page.locator('[data-clipboard-received]');
+        if (mode === 'browser-to-server') {
+          assert.equal(await send.isDisabled(), true);
+          assert.equal(worker.writes, 0);
+          worker.publish({ localPending: false });
+        }
         await page.waitForFunction(
           (direction) =>
             !document.querySelector(

@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | IN PROGRESS | Native/private/server text and explicit Edge client pass scoped fixtures; actual remote/browser/OS clipboard and managed-drive CRUD gate remain |
+| 7 — clipboard/drives | IN PROGRESS | Actual Windows/XRDP/Edge offer/no-format revoke ACK and replay pass; remote application/readback/OS clipboard and managed-drive CRUD gate remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -616,6 +616,12 @@ profile's target, microphone, recovery, resource or platform acceptance.
   zero native/browser requests, nonblank 1080p, cursor/attachment replay and
   empty runtime. This is not enabled clipboard acceptance.
   [Off-path evidence](docs/ITERATION_239.md).
+  Per-operation browser admission now waits for initial native ACK/owned-offer
+  drain, with failing-before/passing-after Edge evidence. Actual Windows/XRDP/Edge
+  now passes one Unicode offer ACK, no-format revoke ACK while ready, fresh-token
+  replay and joined cleanup, with zero remote reads or host Clipboard API requests.
+  The first failed invocation is retained; application consumption/readback and
+  OS clipboard acceptance remain open. [Probe/readiness evidence](docs/ITERATION_240.md).
   [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/ITERATION_236.md).
   [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
   [evidence](docs/ITERATION_235.md).

@@ -18,6 +18,10 @@ to one ClipboardClient. Offers contain scalar metadata and never trigger reads,
 permission prompts or OS clipboard operations. Current connected attachment,
 source generation/directions/maximum, revision, request correlation, exact sizes /
 offsets and issued credit are checked before allocation or delivery.
+Operation readiness additionally checks native local/remote pending flags. A
+fresh grant cannot start while an earlier native local offer is accepted or
+awaiting ACK; an existing current grant may replace its accepted offer after the
+shared flight drains. Send/Get remain disabled until their admission is ready.
 
 One upload/download owns one byte item and at most eight copied 4 KiB records.
 Upload windows start at least 64 ms apart. The client waits for server credit,
