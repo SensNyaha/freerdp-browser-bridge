@@ -8,10 +8,20 @@ First-class build target:
 - Node.js 24 LTS;
 - FreeRDP 3.32.1 pinned;
 - modern CMake/Ninja toolchain;
+- GCC 12 or newer for GNU C++ compilation, with a matching C++20 libstdc++;
 - OpenSSL supported by FreeRDP;
 - optional libusb, PCSC, CUPS, FFmpeg/OpenH264, libopus depending feature set.
 
 Exact distro package names belong in `docker/` and CI scripts because they vary by distribution.
+
+Compiler baseline decision (2026-10-16): the user requested GCC 8 if feasible,
+otherwise GCC 12. The existing C++20 worker uses `std::span`, `std::jthread` and
+`std::bit_cast`; stock GCC 8/libstdc++ does not provide these required facilities.
+Supporting it would require a separate compatibility port. Keep C++20 and use
+the already verified GCC 12 baseline. CMake rejects GNU versions below 12 and
+checks the actual standard library facilities for every compiler family.
+GCC 13/Clang 18 sanitizer checks are additional validation profiles; they do not
+raise the GNU minimum. [Compiler evidence and scope](docs/COMPILER_SUPPORT.md).
 
 ## 2. FreeRDP build profile
 

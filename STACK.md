@@ -17,6 +17,7 @@ Reason: the bridge's public contract is naturally event-driven and Node.js is we
 ### Native session worker
 
 - **C++20** for bridge-owned native code, with C-compatible boundaries around FreeRDP
+- **GCC 12 minimum** for GNU builds, with a matching C++20 libstdc++; GCC 12.2 is verified locally. MSVC/Clang use the same required C++20 library feature checks.
 - **FreeRDP 3.32.1 pinned exactly for the first implementation**
 - **WinPR** from the same FreeRDP build
 - **CMake + Ninja**

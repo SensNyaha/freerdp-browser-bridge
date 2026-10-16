@@ -4,7 +4,13 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-24.04, windows-latest]
+        include:
+          - os: ubuntu-24.04
+            compiler: g++-12
+          - os: ubuntu-24.04
+            compiler: g++
+          - os: windows-latest
+            compiler: cl
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -16,7 +22,11 @@ jobs:
           version: 10.11.0
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
+      - name: Install the GCC 12 baseline
+        if: runner.os == 'Linux' && matrix.compiler == 'g++-12'
+        run: sudo apt-get update && sudo apt-get install -y g++-12
       - run: pnpm install --frozen-lockfile
+      - run: cmake --preset foundation -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
       - run: pnpm build:native
       - run: pnpm test:native
       - run: pnpm check

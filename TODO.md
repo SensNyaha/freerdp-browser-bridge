@@ -13,7 +13,7 @@ Current stage acceptance:
 
 | Stage | Current status | What prevents full DONE |
 | --- | --- | --- |
-| 0 — build | IN PROGRESS | Fresh-checkout/distro matrix, CI execution and standard PIE sanitizer environment; linked Linux CTest, ELF closure and independent Bookworm native runtime pass |
+| 0 — build | IN PROGRESS | Remaining checkout/distro/CI and linked/upstream sanitizer matrix; local GCC 12 linked chain, Ubuntu standard PIE foundation and independent Bookworm/Ubuntu native runtime pass |
 | 1 — worker/IPC | IN PROGRESS | Primary/fallback Release IPC lifecycle passes on Linux/Windows; connected output/release/resource, addon sanitizer, configured capacity, broader isolation and abnormal cleanup remain |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
 | 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
@@ -54,6 +54,14 @@ relocation and production deploy/import without prior build/dist/node_modules.
 Its native SDK/dependency/tool inputs remain external and verified; new OS/distro,
 Windows export, CI and sanitizer gates remain separate.
 [Evidence](docs/ITERATION_260.md).
+
+GNU builds now explicitly require GCC 12 and a matching C++20 standard library.
+A new actual GCC 12.2 linked consumer passes CTest 31/31, process/TLS 40/40 and
+full Node 657 passed / 58 skips; MSVC foundation passes the probe and 15/15.
+The separate local Ubuntu GCC 13 standard PIE ASan/UBSan foundation passes 15/15
+without the historical non-PIE workaround. The GNU minimum remains 12; CI is
+prepared, not run. [Compiler support](docs/COMPILER_SUPPORT.md),
+[policy/build](docs/ITERATION_263.md), [PIE environment](docs/ITERATION_262.md).
 
 ## Implementation status — 2026-10-15
 
@@ -319,6 +327,22 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local GNU 12 compiler baseline — Explicit GNU >=12 admission and
+  actual C++20 library probe, policy boundary CTest, new GNU 12.2 linked source
+  build (CTest 31/31, process/TLS 40/40, full Node 657 / 58 skips / 715) and MSVC
+  probe/foundation 15/15 pass. The user's GCC 12 fallback retains C++20; GCC 8
+  requires a separate compatibility port and is unsupported. Explicit GCC 12 CI
+  entry is prepared, not executed. [Support](docs/COMPILER_SUPPORT.md),
+  [evidence](docs/ITERATION_263.md).
+
+- [x] DONE for local Ubuntu standard PIE sanitizer foundation — GCC 13 / ASan /
+  UBSan CTest 15/15, honest worker CLI and actual PIE ELF identity pass under
+  UID1000/read-only/no-network with bounded executable build tmpfs. GCC/Clang
+  empty PIE sanitizer programs each pass 100 launches with default options.
+  No ASLR/seccomp or non-PIE workaround is used. This does not raise the GCC 12
+  minimum or close addon/upstream/fuzz/CI scope; prior Bookworm failures remain
+  retained. [Evidence and toolchain versions](docs/ITERATION_262.md).
 
 - [x] DONE for complete tracked-source Linux project export — New git archive
   fixture begins without build/dist/node_modules/.deps/lab files, performs frozen
