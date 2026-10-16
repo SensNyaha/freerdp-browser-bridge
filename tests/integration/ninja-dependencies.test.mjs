@@ -4,8 +4,11 @@ import { readFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
-import { resolve, join } from 'node:path';
-import { rebaseWindowsBuildPath } from '../fixtures/cmake-paths.mjs';
+import { resolve, join, win32 } from 'node:path';
+import {
+  rebaseWindowsBuildPath,
+  windowsFreeRdpBuildPath,
+} from '../fixtures/cmake-paths.mjs';
 
 test(
   'native build integration: Windows Ninja tracks headers and refreshes private runtimes',
@@ -67,7 +70,31 @@ test(
           'Runtime copies must match the private prefix even without an executable relink',
         );
       }
-      const freerdpDir = resolve('build/freerdp-local');
+      const freerdpDir = windowsFreeRdpBuildPath(
+        binaryDir,
+        configuredBuild,
+        configuredPrefix,
+      );
+      const sdkCache = await readFile(
+        join(freerdpDir, 'CMakeCache.txt'),
+        'utf8',
+      );
+      const sdkBuild = sdkCache
+        .match(/^CMAKE_CACHEFILE_DIR:INTERNAL=(.+)$/m)?.[1]
+        .trim();
+      const sdkInstalled = sdkCache
+        .match(/^CMAKE_INSTALL_PREFIX:PATH=(.+)$/m)?.[1]
+        .trim();
+      assert.ok(sdkBuild && sdkInstalled);
+      assert.equal(
+        rebaseWindowsBuildPath(
+          freerdpDir,
+          sdkBuild,
+          sdkInstalled,
+        ).toLowerCase(),
+        freerdpPrefix.toLowerCase(),
+        'Tracked C objects must belong to the SDK actually consumed by this worker',
+      );
       for (const object of [
         'libfreerdp/CMakeFiles/freerdp.dir/gdi/gfx.c.obj',
         'libfreerdp/codec/CMakeFiles/freerdp-codecs.dir/h264.c.obj',
@@ -83,8 +110,17 @@ test(
             .split(/\r?\n/)
             .some(
               (line) =>
-                resolve(freerdpDir, line.trim()) ===
-                join(freerdpDir, 'include', 'freerdp', 'config.h'),
+                rebaseWindowsBuildPath(
+                  freerdpDir,
+                  sdkBuild,
+                  win32.resolve(sdkBuild, line.trim()),
+                ).toLowerCase() ===
+                join(
+                  freerdpDir,
+                  'include',
+                  'freerdp',
+                  'config.h',
+                ).toLowerCase(),
             ),
           'C-only FreeRDP objects must track feature headers to match the installed decoder configuration',
         );

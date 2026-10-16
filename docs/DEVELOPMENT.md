@@ -777,3 +777,9 @@ closure/TGZ/restricted native-only runtime and Windows install/ZIP checks pass
 [with the new source-built chain](ITERATION_258.md). To verify a particular TGZ,
 pass its actual project-local path to `prepare-native-runtime-check.mjs`; the
 default archive may belong to an older release cohort.
+
+Windows Ninja dependency verification follows the SDK actually selected by the
+worker's CMake cache. It checks the SDK's own matching install prefix and C-only
+GDI/H.264 object dependencies after rebasing its cached ASCII alias. Both the
+ordinary prepared and isolated source-built SDK layouts pass; unknown layouts
+refuse. [Verification correction and full regression](ITERATION_261.md).
