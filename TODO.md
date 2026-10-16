@@ -75,12 +75,16 @@ runs without preload and the addon is OFF. Separate Node-only preload controls
 still fail LSan; addon sanitizer acceptance remains open.
 [Evidence](docs/ITERATION_267.md).
 
-The new linked GCC 12 bridge sanitizer consumer compiles but fails CTest
-30/31: AUDIN assertions pass, then LSan reports six lost Opus encoders. A public
-DSP new/reset/free reproducer also leaks encoders/decoders without AUDIN or Node;
-the pinned reset overwrites prior codec pointers. A verified build-copy fix and
-passing repeat are required; this is not accepted linked sanitizer evidence.
-[Failure and source diagnosis](docs/ITERATION_268.md).
+The linked GCC 12 bridge sanitizer failure exposed lost Opus state in pinned
+FreeRDP DSP reset. A hash-checked build-copy correction now retires the preceding
+encoder/decoder before replacement, keeping the exact clean checkout/public ABI.
+New SDK/consumer builds pass Windows CTest 30/30 and Node 666 / 49 skips, Linux
+Release CTest 31/31 and Node 659 / 59 skips, and Ubuntu GCC 12 standard PIE linked
+bridge ASan/UBSan CTest 31/31 and Node 633 / 84 skips. The public leak reproducer
+now exits cleanly. Addon/upstream instrumentation, connected audio and wider
+resource/platform/CI gates remain open. [Retained failure](docs/ITERATION_268.md),
+[correction and scoped acceptance](docs/ITERATION_269.md),
+[SDK rebuild contract](docs/FREERDP_OVERRIDES.md).
 
 ## Implementation status — 2026-10-15
 
@@ -346,6 +350,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for pinned DSP reset ownership / local linked bridge sanitizer slice —
+  Exact-source build-copy correction releases previous Opus state; bounded source
+  and SDK provenance guards, failing-before/passing-after public regression,
+  Windows/Linux SDK rebuilds, native/Node suites and installed relocation pass.
+  Ubuntu GCC 12 default PIE ASan/UBSan covers bridge-owned linked code against
+  uninstrumented private FreeRDP/codecs; addon OFF. Upstream/addon sanitizers,
+  actual RDP/audio/device and broader resource/CI gates remain separate.
+  [Evidence](docs/ITERATION_269.md), [build contract](docs/FREERDP_OVERRIDES.md).
 
 - [x] DONE for Windows native-driver Node path ownership — Physical Node project,
   test and binary paths preserve ESM error identity across SUBST/pnpm junctions;

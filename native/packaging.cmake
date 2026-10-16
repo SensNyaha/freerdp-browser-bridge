@@ -32,6 +32,10 @@ if(BRIDGE_WITH_FREERDP)
   endif()
   install(FILES "${BRIDGE_FREERDP_LICENSE_FILE}"
     DESTINATION share/freerdp-bridge/licenses/freerdp RENAME LICENSE)
+  install(FILES "${BRIDGE_FREERDP_PREFIX}/share/freerdp-bridge/freerdp-overrides.json"
+    DESTINATION share/freerdp-bridge)
+  install(FILES "${CMAKE_SOURCE_DIR}/native/freerdp-dsp-override.cmake"
+    DESTINATION share/freerdp-bridge/overrides)
   install(FILES "${CMAKE_SOURCE_DIR}/native/dependencies.json" "${CMAKE_SOURCE_DIR}/native/vcpkg/vcpkg.json"
     DESTINATION share/freerdp-bridge)
   install(DIRECTORY "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/openh264" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/opus" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/libusb"

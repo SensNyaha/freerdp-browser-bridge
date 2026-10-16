@@ -16,6 +16,8 @@
 #include <cstring>
 #include <freerdp/client.h>
 #include <freerdp/client/channels.h>
+#include <freerdp/codec/dsp.h>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <type_traits>
@@ -333,6 +335,25 @@ bridge::ipc::microphone::Result submit_capture(void *owner,
   return Result::invalid;
 }
 } // namespace
+TEST_CASE("Pinned public DSP reset releases preceding Opus state across PCM format changes") {
+  // Repeated reset must be leak-free under ASan/LSan, including PCM formats:
+  // the pinned DSP also prepares Opus for supported PCM sample rates.
+  for (const BOOL encoder : {FALSE, TRUE}) {
+    const std::unique_ptr<FREERDP_DSP_CONTEXT, decltype(&freerdp_dsp_context_free)> context(
+        freerdp_dsp_context_new(encoder), freerdp_dsp_context_free);
+    REQUIRE(context);
+    for (const unsigned rate : {48000U, 16000U, 44100U, 8000U, 48000U}) {
+      AUDIO_FORMAT format{};
+      format.wFormatTag = WAVE_FORMAT_PCM;
+      format.nChannels = rate == 48000 ? 2 : 1;
+      format.nSamplesPerSec = rate;
+      format.nBlockAlign = format.nChannels * 2;
+      format.nAvgBytesPerSec = rate * format.nBlockAlign;
+      format.wBitsPerSample = 16;
+      REQUIRE(freerdp_dsp_context_reset(context.get(), &format, rate / 50));
+    }
+  }
+}
 TEST_CASE("Actual guarded AUDIN negotiates beneath public early DVC audio allocation profile") {
   Fixture fixture;
   AudinRegistration registration(*fixture.context, fixture.source);

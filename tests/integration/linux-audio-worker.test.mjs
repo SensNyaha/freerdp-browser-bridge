@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -49,7 +50,9 @@ for (const ipcTransport of ['auto', 'framed-pipes'])
             const build = await worker.start();
             assert.equal(
               build.transport,
-              ipcTransport === 'auto' ? 'unix-seqpacket-rws1' : 'framed-pipes',
+              ipcTransport === 'auto' && existsSync(workerPath + '.ipc.json')
+                ? 'unix-seqpacket-rws1'
+                : 'framed-pipes',
             );
             assert.deepEqual(build.capabilities, capabilities);
             assert.equal(build.capabilities.audioReset, true);

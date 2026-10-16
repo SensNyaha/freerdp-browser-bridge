@@ -42,6 +42,14 @@ uses no sanitizer preload; the addon is OFF. Separate Node-only preload controls
 still fail LSan, so addon sanitizer acceptance remains open.
 [Supervisor/sanitized-worker evidence](ITERATION_267.md).
 
+A linked bridge-owned Debug consumer now also passes standard PIE ASan/UBSan
+CTest 31/31 and full Node 633 / 84 profile/platform skips / 717 under GCC 12.4.
+The earlier DSP leak is retained with its failing reproducer; the exact pinned
+SDK is rebuilt with a hash-checked ownership correction. FreeRDP/private codecs
+remain uninstrumented Release libraries and the addon is OFF. This is scoped
+linked bridge sanitizer evidence, separate from upstream/addon and connected
+audio/device acceptance. [Correction/evidence](ITERATION_269.md).
+
 GCC 12 is a build-toolchain baseline. It is separate from the minimum glibc,
 libstdc++ symbol versions and distribution runtime closure of a particular
 binary archive. Installing a prebuilt npm/native artifact does not by itself

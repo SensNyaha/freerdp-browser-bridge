@@ -34,7 +34,9 @@ private-prefix link reproduces the leak.
 The pinned `libfreerdp/codec/dsp.c` reset creates and assigns a fresh Opus encoder
 or decoder for a supported sample rate without releasing the preceding pointer;
 context_free can release only the latest allocation. This also occurs for the
-PCM resets used by the AUDIN fixtures. The source input has SHA-256
+PCM resets used by the AUDIN fixtures. The canonical LF source input has SHA-256
+`40715894dc14e2869c64bbf3ebfcf209fe12483890ffb709133d7034f32ad10f`;
+the prepared Windows CRLF checkout's byte hash is
 `5ea78986e26772e7d0ff9bef5087cc7981b61490e3bf7f449b510b481281971a`.
 A verified build-copy ownership correction and successful repeat remain required;
 the exact source checkout/public headers must remain unchanged.
@@ -49,3 +51,6 @@ Bounded runner `build/iteration-268-linked-sanitizers.py` SHA-256:
 `c48cd3ddb8a75a04a3aebbc19b5500720f934282600b17233496fa81f8a064aa`.
 This failure does not invalidate the separately passing foundation/Release
 observations, but linked resource/sanitizer acceptance stays open.
+
+The verified build-copy correction and passing scoped repeats are recorded in
+[iteration 269](ITERATION_269.md). This original failed run remains evidence.

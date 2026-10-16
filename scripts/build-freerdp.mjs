@@ -120,7 +120,7 @@ run('cmake', [
   '-C',
   'native/freerdp-profile.cmake',
   '-DCMAKE_BUILD_TYPE=Release',
-  `-DCMAKE_PROJECT_FreeRDP_INCLUDE=${resolve('native/msvc-dependencies.cmake')}`,
+  `-DCMAKE_PROJECT_FreeRDP_INCLUDE=${resolve('native/freerdp-build.cmake')}`,
   `-DCMAKE_INSTALL_PREFIX=${freerdpPrefix}`,
   `-DCMAKE_TOOLCHAIN_FILE=${resolve('.deps/vcpkg/scripts/buildsystems/vcpkg.cmake')}`,
   `-DVCPKG_INSTALLED_DIR=${dependencyInstalledRoot}`,
@@ -301,6 +301,12 @@ if (cleanLocal) {
     binary,
     installed: freerdpPrefix,
     commit: lock.commit,
+    sourceOverrides: JSON.parse(
+      readFileSync(
+        join(freerdpPrefix, 'share/freerdp-bridge/freerdp-overrides.json'),
+        'utf8',
+      ),
+    ),
     freerdpRebuilt: true,
     dependenciesRebuilt: false,
     foreignPrefixRejected: true,

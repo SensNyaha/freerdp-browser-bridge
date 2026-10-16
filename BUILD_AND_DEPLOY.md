@@ -29,6 +29,12 @@ Create a reproducible CMake preset/container layer that enables required client 
 
 Build output should include FreeRDP/WinPR shared libraries and the bridge worker. Pin source tag + checksum/commit.
 
+The pinned SDK now requires the recorded `dsp-opus-reset-ownership-v1` build-copy
+correction for repeated DSP reset leaks. The original checkout/public headers
+remain unchanged; generated C code and its recipe are hash-bound and packaged
+with override metadata. Rebuild the SDK before a new linked worker if using an
+older SDK without this metadata. [Correction/build contract](docs/FREERDP_OVERRIDES.md).
+
 The pinned Linux WinPR profile requires private Kerberos and ICU for its default
 authentication/Unicode implementations. These are Linux-only manifest entries;
 `build-freerdp.mjs` selects the local `krb5-config` and requires local ICU paths.
