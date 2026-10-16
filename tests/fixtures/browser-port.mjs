@@ -6,6 +6,7 @@ export async function listenBrowserLoopback(
   listen,
   selectPort = () => randomInt(49152, 65536),
 ) {
+  let lastError;
   for (let attempt = 0; attempt < 8; ++attempt) {
     const port = selectPort();
     if (!Number.isInteger(port) || port < 49152 || port > 65535)
@@ -14,10 +15,17 @@ export async function listenBrowserLoopback(
       await listen(port);
       return port;
     } catch (error) {
-      if (error?.code !== 'EADDRINUSE') throw error;
+      if (
+        error?.code !== 'EADDRINUSE' &&
+        !(process.platform === 'win32' && error?.code === 'EACCES')
+      )
+        throw error;
+      lastError = error;
     }
   }
-  throw new Error('Browser fixture port attempts exhausted');
+  throw new Error('Browser fixture port attempts exhausted', {
+    cause: lastError,
+  });
 }
 
 export function listenBrowserHttp(server, selectPort) {

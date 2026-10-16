@@ -298,6 +298,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for current local foundation regression — Refreshed Windows/Linux
+  foundation CTest passes 14/14 and 15/15; framed clipboard/worker lifecycle passes
+  15 with one platform/absent-primary skip on each. Shared test waits now honor
+  finite requested deadlines and browser port retry failures preserve their cause.
+  Existing local trees/dependencies are used; fresh-checkout/distro/CI and actual
+  remote/device gates remain open. [Evidence](docs/ITERATION_242.md).
+
 - [x] DONE for clean Linux Node workspace — New source-only fixture has no dist /
   node_modules; frozen offline installation, all four TypeScript builds and fresh
   production deployment/import pass with unchanged lockfile. Native fresh-checkout

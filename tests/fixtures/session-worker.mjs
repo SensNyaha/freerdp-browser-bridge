@@ -72,10 +72,12 @@ export function fakeFactory(mode = 'connected') {
     },
   };
 }
-export async function eventually(predicate) {
-  const deadline = Date.now() + 3000;
+export async function eventually(predicate, timeoutMs = 3000) {
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60000)
+    throw new Error('Invalid fixture wait deadline');
+  const deadline = performance.now() + timeoutMs;
   while (!predicate()) {
-    if (Date.now() > deadline)
+    if (performance.now() >= deadline)
       throw new Error('Test condition deadline exceeded');
     await delay(5);
   }

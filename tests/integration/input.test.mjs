@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { randomInt } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
+import { listenBrowserLoopback } from '../fixtures/browser-port.mjs';
 import { SessionError } from '../../packages/node-bridge/dist/index.js';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
@@ -66,19 +66,9 @@ async function fixture(run, input) {
   );
   let ws;
   try {
-    // Windows may assign a Chromium-restricted port (for example 6665) for
-    // port 0. Use a browser-safe range and retry only occupied candidates.
-    for (let attempt = 0; ; attempt += 1) {
-      try {
-        await server.listen({
-          host: '127.0.0.1',
-          port: randomInt(20000, 60000),
-        });
-        break;
-      } catch (error) {
-        if (error.code !== 'EADDRINUSE' || attempt === 15) throw error;
-      }
-    }
+    await listenBrowserLoopback((port) =>
+      server.listen({ host: '127.0.0.1', port }),
+    );
     const origin = 'http://127.0.0.1:' + server.server.address().port;
     const created = (
       await server.inject({

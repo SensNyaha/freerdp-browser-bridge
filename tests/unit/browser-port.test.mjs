@@ -55,7 +55,7 @@ test('browser fixture port: finite collision exhaustion and non-collision errors
     assert.equal(refused.listening, false);
     assert.equal(refused.listenerCount('error'), initialErrors);
     assert.equal(refused.listenerCount('listening'), initialReady);
-    const fault = Object.assign(new Error('fixture'), { code: 'EACCES' });
+    const fault = Object.assign(new Error('fixture'), { code: 'EIO' });
     await assert.rejects(
       listenBrowserLoopback(async () => {
         throw fault;
@@ -73,4 +73,55 @@ test('browser fixture port: finite collision exhaustion and non-collision errors
     await close(refused);
     await close(occupied);
   }
+});
+
+test('browser fixture port: Windows denied candidates retry finitely without bypassing OS policy', async () => {
+  const fault = Object.assign(new Error('synthetic listen refusal'), {
+    code: 'EACCES',
+  });
+  let calls = 0;
+  const listen = async () => {
+    if (++calls === 1) throw fault;
+  };
+  if (process.platform === 'win32') {
+    assert.equal(
+      await listenBrowserLoopback(listen, () => 49152 + calls),
+      49153,
+    );
+    assert.equal(calls, 2);
+    calls = 0;
+    await assert.rejects(
+      listenBrowserLoopback(async () => {
+        ++calls;
+        throw fault;
+      }),
+      (error) =>
+        error.message === 'Browser fixture port attempts exhausted' &&
+        error.cause === fault,
+    );
+    assert.equal(calls, 8);
+  } else {
+    await assert.rejects(
+      listenBrowserLoopback(listen),
+      (error) => error === fault,
+    );
+    assert.equal(calls, 1);
+  }
+});
+
+test('browser fixture port: exhaustion retains the exact final OS error as cause', async () => {
+  const fault = Object.assign(new Error('synthetic occupied port'), {
+    code: 'EADDRINUSE',
+  });
+  let calls = 0;
+  await assert.rejects(
+    listenBrowserLoopback(async () => {
+      ++calls;
+      throw fault;
+    }),
+    (error) =>
+      error.message === 'Browser fixture port attempts exhausted' &&
+      error.cause === fault,
+  );
+  assert.equal(calls, 8);
 });

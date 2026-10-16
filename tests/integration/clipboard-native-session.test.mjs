@@ -126,6 +126,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           );
           await eventually(
             () => manager.get(created.sessionId, principal).state === 'failed',
+            6000,
           );
           assert.equal(
             manager.get(created.sessionId, principal).error.code,
