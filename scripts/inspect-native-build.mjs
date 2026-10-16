@@ -4,11 +4,16 @@ import { createHash } from 'node:crypto';
 
 const lock = JSON.parse(readFileSync(resolve('native/dependencies.json')));
 const suppliedPaths = process.argv.slice(2);
-if (suppliedPaths.length !== 0 && suppliedPaths.length !== 3)
+if (![0, 3, 4].includes(suppliedPaths.length))
   throw new Error(
     'Supply cache, installed SDK and output report paths together',
   );
-const [cachePath, installedPrefix, reportPath] = suppliedPaths.length
+const [
+  cachePath,
+  installedPrefix,
+  reportPath,
+  dependencyInstalledRoot = resolve('.deps/installed'),
+] = suppliedPaths.length
   ? suppliedPaths.map((value) => resolve(value))
   : [
       resolve('build/freerdp-local/CMakeCache.txt'),
@@ -37,7 +42,7 @@ const dependencies = {};
 const triplet =
   process.platform === 'win32' ? 'x64-windows-bundled' : 'x64-linux-bundled';
 const status = readFileSync(
-  resolve('.deps/installed/vcpkg/status'),
+  resolve(dependencyInstalledRoot, 'vcpkg/status'),
   'utf8',
 ).replace(/\r\n/g, '\n');
 for (const name of [

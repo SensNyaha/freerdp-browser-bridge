@@ -722,3 +722,16 @@ installed-status hash. The original dependency prefix remains separate.
 Compiler/build tools and source archives are reused; this is local source
 rebuild evidence, separate from Windows/distro/CI and final runtime acceptance.
 [Results and provenance](ITERATION_252.md).
+
+Use the completed source dependency receipt for a new Linux FreeRDP SDK:
+
+```sh
+node scripts/build-freerdp.mjs --clean-local \
+  build/dependencies-source-clean-EXAMPLE/installed/bridge-dependency-build.json
+```
+
+The SDK helper verifies the receipt/settings/current recipes/status, uses its
+exact dependency root for configure/link/runtime and feature inspection, then
+binds the unchanged dependency receipt hash into the new SDK receipt. Omitting
+this argument retains the ordinary prepared dependency input. Neither path
+replaces the ordinary installed SDK. [Verified handoff](ITERATION_253.md).

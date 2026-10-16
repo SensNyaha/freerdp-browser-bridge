@@ -1,17 +1,29 @@
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { readDependencyReceipt } from './dependency-input.mjs';
 
 const windows = process.platform === 'win32';
 const triplet = windows ? 'x64-windows-bundled' : 'x64-linux-bundled';
-const prefix = resolve('.deps/installed', triplet);
+let dependencyInstalledRoot = resolve('.deps/installed');
+let prefix = resolve(dependencyInstalledRoot, triplet);
 const arguments_ = process.argv.slice(2);
 if (
   arguments_.length &&
-  (arguments_.length !== 1 || arguments_[0] !== '--clean-local')
+  (arguments_.length > 2 || arguments_[0] !== '--clean-local')
 )
-  throw new Error('Expected optional --clean-local');
-const cleanLocal = arguments_.length === 1;
+  throw new Error(
+    'Expected optional --clean-local and completed dependency receipt',
+  );
+const cleanLocal = arguments_.length >= 1;
+const dependencyReceiptPath = arguments_[1];
+const dependencyInput = dependencyReceiptPath
+  ? readDependencyReceipt(dependencyReceiptPath, triplet)
+  : undefined;
+if (dependencyInput) {
+  prefix = dependencyInput.prefix;
+  dependencyInstalledRoot = dependencyInput.installedRoot;
+}
 if (process.versions.node.split('.')[0] !== '24')
   throw new Error('Use Node 24');
 const cachedSource = resolve('.deps/FreeRDP');
@@ -111,7 +123,7 @@ run('cmake', [
   `-DCMAKE_PROJECT_FreeRDP_INCLUDE=${resolve('native/msvc-dependencies.cmake')}`,
   `-DCMAKE_INSTALL_PREFIX=${freerdpPrefix}`,
   `-DCMAKE_TOOLCHAIN_FILE=${resolve('.deps/vcpkg/scripts/buildsystems/vcpkg.cmake')}`,
-  `-DVCPKG_INSTALLED_DIR=${resolve('.deps/installed')}`,
+  `-DVCPKG_INSTALLED_DIR=${dependencyInstalledRoot}`,
   `-DVCPKG_TARGET_TRIPLET=${triplet}`,
   '-DVCPKG_MANIFEST_INSTALL=OFF',
   `-DVCPKG_OVERLAY_TRIPLETS=${resolve('native/vcpkg/triplets')}`,
@@ -185,6 +197,7 @@ run(process.execPath, [
   join(binary, 'CMakeCache.txt'),
   freerdpPrefix,
   features,
+  dependencyInstalledRoot,
 ]);
 if (cleanLocal) {
   const probeBinary = join(cleanRoot, 'probe');
@@ -276,6 +289,13 @@ if (cleanLocal) {
     );
   checkSource(source);
   checkSource(cachedSource);
+  if (
+    dependencyInput &&
+    !dependencyInput.bytes.equals(
+      readDependencyReceipt(dependencyReceiptPath, triplet).bytes,
+    )
+  )
+    throw new Error('Dependency receipt changed during SDK build');
   const receipt = {
     source,
     binary,
@@ -286,6 +306,13 @@ if (cleanLocal) {
     foreignPrefixRejected: true,
     nativeTests: 1,
     reusedDependencyPrefix: prefix,
+    ...(dependencyInput
+      ? {
+          dependencyBuildReceipt: resolve(dependencyReceiptPath),
+          dependencyBuildReceiptHash: dependencyInput.sha256,
+          dependencyBuildSourceRebuilt: true,
+        }
+      : {}),
     runtime,
     features,
   };
