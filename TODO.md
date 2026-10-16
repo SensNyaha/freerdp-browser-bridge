@@ -108,6 +108,11 @@ settings and ordinary parent Node remain; addon OFF. Private codec/crypto
 instrumentation, the upstream test/fuzz suite and wider distro/CI/RDP/device /
 resource gates remain open. [Instrumented SDK evidence](docs/ITERATION_272.md).
 
+Bundled Linux CI now explicitly selects GCC/G++ 12 for dependencies, SDK and
+worker instead of the runner default, with a separate compiler-profile cache
+key. Actual local environment-selection/C++20 probing passes; GitHub execution
+remains unrun. [Prepared workflow evidence](docs/ITERATION_273.md).
+
 ## Implementation status — 2026-10-15
 
 Linux API/private-native service runtime now passes independent non-root /

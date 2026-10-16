@@ -21,11 +21,15 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build build-essential autoconf autoconf-archive automake libtool libltdl-dev pkg-config nasm perl bison openssl binutils
+          sudo apt-get install -y ninja-build build-essential g++-12 autoconf autoconf-archive automake libtool libltdl-dev pkg-config nasm perl bison openssl binutils
+          echo 'CC=gcc-12' >> "$GITHUB_ENV"
+          echo 'CXX=g++-12' >> "$GITHUB_ENV"
+          gcc-12 --version
+          g++-12 --version
       - uses: actions/cache@v4
         with:
           path: .tools/vcpkg-cache
-          key: bundled-${{ runner.os }}-${{ hashFiles('native/dependencies.json', 'native/vcpkg/**') }}
+          key: bundled-${{ runner.os }}-${{ runner.os == 'Linux' && 'gcc12' || 'msvc' }}-${{ hashFiles('native/dependencies.json', 'native/vcpkg/**') }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:dependencies
       - run: pnpm build:freerdp

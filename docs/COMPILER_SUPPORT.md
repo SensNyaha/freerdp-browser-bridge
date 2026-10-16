@@ -58,6 +58,13 @@ codec/crypto dependencies and the addon are not instrumented; the upstream
 project's own test/fuzz suite and connected RDP/device gates remain separate.
 [Instrumented SDK evidence](ITERATION_272.md).
 
+The manual bundled workflow now also selects Linux `CC=gcc-12` and
+`CXX=g++-12` before building private dependencies, FreeRDP and the worker.
+Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.
+A fresh local CMake environment-selection probe verifies actual GNU C/C++ 12
+and the required C++20 library facilities. The workflow itself remains prepared,
+not executed. [Selection/validation record](ITERATION_273.md).
+
 GCC 12 is a build-toolchain baseline. It is separate from the minimum glibc,
 libstdc++ symbol versions and distribution runtime closure of a particular
 binary archive. Installing a prebuilt npm/native artifact does not by itself
