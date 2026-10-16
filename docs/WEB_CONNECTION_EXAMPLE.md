@@ -30,7 +30,9 @@ checks bounded empty headless startup/cleanup with no RDP creation.
 Controls cover auto/NLA/TLS, minimum TLS 1.2/1.3, strict/session-only certificate
 prompt, connection deadline, one primary display at 100% scale, initial size /
 dynamic resolution, video codec, quality/FPS, touch, PCM/Opus output, 120/200 ms
-handoff buffer and PCM/Opus microphone. Actual capabilities disable unavailable
+handoff buffer, PCM/Opus microphone and opt-in text clipboard directions/item
+quota. [Explicit clipboard controls and scope](CLIPBOARD_BROWSER.md).
+Actual capabilities disable unavailable
 choices; submission checks them again. Browser codec presence is checked;
 existing viewer negotiation performs detailed decoder/provider checks. Microphone
 permission and audio gesture ownership retain separate controls.
@@ -40,7 +42,7 @@ fingerprint dialog offers accept-for-this-session or reject, without enabling
 TOFU/persistent trust/ignore. Video choice belongs to viewer negotiation and
 is not passed as unsupported native `media.videoCodec`.
 
-Gateway/proxy, reconnect, clipboard/files/drives, printers, smartcard,
+Gateway/proxy, reconnect, HTML/image/file clipboard, files/drives, printers, smartcard,
 serial/parallel, USB and RemoteApp are listed as unavailable in the current
 backend. Their original implementation stages/gates remain required. This does
 not claim a complete Remmina clone or turn a compiled addin into device support.

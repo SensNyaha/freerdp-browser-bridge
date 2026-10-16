@@ -35,6 +35,21 @@ export function connectionConfig(fields, capabilities) {
   const videoCodec = choice('video', ['h264', 'jpeg']);
   const audioOutput = choice('audio', ['off', 'pcm', 'opus']);
   const microphone = choice('microphone', ['off', 'pcm', 'opus']);
+  const clipboardMode = fields.get('clipboard') ?? 'off';
+  if (
+    ![
+      'off',
+      'bidirectional',
+      'server-to-browser',
+      'browser-to-server',
+    ].includes(clipboardMode)
+  )
+    invalid();
+  if (
+    clipboardMode !== 'off' &&
+    (!capabilities?.clipboardText || !capabilities?.clipboardRevoke)
+  )
+    throw new Error('Выбранная функция не поддерживается этим bridge');
   const dynamicResolution = fields.get('dynamicResolution') === 'on';
   const touch = fields.get('touch') === 'on';
   const buffer = number('audioBuffer', 120, 200);
@@ -80,6 +95,15 @@ export function connectionConfig(fields, capabilities) {
       maxFps: number('fps', 1, videoCodec === 'jpeg' ? 20 : 30),
     },
     input: { touch },
+    ...(clipboardMode === 'off'
+      ? {}
+      : {
+          clipboard: {
+            mode: clipboardMode,
+            text: true,
+            maxItemBytes: number('clipboardMax', 1, 16777216),
+          },
+        }),
     media: {
       audioOutput,
       microphone,

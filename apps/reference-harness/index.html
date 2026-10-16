@@ -58,6 +58,32 @@
       details {
         margin: 12px 0;
       }
+      #clipboard-text {
+        max-width: 920px;
+        padding: 16px;
+        border: 1px solid #374151;
+        margin-top: 16px;
+      }
+      #clipboard-text label {
+        display: block;
+        margin: 12px 0;
+      }
+      #clipboard-text textarea {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        background: #1f2937;
+        color: #f9fafb;
+        border: 1px solid #6b7280;
+        border-radius: 4px;
+      }
+      #clipboard-text button {
+        margin-bottom: 8px;
+      }
+      #clipboard-text [role='status'] {
+        display: block;
+      }
       #certificate:not([hidden]) {
         padding: 16px;
         border: 2px solid #fbbf24;
@@ -149,6 +175,35 @@
                 required
             /></label>
           </div>
+        </details>
+        <details>
+          <summary>Текстовый буфер обмена</summary>
+          <div class="connection-fields">
+            <label
+              >Направление
+              <select name="clipboard">
+                <option value="off">Выключен</option>
+                <option value="bidirectional">В обе стороны</option>
+                <option value="server-to-browser">Из RDP в браузер</option>
+                <option value="browser-to-server">Из браузера в RDP</option>
+              </select>
+            </label>
+            <label
+              >Лимит одного текста, байт
+              <input
+                name="clipboardMax"
+                type="number"
+                min="1"
+                max="16777216"
+                value="1048576"
+                required
+              />
+            </label>
+          </div>
+          <p>
+            Только явные операции с текстом Unicode. HTML, изображения и файлы
+            пока недоступны.
+          </p>
         </details>
         <details>
           <summary>Экран и качество</summary>
@@ -249,10 +304,10 @@
           <summary>Дополнительные функции в стиле Remmina</summary>
           <p>
             Следующие функции ещё не доступны в текущем bridge: Gateway и proxy,
-            автоматическое переподключение, буфер обмена, диски и передача
-            файлов, принтеры, smartcard, serial/parallel, USB и RemoteApp. Их
-            настройки будут включаться по мере реализации и проверки
-            соответствующих модулей.
+            автоматическое переподключение, HTML/изображения в буфере, диски и
+            передача файлов, принтеры, smartcard, serial/parallel, USB и
+            RemoteApp. Их настройки будут включаться по мере реализации и
+            проверки соответствующих модулей.
           </p>
         </details>
       </fieldset>
@@ -311,6 +366,47 @@
         удалённого рабочего стола.
       </p>
     </form>
+    <section id="clipboard-text" aria-label="Текстовый буфер обмена">
+      <p>
+        Текстовый буфер обмена. Получение и отправка выполняются отдельными
+        кнопками.
+      </p>
+      <label
+        >Черновик для RDP
+        <textarea
+          data-clipboard-draft
+          rows="3"
+          autocomplete="off"
+          spellcheck="false"
+          disabled
+        ></textarea>
+      </label>
+      <button data-clipboard="paste" disabled>
+        Вставить из локального буфера
+      </button>
+      <button data-clipboard="send" disabled>Предложить текст в RDP</button>
+      <button data-clipboard="read" disabled>Получить текст из RDP</button>
+      <label
+        >Полученный текст
+        <textarea
+          data-clipboard-received
+          rows="3"
+          autocomplete="off"
+          spellcheck="false"
+          readonly
+        ></textarea>
+      </label>
+      <button data-clipboard="copy" disabled>
+        Скопировать полученный текст
+      </button>
+      <button data-clipboard="clear" disabled>Очистить локальный текст</button>
+      <span role="status">Буфер обмена выключен</span>
+      <p>
+        Доступ к системному буферу запрашивается только при нажатии «Вставить»
+        или «Скопировать». Можно использовать обычную вставку в черновик и
+        копирование из поля полученного текста.
+      </p>
+    </section>
     <form id="resize">
       <label
         >Ширина

@@ -170,8 +170,9 @@ before CONFIGURE/SECRET. Prepared
 [controller ownership](CLIPBOARD_SESSION.md) now binds manager operations to the
 current control lease and joins drain/revoke before replacement. Server
 [control framing/credit](CLIPBOARD_CONTROL.md) is implemented for explicit backend
-hooks and the selected native adapter; browser permission/gesture integration and actual
-remote transfer remain required. The inventory lab helper never reads clipboard
+hooks and the selected native adapter. [Browser integration](CLIPBOARD_BROWSER.md)
+now passes Edge/mocked-permission fixtures; actual browser/OS permission and remote
+transfer remain required. The inventory lab helper never reads clipboard
 contents; optional `set-sentinel` explicitly writes one fixed synthetic value,
 waits for the server ACK and clears it. It does not establish application reads.
 No content enters errors, metrics or logs; total RSS and network latency remain

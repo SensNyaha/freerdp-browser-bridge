@@ -75,7 +75,8 @@ Server control clipboard commands/credit are now implemented for explicit backen
 hooks in [CLIPBOARD_CONTROL.md](CLIPBOARD_CONTROL.md). Native selection now requires
 a matching numeric item reservation plus both clipboard HELLO capabilities;
 missing reservations refuse before spawn, old peers before CONFIGURE/SECRET.
-Reference browser activation remains open.
+The [explicit reference browser client](CLIPBOARD_BROWSER.md) now passes scoped
+Edge/fake-RDP fixtures; actual remote/browser/OS clipboard acceptance remains open.
 Worker factories now receive frozen numeric `SessionWorkerLimits`, without
 credentials/configuration references, to reserve explicit per-item IPC capacity.
 [Reservation and prepared chunk format](CLIPBOARD_CHUNKS.md).

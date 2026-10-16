@@ -3,7 +3,8 @@
 Implements the private session/controller portion of SPECIFICATION §2.7, using
 the [typed native API and revoke barrier](CLIPBOARD_IPC.md). This is prepared
 manager/native-adapter plumbing. Server control framing/credit now uses
-[RWC1](CLIPBOARD_CONTROL.md); browser activation and actual remote/application
+[RWC1](CLIPBOARD_CONTROL.md) and the [reference client](CLIPBOARD_BROWSER.md);
+actual remote/application
 ownership acceptance remain open. The production `NativeSessionWorker` now
 accepts explicit text selection with a matching item reservation and both
 `clipboardText` / `clipboardRevoke` HELLO capabilities (Iteration 237).

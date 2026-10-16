@@ -27,7 +27,7 @@ poll deadline. Its unchanged individual repeat passes in 479 ms; the first cause
 is unverified and a complete Windows regression pass remains required. Logs are
 retained in `build/iteration-237-*`. Native CTest passes Windows 29/29 and Linux
 30/30. A direct Windows CTest invocation could not create its cached R: log path;
-the штатный build helper restores the alias and passes. No C++ parser or channel
+the standard build helper restores the alias and passes. No C++ parser or channel
 changes; earlier sanitizer/fuzzer evidence keeps its original scope.
 
 Reference browser transfer/permission/UI, actual remote data/revoke, total RSS /

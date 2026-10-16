@@ -139,6 +139,15 @@ async function refresh() {
         },
       ],
       ['audioBuffer', { 120: true, 200: value.audioBuffer200 }],
+      [
+        'clipboard',
+        {
+          off: true,
+          bidirectional: value.clipboardText && value.clipboardRevoke,
+          'server-to-browser': value.clipboardText && value.clipboardRevoke,
+          'browser-to-server': value.clipboardText && value.clipboardRevoke,
+        },
+      ],
     ]) {
       const select = form.elements[name];
       for (const option of select.options)

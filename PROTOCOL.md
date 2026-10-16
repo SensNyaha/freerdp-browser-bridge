@@ -9,7 +9,8 @@ Private typed Node selection/read/write now requires HELLO extension bit 8
 bit 16 `clipboardRevoke` (Iteration 233). Native adapter selection now requires
 both capabilities and a matching finite item reservation (Iteration 237).
 Server control transport retains the WebSocket body limit (Iteration 236);
-reference browser integration remains gated.
+the [reference browser client](docs/CLIPBOARD_BROWSER.md) implements explicit
+text operations without automatic clipboard access (Iteration 238).
 [Private contract](docs/CLIPBOARD_IPC.md).
 RWC1 version-1 byte chunks fit the existing 4 KiB message bound.
 [Layout](docs/CLIPBOARD_CHUNKS.md), [commands/credit/deadlines](docs/CLIPBOARD_CONTROL.md).
@@ -74,6 +75,10 @@ Required server events include:
 - `cursor.visibility`
 - `clipboard.offer`
 - `clipboard.data`
+- `clipboard.data.complete`
+- `clipboard.set.ready`
+- `clipboard.set.ack`
+- `clipboard.set.result`
 - `printer.job.ready`
 - `device.status`
 - `stats.update`
@@ -88,6 +93,7 @@ Required client commands include:
 - `display.resize.request`
 - `clipboard.set`
 - `clipboard.request`
+- `clipboard.ack`
 - `auth.response`
 - `certificate.response`
 - `media.request-keyframe`

@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | IN PROGRESS | Native/private Unicode and server control transfer pass scoped tests; browser activation and remote clipboard/CRUD gate remain |
+| 7 — clipboard/drives | IN PROGRESS | Native/private/server text and explicit Edge client pass scoped fixtures; actual remote/browser/OS clipboard and managed-drive CRUD gate remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -588,8 +588,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Actual Windows/Linux worker strict TLS/cancellation and linked fake-channel
   quota checks pass. HELLO-gated private Node selection/read/write now preserve
   current source/offer authority, one flight and late-result disposal; synthetic
-  IPC and actual native TLS checks pass. Public/browser selection, remote clipboard
-  and total-resource acceptance remain open. [Native evidence](docs/ITERATION_231.md),
+  IPC and actual native TLS checks pass. Explicit reference browser text selection
+  and local actions pass Edge/fake-RDP/mocked-Clipboard-API fixtures; actual remote /
+  OS clipboard and total-resource acceptance remain open.
+  [Browser evidence](docs/ITERATION_238.md), [Native evidence](docs/ITERATION_231.md),
   [typed API and actual XRDP offer/empty-text ACK evidence](docs/ITERATION_232.md).
   Native offer revocation now has a separate content-free schema-2 command and
   checked public send/ACK path; unlike empty text, it removes all offered formats.
@@ -597,7 +599,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   completion before replacement; fake/backend and synthetic process composition
   pass. The native adapter now accepts matching numeric item reservations and
   both clipboard HELLO capabilities; legacy refusal precedes settings/secrets.
-  Browser and actual remote transfer/revoke remain open.
+  Actual remote/browser/OS transfer/revoke acceptance remains open.
   [Native adapter evidence](docs/ITERATION_237.md),
   [Controller contract](docs/CLIPBOARD_SESSION.md),
   [evidence](docs/ITERATION_234.md).
@@ -606,8 +608,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Server control reassembly/credit now passes both-way 16 MiB virtual-clock and
   multi-window Unicode actual-socket/fake-RDP fixtures, with input interleave,
   independent deadlines and controller retirement. Native adapter selection
-  passes synthetic full-item and actual worker TLS checks; browser activation
-  and actual remote transfer remain open.
+  passes synthetic full-item and actual worker TLS checks. The explicit browser
+  owner now uses bounded RWC1 windows, original deadlines and late-permission /
+  detach barriers. Actual remote/OS transfer remains open.
+  [Browser contract](docs/CLIPBOARD_BROWSER.md).
   [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/ITERATION_236.md).
   [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
   [evidence](docs/ITERATION_235.md).
@@ -641,7 +645,9 @@ profile's target, microphone, recovery, resource or platform acceptance.
   the read as refused; the full wire maximum fits classic SVC fragmentation.
   [Contract](docs/CLIPBOARD_INGRESS.md), [initial evidence](docs/ITERATION_225.md),
   [quota/fragment evidence](docs/ITERATION_229.md).
-- [ ] Clipboard policy directions/size caps.
+- [~] IN PROGRESS — Explicit text directions/item caps pass native, Node, server
+  and Edge fixtures, including full 16 MiB composition. Actual remote direction /
+  quota, other required formats and total-resource acceptance remain open.
 - [ ] HTML clipboard.
 - [ ] Image clipboard where negotiated.
 - [ ] Session sandbox and safe path resolver.

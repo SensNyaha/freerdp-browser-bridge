@@ -6,6 +6,8 @@ import { touchState, touchInputReady } from './touch.js';
 import { MicrophoneMediaClient } from './microphone-media.js';
 import { MicrophoneOwner } from './microphone-owner.js';
 import { queryMicrophoneOpusSupport } from './microphone-opus-encoder.js';
+import { ClipboardClient } from './clipboard-client.js';
+import { installClipboardView } from './clipboard-view.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -77,6 +79,9 @@ function detach() {
   stats.closed = true;
   if (!current || current.detaching) return;
   current.detaching = true;
+  current.clipboardView?.dispose();
+  current.clipboard?.dispose();
+  clearTimeout(current.clipboardTimer);
   current.disposeInput?.();
   current.cursor?.dispose();
   current.closed = true;
@@ -567,6 +572,53 @@ function attachSession(created, options, playback) {
     status.textContent = 'Просмотр завершён с ошибкой';
     detach();
   };
+  session.control.binaryType = 'arraybuffer';
+  const clipboardAuthorized = () =>
+    current === session && !session.closed && session.connected;
+  const clipboardChanged = () => {
+    clearTimeout(session.clipboardTimer);
+    session.clipboardTimer = undefined;
+    const deadline = session.clipboard.nextDeadline;
+    if (deadline !== undefined && !session.closed)
+      session.clipboardTimer = setTimeout(
+        () => session.clipboard.service(),
+        Math.max(1, Math.ceil(deadline - performance.now())),
+      );
+    session.clipboardView?.changed();
+  };
+  session.clipboard = new ClipboardClient({
+    authorized: clipboardAuthorized,
+    bufferedAmount: () => session.control.bufferedAmount,
+    changed: clipboardChanged,
+    failed: fail,
+    sendControl(type, data) {
+      if (
+        !clipboardAuthorized() ||
+        session.control.readyState !== WebSocket.OPEN ||
+        session.control.bufferedAmount > 8192
+      )
+        return;
+      const seq = session.controlSequence++;
+      session.control.send(
+        JSON.stringify({ v: 1, type, seq, ts: Date.now(), data }),
+      );
+      return seq;
+    },
+    sendBinary(bytes) {
+      if (
+        !clipboardAuthorized() ||
+        session.control.readyState !== WebSocket.OPEN ||
+        session.control.bufferedAmount + bytes.byteLength > 8192
+      )
+        return false;
+      session.control.send(bytes);
+      return true;
+    },
+  });
+  session.clipboardView = installClipboardView(
+    document.querySelector('#clipboard-text'),
+    session.clipboard,
+  );
   for (const ws of [session.control, session.media])
     ws.addEventListener('close', () => {
       if (!session.closed && session === current) {
@@ -577,14 +629,20 @@ function attachSession(created, options, playback) {
   session.control.addEventListener('message', (event) => {
     if (session.closed) return;
     try {
+      if (event.data instanceof ArrayBuffer) {
+        session.clipboard.binary(event.data);
+        return;
+      }
       const message = JSON.parse(event.data);
       if (message.v !== 1) throw new Error();
+      if (session.clipboard.message(message.type, message.data)) return;
       if (message.type === 'certificate.prompt') {
         session.prompt = message.data;
         fingerprint.textContent = message.data.fingerprint;
         certificate.hidden = false;
       } else if (message.type === 'session.state') {
         session.connected = message.data.state === 'connected';
+        session.clipboard.service();
         session.microphoneOwner?.changed();
         updateMicrophone(session);
         status.textContent = message.data.state;

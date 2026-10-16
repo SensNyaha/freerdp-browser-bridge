@@ -49,6 +49,8 @@ test(
             jpegCapture: true,
             h264Capture: false,
             displayControl: true,
+            clipboardText: true,
+            clipboardRevoke: true,
           }),
         );
         return;
@@ -109,6 +111,10 @@ test(
           !document.querySelector('#connect-session').disabled,
       );
       assert.equal(await page.locator('[name=video]').inputValue(), 'jpeg');
+      assert.equal(await page.locator('[name=clipboard]').inputValue(), 'off');
+      await page.locator('details:has([name=clipboard]) > summary').click();
+      await page.locator('[name=clipboard]').selectOption('bidirectional');
+      await page.locator('[name=clipboardMax]').fill('65536');
       assert.equal(
         await page.locator('[name=certificatePolicy]').inputValue(),
         'strict',
@@ -141,6 +147,11 @@ test(
       assert.equal(payload.auth.password, 'synthetic-form-password');
       assert.equal(payload.media.videoCodec, undefined);
       assert.equal(payload.target.port, 3389);
+      assert.deepEqual(payload.clipboard, {
+        mode: 'bidirectional',
+        text: true,
+        maxItemBytes: 65536,
+      });
       assert.equal(await page.locator('[name=password]').inputValue(), '');
       await page.click('#disconnect-session');
       await page.waitForFunction(

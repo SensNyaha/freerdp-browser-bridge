@@ -37,6 +37,48 @@ const caps = {
   microphoneReset: true,
 };
 const fields = (extra = {}) => new Map(Object.entries({ ...values, ...extra }));
+test('manual clipboard selection: explicit text directions and finite quota require both native capabilities', () => {
+  const available = { ...caps, clipboardText: true, clipboardRevoke: true };
+  assert.equal(
+    connectionConfig(fields(), available).config.clipboard,
+    undefined,
+  );
+  for (const mode of [
+    'bidirectional',
+    'server-to-browser',
+    'browser-to-server',
+  ]) {
+    const config = connectionConfig(
+      fields({ clipboard: mode, clipboardMax: '16777216' }),
+      available,
+    ).config;
+    assert.deepEqual(validateSessionConfig(config).clipboard, {
+      mode,
+      text: true,
+      maxItemBytes: 16777216,
+    });
+    for (const flag of ['clipboardText', 'clipboardRevoke'])
+      assert.throws(() =>
+        connectionConfig(fields({ clipboard: mode, clipboardMax: '1024' }), {
+          ...available,
+          [flag]: false,
+        }),
+      );
+  }
+  for (const clipboardMax of ['0', '16777217', '1.5', 'NaN'])
+    assert.throws(() =>
+      connectionConfig(
+        fields({ clipboard: 'bidirectional', clipboardMax }),
+        available,
+      ),
+    );
+  assert.throws(() =>
+    connectionConfig(
+      fields({ clipboard: 'html', clipboardMax: '1024' }),
+      available,
+    ),
+  );
+});
 const deferred = () => {
   let resolve;
   const promise = new Promise((done) => {

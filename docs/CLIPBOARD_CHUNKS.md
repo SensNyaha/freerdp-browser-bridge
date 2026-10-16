@@ -3,8 +3,8 @@
 Implements byte framing/reservation for SPECIFICATION §2.7. Iteration 235 prepared
 independent Node/browser codecs; Iteration 236 installs the server transfer/credit
 owner for explicit backends. Iteration 237 activates the native adapter with a
-matching reservation and both HELLO capabilities. Browser integration remains
-gated. A codec alone grants no authority.
+matching reservation and both HELLO capabilities. Iteration 238 implements the
+[explicit reference client](CLIPBOARD_BROWSER.md). A codec alone grants no authority.
 [Controller ownership](CLIPBOARD_SESSION.md), [private transport](CLIPBOARD_IPC.md).
 
 All integers are big-endian. Each record is at most 4,096 bytes:
