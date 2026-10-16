@@ -58,10 +58,12 @@ Windows export, CI and sanitizer gates remain separate.
 GNU builds now explicitly require GCC 12 and a matching C++20 standard library.
 A new actual GCC 12.2 linked consumer passes CTest 31/31, process/TLS 40/40 and
 full Node 657 passed / 58 skips; MSVC foundation passes the probe and 15/15.
-The separate local Ubuntu GCC 13 standard PIE ASan/UBSan foundation passes 15/15
-without the historical non-PIE workaround. The GNU minimum remains 12; CI is
-prepared, not run. [Compiler support](docs/COMPILER_SUPPORT.md),
-[policy/build](docs/ITERATION_263.md), [PIE environment](docs/ITERATION_262.md).
+The local Ubuntu standard PIE ASan/UBSan foundation passes 16/16 with GCC 12.4
+and 15/15 with GCC 13. Eleven Clang 18 PIE sanitizer fuzz smokes also pass.
+The GNU minimum remains 12; explicit compiler/budget CI profiles are prepared,
+not run. [Compiler support](docs/COMPILER_SUPPORT.md),
+[policy/build](docs/ITERATION_263.md), [GCC 12 PIE/fuzz](docs/ITERATION_264.md),
+[earlier PIE environment](docs/ITERATION_262.md).
 
 ## Implementation status — 2026-10-15
 
@@ -336,13 +338,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   entry is prepared, not executed. [Support](docs/COMPILER_SUPPORT.md),
   [evidence](docs/ITERATION_263.md).
 
-- [x] DONE for local Ubuntu standard PIE sanitizer foundation — GCC 13 / ASan /
-  UBSan CTest 15/15, honest worker CLI and actual PIE ELF identity pass under
+- [x] DONE for local Ubuntu standard PIE sanitizer foundation — GCC 12.4 / GCC 13
+  ASan/UBSan CTest 16/16 and 15/15, honest worker CLI and actual PIE ELF identity pass under
   UID1000/read-only/no-network with bounded executable build tmpfs. GCC/Clang
   empty PIE sanitizer programs each pass 100 launches with default options.
-  No ASLR/seccomp or non-PIE workaround is used. This does not raise the GCC 12
-  minimum or close addon/upstream/fuzz/CI scope; prior Bookworm failures remain
-  retained. [Evidence and toolchain versions](docs/ITERATION_262.md).
+  No ASLR/seccomp or non-PIE workaround is used. Eleven Clang 18 seeded PIE fuzz
+  targets pass bounded 20-second / 512 MiB smokes; the local external symbolizer
+  remains unavailable. The GCC 12 minimum and addon/upstream/exhaustive-fuzz/CI
+  boundaries remain; prior Bookworm failures are retained.
+  [GCC 12 and fuzz](docs/ITERATION_264.md), [earlier profile](docs/ITERATION_262.md).
 
 - [x] DONE for complete tracked-source Linux project export — New git archive
   fixture begins without build/dist/node_modules/.deps/lab files, performs frozen

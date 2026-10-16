@@ -40,19 +40,21 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10.11.0
+      - name: Install baseline GCC and Clang sanitizer tools
+        run: sudo apt-get -o APT::Update::Error-Mode=any update && sudo apt-get install -y g++-12 clang-18 libclang-rt-18-dev
       - run: pnpm install --frozen-lockfile && pnpm build
-      - run: cmake --preset sanitizers && cmake --build --preset sanitizers && ctest --preset sanitizers
+      - run: cmake --preset sanitizers -DCMAKE_CXX_COMPILER=g++-12 && cmake --build --preset sanitizers && ctest --preset sanitizers
       - run: pnpm test
         env:
           BRIDGE_TEST_BINARY_DIR: build/sanitizers
-      - run: cmake --preset fuzz && cmake --build --preset fuzz && node scripts/seed-fuzz.mjs && build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20
-      - run: node scripts/seed-audin-fuzz.mjs && build/fuzz/audin-fuzz build/fuzz/audin-corpus -max_total_time=20
-      - run: node scripts/seed-dvc-bounds-fuzz.mjs && build/fuzz/dvc-bounds-fuzz build/fuzz/dvc-bounds-corpus -max_total_time=20
-      - run: node scripts/seed-dvc-svc-fuzz.mjs && build/fuzz/dvc-svc-fuzz build/fuzz/dvc-svc-corpus -max_total_time=20
-      - run: node scripts/seed-avc-admission-fuzz.mjs && build/fuzz/avc-admission-fuzz build/fuzz/avc-admission-corpus -max_total_time=20
-      - run: node scripts/seed-gfx-pdu-admission-fuzz.mjs && build/fuzz/gfx-pdu-admission-fuzz build/fuzz/gfx-pdu-admission-corpus -max_total_time=20
-      - run: node scripts/seed-audio-svc-fuzz.mjs && build/fuzz/audio-svc-fuzz build/fuzz/audio-svc-corpus -max_total_time=20
-      - run: node scripts/seed-seqpacket-fuzz.mjs && build/fuzz/seqpacket-fuzz build/fuzz/seqpacket-corpus -max_total_time=20 -max_len=32768
-      - run: node scripts/seed-clipboard-fuzz.mjs && build/fuzz/clipboard-text-fuzz build/fuzz/clipboard-corpus -max_total_time=20 -max_len=16384 -rss_limit_mb=512
-      - run: node scripts/seed-clipboard-ingress-fuzz.mjs && build/fuzz/clipboard-ingress-fuzz build/fuzz/clipboard-ingress-corpus -max_total_time=20 -max_len=16384 -rss_limit_mb=512
-      - run: node scripts/seed-clipboard-wire-fuzz.mjs && build/fuzz/clipboard-wire-fuzz build/fuzz/clipboard-wire-corpus -max_total_time=20 -max_len=16384 -rss_limit_mb=512
+      - run: cmake --preset fuzz -DCMAKE_CXX_COMPILER=clang++-18 && cmake --build --preset fuzz && node scripts/seed-fuzz.mjs && build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=32768
+      - run: node scripts/seed-audin-fuzz.mjs && build/fuzz/audin-fuzz build/fuzz/audin-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
+      - run: node scripts/seed-dvc-bounds-fuzz.mjs && build/fuzz/dvc-bounds-fuzz build/fuzz/dvc-bounds-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
+      - run: node scripts/seed-dvc-svc-fuzz.mjs && build/fuzz/dvc-svc-fuzz build/fuzz/dvc-svc-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
+      - run: node scripts/seed-avc-admission-fuzz.mjs && build/fuzz/avc-admission-fuzz build/fuzz/avc-admission-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
+      - run: node scripts/seed-gfx-pdu-admission-fuzz.mjs && build/fuzz/gfx-pdu-admission-fuzz build/fuzz/gfx-pdu-admission-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
+      - run: node scripts/seed-audio-svc-fuzz.mjs && build/fuzz/audio-svc-fuzz build/fuzz/audio-svc-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
+      - run: node scripts/seed-seqpacket-fuzz.mjs && build/fuzz/seqpacket-fuzz build/fuzz/seqpacket-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=32768
+      - run: node scripts/seed-clipboard-fuzz.mjs && build/fuzz/clipboard-text-fuzz build/fuzz/clipboard-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
+      - run: node scripts/seed-clipboard-ingress-fuzz.mjs && build/fuzz/clipboard-ingress-fuzz build/fuzz/clipboard-ingress-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
+      - run: node scripts/seed-clipboard-wire-fuzz.mjs && build/fuzz/clipboard-wire-fuzz build/fuzz/clipboard-wire-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512

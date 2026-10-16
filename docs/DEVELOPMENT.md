@@ -783,3 +783,23 @@ worker's CMake cache. It checks the SDK's own matching install prefix and C-only
 GDI/H.264 object dependencies after rebasing its cached ASCII alias. Both the
 ordinary prepared and isolated source-built SDK layouts pass; unknown layouts
 refuse. [Verification correction and full regression](ITERATION_261.md).
+
+The GNU compiler minimum is GCC 12 with a matching C++20 library. The local
+Ubuntu builder now includes g++-12; select it explicitly in a new output tree:
+
+```sh
+cmake --preset sanitizers -B build/sanitizers-gcc12-check \
+  -DCMAKE_CXX_COMPILER=g++-12 -DFETCHCONTENT_FULLY_DISCONNECTED=ON \
+  -DFETCHCONTENT_SOURCE_DIR_CATCH2=/catch2-src
+cmake --build build/sanitizers-gcc12-check --parallel 2
+ctest --test-dir build/sanitizers-gcc12-check --output-on-failure --timeout 30
+```
+
+`/catch2-src` is the prepared public source in the native Ubuntu verifier.
+Keep an executable bounded build tmpfs, noexec /tmp, read-only root, UID1000,
+network none and the other restrictions from iteration 262. Do not add non-PIE
+flags or change ASLR/seccomp. GCC 12.4 CTest 16/16 and eleven Clang 18 bounded
+PIE fuzz smokes pass locally; CI explicitly selects these compiler profiles and
+budgets but remains unrun. Fuzz seed generation additionally needs Node 24 and
+the built protocol JS (or its already generated public corpus).
+[Current results and remaining symbolizer/upstream scope](ITERATION_264.md).

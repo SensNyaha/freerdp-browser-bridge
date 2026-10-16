@@ -27,6 +27,13 @@ MSVC passes the actual library probe and foundation CTest 15/15. CI now includes
 an explicit GCC 12 foundation entry, prepared but not run.
 [Current policy/build evidence](ITERATION_263.md).
 
+Ubuntu GCC 12.4 also passes the standard PIE ASan/UBSan foundation: actual
+library probe, native CTest 16/16 and 100 default-option empty-program launches.
+Its distribution sanitizer runtimes are 14.2; the historical Bookworm/GCC 12.2
+PIE startup failures remain retained as a separate environment result. Eleven
+Clang 18 PIE sanitizer fuzz smokes pass in the same restricted Ubuntu fixture.
+[Sanitizer/toolchain evidence](ITERATION_264.md).
+
 GCC 12 is a build-toolchain baseline. It is separate from the minimum glibc,
 libstdc++ symbol versions and distribution runtime closure of a particular
 binary archive. Installing a prebuilt npm/native artifact does not by itself
