@@ -58,6 +58,13 @@ codec/crypto dependencies and the addon are not instrumented; the upstream
 project's own test/fuzz suite and connected RDP/device gates remain separate.
 [Instrumented SDK evidence](ITERATION_272.md).
 
+The GCC 12.4 sanitizer runtime profile now also includes a separately rebuilt
+Opus 1.6.1. Its five own static test cases are observed passing, with an initial
+extensions timeout retained and the full 100-million-iteration focused repeat
+passing. Actual shared-library selection, bridge CTest 31/31 and full Node
+633 / 84 skips / 717 pass. Other private dependencies/addon and wider acceptance
+remain separate. [Opus profile/evidence](ITERATION_274.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.

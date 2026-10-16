@@ -113,6 +113,13 @@ worker instead of the runner default, with a separate compiler-profile cache
 key. Actual local environment-selection/C++20 probing passes; GitHub execution
 remains unrun. [Prepared workflow evidence](docs/ITERATION_273.md).
 
+The local GCC 12.4 instrumented SDK profile additionally uses rebuilt ASan/UBSan
+Opus 1.6.1. Shared-library origin, bridge CTest 31/31 and full Node 633 / 84 skips
+pass. Four own Opus cases pass initially; the 100-million-iteration extensions
+case first times out, then passes unchanged with the same seed and a finite
+longer deadline. Other dependency/addon/platform/fuzz/CI and connected audio /
+resource gates remain open. [Evidence](docs/ITERATION_274.md).
+
 ## Implementation status — 2026-10-15
 
 Linux API/private-native service runtime now passes independent non-root /
