@@ -94,6 +94,10 @@ class DiagnosticSession extends NativeSessionWorker {
 const nativeWorker = new DiagnosticSession(options);
 let nativeState = 'created';
 let nativeFailure;
+let clipboardSourceEvents = 0;
+const releaseClipboardSource = nativeWorker.onClipboard(() => {
+  ++clipboardSourceEvents;
+});
 const releaseNativeState = nativeWorker.onState((state) => {
   nativeState = state;
 });
@@ -146,6 +150,11 @@ const server = await createSessionServer({
 for (const [url, name, type] of [
   ['/harness/', 'index.html', 'text/html'],
   ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
+  ...['wire', 'text', 'client', 'view'].map((name) => [
+    `/harness/clipboard-${name}.js`,
+    `clipboard-${name}.js`,
+    'text/javascript',
+  ]),
   ['/harness/session-form.js', 'session-form.js', 'text/javascript'],
   ['/harness/connection-config.js', 'connection-config.js', 'text/javascript'],
   ['/harness/connection-owner.js', 'connection-owner.js', 'text/javascript'],
@@ -201,6 +210,34 @@ let failureEvidence;
 let transportEvidence;
 let transportProxy;
 let restoreNeeded = false;
+const clipboardOffInventory = async () => {
+  const browser = await page.evaluate(() => ({
+    clipboardRequests: window.labClipboardRequests,
+    clipboardControlsDisabled:
+      [...document.querySelectorAll('#clipboard-text button')].length === 5 &&
+      [...document.querySelectorAll('#clipboard-text button')].every(
+        (button) => button.disabled,
+      ),
+    clipboardFieldsEmpty:
+      [...document.querySelectorAll('#clipboard-text textarea')].length === 2 &&
+      [...document.querySelectorAll('#clipboard-text textarea')].every(
+        (field) => field.value === '',
+      ),
+  }));
+  if (
+    clipboardSourceEvents ||
+    browser.clipboardRequests !== 0 ||
+    !browser.clipboardControlsDisabled ||
+    !browser.clipboardFieldsEmpty
+  )
+    throw new Error('LAB_UNEXPECTED_CLIPBOARD_ACTIVATION');
+  return {
+    clipboardSelected: false,
+    clipboardApiMocked: true,
+    clipboardSourceEvents,
+    ...browser,
+  };
+};
 try {
   if (transportLossTest)
     transportProxy = await createLabRdpProxy(lab.host, lab.port ?? 3389);
@@ -242,6 +279,17 @@ try {
   });
   page = await browser.newPage({
     viewport: manual ? null : { width: 1980, height: 1240 },
+  });
+  await page.addInitScript(() => {
+    window.labClipboardRequests = 0;
+    const refused = () => {
+      ++window.labClipboardRequests;
+      return Promise.reject(new Error('LAB_CLIPBOARD_DISABLED'));
+    };
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { readText: refused, writeText: refused },
+    });
   });
   if (microphoneTest)
     await page.addInitScript(() => {
@@ -292,6 +340,7 @@ try {
     undefined,
     { timeout: 20000 },
   );
+  await clipboardOffInventory();
   if (audioTest) {
     await page.waitForFunction(
       () =>
@@ -805,6 +854,7 @@ try {
       JSON.stringify({
         type: 'lab.browser',
         browser: 'chromium',
+        ...(await clipboardOffInventory()),
         ...stats,
         cursorShapesAfterMotion,
         nativeCursorUpdates: cursorUpdates,
@@ -865,6 +915,7 @@ try {
 } finally {
   releaseNativeState();
   releaseNativeFailure();
+  releaseClipboardSource();
   delete credentials.password;
   if (restoreNeeded) {
     let result;

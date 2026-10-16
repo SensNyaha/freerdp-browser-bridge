@@ -32,6 +32,9 @@ prompt, connection deadline, one primary display at 100% scale, initial size /
 dynamic resolution, video codec, quality/FPS, touch, PCM/Opus output, 120/200 ms
 handoff buffer, PCM/Opus microphone and opt-in text clipboard directions/item
 quota. [Explicit clipboard controls and scope](CLIPBOARD_BROWSER.md).
+The clipboard quota field is disabled while off; turning text selection on
+enables the bounded quota input. Current Windows/XRDP JPEG/H.264 default-off
+viewer regression is recorded in [Iteration 239](ITERATION_239.md).
 Actual capabilities disable unavailable
 choices; submission checks them again. Browser codec presence is checked;
 existing viewer negotiation performs detailed decoder/provider checks. Microphone

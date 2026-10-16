@@ -7,6 +7,10 @@ const disconnectButton = document.querySelector('#disconnect-session');
 const message = document.querySelector('#connection-status');
 let capabilities;
 let authorize;
+const updateClipboardQuota = () => {
+  form.elements.clipboardMax.disabled = form.elements.clipboard.value === 'off';
+};
+form.elements.clipboard.addEventListener('change', updateClipboardQuota);
 async function request(path, method = 'GET', config) {
   const body = config ? JSON.stringify(config) : undefined;
   if (config?.auth) delete config.auth.password;
@@ -163,6 +167,7 @@ async function refresh() {
       form.elements[name].disabled = !available;
       if (!available) form.elements[name].checked = false;
     }
+    updateClipboardQuota();
     owner.notify();
     message.textContent = value.connectCore
       ? 'Введите параметры RDP и нажмите «Подключиться»'

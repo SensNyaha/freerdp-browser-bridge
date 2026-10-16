@@ -160,12 +160,19 @@ test(
           !window.bridgeConnection.state.connected,
       );
       assert.equal(deletes, 1);
+      await page.locator('[name=clipboardMax]').fill('');
+      await page.locator('[name=clipboard]').selectOption('off');
+      assert.equal(
+        await page.locator('[name=clipboardMax]').isDisabled(),
+        true,
+      );
       delayCreate = true;
       await page.locator('[name=password]').fill('synthetic-form-password');
       await page.click('#connect-session');
       for (let i = 0; !releaseCreate && i < 100; i++)
         await new Promise((done) => setTimeout(done, 10));
       assert.equal(typeof releaseCreate, 'function');
+      assert.equal(payload.clipboard, undefined);
       await page.click('#disconnect-session');
       releaseCreate();
       await page.waitForFunction(

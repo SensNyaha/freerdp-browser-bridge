@@ -40,6 +40,11 @@ const fields = (extra = {}) => new Map(Object.entries({ ...values, ...extra }));
 test('manual clipboard selection: explicit text directions and finite quota require both native capabilities', () => {
   const available = { ...caps, clipboardText: true, clipboardRevoke: true };
   assert.equal(
+    connectionConfig(fields({ clipboard: 'off', clipboardMax: '' }), available)
+      .config.clipboard,
+    undefined,
+  );
+  assert.equal(
     connectionConfig(fields(), available).config.clipboard,
     undefined,
   );

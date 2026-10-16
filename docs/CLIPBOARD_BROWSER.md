@@ -7,6 +7,11 @@ the connection form defaults to off, checks both native clipboard capabilities
 and supplies a finite 1..16 MiB item maximum. HTML/images/files remain unsupported
 and required follow-up work. Stage 7 remains in progress.
 
+The quota input is disabled while off, so an empty draft quota cannot block an
+ordinary clipboard-disabled connection. Current actual XRDP JPEG/H.264 desktop
+regression verifies the disabled panel and zero native/browser clipboard events
+with mocked-refusal OS APIs. [Scope/evidence](ITERATION_239.md).
+
 The viewer shares the existing authenticated control socket and its sequence
 with input. It sets binaryType to arraybuffer and routes only clipboard messages
 to one ClipboardClient. Offers contain scalar metadata and never trigger reads,

@@ -612,6 +612,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   owner now uses bounded RWC1 windows, original deadlines and late-permission /
   detach barriers. Actual remote/OS transfer remains open.
   [Browser contract](docs/CLIPBOARD_BROWSER.md).
+  Actual Windows/XRDP JPEG/H.264 viewer regression keeps clipboard off, checks
+  zero native/browser requests, nonblank 1080p, cursor/attachment replay and
+  empty runtime. This is not enabled clipboard acceptance.
+  [Off-path evidence](docs/ITERATION_239.md).
   [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/ITERATION_236.md).
   [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
   [evidence](docs/ITERATION_235.md).
