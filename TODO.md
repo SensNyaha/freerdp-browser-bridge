@@ -39,14 +39,21 @@ Local Linux cached-source private dependencies, pinned FreeRDP and a new
 source-only worker/addon now pass the complete native build chain: 20 dependency
 packages, SDK identity/CTest, project CTest 30/30, process/TLS 40/40, codec/module
 origins and full Node 656 passed / 58 skips. The Windows source dependency/SDK/
-  project chain also passes local native/process checks and full Node 662 / 49
-  skips. New Linux/Windows native
+project chain also passes local native/process checks and full Node 662 / 49
+skips. New Linux/Windows native
 packages install and relocate; the Linux archive passes separate restricted
 Bookworm and Ubuntu 24.04 runtime checks. Complete fresh checkout/distro builds/
 CI, standard PIE sanitizer, full service/release/installers and actual
 RDP/device/resource gates remain open. [Linux chain](docs/ITERATION_254.md),
 [Windows chain](docs/ITERATION_257.md), [packaging](docs/ITERATION_258.md),
 [Ubuntu runtime](docs/ITERATION_259.md).
+
+A complete tracked-source Linux project export now also passes new offline Node
+installation/build/full regression, linked CTest 30/30, install/ELF closure,
+relocation and production deploy/import without prior build/dist/node_modules.
+Its native SDK/dependency/tool inputs remain external and verified; new OS/distro,
+Windows export, CI and sanitizer gates remain separate.
+[Evidence](docs/ITERATION_260.md).
 
 ## Implementation status — 2026-10-15
 
@@ -312,6 +319,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for complete tracked-source Linux project export — New git archive
+  fixture begins without build/dist/node_modules/.deps/lab files, performs frozen
+  offline Node installation, native CTest 30/30, full Node 656 passed / 58 skips /
+  714, install/ELF closure, relocation and production deploy/import. Lockfile and
+  external source-built SDK/dependency receipts remain unchanged. Prepared build
+  tools/Catch2/public caches are reused; new OS/toolchain/distro, Windows export,
+  network checkout/download, CI and sanitizer acceptance remain separate.
+  [Evidence](docs/ITERATION_260.md).
 
 - [x] DONE for current source-built native packages — New Linux TGZ and Windows
   ZIP install the exact pinned-source license and generated feature report.
