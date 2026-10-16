@@ -42,8 +42,8 @@ origins and full Node 656 passed / 58 skips. The Windows source dependency/SDK/
 project chain also passes local native/process checks and full Node 662 / 49
 skips. New Linux/Windows native
 packages install and relocate; the Linux archive passes separate restricted
-Bookworm and Ubuntu 24.04 runtime checks. Complete fresh checkout/distro builds/
-CI, standard PIE sanitizer, full service/release/installers and actual
+Bookworm and Ubuntu 24.04 runtime checks. Complete fresh OS/toolchain/distro
+builds, CI, linked/upstream sanitizers, full service/release/installers and actual
 RDP/device/resource gates remain open. [Linux chain](docs/ITERATION_254.md),
 [Windows chain](docs/ITERATION_257.md), [packaging](docs/ITERATION_258.md),
 [Ubuntu runtime](docs/ITERATION_259.md).
@@ -67,6 +67,13 @@ The GNU minimum remains 12; explicit compiler/budget CI profiles are prepared,
 not run. [Compiler support](docs/COMPILER_SUPPORT.md),
 [policy/build](docs/ITERATION_263.md), [GCC 12 PIE/fuzz](docs/ITERATION_264.md),
 [earlier PIE environment](docs/ITERATION_262.md).
+
+A new complete tracked-source Ubuntu GCC 12 export also passes standard PIE
+ASan/UBSan CTest 16/16 and full Node 569 / 146 profile/platform skips, including
+100 actual sanitizer-worker lifecycles and parent-death cleanup. The parent Node
+runs without preload and the addon is OFF. Separate Node-only preload controls
+still fail LSan; addon sanitizer acceptance remains open.
+[Evidence](docs/ITERATION_267.md).
 
 ## Implementation status — 2026-10-15
 
@@ -496,6 +503,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 **Gate:** clean build from fresh checkout/container; exact FreeRDP version visible; no UI required.
 
 ## Stage 1 — native worker process and IPC
+
+- [x] DONE for local Ubuntu GCC 12 standard PIE sanitized-worker lifecycle — New
+  tracked-source fixture, frozen offline Node install, ASan/UBSan CTest 16/16 and
+  full Node 569 / 146 profile/platform skips / 715 pass. Actual 100-worker,
+  parent-death and bounded-output cleanup run with default sanitizer settings in
+  the separate worker. Parent Node is not preloaded; addon/FreeRDP are OFF.
+  Node-only preload LSan controls still fail, so addon/linked/upstream/CI and
+  connected-RDP/resource gates remain open. [Evidence](docs/ITERATION_267.md).
 
 - [x] DONE for Linux default IPC capacity — 32 concurrent actual native workers,
   automatic/manual heartbeat, refused pre-spawn 33rd owner, sixteen-slot

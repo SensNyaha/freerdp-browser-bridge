@@ -34,6 +34,14 @@ PIE startup failures remain retained as a separate environment result. Eleven
 Clang 18 PIE sanitizer fuzz smokes pass in the same restricted Ubuntu fixture.
 [Sanitizer/toolchain evidence](ITERATION_264.md).
 
+A new complete tracked-source Ubuntu export additionally passes full Node
+regression against its GCC 12.4 standard PIE sanitizer worker: CTest 16/16 and
+569 passed / 146 profile/platform skips / 715. The 100-worker lifecycle and
+parent-death cases execute under ASan/UBSan in the separate worker. Parent Node
+uses no sanitizer preload; the addon is OFF. Separate Node-only preload controls
+still fail LSan, so addon sanitizer acceptance remains open.
+[Supervisor/sanitized-worker evidence](ITERATION_267.md).
+
 GCC 12 is a build-toolchain baseline. It is separate from the minimum glibc,
 libstdc++ symbol versions and distribution runtime closure of a particular
 binary archive. Installing a prebuilt npm/native artifact does not by itself
