@@ -298,20 +298,22 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
-- [x] DONE for local Linux fresh project consumer of the rebuilt SDK — Another
+- [x] DONE for local Windows/Linux fresh project consumer of the rebuilt SDK — Another
   source-only Release worker/addon tree resolves all three CMake packages from
-  the new SDK, with a bound unchanged SDK receipt. CTest 30/30, actual-process /
-  synthetic-TLS Node 40/40 and full check 654 passed / 57 skips / 711 pass.
+  the new SDK, with a bound unchanged SDK receipt. Windows/Linux CTest 29/29 and
+  30/30, actual-process/synthetic-TLS Node 26 passed / one skip and 40/40 pass.
+  Current full Windows check passes 660 / 49 skips / 709; Linux 654 / 58 / 712.
   Mixed/incomplete/oversized receipts refuse before build output. Private
-  dependencies/toolchain/Catch2 are reused; Windows consumer, complete fresh
+  dependencies/toolchain/Catch2 are reused; complete fresh
   dependency/distro/CI and remaining sanitizer/runtime gates stay open.
-  [Evidence and artifact hashes](docs/ITERATION_248.md).
+  [Linux evidence and hashes](docs/ITERATION_248.md),
+  [Windows evidence and hashes](docs/ITERATION_250.md).
 
 - [x] DONE for local Windows/Linux isolated FreeRDP source rebuild — A new no-hardlink
   clone of the exact clean pinned checkout compiles and installs into a new SDK
   prefix. Public runtime version/static inventory, three canonical module origins,
   foreign-prefix refusal and consumer CTest 1/1 pass. Existing private dependency /
-  toolchain inputs are reused; Windows project consumer and full fresh
+  toolchain inputs are reused; full fresh
   dependency/distro/CI and remaining sanitizer/runtime gates remain open.
   [Linux evidence and hashes](docs/ITERATION_247.md),
   [Windows evidence and hashes](docs/ITERATION_249.md).

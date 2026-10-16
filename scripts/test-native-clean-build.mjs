@@ -161,15 +161,28 @@ const sourceHash = digest.digest('hex');
 const before = await readdir(root);
 if (before.length !== 1 || before[0] !== 'source')
   throw new Error('Unexpected prebuilt payload');
-const run = (command, args, env = process.env, cwd = root) => {
+const run = (
+  command,
+  args,
+  env = process.env,
+  cwd = root,
+  timeout = 180000,
+) => {
   const result = spawnSync(command, args, {
     cwd,
     env,
     stdio: 'inherit',
-    timeout: 180000,
+    timeout,
     windowsHide: true,
   });
-  if (result.status !== 0) throw new Error('Clean native verification failed');
+  if (result.error?.code === 'ETIMEDOUT')
+    throw new Error(
+      'Clean native command exceeded its ' + timeout + ' ms deadline',
+    );
+  if (result.status !== 0)
+    throw new Error(
+      'Clean native verification failed (exit ' + result.status + ')',
+    );
 };
 let featureHash, featureBytes;
 if (linked) {
@@ -251,7 +264,8 @@ if (sdkReceiptPath) {
       throw new Error('Consumer CMake package escaped the rebuilt SDK prefix');
   }
 }
-run('cmake', ['--build', binary, '--parallel', '8']);
+// Compilation has a separate finite budget from CTest and process/IPC checks.
+run('cmake', ['--build', binary, '--parallel', '8'], process.env, root, 600000);
 const query = spawnSync(
   'ctest',
   ['--test-dir', binary, '--show-only=json-v1'],
@@ -412,6 +426,7 @@ const receipt = {
   sourceHash,
   fixture: relative(project, root),
   prebuiltOutput: false,
+  buildDeadlineMs: 600000,
   foundation: !linked,
   linked,
   freerdpRebuilt: false,

@@ -689,3 +689,19 @@ the public shared WinPR import ABI; no production source is patched. This is a
 local SDK check, separate from a new Windows worker consumer and complete fresh
 dependency/clean-machine/distro/CI acceptance.
 [Windows result and retained first probe failure](ITERATION_249.md).
+
+To build a new Windows worker consumer of that completed SDK receipt:
+
+```powershell
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-bundled `
+  -RebuiltSdkReceipt build/freerdp-source-clean-EXAMPLE/receipt.json
+```
+
+Use the actual relative generated receipt path. The wrapper refuses absolute /
+traversal paths and other tasks before toolchain setup, then projects the path
+through its ASCII alias. The shared helper validates the complete unchanged SDK
+receipt and exact CMake package origins. It creates fresh project output and
+checks linked CTest/Node process lifecycle without replacing the ordinary SDK.
+Compilation has a separate finite ten-minute budget; CTest and process/IPC
+checks retain their existing deadlines. The prepared dependency/toolchain inputs
+remain reused. [Current Windows/Linux acceptance](ITERATION_250.md).

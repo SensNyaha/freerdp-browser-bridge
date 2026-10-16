@@ -1,4 +1,11 @@
-param([ValidateSet('foundation', 'clean-foundation', 'clean-bundled', 'clean-freerdp', 'dependencies', 'freerdp', 'bundled')][string]$Task = 'dependencies')
+param(
+  [ValidateSet('foundation', 'clean-foundation', 'clean-bundled', 'clean-freerdp', 'dependencies', 'freerdp', 'bundled')][string]$Task = 'dependencies',
+  [string]$RebuiltSdkReceipt = ''
+)
+
+if ($RebuiltSdkReceipt -and ($Task -ne 'clean-bundled' -or $RebuiltSdkReceipt -notmatch '^build[\\/]freerdp-source-clean-[A-Za-z0-9_-]+[\\/]receipt\.json$')) {
+  throw 'A rebuilt SDK receipt must name an isolated build/freerdp-source-clean-*/receipt.json and use clean-bundled'
+}
 
 $workspacePath = (Resolve-Path -LiteralPath (Split-Path -Parent $PSScriptRoot)).Path
 $availableLetter = @('R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z') | Where-Object {
@@ -30,7 +37,8 @@ try {
     }
     $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
     $scriptPath = $driveName + '\scripts\test-native-clean-build.mjs'
-    & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && "' + $nodePath + '" "' + $scriptPath + '" "' + $catchSourcePath + '" ' + $cleanBuildMode)
+    $sdkReceiptArgument = if ($RebuiltSdkReceipt) { ' "' + $driveName + '\' + ($RebuiltSdkReceipt -replace '/', '\') + '"' } else { '' }
+    & cmd.exe /d /c ('call "' + $compilerEnvironmentPath + '" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && "' + $nodePath + '" "' + $scriptPath + '" "' + $catchSourcePath + '" ' + $cleanBuildMode + $sdkReceiptArgument)
   } elseif ($Task -eq 'clean-freerdp') {
     $nodePath = $driveName + '\.tools\node-v24.21.0-win-x64\node.exe'
     $scriptPath = $driveName + '\scripts\build-freerdp.mjs'
