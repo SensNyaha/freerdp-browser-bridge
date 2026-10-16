@@ -15,7 +15,8 @@ import { fileURLToPath } from 'node:url';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const windows = process.platform === 'win32';
-const [catchSource, mode = 'foundation', ...extra] = process.argv.slice(2);
+const [catchSource, mode = 'foundation', sdkReceiptPath, ...extra] =
+  process.argv.slice(2);
 const linked = mode === 'linked';
 if (
   (!windows && process.platform !== 'linux') ||
@@ -23,6 +24,7 @@ if (
   resolve('.') !== project ||
   !catchSource ||
   !['foundation', 'linked'].includes(mode) ||
+  (sdkReceiptPath && !linked) ||
   extra.length
 )
   throw new Error(
@@ -45,14 +47,46 @@ for (const [name, number] of [
     throw new Error('Expected prepared Catch2 3.8.1 sources');
 const triplet = windows ? 'x64-windows-bundled' : 'x64-linux-bundled';
 const prefix = resolve('.deps/installed', triplet);
-const freerdpPrefix = resolve('.deps/freerdp-install');
+let freerdpPrefix = resolve('.deps/freerdp-install');
+let sdkSourcePath = resolve('.deps/FreeRDP');
+let sdkCachePath = resolve('build/freerdp-local/CMakeCache.txt');
+let sdkReceiptBytes;
+if (sdkReceiptPath) {
+  const path = resolve(sdkReceiptPath);
+  const info = await lstat(path);
+  if (!info.isFile() || info.isSymbolicLink() || info.size > 65536)
+    throw new Error('Invalid rebuilt SDK receipt');
+  sdkReceiptBytes = await readFile(path);
+  const receipt = JSON.parse(sdkReceiptBytes.toString('utf8'));
+  const root = dirname(path);
+  if (
+    !root.startsWith(resolve('build') + sep) ||
+    receipt.source !== resolve(root, 'source') ||
+    receipt.binary !== resolve(root, 'out') ||
+    receipt.installed !== resolve(root, 'installed') ||
+    receipt.reusedDependencyPrefix !== prefix ||
+    receipt.freerdpRebuilt !== true ||
+    receipt.dependenciesRebuilt !== false ||
+    receipt.foreignPrefixRejected !== true ||
+    receipt.nativeTests !== 1 ||
+    receipt.runtime?.version !== '3.32.1' ||
+    receipt.runtime?.winpr !== '3.32.1' ||
+    receipt.runtime?.privateModules !== 3
+  )
+    throw new Error(
+      'Rebuilt SDK receipt does not describe the isolated pinned profile',
+    );
+  freerdpPrefix = receipt.installed;
+  sdkSourcePath = receipt.source;
+  sdkCachePath = resolve(receipt.binary, 'CMakeCache.txt');
+}
 let sdkSourceCommit;
 const checkSdkSource = () => {
   for (const [args, expected] of [
     [['rev-parse', 'HEAD'], sdkSourceCommit],
     [['status', '--porcelain'], ''],
   ]) {
-    const result = spawnSync('git', ['-C', resolve('.deps/FreeRDP'), ...args], {
+    const result = spawnSync('git', ['-C', sdkSourcePath, ...args], {
       encoding: 'utf8',
       timeout: 10000,
       maxBuffer: 65536,
@@ -75,6 +109,11 @@ if (linked) {
   )
     throw new Error('Unsupported FreeRDP build pin');
   checkSdkSource();
+  if (
+    sdkReceiptBytes &&
+    JSON.parse(sdkReceiptBytes.toString('utf8')).commit !== sdkSourceCommit
+  )
+    throw new Error('Rebuilt SDK receipt pin mismatch');
 }
 await mkdir(resolve('build'), { recursive: true });
 const root = await mkdtemp(resolve('build/native-clean-'));
@@ -134,13 +173,20 @@ const run = (command, args, env = process.env, cwd = root) => {
 };
 let featureHash, featureBytes;
 if (linked) {
+  const featuresPath = sdkReceiptPath
+    ? resolve(root, 'sdk-features.json')
+    : resolve(project, 'build/native-features.json');
   run(
     process.execPath,
-    [resolve('scripts/inspect-native-build.mjs')],
+    [
+      resolve('scripts/inspect-native-build.mjs'),
+      sdkCachePath,
+      freerdpPrefix,
+      featuresPath,
+    ],
     process.env,
     project,
   );
-  const featuresPath = resolve(project, 'build/native-features.json');
   if ((await lstat(featuresPath)).size > 131072)
     throw new Error('Build feature report exceeded');
   featureBytes = await readFile(featuresPath);
@@ -187,6 +233,24 @@ run('cmake', [
       ]
     : []),
 ]);
+if (sdkReceiptPath) {
+  const cache = await readFile(resolve(binary, 'CMakeCache.txt'), 'utf8');
+  for (const [name, packageDirectory] of [
+    ['FreeRDP', 'FreeRDP3'],
+    ['FreeRDP-Client', 'FreeRDP-Client3'],
+    ['WinPR', 'WinPR3'],
+  ]) {
+    const line = cache
+      .split('\n')
+      .find((value) => value.startsWith(name + '_DIR:'));
+    const value = line?.slice(line.indexOf('=') + 1).trim();
+    if (
+      !value ||
+      resolve(value) !== resolve(freerdpPrefix, 'lib/cmake', packageDirectory)
+    )
+      throw new Error('Consumer CMake package escaped the rebuilt SDK prefix');
+  }
+}
 run('cmake', ['--build', binary, '--parallel', '8']);
 const query = spawnSync(
   'ctest',
@@ -317,6 +381,11 @@ const artifacts = {};
 if (linked) {
   checkSdkSource();
   if (
+    sdkReceiptBytes &&
+    !sdkReceiptBytes.equals(await readFile(resolve(sdkReceiptPath)))
+  )
+    throw new Error('Rebuilt SDK receipt changed during verification');
+  if (
     !featureBytes.equals(
       await readFile(resolve(source, 'build/native-features.json')),
     )
@@ -354,6 +423,15 @@ const receipt = {
   ...(linked
     ? {
         sdkSourceCommit,
+        ...(sdkReceiptBytes
+          ? {
+              rebuiltSdkReceipt: relative(project, resolve(sdkReceiptPath)),
+              rebuiltSdkReceiptHash: createHash('sha256')
+                .update(sdkReceiptBytes)
+                .digest('hex'),
+              sdkBuildRebuilt: true,
+            }
+          : {}),
         featureHash,
         artifacts,
         ...(!windows ? { nodeAddonFreerdpNeeded: false } : {}),

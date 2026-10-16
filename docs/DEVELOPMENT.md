@@ -656,3 +656,21 @@ and receipt stay inside the fixture. No network, existing SDK replacement,
 RDP connection or device access is needed. Dependencies are reused; complete
 fresh dependency/distro/CI acceptance remains separate.
 [Exact scope, hashes and retained first failure](ITERATION_247.md).
+
+After that SDK receipt passes, compile and verify an independent Linux project
+consumer against its exact installed prefix:
+
+```sh
+node scripts/test-native-clean-build.mjs /catch2-src linked \
+  build/freerdp-source-clean-EXAMPLE/receipt.json
+```
+
+Use the actual generated receipt path. The helper checks its finite size,
+completed SDK identity/pin, new source/output/install relationship and unchanged
+bytes, then requires all three CMake package origins inside the new SDK. Runtime
+library paths are scoped automatically for its CTest/Node children. Its own
+receipt binds the SDK receipt hash and distinguishes SDK consumption from the
+preceding actual source rebuild. It leaves both build trees for inspection.
+This accepts the named Linux consumer, with reused other dependencies, rather
+than complete fresh dependency/distro/CI or RDP/device acceptance.
+[Results and scope](ITERATION_248.md).

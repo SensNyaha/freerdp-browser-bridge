@@ -298,11 +298,20 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for local Linux fresh project consumer of the rebuilt SDK — Another
+  source-only Release worker/addon tree resolves all three CMake packages from
+  the new SDK, with a bound unchanged SDK receipt. CTest 30/30, actual-process /
+  synthetic-TLS Node 40/40 and full check 654 passed / 57 skips / 711 pass.
+  Mixed/incomplete/oversized receipts refuse before build output. Private
+  dependencies/toolchain/Catch2 are reused; Windows consumer, complete fresh
+  dependency/distro/CI and remaining sanitizer/runtime gates stay open.
+  [Evidence and artifact hashes](docs/ITERATION_248.md).
+
 - [x] DONE for local Linux isolated FreeRDP source rebuild — A new no-hardlink
   clone of the exact clean pinned checkout compiles and installs into a new SDK
   prefix. Public runtime version/static inventory, three canonical module origins,
   foreign-prefix refusal and consumer CTest 1/1 pass. Existing private dependency /
-  toolchain inputs are reused; Windows execution, new bridge consumer, full fresh
+  toolchain inputs are reused; Windows execution/consumer and full fresh
   dependency/distro/CI and remaining sanitizer/runtime gates remain open.
   [Evidence and hashes](docs/ITERATION_247.md).
 
