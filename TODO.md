@@ -38,11 +38,15 @@ platforms, resource limits and soak verification, remain.
 Local Linux cached-source private dependencies, pinned FreeRDP and a new
 source-only worker/addon now pass the complete native build chain: 20 dependency
 packages, SDK identity/CTest, project CTest 30/30, process/TLS 40/40, codec/module
-origins and full Node 656 passed / 58 skips. The Windows rebuilt-SDK/project
-consumer also passes; its cold dependency chain remains open. Complete fresh
-checkout/distro/CI, standard PIE sanitizer, release packaging and actual
-RDP/device/resource gates remain open. [Dependencies](docs/ITERATION_252.md),
-[SDK handoff](docs/ITERATION_253.md), [complete Linux consumer](docs/ITERATION_254.md).
+origins and full Node 656 passed / 58 skips. The Windows source dependency/SDK/
+  project chain also passes local native/process checks and full Node 662 / 49
+  skips. New Linux/Windows native
+packages install and relocate; the Linux archive passes separate restricted
+Bookworm and Ubuntu 24.04 runtime checks. Complete fresh checkout/distro builds/
+CI, standard PIE sanitizer, full service/release/installers and actual
+RDP/device/resource gates remain open. [Linux chain](docs/ITERATION_254.md),
+[Windows chain](docs/ITERATION_257.md), [packaging](docs/ITERATION_258.md),
+[Ubuntu runtime](docs/ITERATION_259.md).
 
 ## Implementation status — 2026-10-15
 
@@ -309,20 +313,40 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for current source-built native packages — New Linux TGZ and Windows
+  ZIP install the exact pinned-source license and generated feature report.
+  Windows relocation 1/1 and Linux ELF closure (34 files / 274 edges), independent
+  non-root/read-only/no-network Bookworm and Ubuntu 24.04 codec/module/IPC/
+  cleanup smokes pass. This is native artifact runtime evidence; Ubuntu source
+  compilation, complete fresh checkout/distro/CI, full service images/installers
+  and actual RDP/device acceptance remain open.
+  [Packaging](docs/ITERATION_258.md), [Ubuntu runtime](docs/ITERATION_259.md).
+
+- [x] DONE for local Windows cached-source native chain — Fourteen dependency
+  packages, a new pinned SDK and a new source-only worker consume unchanged bound
+  receipts and private package/module origins. SDK CTest 1/1, project 29/29 and
+  process/TLS 26 passed / one skip and full Node 662 / 49 skips pass.
+  Prepared tools/Catch2/source archives are
+  reused. The first MSBuild access failure is retained; the authorized repeat
+  passes without disabling FileTracker. Complete clean-machine/checkout/CI and
+  remaining acceptance gates stay open. [Dependencies](docs/ITERATION_255.md),
+  [SDK](docs/ITERATION_256.md), [consumer](docs/ITERATION_257.md).
+
 - [x] DONE for local Linux cached-source native chain — New source-built private
   dependencies and FreeRDP feed a new source-only worker/addon with both bound
   unchanged receipts and exact CMake/loaded-library origins. SDK CTest 1/1,
   project 30/30, process/TLS 40/40, codec/context probe and full Node 656 passed /
   58 skips / 714 pass. Build tools/Catch2/source archives remain prepared inputs;
-  Windows cold chain, complete fresh checkout/distro/CI and remaining acceptance
+  Complete fresh checkout/distro/CI and remaining acceptance
   gates stay open. [Evidence](docs/ITERATION_254.md).
 
 - [x] DONE for local Linux isolated private dependency source rebuild — All 20
   planned packages compile/install with new work/package/installed trees,
   disabled binary caches, no downloads/network and concurrency two. Current
   pinned recipes and 22 installed status records are bound by a checked receipt.
-  Compiler/vcpkg tools and cached source archives are reused; Windows cold build,
-  complete fresh checkout/distro/CI and remaining acceptance gates stay open.
+  Compiler/vcpkg tools and cached source archives are reused; complete fresh
+  checkout/distro/CI and remaining acceptance gates stay open. The corresponding
+  Windows source rebuild is now verified in iteration 255.
   [Evidence and input hashes](docs/ITERATION_252.md).
 
 - [x] DONE for local Windows/Linux fresh project consumer of the rebuilt SDK — Another

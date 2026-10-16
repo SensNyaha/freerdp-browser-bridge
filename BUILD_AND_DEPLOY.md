@@ -73,6 +73,15 @@ runtime flags above. The probe checks canonical private modules, codecs and real
 worker lifecycle/cleanup. This verifies the archive, not the complete API/service
 deployment image. [Evidence and reproducible checks](docs/ITERATION_190.md).
 
+The current local cached-source dependency → FreeRDP → source-only project
+chain also produces a new archive with an explicit pinned-source license and
+required feature report. Linux install/ELF closure/restricted Bookworm runtime
+and Windows install/ZIP/relocation pass. The same Linux archive passes an
+independent pinned Ubuntu 24.04 native runtime check. These are artifact runtime
+checks; Ubuntu source compilation, complete fresh checkout/distro/CI and full
+service/device acceptance remain separate.
+[Packaging](docs/ITERATION_258.md), [Ubuntu runtime](docs/ITERATION_259.md).
+
 ## 4. Reverse proxy
 
 Terminate HTTPS at Nginx/Caddy/Traefik or Node in simple deployments. Requirements:
