@@ -5,6 +5,7 @@ import {
   readFileSync,
   realpathSync,
   statSync,
+  lstatSync,
   readdirSync,
   mkdirSync,
   mkdtempSync,
@@ -20,6 +21,7 @@ import {
   validateSpdx,
 } from './sbom-model.mjs';
 import { windowsRuntimeInventory } from './windows-runtime-model.mjs';
+import { freeRdpOverrideInventory } from './freerdp-override-model.mjs';
 
 const fail = () => new Error('SBOM_BUILD_INVALID');
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -164,6 +166,30 @@ if (
 )
   throw fail();
 const projectVersion = readJson(resolve('package.json')).version;
+const overrideInput = (path, maximum) => {
+  const file = join(metadata, path);
+  let stat;
+  try {
+    stat = lstatSync(file);
+  } catch (error) {
+    if (error.code === 'ENOENT') return undefined;
+    throw fail();
+  }
+  if (
+    !stat.isFile() ||
+    stat.size > maximum ||
+    !inside(nativeRoot, realpathSync(file))
+  )
+    throw fail();
+  const bytes = readFileSync(file);
+  if (bytes.length > maximum) throw fail();
+  return bytes;
+};
+const overrides = freeRdpOverrideInventory(
+  lock.freerdp.commit,
+  overrideInput('freerdp-overrides.json', 4096),
+  overrideInput('overrides/freerdp-dsp-override.cmake', 131072),
+);
 const service = packageRecord(
   'freerdp-node-bridge',
   projectVersion,
@@ -176,8 +202,7 @@ const freerdp = packageRecord(
   'SPDXRef-freerdp',
   'Apache-2.0',
 );
-freerdp.sourceInfo =
-  'Pinned FreeRDP/WinPR source commit ' + lock.freerdp.commit;
+freerdp.sourceInfo = overrides.sourceInfo;
 freerdp.downloadLocation =
   'git+https://github.com/FreeRDP/FreeRDP.git@' + lock.freerdp.commit;
 const nativeArtifact = packageRecord(
@@ -316,6 +341,32 @@ async function collectFiles(directory, depth = 0) {
 }
 for (const directory of windows ? ['bin'] : ['bin', 'lib'])
   await collectFiles(directory);
+for (const entry of overrides.files) {
+  const id =
+    'SPDXRef-file-' +
+    createHash('sha256').update(entry.path).digest('hex').slice(0, 32);
+  const actualHash = await digest(join(nativeRoot, entry.path), 131072);
+  if (actualHash !== entry.sha256) throw fail();
+  files.push({
+    SPDXID: id,
+    fileName: './native/' + entry.path,
+    checksums: [{ algorithm: 'SHA256', checksumValue: actualHash }],
+    licenseConcluded: 'NOASSERTION',
+    copyrightText: 'NOASSERTION',
+  });
+  relationships.push(
+    {
+      spdxElementId: nativeArtifact.SPDXID,
+      relationshipType: 'CONTAINS',
+      relatedSpdxElement: id,
+    },
+    {
+      spdxElementId: freerdp.SPDXID,
+      relationshipType: 'GENERATED_FROM',
+      relatedSpdxElement: id,
+    },
+  );
+}
 let crt = { packages: [], relationships: [] };
 if (windows) {
   const versions = spawnSync(

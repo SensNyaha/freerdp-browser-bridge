@@ -67,3 +67,7 @@ its completed dependency receipt, then `clean-bundled` with the new SDK receipt.
 Run Windows native wrappers sequentially. The compiler minimum remains GCC 12;
 RDP/device, complete upstream/addon sanitizer and release/SBOM review gates are
 not implied by this ownership correction.
+
+[Verified build and sanitizer evidence](ITERATION_269.md). The artifact-only
+SPDX generator also records the correction and exact packaged recipe/metadata
+hashes; see [SBOM contract](SBOM.md) and [artifact evidence](ITERATION_270.md).

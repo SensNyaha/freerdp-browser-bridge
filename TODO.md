@@ -86,6 +86,13 @@ resource/platform/CI gates remain open. [Retained failure](docs/ITERATION_268.md
 [correction and scoped acceptance](docs/ITERATION_269.md),
 [SDK rebuild contract](docs/FREERDP_OVERRIDES.md).
 
+New Windows/Linux native archives also pass artifact-only SPDX generation:
+the approved DSP correction and exact packaged recipe/metadata hashes are
+recorded without consulting an installed SDK. Historical inventory explicitly
+reports absent override metadata. Full Node passes Windows 669 / 49 skips and
+Linux 662 / 59 skips, zero failures. Full release/license/vulnerability review
+remains open. [Artifact provenance evidence](docs/ITERATION_270.md).
+
 ## Implementation status — 2026-10-15
 
 Linux API/private-native service runtime now passes independent non-root /
@@ -944,6 +951,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   vulnerability review remain open.
   [Contract](docs/SBOM.md), [Linux evidence](docs/ITERATION_214.md),
   [Windows native evidence](docs/ITERATION_221.md).
+  New corrected Windows/Linux artifacts additionally bind the approved DSP
+  correction to two exact metadata/recipe files and GENERATED_FROM edges;
+  independent artifact-only generation and full platform Node suites pass.
+  [Correction provenance](docs/ITERATION_270.md).
 - [ ] Performance report against `PERFORMANCE.md` metrics.
 - [ ] Full Windows + XRDP regression.
 

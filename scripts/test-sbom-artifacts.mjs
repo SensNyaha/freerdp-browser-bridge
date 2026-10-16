@@ -31,6 +31,7 @@ for (const path of [
   'native/dependencies.json',
   'scripts/generate-sbom.mjs',
   'scripts/sbom-model.mjs',
+  'scripts/freerdp-override-model.mjs',
   'scripts/windows-runtime-model.mjs',
   'scripts/windows-runtime-versions.ps1',
   'scripts/schemas/spdx-2.3.schema.json',
@@ -71,6 +72,35 @@ if ((await stat(reportFile)).size > 8 * 1024 * 1024)
 const document = validateSpdx(JSON.parse(await readFile(reportFile, 'utf8')));
 if (document.externalDocumentRefs.length !== (windows ? 7 : 13))
   throw new Error('SBOM_ARTIFACT_TEST_COUNT');
+const freerdp = document.packages.find(
+  (pkg) => pkg.SPDXID === 'SPDXRef-freerdp',
+);
+const overrideFiles = document.files.filter((file) =>
+  /^\.\/native\/share\/freerdp-bridge\/(freerdp-overrides\.json|overrides\/freerdp-dsp-override\.cmake)$/.test(
+    file.fileName,
+  ),
+);
+const corrected = freerdp.sourceInfo.includes('dsp-opus-reset-ownership-v1');
+if (corrected) {
+  if (
+    overrideFiles.length !== 2 ||
+    overrideFiles.some(
+      (file) =>
+        !document.relationships.some(
+          (edge) =>
+            edge.spdxElementId === freerdp.SPDXID &&
+            edge.relationshipType === 'GENERATED_FROM' &&
+            edge.relatedSpdxElement === file.SPDXID,
+        ),
+    )
+  )
+    throw new Error('SBOM_ARTIFACT_TEST_OVERRIDE');
+} else if (
+  overrideFiles.length !== 0 ||
+  !freerdp.sourceInfo.includes('modification status not established')
+) {
+  throw new Error('SBOM_ARTIFACT_TEST_LEGACY');
+}
 console.log(
   JSON.stringify({
     platform: process.platform + '-x64',
@@ -78,5 +108,6 @@ console.log(
     upstreamDocumentsFromArchive: document.externalDocumentRefs.length,
     packages: document.packages.length,
     schemaValidated: true,
+    freerdpOverrideRecorded: corrected,
   }),
 );

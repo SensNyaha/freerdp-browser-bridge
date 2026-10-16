@@ -46,6 +46,26 @@ only the exact archives, scripts/schema and pinned source metadata, without
 .deps or native staging. JavaScript validator dependencies come from the parent
 frozen installation. [Artifact-only verification](ITERATION_222.md).
 
+Current corrected SDK artifacts also retain
+`share/freerdp-bridge/freerdp-overrides.json` and the DSP build-copy recipe.
+The generator reads these only from the extracted native archive. It checks
+the approved correction identity, pinned source commit, original/generated C
+hashes and canonical LF recipe hash. Both files have exact byte checksums and
+CONTAINS / GENERATED_FROM relationships in the SPDX root; FreeRDP sourceInfo
+explicitly describes the correction. Original downloadLocation still refers to
+the pinned upstream commit, with the modification recorded separately.
+
+Manifest input is bounded to 4 KiB and recipe input to 128 KiB before reading /
+JSON parsing. Missing one of the pair, symlink files, unknown or mismatched
+corrections are refused. These two fixed provenance files supplement the bounded
+runtime traversal. Arbitrary manifest fields and local paths are not projected.
+When both are absent in a historical archive, sourceInfo explicitly states
+that override metadata is absent and modification status is not established.
+This preserves historical inventory without asserting an unmodified binary.
+New linked builds separately require correction metadata at configure time.
+This is provenance, not a binary signature or licensing conclusion.
+[Correction contract](FREERDP_OVERRIDES.md), [new artifact evidence](ITERATION_270.md).
+
 The root uses [SPDX 2.3 JSON](https://github.com/spdx/spdx-spec/tree/v2.3/schemas).
 It is validated offline against the unmodified, hash-pinned official schema and
 then checked for duplicate identifiers and unresolved local/external references.
