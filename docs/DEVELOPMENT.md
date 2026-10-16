@@ -608,3 +608,19 @@ copy/hash checks and platform-specific Windows pipe/private-directory inventory.
 It copies no old object or binary. This is local foundation source evidence;
 linked FreeRDP/dependencies, clean-machine/distro and actual CI remain separate.
 [Windows/Linux receipts](ITERATION_244.md).
+
+To compile a new Linux linked Release project-native tree against the already
+prepared pinned SDK, after the ordinary dependency/FreeRDP build:
+
+```sh
+node scripts/test-native-clean-build.mjs /catch2-src linked
+```
+
+This verifies the clean pinned FreeRDP source identity, reuses external installed
+SDK/Catch2/toolchain inputs, copies the filtered feature report as declared build
+metadata and compiles new worker/addon/fixtures. It requires linked CTest and
+Node primary/framed/TLS lifecycle, checks the IPC addon's direct import boundary
+and leaves a source/input/artifact-hash receipt. No project binary/cache is
+copied. Upstream libraries are reused, not rebuilt; Windows linked, packaging,
+clean-machine/distro and CI gates remain separate.
+[Exact Linux scope and results](ITERATION_245.md).
