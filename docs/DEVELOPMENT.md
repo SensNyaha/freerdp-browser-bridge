@@ -639,3 +639,20 @@ remains Linux-only. The wrapper keeps its alias alive through all child checks;
 the fixture and hashes remain available under canonical build paths afterward.
 This does not rebuild/package upstream dependencies or prove clean-machine /
 device acceptance. [Windows linked receipt and scope](ITERATION_246.md).
+
+To rebuild FreeRDP itself from a new local clone of the prepared pinned source,
+using the existing private dependency/toolchain inputs on Linux:
+
+```sh
+node scripts/build-freerdp.mjs --clean-local
+```
+
+The helper requires a clean exact cached Git pin and creates a unique
+`build/freerdp-source-clean-*` checkout, build and installed SDK. It preserves
+the ordinary profile/private dependency checks, compiles a public-API consumer,
+checks actual loaded-library origins/version/static channels, tests rejection
+of a foreign expected prefix and runs the consumer CTest. The generated report
+and receipt stay inside the fixture. No network, existing SDK replacement,
+RDP connection or device access is needed. Dependencies are reused; complete
+fresh dependency/distro/CI acceptance remains separate.
+[Exact scope, hashes and retained first failure](ITERATION_247.md).

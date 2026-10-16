@@ -3,10 +3,19 @@ import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
 const lock = JSON.parse(readFileSync(resolve('native/dependencies.json')));
-const entries = readFileSync(
-  resolve('build/freerdp-local/CMakeCache.txt'),
-  'utf8',
-)
+const suppliedPaths = process.argv.slice(2);
+if (suppliedPaths.length !== 0 && suppliedPaths.length !== 3)
+  throw new Error(
+    'Supply cache, installed SDK and output report paths together',
+  );
+const [cachePath, installedPrefix, reportPath] = suppliedPaths.length
+  ? suppliedPaths.map((value) => resolve(value))
+  : [
+      resolve('build/freerdp-local/CMakeCache.txt'),
+      resolve('.deps/freerdp-install'),
+      resolve('build/native-features.json'),
+    ];
+const entries = readFileSync(cachePath, 'utf8')
   .split('\n')
   .flatMap((line) => {
     const match = /^([^#/:]+):[^=]+=(.*)$/.exec(line.trim());
@@ -14,7 +23,7 @@ const entries = readFileSync(
   });
 const cache = new Map(entries);
 const installedConfig = readFileSync(
-  resolve('.deps/freerdp-install/include/freerdp3/freerdp/config.h'),
+  resolve(installedPrefix, 'include/freerdp3/freerdp/config.h'),
   'utf8',
 );
 const gfxH264 = /^#define WITH_GFX_H264\b/m.test(installedConfig);
@@ -169,8 +178,5 @@ const report = {
     absolutePluginPaths: cache.get('WITH_ABSOLUTE_PLUGIN_LOAD_PATHS') === 'ON',
   },
 };
-writeFileSync(
-  resolve('build/native-features.json'),
-  JSON.stringify(report, null, 2) + '\n',
-);
+writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify(report, null, 2));

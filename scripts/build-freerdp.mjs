@@ -1,21 +1,82 @@
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 
 const windows = process.platform === 'win32';
 const triplet = windows ? 'x64-windows-bundled' : 'x64-linux-bundled';
 const prefix = resolve('.deps/installed', triplet);
-const freerdpPrefix = resolve('.deps/freerdp-install');
+const arguments_ = process.argv.slice(2);
+if (
+  arguments_.length &&
+  (arguments_.length !== 1 || arguments_[0] !== '--clean-local')
+)
+  throw new Error('Expected optional --clean-local');
+const cleanLocal = arguments_.length === 1;
+if (process.versions.node.split('.')[0] !== '24')
+  throw new Error('Use Node 24');
+const cachedSource = resolve('.deps/FreeRDP');
+const lock = JSON.parse(
+  readFileSync('native/dependencies.json', 'utf8'),
+).freerdp;
+const checkSource = (path) => {
+  for (const [args, expected] of [
+    [['rev-parse', 'HEAD'], lock.commit],
+    [['status', '--porcelain'], ''],
+  ]) {
+    const result = spawnSync('git', ['-C', path, ...args], {
+      encoding: 'utf8',
+      timeout: 10000,
+      maxBuffer: 65536,
+      windowsHide: true,
+    });
+    if (result.status !== 0 || result.stdout.trim() !== expected)
+      throw new Error(
+        'FreeRDP source does not match the clean pinned checkout',
+      );
+  }
+};
+if (cleanLocal) checkSource(cachedSource);
+mkdirSync('build', { recursive: true });
+const cleanRoot = cleanLocal
+  ? mkdtempSync(resolve('build/freerdp-source-clean-'))
+  : undefined;
+const source = cleanLocal ? join(cleanRoot, 'source') : cachedSource;
+const binary = cleanLocal
+  ? join(cleanRoot, 'out')
+  : resolve('build/freerdp-local');
+const freerdpPrefix = cleanLocal
+  ? join(cleanRoot, 'installed')
+  : resolve('.deps/freerdp-install');
 const krb5Config = join(prefix, 'tools', 'krb5', 'bin', 'krb5-config');
-function run(command, args) {
+function run(command, args, env = process.env) {
   const result = spawnSync(command, args, {
     stdio: 'inherit',
     windowsHide: true,
+    timeout: 600000,
+    env,
   });
   if (result.status !== 0)
     throw new Error('Pinned FreeRDP build failed; inspect the build log');
 }
-run(process.execPath, [resolve('scripts/fetch-freerdp.mjs')]);
+if (cleanLocal) {
+  run('git', [
+    'clone',
+    '--no-hardlinks',
+    '--no-checkout',
+    cachedSource,
+    source,
+  ]);
+  run('git', [
+    '-C',
+    source,
+    '-c',
+    'core.autocrlf=false',
+    'checkout',
+    '--detach',
+    lock.commit,
+  ]);
+  checkSource(source);
+} else run(process.execPath, [resolve('scripts/fetch-freerdp.mjs')]);
 if (!windows) {
   for (const mode of ['--cflags', '--libs']) {
     const result = spawnSync(krb5Config, [mode], {
@@ -39,9 +100,9 @@ if (!windows) {
 }
 run('cmake', [
   '-S',
-  '.deps/FreeRDP',
+  source,
   '-B',
-  'build/freerdp-local',
+  binary,
   '-G',
   'Ninja',
   '-C',
@@ -63,10 +124,7 @@ run('cmake', [
   '-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF',
 ]);
 // Fail if a mandatory dependency accidentally resolves to an external system installation.
-const cache = readFileSync(
-  resolve('build/freerdp-local/CMakeCache.txt'),
-  'utf8',
-);
+const cache = readFileSync(join(binary, 'CMakeCache.txt'), 'utf8');
 for (const key of [
   'ZLIB_INCLUDE_DIR',
   'OPENSSL_INCLUDE_DIR',
@@ -117,7 +175,124 @@ for (const [key, expected] of [
   )
     throw new Error(`Unexpected private decoder build option: ${key}`);
 }
-run('cmake', ['--build', 'build/freerdp-local', '--parallel', '8']);
-run('cmake', ['--install', 'build/freerdp-local']);
-run(process.execPath, [resolve('scripts/inspect-native-build.mjs')]);
+run('cmake', ['--build', binary, '--parallel', cleanLocal ? '2' : '8']);
+run('cmake', ['--install', binary]);
+const features = cleanLocal
+  ? join(cleanRoot, 'native-features.json')
+  : resolve('build/native-features.json');
+run(process.execPath, [
+  resolve('scripts/inspect-native-build.mjs'),
+  join(binary, 'CMakeCache.txt'),
+  freerdpPrefix,
+  features,
+]);
+if (cleanLocal) {
+  const probeBinary = join(cleanRoot, 'probe');
+  run('cmake', [
+    '-S',
+    resolve('tests/fixtures/freerdp-sdk'),
+    '-B',
+    probeBinary,
+    '-G',
+    'Ninja',
+    `-DCMAKE_PREFIX_PATH=${freerdpPrefix};${prefix}`,
+    `-DBRIDGE_SDK_PREFIX=${freerdpPrefix}`,
+    '-DCMAKE_BUILD_TYPE=Release',
+    ...(!windows
+      ? [`-DCMAKE_EXE_LINKER_FLAGS=-Wl,-rpath-link,${join(prefix, 'lib')}`]
+      : []),
+  ]);
+  run('cmake', ['--build', probeBinary, '--parallel', '2']);
+  const result = spawnSync(
+    join(probeBinary, windows ? 'sdk-probe.exe' : 'sdk-probe'),
+    [freerdpPrefix],
+    {
+      encoding: 'utf8',
+      timeout: 10000,
+      maxBuffer: 65536,
+      windowsHide: true,
+      env: {
+        ...process.env,
+        ...(windows
+          ? {
+              PATH:
+                join(freerdpPrefix, 'bin') +
+                ';' +
+                join(prefix, 'bin') +
+                ';' +
+                process.env.PATH,
+            }
+          : {
+              LD_LIBRARY_PATH:
+                join(freerdpPrefix, 'lib') + ':' + join(prefix, 'lib'),
+            }),
+      },
+    },
+  );
+  if (result.status !== 0) throw new Error('New SDK runtime probe failed');
+  const runtimeEnvironment = {
+    ...process.env,
+    ...(windows
+      ? {
+          PATH:
+            join(freerdpPrefix, 'bin') +
+            ';' +
+            join(prefix, 'bin') +
+            ';' +
+            process.env.PATH,
+        }
+      : {
+          LD_LIBRARY_PATH:
+            join(freerdpPrefix, 'lib') + ':' + join(prefix, 'lib'),
+        }),
+  };
+  const foreignPrefix = spawnSync(
+    join(probeBinary, windows ? 'sdk-probe.exe' : 'sdk-probe'),
+    [prefix],
+    {
+      env: runtimeEnvironment,
+      timeout: 10000,
+      maxBuffer: 65536,
+      windowsHide: true,
+    },
+  );
+  if (foreignPrefix.status !== 2)
+    throw new Error('New SDK probe did not reject a foreign expected prefix');
+  run(
+    'ctest',
+    ['--test-dir', probeBinary, '--output-on-failure', '--no-tests=error'],
+    runtimeEnvironment,
+  );
+  const runtime = JSON.parse(result.stdout);
+  const inventory = JSON.parse(readFileSync(features, 'utf8'));
+  if (
+    runtime.version !== lock.version ||
+    runtime.winpr !== lock.version ||
+    JSON.stringify(runtime.channels) !==
+      JSON.stringify(inventory.enabledChannels)
+  )
+    throw new Error(
+      'New SDK runtime inventory does not match the pinned profile',
+    );
+  checkSource(source);
+  checkSource(cachedSource);
+  const receipt = {
+    source,
+    binary,
+    installed: freerdpPrefix,
+    commit: lock.commit,
+    freerdpRebuilt: true,
+    dependenciesRebuilt: false,
+    foreignPrefixRejected: true,
+    nativeTests: 1,
+    reusedDependencyPrefix: prefix,
+    runtime,
+    features,
+  };
+  writeFileSync(
+    join(cleanRoot, 'receipt.json'),
+    JSON.stringify(receipt, null, 2) + '\n',
+  );
+  console.log(JSON.stringify(receipt, null, 2));
+}
 console.log(`Installed pinned FreeRDP locally: ${join(freerdpPrefix, 'bin')}`);

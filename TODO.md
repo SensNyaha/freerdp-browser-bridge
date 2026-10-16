@@ -298,6 +298,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for local Linux isolated FreeRDP source rebuild — A new no-hardlink
+  clone of the exact clean pinned checkout compiles and installs into a new SDK
+  prefix. Public runtime version/static inventory, three canonical module origins,
+  foreign-prefix refusal and consumer CTest 1/1 pass. Existing private dependency /
+  toolchain inputs are reused; Windows execution, new bridge consumer, full fresh
+  dependency/distro/CI and remaining sanitizer/runtime gates remain open.
+  [Evidence and hashes](docs/ITERATION_247.md).
+
 - [x] DONE for isolated Windows/Linux linked project-native source build — New Release
   build reuses the clean pinned SDK and external Catch2/toolchain, with no copied
   project binary/object/cache. Windows/Linux CTest 29/29 and 30/30 and Node
