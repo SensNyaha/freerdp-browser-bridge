@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -33,7 +34,7 @@ test(
           '<!doctype html><title>Synthetic Opus sender</title>',
       );
     });
-    await new Promise((done) => server.listen(0, '127.0.0.1', done));
+    await listenBrowserHttp(server);
     let browser;
     try {
       browser = await chromium.launch({

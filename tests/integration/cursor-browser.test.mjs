@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -23,7 +24,7 @@ test(
           : '<canvas id="desktop" width="640" height="480" style="width:320px;height:240px"></canvas>',
       );
     });
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await listenBrowserHttp(server);
     let browser, page;
     let phase = 'launch';
     const aborted = () =>

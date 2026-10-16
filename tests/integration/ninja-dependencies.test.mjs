@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
-import { resolve, join, relative } from 'node:path';
+import { resolve, join } from 'node:path';
+import { rebaseWindowsBuildPath } from '../fixtures/cmake-paths.mjs';
 
 test(
   'native build integration: Windows Ninja tracks headers and refreshes private runtimes',
@@ -41,12 +42,16 @@ test(
       const configuredPrefix = cache
         .match(/^BRIDGE_FREERDP_PREFIX:PATH=(.+)$/m)?.[1]
         .trim();
-      const configuredRoot = cache
-        .match(/^CMAKE_HOME_DIRECTORY:INTERNAL=(.+)$/m)?.[1]
+      const configuredBuild = cache
+        .match(/^CMAKE_CACHEFILE_DIR:INTERNAL=(.+)$/m)?.[1]
         .trim();
-      assert.ok(configuredPrefix && configuredRoot);
+      assert.ok(configuredPrefix && configuredBuild);
       // The build helper removes its temporary subst alias after building.
-      const freerdpPrefix = resolve(relative(configuredRoot, configuredPrefix));
+      const freerdpPrefix = rebaseWindowsBuildPath(
+        binaryDir,
+        configuredBuild,
+        configuredPrefix,
+      );
       for (const runtime of [
         'freerdp3.dll',
         'freerdp-client3.dll',

@@ -621,6 +621,21 @@ SDK/Catch2/toolchain inputs, copies the filtered feature report as declared buil
 metadata and compiles new worker/addon/fixtures. It requires linked CTest and
 Node primary/framed/TLS lifecycle, checks the IPC addon's direct import boundary
 and leaves a source/input/artifact-hash receipt. No project binary/cache is
-copied. Upstream libraries are reused, not rebuilt; Windows linked, packaging,
+copied. Upstream libraries are reused, not rebuilt; packaging,
 clean-machine/distro and CI gates remain separate.
 [Exact Linux scope and results](ITERATION_245.md).
+
+For the corresponding Windows x64 linked source build after preparing the
+ordinary bundled SDK/Catch2 source:
+
+```powershell
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-bundled
+```
+
+It uses the same clean pinned SDK checks and declared feature input, creates a
+new MSVC Release output tree, copies SDK runtime DLLs through the existing CMake
+rules and verifies Windows linked CTest/framed Node lifecycle. The Node addon
+remains Linux-only. The wrapper keeps its alias alive through all child checks;
+the fixture and hashes remain available under canonical build paths afterward.
+This does not rebuild/package upstream dependencies or prove clean-machine /
+device acceptance. [Windows linked receipt and scope](ITERATION_246.md).

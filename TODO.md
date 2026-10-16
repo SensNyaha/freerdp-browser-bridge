@@ -298,12 +298,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
-- [x] DONE for isolated Linux linked project-native source build — A new Release
+- [x] DONE for isolated Windows/Linux linked project-native source build — New Release
   build reuses the clean pinned SDK and external Catch2/toolchain, with no copied
-  project binary/object/cache. CTest 30/30 and Node primary/framed/strict-TLS
-  lifecycle 40/40 pass; source/feature/artifact hashes are retained. Upstream
-  dependency/FreeRDP rebuilds, Windows linked source build, distro/CI and remaining
-  sanitizer/runtime gates stay open. [Evidence](docs/ITERATION_245.md).
+  project binary/object/cache. Windows/Linux CTest 29/29 and 30/30 and Node
+  lifecycle 26 passed / one absent-primary skip and 40/40 pass. Source/feature /
+  artifact hashes are retained. Upstream dependency/FreeRDP rebuilds, distro/CI
+  and remaining sanitizer/runtime gates stay open.
+  [Windows evidence](docs/ITERATION_246.md), [Linux evidence](docs/ITERATION_245.md).
 
 - [x] DONE for isolated Windows/Linux project-native foundation source build — New
   source-only fixture has no copied binary/cache/SDK/Node dependencies or lab

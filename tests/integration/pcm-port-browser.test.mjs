@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -27,7 +28,7 @@ async function pcmServer() {
       files.get(request.url) ?? '<button id="start">Start audio</button>',
     );
   });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await listenBrowserHttp(server);
   return server;
 }
 

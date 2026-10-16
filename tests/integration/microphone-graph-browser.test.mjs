@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -35,7 +36,7 @@ test(
           '<button id="start">Synthetic microphone graph</button>',
       );
     });
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await listenBrowserHttp(server);
     let browser, page;
     try {
       browser = await chromium.launch({

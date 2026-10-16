@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -96,7 +97,7 @@ test(
     });
     let browser;
     try {
-      await new Promise((done) => server.listen(0, '127.0.0.1', done));
+      await listenBrowserHttp(server);
       browser = await chromium.launch({ channel: 'msedge', headless: true });
       const page = await browser.newPage({
         viewport: { width: 1280, height: 1100 },

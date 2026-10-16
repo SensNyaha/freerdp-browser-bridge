@@ -23,11 +23,10 @@ if (
   resolve('.') !== project ||
   !catchSource ||
   !['foundation', 'linked'].includes(mode) ||
-  (linked && windows) ||
   extra.length
 )
   throw new Error(
-    'Use the project root, Node 24, offline Catch2 source and optional Linux linked mode',
+    'Use the project root, Node 24, offline Catch2 source and optional linked mode',
   );
 const version = await readFile(
   resolve(catchSource, 'src/catch2/catch_version_macros.hpp'),
@@ -44,7 +43,8 @@ for (const [name, number] of [
     ).test(version)
   )
     throw new Error('Expected prepared Catch2 3.8.1 sources');
-const prefix = resolve('.deps/installed/x64-linux-bundled');
+const triplet = windows ? 'x64-windows-bundled' : 'x64-linux-bundled';
+const prefix = resolve('.deps/installed', triplet);
 const freerdpPrefix = resolve('.deps/freerdp-install');
 let sdkSourceCommit;
 const checkSdkSource = () => {
@@ -56,6 +56,7 @@ const checkSdkSource = () => {
       encoding: 'utf8',
       timeout: 10000,
       maxBuffer: 65536,
+      windowsHide: true,
     });
     if (result.status !== 0 || result.stdout.trim() !== expected)
       throw new Error(
@@ -152,12 +153,13 @@ if (linked) {
     flag: 'wx',
   });
 }
-const runtimeEnvironment = linked
-  ? {
-      ...process.env,
-      LD_LIBRARY_PATH: freerdpPrefix + '/lib:' + prefix + '/lib',
-    }
-  : process.env;
+const runtimeEnvironment =
+  linked && !windows
+    ? {
+        ...process.env,
+        LD_LIBRARY_PATH: freerdpPrefix + '/lib:' + prefix + '/lib',
+      }
+    : process.env;
 run('cmake', [
   '-S',
   source,
@@ -168,7 +170,7 @@ run('cmake', [
   '-DCMAKE_BUILD_TYPE=' + (linked ? 'Release' : 'Debug'),
   '-DBUILD_TESTING=ON',
   '-DBRIDGE_WITH_FREERDP=' + (linked ? 'ON' : 'OFF'),
-  '-DBRIDGE_NODE_IPC=' + (linked ? 'ON' : 'OFF'),
+  '-DBRIDGE_NODE_IPC=' + (linked && !windows ? 'ON' : 'OFF'),
   '-DFETCHCONTENT_FULLY_DISCONNECTED=ON',
   '-DFETCHCONTENT_SOURCE_DIR_CATCH2=' +
     resolve(catchSource).replaceAll('\\', '/'),
@@ -180,7 +182,7 @@ run('cmake', [
         '-DCMAKE_TOOLCHAIN_FILE=' +
           resolve('.deps/vcpkg/scripts/buildsystems/vcpkg.cmake'),
         '-DVCPKG_INSTALLED_DIR=' + resolve('.deps/installed'),
-        '-DVCPKG_TARGET_TRIPLET=x64-linux-bundled',
+        '-DVCPKG_TARGET_TRIPLET=' + triplet,
         '-DVCPKG_MANIFEST_INSTALL=OFF',
       ]
     : []),
@@ -194,13 +196,14 @@ const query = spawnSync(
     encoding: 'utf8',
     timeout: 10000,
     maxBuffer: 1024 * 1024,
+    windowsHide: true,
   },
 );
 if (query.status !== 0) throw new Error('Clean native inventory unavailable');
 const tests = JSON.parse(query.stdout).tests;
 if (
   !Array.isArray(tests) ||
-  tests.length < (linked ? 30 : windows ? 14 : 15) ||
+  tests.length < (linked ? (windows ? 29 : 30) : windows ? 14 : 15) ||
   tests.length > 128 ||
   ![
     'clipboard-text-tests',
@@ -240,6 +243,7 @@ const cli = spawnSync(
     timeout: 10000,
     maxBuffer: 8192,
     env: runtimeEnvironment,
+    windowsHide: true,
   },
 );
 if (cli.status !== 0) throw new Error('Clean native CLI unavailable');
@@ -256,7 +260,7 @@ if (
   build.transport !== 'framed-pipes'
 )
   throw new Error('Clean native profile mismatch');
-if (linked) {
+if (linked && !windows) {
   const imports = spawnSync(
     'readelf',
     ['-d', resolve(binary, 'rdp-ipc.node')],
@@ -291,7 +295,9 @@ run(
             project,
             'tests/integration/clipboard-native-session.test.mjs',
           ),
-          resolve(project, 'tests/integration/seqpacket-worker.test.mjs'),
+          ...(!windows
+            ? [resolve(project, 'tests/integration/seqpacket-worker.test.mjs')]
+            : []),
         ]
       : []),
   ],
@@ -316,7 +322,9 @@ if (linked) {
     )
   )
     throw new Error('Build feature input changed');
-  for (const name of ['rdp-worker', 'rdp-ipc.node', 'rdp-worker.ipc.json']) {
+  for (const name of windows
+    ? ['rdp-worker.exe', 'rdp-runtime-directory.exe']
+    : ['rdp-worker', 'rdp-ipc.node', 'rdp-worker.ipc.json']) {
     const hash = createHash('sha256');
     let bytes = 0;
     for await (const chunk of createReadStream(resolve(binary, name))) {
@@ -344,7 +352,12 @@ const receipt = {
   nodeLifecycle: true,
   sourceUnchanged: true,
   ...(linked
-    ? { sdkSourceCommit, featureHash, artifacts, nodeAddonFreerdpNeeded: false }
+    ? {
+        sdkSourceCommit,
+        featureHash,
+        artifacts,
+        ...(!windows ? { nodeAddonFreerdpNeeded: false } : {}),
+      }
     : {}),
 };
 await writeFile(
