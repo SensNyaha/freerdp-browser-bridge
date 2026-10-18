@@ -6,7 +6,8 @@ import { promisify } from 'node:util';
 export type ProcessSampleCode =
   | 'PROCESS_SAMPLE_INVALID'
   | 'PROCESS_SAMPLE_UNAVAILABLE'
-  | 'PROCESS_SAMPLE_CANCELLED';
+  | 'PROCESS_SAMPLE_CANCELLED'
+  | 'PROCESS_SAMPLE_CLOSE_FAILED';
 
 export class ProcessSampleError extends Error {
   constructor(readonly code: ProcessSampleCode) {
@@ -93,7 +94,7 @@ export async function linuxWorkerResidentBytes(
     try {
       await file?.close();
     } catch {
-      throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
+      throw new ProcessSampleError('PROCESS_SAMPLE_CLOSE_FAILED');
     }
   }
   requireSample(signal);

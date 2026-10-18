@@ -107,8 +107,14 @@ export class NativeSessionWorker implements SessionWorker {
     this.worker.on('clipboard', (state: ClipboardState) => {
       if (!this.closing) this.events.emit('clipboard', state);
     });
-    this.worker.on('failure', () => {
-      if (!this.closing) this.events.emit('failure', 'WORKER_FAILED');
+    this.worker.on('failure', (error: unknown) => {
+      const code =
+        error instanceof WorkerError &&
+        (error.code === 'WORKER_MEMORY_LIMIT' ||
+          error.code === 'WORKER_RESOURCE_UNAVAILABLE')
+          ? error.code
+          : 'WORKER_FAILED';
+      if (!this.closing) this.events.emit('failure', code);
     });
   }
   /** Trusted host process seam; the default keeps the existing private lifecycle. */
@@ -178,6 +184,8 @@ export class NativeSessionWorker implements SessionWorker {
           'RDP_NOT_IMPLEMENTED',
           'RDP_SETTING_NOT_IMPLEMENTED',
           'INVALID_SESSION_CONFIG',
+          'WORKER_MEMORY_LIMIT',
+          'WORKER_RESOURCE_UNAVAILABLE',
         ].includes(error.code)
       )
         throw new SessionError(error.code as SessionErrorCode);

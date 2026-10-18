@@ -135,6 +135,12 @@ const failures = {
   WORKER_START_FAILED: [500, 'Session worker failed to start', true],
   WORKER_START_TIMEOUT: [504, 'Session worker startup deadline exceeded', true],
   WORKER_FAILED: [500, 'Session worker failed', true],
+  WORKER_MEMORY_LIMIT: [503, 'Session worker memory policy exceeded', false],
+  WORKER_RESOURCE_UNAVAILABLE: [
+    503,
+    'Session worker resource measurement is unavailable',
+    true,
+  ],
   WORKER_INVALID_STATE: [
     500,
     'Session worker emitted an invalid state transition',

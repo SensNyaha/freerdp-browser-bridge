@@ -4,6 +4,12 @@ The session registry and HTTP/WebSocket boundary are implemented. The Stage 2 ga
 uses an explicitly injected fake connection backend; it does not establish RDP sessions.
 The native process supervisor is tested separately with real C++ workers.
 
+An optional trusted-host [worker RSS policy](WORKER_MEMORY_POLICY.md) adds fixed
+native-backend failures `WORKER_MEMORY_LIMIT` (503, not retryable) and
+`WORKER_RESOURCE_UNAVAILABLE` (503, retryable). It is disabled by default and
+adds no public session-create fields. Public errors expose no sample/PID/OS
+diagnostics. Full resource/connected acceptance remains separate.
+
 ## Hosting and authorization
 
 createSessionServer accepts a trusted authenticate hook and explicit allowedOrigins.

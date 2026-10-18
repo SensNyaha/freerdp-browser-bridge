@@ -1164,7 +1164,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Linux parent FD count returns to baseline. Focus passes Windows 11/11 and
   Linux 12/12; full Node 640 / 90 skips and 586 / 147 skips, CTest 15/15 and
   16/16 pass. Watchdog enforcement and complete kernel/OS-failure/connected
-  resource gates remain open. [Evidence](docs/ITERATION_295.md).
+  resource gates remain open. [Evidence](docs/ITERATION_295.md); `61ec364`.
 
 - [x] DONE for bounded shared host RSS sampling — Existing Linux proc and
   Windows colocated-helper readers now share strict TypeScript, typed fixed
@@ -1197,7 +1197,14 @@ profile's target, microphone, recovery, resource or platform acceptance.
   remain open. [Reference](docs/CONTAINER_DEVICE_MAPPINGS.md),
   [verification](docs/ITERATION_290.md); `63b980e`.
 - [ ] seccomp/AppArmor recommendation and tested baseline profile if feasible.
-- [ ] Resource watchdogs and cleanup on abnormal exit.
+- [~] Resource watchdogs and cleanup on abnormal exit — Optional trusted-host
+  sampled worker RSS policy now fails an owned child on an observed cap breach
+  or unavailable/deadline sample, stops polling and joins query/native/runtime
+  retirement. Default behavior remains off. Actual unconnected Windows/Linux
+  breach/healthy cases and separate synthetic fault/lifetime cases pass; CPU,
+  startup/total-session memory, hard kernel/OS deadlines, connected RDP and
+  broader abnormal-exit/soak acceptance remain open.
+  [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

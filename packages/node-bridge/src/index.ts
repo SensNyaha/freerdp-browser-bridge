@@ -18,6 +18,7 @@ import { SeqpacketOwner, loadPacketAddon } from './seqpacket-owner.js';
 import { selectWorkerIpc, type WorkerIpcTransport } from './ipc-selection.js';
 import { PcmSource } from './pcm-source.js';
 import { OpusSource } from './opus-source.js';
+import { workerResidentBytes, ProcessSampleError } from './process-resident.js';
 export type { PcmSourceEvent } from './pcm-source.js';
 export type { OpusSourceEvent } from './opus-source.js';
 import { mkdir, mkdtemp, rm, writeFile, realpath } from 'node:fs/promises';
@@ -127,6 +128,10 @@ export interface WorkerOptions {
   maxPendingRequests?: number;
   maxWriteBytes?: number;
   ipcTransport?: WorkerIpcTransport;
+  /** Trusted host sampled RSS policy; omitted means no resident watchdog. */
+  maxResidentBytes?: number;
+  /** 100..60,000 ms; requires maxResidentBytes, default 1,000 ms. */
+  residentPollIntervalMs?: number;
 }
 
 type Status =
@@ -174,6 +179,10 @@ type Pending = {
   reject: (error: WorkerError) => void;
   timer: NodeJS.Timeout;
 };
+type ResidentProbe = {
+  abort: AbortController;
+  completion: Promise<void>;
+};
 
 /** Owns exactly one native lifecycle process; readiness does not imply an RDP connection. */
 export class WorkerProcess extends EventEmitter {
@@ -182,6 +191,9 @@ export class WorkerProcess extends EventEmitter {
   private pending = new Map<bigint, Pending>();
   private sequence = 0n;
   private heartbeat: NodeJS.Timeout | undefined;
+  private residentTimer: NodeJS.Timeout | undefined;
+  private residentProbe: ResidentProbe | undefined;
+  private residentRetirementFailed = false;
   private closedPromise: Promise<void> | undefined;
   private closePromise: Promise<void> | undefined;
   private startCompletion: Promise<void> | undefined;
@@ -241,7 +253,25 @@ export class WorkerProcess extends EventEmitter {
       maxPendingRequests: options.maxPendingRequests ?? 32,
       maxWriteBytes: options.maxWriteBytes ?? 65536,
       ipcTransport: options.ipcTransport ?? 'auto',
+      maxResidentBytes: options.maxResidentBytes ?? 0,
+      residentPollIntervalMs: options.residentPollIntervalMs ?? 1000,
     };
+    if (
+      (options.maxResidentBytes !== undefined &&
+        (!Number.isSafeInteger(options.maxResidentBytes) ||
+          options.maxResidentBytes < 1)) ||
+      (options.residentPollIntervalMs !== undefined &&
+        (options.maxResidentBytes === undefined ||
+          !Number.isSafeInteger(options.residentPollIntervalMs) ||
+          options.residentPollIntervalMs < 100 ||
+          options.residentPollIntervalMs > 60000))
+    )
+      throw new WorkerError('INVALID_OPTIONS');
+    if (
+      options.maxResidentBytes !== undefined &&
+      !['win32', 'linux'].includes(process.platform)
+    )
+      throw new WorkerError('RESOURCE_WATCHDOG_UNSUPPORTED');
     if (
       !['auto', 'framed-pipes', 'unix-seqpacket-rws1'].includes(
         this.options.ipcTransport,
@@ -293,6 +323,7 @@ export class WorkerProcess extends EventEmitter {
     this.setState('failed');
     if (this.heartbeat) clearInterval(this.heartbeat);
     this.heartbeat = undefined;
+    this.stopResidentWatchdog();
     const error = new WorkerError(code);
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
@@ -302,6 +333,79 @@ export class WorkerProcess extends EventEmitter {
     this.packetOwner?.destroy();
     this.child?.kill('SIGKILL');
     this.emit('failure', error);
+  }
+
+  /** Trusted sampling seam; ordinary use reads only this owned child's RSS. */
+  protected sampleResidentBytes(
+    pid: number,
+    signal: AbortSignal,
+  ): Promise<number> {
+    return workerResidentBytes(pid, this.options.workerPath, signal);
+  }
+
+  private stopResidentWatchdog(): void {
+    if (this.residentTimer) clearInterval(this.residentTimer);
+    this.residentTimer = undefined;
+    this.residentProbe?.abort.abort();
+  }
+
+  private startResidentWatchdog(): void {
+    if (!this.options.maxResidentBytes) return;
+    this.residentTimer = setInterval(
+      () => this.checkResidentMemory(),
+      this.options.residentPollIntervalMs,
+    );
+    this.residentTimer.unref();
+  }
+
+  private checkResidentMemory(): void {
+    if (this.status !== 'ready' || this.residentProbe) return;
+    const child = this.child;
+    const pid = child?.pid;
+    if (!child || !Number.isInteger(pid) || !pid) {
+      this.fail('WORKER_RESOURCE_UNAVAILABLE');
+      return;
+    }
+    const current = () => this.status === 'ready' && this.child === child;
+    let complete!: () => void;
+    const probe: ResidentProbe = {
+      abort: new AbortController(),
+      completion: new Promise<void>((done) => {
+        complete = done;
+      }),
+    };
+    this.residentProbe = probe;
+    const deadline = setTimeout(() => {
+      probe.abort.abort();
+      if (current()) this.fail('WORKER_RESOURCE_UNAVAILABLE');
+    }, 3000);
+    deadline.unref();
+    void Promise.resolve()
+      .then(() => {
+        if (!current() || probe.abort.signal.aborted)
+          throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        return this.sampleResidentBytes(pid, probe.abort.signal);
+      })
+      .then((bytes) => {
+        if (!current()) return;
+        if (!Number.isSafeInteger(bytes) || bytes < 1)
+          this.fail('WORKER_RESOURCE_UNAVAILABLE');
+        else if (bytes > this.options.maxResidentBytes)
+          this.fail('WORKER_MEMORY_LIMIT');
+      })
+      .catch((error: unknown) => {
+        if (
+          !(error instanceof ProcessSampleError) ||
+          error.code === 'PROCESS_SAMPLE_CLOSE_FAILED'
+        )
+          this.residentRetirementFailed = true;
+        if (current()) this.fail('WORKER_RESOURCE_UNAVAILABLE');
+      })
+      .finally(() => {
+        clearTimeout(deadline);
+        if (this.residentProbe === probe) this.residentProbe = undefined;
+        complete();
+      });
   }
 
   private requireStarting(): void {
@@ -518,6 +622,7 @@ export class WorkerProcess extends EventEmitter {
           });
       }, this.options.heartbeatIntervalMs);
       this.heartbeat.unref();
+      this.startResidentWatchdog();
       return structuredClone(this.report);
     } catch (error) {
       this.fail(
@@ -1390,6 +1495,7 @@ export class WorkerProcess extends EventEmitter {
     }
     if (this.status === 'closed') return;
     if (this.heartbeat) clearInterval(this.heartbeat);
+    this.stopResidentWatchdog();
     if (this.status === 'ready') {
       this.setState('closing');
       const force = setTimeout(
@@ -1410,9 +1516,12 @@ export class WorkerProcess extends EventEmitter {
       if (this.closedPromise) await this.closedPromise;
     }
     if (this.retirementFailed) throw new WorkerError('IPC_CLOSE_FAILED');
+    if (this.residentRetirementFailed)
+      throw new WorkerError('WORKER_RESOURCE_CLOSE_FAILED');
   }
 
   private async cleanup(): Promise<void> {
+    this.stopResidentWatchdog();
     if (this.packetOwner) {
       this.packetOwner.destroy();
       try {
@@ -1423,6 +1532,7 @@ export class WorkerProcess extends EventEmitter {
       }
       this.packetOwner = undefined;
     }
+    await this.residentProbe?.completion;
     this.ipcInput = undefined;
     this.cursorState = undefined;
     this.displayState = undefined;
@@ -1443,6 +1553,8 @@ export class WorkerProcess extends EventEmitter {
       });
       this.directory = undefined;
     }
+    if (this.residentRetirementFailed)
+      throw new WorkerError('WORKER_RESOURCE_CLOSE_FAILED');
   }
 }
 

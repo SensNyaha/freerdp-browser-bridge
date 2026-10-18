@@ -32,8 +32,9 @@ PATH are supplied, with a hidden window. Any stderr/failed query is unavailable.
 | Code | Meaning |
 | --- | --- |
 | `PROCESS_SAMPLE_INVALID` | Invalid PID or direct receipt-parser input. |
-| `PROCESS_SAMPLE_UNAVAILABLE` | Unsupported platform, unavailable proc/helper, failed read/query/close or unusable sample. |
+| `PROCESS_SAMPLE_UNAVAILABLE` | Unsupported platform, unavailable proc/helper, failed read/query or unusable sample. |
 | `PROCESS_SAMPLE_CANCELLED` | An optional AbortSignal cancelled the query after PID validation. Its reason is never included. |
+| `PROCESS_SAMPLE_CLOSE_FAILED` | An owned proc-file close failed; retirement is uncertain. |
 
 Errors contain no underlying process metadata, helper output or OS diagnostics.
 The package also exports the platform-specific readers and scalar receipt
@@ -53,10 +54,10 @@ and separately joins its `close` notification/streams even if execFile rejects
 earlier. It aborts the sampling helper; the sampled native worker remains owned
 by its normal supervisor. Both paths recheck cancellation after retirement.
 
-Owned close failure remains `PROCESS_SAMPLE_UNAVAILABLE`. The sampler never
+Owned close failure is separately `PROCESS_SAMPLE_CLOSE_FAILED`. The sampler never
 forwards AbortSignal.reason as a message or cause. Callers retain their normal
 worker-state checks after awaiting a sample. OS/kernel-stall and complete
-watchdog deadline/enforcement acceptance remain separate. Cancellation evidence
+kernel-failure acceptance remains separate. Cancellation evidence
 is recorded in [iteration 295](ITERATION_295.md).
 
 ## Existing lab tools and acceptance
@@ -72,4 +73,7 @@ Actual tests sample an owned unconnected native worker repeatedly, preserve
 heartbeat and join its normal cleanup. Existing Linux current-process/FD and
 lab scalar/budget tests remain separate controls. These checks do not accept
 memory/CPU watchdog enforcement, connected RDP resource budgets or a soak.
-Stage 10's watchdog requirement remains open. [Evidence](ITERATION_294.md).
+Stage 10's complete watchdog requirement remains open. [Evidence](ITERATION_294.md).
+The optional host policy now composes this sampler with owned worker failure
+and joined cleanup; see [sampled RSS policy](WORKER_MEMORY_POLICY.md) and
+[iteration 296](ITERATION_296.md).
