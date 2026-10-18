@@ -103,6 +103,15 @@ top-level tests, including all 13 available buffer variants, with unchanged
 library/app/source hashes. No socket/TLSProxy or shared bridge acceptance is
 claimed. [Evidence](docs/ITERATION_283.md).
 
+A separate experimental OpenSSL shared C-only/no-module ASan/UBSan profile now
+passes 4 upstream recipes / 211 top-level tests, exact module/source audit,
+actual new SSL/crypto origins, linked CTest 31/31 and full Node 633 / 84 skips.
+Pinned Configure permits this without RPATH; the upstream-recommended static
+baseline remains separately verified. Worker/Release hashes and dependency
+versions are unchanged. Full production features/modules/assembly, remaining
+dependencies/addon/platform/CI and RDP gates remain open.
+[Evidence](docs/ITERATION_284.md).
+
 ## Implementation status — 2026-10-16
 
 Local Linux cached-source private dependencies, pinned FreeRDP and a new
@@ -455,6 +464,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for local experimental OpenSSL shared sanitizer runtime slice —
+  Separate pinned 3.6.5 C-only/no-module Debug ASan/UBSan profile, without RPATH,
+  passes 4 upstream recipes / 211 top-level tests, exact source/shared/static
+  hash audit, safe runtime transfer and actual SSL/crypto origins. Linked native
+  CTest 31/31 and full Node 633 / 84 skips pass with unchanged worker/Release.
+  The recommended static baseline stays separate; full production OpenSSL
+  features/modules/assembly, remaining dependencies/addon/platform/CI and RDP
+  gates remain open. [Evidence](docs/ITERATION_284.md).
+
 - [x] DONE for selected local GCC 12 OpenSSL static sanitizer cases — Pinned
   3.6.5 follows upstream no-shared/PEDANTIC sanitizer recommendations in a
   separate no-asm Debug output. Focused ASN.1 2 recipes and selected 10 recipes /
@@ -463,8 +481,8 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   unchanged hashes and no sanitizer diagnostics. Prior failed harness/audit
   runs are retained. [Certificate evidence](docs/ITERATION_282.md). Three local
   SSL context/config/memory-BIO recipes and all 13 available buffer variants also
-  pass. [Memory SSL evidence](docs/ITERATION_283.md). Shared bridge
-  selection, full algorithms/TLS/upstream/fuzz/platform/CI and remaining
+  pass. [Memory SSL evidence](docs/ITERATION_283.md). Full production shared
+  OpenSSL selection, full algorithms/TLS/upstream/fuzz/platform/CI and remaining
   dependency/addon acceptance stay open. [Evidence](docs/ITERATION_281.md).
 
 - [x] DONE for local GCC 12 shared JPEG upstream sanitizer profile — Independent

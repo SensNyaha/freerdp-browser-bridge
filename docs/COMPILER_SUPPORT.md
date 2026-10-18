@@ -137,6 +137,15 @@ tests and 13 available buffer variants with the same libraries and no sanitizer
 diagnostic. Five new test C commands are instrumented; socket, dynamic-engine
 and shared bridge acceptance remain separate. [Memory SSL evidence](ITERATION_283.md).
 
+A separate experimental OpenSSL shared C-only/no-module GCC 12.4 profile also
+passes ASan/UBSan: 2,092 planned library C commands, 4 upstream recipes / 211
+top-level tests, actual SSL/crypto origins, linked native CTest 31/31 and full
+Node 633 / 84 skips. Pinned Configure permits it without RPATH; this does not
+replace the upstream-recommended static sanitizer baseline. Worker/Release and
+pins stay unchanged. Modules/assembly/full production features, remaining
+dependency/addon/platform/CI and actual RDP gates remain open.
+[Experimental runtime evidence](ITERATION_284.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.
