@@ -464,13 +464,21 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for incremental libusb test-copy preparation — CMake tracks the
+  test-only patch as a configure dependency. A private-copy build regression
+  fails before the correction and passes patch edit/restore/incremental builds
+  with GCC 12 and Clang 18; full standalone CTest 4/4 each and repeated focused
+  CTest 1/1 each pass. Original sources, Release and dependency pins stay
+  unchanged. This closes one reproducibility detail, not the Stage 0 gate.
+  [Evidence](docs/ITERATION_287.md).
+
 - [x] DONE for isolated libusb descriptor cleanup regression — A retained
   40-byte LSan leak reproduces with GCC 12 before correction. Exact test-only
   build-copy cleanup passes GCC/Clang CTest 3/3 each, original-input replay and
   two 100,000-run ASan/UBSan/libFuzzer smokes without new errors. Original
   sources and Release remain unchanged; production libusb still has the known
   cleanup gap. Shared-backend/eudev, production adoption and wider gates stay
-  open. [Evidence](docs/ITERATION_286.md).
+  open. [Evidence](docs/ITERATION_286.md); `5427e70`.
 
 - [x] DONE for bounded local GCC 12 libusb descriptor seed replay — Separate
   pinned 1.0.30 device-free parser fixture passes 105 BOS value checks and 150

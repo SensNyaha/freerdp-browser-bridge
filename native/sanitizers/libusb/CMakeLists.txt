@@ -35,7 +35,8 @@ check_source(libusb/os/threads_posix.h a85fbf402195885a8b0484b881b27ad56e2205965
 # A parse_interface() zero return can still own a newly allocated altsetting.
 # Apply the regression correction only to a private build copy. The original
 # source, shared SDK and Release port remain unchanged and separately tracked.
-set(corpus "${BRIDGE_LIBUSB_SOURCE}/tests/fuzz/corpus")
+set(pinned_source "${BRIDGE_LIBUSB_SOURCE}")
+set(corpus "${pinned_source}/tests/fuzz/corpus")
 set(prepared "${CMAKE_CURRENT_BINARY_DIR}/pinned-libusb")
 foreach(relative IN ITEMS tests/fuzz/fuzz_descriptor_parsers.c tests/fuzz/fuzz_bos_descriptor.c
     libusb/descriptor.c libusb/libusbi.h libusb/libusb.h
@@ -45,6 +46,8 @@ foreach(relative IN ITEMS tests/fuzz/fuzz_descriptor_parsers.c tests/fuzz/fuzz_b
   configure_file("${BRIDGE_LIBUSB_SOURCE}/${relative}" "${prepared}/${relative}" COPYONLY)
 endforeach()
 find_program(BRIDGE_LIBUSB_PATCH patch REQUIRED)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/interface-ownership.patch")
 execute_process(COMMAND "${BRIDGE_LIBUSB_PATCH}" --batch --forward --fuzz=0
   --no-backup-if-mismatch -p1 -i "${CMAKE_CURRENT_SOURCE_DIR}/interface-ownership.patch"
   WORKING_DIRECTORY "${prepared}" RESULT_VARIABLE patch_result
@@ -76,6 +79,13 @@ add_test(NAME usb-interface-ownership COMMAND usb-descriptor-regression --interf
 add_test(NAME usb-descriptor-corpus COMMAND usb-descriptor-regression
   "${corpus}")
 set_tests_properties(usb-bos-values usb-interface-ownership usb-descriptor-corpus PROPERTIES TIMEOUT 60)
+add_test(NAME usb-patch-reconfigure COMMAND "${CMAKE_COMMAND}"
+  "-DFIXTURE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}"
+  "-DPINNED_SOURCE=${pinned_source}"
+  "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/patch-reconfigure-test"
+  "-DC_COMPILER=${CMAKE_C_COMPILER}" "-DCXX_COMPILER=${CMAKE_CXX_COMPILER}"
+  -P "${CMAKE_CURRENT_SOURCE_DIR}/reconfigure-test.cmake")
+set_tests_properties(usb-patch-reconfigure PROPERTIES TIMEOUT 120)
 
 option(BRIDGE_LIBUSB_FUZZERS "Build device-free Clang libFuzzer smoke targets" OFF)
 if(BRIDGE_LIBUSB_FUZZERS)
