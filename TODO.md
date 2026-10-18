@@ -16,7 +16,7 @@ Current stage acceptance:
 | 0 — build | IN PROGRESS | Remaining checkout/distro/CI and private-dependency/addon/upstream-test sanitizer matrix; GCC 12 linked Release, bridge + FreeRDP/WinPR PIE sanitizer fixtures and independent Bookworm/Ubuntu native runtime pass |
 | 1 — worker/IPC | IN PROGRESS | Primary/fallback Release IPC lifecycle passes on Linux/Windows; connected output/release/resource, addon sanitizer, configured capacity, broader isolation and abnormal cleanup remain |
 | 2 — session/API | DONE for Windows fake-backend gate | Accepted lifecycle/WS gate; real RDP and platform acceptance belongs to the corresponding stages |
-| 3 — connection | IN PROGRESS | Windows RDP lab, remaining settings/auth/trust history, errors and reconnect |
+| 3 — connection | IN PROGRESS | Remaining Windows application/platform profiles, settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
@@ -35,7 +35,10 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-18
 
-The user restored access to the authorized RDP lab. Windows actual strict
+The user restored access and confirms the target is the Windows RDP lab;
+they have cleared the initial desktop wizard. Legacy `test-xrdp-*` names do
+not identify the current server OS. [Current scope](docs/LAB_STATUS.md),
+[clarification](docs/ITERATION_301.md). Windows actual strict
 certificate refusal / approved session-only connection, native and Edge
 H.264/JPEG resize/restoration/replay, controlled connection loss and joined
 cleanup pass. CLIPRDR and RDPEI inventories are ready. PCM/Opus output still
@@ -850,7 +853,11 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [~] IN PROGRESS — Public settings mapper supports host/port, password credentials, auto/NLA/TLS, minimum TLS, initial display, deadlines and native video quality/FPS profiles. Broader settings remain explicit unsupported errors. [Quality contract](docs/VIDEO_QUALITY.md).
 - [~] IN PROGRESS — Supplied credentials/auth callback are implemented; interactive replacement prompts remain TODO.
 - [~] IN PROGRESS — Strict chain/name validation and one-session certificate prompts pass native/HTTP/WS tests. Persistent trust/TOFU and changed-certificate history remain TODO.
-- [~] IN PROGRESS — Load addins and connect: XRDP activation/heartbeat verified; Windows RDP server lab remains unavailable.
+- [~] IN PROGRESS — Load addins and connect: historical XRDP activation/heartbeat
+  remains verified. Restored Windows RDP endpoint now also passes activation,
+  strict certificate refusal, approved session-only connection, graphics/resize
+  and cleanup. Application/device/audio and broader Windows profiles remain
+  open. [Current lab scope](docs/LAB_STATUS.md).
 - [~] IN PROGRESS — Stable connect/auth/certificate/timeout/disconnect failures implemented; richer remote disconnect categorization remains TODO.
 - [~] IN PROGRESS — Graceful disconnect and cancellation verified; reconnect remains unsupported.
 - [x] DONE for current connection slice — Password is delivered through a separate private IPC class after HELLO, with transport copies overwritten. No per-session secrets enter argv/env; unsupported hash/PIN modes are rejected.
@@ -1172,7 +1179,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   conversion tests pass. Debug CTest Windows 16/16 and Linux 17/17, full Node
   654 / 90 skips and 599 / 148 skips pass. No Node CPU sampler/watchdog or Linux
   process query is claimed; complete CPU/connected resource gates remain open.
-  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_300.md).
+  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_300.md); `059c866`.
 
 - [x] DONE for cancellable shared RSS queries — Optional AbortSignal stops
   pre-aborted work before resource acquisition, joins proc-file/helper-process

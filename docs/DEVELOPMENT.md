@@ -1,5 +1,10 @@
 # Building the foundation
 
+Current authorized `192.168.21.149` is the **Windows lab**, confirmed by the
+user on 2026-10-18. The `test-xrdp-*` filenames are legacy helper names; label
+new evidence by the actual endpoint. The user has cleared the Windows backup/
+preparation wizard themselves. [Current status and remaining gates](LAB_STATUS.md).
+
 ## Connected worker RSS policy smoke
 
 Core lab `strict` mode succeeds only for exact `RDP_CERTIFICATE_REJECTED` and
