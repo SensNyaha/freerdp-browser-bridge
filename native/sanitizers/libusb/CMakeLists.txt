@@ -32,6 +32,28 @@ check_source(libusb/libusb.h a61260ab145b051b86df2b0575956f01810190abe2c7df6aca8
 check_source(libusb/os/events_posix.h f93e407eddc235375aace26fd17065e297cd963e60602002a6c100214a300b1b)
 check_source(libusb/os/threads_posix.h a85fbf402195885a8b0484b881b27ad56e22059655e86cf101d67b40fe1ff261)
 
+# A parse_interface() zero return can still own a newly allocated altsetting.
+# Apply the regression correction only to a private build copy. The original
+# source, shared SDK and Release port remain unchanged and separately tracked.
+set(corpus "${BRIDGE_LIBUSB_SOURCE}/tests/fuzz/corpus")
+set(prepared "${CMAKE_CURRENT_BINARY_DIR}/pinned-libusb")
+foreach(relative IN ITEMS tests/fuzz/fuzz_descriptor_parsers.c tests/fuzz/fuzz_bos_descriptor.c
+    libusb/descriptor.c libusb/libusbi.h libusb/libusb.h
+    libusb/os/events_posix.h libusb/os/threads_posix.h)
+  get_filename_component(parent "${prepared}/${relative}" DIRECTORY)
+  file(MAKE_DIRECTORY "${parent}")
+  configure_file("${BRIDGE_LIBUSB_SOURCE}/${relative}" "${prepared}/${relative}" COPYONLY)
+endforeach()
+find_program(BRIDGE_LIBUSB_PATCH patch REQUIRED)
+execute_process(COMMAND "${BRIDGE_LIBUSB_PATCH}" --batch --forward --fuzz=0
+  --no-backup-if-mismatch -p1 -i "${CMAKE_CURRENT_SOURCE_DIR}/interface-ownership.patch"
+  WORKING_DIRECTORY "${prepared}" RESULT_VARIABLE patch_result
+  OUTPUT_VARIABLE patch_output ERROR_VARIABLE patch_error)
+if(NOT patch_result EQUAL 0)
+  message(FATAL_ERROR "Test-only libusb patch failed: ${patch_output}${patch_error}")
+endif()
+set(BRIDGE_LIBUSB_SOURCE "${prepared}")
+
 configure_file(config.h.in config.h @ONLY)
 add_library(usb-descriptor-harness OBJECT "${BRIDGE_LIBUSB_SOURCE}/tests/fuzz/fuzz_descriptor_parsers.c")
 add_library(usb-bos-harness OBJECT "${BRIDGE_LIBUSB_SOURCE}/tests/fuzz/fuzz_bos_descriptor.c")
@@ -50,6 +72,27 @@ target_link_options(usb-descriptor-regression PRIVATE -fsanitize=address,undefin
 
 enable_testing()
 add_test(NAME usb-bos-values COMMAND usb-descriptor-regression)
+add_test(NAME usb-interface-ownership COMMAND usb-descriptor-regression --interface-ownership)
 add_test(NAME usb-descriptor-corpus COMMAND usb-descriptor-regression
-  "${BRIDGE_LIBUSB_SOURCE}/tests/fuzz/corpus")
-set_tests_properties(usb-bos-values usb-descriptor-corpus PROPERTIES TIMEOUT 60)
+  "${corpus}")
+set_tests_properties(usb-bos-values usb-interface-ownership usb-descriptor-corpus PROPERTIES TIMEOUT 60)
+
+option(BRIDGE_LIBUSB_FUZZERS "Build device-free Clang libFuzzer smoke targets" OFF)
+if(BRIDGE_LIBUSB_FUZZERS)
+  if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR "The libFuzzer profile requires Clang")
+  endif()
+  # The renamed descriptor object provides public BOS helpers and inert stubs.
+  target_compile_options(usb-descriptor-harness PRIVATE -fsanitize=fuzzer-no-link)
+  target_link_options(usb-descriptor-regression PRIVATE -fsanitize=fuzzer-no-link)
+  add_executable(usb-descriptor-fuzz "${BRIDGE_LIBUSB_SOURCE}/tests/fuzz/fuzz_descriptor_parsers.c")
+  add_executable(usb-bos-fuzz "${BRIDGE_LIBUSB_SOURCE}/tests/fuzz/fuzz_bos_descriptor.c"
+    $<TARGET_OBJECTS:usb-descriptor-harness>)
+  foreach(target usb-descriptor-fuzz usb-bos-fuzz)
+    target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    target_include_directories(${target} SYSTEM PRIVATE "${BRIDGE_LIBUSB_SOURCE}/libusb")
+    target_compile_options(${target} PRIVATE -fsanitize=fuzzer,address,undefined
+      -fno-sanitize-recover=undefined -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=fuzzer,address,undefined)
+  endforeach()
+endif()

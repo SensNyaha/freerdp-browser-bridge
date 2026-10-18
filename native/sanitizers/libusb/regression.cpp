@@ -9,6 +9,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 
 extern "C" int DescriptorInput(const std::uint8_t *, std::size_t);
@@ -93,6 +94,14 @@ void values() {
   libusb_free_ss_usb_device_capability_descriptor(nullptr);
   libusb_free_container_id_descriptor(nullptr);
 }
+void interface_ownership() {
+  // One advertised interface followed by a different descriptor type. The
+  // private parser allocates an alternate-setting array before returning zero.
+  // The caller must release that current slot before reducing bNumInterfaces.
+  const std::array<std::uint8_t, 18> bytes{9, 2, 18, 0, 1, 1, 0, 0x80, 0,
+                                           9, 5, 0,  0, 0, 0, 0, 0,    0};
+  check(DescriptorInput(bytes.data(), bytes.size()) == 0);
+}
 void input(const std::vector<std::uint8_t> &bytes) {
   // Even zero-byte inputs get a non-null address for the upstream BOS harness.
   const std::uint8_t empty = 0;
@@ -136,6 +145,8 @@ int main(int argc, char **argv) {
     check(argc == 1 || argc == 2);
     if (argc == 1)
       values();
+    else if (std::string_view(argv[1]) == "--interface-ownership")
+      interface_ownership();
     else
       corpus(argv[1]);
     std::cout << "USB descriptor checks=" << checks << " inputs=" << inputs << '\n';

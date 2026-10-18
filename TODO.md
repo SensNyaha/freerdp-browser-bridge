@@ -464,13 +464,22 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for isolated libusb descriptor cleanup regression — A retained
+  40-byte LSan leak reproduces with GCC 12 before correction. Exact test-only
+  build-copy cleanup passes GCC/Clang CTest 3/3 each, original-input replay and
+  two 100,000-run ASan/UBSan/libFuzzer smokes without new errors. Original
+  sources and Release remain unchanged; production libusb still has the known
+  cleanup gap. Shared-backend/eudev, production adoption and wider gates stay
+  open. [Evidence](docs/ITERATION_286.md).
+
 - [x] DONE for bounded local GCC 12 libusb descriptor seed replay — Separate
   pinned 1.0.30 device-free parser fixture passes 105 BOS value checks and 150
   deterministic inputs through two unchanged upstream harnesses; standalone
   CTest 2/2, source/hash-refusal audits, linked control CTest 31/31 and full Node
   633 / 84 skips pass. The next Clang fuzz attempt exposes a retained 40-byte
-  cleanup leak beyond this corpus; full parser/backend/eudev/platform/CI/device
-  acceptance remains open. Release is unchanged. [Evidence](docs/ITERATION_285.md).
+  cleanup leak beyond this corpus; the isolated correction above supersedes
+  only this test slice. Full parser/backend/eudev/platform/CI/device acceptance
+  remains open. Release is unchanged. [Evidence](docs/ITERATION_285.md).
 
 - [x] DONE for local experimental OpenSSL shared sanitizer runtime slice —
   Separate pinned 3.6.5 C-only/no-module Debug ASan/UBSan profile, without RPATH,

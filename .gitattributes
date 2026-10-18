@@ -3,3 +3,5 @@
 *.zip binary
 # Unified diff context uses a space on otherwise empty lines.
 native/vcpkg/ports/**/*.patch whitespace=-blank-at-eol
+# Unified diff context precedes the pinned libusb source's tab indentation.
+native/sanitizers/libusb/interface-ownership.patch whitespace=-space-before-tab

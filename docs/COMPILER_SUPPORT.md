@@ -154,6 +154,11 @@ passes CTest 31/31 and full Node 633 / 84 skips. A subsequent Clang fuzz attempt
 finds a retained 40-byte cleanup leak, confirmed by GCC; this bounded baseline
 does not accept all parsers, shared libusb/eudev or device integration.
 [Descriptor baseline evidence](ITERATION_285.md).
+The same leak has a failing-before/passing-after GCC 12 regression. A local
+test-only source-copy correction passes GCC/Clang CTest 3/3 each, saved-input
+replay and two 100,000-run Clang ASan/UBSan/libFuzzer smokes. Original source and
+Release libusb remain unchanged; production adoption/backend/eudev acceptance
+is still open. [Cleanup correction evidence](ITERATION_286.md).
 
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
