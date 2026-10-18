@@ -37,3 +37,9 @@ remain open. Hosts choose budgets; existing Release defaults are unchanged.
 Actual unconnected workers verify the one-byte breach and healthy 1 GiB cap
 on Windows/Linux. Synthetic probes separately test faults, deadlines and
 retirement. [Verification and exact scope](ITERATION_296.md).
+
+The opt-in `test-xrdp-lab.mjs memory` helper additionally observes actual RSS
+through the same policy on a connected Windows 1080p lab worker, with heartbeat,
+JPEG capture and empty-runtime close. It retains only count/peak scalars, no
+sample history. [Short connected smoke](ITERATION_298.md) is separate from
+cap-breach fault injection, Linux connected acceptance or total-session/soak budgets.

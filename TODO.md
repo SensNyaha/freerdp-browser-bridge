@@ -41,7 +41,7 @@ H.264/JPEG resize/restoration/replay, controlled connection loss and joined
 cleanup pass. CLIPRDR and RDPEI inventories are ready. PCM/Opus output still
 receives no formats/packets; PCM/Opus AUDIN remains waiting epoch 0 with no
 channel/Open negotiation. Audio/recording, application/device and wider gates
-remain open; access alone does not accept them. [Current lab evidence](docs/ITERATION_297.md).
+remain open; access alone does not accept them. [Current lab evidence](docs/ITERATION_297.md); `9dce875`.
 
 The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
 isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
@@ -1213,6 +1213,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   startup/total-session memory, hard kernel/OS deadlines, connected RDP and
   broader abnormal-exit/soak acceptance remain open.
   [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md); `6752257`.
+  A subsequent short Windows actual RDP 1080p healthy-policy smoke passes
+  26 connected samples below the explicit 256 MiB cap, heartbeat/JPEG and joined
+  empty-runtime close. This does not accept total-session/CPU, connected faults,
+  Linux connected or sustained budgets. [Evidence](docs/ITERATION_298.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

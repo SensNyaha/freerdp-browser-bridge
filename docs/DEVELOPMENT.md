@@ -1,5 +1,22 @@
 # Building the foundation
 
+## Connected worker RSS policy smoke
+
+With the current built Node package, existing bundled worker and ignored
+authorized lab files, use the previously approved exact fingerprint:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe scripts/test-xrdp-lab.mjs memory $fingerprint
+```
+
+This explicit mode selects 1920×1080 and a 256 MiB sampled worker RSS cap at
+100 ms intervals. It requires at least three actual connected samples, a JPEG
+frame, heartbeat and empty-runtime cleanup. It records only count/peak scalars
+and sends no remote input, audio generation or physical capture. It does not
+stress memory or prove the whole-session target, CPU, hard allocation limits
+or sustained acceptance. Ordinary modes and Release defaults remain unchanged.
+[Host policy](WORKER_MEMORY_POLICY.md), [evidence](ITERATION_298.md).
+
 ## Private clipboard lab probe
 
 With the paired current worker/Node build and ignored authorized lab files:
