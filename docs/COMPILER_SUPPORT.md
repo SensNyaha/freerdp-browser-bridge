@@ -146,6 +146,15 @@ pins stay unchanged. Modules/assembly/full production features, remaining
 dependency/addon/platform/CI and actual RDP gates remain open.
 [Experimental runtime evidence](ITERATION_284.md).
 
+A separate pinned libusb 1.0.30 parser-only GCC 12.4 Debug fixture instruments
+both unchanged upstream C harnesses and its C++20 driver. BOS values (105 checks)
+and bounded seed replay (150 inputs) pass standalone CTest 2/2, with exact
+source/hash-refusal checks and no device backend. The unchanged linked control
+passes CTest 31/31 and full Node 633 / 84 skips. A subsequent Clang fuzz attempt
+finds a retained 40-byte cleanup leak, confirmed by GCC; this bounded baseline
+does not accept all parsers, shared libusb/eudev or device integration.
+[Descriptor baseline evidence](ITERATION_285.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.

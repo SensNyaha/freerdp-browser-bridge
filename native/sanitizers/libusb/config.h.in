@@ -1,0 +1,7 @@
+/* Test-only POSIX type/attribute configuration; no platform backend is built.
+ * The upstream descriptor harness supplies its own inert backend/log stubs.
+ * ENABLE_LOGGING is deliberately left to that unchanged harness. */
+#define PLATFORM_POSIX 1
+#define HAVE_SYS_TIME_H 1
+#define DEFAULT_VISIBILITY __attribute__((visibility("default")))
+#define PRINTF_FORMAT(a, b) __attribute__((__format__(__printf__, a, b)))

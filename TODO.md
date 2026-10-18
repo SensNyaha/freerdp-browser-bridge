@@ -464,6 +464,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for bounded local GCC 12 libusb descriptor seed replay — Separate
+  pinned 1.0.30 device-free parser fixture passes 105 BOS value checks and 150
+  deterministic inputs through two unchanged upstream harnesses; standalone
+  CTest 2/2, source/hash-refusal audits, linked control CTest 31/31 and full Node
+  633 / 84 skips pass. The next Clang fuzz attempt exposes a retained 40-byte
+  cleanup leak beyond this corpus; full parser/backend/eudev/platform/CI/device
+  acceptance remains open. Release is unchanged. [Evidence](docs/ITERATION_285.md).
+
 - [x] DONE for local experimental OpenSSL shared sanitizer runtime slice —
   Separate pinned 3.6.5 C-only/no-module Debug ASan/UBSan profile, without RPATH,
   passes 4 upstream recipes / 211 top-level tests, exact source/shared/static
