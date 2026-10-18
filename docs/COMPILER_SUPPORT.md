@@ -111,6 +111,15 @@ pass with unchanged worker/Release artifacts. This is a Linux local PNG slice;
 full comparator/write-fuzz/platform/CI and remaining dependency/addon acceptance
 stay open. [PNG regression evidence](ITERATION_279.md).
 
+The separate pinned libjpeg-turbo 3.2.0 GCC 12.4 Debug shared profile now also
+passes upstream ASan/UBSan CTest 332/332, after focused API/bitmap/buffer 3/3.
+All 292 C compile commands are instrumented; 27 SIMD assembly commands are not.
+It uses the instrumented private libspng/ZLIB SDKs, keeps existing source port
+patches only, and preserves ordinary CMake tool ownership. A focused scalar API
+control, actual module origins, linked CTest 31/31 and full Node 633 / 84 skips
+also pass with unchanged worker/Release. Wider sanitizer/fuzz/platform/CI and
+remaining dependency/addon gates stay open. [JPEG evidence](ITERATION_280.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.

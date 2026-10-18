@@ -78,6 +78,16 @@ paths are verified. Full comparator/fuzz/platform and remaining dependency/addon
 acceptance stay open. Linked CTest 31/31 and full Node 633 / 84 skips pass with
 the new library profile and unchanged worker/Release. [PNG evidence](docs/ITERATION_279.md).
 
+The independent pinned libjpeg-turbo 3.2.0 Debug profile now passes upstream
+ASan/UBSan CTest 332/332, including API/buffer/PNG and golden codec-output cases.
+All 292 C compile commands are instrumented; 27 SIMD assembly commands remain
+outside sanitizer instrumentation. Existing port patches are the only source
+differences. Release is unchanged. An additional focused C-fallback API control
+passes. Actual new JPEG/SPNG/ZLIB
+origins, linked native CTest 31/31 and full Node 633 / 84 skips also pass without
+new sanitizer diagnostics; the existing worker hash remains unchanged.
+[JPEG evidence](docs/ITERATION_280.md).
+
 ## Implementation status — 2026-10-16
 
 Local Linux cached-source private dependencies, pinned FreeRDP and a new
@@ -429,6 +439,16 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local GCC 12 shared JPEG upstream sanitizer profile — Independent
+  pinned libjpeg-turbo 3.2.0 Debug build, instrumented private libspng/ZLIB,
+  292 instrumented C commands and focused 3/3 / full upstream CTest 332/332 pass.
+  Exact commands/dependencies are preserved with native/tool loader separation;
+  post-test source audit matches only existing port patches. Focused C fallback,
+  actual module origins, linked CTest 31/31 and full Node 633 / 84 skips pass.
+  Release is unchanged.
+  Assembly instrumentation, longer fuzz, remaining dependencies/addon/platform/CI
+  and RDP/resource gates remain open. [Evidence](docs/ITERATION_280.md).
 
 - [x] DONE for local GCC 12 libspng PNG sanitizer slice — Separate pinned 0.7.4
   shared build and both fixture translation units carry ASan/UBSan. Eight
