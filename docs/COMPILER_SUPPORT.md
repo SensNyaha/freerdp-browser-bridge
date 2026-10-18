@@ -27,6 +27,13 @@ MSVC passes the actual library probe and foundation CTest 15/15. CI now includes
 an explicit GCC 12 foundation entry, prepared but not run.
 [Current policy/build evidence](ITERATION_263.md).
 
+A current tracked-source export also passes an independent local Clang 18.1.3
+Debug foundation build: CTest 16/16, framed native lifecycle 15 / 1 skip and
+full Node 574 / 147 platform/profile skips / 721 total. The original 1,107
+archived files remain unchanged. Compiler/Catch2/public caches are prepared
+inputs; this is separate from actual CI, linked FreeRDP and RDP/device gates.
+The GNU minimum remains 12. [Clang Debug evidence](ITERATION_288.md).
+
 Ubuntu GCC 12.4 also passes the standard PIE ASan/UBSan foundation: actual
 library probe, native CTest 16/16 and 100 default-option empty-program launches.
 Its distribution sanitizer runtimes are 14.2; the historical Bookworm/GCC 12.2
