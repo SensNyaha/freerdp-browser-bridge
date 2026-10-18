@@ -102,6 +102,15 @@ the prior shared runtime remain unchanged. This is local static-test evidence;
 broader dependency/addon/platform/fuzz/CI and actual RDP gates remain open.
 [Static ZLIB evidence](ITERATION_278.md).
 
+Pinned libspng 0.7.4 also passes a separate GCC 12.4 shared ASan/UBSan build
+with private instrumented ZLIB. A standalone C++20 driver and unchanged pinned
+upstream C read harness pass eight exact RGBA8 roundtrip combinations plus
+destination/image/truncation refusals and 2,424 seeded inputs from 202 PNGs.
+Actual module paths, hash refusal, linked CTest 31/31 and full Node 633 / 84 skips
+pass with unchanged worker/Release artifacts. This is a Linux local PNG slice;
+full comparator/write-fuzz/platform/CI and remaining dependency/addon acceptance
+stay open. [PNG regression evidence](ITERATION_279.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.

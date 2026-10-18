@@ -70,6 +70,14 @@ unchanged; matching gcov 12 is used. This adds local static test coverage while
 other private dependencies/addon and wider gates remain open.
 [Static ZLIB evidence](docs/ITERATION_278.md).
 
+Pinned libspng 0.7.4 now also passes a separate GCC 12.4 ASan/UBSan shared build
+and bounded local PNG regression: eight exact RGBA8 roundtrip combinations,
+size/truncation refusals and 2,424 upstream read-harness inputs from 202 PNGs.
+Unknown harness input is refused by hash; actual private libspng/ZLIB loader
+paths are verified. Full comparator/fuzz/platform and remaining dependency/addon
+acceptance stay open. Linked CTest 31/31 and full Node 633 / 84 skips pass with
+the new library profile and unchanged worker/Release. [PNG evidence](docs/ITERATION_279.md).
+
 ## Implementation status — 2026-10-16
 
 Local Linux cached-source private dependencies, pinned FreeRDP and a new
@@ -421,6 +429,16 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local GCC 12 libspng PNG sanitizer slice — Separate pinned 0.7.4
+  shared build and both fixture translation units carry ASan/UBSan. Eight
+  whole/progressive/Adam7 RGBA8 roundtrips, output/image/truncation bounds and
+  202-file / 2,424-input upstream read replay pass standalone CTest 2/2.
+  Private instrumented libspng/ZLIB origins and unknown-harness refusal pass.
+  Linked CTest 31/31 and full Node 633 / 84 skips pass; Release is unchanged.
+  Full libpng comparison, write/long fuzz, remaining
+  dependencies/addon/platform/CI and RDP gates stay open.
+  [Evidence](docs/ITERATION_279.md).
 
 - [x] DONE for local GCC 12 static ZLIB sanitizer cases — All 19 compile commands,
   including upstream infcover, carry ASan/UBSan with nonrecovering UB checks.
