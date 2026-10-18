@@ -20,7 +20,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, Windows server and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
-| 7 — clipboard/drives | IN PROGRESS | Actual Windows/XRDP/Edge offer/no-format revoke ACK and replay pass; remote application/readback/OS clipboard and managed-drive CRUD gate remain |
+| 7 — clipboard/drives | IN PROGRESS | Named Windows Notepad Unicode roundtrip and prior offer/revoke/replay pass; browser/host clipboard, wider quotas/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -48,6 +48,14 @@ remain open; access alone does not accept them. [Current lab evidence](docs/ITER
 The desktop-ready Windows repeat also receives no RDPSND Formats/packets or
 AUDIN Open for PCM/Opus, with heartbeat/frame/cleanup intact; audio and recording
 remain unaccepted. [Repeat evidence](docs/ITERATION_302.md).
+
+The user-prepared Windows Notepad now passes fixed Latin/Cyrillic/Japanese/
+supplementary Unicode application readback, actual CLIPRDR paste-and-copy
+roundtrip, a small physical-key/modifier/reset case, fixed left-button sequence,
+empty-offer/revoke ACK and unsaved-window/native cleanup. Full Node passes
+Windows 657 / 90 skips and Linux 602 / 148 skips. This is a named private small-text
+slice, not complete layout/IME/button/browser/host-clipboard/device acceptance.
+[Application evidence](docs/ITERATION_303.md).
 
 The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
 isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
@@ -925,6 +933,13 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
 
 ## Stage 5 — keyboard, mouse, wheel and touch
 
+- [x] DONE for named Windows Notepad input/readback smoke — Committed
+  Latin/Cyrillic/Japanese/emoji text, physical Shift/number keys, held-left-Ctrl
+  reset, extended right-Ctrl copy and fixed left-button/application sequence
+  pass exact remote Unicode readback and unsaved-window/native cleanup.
+  This does not accept full layouts/IME, wheel/other buttons/touch, physical
+  hardware or disconnect-held input. [Evidence](docs/ITERATION_303.md).
+
 Current integration evidence: [private/native touch](docs/ITERATION_029.md),
 [public lease/browser](docs/ITERATION_030.md), [actual XRDP readiness/replay](docs/ITERATION_031.md),
 [pen placeholder](docs/ITERATION_032.md), [terminal cleanup](docs/ITERATION_033.md),
@@ -937,8 +952,8 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 - [~] IN PROGRESS — Physical set-1 mapping, extended left/right/numpad and eight international physical positions implemented; native/Node/Edge fixtures pass. Symbols are not used for mapping, composition stays local and reset releases held positions. Remote keyboard-layout/IME/hardware gate remains pending. [Contract](docs/INPUT.md), [initial evidence](docs/ITERATION_008.md), [international positions](docs/ITERATION_034.md).
 - [~] IN PROGRESS — Browser modifiers reconcile before focused input; observed left/right sides survive canvas focus/resize pauses, missed releases are repaired, and Caps/Num/Scroll Lock synchronize after physical lock edges. Bounded pure/native and Edge/fake-control fixtures pass; actual remote layouts, AltGraph portability and no-stuck-key acceptance remain open. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_020.md).
-- [~] IN PROGRESS — Explicit committed Unicode/IME textarea, bounded UTF-16BE private IPC and FreeRDP Unicode events implemented; native, pure, fake IPC/control and Edge composition fixtures pass. Server Unicode negotiation is required; no automatic retry of partial/uncertain delivery. Actual remote application text/OS IME, supplementary/line-ending behavior and direct canvas IME remain unverified. [Contract](docs/INPUT.md#committed-unicode-text), [evidence](docs/ITERATION_021.md).
-- [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK verified; actual remote buttons pending.
+- [~] IN PROGRESS — Explicit committed Unicode/IME textarea, bounded UTF-16BE private IPC and FreeRDP Unicode events implemented; native, pure, fake IPC/control and Edge composition fixtures pass. Server Unicode negotiation is required; no automatic retry of partial/uncertain delivery. The named Windows Notepad text/supplementary readback case now passes [iteration 303](docs/ITERATION_303.md); OS IME, line endings, broader application/platform profiles and direct canvas IME remain unverified. [Contract](docs/INPUT.md#committed-unicode-text), [initial evidence](docs/ITERATION_021.md).
+- [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK and the named Windows left-button/application readback sequence pass; other remote button/platform and physical-device acceptance remain open. [Windows evidence](docs/ITERATION_303.md).
 - [~] IN PROGRESS — Both wheel axes and bounded fractional DOM pixel/line/page accumulation implemented; pure/Edge/control fixtures pass. Gesture context, focus/reset/resize pauses and idle gaps discard stale fractions; no new timer/queue or wire change. Actual remote wheel sensitivity and physical trackpad acceptance remain open. [Contract](docs/INPUT.md#fractional-wheel-and-trackpad-accumulation), [evidence](docs/ITERATION_022.md).
 - [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Independent remote cursor display now passes XRDP/Edge; measured latency and desktop soak gates remain open.
 - [~] IN PROGRESS — Native pressed-state reset and retry, blur/disposal, transport loss and stale lease cancellation verified. Graceful close resets input; actual remote no-stuck-key gate pending.
@@ -1042,6 +1057,14 @@ compatibility profile; it does not establish total latency or waive the ordinary
 profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 7 — clipboard and managed drives
+
+- [x] DONE for named Windows Notepad Unicode roundtrip — Explicit private
+  Node/native bidirectional CLIPRDR selection with 1,024-byte cap passes actual
+  application paste and subsequent copied exact readback of fixed Unicode.
+  Empty-offer/no-format revoke ACK and joined cleanup pass; no host Clipboard
+  API, remote file save or remote clipboard logging occurs. Browser/host OS,
+  full quota/direction/resource matrix, other formats and drives remain open.
+  [Contract](docs/WINDOWS_APPLICATION_SMOKE.md), [evidence](docs/ITERATION_303.md).
 
 - [x] DONE for isolated native conversion — Allocation-free bounded UTF-8/CF_UNICODETEXT
   conversion, CRLF normalization and atomic refusal pass Windows/Linux native,

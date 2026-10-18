@@ -32,3 +32,8 @@ Further application/input/clipboard and device tests require an available
 desktop plus explicit device/capture policy. The restored network access does
 not accept these functions by itself. No dependency versions, Release settings,
 persistent certificate trust or security mechanisms are changed.
+
+The subsequent user-prepared Notepad smoke now passes the named committed
+Unicode, small physical-key/reset, left-button and private bidirectional
+clipboard application/readback cases, followed by unsaved-window cleanup.
+[Exact scope and retained broader gates](ITERATION_303.md).

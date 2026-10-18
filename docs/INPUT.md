@@ -4,6 +4,12 @@ This implements part of SPECIFICATION.md §2.5 and supports the interactive desk
 gate of Stage 4. Stage 5 remains open until keyboard layouts and mouse/wheel
 behavior are verified on a controlled remote desktop.
 
+A named Windows Notepad smoke now verifies committed Latin/Cyrillic/Japanese/
+supplementary text, a small physical-key/modifier/reset case and fixed left
+click through actual application/CLIPRDR readback. Full layout/OS-IME, multiline,
+button/wheel/touch and disconnect-held-input gates remain open.
+[Current evidence](ITERATION_303.md).
+
 An isolated [native touch foundation](#native-touch-foundation) is also tested.
 It is not connected to worker IPC or browser input and does not advertise RDPEI support.
 
@@ -13,7 +19,7 @@ mouse coordinates, five buttons, vertical/horizontal wheel, toggle synchronizati
 and release of tracked pressed input. It does not imply Unicode/IME, RDPEI touch,
 pen or complete remote keyboard-layout acceptance. A separate experimental
 `unicodeInput` (HELLO bit 10) implements committed text as described below, without
-claiming remote Unicode acceptance. Browser focus/modifier and
+claiming full remote Unicode acceptance. Browser focus/modifier and
 toggle reconciliation is implemented as described below; `rdp` remains false.
 
 ## Control channel

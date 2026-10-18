@@ -1,5 +1,10 @@
 # Building the foundation
 
+For operator-assisted actual Windows Notepad Unicode/input/clipboard checks,
+use the [application smoke](WINDOWS_APPLICATION_SMOKE.md). It requires an empty
+user-prepared Notepad, fixed test data and phase-by-phase native JPEG inspection;
+it never saves the document or accesses the host Clipboard API.
+
 Current authorized `192.168.21.149` is the **Windows lab**, confirmed by the
 user on 2026-10-18. The `test-xrdp-*` filenames are legacy helper names; label
 new evidence by the actual endpoint. The user has cleared the Windows backup/
