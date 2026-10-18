@@ -1,0 +1,54 @@
+# Host-side worker resident-memory sampling
+
+`@freerdp-bridge/node` exports `workerResidentBytes(pid, workerPath)` for trusted
+host diagnostics on Linux and Windows. It returns a positive safe integer byte
+count. It creates no background timer, watchdog, policy enforcement, browser
+endpoint or process history. It loads no FreeRDP library into Node.
+
+The host must retain ownership of the process identity and verify its worker
+is still current after awaiting the sample. A numeric PID/sample alone does
+not establish liveness or protect against later PID reuse. The API measures
+resident/working-set bytes, not private allocations, total session/Node memory,
+codec budgets or CPU time. A sample is not a hard allocation limit.
+
+## Platform inputs and errors
+
+Linux reads only `/proc/<validated-pid>/status` into a fixed 16,385-byte scratch
+buffer, admits at most 16,384 bytes and extracts one `VmRSS` KiB scalar. It
+converts to bytes with safe-integer checks, zeroes the scratch and closes the
+file handle on success/failure. PIDs are positive integers up to 0x7fffffff.
+The parser retains at most two regex matches, not a match-history array.
+
+Windows uses the existing colocated `rdp-runtime-directory.exe` private host
+helper with the exact `--process-resident-bytes <pid>` command. PIDs are positive
+integers up to 0xffffffff. The command contains no session configuration or
+credentials. The helper queries limited process information and returns only
+the existing schema-1 bytes/error receipt. The Node query has a two-second
+execution timeout and 128-byte output limit; only SystemRoot/WINDIR and an empty
+PATH are supplied, with a hidden window. Any stderr/failed query is unavailable.
+
+`ProcessSampleError.code` is one of the fixed values:
+
+| Code | Meaning |
+| --- | --- |
+| `PROCESS_SAMPLE_INVALID` | Invalid PID or direct receipt-parser input. |
+| `PROCESS_SAMPLE_UNAVAILABLE` | Unsupported platform, unavailable proc/helper, failed read/query/close or unusable sample. |
+
+Errors contain no underlying process metadata, helper output or OS diagnostics.
+The package also exports the platform-specific readers and scalar receipt
+parsers used by existing local tooling. Their bounds apply before parsing.
+
+## Existing lab tools and acceptance
+
+`scripts/linux-process-resident.mjs` and `scripts/viewer-soak.mjs` delegate to
+this shared implementation and preserve their existing `LAB_PROCESS_SAMPLE_*`
+errors. Their source-tree imports require the current built Node package, so
+run the ordinary Node build before using them or copying them to a prepared
+lab workspace. Existing containers with older JS need their Node package `dist`
+refreshed together with the updated scripts. No lab refresh is performed here.
+
+Actual tests sample an owned unconnected native worker repeatedly, preserve
+heartbeat and join its normal cleanup. Existing Linux current-process/FD and
+lab scalar/budget tests remain separate controls. These checks do not accept
+memory/CPU watchdog enforcement, connected RDP resource budgets or a soak.
+Stage 10's watchdog requirement remains open. [Evidence](ITERATION_294.md).

@@ -759,7 +759,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   control observes an unwanted child PID; corrected Windows/Linux composed
   lifecycle suites pass 3/3 with no child spawn after synchronous startup abort.
   Production startup/Release code is unchanged; broader startup/OS/isolation
-  gates remain open. [Evidence](docs/ITERATION_293.md).
+  gates remain open. [Evidence](docs/ITERATION_293.md); `876ecea`.
 
 - [x] DONE for unconnected native registry crash isolation — Three actual
   framed worker processes use the explicit lifecycle-only registry adapter.
@@ -1156,6 +1156,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
 **Gate:** config schema → FreeRDP settings mapping has unit coverage and at least one integration test per major category.
 
 ## Stage 10 — hardening, packaging and performance acceptance
+
+- [x] DONE for bounded shared host RSS sampling — Existing Linux proc and
+  Windows colocated-helper readers now share strict TypeScript, typed fixed
+  errors and scalar-only output; lab wrappers preserve their existing errors.
+  Focused compatibility/actual-owned-worker samples pass Windows 9 / 1 skip and
+  Linux 10/10; full Node 638 / 90 skips and 584 / 147 skips, native CTest 15/15
+  and 16/16 pass. This is a sampler prerequisite, not watchdog enforcement or
+  CPU/private/total-session memory acceptance. [Contract](docs/PROCESS_RESIDENT.md),
+  [evidence](docs/ITERATION_294.md).
 
 - [x] DONE for Linux foundation runtime smoke — Ordinary GCC CTest 8/8 and
   actual worker suite 12 passed / one Windows skip under UID 1000, read-only

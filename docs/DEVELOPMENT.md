@@ -548,6 +548,14 @@ connected worker owner. It activates neither audio nor physical microphone.
 This is one actual viewer, not concurrent/interactive/LAN quality acceptance.
 [Actual result and bounds](ITERATION_220.md).
 
+Current RSS lab wrappers share the strict TypeScript sampler from the built
+Node package. Rebuild the ordinary Node packages before use; when refreshing a
+prepared Linux lab tree, copy the matching `packages/node-bridge/dist` (including
+`process-resident.js` and its updated entry point) together with those scripts.
+Historical containers with older JS require that refresh before using current
+wrappers. This development step does not run an RDP/device check.
+[Host sampler and error contract](PROCESS_RESIDENT.md).
+
 For microphone inventory without physical capture or sample submission, use:
 
 ```powershell

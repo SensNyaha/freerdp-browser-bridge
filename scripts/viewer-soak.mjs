@@ -1,6 +1,8 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { dirname, join } from 'node:path';
+import {
+  processResidentReceipt as receipt,
+  windowsWorkerResidentBytes as sample,
+  ProcessSampleError,
+} from '../packages/node-bridge/dist/index.js';
 
 export const soakDurationMs = 30 * 60 * 1000;
 export const soakIntervalMs = 30 * 1000;
@@ -8,50 +10,23 @@ export const workerResidentLimitBytes = 256 * 1024 * 1024;
 
 /** Bounded native working-set receipt, not private allocation or process CPU time. */
 export function processResidentReceipt(text) {
-  if (typeof text !== 'string' || Buffer.byteLength(text) > 128)
-    throw new Error('LAB_PROCESS_SAMPLE_INVALID');
-  let result;
   try {
-    result = JSON.parse(text);
+    return receipt(text);
   } catch {
     throw new Error('LAB_PROCESS_SAMPLE_INVALID');
   }
-  if (
-    !result ||
-    typeof result !== 'object' ||
-    Array.isArray(result) ||
-    Object.keys(result).sort().join(',') !== 'bytes,error,v' ||
-    result.v !== 1 ||
-    result.error !== 0 ||
-    !Number.isSafeInteger(result.bytes) ||
-    result.bytes < 1
-  )
-    throw new Error('LAB_PROCESS_SAMPLE_INVALID');
-  return result.bytes;
 }
 
 export async function windowsWorkerResidentBytes(pid, workerPath) {
-  if (!Number.isInteger(pid) || pid < 1 || pid > 0xffffffff)
-    throw new Error('LAB_PROCESS_SAMPLE_INVALID');
-  const root = process.env.SystemRoot;
-  if (process.platform !== 'win32' || !root)
-    throw new Error('LAB_PROCESS_SAMPLE_UNAVAILABLE');
   try {
-    const result = await promisify(execFile)(
-      join(dirname(workerPath), 'rdp-runtime-directory.exe'),
-      ['--process-resident-bytes', String(pid)],
-      {
-        windowsHide: true,
-        timeout: 2000,
-        maxBuffer: 128,
-        encoding: 'utf8',
-        env: { SystemRoot: root, WINDIR: root, PATH: '' },
-      },
+    return await sample(pid, workerPath);
+  } catch (error) {
+    throw new Error(
+      error instanceof ProcessSampleError &&
+      error.code === 'PROCESS_SAMPLE_INVALID'
+        ? 'LAB_PROCESS_SAMPLE_INVALID'
+        : 'LAB_PROCESS_SAMPLE_UNAVAILABLE',
     );
-    if (result.stderr !== '') throw new Error();
-    return processResidentReceipt(result.stdout);
-  } catch {
-    throw new Error('LAB_PROCESS_SAMPLE_UNAVAILABLE');
   }
 }
 
