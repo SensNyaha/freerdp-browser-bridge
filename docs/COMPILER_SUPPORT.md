@@ -128,6 +128,10 @@ and exact patch-backup states are verified; initial failures remain retained.
 The shared bridge runtime/Release is unchanged. Full OpenSSL/TLS, assembly,
 remaining dependency/addon/platform/CI acceptance stays open.
 [Static OpenSSL evidence](ITERATION_281.md).
+Four additional local X.509/verify/store/CSR recipes pass 220 top-level tests;
+retained result files have no sanitizer diagnostics and source/library/CLI
+hashes remain unchanged. No shared bridge/real TLS acceptance is added.
+[Certificate fixture evidence](ITERATION_282.md).
 
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.

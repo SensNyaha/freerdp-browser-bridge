@@ -94,6 +94,10 @@ ASN.1/X.509/BIO/buffer 10 recipes / 15 top-level tests. Exact patch/source audit
 passes; missing-wrapper and backup-audit failures are retained. This is separate
 from shared bridge runtime and full OpenSSL/TLS/platform acceptance; Release
 and current bridge loader are unchanged. [Evidence](docs/ITERATION_281.md).
+Additional local X.509/verify/store/CSR recipes pass 4 / 220 top-level tests
+under the same static instrumentation, with unchanged source/library/CLI
+hashes and bounded retained-result diagnostic scans. This is separate from
+the bridge's real certificate/transport gate. [Evidence](docs/ITERATION_282.md).
 
 ## Implementation status — 2026-10-16
 
@@ -451,7 +455,9 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   3.6.5 follows upstream no-shared/PEDANTIC sanitizer recommendations in a
   separate no-asm Debug output. Focused ASN.1 2 recipes and selected 10 recipes /
   15 top-level tests pass without sanitizer diagnostics; exact source/backup
-  audit passes. Prior failed harness/audit runs are retained. Shared bridge
+  audit passes. Four additional X.509 recipes / 220 top-level tests pass with
+  unchanged hashes and no sanitizer diagnostics. Prior failed harness/audit
+  runs are retained. [Certificate evidence](docs/ITERATION_282.md). Shared bridge
   selection, full algorithms/TLS/upstream/fuzz/platform/CI and remaining
   dependency/addon acceptance stay open. [Evidence](docs/ITERATION_281.md).
 
