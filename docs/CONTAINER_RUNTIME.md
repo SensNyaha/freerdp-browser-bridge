@@ -72,6 +72,11 @@ mounts no devices, host sound server or Docker socket; optional devices remain
 policy/capability gated. Existing `rdp=false` records incomplete product
 acceptance, separately from compiled experimental capabilities.
 
+Optional USB, DRI, serial and PC/SC deployment arguments, their prerequisites
+and current unsupported-device boundary are documented in
+[device mappings](CONTAINER_DEVICE_MAPPINGS.md). They remain operator opt-ins;
+the verified baseline above mounts no devices.
+
 The `verification` target adds synthetic identity logic and is not production:
 
 ```sh

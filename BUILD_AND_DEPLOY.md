@@ -76,6 +76,10 @@ Runtime rules:
 - optional device mounts for `/dev/bus/usb`, `/dev/dri`, serial devices only when needed;
 - optional PCSC socket mount if smartcard deployment uses host pcscd.
 
+Explicit USB/DRI/serial nodes, PC/SC socket-directory mapping, supplementary
+groups and retained capability/device gates are covered by the
+[optional device mapping reference](docs/CONTAINER_DEVICE_MAPPINGS.md).
+
 Actual Linux foundation verification passes under UID 1000, read-only root,
 bounded runtime tmpfs, dropped capabilities and the default Docker seccomp
 profile with init. Without init, an exited orphan worker remained a zombie;

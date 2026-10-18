@@ -471,7 +471,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   skips and new MSVC Debug CTest 15/15, lifecycle 16 / 1 skip pass; full Windows
   Node 632 / 90 skips also passes. Both native receipts bind identical source
   bytes. Release settings, pins and GNU minimum 12 are unchanged; broader gates
-  remain open. [Evidence](docs/ITERATION_289.md).
+  remain open. [Evidence](docs/ITERATION_289.md); `911bb21`.
 
 - [x] DONE for current local Clang 18 Debug source export — Complete tracked
   archive of `3534484`, frozen offline Node installation and fresh native-only
@@ -1145,7 +1145,13 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [x] DONE — Read-only-root/init/cap-drop/no-new-privileges deployment example
   with bounded private runtime tmpfs passes the actual service fixture. Additional
   device mappings and broader load/resource acceptance remain open. [Evidence](docs/ITERATION_211.md).
-- [ ] Optional USB/DRI/serial/PCSC device mappings documented.
+- [x] DONE for documentation — Optional USB/DRI/serial/PCSC mapping reference
+  records explicit nodes/socket directory, host permissions, numeric groups,
+  retained non-root runtime restrictions and current public-device refusal.
+  All 31 local links and reference-shell syntax pass; no device mapping is
+  executed or accepted as supported. Stage 8/device/hotplug/isolation gates
+  remain open. [Reference](docs/CONTAINER_DEVICE_MAPPINGS.md),
+  [verification](docs/ITERATION_290.md).
 - [ ] seccomp/AppArmor recommendation and tested baseline profile if feasible.
 - [ ] Resource watchdogs and cleanup on abnormal exit.
 - [ ] 5–10% packet-loss/latency backpressure test.

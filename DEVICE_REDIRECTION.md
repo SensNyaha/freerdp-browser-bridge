@@ -16,6 +16,12 @@ Every redirection capability is reported with:
 
 The bridge must never present `browser` as a generic physical-device origin unless it has a real browser-mediated implementation for that device class.
 
+Linux container deployment opt-ins are described in the
+[device mapping reference](docs/CONTAINER_DEVICE_MAPPINGS.md). That reference
+does not enable the capability model or satisfy device integration. Current
+USB/serial/parallel/smartcard and host-printer selections remain refused until
+their implementation and policy gates pass.
+
 ## 2. Drives / `thinclient_drives`
 
 ### Bridge-host/session drive
