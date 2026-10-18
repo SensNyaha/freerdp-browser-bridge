@@ -77,6 +77,14 @@ OpenSSL test configuration and failed result are retained. Assembly, remaining
 private dependencies/addon, upstream/platform/CI and actual RDP gates stay open.
 [Correction/regression evidence](ITERATION_275.md).
 
+The OpenH264 upstream fixture also builds its exact GoogleTest 1.8.0 prerequisite
+with ASan/UBSan. Common 17/17, decoder 50/50 and processing 10/10 pass. A test-only
+`SSourcePicture` value-initialization patch removes a caller-fixture bool UB;
+the focused reproducer and all 181 encoder tests pass in separate runs. The
+original UB and timeout logs remain; the complete API category still times out
+at 300 seconds. This is not a full upstream suite/platform acceptance.
+[Upstream fixture evidence](ITERATION_276.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.

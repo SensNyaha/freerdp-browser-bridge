@@ -43,9 +43,17 @@ The existing Release port/profile is unchanged. Corrected instrumented-library
 integration passes six codec suites, full CTest 31/31 and Linux Node 633 / 84
 skips; Windows Release passes CTest 30/30 and Node 669 / 49 skips. The first
 recovered Linux Node failure is retained with its test-tool prerequisite fix.
-The RDP node is unavailable by the
-user's latest report; actual RDP/device acceptance remains pending restored
+The RDP node is unavailable by the user's latest report; actual RDP/device
+acceptance remains pending restored
 access. [Current evidence](docs/ITERATION_275.md).
+
+OpenH264's own upstream ASan/UBSan common (17), decoder (50) and processing (10)
+cases pass. A test-only initialization correction removes an uninitialized
+`SSourcePicture` bool read; the focused reproducer and all 181 encoder tests
+then pass. Original UB and 30-second timeout logs are retained. The API category
+times out at its original 300-second bound and remains open; no complete
+five-category upstream pass is claimed. Release/application code stays unchanged.
+[Upstream evidence and test patch](docs/ITERATION_276.md).
 
 ## Implementation status — 2026-10-16
 

@@ -1,0 +1,7 @@
+diff --git a/test/encoder/EncUT_EncoderExt.cpp b/test/encoder/EncUT_EncoderExt.cpp
+--- a/test/encoder/EncUT_EncoderExt.cpp
++++ b/test/encoder/EncUT_EncoderExt.cpp
+@@ -39,2 +39,2 @@ class EncoderInterfaceTest : public ::testing::Test {
+-    pSrcPic = new SSourcePicture;
++    pSrcPic = new SSourcePicture();
+     ASSERT_TRUE (pSrcPic != NULL);
