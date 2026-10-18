@@ -10,6 +10,8 @@ is still current after awaiting the sample. A numeric PID/sample alone does
 not establish liveness or protect against later PID reuse. The API measures
 resident/working-set bytes, not private allocations, total session/Node memory,
 codec budgets or CPU time. A sample is not a hard allocation limit.
+The separate native [Windows CPU query prerequisite](PROCESS_CPU.md) is not
+used by this RSS sampler or its watchdog.
 
 ## Platform inputs and errors
 

@@ -46,6 +46,47 @@ async function fixture(body) {
   }
 }
 test(
+  'native host helper: cumulative CPU microseconds use limited query access and strict PID grammar',
+  { skip: process.platform !== 'win32', timeout: 15000 },
+  async () => {
+    const sample = async () => {
+      const result = await run(['--process-cpu-micros', String(process.pid)]);
+      assert.equal(result.code, 0);
+      assert.equal(result.stderr, '');
+      const record = JSON.parse(result.stdout);
+      assert.deepEqual(Object.keys(record).sort(), ['error', 'micros', 'v']);
+      assert.equal(record.v, 1);
+      assert.equal(record.error, 0);
+      assert.ok(Number.isSafeInteger(record.micros) && record.micros >= 0);
+      return record.micros;
+    };
+    const initial = await sample();
+    const cpuStart = process.cpuUsage();
+    const deadline = performance.now() + 2000;
+    let elapsed;
+    do {
+      // Consume this test process's CPU only, without another process or RDP target.
+      for (let i = 0; i < 10000; ++i) Math.sqrt(i);
+      elapsed = process.cpuUsage(cpuStart);
+      assert.ok(performance.now() < deadline);
+    } while (elapsed.user + elapsed.system < 30000);
+    assert.ok((await sample()) > initial);
+    for (const pid of ['0', '-1', '+1', '1x', '4294967296', '12345678901'])
+      assert.deepEqual(await run(['--process-cpu-micros', pid]), {
+        stdout: '',
+        stderr: '',
+        code: 2,
+      });
+    const missing = await run(['--process-cpu-micros', '4294967295']);
+    assert.equal(missing.code, 1);
+    const refused = JSON.parse(missing.stdout);
+    assert.equal(refused.v, 1);
+    assert.equal(refused.micros, 0);
+    assert.ok(Number.isSafeInteger(refused.error) && refused.error > 0);
+  },
+);
+
+test(
   'native host helper: resident metadata uses limited query access with strict numeric PID grammar',
   { skip: process.platform !== 'win32' },
   async () => {

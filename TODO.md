@@ -1165,6 +1165,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for native Windows CPU-counter prerequisite — The existing host
+  helper reports bounded cumulative kernel+user microseconds through limited
+  query access with RAII handle retirement and exact scalar/overflow checks.
+  Actual owned-process CPU growth/grammar controls and portable 2-case/12-assertion
+  conversion tests pass. Debug CTest Windows 16/16 and Linux 17/17, full Node
+  654 / 90 skips and 599 / 148 skips pass. No Node CPU sampler/watchdog or Linux
+  process query is claimed; complete CPU/connected resource gates remain open.
+  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_300.md).
+
 - [x] DONE for cancellable shared RSS queries — Optional AbortSignal stops
   pre-aborted work before resource acquisition, joins proc-file/helper-process
   retirement and returns only a fixed cancellation error. Eight actual query
