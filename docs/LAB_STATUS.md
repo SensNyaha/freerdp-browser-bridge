@@ -24,8 +24,9 @@ PCM/Opus output has no server Formats/config/packets during the bounded runs;
 PCM/Opus AUDIN has no channel/Open negotiation and remains waiting at epoch 0.
 Closing the wizard resolves that desktop precondition, not a proven audio root cause.
 Ready-source reset, audibility, physical microphone/recording and latency
-acceptance remain open. Sequential inventories are being repeated with the
-desktop available before drawing conclusions about ready sources.
+acceptance remain open. The desktop-ready repeat still observes no Formats/
+packets for either output codec and no AUDIN Open for either input codec.
+[Repeat evidence](ITERATION_302.md). The audio cause remains unverified.
 
 Further application/input/clipboard and device tests require an available
 desktop plus explicit device/capture policy. The restored network access does

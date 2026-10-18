@@ -45,6 +45,9 @@ cleanup pass. CLIPRDR and RDPEI inventories are ready. PCM/Opus output still
 receives no formats/packets; PCM/Opus AUDIN remains waiting epoch 0 with no
 channel/Open negotiation. Audio/recording, application/device and wider gates
 remain open; access alone does not accept them. [Current lab evidence](docs/ITERATION_297.md); `9dce875`.
+The desktop-ready Windows repeat also receives no RDPSND Formats/packets or
+AUDIN Open for PCM/Opus, with heartbeat/frame/cleanup intact; audio and recording
+remain unaccepted. [Repeat evidence](docs/ITERATION_302.md).
 
 The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
 isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
