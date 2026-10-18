@@ -37,6 +37,7 @@ export class NativeLifecycleWorker extends EventEmitter {
   }
   close() {
     this.closing = true;
+    if (this.native.state === 'starting') this.native.terminate();
     this.closePromise ??= this.native.close().then(() => {
       this.emit('state', 'closed');
     });

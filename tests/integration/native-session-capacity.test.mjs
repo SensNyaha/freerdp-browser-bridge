@@ -26,6 +26,37 @@ const alive = (pid) => {
 };
 
 test(
+  'native lifecycle fixture startup cancellation: abort before filesystem preparation completes prevents child spawn and joins cleanup',
+  { skip: !['win32', 'linux'].includes(process.platform), timeout: 30000 },
+  async () => {
+    const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-lifecycle-abort-'));
+    const worker = new NativeLifecycleWorker({
+      workerPath,
+      runtimeRoot,
+      ipcTransport: 'framed-pipes',
+    });
+    const abort = new AbortController();
+    let starting;
+    try {
+      starting = worker.start(undefined, abort.signal);
+      const refused = assert.rejects(starting);
+      assert.equal(worker.native.state, 'starting');
+      abort.abort();
+      await refused;
+      assert.equal(worker.native.pid, undefined);
+      await worker.close();
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    } finally {
+      // Independent retirement also cleans up the intentionally failing
+      // before-fix control, even if the fixture's own cached close is faulty.
+      worker.native.terminate();
+      await starting?.catch(() => {});
+      await worker.native.close();
+      await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
+    }
+  },
+);
+test(
   'native lifecycle capacity: configured 40 global / 20 per principal, pre-factory refusal, replacement and joined cleanup / framed pipes',
   { skip: !['win32', 'linux'].includes(process.platform), timeout: 90000 },
   async () => {

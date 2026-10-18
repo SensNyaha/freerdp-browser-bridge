@@ -753,6 +753,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 1 — native worker process and IPC
 
+- [x] DONE for native lifecycle fixture startup cancellation — The test-only
+  registry adapter now terminates a still-starting WorkerProcess before joined
+  close, matching the production adapter's existing behavior. A failing-before
+  control observes an unwanted child PID; corrected Windows/Linux composed
+  lifecycle suites pass 3/3 with no child spawn after synchronous startup abort.
+  Production startup/Release code is unchanged; broader startup/OS/isolation
+  gates remain open. [Evidence](docs/ITERATION_293.md).
+
 - [x] DONE for unconnected native registry crash isolation — Three actual
   framed worker processes use the explicit lifecycle-only registry adapter.
   Forced exit of one produces WORKER_FAILED, retires its PID/runtime and active
@@ -760,7 +768,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   focused suites pass; the 40-worker capacity test still passes after fixture
   extraction. Connected RDP, simultaneous parent/worker kill, forced-deadline,
   broader resource/isolation and soak gates remain open.
-  [Evidence](docs/ITERATION_292.md).
+  [Evidence](docs/ITERATION_292.md); `7574f63`.
 
 - [x] DONE for configured framed native lifecycle capacity — An explicit
   test-only registry adapter composes 40 actual native workers, global limit
