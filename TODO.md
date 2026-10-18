@@ -98,6 +98,10 @@ Additional local X.509/verify/store/CSR recipes pass 4 / 220 top-level tests
 under the same static instrumentation, with unchanged source/library/CLI
 hashes and bounded retained-result diagnostic scans. This is separate from
 the bridge's real certificate/transport gate. [Evidence](docs/ITERATION_282.md).
+Local SSL context/config and memory-BIO buffer recipes additionally pass 3/3
+top-level tests, including all 13 available buffer variants, with unchanged
+library/app/source hashes. No socket/TLSProxy or shared bridge acceptance is
+claimed. [Evidence](docs/ITERATION_283.md).
 
 ## Implementation status — 2026-10-16
 
@@ -457,7 +461,9 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   15 top-level tests pass without sanitizer diagnostics; exact source/backup
   audit passes. Four additional X.509 recipes / 220 top-level tests pass with
   unchanged hashes and no sanitizer diagnostics. Prior failed harness/audit
-  runs are retained. [Certificate evidence](docs/ITERATION_282.md). Shared bridge
+  runs are retained. [Certificate evidence](docs/ITERATION_282.md). Three local
+  SSL context/config/memory-BIO recipes and all 13 available buffer variants also
+  pass. [Memory SSL evidence](docs/ITERATION_283.md). Shared bridge
   selection, full algorithms/TLS/upstream/fuzz/platform/CI and remaining
   dependency/addon acceptance stay open. [Evidence](docs/ITERATION_281.md).
 

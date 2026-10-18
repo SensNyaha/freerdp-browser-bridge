@@ -132,6 +132,10 @@ Four additional local X.509/verify/store/CSR recipes pass 220 top-level tests;
 retained result files have no sanitizer diagnostics and source/library/CLI
 hashes remain unchanged. No shared bridge/real TLS acceptance is added.
 [Certificate fixture evidence](ITERATION_282.md).
+Three local SSL context/config/memory-BIO recipes also pass all three top-level
+tests and 13 available buffer variants with the same libraries and no sanitizer
+diagnostic. Five new test C commands are instrumented; socket, dynamic-engine
+and shared bridge acceptance remain separate. [Memory SSL evidence](ITERATION_283.md).
 
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
