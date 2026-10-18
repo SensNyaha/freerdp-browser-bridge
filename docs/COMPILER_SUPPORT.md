@@ -94,6 +94,14 @@ The worker/Release artifacts remain unchanged. Static-only coverage, remaining
 dependencies/addon and wider acceptance stay open.
 [ZLIB runtime evidence](ITERATION_277.md).
 
+An independent static ZLIB profile verifies sanitizer flags in all 19 compile
+commands, including the upstream infcover owner/fault fixtures. Static examples
+and coverage cases pass 4/4, and complete upstream static CTest passes 16/16
+with matching gcov 12 and no new sanitizer diagnostics. Source/assertions and
+the prior shared runtime remain unchanged. This is local static-test evidence;
+broader dependency/addon/platform/fuzz/CI and actual RDP gates remain open.
+[Static ZLIB evidence](ITERATION_278.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.

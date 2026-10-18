@@ -63,6 +63,13 @@ ownership; initial tool startup/projection failures are retained. Other private
 dependencies/addon, full upstream/platform/CI and actual RDP/device/resource
 gates remain open. [ZLIB profile evidence](docs/ITERATION_277.md).
 
+An independent static ZLIB ASan/UBSan output also passes all 19 compile-command
+checks, focused static examples/infcover 4/4 and full upstream CTest 16/16,
+including nested consumers. The original coverage assertions and source remain
+unchanged; matching gcov 12 is used. This adds local static test coverage while
+other private dependencies/addon and wider gates remain open.
+[Static ZLIB evidence](docs/ITERATION_278.md).
+
 ## Implementation status — 2026-10-16
 
 Local Linux cached-source private dependencies, pinned FreeRDP and a new
@@ -414,6 +421,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local GCC 12 static ZLIB sanitizer cases — All 19 compile commands,
+  including upstream infcover, carry ASan/UBSan with nonrecovering UB checks.
+  Four focused static/coverage cases and full CTest 16/16 pass, with matching
+  gcov 12, unchanged source/assertions and no new sanitizer diagnostic.
+  The prior shared runtime/Release remains unchanged. Broader dependency/addon,
+  upstream/fuzz/platform/CI and RDP gates remain open.
+  [Evidence](docs/ITERATION_278.md).
 
 - [x] DONE for local GCC 12 instrumented ZLIB runtime profile — Pinned 1.3.2
   source/port correction, all 18 compile commands, actual ASan/UBSan NEEDED entries,
