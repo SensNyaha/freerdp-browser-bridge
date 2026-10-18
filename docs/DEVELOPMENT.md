@@ -2,6 +2,11 @@
 
 ## Connected worker RSS policy smoke
 
+Core lab `strict` mode succeeds only for exact `RDP_CERTIFICATE_REJECTED` and
+a subsequent native heartbeat. A timeout/authentication error or unexpected
+connection is a failed check. `inspect` is inventory only; `connect`/`memory`
+require a connected/no-error result. [Result-classification evidence](ITERATION_299.md).
+
 With the current built Node package, existing bundled worker and ignored
 authorized lab files, use the previously approved exact fingerprint:
 

@@ -1217,6 +1217,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   26 connected samples below the explicit 256 MiB cap, heartbeat/JPEG and joined
   empty-runtime close. This does not accept total-session/CPU, connected faults,
   Linux connected or sustained budgets. [Evidence](docs/ITERATION_298.md).
+  Connected smoke helper commit: `be3ee69`.
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

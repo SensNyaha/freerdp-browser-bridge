@@ -2,6 +2,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
 import { setTimeout as delay } from 'node:timers/promises';
+import { requireLabCoreResult } from './lab-core-result.mjs';
 
 // User-authorized local lab exception. Never print or pass credentials in argv/env.
 const args = process.argv.slice(2);
@@ -86,6 +87,8 @@ try {
   });
   delete credentials.password;
   const result = await completion;
+  requireLabCoreResult(mode, result);
+  if (mode === 'strict') await worker.ping();
   if (connectMode) {
     if (result.state !== 'connected') process.exitCode = 1;
     else {
