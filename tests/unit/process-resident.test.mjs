@@ -51,3 +51,22 @@ test('typed platform resident readers reject invalid PID values before platform 
     code: 'PROCESS_SAMPLE_INVALID',
   });
 });
+
+test('typed resident sampling cancels before acquiring platform resources and never exposes an abort reason', async () => {
+  const abort = new AbortController();
+  abort.abort('private-cancellation-reason');
+  for (const read of [
+    () => linuxWorkerResidentBytes(1, abort.signal),
+    () => windowsWorkerResidentBytes(1, 'unused-worker', abort.signal),
+  ])
+    await assert.rejects(read(), (error) => {
+      assert.ok(error instanceof ProcessSampleError);
+      assert.equal(error.code, 'PROCESS_SAMPLE_CANCELLED');
+      assert.equal(error.message, 'PROCESS_SAMPLE_CANCELLED');
+      assert.equal(error.cause, undefined);
+      return true;
+    });
+  await assert.rejects(linuxWorkerResidentBytes(0, abort.signal), {
+    code: 'PROCESS_SAMPLE_INVALID',
+  });
+});

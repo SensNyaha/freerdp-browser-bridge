@@ -5,12 +5,17 @@ import { promisify } from 'node:util';
 
 export type ProcessSampleCode =
   | 'PROCESS_SAMPLE_INVALID'
-  | 'PROCESS_SAMPLE_UNAVAILABLE';
+  | 'PROCESS_SAMPLE_UNAVAILABLE'
+  | 'PROCESS_SAMPLE_CANCELLED';
 
 export class ProcessSampleError extends Error {
   constructor(readonly code: ProcessSampleCode) {
     super(code);
   }
+}
+
+function requireSample(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
 }
 
 export function linuxResidentReceipt(text: string): number {
@@ -51,15 +56,21 @@ export function processResidentReceipt(text: string): number {
 }
 
 /** Sampling only; the trusted caller retains process identity/liveness ownership. */
-export async function linuxWorkerResidentBytes(pid: number): Promise<number> {
+export async function linuxWorkerResidentBytes(
+  pid: number,
+  signal?: AbortSignal,
+): Promise<number> {
   if (!Number.isInteger(pid) || pid < 1 || pid > 0x7fffffff)
     throw new ProcessSampleError('PROCESS_SAMPLE_INVALID');
+  requireSample(signal);
   if (process.platform !== 'linux')
     throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
   const scratch = Buffer.alloc(16385);
   let file: FileHandle | undefined;
+  let bytes: number;
   try {
     file = await open('/proc/' + pid + '/status', 'r');
+    requireSample(signal);
     let length = 0;
     for (;;) {
       const { bytesRead } = await file.read(
@@ -68,12 +79,14 @@ export async function linuxWorkerResidentBytes(pid: number): Promise<number> {
         scratch.length - length,
         null,
       );
+      requireSample(signal);
       length += bytesRead;
       if (length > 16384) throw new Error();
       if (!bytesRead) break;
     }
-    return linuxResidentReceipt(scratch.subarray(0, length).toString('ascii'));
+    bytes = linuxResidentReceipt(scratch.subarray(0, length).toString('ascii'));
   } catch {
+    requireSample(signal);
     throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
   } finally {
     scratch.fill(0);
@@ -83,14 +96,18 @@ export async function linuxWorkerResidentBytes(pid: number): Promise<number> {
       throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
     }
   }
+  requireSample(signal);
+  return bytes;
 }
 
 export async function windowsWorkerResidentBytes(
   pid: number,
   workerPath: string,
+  signal?: AbortSignal,
 ): Promise<number> {
   if (!Number.isInteger(pid) || pid < 1 || pid > 0xffffffff)
     throw new ProcessSampleError('PROCESS_SAMPLE_INVALID');
+  requireSample(signal);
   const root = process.env.SystemRoot;
   if (process.platform !== 'win32' || !root)
     throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
@@ -101,7 +118,7 @@ export async function windowsWorkerResidentBytes(
       workerPath.length > 32767
     )
       throw new Error();
-    const result = await promisify(execFile)(
+    const execution = promisify(execFile)(
       join(dirname(workerPath), 'rdp-runtime-directory.exe'),
       ['--process-resident-bytes', String(pid)],
       {
@@ -110,11 +127,25 @@ export async function windowsWorkerResidentBytes(
         maxBuffer: 128,
         encoding: 'utf8',
         env: { SystemRoot: root, WINDIR: root, PATH: '' },
+        signal,
       },
     );
+    // Abort may reject execFile before the helper's close notification.
+    // Join the owned process and its streams before publishing completion.
+    const closed = new Promise<void>((done) => {
+      execution.child.once('close', () => done());
+    });
+    let result: Awaited<typeof execution>;
+    try {
+      result = await execution;
+    } finally {
+      await closed;
+    }
+    requireSample(signal);
     if (result.stderr !== '') throw new Error();
     return processResidentReceipt(result.stdout);
   } catch {
+    requireSample(signal);
     throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
   }
 }
@@ -123,9 +154,11 @@ export async function windowsWorkerResidentBytes(
 export function workerResidentBytes(
   pid: number,
   workerPath: string,
+  signal?: AbortSignal,
 ): Promise<number> {
-  if (process.platform === 'linux') return linuxWorkerResidentBytes(pid);
+  if (process.platform === 'linux')
+    return linuxWorkerResidentBytes(pid, signal);
   if (process.platform === 'win32')
-    return windowsWorkerResidentBytes(pid, workerPath);
+    return windowsWorkerResidentBytes(pid, workerPath, signal);
   return Promise.reject(new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE'));
 }

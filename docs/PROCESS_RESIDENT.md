@@ -1,6 +1,6 @@
 # Host-side worker resident-memory sampling
 
-`@freerdp-bridge/node` exports `workerResidentBytes(pid, workerPath)` for trusted
+`@freerdp-bridge/node` exports `workerResidentBytes(pid, workerPath, signal?)` for trusted
 host diagnostics on Linux and Windows. It returns a positive safe integer byte
 count. It creates no background timer, watchdog, policy enforcement, browser
 endpoint or process history. It loads no FreeRDP library into Node.
@@ -33,10 +33,31 @@ PATH are supplied, with a hidden window. Any stderr/failed query is unavailable.
 | --- | --- |
 | `PROCESS_SAMPLE_INVALID` | Invalid PID or direct receipt-parser input. |
 | `PROCESS_SAMPLE_UNAVAILABLE` | Unsupported platform, unavailable proc/helper, failed read/query/close or unusable sample. |
+| `PROCESS_SAMPLE_CANCELLED` | An optional AbortSignal cancelled the query after PID validation. Its reason is never included. |
 
 Errors contain no underlying process metadata, helper output or OS diagnostics.
 The package also exports the platform-specific readers and scalar receipt
 parsers used by existing local tooling. Their bounds apply before parsing.
+
+## Cancellation and retirement
+
+The Linux reader accepts `(pid, signal?)`; the Windows reader accepts
+`(pid, workerPath, signal?)`. Omitting the signal preserves existing behavior.
+An already aborted signal stops before acquiring a file or starting a helper.
+Invalid PIDs retain `PROCESS_SAMPLE_INVALID` precedence.
+
+Linux observes cancellation at I/O boundaries, zeroes its scratch and awaits
+owned file close before publishing cancellation. Completion waits for pending
+kernel I/O and close. Windows forwards the signal to the private query helper
+and separately joins its `close` notification/streams even if execFile rejects
+earlier. It aborts the sampling helper; the sampled native worker remains owned
+by its normal supervisor. Both paths recheck cancellation after retirement.
+
+Owned close failure remains `PROCESS_SAMPLE_UNAVAILABLE`. The sampler never
+forwards AbortSignal.reason as a message or cause. Callers retain their normal
+worker-state checks after awaiting a sample. OS/kernel-stall and complete
+watchdog deadline/enforcement acceptance remain separate. Cancellation evidence
+is recorded in [iteration 295](ITERATION_295.md).
 
 ## Existing lab tools and acceptance
 

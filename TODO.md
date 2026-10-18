@@ -1157,6 +1157,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for cancellable shared RSS queries — Optional AbortSignal stops
+  pre-aborted work before resource acquisition, joins proc-file/helper-process
+  retirement and returns only a fixed cancellation error. Eight actual query
+  cancellations preserve target-worker heartbeat and a subsequent sample;
+  Linux parent FD count returns to baseline. Focus passes Windows 11/11 and
+  Linux 12/12; full Node 640 / 90 skips and 586 / 147 skips, CTest 15/15 and
+  16/16 pass. Watchdog enforcement and complete kernel/OS-failure/connected
+  resource gates remain open. [Evidence](docs/ITERATION_295.md).
+
 - [x] DONE for bounded shared host RSS sampling — Existing Linux proc and
   Windows colocated-helper readers now share strict TypeScript, typed fixed
   errors and scalar-only output; lab wrappers preserve their existing errors.
@@ -1164,7 +1173,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Linux 10/10; full Node 638 / 90 skips and 584 / 147 skips, native CTest 15/15
   and 16/16 pass. This is a sampler prerequisite, not watchdog enforcement or
   CPU/private/total-session memory acceptance. [Contract](docs/PROCESS_RESIDENT.md),
-  [evidence](docs/ITERATION_294.md).
+  [evidence](docs/ITERATION_294.md); `f9ff66d`.
 
 - [x] DONE for Linux foundation runtime smoke — Ordinary GCC CTest 8/8 and
   actual worker suite 12 passed / one Windows skip under UID 1000, read-only
