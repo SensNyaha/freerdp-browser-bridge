@@ -753,6 +753,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 1 — native worker process and IPC
 
+- [x] DONE for unconnected native registry crash isolation — Three actual
+  framed worker processes use the explicit lifecycle-only registry adapter.
+  Forced exit of one produces WORKER_FAILED, retires its PID/runtime and active
+  slot, preserves two sibling heartbeats and permits replacement. Windows/Linux
+  focused suites pass; the 40-worker capacity test still passes after fixture
+  extraction. Connected RDP, simultaneous parent/worker kill, forced-deadline,
+  broader resource/isolation and soak gates remain open.
+  [Evidence](docs/ITERATION_292.md).
+
 - [x] DONE for configured framed native lifecycle capacity — An explicit
   test-only registry adapter composes 40 actual native workers, global limit
   40 / per-principal 20, pre-factory overflow refusal, ten-slot replacement,
@@ -760,7 +769,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   returns to baseline. Windows/Linux focused cases, CTest 15/15 and 16/16 and
   full Node 633 / 90 skips and 579 / 147 skips pass. No RDP connection is made.
   Fixed primary-carrier capacity 32, arbitrary larger policies, connected
-  soak/resource and isolation gates remain open. [Evidence](docs/ITERATION_291.md).
+  soak/resource and isolation gates remain open. [Evidence](docs/ITERATION_291.md); `fa55758`.
 
 - [x] DONE for local Ubuntu GCC 12 standard PIE sanitized-worker lifecycle — New
   tracked-source fixture, frozen offline Node install, ASan/UBSan CTest 16/16 and

@@ -54,6 +54,12 @@ cleanup without CONFIGURE/SECRET/CONNECT or an RDP-connected state. This is
 separate from the Linux packet addon's fixed 32-pair capacity and production
 RDP/backend/resource acceptance. [Evidence](ITERATION_291.md).
 
+A separate three-session native framed fixture force-terminates one owned C++
+worker, observes its structured `WORKER_FAILED` state and joined slot/runtime
+release, then starts a replacement while the two siblings keep heartbeat.
+This remains unconnected lifecycle evidence through the test-only adapter,
+separate from connected RDP/resource/soak acceptance. [Evidence](ITERATION_292.md).
+
 Control currently emits state/error events and supports session.detach.
 Native-backend control attachments now support certificate.prompt and certificate.response;
 reattachment receives the pending prompt. Interactive auth responses remain unimplemented.

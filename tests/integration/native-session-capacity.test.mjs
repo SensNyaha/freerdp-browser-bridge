@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EventEmitter } from 'node:events';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -10,6 +9,7 @@ import {
   WorkerProcess,
 } from '../../packages/node-bridge/dist/index.js';
 import { eventually } from '../fixtures/session-worker.mjs';
+import { NativeLifecycleWorker } from '../fixtures/native-lifecycle-worker.mjs';
 
 const binary = resolve(
   process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
@@ -25,51 +25,6 @@ const alive = (pid) => {
   }
 };
 
-// Test-only registry adapter for real native lifecycle IPC. It never sends
-// CONFIGURE, SECRET or CONNECT and never reports an RDP connected state.
-class LifecycleWorker extends EventEmitter {
-  constructor(options) {
-    super();
-    this.native = new WorkerProcess(options);
-    this.native.on('failure', () => {
-      if (!this.closing) this.emit('failure', 'WORKER_FAILED');
-    });
-  }
-  onState(listener) {
-    this.on('state', listener);
-    return () => this.off('state', listener);
-  }
-  onFailure(listener) {
-    this.on('failure', listener);
-    return () => this.off('failure', listener);
-  }
-  async start(_config, signal) {
-    if (signal.aborted) throw new Error('Lifecycle startup was cancelled');
-    const abort = () => {
-      // The final joined close observes rejection of this same promise.
-      void this.close().catch(() => {});
-    };
-    signal.addEventListener('abort', abort, { once: true });
-    try {
-      this.emit('state', 'connecting');
-      assert.equal((await this.native.start()).transport, 'framed-pipes');
-      if (signal.aborted) throw new Error('Lifecycle startup was cancelled');
-    } finally {
-      signal.removeEventListener('abort', abort);
-    }
-  }
-  close() {
-    this.closing = true;
-    this.closePromise ??= this.native.close().then(() => {
-      this.emit('state', 'closed');
-    });
-    return this.closePromise;
-  }
-  terminate() {
-    return this.close();
-  }
-}
-
 test(
   'native lifecycle capacity: configured 40 global / 20 per principal, pre-factory refusal, replacement and joined cleanup / framed pipes',
   { skip: !['win32', 'linux'].includes(process.platform), timeout: 90000 },
@@ -84,7 +39,7 @@ test(
       maxPerPrincipal: 20,
       createBurst: 64,
       workerFactory() {
-        const worker = new LifecycleWorker(options);
+        const worker = new NativeLifecycleWorker(options);
         workers.push(worker);
         return worker;
       },
@@ -163,6 +118,98 @@ test(
           warm.close(),
           ...workers.map((worker) => worker.close()),
         ]);
+        for (const result of closed) assert.equal(result.status, 'fulfilled');
+        await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
+      }
+    }
+  },
+);
+
+test(
+  'native registry crash: failed worker releases its slot while siblings keep heartbeat and a replacement starts / framed pipes',
+  { skip: !['win32', 'linux'].includes(process.platform), timeout: 45000 },
+  async () => {
+    const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-registry-crash-'));
+    const workers = [],
+      pids = new Set();
+    const manager = new SessionManager({
+      maxSessions: 3,
+      maxPerPrincipal: 2,
+      createBurst: 10,
+      workerFactory() {
+        const worker = new NativeLifecycleWorker({
+          workerPath,
+          runtimeRoot,
+          ipcTransport: 'framed-pipes',
+        });
+        workers.push(worker);
+        return worker;
+      },
+    });
+    const owners = [{ id: 'crash-a' }, { id: 'crash-b' }];
+    const config = { target: { host: 'capacity.invalid' }, auth: {} };
+    try {
+      const records = [owners[0], owners[0], owners[1]].map((owner) => ({
+        owner,
+        id: manager.create(config, owner, '127.0.0.1').sessionId,
+      }));
+      assert.throws(
+        () => manager.create(config, { id: 'crash-c' }, '127.0.0.1'),
+        { code: 'SESSION_LIMIT' },
+      );
+      assert.equal(workers.length, 3);
+      await eventually(
+        () => workers.every((worker) => worker.native.state === 'ready'),
+        15000,
+      );
+      for (const worker of workers) {
+        assert.ok(Number.isInteger(worker.native.pid) && worker.native.pid > 0);
+        pids.add(worker.native.pid);
+      }
+      assert.equal(pids.size, 3);
+      await Promise.all(workers.map((worker) => worker.native.ping()));
+      const crashedPid = workers[0].native.pid;
+      assert.equal(process.kill(crashedPid, 'SIGKILL'), true);
+      await eventually(
+        () =>
+          manager.get(records[0].id, records[0].owner).state === 'failed' &&
+          manager.statistics().active === 2,
+        15000,
+      );
+      assert.equal(
+        manager.get(records[0].id, records[0].owner).error.code,
+        'WORKER_FAILED',
+      );
+      assert.equal(alive(crashedPid), false);
+      assert.equal((await readdir(runtimeRoot)).length, 2);
+      for (const { id, owner } of records.slice(1))
+        assert.equal(manager.get(id, owner).state, 'connecting');
+      await Promise.all(workers.slice(1).map((worker) => worker.native.ping()));
+      const replacement = manager.create(config, owners[0], '127.0.0.1');
+      assert.equal(workers.length, 4);
+      await eventually(() => workers[3].native.state === 'ready', 15000);
+      assert.ok(
+        Number.isInteger(workers[3].native.pid) && workers[3].native.pid > 0,
+      );
+      pids.add(workers[3].native.pid);
+      assert.equal(
+        manager.get(replacement.sessionId, owners[0]).state,
+        'connecting',
+      );
+      assert.equal(manager.statistics().active, 3);
+      assert.equal((await readdir(runtimeRoot)).length, 3);
+      await Promise.all(workers.slice(1).map((worker) => worker.native.ping()));
+      await manager.shutdown();
+      assert.equal(manager.statistics().active, 0);
+      assert.ok([...pids].every((pid) => !alive(pid)));
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    } finally {
+      try {
+        await manager.shutdown();
+      } finally {
+        const closed = await Promise.allSettled(
+          workers.map((worker) => worker.close()),
+        );
         for (const result of closed) assert.equal(result.status, 'fulfilled');
         await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
       }
