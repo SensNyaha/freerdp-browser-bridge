@@ -14,6 +14,7 @@ import { createReadStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { readDependencyReceipt } from './dependency-input.mjs';
 import { nodeTestDirectories } from './node-test-directories.mjs';
+import { readNativeBuildProfile } from './native-build-profile.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const windows = process.platform === 'win32';
@@ -247,6 +248,9 @@ const runtimeEnvironment =
         LD_LIBRARY_PATH: freerdpPrefix + '/lib:' + prefix + '/lib',
       }
     : process.env;
+const profileQuery = resolve(binary, '.cmake/api/v1/query');
+await mkdir(profileQuery, { recursive: true });
+await writeFile(resolve(profileQuery, 'toolchains-v1'), '', { flag: 'wx' });
 run('cmake', [
   '-S',
   source,
@@ -275,6 +279,10 @@ run('cmake', [
       ]
     : []),
 ]);
+const buildProfile = await readNativeBuildProfile(
+  binary,
+  linked ? 'Release' : 'Debug',
+);
 if (sdkReceiptPath) {
   const cache = await readFile(resolve(binary, 'CMakeCache.txt'), 'utf8');
   for (const [name, packageDirectory] of [
@@ -475,6 +483,7 @@ if (linked) {
 }
 const receipt = {
   cleanNativeSource: true,
+  buildProfile,
   platform: process.platform,
   sourceFiles: entries.length,
   sourceBytes: total,

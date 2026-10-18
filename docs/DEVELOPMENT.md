@@ -596,6 +596,15 @@ loaded from the original built workspace. This is a local project-native source
 check, separate from fresh upstream dependency/FreeRDP, linked, distro and CI
 acceptance. [Exact evidence and retained first helper error](ITERATION_243.md).
 
+New clean-native receipts also include `buildProfile.v = 1`: the actual Ninja
+generator, configured build type, CMake version and C++ compiler ID/version/path.
+The helper requests CMake's versioned `toolchains-v1` File API reply, follows
+the newest reply index and checks the requested build type against the cache.
+Incomplete compiler evidence or a mismatched configuration fails verification.
+Only the selected scalar fields enter the receipt; existing historical receipts
+are preserved. This records the existing Debug/foundation or Release/linked
+selection and does not change either build configuration.
+
 On Windows x64, after preparing the ordinary foundation/Catch2 source, use:
 
 ```powershell

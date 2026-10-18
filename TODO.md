@@ -464,6 +464,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for clean-native compiler provenance — New receipts bind the actual
+  CMake version, compiler ID/version/path, Ninja generator
+  and verified build type. Four unit cases and actual Clang/GNU reply probes
+  pass. New GCC 13 Debug CTest 16/16, lifecycle 15 / 1 skip, full Node 578 / 147
+  skips and new MSVC Debug CTest 15/15, lifecycle 16 / 1 skip pass; full Windows
+  Node 632 / 90 skips also passes. Both native receipts bind identical source
+  bytes. Release settings, pins and GNU minimum 12 are unchanged; broader gates
+  remain open. [Evidence](docs/ITERATION_289.md).
+
 - [x] DONE for current local Clang 18 Debug source export — Complete tracked
   archive of `3534484`, frozen offline Node installation and fresh native-only
   foundation compilation pass CTest 16/16, framed lifecycle 15 / 1 skip and full
@@ -471,7 +480,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   remain byte-identical; no old objects, SDK or lab files are copied. Prepared
   compiler/Catch2/public caches are reused. GNU minimum 12, Release, dependency
   pins and wider distro/CI/RDP/device gates remain unchanged.
-  [Evidence](docs/ITERATION_288.md).
+  [Evidence](docs/ITERATION_288.md); `ffa0959`.
 
 - [x] DONE for incremental libusb test-copy preparation — CMake tracks the
   test-only patch as a configure dependency. A private-copy build regression

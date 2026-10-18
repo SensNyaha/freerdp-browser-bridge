@@ -34,6 +34,13 @@ archived files remain unchanged. Compiler/Catch2/public caches are prepared
 inputs; this is separate from actual CI, linked FreeRDP and RDP/device gates.
 The GNU minimum remains 12. [Clang Debug evidence](ITERATION_288.md).
 
+Clean-native receipts now record the actual compiler ID/version/path, CMake
+version, Ninja generator and checked build type through CMake File API. New
+GCC 13.3.0 and MSVC 19.44.35228.0 Debug foundation builds bind identical native
+source bytes and pass CTest 16/16 and 15/15 respectively; native lifecycle and
+full platform Node controls also pass. These additional profiles keep GCC 12
+as the GNU minimum. [Provenance/build evidence](ITERATION_289.md).
+
 Ubuntu GCC 12.4 also passes the standard PIE ASan/UBSan foundation: actual
 library probe, native CTest 16/16 and 100 default-option empty-program launches.
 Its distribution sanitizer runtimes are 14.2; the historical Bookworm/GCC 12.2
