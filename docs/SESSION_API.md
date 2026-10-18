@@ -47,6 +47,13 @@ backlog to 64 KiB and all messages to 256 per second, with at most 32 non-input
 commands per second. Socket/upgrade counts are bounded. Experimental connected
 control input and its queue/release contract are documented in [INPUT.md](INPUT.md).
 
+An additional native lifecycle test uses an explicit test-only registry adapter
+with **40 global / 20 per-principal** limits and `framed-pipes` workers. It
+verifies pre-factory overflow refusal, ten-slot replacement, heartbeat and joined
+cleanup without CONFIGURE/SECRET/CONNECT or an RDP-connected state. This is
+separate from the Linux packet addon's fixed 32-pair capacity and production
+RDP/backend/resource acceptance. [Evidence](ITERATION_291.md).
+
 Control currently emits state/error events and supports session.detach.
 Native-backend control attachments now support certificate.prompt and certificate.response;
 reattachment receives the pending prompt. Interactive auth responses remain unimplemented.

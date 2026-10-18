@@ -753,6 +753,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 1 — native worker process and IPC
 
+- [x] DONE for configured framed native lifecycle capacity — An explicit
+  test-only registry adapter composes 40 actual native workers, global limit
+  40 / per-principal 20, pre-factory overflow refusal, ten-slot replacement,
+  automatic/manual heartbeat and joined PID/runtime cleanup; Linux FD count
+  returns to baseline. Windows/Linux focused cases, CTest 15/15 and 16/16 and
+  full Node 633 / 90 skips and 579 / 147 skips pass. No RDP connection is made.
+  Fixed primary-carrier capacity 32, arbitrary larger policies, connected
+  soak/resource and isolation gates remain open. [Evidence](docs/ITERATION_291.md).
+
 - [x] DONE for local Ubuntu GCC 12 standard PIE sanitized-worker lifecycle — New
   tracked-source fixture, frozen offline Node install, ASan/UBSan CTest 16/16 and
   full Node 569 / 146 profile/platform skips / 715 pass. Actual 100-worker,
@@ -1151,7 +1160,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   All 31 local links and reference-shell syntax pass; no device mapping is
   executed or accepted as supported. Stage 8/device/hotplug/isolation gates
   remain open. [Reference](docs/CONTAINER_DEVICE_MAPPINGS.md),
-  [verification](docs/ITERATION_290.md).
+  [verification](docs/ITERATION_290.md); `63b980e`.
 - [ ] seccomp/AppArmor recommendation and tested baseline profile if feasible.
 - [ ] Resource watchdogs and cleanup on abnormal exit.
 - [ ] 5–10% packet-loss/latency backpressure test.

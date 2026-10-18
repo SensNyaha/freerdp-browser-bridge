@@ -7,6 +7,12 @@ request is refused before spawn with runtime cleanup; closing 16 and starting
 and empty runtime. This is unconnected worker/IPC evidence, not a 30-session RDP
 soak. Larger configured policies remain open. [Evidence](ITERATION_212.md).
 
+A separate configured **40 global / 20 per-principal** registry test now covers
+explicit `framed-pipes` native lifecycle workers on Windows/Linux, including
+pre-factory refusal and ten-slot replacement. It does not allocate packet pairs
+or change the addon's fixed 32-pair limit. Larger configured primary-carrier and
+actual RDP/resource gates remain open. [Framed evidence](ITERATION_291.md).
+
 Current default — iteration 200: WorkerOptions also accepts auto, now the default.
 Linux prefers primary after exact private pairing/hash verification; no pairing
 metadata preserves legacy framed transport. A present malformed/mismatched
