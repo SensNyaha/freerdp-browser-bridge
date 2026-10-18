@@ -53,7 +53,15 @@ cases pass. A test-only initialization correction removes an uninitialized
 then pass. Original UB and 30-second timeout logs are retained. The API category
 times out at its original 300-second bound and remains open; no complete
 five-category upstream pass is claimed. Release/application code stays unchanged.
-[Upstream evidence and test patch](docs/ITERATION_276.md).
+[Upstream evidence and test patch](docs/ITERATION_276.md); `9a8a8ab`.
+
+The same GCC 12.4 sanitizer runtime now also uses rebuilt pinned ZLIB 1.3.2.
+Upstream CTest 14/14, actual module/codec origins, linked CTest 31/31 and full
+Node 633 / 84 skips pass with unchanged worker/Release artifacts. Ordinary
+CTest/CMake tools and the instrumented native children have separate loader
+ownership; initial tool startup/projection failures are retained. Other private
+dependencies/addon, full upstream/platform/CI and actual RDP/device/resource
+gates remain open. [ZLIB profile evidence](docs/ITERATION_277.md).
 
 ## Implementation status — 2026-10-16
 
@@ -406,6 +414,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local GCC 12 instrumented ZLIB runtime profile — Pinned 1.3.2
+  source/port correction, all 18 compile commands, actual ASan/UBSan NEEDED entries,
+  upstream CTest 14/14 and linked module/codec origins pass. Thirty instrumented
+  native executables plus compiler-policy CMake pass 31/31; full Node passes
+  633 / 84 profile/platform skips with ordinary parent Node and addon OFF.
+  Release is unchanged. Remaining dependency/addon/static/upstream/fuzz/platform/
+  CI and actual RDP gates stay open. [Evidence](docs/ITERATION_277.md).
 
 - [x] DONE for local OpenH264 BsFlush correction/instrumented runtime — Exact upstream
   build-copy guard skips the undefined shift in the valid empty state. GCC 12.4

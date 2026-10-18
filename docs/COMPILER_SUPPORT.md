@@ -85,6 +85,15 @@ original UB and timeout logs remain; the complete API category still times out
 at 300 seconds. This is not a full upstream suite/platform acceptance.
 [Upstream fixture evidence](ITERATION_276.md).
 
+Pinned ZLIB 1.3.2 now also passes an independent GCC 12.4 ASan/UBSan shared build:
+18 instrumented compile commands and upstream CTest 14/14. Actual module/codec
+origins, linked CTest 31/31 and full Node 633 / 84 skips / 717 pass with the new
+ZLIB and the existing instrumented SDK/codecs. Ordinary CTest/CMake tools use
+their separate loader profile; parent Node has no preload and addon is OFF.
+The worker/Release artifacts remain unchanged. Static-only coverage, remaining
+dependencies/addon and wider acceptance stay open.
+[ZLIB runtime evidence](ITERATION_277.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.
