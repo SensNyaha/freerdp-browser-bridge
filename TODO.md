@@ -35,6 +35,14 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-18
 
+The user restored access to the authorized RDP lab. Windows actual strict
+certificate refusal / approved session-only connection, native and Edge
+H.264/JPEG resize/restoration/replay, controlled connection loss and joined
+cleanup pass. CLIPRDR and RDPEI inventories are ready. PCM/Opus output still
+receives no formats/packets; PCM/Opus AUDIN remains waiting epoch 0 with no
+channel/Open negotiation. Audio/recording, application/device and wider gates
+remain open; access alone does not accept them. [Current lab evidence](docs/ITERATION_297.md).
+
 The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
 isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
 GCC 12.4 nonrecovering UBSan reproduces the original failure and passes all
@@ -43,9 +51,9 @@ The existing Release port/profile is unchanged. Corrected instrumented-library
 integration passes six codec suites, full CTest 31/31 and Linux Node 633 / 84
 skips; Windows Release passes CTest 30/30 and Node 669 / 49 skips. The first
 recovered Linux Node failure is retained with its test-tool prerequisite fix.
-The RDP node is unavailable by the user's latest report; actual RDP/device
-acceptance remains pending restored
-access. [Current evidence](docs/ITERATION_275.md).
+The RDP node was unavailable during this correction; that historical access
+block is superseded by the restored-lab results above. Actual complete RDP/device
+acceptance remains open. [Correction evidence](docs/ITERATION_275.md).
 
 OpenH264's own upstream ASan/UBSan common (17), decoder (50) and processing (10)
 cases pass. A test-only initialization correction removes an uninitialized
@@ -1204,7 +1212,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   breach/healthy cases and separate synthetic fault/lifetime cases pass; CPU,
   startup/total-session memory, hard kernel/OS deadlines, connected RDP and
   broader abnormal-exit/soak acceptance remain open.
-  [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md).
+  [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md); `6752257`.
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.
