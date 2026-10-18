@@ -88,6 +88,13 @@ origins, linked native CTest 31/31 and full Node 633 / 84 skips also pass withou
 new sanitizer diagnostics; the existing worker hash remains unchanged.
 [JPEG evidence](docs/ITERATION_280.md).
 
+Pinned OpenSSL 3.6.5 also passes a separate GCC 12.4 C-only static ASan/UBSan
+profile: all 1,163 library C commands, focused ASN.1 2/2 recipes and selected
+ASN.1/X.509/BIO/buffer 10 recipes / 15 top-level tests. Exact patch/source audit
+passes; missing-wrapper and backup-audit failures are retained. This is separate
+from shared bridge runtime and full OpenSSL/TLS/platform acceptance; Release
+and current bridge loader are unchanged. [Evidence](docs/ITERATION_281.md).
+
 ## Implementation status — 2026-10-16
 
 Local Linux cached-source private dependencies, pinned FreeRDP and a new
@@ -439,6 +446,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for selected local GCC 12 OpenSSL static sanitizer cases — Pinned
+  3.6.5 follows upstream no-shared/PEDANTIC sanitizer recommendations in a
+  separate no-asm Debug output. Focused ASN.1 2 recipes and selected 10 recipes /
+  15 top-level tests pass without sanitizer diagnostics; exact source/backup
+  audit passes. Prior failed harness/audit runs are retained. Shared bridge
+  selection, full algorithms/TLS/upstream/fuzz/platform/CI and remaining
+  dependency/addon acceptance stay open. [Evidence](docs/ITERATION_281.md).
 
 - [x] DONE for local GCC 12 shared JPEG upstream sanitizer profile — Independent
   pinned libjpeg-turbo 3.2.0 Debug build, instrumented private libspng/ZLIB,

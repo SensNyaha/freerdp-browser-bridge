@@ -120,6 +120,15 @@ control, actual module origins, linked CTest 31/31 and full Node 633 / 84 skips
 also pass with unchanged worker/Release. Wider sanitizer/fuzz/platform/CI and
 remaining dependency/addon gates stay open. [JPEG evidence](ITERATION_280.md).
 
+A separate GCC 12.4 OpenSSL 3.6.5 static C-only Debug profile follows upstream
+ASan no-shared and UBSan PEDANTIC guidance. All 1,163 library C commands are
+checked; focused ASN.1 2/2 recipes and selected ASN.1/X.509/BIO/buffer 10 recipes /
+15 top-level tests pass with no new sanitizer diagnostic. Wrapper prerequisites
+and exact patch-backup states are verified; initial failures remain retained.
+The shared bridge runtime/Release is unchanged. Full OpenSSL/TLS, assembly,
+remaining dependency/addon/platform/CI acceptance stays open.
+[Static OpenSSL evidence](ITERATION_281.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.
