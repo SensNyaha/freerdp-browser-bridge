@@ -33,6 +33,20 @@ instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/a
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
+## Implementation status — 2026-10-18
+
+The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
+isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
+GCC 12.4 nonrecovering UBSan reproduces the original failure and passes all
+2325 focused checks after correction. Original diagnostics are preserved.
+The existing Release port/profile is unchanged. Corrected instrumented-library
+integration passes six codec suites, full CTest 31/31 and Linux Node 633 / 84
+skips; Windows Release passes CTest 30/30 and Node 669 / 49 skips. The first
+recovered Linux Node failure is retained with its test-tool prerequisite fix.
+The RDP node is unavailable by the
+user's latest report; actual RDP/device acceptance remains pending restored
+access. [Current evidence](docs/ITERATION_275.md).
+
 ## Implementation status — 2026-10-16
 
 Local Linux cached-source private dependencies, pinned FreeRDP and a new
@@ -384,6 +398,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for local OpenH264 BsFlush correction/instrumented runtime — Exact upstream
+  build-copy guard skips the undefined shift in the valid empty state. GCC 12.4
+  UBSan fails before and passes 2325 checks after; unknown input is refused and
+  original source/diagnostics are preserved. Corrected shared-library origin,
+  six codec suites, full native CTest 31/31 and Node 633 / 84 skips pass with
+  instrumented FreeRDP/WinPR/Opus. Release remains unchanged. Assembly, remaining
+  private dependencies/addon, platform/upstream/CI and actual RDP gates stay open.
+  [Evidence](docs/ITERATION_275.md).
 
 - [x] DONE for local GCC 12 instrumented SDK / bridge fixture profile — Separate
   pinned FreeRDP/WinPR + approved DSP correction compiles with ASan/UBSan;

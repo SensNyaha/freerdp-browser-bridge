@@ -65,6 +65,18 @@ passing. Actual shared-library selection, bridge CTest 31/31 and full Node
 633 / 84 skips / 717 pass. Other private dependencies/addon and wider acceptance
 remain separate. [Opus profile/evidence](ITERATION_274.md).
 
+OpenH264 2.6.0 instrumentation exposes an undefined shift by 32 in `BsFlush()`.
+An isolated build-copy correction matches upstream commit 40555ec6 exactly.
+GCC 12.4 nonrecovering UBSan reproduces the original failure and passes 2325
+focused checks with the correction; unknown input is refused before generation.
+The original diagnostic is retained and the Release profile stays unchanged.
+The corrected instrumented shared library passes actual origin/codec probes,
+six focused suites, full native CTest 31/31 and full Node 633 / 84 skips / 717
+with instrumented FreeRDP/WinPR/Opus. The first restored fixture run's missing
+OpenSSL test configuration and failed result are retained. Assembly, remaining
+private dependencies/addon, upstream/platform/CI and actual RDP gates stay open.
+[Correction/regression evidence](ITERATION_275.md).
+
 The manual bundled workflow now also selects Linux `CC=gcc-12` and
 `CXX=g++-12` before building private dependencies, FreeRDP and the worker.
 Its cache key distinguishes the GCC 12 Linux and MSVC Windows profiles.
