@@ -17,7 +17,7 @@ import { nodeTestDirectories } from './node-test-directories.mjs';
 import { readNativeBuildProfile } from './native-build-profile.mjs';
 import {
   nativeCleanProfile,
-  requireWindowsDebugSdk,
+  requireWindowsSdkCrt,
 } from './native-clean-profile.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -112,8 +112,12 @@ if (sdkReceiptPath) {
   freerdpPrefix = receipt.installed;
   sdkSourcePath = receipt.source;
   sdkCachePath = resolve(receipt.binary, 'CMakeCache.txt');
-  if (windows && mode === 'linked-debug')
-    requireWindowsDebugSdk(receipt, await readFile(sdkCachePath, 'utf8'));
+  if (windows)
+    requireWindowsSdkCrt(
+      receipt,
+      await readFile(sdkCachePath, 'utf8'),
+      buildType,
+    );
 }
 let sdkSourceCommit;
 const checkSdkSource = () => {

@@ -12,8 +12,10 @@ export function nativeCleanProfile(mode) {
   }
 }
 
-/** A Debug CRT consumer cannot free SDK allocations from a Release CRT. */
-export function requireWindowsDebugSdk(receipt, cache) {
+/** Caller-owned SDK allocations require the same dynamic CRT on both sides. */
+export function requireWindowsSdkCrt(receipt, cache, buildType) {
+  if (!['Debug', 'Release'].includes(buildType))
+    throw new Error('Unsupported consumer CRT configuration');
   const value = (key) => {
     const lines = cache
       .split(/\r?\n/)
@@ -23,12 +25,19 @@ export function requireWindowsDebugSdk(receipt, cache) {
       : undefined;
   };
   if (
-    receipt.buildType !== 'Debug' ||
-    value('CMAKE_BUILD_TYPE') !== 'Debug' ||
+    (receipt.buildType !== buildType &&
+      !(buildType === 'Release' && receipt.buildType === undefined)) ||
+    value('CMAKE_BUILD_TYPE') !== buildType ||
     ![
-      'MultiThreadedDebugDLL',
+      buildType === 'Debug' ? 'MultiThreadedDebugDLL' : 'MultiThreadedDLL',
       'MultiThreaded$<$<CONFIG:Debug>:Debug>DLL',
     ].includes(value('CMAKE_MSVC_RUNTIME_LIBRARY'))
   )
-    throw new Error('Windows linked Debug requires a matching Debug CRT SDK');
+    throw new Error(
+      `Windows linked ${buildType} requires a matching ${buildType} CRT SDK`,
+    );
+}
+
+export function requireWindowsDebugSdk(receipt, cache) {
+  requireWindowsSdkCrt(receipt, cache, 'Debug');
 }

@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import {
   nativeCleanProfile,
   requireWindowsDebugSdk,
+  requireWindowsSdkCrt,
 } from '../../scripts/native-clean-profile.mjs';
 
 test('clean native profiles preserve existing Release/foundation settings and explicitly require a receipt for linked Debug', () => {
@@ -108,4 +109,47 @@ test('Windows Debug SDK admission requires matching recorded build type and dyna
     assert.throws(() => requireWindowsDebugSdk(receipt, input), {
       message: 'Windows linked Debug requires a matching Debug CRT SDK',
     });
+});
+
+test('Windows Release SDK admission accepts historical Release provenance and rejects reverse Debug CRT mixing', () => {
+  const release =
+    'CMAKE_BUILD_TYPE:STRING=Release\nCMAKE_MSVC_RUNTIME_LIBRARY:STRING=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL\n';
+  assert.doesNotThrow(() => requireWindowsSdkCrt({}, release, 'Release'));
+  assert.doesNotThrow(() =>
+    requireWindowsSdkCrt({ buildType: 'Release' }, release, 'Release'),
+  );
+  assert.doesNotThrow(() =>
+    requireWindowsSdkCrt(
+      {},
+      release.replace(
+        'MultiThreaded$<$<CONFIG:Debug>:Debug>DLL',
+        'MultiThreadedDLL',
+      ),
+      'Release',
+    ),
+  );
+  for (const [receipt, cache] of [
+    [{ buildType: 'Debug' }, release],
+    [{}, release.replace('STRING=Release', 'STRING=Debug')],
+    [
+      {},
+      release.replace(
+        'MultiThreaded$<$<CONFIG:Debug>:Debug>DLL',
+        'MultiThreadedDebugDLL',
+      ),
+    ],
+    [
+      {},
+      release.replace(
+        'MultiThreaded$<$<CONFIG:Debug>:Debug>DLL',
+        'MultiThreaded',
+      ),
+    ],
+  ])
+    assert.throws(() => requireWindowsSdkCrt(receipt, cache, 'Release'), {
+      message: 'Windows linked Release requires a matching Release CRT SDK',
+    });
+  assert.throws(() => requireWindowsSdkCrt({}, release, 'other'), {
+    message: 'Unsupported consumer CRT configuration',
+  });
 });

@@ -784,6 +784,12 @@ The existing `linked` / `clean-bundled` profile remains Release. No ordinary
 worker, helper or generated feature inventory is replaced by this Debug task.
 [Profile scope and verification](ITERATION_312.md).
 
+Windows receipt-backed consumers validate CRT compatibility in both directions:
+a Release consumer also refuses a Debug SDK before preparing output. Historical
+Release receipts without a recorded build type remain accepted when their
+actual SDK cache identifies Release and dynamic Release CRT.
+[Reverse-combination control](ITERATION_313.md).
+
 For an isolated local Linux private dependency rebuild from cached source/tool
 downloads:
 

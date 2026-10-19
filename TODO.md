@@ -501,6 +501,18 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for symmetric Windows SDK/consumer CRT admission and current isolated
+  Release consumer — Release rejects a Debug SDK before preparing output;
+  historical Release receipts retain compatibility with a matching actual cache.
+  A new source-only Release output uses unchanged existing Release flags, pinned
+  SDK/dependency receipts and identical native source bytes to the Debug control.
+  CTest 31/31, process/TLS 27 / 1 skip, resource focus 27/27 and full Windows
+  Node 741 / 51 skips pass. Common Linux checks and existing foundation CTest
+  17/17 / Node 644 / 151 skips pass. Codec/module origins and copied DLL bytes
+  match; seven pre-existing Release/pin inputs retain their hashes. Connected
+  RDP/resource, production packaging and wider stage gates remain open.
+  [Evidence](docs/ITERATION_313.md).
+
 - [x] DONE for local Windows isolated linked Debug SDK/consumer — Additive
   source-only Debug profiles pair FreeRDP/WinPR and worker with matching dynamic
   Debug CRT; mixed Release-CRT SDK/Debug consumer now refuses before output.

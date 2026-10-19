@@ -11,6 +11,10 @@ platforms reject an enabled policy with `RESOURCE_WATCHDOG_UNSUPPORTED`.
 This uses the colocated [CPU helper/typed reader](PROCESS_CPU.md).
 Current verified use is MSVC and local GCC Debug foundation builds; existing
 bundled Release profiles lack the new helper/command and are unchanged.
+An additional isolated MSVC Release source consumer also passes actual
+CPU/RSS/native-capacity controls with the current helper. This new output is
+separate from the existing bundled artifacts and production packaging.
+[Source-consumer verification](ITERATION_313.md).
 Enabling this policy with
 an older/missing helper fails as unavailable rather than silently disabling
 enforcement. Linux uses bounded proc-stat extraction and the system clock tick
