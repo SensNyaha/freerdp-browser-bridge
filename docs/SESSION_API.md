@@ -42,8 +42,16 @@ receives actual 1080p JPEG over media WS before sampling and observes the same
 fixed error, terminal control/media closure, failed GET snapshot and token
 retirement after an actual connected RSS breach. It uses a Node ACK receiver,
 not browser rendering. This accepts the named connected memory-error transport
-slice; CPU failure delivery, connected siblings and complete resource/soak
-acceptance remain open.
+slice; the separate CPU failure control follows below. Connected siblings and
+complete resource/soak acceptance remain open.
+
+The [connected public CPU control](ITERATION_320.md) separately passes actual
+Windows counter growth and bounded local IPC load after the first connected
+baseline/public JPEG. Exactly one WORKER_CPU_LIMIT reaches control, both
+channels close, GET retains the fixed failed snapshot and attach authority
+retires with joined native/query/runtime cleanup. RSS default behavior passes
+again. This is the named failure transport slice; complete CPU budgets,
+connected siblings, browser terminal display, OS-failure and soak remain open.
 
 ## Hosting and authorization
 

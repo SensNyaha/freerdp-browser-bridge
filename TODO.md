@@ -1247,6 +1247,17 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for named connected Windows public CPU failure — Actual public
+  1080p JPEG precedes the first global/connected CPU baseline; bounded valid
+  16-flight IPC load produces growing OS counters and exact WORKER_CPU_LIMIT
+  through the native adapter/manager/control WS. Both channels close 1000,
+  HTTP snapshot/token statuses and pre-factory overflow refusal pass, with
+  joined native/query/PID/runtime retirement. The original public RSS mode
+  also passes again. Full Node Windows 756 / 51 skips and Linux 657 / 153 skips,
+  CTest 31/31 and 17/17 pass. Linux is common foundation evidence; browser
+  terminal display, connected siblings, complete budgets, hard OS/CI/deployment
+  and soak gates remain open. [Evidence](docs/ITERATION_320.md).
+
 - [x] DONE for named connected Windows public RSS failure — Actual source-
   receipt-selected Release worker produces 1080p JPEG over media WS before the
   first connected RSS sample. Exact WORKER_MEMORY_LIMIT reaches control once,

@@ -16,14 +16,16 @@ import { processQuerySnapshot } from '../packages/node-bridge/dist/process-query
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import {
   loadResourceLabProfile,
-  resourceLabRequest,
+  resourceApiLabRequest,
 } from './resource-lab-profile.mjs';
+import { connectedCpuLoad } from './connected-cpu-load.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 if (resolve('.') !== resolve(project)) throw new Error('Use the project root');
 const args = process.argv.slice(2);
-const profile = await loadResourceLabProfile(args, project);
-const limits = resourceLabRequest(['--memory-breach', ...args]).limits;
+const mode = resourceApiLabRequest(args);
+const profile = await loadResourceLabProfile(mode.nativeArgs, project);
+const limits = mode.limits;
 const { WebSocket } = createRequire(
   new URL('../apps/bridge-api/package.json', import.meta.url),
 )('ws');
@@ -33,11 +35,26 @@ const authorization = 'Bearer ' + randomBytes(32).toString('base64url');
 let native,
   adapter,
   closeCompleted = false;
+let nativeFailure;
 class Observed extends WorkerProcess {
   samples = 0;
   connectedSamples = 0;
   peak = 0;
   rdpState;
+  totalCpuSamples = 0;
+  cpuSamples = 0;
+  firstMicros;
+  lastMicros;
+  async sampleCpuMicros(pid, signal) {
+    const value = await super.sampleCpuMicros(pid, signal);
+    ++this.totalCpuSamples;
+    if (this.rdpState === 'connected' && this.state === 'ready') {
+      ++this.cpuSamples;
+      this.firstMicros ??= value;
+      this.lastMicros = value;
+    }
+    return value;
+  }
   async sampleResidentBytes(pid, signal) {
     const value = await super.sampleResidentBytes(pid, signal);
     ++this.samples;
@@ -53,6 +70,15 @@ class Adapter extends NativeSessionWorker {
     native = new Observed(options);
     native.on('rdp-state', ({ state }) => {
       native.rdpState = state;
+    });
+    native.on('failure', (error) => {
+      nativeFailure = [
+        'WORKER_CPU_LIMIT',
+        'WORKER_MEMORY_LIMIT',
+        'WORKER_RESOURCE_UNAVAILABLE',
+      ].includes(error.code)
+        ? error.code
+        : 'WORKER_FAILED';
     });
     return native;
   }
@@ -245,6 +271,7 @@ try {
             assert.equal(bytes.readUInt16BE(bytes.length - 2), 0xffd9);
             if (frames === 0) {
               assert.equal(native.samples, 0);
+              assert.equal(native.totalCpuSamples, 0);
               firstFrameBytes = bytes.length - 28;
             }
             ++frames;
@@ -278,6 +305,20 @@ try {
   }
   await waitFor(() => frames > 0, 7000);
   targetPid = adapter.pid;
+  let completedPings;
+  if (mode.cpuBreach) {
+    phase = 'connected-cpu-baseline';
+    await waitFor(
+      () => native.cpuSamples >= 1 && native.connectedSamples >= 1,
+      7000,
+    );
+    phase = 'connected-cpu-load';
+    completedPings = await connectedCpuLoad(
+      native,
+      () => (callbackFailed ? 'failed' : native.rdpState),
+      () => nativeFailure,
+    );
+  }
   phase = 'resource-failure';
   const closeResults = await Promise.all(closes);
   assert.equal(callbackFailed, false);
@@ -287,14 +328,21 @@ try {
     assert.equal(reason.toString(), 'session terminal');
   }
   const expected = {
-    code: 'WORKER_MEMORY_LIMIT',
-    message: 'Session worker memory policy exceeded',
+    code: mode.cpuBreach ? 'WORKER_CPU_LIMIT' : 'WORKER_MEMORY_LIMIT',
+    message: mode.cpuBreach
+      ? 'Session worker CPU policy exceeded'
+      : 'Session worker memory policy exceeded',
     retryable: false,
   };
   assert.equal(errorCount, 1);
   assert.deepEqual(publicFailure, expected);
-  assert.equal(native.samples, 1);
-  assert.equal(native.connectedSamples, 1);
+  if (mode.cpuBreach) {
+    assert.ok(native.connectedSamples >= 1);
+    assert.ok(native.peak <= limits.maxResidentBytes);
+  } else {
+    assert.equal(native.samples, 1);
+    assert.equal(native.connectedSamples, 1);
+  }
   assert.ok(native.peak > 1);
   const snapshot = await request('GET', path);
   assert.equal(snapshot.statusCode, 200);
@@ -313,12 +361,20 @@ try {
   assert.equal(processQuerySnapshot().waiting, 0);
   console.log(
     JSON.stringify({
-      type: 'lab.api-memory-limit',
+      type: mode.cpuBreach ? 'lab.api-cpu-limit' : 'lab.api-memory-limit',
       profile: profile.buildType,
       workerHash: profile.workerHash,
       helperHash: profile.helperHash,
       limits,
       connectedSamples: native.connectedSamples,
+      ...(mode.cpuBreach
+        ? {
+            cpuSamples: native.cpuSamples,
+            cpuGrowthMicros: native.lastMicros - native.firstMicros,
+            completedPings,
+            baselineConnected: true,
+          }
+        : {}),
       peakResidentBytes: native.peak,
       frames,
       image: { width, height, bytes: firstFrameBytes },

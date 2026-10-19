@@ -5,6 +5,14 @@ import { dirname, resolve, relative, sep } from 'node:path';
 
 const invalid = () => new Error('LAB_NATIVE_PROFILE_INVALID');
 
+/** Public lab keeps the existing RSS default; CPU load always needs opt-in. */
+export function resourceApiLabRequest(args) {
+  if (!Array.isArray(args)) return resourceLabRequest(args);
+  return resourceLabRequest(
+    args[0] === '--cpu-breach' ? args : ['--memory-breach', ...args],
+  );
+}
+
 export function resourceLabRequest(args) {
   const cpuBreach = Array.isArray(args) && args[0] === '--cpu-breach';
   const memoryBreach = Array.isArray(args) && args[0] === '--memory-breach';

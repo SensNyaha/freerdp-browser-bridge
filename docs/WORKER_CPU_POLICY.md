@@ -109,3 +109,12 @@ RDP session is connected. A connected first baseline precedes bounded local
 IPC load; exact WORKER_CPU_LIMIT and joined PID/runtime retirement pass. It is
 separate from registry/public error propagation, connected sibling isolation,
 production budgets and sustained/OS-failure acceptance.
+
+The [public connected Windows control](ITERATION_320.md) additionally verifies
+the ordinary native adapter/manager/API chain: first connected CPU baseline
+after public JPEG, real counter growth under bounded valid IPC load, one exact
+WORKER_CPU_LIMIT control error, terminal control/media channels, failed HTTP
+snapshot, token retirement and joined native/query/runtime cleanup. The
+1% fixture limit is not a recommended production budget. Other producer/server
+profiles, connected siblings, browser terminal display and complete sustained/
+OS-failure acceptance remain open.

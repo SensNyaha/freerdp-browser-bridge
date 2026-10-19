@@ -71,4 +71,11 @@ The subsequent [public connected RSS control](ITERATION_319.md) also passes
 actual Windows 1080p JPEG over media WS, one exact resource error over control
 WS, terminal channel closes, failed HTTP snapshot, token retirement and joined
 PID/runtime/query cleanup. It uses a Node transport receiver; browser rendering,
-connected CPU failure, siblings and complete resource/soak gates remain open.
+siblings and complete resource/soak gates remain open.
+
+The [connected public CPU control](ITERATION_320.md) then passes the named
+Windows CPU-failure slice with real counters after public JPEG, bounded local
+IPC load, exact public CPU error, both channel closes, token retirement and
+joined cleanup. The original RSS mode passes again. Complete CPU/session-total
+budgets, other producer/server profiles, browser terminal display, connected
+siblings, OS-failure and soak gates remain open.

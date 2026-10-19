@@ -163,3 +163,31 @@ same error, refused new tokens (409), refused previously unused token upgrade
 [Actual Windows evidence](ITERATION_319.md) retains the measured values and
 separates the passing transport slice from browser rendering, other resource
 budgets, connected siblings and sustained/OS-failure acceptance.
+
+## Connected public CPU-limit control
+
+```powershell
+node scripts/test-rdp-resource-api-lab.mjs --cpu-breach `
+  sha256:<approved-session-fingerprint> build/native-clean-EXAMPLE/receipt.json
+```
+
+The default invocation above remains the RSS control. Only this explicit switch
+enables a 1%-of-one-core fixture CPU cap; RSS remains 256 MiB. Equal five-second
+polls, one-second CPU minimum window, verified native selection, private host/
+RDP credentials and the 25-second overall deadline remain unchanged. Mixed or
+unknown switches refuse before private configuration/listener acquisition.
+
+Actual public 1080p JPEG must precede every successful CPU/RSS sample. The
+initial global CPU sample must then be the first connected counter while the
+worker is ready. Bounded valid private native IPC heartbeat batches produce
+load: at most 16 pending, each batch joined, at most eight seconds. The driver
+observes the fixed native error; actual public error delivery is independently
+required after both channel closes. The ordinary request/query deadlines and
+production enforcement are unchanged.
+
+Acceptance requires increasing real connected CPU counters, exact
+WORKER_CPU_LIMIT over control, expected failed GET/token refusal, both terminal
+channels and joined PID/runtime/query cleanup. [Actual evidence](ITERATION_320.md)
+also includes the unchanged RSS-mode repeat. This receiver does not decode or
+render media; browser terminal display, connected siblings, complete CPU/session
+budgets and sustained/OS-failure acceptance remain open.
