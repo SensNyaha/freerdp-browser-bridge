@@ -357,6 +357,7 @@ export interface WorkerBuild {
     audioBuffer200: boolean;
     clipboardText: boolean;
     clipboardRevoke: boolean;
+    performanceSettings: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -411,12 +412,14 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~31) !== 0 ||
+      (extensions & ~63) !== 0 ||
       ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
       ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4))) ||
       ((extensions & 4) !== 0 && !(capabilities & 4096)) ||
       ((extensions & 8) !== 0 && !(capabilities & 4)) ||
-      ((extensions & 16) !== 0 && !(extensions & 8))
+      ((extensions & 16) !== 0 && !(extensions & 8)) ||
+      ((extensions & 32) !== 0 &&
+        (!(capabilities & 4) || !(capabilities & 256)))
     )
       throw new ProtocolError();
     offset += 8;
@@ -450,6 +453,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       audioBuffer200: Boolean(extensions & 4),
       clipboardText: Boolean(extensions & 8),
       clipboardRevoke: Boolean(extensions & 16),
+      performanceSettings: Boolean(extensions & 32),
       penInput: false,
     },
     bridgeVersion,
@@ -561,6 +565,7 @@ export interface ConnectionSettings {
   opusInput?: boolean;
   audioBuffer200?: boolean;
   clipboard?: { toServer: boolean; fromServer: boolean; maximum: number };
+  performance?: { mask: number; values: number };
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -597,25 +602,42 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   )
     throw new ProtocolError();
   if (c.clipboard !== undefined && !c.clipboard) throw new ProtocolError();
-  const schema = c.clipboard
-    ? 10
-    : c.audioBuffer200
-      ? 9
-      : c.opusInput
-        ? 8
-        : c.pcmInput
-          ? 7
-          : c.opusOutput
-            ? 6
-            : c.pcmOutput
-              ? 5
-              : c.touch
-                ? 4
-                : c.dynamicResolution
-                  ? 3
-                  : c.videoQuality
-                    ? 2
-                    : 1;
+  if (
+    c.performance !== undefined &&
+    (!c.performance ||
+      typeof c.performance !== 'object' ||
+      Array.isArray(c.performance) ||
+      !Number.isInteger(c.performance.mask) ||
+      c.performance.mask < 0 ||
+      c.performance.mask > 63 ||
+      !Number.isInteger(c.performance.values) ||
+      c.performance.values < 0 ||
+      c.performance.values > 63 ||
+      (c.performance.values & ~c.performance.mask) !== 0)
+  )
+    throw new ProtocolError();
+  const schema =
+    c.performance !== undefined
+      ? 11
+      : c.clipboard
+        ? 10
+        : c.audioBuffer200
+          ? 9
+          : c.opusInput
+            ? 8
+            : c.pcmInput
+              ? 7
+              : c.opusOutput
+                ? 6
+                : c.pcmOutput
+                  ? 5
+                  : c.touch
+                    ? 4
+                    : c.dynamicResolution
+                      ? 3
+                      : c.videoQuality
+                        ? 2
+                        : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -717,11 +739,13 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     );
     parts.push(flags);
   }
-  if (c.clipboard) {
+  if (schema >= 10) {
     const maximum = Buffer.alloc(4);
-    maximum.writeUInt32BE(c.clipboard.maximum);
+    maximum.writeUInt32BE(c.clipboard?.maximum ?? 0);
     parts.push(maximum);
   }
+  if (c.performance)
+    parts.push(Buffer.from([c.performance.mask, c.performance.values]));
   return Buffer.concat(parts);
 }
 

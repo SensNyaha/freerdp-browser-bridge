@@ -1230,13 +1230,31 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 9 — advanced connection/Remmina-like settings
 
+- [x] DONE for named Windows quality/performance projection — Existing six
+  appearance booleans and selected presets use capability-gated schema 11,
+  checked public FreeRDP setters and canonical masks. Legacy workers retain
+  encoder-only profiles and refuse explicit appearance before configuration/
+  secrets. Portable/synthetic/native SDK cases and four actual Windows RDP
+  profile/override connections pass 1080p JPEG/heartbeat and joined cleanup.
+  New Windows linked CTest 32/32, Linux foundation 17/17, full Node Windows
+  763 / 51 skips and Linux 664 / 153 skips pass with byte-identical native
+  source inputs across builds. Server visual/policy effects, Linux linked/
+  wider profiles, complete UI and budgets remain open.
+  [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
+
 - [ ] RDP Gateway with same/separate credentials.
 - [ ] Proxy support.
 - [ ] IPv4/IPv6 preference/force options.
 - [ ] Timeouts/reconnect policy and auto-reconnect cookie where supported.
 - [~] IN PROGRESS — Opt-in single-primary DisplayControl at 100% scale satisfies ADR-011 and works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. Windows-server, DVC resource audit and soak acceptance remain open. [Evidence](docs/ITERATION_019.md).
 - OUT OF CURRENT SCOPE — Multimonitor policy: explicitly excluded by the user, ADR-011; not an unimplemented release requirement.
-- [ ] Quality profiles mapped to FreeRDP performance flags.
+- [~] IN PROGRESS — Selected quality profiles and six explicit appearance
+  booleans now map through capability-gated schema 11 to checked public FreeRDP
+  settings. New Windows SDK/worker and Linux portable source builds, synthetic
+  compatibility/wire cases and four actual Windows RDP configuration smokes pass;
+  full Node regression passes. Server visual/policy behavior, Linux linked/
+  wider profiles and complete UI acceptance remain open.
+  [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
 - OUT OF CURRENT SCOPE — Additional RDP smart sizing/scales/orientation profiles: existing orientation 0 and scale 100% are sufficient under ADR-011. Browser CSS sizing/coordinate mapping remains supported independently.
 - [ ] RemoteApp/RAIL capability and launch parameters.
 - [ ] Custom VC/DVC admin allowlists.

@@ -8,6 +8,42 @@ using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
     0x3d, 4, 0, 3, 0,   0,   32,  2,   1,   2,   0,   0,   0,   0x13, 0x88, 0,   0, 3, 0xe8};
+TEST_CASE("connection v11 performance selection is canonical and preserves legacy settings") {
+  auto bytes = connection;
+  bytes[1] = 11;
+  bytes.insert(bytes.end(),
+               {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2});
+  const auto at = bytes.size() - 2;
+  unsigned accepted = 0;
+  for (unsigned mask = 0; mask < 256; ++mask) {
+    bytes[at] = static_cast<std::uint8_t>(mask);
+    for (unsigned values = 0; values < 256; ++values) {
+      bytes[at + 1] = static_cast<std::uint8_t>(values);
+      if (mask > 63U || (values & ~mask) != 0) {
+        REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+      } else {
+        const auto decoded = decode_connection_config(bytes);
+        REQUIRE(decoded.performance_mask == mask);
+        REQUIRE(decoded.performance_values == values);
+        REQUIRE(decoded.host == "localhost");
+        REQUIRE(decoded.port == 3389);
+        REQUIRE(decoded.clipboard_maximum == 0);
+        ++accepted;
+      }
+    }
+  }
+  REQUIRE(accepted == 729);
+  bytes[at] = 3;
+  bytes[at + 1] = 2;
+  for (std::size_t n = 0; n < bytes.size(); ++n)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(n)), ProtocolError);
+  for (unsigned schema = 1; schema < 11; ++schema) {
+    bytes[1] = static_cast<std::uint8_t>(schema);
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  REQUIRE(decode_connection_config(connection).performance_mask == 0);
+  REQUIRE(decode_connection_config(connection).performance_values == 0);
+}
 TEST_CASE("connection v10 clipboard direction and item quota preserve all legacy feature masks") {
   auto bytes = connection;
   bytes[1] = 10;

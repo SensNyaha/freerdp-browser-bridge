@@ -1,8 +1,10 @@
 # Configurable native video quality
 
 Implements SPECIFICATION §2.3 / §2.10, MEDIA_PIPELINE §3–4 and ADR-003.
-Configuration applies to native browser-video encoding, not incoming FreeRDP
-AVC decoding or remote Windows appearance/performance flags.
+Configuration applies to native browser-video encoding. Incoming FreeRDP AVC
+decoder selection is separate. The independently capability-gated
+[RDP appearance/performance projection](RDP_PERFORMANCE_SETTINGS.md) now maps
+selected profiles and the existing six explicit booleans to public SDK settings.
 
 ## Profiles and bounds
 
@@ -38,9 +40,10 @@ encoded-payload ceiling. Direct JSON JPEG percentage overrides are not exposed.
 }
 ```
 
-Appearance fields such as wallpaper/font smoothing remain explicit unsupported
-settings in the current native mapper. Codec negotiation remains browser-offer
-based; hardware/provider selection is retained work.
+Explicit appearance fields require `performanceSettings`; older workers refuse
+them before configuration/secrets and retain their earlier encoding-only profile
+behavior. Omitted appearance fields preserve SDK defaults. Codec negotiation
+remains browser-offer based; hardware/provider selection is retained work.
 
 ## Scheduling and transport
 

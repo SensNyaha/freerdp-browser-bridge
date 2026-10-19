@@ -294,6 +294,51 @@ export interface VideoQuality {
   maxBitrate: number;
 }
 
+export const RDP_PERFORMANCE_FIELDS = Object.freeze([
+  'wallpaper',
+  'fontSmoothing',
+  'desktopComposition',
+  'fullWindowDrag',
+  'menuAnimations',
+  'themes',
+] as const);
+
+/** Explicit preset/override selection. Unselected fields keep native defaults. */
+export function resolveRdpPerformance(
+  quality?: SessionCreate['quality'],
+): { mask: number; values: number } | undefined {
+  const preset: Partial<
+    Record<(typeof RDP_PERFORMANCE_FIELDS)[number], boolean>
+  > =
+    quality?.profile === 'low-bandwidth'
+      ? { wallpaper: false, fullWindowDrag: false, menuAnimations: false }
+      : quality?.profile === 'balanced'
+        ? { wallpaper: false, fontSmoothing: true }
+        : quality?.profile === 'lan'
+          ? {
+              wallpaper: true,
+              fontSmoothing: true,
+              desktopComposition: true,
+              fullWindowDrag: true,
+              menuAnimations: true,
+              themes: true,
+            }
+          : {};
+  let mask = 0,
+    values = 0;
+  for (const [index, field] of RDP_PERFORMANCE_FIELDS.entries()) {
+    const supplied = quality?.[field];
+    if (supplied !== undefined && typeof supplied !== 'boolean')
+      throw new ConfigError();
+    const selected = supplied ?? preset[field];
+    if (selected === undefined) continue;
+    if (typeof selected !== 'boolean') throw new ConfigError();
+    mask |= 1 << index;
+    if (selected) values |= 1 << index;
+  }
+  return mask ? { mask, values } : undefined;
+}
+
 /** Non-secret encoder defaults. maxFps is a ceiling, not a promised render rate. */
 export function resolveVideoQuality(
   quality?: SessionCreate['quality'],

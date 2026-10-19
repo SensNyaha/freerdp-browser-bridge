@@ -1,5 +1,12 @@
 # RWI1 foundation wire contract
 
+Current appearance projection — iteration 321: HELLO extension bit 32 adds
+performanceSettings, requiring connectCore/videoQuality. CONFIGURE schema 11
+inherits v10 and appends canonical six-bit selection/value bytes. Legacy
+schemas/defaults and the 2,048-byte settings limit remain unchanged; explicit
+appearance requests refuse before configuration/secrets on old workers.
+[Exact fields and compatibility](RDP_PERFORMANCE_SETTINGS.md).
+
 Current clipboard framing: additive kinds 45/46/47 carry fixed
 state and bounded Unicode command/result payloads. Iteration 231 activates the
 guarded native channel by explicit connection schema 10; unselected,
@@ -63,7 +70,7 @@ are fatal protocol errors. Request IDs correlate exactly one request/reply; repl
 | SHUTDOWN | 5 | empty |
 | SHUTDOWN_ACK | 6 | empty |
 | ERROR | 7 | u32 errorCode: 2 incompatible negotiation, 3 invalid lifecycle state, 4 media encode failure, 5 media/input not connected, 6 input queue/contact capacity full, 8 input paused during display transition, 9 Unicode input not negotiated, 10 touch unavailable, 11 invalid touch transition |
-| CONFIGURE | 8 | connection schemas v1..v7; maximum 2048 bytes; [private input opt-in](MICROPHONE_WORKER.md) |
+| CONFIGURE | 8 | connection schemas v1..v11; maximum 2048 bytes; [appearance projection](RDP_PERFORMANCE_SETTINGS.md), [private input opt-in](MICROPHONE_WORKER.md) |
 | CONFIGURE_ACK | 9 | empty |
 | SECRET | 10 | canonical UTF-8 password, no NUL, 0..4096 bytes |
 | SECRET_ACK | 11 | empty |

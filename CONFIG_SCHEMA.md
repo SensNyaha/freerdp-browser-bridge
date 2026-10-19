@@ -164,3 +164,8 @@ Suggested mapping:
 - `lan`: visual effects enabled, 60 fps cap, 8–20 Mbps depending on content.
 
 These are bridge/video transport settings plus matching FreeRDP performance flags, not hard guarantees.
+
+The current capability-gated appearance projection and explicit override semantics
+are specified in [RDP performance settings](docs/RDP_PERFORMANCE_SETTINGS.md).
+Its current provider FPS/bitrate ceilings remain documented separately in
+[native video quality](docs/VIDEO_QUALITY.md); the suggested targets above are preserved.

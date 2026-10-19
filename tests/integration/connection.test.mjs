@@ -23,14 +23,13 @@ const workerPath = resolve(
   process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
   'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
 );
-const linked = Boolean(
-  JSON.parse(
-    execFileSync(workerPath, ['--capabilities'], {
-      encoding: 'utf8',
-      windowsHide: true,
-    }),
-  ).capabilities.connectCore,
-);
+const nativeCapabilities = JSON.parse(
+  execFileSync(workerPath, ['--capabilities'], {
+    encoding: 'utf8',
+    windowsHide: true,
+  }),
+).capabilities;
+const linked = Boolean(nativeCapabilities.connectCore);
 
 test(
   'native HTTP/WS: attached controller receives certificate prompt and sends a scoped decision',
@@ -454,7 +453,9 @@ test(
           { security: { certificatePolicy: 'tofu' } },
           { reconnect: { enabled: true } },
           { target: { host: '127.0.0.1', preferIPv6: true } },
-          { quality: { wallpaper: false } },
+          ...(!nativeCapabilities.performanceSettings
+            ? [{ quality: { wallpaper: false } }]
+            : []),
           { quality: { targetBitrateKbps: 99 } },
           { quality: { maxBitrateKbps: 20001 } },
         ]) {

@@ -96,6 +96,8 @@ export {
 import {
   validateSessionConfig,
   resolveVideoQuality,
+  resolveRdpPerformance,
+  RDP_PERFORMANCE_FIELDS,
   type SessionCreate,
 } from '@freerdp-bridge/config';
 export type {
@@ -1616,6 +1618,7 @@ export class WorkerProcess extends EventEmitter {
       const payload = connectionPayload(
         config,
         this.report.capabilities.videoQuality,
+        this.report.capabilities.performanceSettings,
         this.report.capabilities.displayControl,
         this.report.capabilities.touchInput,
         this.report.capabilities.pcmOutput,
@@ -1798,6 +1801,7 @@ function clipboardSelection(
 function connectionPayload(
   config: SessionCreate,
   videoQuality: boolean,
+  performanceSettings: boolean,
   displayControl: boolean,
   touchInput: boolean,
   pcmOutput: boolean,
@@ -1865,7 +1869,18 @@ function connectionPayload(
     'maxFps',
     'targetBitrateKbps',
     'maxBitrateKbps',
+    ...RDP_PERFORMANCE_FIELDS,
   ]);
+  if (
+    !performanceSettings &&
+    RDP_PERFORMANCE_FIELDS.some(
+      (field) => config.quality?.[field] !== undefined,
+    )
+  )
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
+  const performance = performanceSettings
+    ? resolveRdpPerformance(config.quality)
+    : undefined;
   const quality = config.quality
     ? resolveVideoQuality(config.quality)
     : undefined;
@@ -1912,6 +1927,7 @@ function connectionPayload(
     ...(config.media?.microphone === 'opus' ? { opusInput: true } : {}),
     ...(quality ? { videoQuality: quality } : {}),
     ...(clipboard ? { clipboard } : {}),
+    ...(performance ? { performance } : {}),
   });
 }
 

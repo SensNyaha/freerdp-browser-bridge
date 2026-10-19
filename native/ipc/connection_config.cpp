@@ -64,7 +64,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 10)
+  if (schema < 1 || schema > 11)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -124,6 +124,13 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
         throw ProtocolError();
     } else if (config.clipboard_maximum)
       throw ProtocolError();
+  }
+  if (schema >= 11) {
+    const auto mask = number(1), values = number(1);
+    if (mask > 63U || (values & ~mask) != 0)
+      throw ProtocolError();
+    config.performance_mask = static_cast<std::uint8_t>(mask);
+    config.performance_values = static_cast<std::uint8_t>(values);
   }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),

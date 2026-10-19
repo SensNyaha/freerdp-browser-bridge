@@ -114,17 +114,15 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
                             platform, arch, transport})
     append_string(bytes, value);
-#if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
-    (defined(CHANNEL_AUDIN_CLIENT) || defined(CHANNEL_RDPSND_CLIENT) ||                            \
-     defined(CHANNEL_CLIPRDR_CLIENT))
-  unsigned extensions = 0;
+#ifdef BRIDGE_WITH_FREERDP
+  unsigned extensions = 32;
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   extensions |= 3;
 #endif
-#ifdef CHANNEL_RDPSND_CLIENT
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPSND_CLIENT)
   extensions |= 4;
 #endif
-#ifdef CHANNEL_CLIPRDR_CLIENT
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_CLIPRDR_CLIENT)
   extensions |= 8 | 16;
 #endif
   // Fixed schema-1 extension; unknown feature bits remain refused by old peers.
@@ -434,7 +432,8 @@ int main(int argc, char **argv) {
 #endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
-                 "true,\"jpegCapture\":true,\"h264Capture\":true,\"basicInput\":true,"
+                 "true,\"performanceSettings\":true,\"jpegCapture\":true,\"h264Capture\":true,"
+                 "\"basicInput\":true,"
                  "\"unicodeInput\":true,"
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
                  "\"pcmInput\":true,"
@@ -458,7 +457,8 @@ int main(int argc, char **argv) {
                  "\"displayControl\":false},"
 #endif
 #else
-                 "false,\"jpegCapture\":false,\"h264Capture\":false,\"basicInput\":false,"
+                 "false,\"performanceSettings\":false,\"jpegCapture\":false,\"h264Capture\":false,"
+                 "\"basicInput\":false,"
                  "\"unicodeInput\":false,"
                  "\"pcmInput\":false,"
                  "\"pcmOutput\":false,\"opusOutput\":false,\"audioReset\":false,"

@@ -3,6 +3,7 @@
 #include "cursor_convert.hpp"
 #include "event_pump.hpp"
 #include "gdi_dirty.hpp"
+#include "performance_settings.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -191,6 +192,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
         c.opus_input ? bridge::audio::CaptureCodec::opus : bridge::audio::CaptureCodec::pcm);
   }
   auto *s = context_->settings;
+  rdp::apply_performance_settings(s, c.performance_mask, c.performance_values);
   const auto boolean = [&](auto key, BOOL value) {
     if (!freerdp_settings_set_bool(s, key, value))
       throw ProtocolError();
