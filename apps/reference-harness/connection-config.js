@@ -108,7 +108,12 @@ export function connectionConfig(fields, capabilities) {
       dynamicResolution,
     },
     quality: {
-      profile: choice('quality', ['low-bandwidth', 'balanced', 'lan']),
+      profile: choice('quality', [
+        'low-bandwidth',
+        'balanced',
+        'lan',
+        'custom',
+      ]),
       maxFps: number('fps', 1, videoCodec === 'jpeg' ? 20 : 30),
       ...appearance,
     },

@@ -199,6 +199,7 @@ for (const performanceSettings of [false, true])
           assert.equal(await control.isDisabled(), !performanceSettings);
           if (performanceSettings) await control.selectOption('');
         }
+        await page.locator('[name=quality]').selectOption('custom');
         await page.locator('[name=clipboardMax]').fill('');
         await page.locator('[name=clipboard]').selectOption('off');
         assert.equal(
@@ -212,7 +213,7 @@ for (const performanceSettings of [false, true])
           await new Promise((done) => setTimeout(done, 10));
         assert.equal(typeof releaseCreate, 'function');
         assert.equal(payload.clipboard, undefined);
-        assert.deepEqual(payload.quality, { profile: 'balanced', maxFps: 20 });
+        assert.deepEqual(payload.quality, { profile: 'custom', maxFps: 20 });
         await page.click('#disconnect-session');
         releaseCreate();
         await page.waitForFunction(

@@ -48,6 +48,9 @@ sends false and overrides a selected preset. Controls start disabled until actua
 The unavailable message explains that their quality profiles retain video-only
 behavior. Submission checks the capability again before any request. Values are
 not persisted. [Profile and native projection](RDP_PERFORMANCE_SETTINGS.md).
+The existing `custom` profile is available as “Свои параметры”: with all six
+controls inherited, it selects no appearance preset; individual enabled/disabled
+choices remain explicit overrides. Encoder defaults/FPS limits still apply.
 [Form verification](ITERATION_322.md) uses Edge and a synthetic HTTP endpoint.
 The named [Windows JPEG/form smoke](ITERATION_323.md) additionally passes actual
 creation, prompted certificate, explicit appearance projection, nonblank 1080p,

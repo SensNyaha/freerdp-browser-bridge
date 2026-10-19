@@ -44,7 +44,7 @@ const fields = (extra = {}) => new Map(Object.entries({ ...values, ...extra }));
 test('manual appearance: inherit omits keys; explicit true/false require capability and preserve schema booleans', () => {
   for (const capability of [undefined, false, true]) {
     const available = { ...caps, performanceSettings: capability };
-    for (const profile of ['low-bandwidth', 'balanced', 'lan']) {
+    for (const profile of ['low-bandwidth', 'balanced', 'lan', 'custom']) {
       const inherited = connectionConfig(
         fields({
           quality: profile,

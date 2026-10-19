@@ -1230,6 +1230,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 9 — advanced connection/Remmina-like settings
 
+- [x] DONE for manual custom quality profile — The WEB form exposes the existing
+  custom profile without injecting appearance booleans when inherited. All four
+  profiles agree with strict schema; Edge/synthetic HTTP verifies balanced to
+  custom selection on capable and old backends, with unchanged secret/ownership
+  behavior. Focus passes 8/8; full Node Windows 766 / 51 skips and Linux
+  666 / 154 skips pass. Native code/artifacts remain unchanged; broader actual
+  profile/server effects and resource gates stay open.
+  [Evidence](docs/ITERATION_324.md).
+
 - [x] DONE for named Windows JPEG appearance-form smoke — Manual form passes
   six explicit booleans through the real API/native adapter, exact approved
   session certificate, nonblank 1920×1080 / 5 FPS Edge canvas, heartbeat and form
