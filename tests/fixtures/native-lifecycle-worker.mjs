@@ -7,10 +7,13 @@ import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
 export class NativeLifecycleWorker extends EventEmitter {
   constructor(options) {
     super();
-    this.native = new WorkerProcess(options);
+    this.native = this.createWorkerProcess(options);
     this.native.on('failure', () => {
       if (!this.closing) this.emit('failure', 'WORKER_FAILED');
     });
+  }
+  createWorkerProcess(options) {
+    return new WorkerProcess(options);
   }
   onState(listener) {
     this.on('state', listener);

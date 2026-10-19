@@ -22,6 +22,10 @@ import { OpusSource } from './opus-source.js';
 import { workerResidentBytes, ProcessSampleError } from './process-resident.js';
 import { workerCpuMicros } from './process-cpu.js';
 import { CpuWindow } from './cpu-window.js';
+import {
+  windowsProcessResources,
+  type ProcessResources,
+} from './process-resources.js';
 export type { PcmSourceEvent } from './pcm-source.js';
 export type { OpusSourceEvent } from './opus-source.js';
 import { mkdir, mkdtemp, rm, writeFile, realpath } from 'node:fs/promises';
@@ -192,6 +196,12 @@ type ResidentProbe = {
   abort: AbortController;
   completion: Promise<void>;
 };
+type CombinedQuery = {
+  pid: number;
+  abort: AbortController;
+  listeners: Map<AbortSignal, () => void>;
+  completion: Promise<ProcessResources>;
+};
 
 /** Owns exactly one native lifecycle process; readiness does not imply an RDP connection. */
 export class WorkerProcess extends EventEmitter {
@@ -207,6 +217,11 @@ export class WorkerProcess extends EventEmitter {
   private cpuProbe: ResidentProbe | undefined;
   private cpuWindow: CpuWindow | undefined;
   private cpuRetirementFailed = false;
+  private combinedQuery: CombinedQuery | undefined;
+  private readonly cpuQueryBrackets = new WeakMap<
+    AbortSignal,
+    Pick<ProcessResources, 'startedNs' | 'completedNs'>
+  >();
   private closedPromise: Promise<void> | undefined;
   private closePromise: Promise<void> | undefined;
   private startCompletion: Promise<void> | undefined;
@@ -379,7 +394,70 @@ export class WorkerProcess extends EventEmitter {
     pid: number,
     signal: AbortSignal,
   ): Promise<number> {
+    if (this.combinedPolicy())
+      return this.combinedResources(pid, signal).then((value) => {
+        if (signal.aborted)
+          throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        return value.bytes;
+      });
     return workerResidentBytes(pid, this.options.workerPath, signal);
+  }
+
+  private combinedPolicy(): boolean {
+    return (
+      process.platform === 'win32' &&
+      this.options.maxCpuPercent > 0 &&
+      this.options.maxResidentBytes > 0 &&
+      this.options.cpuPollIntervalMs === this.options.residentPollIntervalMs
+    );
+  }
+
+  /** One joined Windows query for simultaneous CPU/RSS policies. */
+  protected sampleResourceUsage(
+    pid: number,
+    signal: AbortSignal,
+  ): Promise<ProcessResources> {
+    return windowsProcessResources(pid, this.options.workerPath, signal);
+  }
+
+  private combinedResources(
+    pid: number,
+    signal: AbortSignal,
+  ): Promise<ProcessResources> {
+    if (signal.aborted)
+      return Promise.reject(new ProcessSampleError('PROCESS_SAMPLE_CANCELLED'));
+    let query = this.combinedQuery;
+    if (!query) {
+      const abort = new AbortController();
+      const listeners = new Map<AbortSignal, () => void>();
+      const entry: CombinedQuery = {
+        pid,
+        abort,
+        listeners,
+        completion: Promise.resolve()
+          .then(() => this.sampleResourceUsage(pid, abort.signal))
+          .finally(() => {
+            for (const [owner, listener] of listeners)
+              owner.removeEventListener('abort', listener);
+            listeners.clear();
+            if (this.combinedQuery === entry) this.combinedQuery = undefined;
+          }),
+      };
+      this.combinedQuery = query = entry;
+    }
+    if (
+      query.pid !== pid ||
+      (query.listeners.size >= 2 && !query.listeners.has(signal))
+    )
+      return Promise.reject(
+        new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE'),
+      );
+    if (!query.listeners.has(signal)) {
+      const abort = () => query.abort.abort();
+      query.listeners.set(signal, abort);
+      signal.addEventListener('abort', abort, { once: true });
+    }
+    return query.completion;
   }
 
   private stopResidentWatchdog(): void {
@@ -390,10 +468,10 @@ export class WorkerProcess extends EventEmitter {
 
   private startResidentWatchdog(): void {
     if (!this.options.maxResidentBytes) return;
-    this.residentTimer = setInterval(
-      () => this.checkResidentMemory(),
-      this.options.residentPollIntervalMs,
-    );
+    this.residentTimer = setInterval(() => {
+      this.checkResidentMemory();
+      if (this.combinedPolicy()) this.checkCpuTime();
+    }, this.options.residentPollIntervalMs);
     this.residentTimer.unref();
   }
 
@@ -449,6 +527,16 @@ export class WorkerProcess extends EventEmitter {
 
   /** Trusted sampling seam; ordinary use queries this owned child. */
   protected sampleCpuMicros(pid: number, signal: AbortSignal): Promise<number> {
+    if (this.combinedPolicy())
+      return this.combinedResources(pid, signal).then((value) => {
+        if (signal.aborted)
+          throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        this.cpuQueryBrackets.set(signal, {
+          startedNs: value.startedNs,
+          completedNs: value.completedNs,
+        });
+        return value.micros;
+      });
     return workerCpuMicros(pid, this.options.workerPath, signal);
   }
 
@@ -465,6 +553,7 @@ export class WorkerProcess extends EventEmitter {
       this.options.maxCpuPercent,
       this.options.cpuWindowMs,
     );
+    if (this.combinedPolicy()) return;
     this.cpuTimer = setInterval(
       () => this.checkCpuTime(),
       this.options.cpuPollIntervalMs,
@@ -505,7 +594,14 @@ export class WorkerProcess extends EventEmitter {
       })
       .then((micros) => {
         if (!current()) return;
-        if (window.observe(micros, startedNs, process.hrtime.bigint()))
+        const bracket = this.cpuQueryBrackets.get(probe.abort.signal);
+        if (
+          window.observe(
+            micros,
+            bracket?.startedNs ?? startedNs,
+            bracket?.completedNs ?? process.hrtime.bigint(),
+          )
+        )
           this.fail('WORKER_CPU_LIMIT');
       })
       .catch((error: unknown) => {
@@ -518,6 +614,7 @@ export class WorkerProcess extends EventEmitter {
       })
       .finally(() => {
         clearTimeout(deadline);
+        this.cpuQueryBrackets.delete(probe.abort.signal);
         if (this.cpuProbe === probe) this.cpuProbe = undefined;
         complete();
       });

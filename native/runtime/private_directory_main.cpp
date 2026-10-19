@@ -92,6 +92,41 @@ int cpu_time(std::wstring_view text) {
     return 3;
   return error == ERROR_SUCCESS ? 0 : 1;
 }
+
+int resources(std::wstring_view text) {
+  const auto pid = process_id(text);
+  if (!pid)
+    return 2;
+  DWORD error = ERROR_SUCCESS;
+  PROCESS_MEMORY_COUNTERS memory{};
+  memory.cb = sizeof(memory);
+  FILETIME created{}, exited{}, kernel{}, user{};
+  {
+    const process_query process(*pid, error);
+    if (process.get()) {
+      if (!GetProcessMemoryInfo(process.get(), &memory, sizeof(memory)) ||
+          !GetProcessTimes(process.get(), &created, &exited, &kernel, &user))
+        error = GetLastError();
+    }
+  }
+  unsigned long long micros = 0, bytes = 0;
+  if (error == ERROR_SUCCESS) {
+    const auto converted = bridge::runtime::process_cpu_micros(
+        (static_cast<unsigned long long>(kernel.dwHighDateTime) << 32) | kernel.dwLowDateTime,
+        (static_cast<unsigned long long>(user.dwHighDateTime) << 32) | user.dwLowDateTime);
+    if (!converted || memory.WorkingSetSize > 9007199254740991ULL)
+      error = ERROR_ARITHMETIC_OVERFLOW;
+    else {
+      micros = *converted;
+      bytes = static_cast<unsigned long long>(memory.WorkingSetSize);
+    }
+  }
+  if (std::printf("{\"v\":1,\"bytes\":%llu,\"micros\":%llu,\"error\":%lu}\n", bytes, micros,
+                  static_cast<unsigned long>(error)) < 0 ||
+      std::fflush(stdout))
+    return 3;
+  return error == ERROR_SUCCESS ? 0 : 1;
+}
 } // namespace
 
 // Private host bootstrap only. No RDP, credentials, environment mutation or
@@ -103,6 +138,8 @@ int wmain(int argc, wchar_t **argv) {
     return memory(argv[2]);
   if (std::wstring_view(argv[1]) == L"--process-cpu-micros")
     return cpu_time(argv[2]);
+  if (std::wstring_view(argv[1]) == L"--process-resources")
+    return resources(argv[2]);
   if (std::wstring_view(argv[1]) != L"--create-private-directory")
     return 2;
   const auto status = bridge::runtime::create_private_directory(argv[2]);

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import { ProcessSampleError } from './process-resident.js';
+import { withProcessQuery } from './process-query-gate.js';
 
 function requireSample(signal?: AbortSignal): void {
   if (signal?.aborted) throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
@@ -105,30 +106,33 @@ async function queryCpuMicros(
       workerPath.length > 32767
     )
       throw new Error();
-    const execution = promisify(execFile)(
-      join(dirname(workerPath), helper),
-      ['--process-cpu-micros', String(pid)],
-      {
-        windowsHide: true,
-        timeout: 2000,
-        maxBuffer: 128,
-        encoding: 'utf8',
-        env,
-        signal,
-      },
-    );
-    const closed = new Promise<void>((done) => {
-      execution.child.once('close', () => done());
+    return await withProcessQuery(signal, async () => {
+      requireSample(signal);
+      const execution = promisify(execFile)(
+        join(dirname(workerPath), helper),
+        ['--process-cpu-micros', String(pid)],
+        {
+          windowsHide: true,
+          timeout: 2000,
+          maxBuffer: 128,
+          encoding: 'utf8',
+          env,
+          signal,
+        },
+      );
+      const closed = new Promise<void>((done) => {
+        execution.child.once('close', () => done());
+      });
+      let result: Awaited<typeof execution>;
+      try {
+        result = await execution;
+      } finally {
+        await closed;
+      }
+      requireSample(signal);
+      if (result.stderr !== '') throw new Error();
+      return processCpuReceipt(result.stdout);
     });
-    let result: Awaited<typeof execution>;
-    try {
-      result = await execution;
-    } finally {
-      await closed;
-    }
-    requireSample(signal);
-    if (result.stderr !== '') throw new Error();
-    return processCpuReceipt(result.stdout);
   } catch {
     requireSample(signal);
     throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');

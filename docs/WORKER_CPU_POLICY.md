@@ -20,8 +20,12 @@ Sampling begins after HELLO readiness. One query may be pending per worker;
 timer ticks during that query are discarded. The result belongs to the same
 ready child object, not an arbitrary supplied PID. The first valid cumulative
 counter establishes a baseline; it does not charge startup or the initial
-unsampled interval. CPU and RSS policies have separate one-flight query owners
-and may be enabled together.
+unsampled interval. CPU and RSS policies retain separate one-flight policy
+owners and may be enabled together. On Windows, equal polling intervals use
+one timer and one shared in-flight CPU/RSS helper query. There is no sample
+cache; both owners join its retirement. Different intervals and Linux retain
+separate queries. The CPU window uses the actual shared query's start/completion
+bracket, including admission, rather than the later CPU projection callback.
 
 Each query is bracketed by `process.hrtime.bigint()` before invocation and after
 joined helper retirement. A rate window requires at least `cpuWindowMs`
@@ -71,3 +75,12 @@ the loaded C++ worker retires, its runtime is empty and a sibling stays healthy.
 The fixed 16-flight request driver is a bounded unconnected test load. It does
 not establish connected desktop/media budgets or configured multi-worker/soak
 acceptance, and 1% is not a recommended production limit.
+
+Host helper launches have shared bounded admission: at most 16 active children
+and 128 waiting callers per Node execution context, with a three-second
+admission deadline. Waiting cancellation removes the caller before launch;
+permits remain held through joined helper close. The existing three-second
+worker query deadline includes admission and execution. Helper execution still
+has its two-second timeout. This bounds launch contention without extending
+the worker's watchdog deadline. [Configured-capacity evidence](ITERATION_310.md)
+distinguishes retained failed controls from the accepted unconnected slice.

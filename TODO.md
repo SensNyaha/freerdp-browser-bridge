@@ -1222,6 +1222,19 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for configured unconnected CPU/RSS lifecycle capacity — Forty actual
+  framed native workers at ordinary 1,000 ms polls, global 40 / per-principal
+  20, pre-factory overflow refusal, five replacements and joined PID/runtime
+  cleanup pass Windows/Linux; Linux parent FD count returns to baseline.
+  Windows equal-interval policies share one CPU/RSS query; helper admission is
+  bounded to 16 active / 128 waiting per Node context. Failed startup/queue
+  controls and CPU/RSS measurements are retained; the three-second watchdog
+  deadline is unchanged and Windows timing headroom remains small. Full Node
+  Windows 693 / 92 skips and Linux 638 / 150 skips, CTest 16/16 and 17/17 pass.
+  Connected concurrency/faults, total-session budgets, primary capacity beyond
+  32, production helper adoption and soak remain open. Release and pins stay
+  unchanged. [Evidence and changed files](docs/ITERATION_310.md).
+
 - [x] DONE for actual unconnected native CPU-limit breach — Fixed 16-flight
   heartbeat load and genuine platform counter growth trigger WORKER_CPU_LIMIT
   at an explicit 1% fixture cap on Windows/Linux. The owned PID/runtime retire,

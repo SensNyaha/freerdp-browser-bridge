@@ -37,6 +37,12 @@ remain open. Hosts choose budgets; existing Release defaults are unchanged.
 The separate opt-in [CPU policy](WORKER_CPU_POLICY.md) can run alongside
 RSS sampling. It has its own bounded query/window and does not turn RSS into
 total-session memory or continuous CPU accounting.
+Windows policies with equal polling intervals share one in-flight combined
+helper query and one polling timer. Either policy's cancellation aborts that
+shared query; close joins both owners. Different intervals retain separate
+queries. Shared helper admission and the unchanged overall query deadline are
+documented in the [CPU policy](WORKER_CPU_POLICY.md). The named unconnected
+40-worker fixture is recorded in [iteration 310](ITERATION_310.md).
 
 Actual unconnected workers verify the one-byte breach and healthy 1 GiB cap
 on Windows/Linux. Synthetic probes separately test faults, deadlines and

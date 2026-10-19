@@ -51,79 +51,90 @@ async function withWorker(Worker, options, run, closeCode) {
   }
 }
 
-test(
-  'actual native CPU breach: bounded heartbeat load exceeds the host limit, retires only its worker and preserves a sibling',
-  supported,
-  async (t) => {
-    class Observed extends WorkerProcess {
-      samples = 0;
-      firstMicros;
-      lastMicros;
-      async sampleCpuMicros(pid, signal) {
-        const micros = await super.sampleCpuMicros(pid, signal);
-        this.firstMicros ??= micros;
-        this.lastMicros = micros;
-        ++this.samples;
-        return micros;
+for (const residentPolicy of [false, true])
+  test(
+    `actual native CPU breach${residentPolicy ? ' with RSS policy' : ''}: bounded heartbeat load exceeds the host limit, retires only its worker and preserves a sibling`,
+    supported,
+    async (t) => {
+      class Observed extends WorkerProcess {
+        samples = 0;
+        firstMicros;
+        lastMicros;
+        async sampleCpuMicros(pid, signal) {
+          const micros = await super.sampleCpuMicros(pid, signal);
+          this.firstMicros ??= micros;
+          this.lastMicros = micros;
+          ++this.samples;
+          return micros;
+        }
       }
-    }
-    await withWorker(WorkerProcess, {}, async (sibling) => {
-      await sibling.start();
-      await withWorker(
-        Observed,
-        { ...policy, maxCpuPercent: 1 },
-        async (worker, root) => {
-          let failureCode,
-            completedPings = 0,
-            loading = Promise.resolve();
-          worker.on('failure', (error) => {
-            failureCode = error.code;
-          });
-          try {
-            await worker.start();
-            const pid = worker.pid;
-            await eventually(() => worker.samples > 0, 3000);
-            loading = (async () => {
-              while (worker.state === 'ready') {
-                // Fixed 16-flight admission; each batch joins before the next.
-                const results = await Promise.allSettled(
-                  Array.from({ length: 16 }, () => worker.ping()),
-                );
-                completedPings += results.filter(
-                  (result) => result.status === 'fulfilled',
-                ).length;
-                if (results.some((result) => result.status === 'rejected'))
-                  break;
-              }
-            })();
-            await eventually(() => failureCode !== undefined, 8000);
-            assert.equal(failureCode, 'WORKER_CPU_LIMIT');
-            await loading;
-            assert.ok(completedPings > 0);
-            assert.ok(
-              worker.samples >= 2 && worker.lastMicros > worker.firstMicros,
-            );
-            await worker.close();
-            assert.equal(alive(pid), false);
-            assert.deepEqual(await readdir(root), []);
-            await sibling.ping();
-            assert.equal(sibling.state, 'ready');
-            t.diagnostic(
-              JSON.stringify({
-                samples: worker.samples,
-                cpuGrowthMicros: worker.lastMicros - worker.firstMicros,
-                completedPings,
-              }),
-            );
-          } finally {
-            worker.terminate();
-            await loading;
-          }
-        },
-      );
-    });
-  },
-);
+      await withWorker(WorkerProcess, {}, async (sibling) => {
+        await sibling.start();
+        await withWorker(
+          Observed,
+          {
+            ...policy,
+            maxCpuPercent: 1,
+            ...(residentPolicy
+              ? {
+                  maxResidentBytes: 1024 * 1024 * 1024,
+                  residentPollIntervalMs: 100,
+                }
+              : {}),
+          },
+          async (worker, root) => {
+            let failureCode,
+              completedPings = 0,
+              loading = Promise.resolve();
+            worker.on('failure', (error) => {
+              failureCode = error.code;
+            });
+            try {
+              await worker.start();
+              const pid = worker.pid;
+              await eventually(() => worker.samples > 0, 3000);
+              loading = (async () => {
+                while (worker.state === 'ready') {
+                  // Fixed 16-flight admission; each batch joins before the next.
+                  const results = await Promise.allSettled(
+                    Array.from({ length: 16 }, () => worker.ping()),
+                  );
+                  completedPings += results.filter(
+                    (result) => result.status === 'fulfilled',
+                  ).length;
+                  if (results.some((result) => result.status === 'rejected'))
+                    break;
+                }
+              })();
+              await eventually(() => failureCode !== undefined, 8000);
+              assert.equal(failureCode, 'WORKER_CPU_LIMIT');
+              await loading;
+              assert.ok(completedPings > 0);
+              assert.ok(
+                worker.samples >= 2 && worker.lastMicros > worker.firstMicros,
+              );
+              await worker.close();
+              assert.equal(alive(pid), false);
+              assert.deepEqual(await readdir(root), []);
+              await sibling.ping();
+              assert.equal(sibling.state, 'ready');
+              t.diagnostic(
+                JSON.stringify({
+                  samples: worker.samples,
+                  cpuGrowthMicros: worker.lastMicros - worker.firstMicros,
+                  completedPings,
+                  residentPolicy,
+                }),
+              );
+            } finally {
+              worker.terminate();
+              await loading;
+            }
+          },
+        );
+      });
+    },
+  );
 
 test(
   'actual native lifecycle: CPU and RSS policies sample together, preserve heartbeat and join close',

@@ -95,3 +95,33 @@ have not been rebuilt to add them; missing/older helpers report unavailable.
 Windows reader evidence uses MSVC Debug [iteration 304](ITERATION_304.md);
 Linux GCC 13 Debug, focused GCC 12 helper and installed-query evidence is
 [iteration 308](ITERATION_308.md). No production package adoption is claimed.
+
+## Shared helper admission and Windows paired policy queries
+
+CPU helper launches and Windows RSS helper launches share a FIFO owner per
+Node execution context: 16 active tasks, 128 waiting tasks, three-second
+admission bound. Overflow or expiry becomes the existing fixed unavailable
+error. Cancellation removes queued work; the permit is released only after
+joined child close. An expired waiter cannot launch merely because its timer
+callback was delayed. This owner is not an OS-wide or cross-Node-thread limit.
+Standalone calls can spend up to three seconds awaiting admission plus the
+existing two-second execution timeout; OS retirement must still complete.
+The worker policy's existing three-second total deadline includes both.
+
+The Windows helper also accepts `--process-resources <pid>`. This additive
+private command queries working set and cumulative CPU through one limited
+process handle, closes it before output and returns exactly
+`{"v":1,"bytes":N,"micros":N,"error":N}` within 128 bytes. Both measured
+scalars are zero on failure. PID validation, numeric error/exit conventions
+and checked CPU conversion match the existing commands. No session data is
+accepted. The internal Node reader validates unique literal keys and exact
+safe scalars, with the same hidden window, minimal environment, timeout and
+joined cancellation as the separate queries.
+
+Windows worker CPU/RSS policies with equal intervals share this one in-flight
+query with at most two participant signals. Either cancellation aborts the
+helper; all listeners retire before completion. CPU observation uses the actual
+shared monotonic bracket, including admission. Results are never reused after
+completion. Existing public scalar reader signatures are unchanged.
+[Implementation, failed controls and scoped capacity evidence](ITERATION_310.md).
+Release helper adoption remains pending.

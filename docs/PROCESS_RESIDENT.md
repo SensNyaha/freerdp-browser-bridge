@@ -79,3 +79,10 @@ Stage 10's complete watchdog requirement remains open. [Evidence](ITERATION_294.
 The optional host policy now composes this sampler with owned worker failure
 and joined cleanup; see [sampled RSS policy](WORKER_MEMORY_POLICY.md) and
 [iteration 296](ITERATION_296.md).
+
+Windows helper admission now shares the bounded CPU-query owner. Equal-interval
+Windows CPU/RSS worker policies additionally use one combined query; separate
+public scalar readers retain their signatures. Linux direct proc RSS reads do
+not acquire a helper permit. See [limits and private receipt](PROCESS_CPU.md#shared-helper-admission-and-windows-paired-policy-queries)
+and [configured-capacity verification](ITERATION_310.md). Helper execution and
+the worker's overall query deadlines are unchanged.

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { open, type FileHandle } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
+import { withProcessQuery } from './process-query-gate.js';
 
 export type ProcessSampleCode =
   | 'PROCESS_SAMPLE_INVALID'
@@ -119,32 +120,35 @@ export async function windowsWorkerResidentBytes(
       workerPath.length > 32767
     )
       throw new Error();
-    const execution = promisify(execFile)(
-      join(dirname(workerPath), 'rdp-runtime-directory.exe'),
-      ['--process-resident-bytes', String(pid)],
-      {
-        windowsHide: true,
-        timeout: 2000,
-        maxBuffer: 128,
-        encoding: 'utf8',
-        env: { SystemRoot: root, WINDIR: root, PATH: '' },
-        signal,
-      },
-    );
-    // Abort may reject execFile before the helper's close notification.
-    // Join the owned process and its streams before publishing completion.
-    const closed = new Promise<void>((done) => {
-      execution.child.once('close', () => done());
+    return await withProcessQuery(signal, async () => {
+      requireSample(signal);
+      const execution = promisify(execFile)(
+        join(dirname(workerPath), 'rdp-runtime-directory.exe'),
+        ['--process-resident-bytes', String(pid)],
+        {
+          windowsHide: true,
+          timeout: 2000,
+          maxBuffer: 128,
+          encoding: 'utf8',
+          env: { SystemRoot: root, WINDIR: root, PATH: '' },
+          signal,
+        },
+      );
+      // Abort may reject execFile before the helper's close notification.
+      // Join the owned process and its streams before publishing completion.
+      const closed = new Promise<void>((done) => {
+        execution.child.once('close', () => done());
+      });
+      let result: Awaited<typeof execution>;
+      try {
+        result = await execution;
+      } finally {
+        await closed;
+      }
+      requireSample(signal);
+      if (result.stderr !== '') throw new Error();
+      return processResidentReceipt(result.stdout);
     });
-    let result: Awaited<typeof execution>;
-    try {
-      result = await execution;
-    } finally {
-      await closed;
-    }
-    requireSample(signal);
-    if (result.stderr !== '') throw new Error();
-    return processResidentReceipt(result.stdout);
   } catch {
     requireSample(signal);
     throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
