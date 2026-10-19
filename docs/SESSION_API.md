@@ -15,7 +15,18 @@ preserves `WORKER_CPU_LIMIT` (503, not retryable), with the fixed message
 `Session worker CPU policy exceeded`. It uses the existing failure envelope;
 there is no public create-policy field or wire layout change. Existing bundled
 Release helpers are not CPU-enabled; the policy is verified with the current
-Debug foundation helpers. Broader CPU/connected acceptance remains separate.
+Debug foundation and separately built current Release helpers. Existing
+production artifacts/defaults are unchanged. Broader CPU/connected acceptance
+remains separate.
+
+The [native resource composition test](ITERATION_317.md) additionally verifies
+an actual linked worker's OS RSS breach at a synthetic TLS certificate wait.
+The native adapter preserves the exact memory failure; the manager retires
+tokens and releases capacity after joined adapter close. The local TLS peer
+does not implement a desktop. The same iteration's restored Windows lab run
+also passes the named connected native-adapter/manager memory-failure, lease
+and joined cleanup slice. Public HTTP/WS resource-failure delivery and connected
+sibling isolation remain separate open gates.
 
 ## Hosting and authorization
 

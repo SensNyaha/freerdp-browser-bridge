@@ -56,3 +56,13 @@ The subsequent user-prepared Notepad smoke now passes the named committed
 Unicode, small physical-key/reset, left-button and private bidirectional
 clipboard application/readback cases, followed by unsaved-window cleanup.
 [Exact scope and retained broader gates](ITERATION_303.md).
+
+During [iteration 317](ITERATION_317.md), a later connected-manager check and
+the previously passing direct healthy control no longer reach the certificate
+prompt. A single TCP connection to port 3389 does not complete within five
+seconds. The user's requested retry then restores TCP/RDP access. After a
+test-only cleanup-wait correction, the named connected native-adapter/manager
+RSS failure, token/lease retirement and joined cleanup pass; public HTTP/WS
+resource-error delivery and connected siblings remain open. The earlier named connected CPU/RSS results in
+iterations [315](ITERATION_315.md) and [316](ITERATION_316.md) remain historical
+evidence. No server/network policy or alternate target is used.

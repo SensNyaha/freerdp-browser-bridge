@@ -1247,6 +1247,18 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for named native-adapter/registry RSS failure composition — Actual
+  Windows RDP with an isolated Release worker passes connected 1080p JPEG,
+  first over-cap RSS sample, exact fixed WORKER_MEMORY_LIMIT envelope, one
+  error event, pre-factory overflow refusal, token/media authority retirement
+  and capacity release after joined close with empty PID/runtime/query owners.
+  A separate actual-native/synthetic-TLS pending-certificate case also passes.
+  Full Node Windows 753 / 51 skips and Linux 655 / 152 skips, CTest 31/31 and
+  17/17 pass; final helper-only wait correction passes actual RDP and focused
+  6/6 each. Failed lab/fixture runs are retained. Public HTTP/WS delivery,
+  connected siblings, CPU composition, hard OS/total-budget and soak gates remain
+  open. [Evidence and exact chronology](docs/ITERATION_317.md).
+
 - [x] DONE for named Windows connected RSS-limit breach — Actual connected
   1080p JPEG and heartbeat precede sampling; the first global/connected RSS
   sample exceeds a one-byte fixture cap and produces exact WORKER_MEMORY_LIMIT.

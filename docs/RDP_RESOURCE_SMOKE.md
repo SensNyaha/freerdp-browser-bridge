@@ -102,3 +102,28 @@ The [named actual Windows result](ITERATION_316.md) verifies this private
 connected failure slice. Synthetic result checks are separate. Public registry
 propagation, connected siblings, startup/between-sample/total-session budgets,
 hard OS failures, other producer/server profiles and soak remain open.
+
+## Manager-composition control
+
+```powershell
+node scripts/test-rdp-resource-session-lab.mjs `
+  sha256:<approved-session-fingerprint> build/native-clean-EXAMPLE/receipt.json
+```
+
+This separate Windows-only helper runs the one-byte RSS control through the
+ordinary NativeSessionWorker and SessionManager. Its observation seam delegates
+to the real sampler; no synthetic resource result or lifecycle adapter replaces
+production behavior. Certificate approval and JPEG use actual manager leases.
+It requires a connected frame before the first sample, then exact fixed session
+failure, one error event, refused stale tokens/media authority, joined adapter
+close, zero active capacity and empty native/query/runtime ownership. A second
+creation must refuse before its factory while the first session is active.
+
+The same explicit receipt/fingerprint, private credential, 25-second overall
+deadline and no-remote-application/input/image-persistence rules apply. Its
+named actual Windows connected check now passes after access restoration and a
+test-only cleanup-wait correction. The separate
+loopback TLS/native composition passes the pending-certificate failure slice,
+which does not implement a connected desktop. Public HTTP/WS failure delivery,
+connected sibling isolation, CPU composition, full budgets and soak remain open.
+[Evidence and failed runs](ITERATION_317.md).
