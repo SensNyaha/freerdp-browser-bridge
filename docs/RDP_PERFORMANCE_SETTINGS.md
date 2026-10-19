@@ -49,8 +49,9 @@ privileged settings, persistence, devices or secret class is added.
 The [manual WEB form](WEB_CONNECTION_EXAMPLE.md) exposes each boolean as
 profile inheritance / enabled / disabled, guarded by the actual capability.
 Its [Edge/HTTP verification](ITERATION_322.md) is separate from the native SDK
-and actual Windows connection evidence below; it does not accept remote visual
-effect interpretation.
+and actual Windows connection evidence below. The named
+[actual Windows JPEG/form smoke](ITERATION_323.md) also passes; neither accepts
+remote visual-effect interpretation.
 
 ## Versioned private projection
 
@@ -96,6 +97,19 @@ capability before reading ignored lab credentials. It only uses the authorized
 fixed cases above use 5 FPS, actual 1080p JPEG/heartbeat and joined PID/runtime
 cleanup. Each has a 25-second deadline. Password copies are retired after delivery,
 JPEG bytes are wiped, and no remote app, input or system-setting action is used.
+
+For the separate actual Windows Edge form smoke with all six explicit fields:
+
+```powershell
+node scripts/test-rdp-performance-form-lab.mjs sha256:<approved-session-fingerprint> `
+  build/native-clean-EXAMPLE/receipt.json
+```
+
+It uses fixed loopback port 47996, one balanced/5 FPS JPEG session, exact
+session-only certificate click, nonblank 1080p canvas/heartbeat and form
+Disconnect. Port conflict fails without replacing a listener. No desktop image
+or credentials are printed/saved. See iteration 323 for the retained initial
+blank-frame failure, bounded wait correction and successful repeat.
 
 [Current evidence](ITERATION_321.md) separates portable wire/synthetic IPC,
 actual public SDK projection and Windows RDP smoke. Server visual interpretation,

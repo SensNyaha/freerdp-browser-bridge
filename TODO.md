@@ -1230,13 +1230,23 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 9 — advanced connection/Remmina-like settings
 
+- [x] DONE for named Windows JPEG appearance-form smoke — Manual form passes
+  six explicit booleans through the real API/native adapter, exact approved
+  session certificate, nonblank 1920×1080 / 5 FPS Edge canvas, heartbeat and form
+  Disconnect with joined PID/runtime cleanup. The first blank-frame test failure
+  is retained; waiting for nonblank output within the original deadline passes.
+  Windows/Linux CLI guards 2/2 each and lint/format pass; production/native
+  artifacts remain unchanged from iteration 322. Server visual/policy effects,
+  other profiles and wider acceptance stay open. [Evidence](docs/ITERATION_323.md).
+
 - [x] DONE for manual WEB appearance controls — Six inherited/enabled/disabled
   selects preserve omitted fields and explicit false. Actual capability gates
   controls and submission; legacy profiles retain video-only behavior. Pure
   builder/ownership and two Edge/synthetic HTTP cases pass 8/8; full Node passes
   Windows 765 / 51 skips and Linux 665 / 154 skips, unchanged native CTest 32/32
-  and 17/17. Real browser-to-RDP appearance integration and server visual/policy
-  effects remain open. [Evidence](docs/ITERATION_322.md).
+  and 17/17. The named actual Windows form chain is separately verified above;
+  server visual/policy and broader integration remain open.
+  [Evidence](docs/ITERATION_322.md).
 
 - [x] DONE for named Windows quality/performance projection — Existing six
   appearance booleans and selected presets use capability-gated schema 11,
@@ -1248,7 +1258,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   763 / 51 skips and Linux 664 / 153 skips pass with byte-identical native
   source inputs across builds. Server visual/policy effects, Linux linked/
   wider profiles and budgets remain open. Manual UI controls are separately
-  verified in their own named scope; full browser-to-RDP integration remains.
+  verified in their own named scope, including the Windows JPEG/form smoke above.
   [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
 
 - [ ] RDP Gateway with same/separate credentials.
@@ -1262,8 +1272,9 @@ profile's target, microphone, recovery, resource or platform acceptance.
   settings. New Windows SDK/worker and Linux portable source builds, synthetic
   compatibility/wire cases and four actual Windows RDP configuration smokes pass;
   full Node regression passes. Server visual/policy behavior, Linux linked/
-  wider profiles and full browser-to-RDP appearance acceptance remain open;
-  the manual controls pass their separate Edge/HTTP fixture gate above.
+  wider profiles and broader browser-to-RDP appearance acceptance remain open;
+  the manual controls and named Windows JPEG/form chain pass their separate
+  gates above.
   [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
 - OUT OF CURRENT SCOPE — Additional RDP smart sizing/scales/orientation profiles: existing orientation 0 and scale 100% are sufficient under ADR-011. Browser CSS sizing/coordinate mapping remains supported independently.
 - [ ] RemoteApp/RAIL capability and launch parameters.

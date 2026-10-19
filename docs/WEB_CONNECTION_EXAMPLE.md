@@ -48,8 +48,11 @@ sends false and overrides a selected preset. Controls start disabled until actua
 The unavailable message explains that their quality profiles retain video-only
 behavior. Submission checks the capability again before any request. Values are
 not persisted. [Profile and native projection](RDP_PERFORMANCE_SETTINGS.md).
-[Form verification](ITERATION_322.md) uses Edge and a synthetic HTTP endpoint;
-actual server visual effects and a full browser-to-RDP appearance gate remain open.
+[Form verification](ITERATION_322.md) uses Edge and a synthetic HTTP endpoint.
+The named [Windows JPEG/form smoke](ITERATION_323.md) additionally passes actual
+creation, prompted certificate, explicit appearance projection, nonblank 1080p,
+heartbeat and disconnect. Server visual effects, other profiles and broader
+appearance acceptance remain open.
 
 Strict certificate validation is default. Prompt is explicit; the current
 fingerprint dialog offers accept-for-this-session or reject, without enabling
