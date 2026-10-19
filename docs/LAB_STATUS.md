@@ -43,6 +43,9 @@ PCM/Opus ready resets also return fresh config/data. Frequent resets, gaps,
 buffering silence and underflows remain visible; uninterrupted audible quality,
 LAN latency, sustained budgets and recording are not accepted.
 [Browser/recovery evidence and numeric diagnostics](ITERATION_307.md).
+The user confirms that this source consists of short sounds with pauses.
+Observed gaps are not a continuous-stream quality measurement; source pauses
+can contribute to the counters. No full root cause or quality acceptance is claimed.
 
 Further application/input/clipboard and device tests require an available
 desktop plus explicit device/capture policy. The restored network access does

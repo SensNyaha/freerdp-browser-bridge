@@ -49,8 +49,11 @@ These are counts, not independent additive reset causes or proof of a root
 cause. Significant config/epoch churn, buffering silence and underflows remain.
 No continuous audible-quality, LAN latency, host/total-session CPU/RSS, long
 soak or microphone recording acceptance is inferred from successful admission
-and recovery. Source continuity/pattern is separately requested from the user
-to interpret gap observations; no unverified guard relaxation is made.
+and recovery. The user subsequently confirms **short sounds with pauses**, not
+a continuous music/speech stream. Some source gaps are therefore expected;
+these counters alone do not establish a continuous-source transport defect.
+A continuous-source baseline is still needed to assess interruptions and
+latency. No unverified guard relaxation is made.
 
 Evidence is ignored `build/iteration-307-browser-{pcm,opus}.log` and
 `iteration-307-native-{pcm,opus}.log`. The existing browser metrics artifact is
