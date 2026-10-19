@@ -95,3 +95,10 @@ held query completion after the target PID exits. Siblings continue actual
 queries/heartbeat and one replacement starts after retirement. This is a
 synthetic completion barrier with actual workers, not an OS-stalled helper or
 connected-RDP failure acceptance.
+
+The [connected Windows resource smoke](RDP_RESOURCE_SMOKE.md) now observes
+healthy simultaneous CPU/RSS policies on actual 1080p RDP with the isolated
+Release and matched Debug consumers. Query counts, cumulative growth and joined
+cleanup pass for the named short control. This is separate from connected
+cap-breach enforcement, exact utilization, total-session and sustained budgets.
+[Observed values](ITERATION_314.md).

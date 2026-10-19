@@ -59,3 +59,10 @@ exit with one synthetic query-retirement barrier. Registry slots/runtime remain
 owned until completion, while siblings continue CPU/RSS sampling and heartbeat.
 It adds unconnected lifecycle evidence; actual OS-stalled retirement and
 connected resource faults remain open.
+
+The newer [paired CPU/RSS Windows RDP smoke](ITERATION_314.md) additionally
+uses explicit source-receipt-selected Release and matched Debug workers with
+the unchanged 256 MiB sampled RSS policy. Eight connected samples per resource,
+1080p JPEG, heartbeat and joined PID/runtime retirement pass. Reported peaks
+exclude between-sample/Node/session-total acceptance and are not cap-breach or
+sustained-resource evidence. [Test contract](RDP_RESOURCE_SMOKE.md).

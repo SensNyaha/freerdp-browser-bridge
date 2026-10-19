@@ -1247,6 +1247,18 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for named Windows connected CPU/RSS healthy-policy smoke — Explicit
+  native-source receipt selection verifies worker/helper hashes before reading
+  lab credentials. Actual approved-session Windows RDP with isolated Release
+  and matched Debug workers passes eight connected samples per resource,
+  100%-of-one-core / 256 MiB policies, 1080p JPEG, heartbeat and joined PID/runtime
+  retirement. No remote input/app launch or saved desktop image occurs.
+  Full Node Windows 744 / 51 skips and Linux 647 / 151 skips, CTest 31/31 and
+  17/17 pass; Linux is common unit/foundation evidence only. Connected cap
+  breaches, total-session/between-sample/startup budgets, production helper/
+  package adoption, platform and soak gates remain open.
+  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/ITERATION_314.md).
+
 - [x] DONE for native resource-policy crash/retirement composition — One actual
   framed worker exits while a synthetic barrier holds completion of an actual
   OS resource read. Its registry slot/runtime remain owned until completion;

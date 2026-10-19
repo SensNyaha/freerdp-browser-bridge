@@ -790,6 +790,18 @@ Release receipts without a recorded build type remain accepted when their
 actual SDK cache identifies Release and dynamic Release CRT.
 [Reverse-combination control](ITERATION_313.md).
 
+The selected source receipt can also drive the explicit authorized Windows
+RDP CPU/RSS smoke, including worker/helper hash verification and joined cleanup:
+
+```powershell
+node scripts/test-rdp-resource-lab.mjs sha256:<approved-session-fingerprint> `
+  build/native-clean-EXAMPLE/receipt.json
+```
+
+This observes the existing desktop without remote input/application launch or
+saved frames. [Requirements and scope](RDP_RESOURCE_SMOKE.md),
+[Release/Debug actual observations](ITERATION_314.md).
+
 For an isolated local Linux private dependency rebuild from cached source/tool
 downloads:
 
