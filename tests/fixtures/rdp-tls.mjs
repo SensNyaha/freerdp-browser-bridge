@@ -7,9 +7,11 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 /** Local adversarial RDP negotiation/TLS endpoint. Does not implement an RDP desktop. */
-export async function createRdpTlsFixture(host = '127.0.0.1') {
+export async function createRdpTlsFixture(host = '127.0.0.1', port = 0) {
   if (!['127.0.0.1', '::1'].includes(host))
     throw new Error('TLS fixture host must be loopback');
+  if (!Number.isInteger(port) || port < 0 || port > 65535)
+    throw new Error('TLS fixture port must be bounded');
   const directory = await mkdtemp(join(tmpdir(), 'bridge-tls-fixture-'));
   const sockets = new Set();
   let server;
@@ -93,7 +95,7 @@ export async function createRdpTlsFixture(host = '127.0.0.1') {
     });
     await new Promise((done, reject) => {
       server.once('error', reject);
-      server.listen({ port: 0, host, ipv6Only: host === '::1' }, done);
+      server.listen({ port, host, ipv6Only: host === '::1' }, done);
     });
     return {
       port: server.address().port,
@@ -109,10 +111,12 @@ export async function createRdpTlsFixture(host = '127.0.0.1') {
         await rm(directory, { recursive: true, force: true, maxRetries: 3 });
       },
     };
-  } catch {
+  } catch (cause) {
     for (const socket of sockets) socket.destroy();
     if (server?.listening) await new Promise((done) => server.close(done));
     await rm(directory, { recursive: true, force: true, maxRetries: 3 });
-    throw new Error('TLS fixture initialization failed');
+    const error = new Error('TLS fixture initialization failed');
+    if (cause?.code === 'EADDRINUSE') error.code = 'TLS_FIXTURE_PORT_BUSY';
+    throw error;
   }
 }

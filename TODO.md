@@ -1230,6 +1230,16 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 9 — advanced connection/Remmina-like settings
 
+- [x] DONE for named Windows localhost dual-family transport — Actual FreeRDP
+  observes IPv6 preference/current OS order, force-4 precedence, force-6 refusal
+  after owned IPv6 listener close and IPv4 fallback through two loopback TLS
+  endpoints. Five workers preserve heartbeat, zero application bytes and joined
+  PID/runtime cleanup; focused IP suites pass 9/9. Full Node repeat Windows
+  785 / 51 skips and Linux 676 / 163 skips pass. The first capacity failure and
+  repeat timeout diagnostics remain separately open resource limitations; no
+  deadlines are relaxed. Broader DNS, IPv6 RDP/server and linked Linux gates
+  remain open. [Evidence](docs/ITERATION_327.md).
+
 - [x] DONE for named IP-family WEB controls — Independent capability gates
   default/system/IPv6-first preference and default/IPv4-only/IPv6-only choices;
   defaults omit fields and explicit system order preserves false. Pure cases
@@ -1296,7 +1306,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [~] IPv4/IPv6 preference/force options — Typed API/private/native mapping,
   Windows loopback IPv4/IPv6 transport and named actual IPv4 Windows RDP cases
   pass the backend slice above; manual controls pass their named gate.
-  Linked Linux, dual-stack DNS
+  The named localhost dual-family case passes; linked Linux, broader DNS
   preference/fallback history and actual IPv6 RDP/server profiles remain open.
 - [ ] Timeouts/reconnect policy and auto-reconnect cookie where supported.
 - [~] IN PROGRESS — Opt-in single-primary DisplayControl at 100% scale satisfies ADR-011 and works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. Windows-server, DVC resource audit and soak acceptance remain open. [Evidence](docs/ITERATION_019.md).
@@ -1542,6 +1552,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   now also verifies owned-process cleanup and sibling survival. Connected
   RDP/application/media loads and configured resource-policy concurrency remain
   separate. [Actual native CPU control](docs/ITERATION_309.md).
+  A later full-suite capacity run has an unexplained resource-query latency
+  spike and worker failures; an unchanged standalone control and full repeat
+  pass, but the repeat still records unclassified IPC timeouts. Original logs
+  and thresholds are preserved. Active-versus-retirement diagnosis and wider
+  load/OS timing acceptance remain open. [Evidence](docs/ITERATION_327.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

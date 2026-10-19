@@ -77,6 +77,11 @@ Loopback TLS endpoints do not implement a desktop. IPv6 tests use only ::1 and
 skip only when the local listener reports unavailable family/address support.
 No external IPv6 destination or DNS infrastructure is used.
 
+The named [localhost dual-family case](ITERATION_327.md) additionally observes
+both available endpoints, current OS ordering, force precedence, refusal after
+closing the owned IPv6 listener and IPv4 fallback. Its TLS endpoints are not RDP
+desktops; broader DNS/platform/server acceptance remains separate.
+
 ```powershell
 node scripts/test-rdp-ip-lab.mjs sha256:<approved-session-fingerprint> `
   build/native-clean-EXAMPLE/receipt.json
