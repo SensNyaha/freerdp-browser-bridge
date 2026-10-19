@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { connectionConfig } from '../../apps/reference-harness/connection-config.js';
+import {
+  appearanceFields,
+  connectionConfig,
+} from '../../apps/reference-harness/connection-config.js';
 import { ConnectionOwner } from '../../apps/reference-harness/connection-owner.js';
 import { validateSessionConfig } from '../../packages/config/dist/index.js';
 const values = {
@@ -37,6 +40,49 @@ const caps = {
   microphoneReset: true,
 };
 const fields = (extra = {}) => new Map(Object.entries({ ...values, ...extra }));
+
+test('manual appearance: inherit omits keys; explicit true/false require capability and preserve schema booleans', () => {
+  for (const capability of [undefined, false, true]) {
+    const available = { ...caps, performanceSettings: capability };
+    for (const profile of ['low-bandwidth', 'balanced', 'lan']) {
+      const inherited = connectionConfig(
+        fields({
+          quality: profile,
+          ...Object.fromEntries(appearanceFields.map((name) => [name, ''])),
+        }),
+        available,
+      ).config;
+      assert.deepEqual(inherited.quality, { profile, maxFps: 20 });
+      assert.deepEqual(validateSessionConfig(inherited), inherited);
+    }
+    for (const name of appearanceFields) {
+      for (const value of ['true', 'false']) {
+        if (!capability) {
+          assert.throws(
+            () => connectionConfig(fields({ [name]: value }), available),
+            /не поддерживается/,
+          );
+          continue;
+        }
+        const config = connectionConfig(
+          fields({ [name]: value }),
+          available,
+        ).config;
+        assert.deepEqual(config.quality, {
+          profile: 'balanced',
+          maxFps: 20,
+          [name]: value === 'true',
+        });
+        assert.deepEqual(validateSessionConfig(config), config);
+      }
+      for (const invalid of ['on', '0', 'TRUE', true, {}, 'x'.repeat(33)])
+        assert.throws(
+          () => connectionConfig(fields({ [name]: invalid }), available),
+          /Проверьте параметры/,
+        );
+    }
+  }
+});
 test('manual clipboard selection: explicit text directions and finite quota require both native capabilities', () => {
   const available = { ...caps, clipboardText: true, clipboardRevoke: true };
   assert.equal(

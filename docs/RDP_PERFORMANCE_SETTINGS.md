@@ -46,6 +46,12 @@ The configuration schema is unchanged: it already names these six optional
 booleans and rejects unknown fields/types. No arbitrary FreeRDP flags/argv,
 privileged settings, persistence, devices or secret class is added.
 
+The [manual WEB form](WEB_CONNECTION_EXAMPLE.md) exposes each boolean as
+profile inheritance / enabled / disabled, guarded by the actual capability.
+Its [Edge/HTTP verification](ITERATION_322.md) is separate from the native SDK
+and actual Windows connection evidence below; it does not accept remote visual
+effect interpretation.
+
 ## Versioned private projection
 
 HELLO schema-1 extension bit 5 (32) means `performanceSettings`; it requires base

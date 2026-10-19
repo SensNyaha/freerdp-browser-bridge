@@ -1,4 +1,4 @@
-import { connectionConfig } from './connection-config.js';
+import { appearanceFields, connectionConfig } from './connection-config.js';
 import { ConnectionOwner } from './connection-owner.js';
 
 const form = document.querySelector('#connection-form');
@@ -115,6 +115,14 @@ async function refresh() {
   try {
     const value = await request('/v1/capabilities');
     capabilities = value;
+    for (const name of appearanceFields) {
+      form.elements[name].disabled = !value.performanceSettings;
+      if (!value.performanceSettings) form.elements[name].value = '';
+    }
+    document.querySelector('#appearance-status').textContent =
+      value.performanceSettings
+        ? 'По умолчанию используются значения выбранного профиля.'
+        : 'Настройки оформления недоступны в этой сборке bridge; профиль управляет качеством видео.';
     for (const [name, choices] of [
       [
         'video',

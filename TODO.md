@@ -1230,6 +1230,14 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 9 — advanced connection/Remmina-like settings
 
+- [x] DONE for manual WEB appearance controls — Six inherited/enabled/disabled
+  selects preserve omitted fields and explicit false. Actual capability gates
+  controls and submission; legacy profiles retain video-only behavior. Pure
+  builder/ownership and two Edge/synthetic HTTP cases pass 8/8; full Node passes
+  Windows 765 / 51 skips and Linux 665 / 154 skips, unchanged native CTest 32/32
+  and 17/17. Real browser-to-RDP appearance integration and server visual/policy
+  effects remain open. [Evidence](docs/ITERATION_322.md).
+
 - [x] DONE for named Windows quality/performance projection — Existing six
   appearance booleans and selected presets use capability-gated schema 11,
   checked public FreeRDP setters and canonical masks. Legacy workers retain
@@ -1239,7 +1247,8 @@ profile's target, microphone, recovery, resource or platform acceptance.
   New Windows linked CTest 32/32, Linux foundation 17/17, full Node Windows
   763 / 51 skips and Linux 664 / 153 skips pass with byte-identical native
   source inputs across builds. Server visual/policy effects, Linux linked/
-  wider profiles, complete UI and budgets remain open.
+  wider profiles and budgets remain open. Manual UI controls are separately
+  verified in their own named scope; full browser-to-RDP integration remains.
   [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
 
 - [ ] RDP Gateway with same/separate credentials.
@@ -1253,7 +1262,8 @@ profile's target, microphone, recovery, resource or platform acceptance.
   settings. New Windows SDK/worker and Linux portable source builds, synthetic
   compatibility/wire cases and four actual Windows RDP configuration smokes pass;
   full Node regression passes. Server visual/policy behavior, Linux linked/
-  wider profiles and complete UI acceptance remain open.
+  wider profiles and full browser-to-RDP appearance acceptance remain open;
+  the manual controls pass their separate Edge/HTTP fixture gate above.
   [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
 - OUT OF CURRENT SCOPE — Additional RDP smart sizing/scales/orientation profiles: existing orientation 0 and scale 100% are sufficient under ADR-011. Browser CSS sizing/coordinate mapping remains supported independently.
 - [ ] RemoteApp/RAIL capability and launch parameters.

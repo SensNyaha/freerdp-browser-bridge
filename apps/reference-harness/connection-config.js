@@ -1,3 +1,12 @@
+export const appearanceFields = Object.freeze([
+  'wallpaper',
+  'fontSmoothing',
+  'desktopComposition',
+  'fullWindowDrag',
+  'menuAnimations',
+  'themes',
+]);
+
 export function connectionConfig(fields, capabilities) {
   const invalid = () => {
     throw new Error('Проверьте параметры подключения');
@@ -73,6 +82,14 @@ export function connectionConfig(fields, capabilities) {
           : capabilities.opusInput)))
   )
     throw new Error('Выбранная функция не поддерживается этим bridge');
+  const appearance = {};
+  for (const name of appearanceFields) {
+    const value = choice(name, ['', 'true', 'false']);
+    if (value === '') continue;
+    if (!capabilities?.performanceSettings)
+      throw new Error('Выбранная функция не поддерживается этим bridge');
+    appearance[name] = value === 'true';
+  }
   const config = {
     target: { host, port: number('port', 1, 65535) },
     auth: {
@@ -93,6 +110,7 @@ export function connectionConfig(fields, capabilities) {
     quality: {
       profile: choice('quality', ['low-bandwidth', 'balanced', 'lan']),
       maxFps: number('fps', 1, videoCodec === 'jpeg' ? 20 : 30),
+      ...appearance,
     },
     input: { touch },
     ...(clipboardMode === 'off'

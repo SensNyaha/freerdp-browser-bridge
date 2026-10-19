@@ -40,6 +40,17 @@ choices; submission checks them again. Browser codec presence is checked;
 existing viewer negotiation performs detailed decoder/provider checks. Microphone
 permission and audio gesture ownership retain separate controls.
 
+The six appearance controls (wallpaper, font smoothing, desktop composition,
+full-window dragging, menu animations and themes) each offer profile inheritance,
+enabled or disabled. Inheritance omits the optional boolean; explicit disabled
+sends false and overrides a selected preset. Controls start disabled until actual
+`performanceSettings` capability is received, and remain disabled on old workers.
+The unavailable message explains that their quality profiles retain video-only
+behavior. Submission checks the capability again before any request. Values are
+not persisted. [Profile and native projection](RDP_PERFORMANCE_SETTINGS.md).
+[Form verification](ITERATION_322.md) uses Edge and a synthetic HTTP endpoint;
+actual server visual effects and a full browser-to-RDP appearance gate remain open.
+
 Strict certificate validation is default. Prompt is explicit; the current
 fingerprint dialog offers accept-for-this-session or reject, without enabling
 TOFU/persistent trust/ignore. Video choice belongs to viewer negotiation and
