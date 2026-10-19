@@ -65,6 +65,13 @@ acceptance stay open. PCM/Opus AUDIN still waits at epoch 0 without Open.
 Future host application/source launches should be requested from the user.
 [Source observation and exact scope](docs/ITERATION_305.md).
 
+With a source started by the user, the current Windows lab / Edge PCM and
+Opus/200 ms also pass actual Worklet rendering, fresh-token audio recovery and
+private ready resets with fresh config/data. Opus replay includes one scheduled
+native reset. Frequent epoch/config churn, silence/underflows and skipped
+intervals remain observed quality gaps; their cause is unverified.
+[Current browser/recovery evidence](docs/ITERATION_307.md).
+
 The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
 isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
 GCC 12.4 nonrecovering UBSan reproduces the original failure and passes all
@@ -973,6 +980,15 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.
 
 ## Stage 6 — audio output and microphone
+
+- [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
+  User-started source, actual H.264 1080p, Opus decode/Worklet played frames,
+  fresh-token audio replay and one scheduled Opus reset pass with the 200 ms
+  profile. Separate private PCM/Opus resets return fresh config/data; heartbeat
+  and joined empty-runtime close pass. Frequent churn, buffering silence,
+  underflows and publication gaps remain; audible continuity, LAN latency,
+  recording and sustained/resource/platform acceptance stay open.
+  [Evidence](docs/ITERATION_307.md).
 
 - [x] DONE for Linux amd64 producer / Windows Edge PCM/Opus output smoke —
   Real XRDP packets, Opus decode, Worklet played samples, 200 ms profile, video

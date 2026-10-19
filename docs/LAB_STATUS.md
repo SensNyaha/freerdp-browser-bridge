@@ -36,6 +36,14 @@ negotiation for either codec. [Source observation](ITERATION_305.md).
 For future source/application launches, ask the user to run them on the host;
 the user prefers that to repeated agent screenshot interaction.
 
+With the user's subsequently running source, current Windows/Edge PCM and
+Opus/200 ms now pass actual Worklet rendering and fresh-token audio replay;
+Opus includes decoding and one scheduled native reset. Separate private
+PCM/Opus ready resets also return fresh config/data. Frequent resets, gaps,
+buffering silence and underflows remain visible; uninterrupted audible quality,
+LAN latency, sustained budgets and recording are not accepted.
+[Browser/recovery evidence and numeric diagnostics](ITERATION_307.md).
+
 Further application/input/clipboard and device tests require an available
 desktop plus explicit device/capture policy. The restored network access does
 not accept these functions by itself. No dependency versions, Release settings,
