@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   processCpuReceipt,
   windowsWorkerCpuMicros,
+  linuxWorkerCpuMicros,
   ProcessSampleError,
 } from '../../packages/node-bridge/dist/index.js';
 
@@ -72,6 +73,22 @@ test('typed CPU pre-cancellation never acquires a helper or exposes its reason',
     },
   );
   await assert.rejects(windowsWorkerCpuMicros(1, ''), {
+    code: 'PROCESS_SAMPLE_UNAVAILABLE',
+  });
+});
+
+test('typed Linux CPU query validates PID before platform/helper work and hides cancellation reasons', async () => {
+  const abort = new AbortController();
+  abort.abort('private-reason');
+  for (const pid of [0, -1, 1.5, NaN, Infinity, 0x80000000, '1', undefined])
+    await assert.rejects(linuxWorkerCpuMicros(pid, 'unused', abort.signal), {
+      code: 'PROCESS_SAMPLE_INVALID',
+    });
+  await assert.rejects(linuxWorkerCpuMicros(1, 'unused', abort.signal), {
+    code: 'PROCESS_SAMPLE_CANCELLED',
+    message: 'PROCESS_SAMPLE_CANCELLED',
+  });
+  await assert.rejects(linuxWorkerCpuMicros(1, ''), {
     code: 'PROCESS_SAMPLE_UNAVAILABLE',
   });
 });

@@ -20,7 +20,7 @@ import { selectWorkerIpc, type WorkerIpcTransport } from './ipc-selection.js';
 import { PcmSource } from './pcm-source.js';
 import { OpusSource } from './opus-source.js';
 import { workerResidentBytes, ProcessSampleError } from './process-resident.js';
-import { windowsWorkerCpuMicros } from './process-cpu.js';
+import { workerCpuMicros } from './process-cpu.js';
 import { CpuWindow } from './cpu-window.js';
 export type { PcmSourceEvent } from './pcm-source.js';
 export type { OpusSourceEvent } from './opus-source.js';
@@ -135,7 +135,7 @@ export interface WorkerOptions {
   maxResidentBytes?: number;
   /** 100..60,000 ms; requires maxResidentBytes, default 1,000 ms. */
   residentPollIntervalMs?: number;
-  /** Trusted Windows host sampled CPU limit: 100% is one logical CPU. */
+  /** Trusted host sampled CPU limit: 100% is one logical CPU. */
   maxCpuPercent?: number;
   /** 100..60,000 ms; requires maxCpuPercent, default 1,000 ms. */
   cpuPollIntervalMs?: number;
@@ -300,7 +300,10 @@ export class WorkerProcess extends EventEmitter {
           options.cpuWindowMs > 60000))
     )
       throw new WorkerError('INVALID_OPTIONS');
-    if (options.maxCpuPercent !== undefined && process.platform !== 'win32')
+    if (
+      options.maxCpuPercent !== undefined &&
+      !['win32', 'linux'].includes(process.platform)
+    )
       throw new WorkerError('RESOURCE_WATCHDOG_UNSUPPORTED');
     if (
       options.maxResidentBytes !== undefined &&
@@ -444,9 +447,9 @@ export class WorkerProcess extends EventEmitter {
       });
   }
 
-  /** Trusted sampling seam; ordinary use queries this owned Windows child. */
+  /** Trusted sampling seam; ordinary use queries this owned child. */
   protected sampleCpuMicros(pid: number, signal: AbortSignal): Promise<number> {
-    return windowsWorkerCpuMicros(pid, this.options.workerPath, signal);
+    return workerCpuMicros(pid, this.options.workerPath, signal);
   }
 
   private stopCpuWatchdog(): void {

@@ -1,6 +1,6 @@
-# Optional Windows host worker CPU policy
+# Optional host worker CPU policy
 
-Trusted Windows hosts may set `WorkerOptions.maxCpuPercent` to an integer
+Trusted Windows/Linux hosts may set `WorkerOptions.maxCpuPercent` to an integer
 1..65,535. A value of 100 means one logical CPU; concurrent native threads
 can exceed 100. It is not normalized by the machine's core count. Omission
 disables CPU queries completely. `cpuPollIntervalMs` accepts integers
@@ -8,11 +8,13 @@ disables CPU queries completely. `cpuPollIntervalMs` accepts integers
 1,000. Both require the limit. Invalid options fail before startup. Other
 platforms reject an enabled policy with `RESOURCE_WATCHDOG_UNSUPPORTED`.
 
-This uses the colocated [Windows CPU helper/typed reader](PROCESS_CPU.md).
-Current verified use is the MSVC Debug foundation; existing bundled Release
-helpers lack the new CPU command and are unchanged. Enabling this policy with
+This uses the colocated [CPU helper/typed reader](PROCESS_CPU.md).
+Current verified use is MSVC and local GCC Debug foundation builds; existing
+bundled Release profiles lack the new helper/command and are unchanged.
+Enabling this policy with
 an older/missing helper fails as unavailable rather than silently disabling
-enforcement. Linux process CPU queries remain unimplemented.
+enforcement. Linux uses bounded proc-stat extraction and the system clock tick
+frequency. Other platforms still refuse an enabled policy before startup.
 
 Sampling begins after HELLO readiness. One query may be pending per worker;
 timer ticks during that query are discarded. The result belongs to the same
@@ -53,10 +55,12 @@ native/runtime cleanup. The underlying OS operation must still retire; this
 does not establish a hard kernel/OS close deadline.
 
 Portable exact-boundary/clock/latency tests cover the rate calculation and
-option refusals. Actual unconnected Windows C++ workers verify healthy CPU/RSS
-queries and heartbeat. Synthetic counters separately verify cap breach,
+option refusals. Actual unconnected Windows/Linux C++ workers verify healthy
+CPU/RSS queries and heartbeat. Synthetic counters separately verify cap breach,
 sibling survival, counter/query faults, deadline and late/uncertain retirement.
 These synthetic breaches do not establish actual overload behavior or connected
-RDP CPU budgets. Linux CPU, real overload, startup/Node/total-session CPU,
+RDP CPU budgets. Wider Linux/platform profiles, real overload,
+startup/Node/total-session CPU,
 connected policies, production helper packaging and sustained/platform/soak
-acceptance remain open. [Verification](ITERATION_306.md).
+acceptance remain open. [Windows verification](ITERATION_306.md),
+[Linux extension and installation](ITERATION_308.md).

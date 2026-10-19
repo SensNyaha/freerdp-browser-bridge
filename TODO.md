@@ -1222,6 +1222,19 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for local Linux CPU-query/policy lifecycle slice — New colocated
+  helper uses bounded proc-stat parsing, actual `_SC_CLK_TCK`, checked exact
+  conversion and joined descriptor/process retirement. Portable C++ passes
+  6 cases / 62 assertions on MSVC/GCC 13; a focused GCC 12.4 helper query passes.
+  Actual Linux native CPU/RSS polling/cancellation, owned test-process growth
+  and separate synthetic breach/fault/isolation cases pass. Fresh Debug install
+  retains exact binaries and passes 4/4 query controls. Focus is Linux 24/24,
+  Windows 22 / 2 skips; full Node 626 / 148 skips and 679 / 92 skips, CTest
+  17/17 and 16/16 pass. Release settings/artifacts and pins are unchanged.
+  Actual overload, connected/total-session budgets, production adoption,
+  OS-failure and broader platform/sanitizer/soak gates stay open.
+  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_308.md).
+
 - [x] DONE for optional sampled Windows CPU-policy lifecycle slice — Trusted
   host opt-in uses bounded cumulative queries and a conservative monotonic
   rate window, fixed failure codes and joined cancellation/cleanup. Actual
@@ -1229,8 +1242,9 @@ profile's target, microphone, recovery, resource or platform acceptance.
   separately pass breach/sibling isolation, invalid/regressing/unavailable,
   deadline and late/uncertain-retirement cases. Focus is Windows 26/26 and
   Linux 18 / 8 skips; full Node 678 / 90 skips and 613 / 158 skips, CTest
-  16/16 and 17/17 pass. Linux CPU refuses explicitly; real overload, connected/
-  total-session/production-helper/OS/soak gates remain open. Defaults, Release
+  16/16 and 17/17 pass. The local Linux extension is separately verified above;
+  real overload, connected/total-session/production-helper/OS/soak gates remain
+  open. Defaults, Release
   and dependency pins are unchanged. [Contract](docs/WORKER_CPU_POLICY.md),
   [evidence](docs/ITERATION_306.md).
 
@@ -1241,7 +1255,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   and normal cleanup. Windows focused 10/10, full Node 662 / 90 skips and
   Linux 605 / 150 skips, CTest 16/16 and 17/17 pass. Linux validates common
   parser/refusals only; the separately verified sampled Windows policy above
-  does not close Linux process queries, Release helper adoption or actual
+  and Linux query extension above do not close Release helper adoption or actual
   overload/connected CPU gates. [Contract](docs/PROCESS_CPU.md),
   [evidence](docs/ITERATION_304.md); `df40276`.
 
@@ -1312,6 +1326,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   sampling and synthetic limit/fault/lifetime compositions. Actual overload,
   connected/total-session CPU, Linux CPU and production-helper adoption remain
   open. [Scoped CPU evidence](docs/ITERATION_306.md).
+  Local Linux CPU queries and the same sampled policy also pass native/Node
+  lifecycle and Debug-install checks. Actual overload, production helper,
+  connected/total-session, OS-failure and broader platform/soak acceptance remain
+  separate. [Linux CPU extension](docs/ITERATION_308.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

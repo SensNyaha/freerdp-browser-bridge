@@ -5,12 +5,12 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
   WorkerProcess,
-  windowsWorkerCpuMicros,
+  workerCpuMicros,
 } from '../../packages/node-bridge/dist/index.js';
 
 const workerPath = join(
   resolve(process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation'),
-  'rdp-worker.exe',
+  'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
 );
 async function withWorker(run) {
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-cpu-query-'));
@@ -32,13 +32,13 @@ async function withWorker(run) {
 }
 
 test(
-  'actual Windows native lifecycle: cumulative CPU samples preserve heartbeat and normal close',
-  { skip: process.platform !== 'win32', timeout: 30000 },
+  'actual native lifecycle: cumulative CPU samples preserve heartbeat and normal close',
+  { skip: !['win32', 'linux'].includes(process.platform), timeout: 30000 },
   async () => {
     await withWorker(async (worker) => {
       let previous = 0;
       for (let i = 0; i < 4; ++i) {
-        const micros = await windowsWorkerCpuMicros(worker.pid, workerPath);
+        const micros = await workerCpuMicros(worker.pid, workerPath);
         assert.ok(Number.isSafeInteger(micros) && micros >= previous);
         previous = micros;
         await worker.ping();
@@ -48,17 +48,13 @@ test(
 );
 
 test(
-  'actual Windows native lifecycle: cancelled CPU helpers join while the sampled worker stays alive',
-  { skip: process.platform !== 'win32', timeout: 30000 },
+  'actual native lifecycle: cancelled CPU helpers join while the sampled worker stays alive',
+  { skip: !['win32', 'linux'].includes(process.platform), timeout: 30000 },
   async () => {
     await withWorker(async (worker) => {
       for (let i = 0; i < 8; ++i) {
         const abort = new AbortController();
-        const result = windowsWorkerCpuMicros(
-          worker.pid,
-          workerPath,
-          abort.signal,
-        );
+        const result = workerCpuMicros(worker.pid, workerPath, abort.signal);
         const rejected = assert.rejects(result, {
           code: 'PROCESS_SAMPLE_CANCELLED',
           message: 'PROCESS_SAMPLE_CANCELLED',
@@ -68,9 +64,7 @@ test(
         await worker.ping();
       }
       assert.ok(
-        Number.isSafeInteger(
-          await windowsWorkerCpuMicros(worker.pid, workerPath),
-        ),
+        Number.isSafeInteger(await workerCpuMicros(worker.pid, workerPath)),
       );
     });
   },

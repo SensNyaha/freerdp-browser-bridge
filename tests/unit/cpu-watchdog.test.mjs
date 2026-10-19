@@ -102,7 +102,7 @@ test('CPU host options require a bounded budget/window/poll and refuse unsupport
     assert.throws(() => new CpuWindow(...args), {
       code: 'PROCESS_SAMPLE_INVALID',
     });
-  if (process.platform !== 'win32') {
+  if (!['win32', 'linux'].includes(process.platform)) {
     assert.throws(() => new WorkerProcess({ ...paths, maxCpuPercent: 100 }), {
       code: 'RESOURCE_WATCHDOG_UNSUPPORTED',
     });

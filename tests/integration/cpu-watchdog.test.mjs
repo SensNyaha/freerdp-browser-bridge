@@ -15,7 +15,10 @@ const workerPath = join(
   resolve(process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation'),
   'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
 );
-const windows = { skip: process.platform !== 'win32', timeout: 15000 };
+const supported = {
+  skip: !['win32', 'linux'].includes(process.platform),
+  timeout: 15000,
+};
 const policy = { maxCpuPercent: 100, cpuPollIntervalMs: 100 };
 const alive = (pid) => {
   try {
@@ -49,8 +52,8 @@ async function withWorker(Worker, options, run, closeCode) {
 }
 
 test(
-  'actual Windows native lifecycle: CPU and RSS policies sample together, preserve heartbeat and join close',
-  windows,
+  'actual native lifecycle: CPU and RSS policies sample together, preserve heartbeat and join close',
+  supported,
   async () => {
     class Observed extends WorkerProcess {
       samples = 0;
@@ -104,8 +107,8 @@ test(
 );
 
 test(
-  'synthetic CPU breach / actual Windows native workers: only the owned child fails and retires',
-  windows,
+  'synthetic CPU breach / actual native workers: only the owned child fails and retires',
+  supported,
   async () => {
     class Excessive extends WorkerProcess {
       micros = 0;
@@ -149,8 +152,8 @@ for (const [label, sample, closeCode] of [
   ],
 ])
   test(
-    `synthetic CPU ${label} / actual Windows native worker: fixed failure and joined retirement`,
-    windows,
+    `synthetic CPU ${label} / actual native worker: fixed failure and joined retirement`,
+    supported,
     async () => {
       class Fault extends WorkerProcess {
         count = 0;
@@ -178,8 +181,8 @@ for (const [label, sample, closeCode] of [
   );
 
 test(
-  'synthetic pending CPU query / actual Windows native worker: close joins one flight and ignores its late result',
-  windows,
+  'synthetic pending CPU query / actual native worker: close joins one flight and ignores its late result',
+  supported,
   async () => {
     let finish;
     class Pending extends WorkerProcess {
@@ -215,8 +218,8 @@ test(
 );
 
 test(
-  'synthetic stalled CPU query / actual Windows native worker: deadline fails and joins abort',
-  windows,
+  'synthetic stalled CPU query / actual native worker: deadline fails and joins abort',
+  supported,
   async () => {
     class Stalled extends WorkerProcess {
       sampleCpuMicros(_pid, signal) {

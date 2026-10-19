@@ -51,6 +51,53 @@ export async function windowsWorkerCpuMicros(
   const root = process.env.SystemRoot;
   if (process.platform !== 'win32' || !root)
     throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
+  return queryCpuMicros(
+    pid,
+    workerPath,
+    'rdp-runtime-directory.exe',
+    { SystemRoot: root, WINDIR: root, PATH: '' },
+    signal,
+  );
+}
+
+export async function linuxWorkerCpuMicros(
+  pid: number,
+  workerPath: string,
+  signal?: AbortSignal,
+): Promise<number> {
+  if (!Number.isInteger(pid) || pid < 1 || pid > 0x7fffffff)
+    throw new ProcessSampleError('PROCESS_SAMPLE_INVALID');
+  requireSample(signal);
+  if (process.platform !== 'linux')
+    throw new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE');
+  return queryCpuMicros(
+    pid,
+    workerPath,
+    'rdp-process-query',
+    { PATH: '' },
+    signal,
+  );
+}
+
+export function workerCpuMicros(
+  pid: number,
+  workerPath: string,
+  signal?: AbortSignal,
+): Promise<number> {
+  if (process.platform === 'win32')
+    return windowsWorkerCpuMicros(pid, workerPath, signal);
+  if (process.platform === 'linux')
+    return linuxWorkerCpuMicros(pid, workerPath, signal);
+  return Promise.reject(new ProcessSampleError('PROCESS_SAMPLE_UNAVAILABLE'));
+}
+
+async function queryCpuMicros(
+  pid: number,
+  workerPath: string,
+  helper: string,
+  env: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<number> {
   try {
     if (
       typeof workerPath !== 'string' ||
@@ -59,14 +106,14 @@ export async function windowsWorkerCpuMicros(
     )
       throw new Error();
     const execution = promisify(execFile)(
-      join(dirname(workerPath), 'rdp-runtime-directory.exe'),
+      join(dirname(workerPath), helper),
       ['--process-cpu-micros', String(pid)],
       {
         windowsHide: true,
         timeout: 2000,
         maxBuffer: 128,
         encoding: 'utf8',
-        env: { SystemRoot: root, WINDIR: root, PATH: '' },
+        env,
         signal,
       },
     );
