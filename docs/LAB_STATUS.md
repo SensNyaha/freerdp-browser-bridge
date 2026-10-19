@@ -20,13 +20,21 @@ preparation wizard. The user then closed it themselves and confirmed access
 to the desktop. The agent did not choose backup/account settings. The image
 is an existing ignored native JPEG artifact, not a new GUI-capture implementation.
 
-PCM/Opus output has no server Formats/config/packets during the bounded runs;
+PCM/Opus output had no server Formats/config/packets during those idle runs;
 PCM/Opus AUDIN has no channel/Open negotiation and remains waiting at epoch 0.
 Closing the wizard resolves that desktop precondition, not a proven audio root cause.
 Ready-source reset, audibility, physical microphone/recording and latency
 acceptance remain open. The desktop-ready repeat still observes no Formats/
 packets for either output codec and no AUDIN Open for either input codec.
 [Repeat evidence](ITERATION_302.md). The audio cause remains unverified.
+
+On 2026-10-19, a subsequent fixed system-sound attempt observes ready PCM/Opus
+output, actual Formats/Training/Waves and private packet delivery; PCM includes
+nonzero samples. Config/epoch churn is substantial. Browser/audible/quality,
+latency, reset and sustained acceptance remain open. AUDIN still has no Open
+negotiation for either codec. [Source observation](ITERATION_305.md).
+For future source/application launches, ask the user to run them on the host;
+the user prefers that to repeated agent screenshot interaction.
 
 Further application/input/clipboard and device tests require an available
 desktop plus explicit device/capture policy. The restored network access does

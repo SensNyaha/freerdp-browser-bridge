@@ -57,6 +57,14 @@ Windows 657 / 90 skips and Linux 602 / 148 skips. This is a named private small-
 slice, not complete layout/IME/button/browser/host-clipboard/device acceptance.
 [Application evidence](docs/ITERATION_303.md).
 
+The Windows lab now also supplies actual PCM/Opus Formats, Training/Waves and
+private packet delivery during a fixed system-sound attempt; PCM samples include
+nonzero data. Both preserve heartbeat and joined empty-runtime close. Substantial
+epoch/config churn remains; browser/audible quality, reset, latency and resource
+acceptance stay open. PCM/Opus AUDIN still waits at epoch 0 without Open.
+Future host application/source launches should be requested from the user.
+[Source observation and exact scope](docs/ITERATION_305.md).
+
 The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
 isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
 GCC 12.4 nonrecovering UBSan reproduces the original failure and passes all
