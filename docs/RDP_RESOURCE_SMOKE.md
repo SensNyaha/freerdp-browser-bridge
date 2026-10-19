@@ -127,3 +127,11 @@ loopback TLS/native composition passes the pending-certificate failure slice,
 which does not implement a connected desktop. Public HTTP/WS failure delivery,
 connected sibling isolation, CPU composition, full budgets and soak remain open.
 [Evidence and failed runs](ITERATION_317.md).
+
+The automatic [public HTTP/WS native regression](ITERATION_318.md) separately
+checks the pending-certificate RSS failure through the ordinary server, control
+error, both channel closes, failed GET snapshot and expired token authority.
+It uses a real linked worker and local synthetic TLS peer, not an RDP desktop.
+It runs with a linked profile in normal Node checking; foundation profiles
+explicitly skip that integration case. Connected public resource-error delivery
+remains an independent acceptance requirement.

@@ -28,6 +28,15 @@ also passes the named connected native-adapter/manager memory-failure, lease
 and joined cleanup slice. Public HTTP/WS resource-failure delivery and connected
 sibling isolation remain separate open gates.
 
+The [public native/TLS regression](ITERATION_318.md) also verifies actual
+HTTP/control/media sockets while the synthetic certificate prompt is pending.
+An OS RSS breach emits one fixed control error and closes both channels with
+1000 / `session terminal`. GET retains HTTP 200 with the failed snapshot;
+new tokens return 409 and a previously unused token cannot upgrade (401).
+Native close/PID/runtime cleanup and known-value diagnostic redaction pass.
+This peer does not implement a desktop; actual connected public resource-error
+delivery and other resource/soak gates remain open.
+
 ## Hosting and authorization
 
 createSessionServer accepts a trusted authenticate hook and explicit allowedOrigins.

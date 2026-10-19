@@ -1247,6 +1247,17 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for native RSS failure over public HTTP/WS at certificate wait —
+  Actual linked Windows worker/OS sampling with a local synthetic TLS peer
+  delivers one fixed WORKER_MEMORY_LIMIT control error, closes control/media
+  with 1000, retains HTTP 200 failed snapshot, refuses new token issuance with
+  409 and an unused old token upgrade with 401. Joined native PID/runtime
+  cleanup and known-value diagnostic regression pass. Full Node Windows
+  754 / 51 skips and Linux 655 / 153 skips pass; Linux foundation explicitly
+  skips linked integration. This does not accept a connected desktop/public
+  failure, connected siblings, CPU composition or sustained budgets.
+  [Evidence](docs/ITERATION_318.md).
+
 - [x] DONE for named native-adapter/registry RSS failure composition — Actual
   Windows RDP with an isolated Release worker passes connected 1080p JPEG,
   first over-cap RSS sample, exact fixed WORKER_MEMORY_LIMIT envelope, one
