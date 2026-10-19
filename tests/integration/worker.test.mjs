@@ -165,6 +165,7 @@ test('native integration: build REST is backed by actual handshake and CLI repor
     const standalone = JSON.parse(cli.stdout);
     // Legacy native CLI reports predate the optional HELLO extension/property.
     standalone.capabilities.performanceSettings ??= false;
+    standalone.capabilities.ipSettings ??= false;
     assert.equal(standalone.transport, 'framed-pipes');
     assert.deepEqual({ ...standalone, transport: build.transport }, build);
     const featureCli = await promisify(execFile)(

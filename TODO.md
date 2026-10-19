@@ -22,7 +22,7 @@ Current stage acceptance:
 | 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
 | 7 — clipboard/drives | IN PROGRESS | Named Windows Notepad Unicode roundtrip and prior offer/revoke/replay pass; browser/host clipboard, wider quotas/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
-| 9 — advanced settings | IN PROGRESS | Categories beyond accepted single-display resize and their integration tests |
+| 9 — advanced settings | IN PROGRESS | Remaining Gateway/proxy/reconnect/channel settings and broader IP/appearance/platform integration |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
 | 11 — extensions | OPTIONAL TODO | Separate capability-gated extensions; not required for v1 |
 
@@ -1230,6 +1230,17 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 9 — advanced connection/Remmina-like settings
 
+- [x] DONE for named Windows IP-family backend projection — Existing preference
+  and force-4/6/null fields use explicit capability and canonical schema 12;
+  false/null require support before CONFIGURE/SECRET while omission preserves
+  legacy bytes/defaults. Public SDK readback, both loopback IP families and
+  opposite-family refusal pass; actual Windows force-4/prefer-6-on-IPv4-literal
+  JPEG/heartbeat and joined cleanup pass. New linked/foundation CTest 33/33 and
+  17/17, full Node Windows 780 / 51 skips and Linux 674 / 160 skips pass.
+  Manual UI, linked Linux, dual-stack DNS selection/fallback and actual IPv6
+  RDP/server acceptance remain open. [Contract](docs/IP_SETTINGS.md),
+  [evidence](docs/ITERATION_325.md).
+
 - [x] DONE for manual custom quality profile — The WEB form exposes the existing
   custom profile without injecting appearance booleans when inherited. All four
   profiles agree with strict schema; Edge/synthetic HTTP verifies balanced to
@@ -1272,7 +1283,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 - [ ] RDP Gateway with same/separate credentials.
 - [ ] Proxy support.
-- [ ] IPv4/IPv6 preference/force options.
+- [~] IPv4/IPv6 preference/force options — Typed API/private/native mapping,
+  Windows loopback IPv4/IPv6 transport and named actual IPv4 Windows RDP cases
+  pass the backend slice above. Manual controls, linked Linux, dual-stack DNS
+  preference/fallback history and actual IPv6 RDP/server profiles remain open.
 - [ ] Timeouts/reconnect policy and auto-reconnect cookie where supported.
 - [~] IN PROGRESS — Opt-in single-primary DisplayControl at 100% scale satisfies ADR-011 and works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. Windows-server, DVC resource audit and soak acceptance remain open. [Evidence](docs/ITERATION_019.md).
 - OUT OF CURRENT SCOPE — Multimonitor policy: explicitly excluded by the user, ADR-011; not an unimplemented release requirement.

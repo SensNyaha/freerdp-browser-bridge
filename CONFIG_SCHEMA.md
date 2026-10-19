@@ -155,6 +155,13 @@ type SessionCreate = {
 - `tlsSecurityLevel` and `minimumTls` weakening options require privileged policy.
 - Secrets are marked with schema metadata and redacted recursively in logs/errors.
 
+## Target IP-family selection
+
+The current capability-gated `target.preferIPv6` / `target.forceIpVersion`
+projection, including explicit false/null, omission and force precedence, is
+specified in [IP-family settings](docs/IP_SETTINGS.md). Preference false preserves
+OS resolver order; it does not force IPv4.
+
 ## Quality profiles
 
 Suggested mapping:

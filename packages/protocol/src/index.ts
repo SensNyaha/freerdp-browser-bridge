@@ -358,6 +358,7 @@ export interface WorkerBuild {
     clipboardText: boolean;
     clipboardRevoke: boolean;
     performanceSettings: boolean;
+    ipSettings: boolean;
     penInput: false;
   };
   bridgeVersion: string;
@@ -412,14 +413,15 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~63) !== 0 ||
+      (extensions & ~127) !== 0 ||
       ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
       ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4))) ||
       ((extensions & 4) !== 0 && !(capabilities & 4096)) ||
       ((extensions & 8) !== 0 && !(capabilities & 4)) ||
       ((extensions & 16) !== 0 && !(extensions & 8)) ||
       ((extensions & 32) !== 0 &&
-        (!(capabilities & 4) || !(capabilities & 256)))
+        (!(capabilities & 4) || !(capabilities & 256))) ||
+      ((extensions & 64) !== 0 && !(capabilities & 4))
     )
       throw new ProtocolError();
     offset += 8;
@@ -454,6 +456,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       clipboardText: Boolean(extensions & 8),
       clipboardRevoke: Boolean(extensions & 16),
       performanceSettings: Boolean(extensions & 32),
+      ipSettings: Boolean(extensions & 64),
       penInput: false,
     },
     bridgeVersion,
@@ -566,6 +569,7 @@ export interface ConnectionSettings {
   audioBuffer200?: boolean;
   clipboard?: { toServer: boolean; fromServer: boolean; maximum: number };
   performance?: { mask: number; values: number };
+  ip?: { mask: number; preferIPv6: number; forceIpVersion: number };
   videoQuality?: {
     h264Fps: number;
     jpegFps: number;
@@ -616,28 +620,44 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
       (c.performance.values & ~c.performance.mask) !== 0)
   )
     throw new ProtocolError();
+  if (
+    c.ip !== undefined &&
+    (!c.ip ||
+      typeof c.ip !== 'object' ||
+      Array.isArray(c.ip) ||
+      !Number.isInteger(c.ip.mask) ||
+      c.ip.mask < 0 ||
+      c.ip.mask > 3 ||
+      ![0, 1].includes(c.ip.preferIPv6) ||
+      ![0, 4, 6].includes(c.ip.forceIpVersion) ||
+      (!(c.ip.mask & 1) && c.ip.preferIPv6 !== 0) ||
+      (!(c.ip.mask & 2) && c.ip.forceIpVersion !== 0))
+  )
+    throw new ProtocolError();
   const schema =
-    c.performance !== undefined
-      ? 11
-      : c.clipboard
-        ? 10
-        : c.audioBuffer200
-          ? 9
-          : c.opusInput
-            ? 8
-            : c.pcmInput
-              ? 7
-              : c.opusOutput
-                ? 6
-                : c.pcmOutput
-                  ? 5
-                  : c.touch
-                    ? 4
-                    : c.dynamicResolution
-                      ? 3
-                      : c.videoQuality
-                        ? 2
-                        : 1;
+    c.ip !== undefined
+      ? 12
+      : c.performance !== undefined
+        ? 11
+        : c.clipboard
+          ? 10
+          : c.audioBuffer200
+            ? 9
+            : c.opusInput
+              ? 8
+              : c.pcmInput
+                ? 7
+                : c.opusOutput
+                  ? 6
+                  : c.pcmOutput
+                    ? 5
+                    : c.touch
+                      ? 4
+                      : c.dynamicResolution
+                        ? 3
+                        : c.videoQuality
+                          ? 2
+                          : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -744,8 +764,12 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
     maximum.writeUInt32BE(c.clipboard?.maximum ?? 0);
     parts.push(maximum);
   }
-  if (c.performance)
-    parts.push(Buffer.from([c.performance.mask, c.performance.values]));
+  if (schema >= 11)
+    parts.push(
+      Buffer.from([c.performance?.mask ?? 0, c.performance?.values ?? 0]),
+    );
+  if (c.ip)
+    parts.push(Buffer.from([c.ip.mask, c.ip.preferIPv6, c.ip.forceIpVersion]));
   return Buffer.concat(parts);
 }
 

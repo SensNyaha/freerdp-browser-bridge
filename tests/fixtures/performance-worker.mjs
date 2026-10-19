@@ -5,7 +5,8 @@ import {
   encodePacket,
 } from '../../packages/protocol/dist/index.js';
 const mode = process.argv[2];
-if (!['legacy', 'capable'].includes(mode)) process.exit(2);
+if (!['legacy', 'capable', 'ip', 'ip-performance'].includes(mode))
+  process.exit(2);
 const decoder = new PacketDecoder();
 const send = (kind, requestId, payload = Buffer.alloc(0), done) => {
   const bytes = encodePacket({ kind, requestId, payload });
@@ -22,6 +23,15 @@ process.stdin.on('data', (bytes) => {
           if (report.schema === 11) {
             report.mask = p.payload.at(-2);
             report.values = p.payload.at(-1);
+          }
+          if (report.schema === 12) {
+            report.mask = p.payload.at(-5);
+            report.values = p.payload.at(-4);
+            report.ip = {
+              mask: p.payload.at(-3),
+              preferIPv6: p.payload.at(-2),
+              forceIpVersion: p.payload.at(-1),
+            };
           }
         }
         process.send?.(report);
@@ -41,8 +51,16 @@ process.stdin.on('data', (bytes) => {
             length.writeUInt16BE(text.length);
             parts.push(length, text);
           }
-          if (mode === 'capable')
-            parts.push(Buffer.from([0, 1, 0, 0, 0, 0, 0, 32]));
+          const extension =
+            mode === 'capable'
+              ? 32
+              : mode === 'ip'
+                ? 64
+                : mode === 'ip-performance'
+                  ? 96
+                  : 0;
+          if (extension)
+            parts.push(Buffer.from([0, 1, 0, 0, 0, 0, 0, extension]));
           send(Kind.HelloAck, p.requestId, Buffer.concat(parts));
         } else if (p.kind === Kind.Heartbeat)
           send(Kind.HeartbeatAck, p.requestId);

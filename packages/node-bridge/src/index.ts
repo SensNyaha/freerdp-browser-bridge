@@ -1619,6 +1619,7 @@ export class WorkerProcess extends EventEmitter {
         config,
         this.report.capabilities.videoQuality,
         this.report.capabilities.performanceSettings,
+        this.report.capabilities.ipSettings,
         this.report.capabilities.displayControl,
         this.report.capabilities.touchInput,
         this.report.capabilities.pcmOutput,
@@ -1802,6 +1803,7 @@ function connectionPayload(
   config: SessionCreate,
   videoQuality: boolean,
   performanceSettings: boolean,
+  ipSettings: boolean,
   displayControl: boolean,
   touchInput: boolean,
   pcmOutput: boolean,
@@ -1827,7 +1829,21 @@ function connectionPayload(
     'media',
     'clipboard',
   ]);
-  allowed(config.target, ['host', 'port']);
+  allowed(config.target, ['host', 'port', 'preferIPv6', 'forceIpVersion']);
+  const ipSelected =
+    config.target.preferIPv6 !== undefined ||
+    config.target.forceIpVersion !== undefined;
+  if (ipSelected && !ipSettings)
+    throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
+  const ip = ipSelected
+    ? {
+        mask:
+          (config.target.preferIPv6 !== undefined ? 1 : 0) |
+          (config.target.forceIpVersion !== undefined ? 2 : 0),
+        preferIPv6: config.target.preferIPv6 === true ? 1 : 0,
+        forceIpVersion: config.target.forceIpVersion ?? 0,
+      }
+    : undefined;
   allowed(config.auth, ['username', 'domain', 'password', 'mode']);
   allowed(config.security, ['protocol', 'certificatePolicy', 'minimumTls']);
   allowed(config.display, [
@@ -1928,6 +1944,7 @@ function connectionPayload(
     ...(quality ? { videoQuality: quality } : {}),
     ...(clipboard ? { clipboard } : {}),
     ...(performance ? { performance } : {}),
+    ...(ip ? { ip } : {}),
   });
 }
 

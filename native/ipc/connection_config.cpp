@@ -64,7 +64,7 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 11)
+  if (schema < 1 || schema > 12)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -131,6 +131,13 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
       throw ProtocolError();
     config.performance_mask = static_cast<std::uint8_t>(mask);
     config.performance_values = static_cast<std::uint8_t>(values);
+  }
+  if (schema >= 12) {
+    config.ip_mask = static_cast<std::uint8_t>(number(1));
+    config.prefer_ipv6 = static_cast<std::uint8_t>(number(1));
+    config.force_ip_version = static_cast<std::uint8_t>(number(1));
+    if (!valid_ip_settings(config.ip_mask, config.prefer_ipv6, config.force_ip_version))
+      throw ProtocolError();
   }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),

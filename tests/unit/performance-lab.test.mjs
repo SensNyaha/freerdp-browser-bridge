@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 for (const script of [
   'test-rdp-performance-lab.mjs',
   'test-rdp-performance-form-lab.mjs',
+  'test-rdp-ip-lab.mjs',
 ])
   test(`${script} refuses invalid native selection before private configuration access`, () => {
     const fingerprint = 'sha256:' + 'a'.repeat(64);

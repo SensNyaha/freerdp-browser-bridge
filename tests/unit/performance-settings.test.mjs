@@ -161,7 +161,7 @@ test('HELLO performance capability is additive, defaults false and requires core
   for (const [flags, extension] of [
     [5, 32],
     [1, 32],
-    [261, 64],
+    [261, 128],
   ])
     assert.throws(() => decodeBuild(build(flags, extension)), ProtocolError);
 });

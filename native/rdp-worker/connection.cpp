@@ -3,6 +3,7 @@
 #include "cursor_convert.hpp"
 #include "event_pump.hpp"
 #include "gdi_dirty.hpp"
+#include "ip_settings.hpp"
 #include "performance_settings.hpp"
 #include <algorithm>
 #include <chrono>
@@ -193,6 +194,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   }
   auto *s = context_->settings;
   rdp::apply_performance_settings(s, c.performance_mask, c.performance_values);
+  rdp::apply_ip_settings(s, c.ip_mask, c.prefer_ipv6, c.force_ip_version);
   const auto boolean = [&](auto key, BOOL value) {
     if (!freerdp_settings_set_bool(s, key, value))
       throw ProtocolError();

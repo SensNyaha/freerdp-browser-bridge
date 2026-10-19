@@ -7,11 +7,14 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 /** Local adversarial RDP negotiation/TLS endpoint. Does not implement an RDP desktop. */
-export async function createRdpTlsFixture() {
+export async function createRdpTlsFixture(host = '127.0.0.1') {
+  if (!['127.0.0.1', '::1'].includes(host))
+    throw new Error('TLS fixture host must be loopback');
   const directory = await mkdtemp(join(tmpdir(), 'bridge-tls-fixture-'));
   const sockets = new Set();
   let server;
   let applicationBytes = 0;
+  let connections = 0;
   try {
     const openssl =
       process.platform === 'win32'
@@ -54,6 +57,7 @@ export async function createRdpTlsFixture() {
       minVersion: 'TLSv1.2',
     });
     server = net.createServer((socket) => {
+      ++connections;
       sockets.add(socket);
       socket.on('error', () => {});
       socket.once('close', () => sockets.delete(socket));
@@ -89,10 +93,13 @@ export async function createRdpTlsFixture() {
     });
     await new Promise((done, reject) => {
       server.once('error', reject);
-      server.listen(0, '127.0.0.1', done);
+      server.listen({ port: 0, host, ipv6Only: host === '::1' }, done);
     });
     return {
       port: server.address().port,
+      get connections() {
+        return connections;
+      },
       get applicationBytes() {
         return applicationBytes;
       },

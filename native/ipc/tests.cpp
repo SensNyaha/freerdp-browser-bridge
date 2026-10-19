@@ -8,6 +8,65 @@ using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
     0x3d, 4, 0, 3, 0,   0,   32,  2,   1,   2,   0,   0,   0,   0x13, 0x88, 0,   0, 3, 0xe8};
+TEST_CASE("connection v12 IP selection is canonical and preserves legacy fields") {
+  auto bytes = connection;
+  bytes[1] = 12;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0, 0,
+                             0,  0,  0,  0, 0, 0,    0, 3, 2, 3,    1, 6});
+  const auto at = bytes.size() - 3;
+  unsigned accepted = 0;
+  for (std::uint8_t mask = 0; mask < 4; ++mask) {
+    for (std::uint8_t prefer = 0; prefer < 2; ++prefer) {
+      for (const std::uint8_t force : {std::uint8_t{0}, std::uint8_t{4}, std::uint8_t{6}}) {
+        bytes[at] = mask;
+        bytes[at + 1] = prefer;
+        bytes[at + 2] = force;
+        // Independent expectation: unselected fields must have canonical zero bytes.
+        if (((mask & 1U) == 0 && prefer != 0) || ((mask & 2U) == 0 && force != 0)) {
+          REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+          continue;
+        }
+        const auto decoded = decode_connection_config(bytes);
+        REQUIRE(decoded.ip_mask == mask);
+        REQUIRE(decoded.prefer_ipv6 == prefer);
+        REQUIRE(decoded.force_ip_version == force);
+        REQUIRE(decoded.performance_mask == 3);
+        REQUIRE(decoded.performance_values == 2);
+        REQUIRE(decoded.host == "localhost");
+        ++accepted;
+      }
+    }
+  }
+  REQUIRE(accepted == 12);
+  for (std::size_t field = 0; field < 3; ++field) {
+    for (unsigned value = 0; value < 256; ++value) {
+      bytes[at] = 3;
+      bytes[at + 1] = 1;
+      bytes[at + 2] = 6;
+      bytes[at + field] = static_cast<std::uint8_t>(value);
+      const bool valid = field == 0   ? value == 3
+                         : field == 1 ? value <= 1
+                                      : value == 0 || value == 4 || value == 6;
+      if (valid)
+        REQUIRE_NOTHROW(decode_connection_config(bytes));
+      else
+        REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+    }
+  }
+  bytes[at] = 3;
+  bytes[at + 1] = 1;
+  bytes[at + 2] = 6;
+  for (std::size_t n = 0; n < bytes.size(); ++n)
+    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(n)), ProtocolError);
+  for (std::uint8_t schema = 1; schema < 12; ++schema) {
+    bytes[1] = schema;
+    REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes[1] = 11;
+  bytes.resize(at);
+  REQUIRE(decode_connection_config(bytes).ip_mask == 0);
+  REQUIRE(decode_connection_config(connection).ip_mask == 0);
+}
 TEST_CASE("connection v11 performance selection is canonical and preserves legacy settings") {
   auto bytes = connection;
   bytes[1] = 11;

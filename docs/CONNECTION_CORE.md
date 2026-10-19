@@ -3,7 +3,8 @@
 Bundled builds expose connectCore=true and usable browser rdp=false. Foundation
 builds expose both as false. Compiled channels are not device capability claims.
 
-Supported fields: target host/port; password username/domain; security auto/NLA/TLS;
+Supported fields: target host/port and capability-gated
+[IP-family preference/force](IP_SETTINGS.md); password username/domain; security auto/NLA/TLS;
 strict/prompt certificate policy; minimum TLS 1.2/1.3; initial width/height/depth;
 connect/TCP acknowledgement deadlines; [native video quality/FPS profiles](VIDEO_QUALITY.md)
 and capability-gated [appearance/performance settings](RDP_PERFORMANCE_SETTINGS.md);

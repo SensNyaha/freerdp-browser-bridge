@@ -115,7 +115,7 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
                             platform, arch, transport})
     append_string(bytes, value);
 #ifdef BRIDGE_WITH_FREERDP
-  unsigned extensions = 32;
+  unsigned extensions = 32 | 64;
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   extensions |= 3;
 #endif
@@ -432,7 +432,8 @@ int main(int argc, char **argv) {
 #endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
-                 "true,\"performanceSettings\":true,\"jpegCapture\":true,\"h264Capture\":true,"
+                 "true,\"performanceSettings\":true,\"ipSettings\":true,\"jpegCapture\":true,"
+                 "\"h264Capture\":true,"
                  "\"basicInput\":true,"
                  "\"unicodeInput\":true,"
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
@@ -457,7 +458,8 @@ int main(int argc, char **argv) {
                  "\"displayControl\":false},"
 #endif
 #else
-                 "false,\"performanceSettings\":false,\"jpegCapture\":false,\"h264Capture\":false,"
+                 "false,\"performanceSettings\":false,\"ipSettings\":false,\"jpegCapture\":false,"
+                 "\"h264Capture\":false,"
                  "\"basicInput\":false,"
                  "\"unicodeInput\":false,"
                  "\"pcmInput\":false,"

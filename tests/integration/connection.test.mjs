@@ -452,7 +452,9 @@ test(
           { security: { protocol: 'rdp' } },
           { security: { certificatePolicy: 'tofu' } },
           { reconnect: { enabled: true } },
-          { target: { host: '127.0.0.1', preferIPv6: true } },
+          ...(!nativeCapabilities.ipSettings
+            ? [{ target: { host: '127.0.0.1', preferIPv6: true } }]
+            : []),
           ...(!nativeCapabilities.performanceSettings
             ? [{ quality: { wallpaper: false } }]
             : []),
