@@ -37,6 +37,26 @@ test('resource lab CPU-failure mode is explicit and preserves the ordinary healt
     assert.throws(() => resourceLabRequest(bad));
 });
 
+test('resource lab memory breach is exclusive, uses no CPU load cap and retains the original healthy limits', () => {
+  const args = [fingerprint, 'build/native-clean-example/receipt.json'];
+  const memory = resourceLabRequest(['--memory-breach', ...args]);
+  assert.equal(memory.memoryBreach, true);
+  assert.equal(memory.cpuBreach, false);
+  assert.equal(memory.limits.maxResidentBytes, 1);
+  assert.equal(memory.limits.maxCpuPercent, 100);
+  assert.equal(memory.limits.cpuPollIntervalMs, 5000);
+  assert.equal(memory.limits.residentPollIntervalMs, 5000);
+  assert.deepEqual(memory.nativeArgs, args);
+  assert.equal(resourceLabRequest(args).memoryBreach, false);
+  for (const bad of [
+    ['--memory-breach'],
+    ['--memory-breach', '--cpu-breach', ...args],
+    ['--cpu-breach', '--memory-breach', ...args],
+    ['--memory-breach', ...args, 'extra'],
+  ])
+    assert.throws(() => resourceLabRequest(bad));
+});
+
 test('resource lab selection requires one verified fingerprint and an explicit isolated consumer receipt', async () => {
   const receipt = 'build/native-clean-example/receipt.json';
   assert.deepEqual(resourceLabArguments([fingerprint, receipt]), {

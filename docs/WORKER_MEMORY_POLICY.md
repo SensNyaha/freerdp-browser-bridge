@@ -66,3 +66,10 @@ the unchanged 256 MiB sampled RSS policy. Eight connected samples per resource,
 1080p JPEG, heartbeat and joined PID/runtime retirement pass. Reported peaks
 exclude between-sample/Node/session-total acceptance and are not cap-breach or
 sustained-resource evidence. [Test contract](RDP_RESOURCE_SMOKE.md).
+
+The [explicit connected RSS-limit control](ITERATION_316.md) additionally
+requires actual connection, heartbeat and 1080p JPEG before any sample. The first
+ordinary connected RSS sample exceeds a one-byte fixture cap and produces exact
+WORKER_MEMORY_LIMIT, followed by joined PID/runtime retirement. No memory load
+or remote application action is used. Public registry/sibling isolation,
+production budgets, hard OS failures and sustained acceptance remain open.

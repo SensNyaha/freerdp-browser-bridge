@@ -1247,6 +1247,16 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for named Windows connected RSS-limit breach — Actual connected
+  1080p JPEG and heartbeat precede sampling; the first global/connected RSS
+  sample exceeds a one-byte fixture cap and produces exact WORKER_MEMORY_LIMIT.
+  Joined PID/runtime cleanup and both healthy/CPU-breach repeats pass without
+  remote application actions or artificial memory load. Full Node Windows
+  751 / 51 skips and Linux 654 / 151 skips pass. This is private single-worker
+  failure acceptance; registry/sibling isolation, total-session/startup budgets,
+  hard OS failures, production deployment and soak remain open.
+  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/ITERATION_316.md).
+
 - [x] DONE for named Windows connected CPU-limit breach — Actual connected
   1080p JPEG and heartbeat precede the first real CPU baseline. Bounded local
   16-flight IPC load then produces increasing platform counters and exact

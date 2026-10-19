@@ -8,6 +8,7 @@ import {
   resourceLabRequest,
 } from './resource-lab-profile.mjs';
 import { connectedCpuLoad } from './connected-cpu-load.mjs';
+import { requireConnectedMemoryBreach } from './connected-memory-result.mjs';
 
 // Explicit authorized lab only. Credentials stay in ignored files/private IPC.
 const project = fileURLToPath(new URL('..', import.meta.url));
@@ -19,6 +20,7 @@ const limits = request.limits;
 let lastState;
 class ResourceWorker extends WorkerProcess {
   residentSamples = 0;
+  totalResidentSamples = 0;
   cpuSamples = 0;
   totalCpuSamples = 0;
   peakResidentBytes = 0;
@@ -26,6 +28,7 @@ class ResourceWorker extends WorkerProcess {
   lastMicros;
   async sampleResidentBytes(pid, signal) {
     const value = await super.sampleResidentBytes(pid, signal);
+    ++this.totalResidentSamples;
     if (lastState === 'connected' && this.state === 'ready') {
       ++this.residentSamples;
       this.peakResidentBytes = Math.max(this.peakResidentBytes, value);
@@ -109,7 +112,7 @@ try {
   });
   delete credentials.password;
   await completion;
-  if (request.cpuBreach) {
+  if (request.cpuBreach || request.memoryBreach) {
     await delay(1000);
     await worker.ping();
     frame = await worker.captureFrame();
@@ -118,10 +121,41 @@ try {
       frame.width !== 1920 ||
       frame.height !== 1080 ||
       worker.totalCpuSamples !== 0 ||
+      worker.totalResidentSamples !== 0 ||
       lastState !== 'connected' ||
       worker.state !== 'ready'
     )
-      throw new Error('LAB_CPU_BASELINE_TOO_EARLY');
+      throw new Error('LAB_RESOURCE_BASELINE_TOO_EARLY');
+  }
+  if (request.memoryBreach) {
+    const sampleDeadline = performance.now() + 7000;
+    while (failureCode === undefined && worker.state === 'ready') {
+      if (lastState !== 'connected' || performance.now() >= sampleDeadline)
+        throw new Error('LAB_MEMORY_LIMIT_NOT_OBSERVED');
+      await delay(25);
+    }
+    requireConnectedMemoryBreach(worker, failureCode);
+    console.log(
+      JSON.stringify({
+        type: 'lab.connected-memory-limit',
+        profile: profile.buildType,
+        workerHash: profile.workerHash,
+        helperHash: profile.helperHash,
+        sourceHash: profile.sourceHash,
+        limits,
+        residentSamples: worker.residentSamples,
+        totalResidentSamples: worker.totalResidentSamples,
+        peakResidentBytes: worker.peakResidentBytes,
+        image: {
+          width: frame.width,
+          height: frame.height,
+          bytes: frame.jpeg.length,
+        },
+        heartbeat: true,
+        observedFailure: failureCode,
+      }),
+    );
+  } else if (request.cpuBreach) {
     const baselineDeadline = performance.now() + 7000;
     while (worker.cpuSamples < 1 || worker.residentSamples < 1) {
       if (

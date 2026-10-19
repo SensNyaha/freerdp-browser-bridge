@@ -7,16 +7,18 @@ const invalid = () => new Error('LAB_NATIVE_PROFILE_INVALID');
 
 export function resourceLabRequest(args) {
   const cpuBreach = Array.isArray(args) && args[0] === '--cpu-breach';
-  const nativeArgs = cpuBreach ? args.slice(1) : args;
+  const memoryBreach = Array.isArray(args) && args[0] === '--memory-breach';
+  const nativeArgs = cpuBreach || memoryBreach ? args.slice(1) : args;
   resourceLabArguments(nativeArgs);
   return {
     nativeArgs: [...nativeArgs],
     cpuBreach,
+    memoryBreach,
     limits: {
-      maxResidentBytes: 256 * 1024 * 1024,
+      maxResidentBytes: memoryBreach ? 1 : 256 * 1024 * 1024,
       maxCpuPercent: cpuBreach ? 1 : 100,
-      residentPollIntervalMs: cpuBreach ? 5000 : 500,
-      cpuPollIntervalMs: cpuBreach ? 5000 : 500,
+      residentPollIntervalMs: cpuBreach || memoryBreach ? 5000 : 500,
+      cpuPollIntervalMs: cpuBreach || memoryBreach ? 5000 : 500,
       cpuWindowMs: 1000,
     },
   };

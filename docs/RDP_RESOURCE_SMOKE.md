@@ -76,3 +76,29 @@ fails the check. Synthetic driver tests cover admission, wrong failures and
 deadline behavior separately from the [actual RDP control](ITERATION_315.md).
 This verifies the named private connected CPU breach, not public API/registry
 failure propagation, other connected sessions, RSS breach, hard OS stalls or soak.
+
+## Explicit connected RSS-limit control
+
+```powershell
+node scripts/test-rdp-resource-lab.mjs --memory-breach `
+  sha256:<approved-session-fingerprint> build/native-clean-EXAMPLE/receipt.json
+```
+
+This separate mode sets a **one-byte fixture RSS cap**, keeps CPU at 100% of one
+logical core and polls both resources every five seconds. It creates no memory
+load, allocation ceiling or production budget. Both breach switches together
+are refused before private configuration access.
+
+Connected RDP, heartbeat and a 1080p JPEG must precede any CPU/RSS sample. The
+helper then waits at most seven seconds for the ordinary first RSS result, under
+the same overall 25-second deadline. Acceptance requires exactly
+`WORKER_MEMORY_LIMIT`, a failed worker and one positive over-cap RSS sample
+which is both the first global sample and already connected. Earlier/nonconnected
+sampling, another failure or a missing result cannot pass. Final joined PID/
+runtime cleanup is mandatory, as in the healthy mode. No remote application,
+input, stored image or server setting is used.
+
+The [named actual Windows result](ITERATION_316.md) verifies this private
+connected failure slice. Synthetic result checks are separate. Public registry
+propagation, connected siblings, startup/between-sample/total-session budgets,
+hard OS failures, other producer/server profiles and soak remain open.
