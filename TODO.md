@@ -1330,6 +1330,16 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for phase-aware capacity diagnostics — Lifecycle-only fixtures retain
+  startup/active/retiring failure categories, fixed maximum query timings and
+  event-loop delay; failed sampling waits stop on the actual known error.
+  Synthetic notification / actual native ownership control and 40-slot resource
+  cases pass Windows/Linux 2/2 each, lint/format and CTest 33/33 / 17/17.
+  A new run classifies five IPC timeouts as retiring; later focus has none but
+  still observes active queries beyond nominal three seconds. No production
+  policy or timeout is changed; original spike, absolute-deadline behavior,
+  connected/OS/load/soak gates remain open. [Evidence](docs/ITERATION_328.md).
+
 - [x] DONE for named connected Windows public CPU failure — Actual public
   1080p JPEG precedes the first global/connected CPU baseline; bounded valid
   16-flight IPC load produces growing OS counters and exact WORKER_CPU_LIMIT
@@ -1555,8 +1565,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   A later full-suite capacity run has an unexplained resource-query latency
   spike and worker failures; an unchanged standalone control and full repeat
   pass, but the repeat still records unclassified IPC timeouts. Original logs
-  and thresholds are preserved. Active-versus-retirement diagnosis and wider
-  load/OS timing acceptance remain open. [Evidence](docs/ITERATION_327.md).
+  and thresholds are preserved. A subsequent phase-aware run identifies retiring
+  timeouts and longer active query observations; no original root cause or
+  production correction is claimed. Absolute-deadline and wider load/OS timing
+  acceptance remain open. [Original evidence](docs/ITERATION_327.md),
+  [diagnostics](docs/ITERATION_328.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

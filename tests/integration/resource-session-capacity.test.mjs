@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { monitorEventLoopDelay } from 'node:perf_hooks';
 import {
   SessionManager,
   WorkerProcess,
@@ -33,16 +34,34 @@ class ObservedProcess extends WorkerProcess {
   firstCpuMicros;
   lastCpuMicros;
   lastFailure;
+  phase = 'startup';
+  lastFailurePhase;
+  startupFailure;
+  activeFailure;
+  retirementFailure;
+  queryMsByPhase = { startup: 0, active: 0, retiring: 0 };
   constructor(options) {
     super(options);
     this.on('failure', (error) => {
       this.lastFailure = error.code;
+      this.lastFailurePhase = this.phase;
+      if (this.phase === 'startup') this.startupFailure = error.code;
+      else if (this.phase === 'active') this.activeFailure = error.code;
+      else this.retirementFailure = error.code;
     });
   }
   async sampleResourceUsage(pid, signal) {
     const value = await super.sampleResourceUsage(pid, signal);
     ++this.combinedSamples;
     return value;
+  }
+  queryDuration(started) {
+    const elapsed = performance.now() - started;
+    this.queryMsByPhase[this.phase] = Math.max(
+      this.queryMsByPhase[this.phase],
+      elapsed,
+    );
+    return elapsed;
   }
   async sampleCpuMicros(pid, signal) {
     const started = performance.now();
@@ -55,7 +74,7 @@ class ObservedProcess extends WorkerProcess {
     } finally {
       this.maxCpuQueryMs = Math.max(
         this.maxCpuQueryMs,
-        performance.now() - started,
+        this.queryDuration(started),
       );
     }
   }
@@ -69,7 +88,7 @@ class ObservedProcess extends WorkerProcess {
     } finally {
       this.maxResidentQueryMs = Math.max(
         this.maxResidentQueryMs,
-        performance.now() - started,
+        this.queryDuration(started),
       );
     }
   }
@@ -77,6 +96,14 @@ class ObservedProcess extends WorkerProcess {
 class ResourceLifecycleWorker extends NativeLifecycleWorker {
   createWorkerProcess(options) {
     return new ObservedProcess(options);
+  }
+  async start(config, signal) {
+    await super.start(config, signal);
+    this.native.phase = 'active';
+  }
+  close() {
+    this.native.phase = 'retiring';
+    return super.close();
   }
 }
 
@@ -86,6 +113,9 @@ test(
   async (t) => {
     const cpuStarted = process.cpuUsage();
     const wallStarted = performance.now();
+    const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-resource-capacity-'));
+    const eventLoop = monitorEventLoopDelay({ resolution: 20 });
+    eventLoop.enable();
     let peakParentRssBytes = process.memoryUsage.rss();
     const monitor = setInterval(() => {
       peakParentRssBytes = Math.max(
@@ -93,7 +123,6 @@ test(
         process.memoryUsage.rss(),
       );
     }, 250);
-    const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-resource-capacity-'));
     const options = {
       workerPath,
       runtimeRoot,
@@ -154,26 +183,32 @@ test(
       assert.equal(workers.length, factories);
     }
     async function sampled(active, minimum) {
-      await eventually(
-        () =>
-          active.every(
-            (record) =>
-              record.worker.native.cpuSamples >= minimum &&
-              record.worker.native.residentSamples >= minimum,
-          ),
-        15000,
-      );
+      await eventually(() => {
+        for (const record of active) {
+          const failure =
+            record.worker.native.activeFailure ??
+            record.worker.native.startupFailure;
+          if (failure) throw new Error(failure);
+        }
+        return active.every(
+          (record) =>
+            record.worker.native.cpuSamples >= minimum &&
+            record.worker.native.residentSamples >= minimum,
+        );
+      }, 15000);
       for (const record of active)
         assert.equal(record.worker.native.state, 'ready');
       await Promise.all(active.map((record) => record.worker.native.ping()));
     }
     try {
       await warm.start();
+      warm.phase = 'active';
       pids.add(warm.pid);
-      await eventually(
-        () => warm.cpuSamples > 0 && warm.residentSamples > 0,
-        5000,
-      );
+      await eventually(() => {
+        if (warm.lastFailure) throw new Error(warm.lastFailure);
+        return warm.cpuSamples > 0 && warm.residentSamples > 0;
+      }, 5000);
+      warm.phase = 'retiring';
       await warm.close();
       const fdBaseline =
         process.platform === 'linux'
@@ -226,16 +261,43 @@ test(
       );
     } finally {
       clearInterval(monitor);
+      eventLoop.disable();
       const cpu = process.cpuUsage(cpuStarted);
       const failures = {};
+      const failurePhases = { startup: {}, active: {}, retiring: {} };
       for (const worker of workers)
-        if (worker.native.lastFailure)
+        if (worker.native.lastFailure) {
           failures[worker.native.lastFailure] =
             (failures[worker.native.lastFailure] ?? 0) + 1;
+          for (const [phase, failure] of [
+            ['startup', worker.native.startupFailure],
+            ['active', worker.native.activeFailure],
+            ['retiring', worker.native.retirementFailure],
+          ])
+            if (failure)
+              failurePhases[phase][failure] =
+                (failurePhases[phase][failure] ?? 0) + 1;
+        }
       t.diagnostic(
         JSON.stringify({
           factories: workers.length,
           failures,
+          failurePhases,
+          maxQueryMsByPhase: Object.fromEntries(
+            Object.keys(failurePhases).map((phase) => [
+              phase,
+              Math.ceil(
+                Math.max(
+                  0,
+                  ...workers.map(
+                    (worker) => worker.native.queryMsByPhase[phase],
+                  ),
+                ),
+              ),
+            ]),
+          ),
+          eventLoopMaxMs: Math.ceil(eventLoop.max / 1e6),
+          eventLoopP99Ms: Math.ceil(eventLoop.percentile(99) / 1e6),
           maxCpuQueryMs: Math.ceil(
             Math.max(
               0,
@@ -276,6 +338,43 @@ test(
         for (const result of closed) assert.equal(result.status, 'fulfilled');
         await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
       }
+    }
+  },
+);
+
+test(
+  'synthetic failure notifications / actual native lifecycle: diagnostic phases preserve active versus retirement identity',
+  { skip: !['win32', 'linux'].includes(process.platform), timeout: 15000 },
+  async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rdp-resource-phase-'));
+    const worker = new ResourceLifecycleWorker({
+      workerPath,
+      runtimeRoot: root,
+      ipcTransport: 'framed-pipes',
+    });
+    const report = () => worker.native.emit('failure', { code: 'IPC_TIMEOUT' });
+    let pid;
+    try {
+      report();
+      assert.equal(worker.native.lastFailurePhase, 'startup');
+      assert.equal(worker.native.startupFailure, 'IPC_TIMEOUT');
+      await worker.start({}, new AbortController().signal);
+      pid = worker.native.pid;
+      report();
+      assert.equal(worker.native.lastFailurePhase, 'active');
+      assert.equal(worker.native.activeFailure, 'IPC_TIMEOUT');
+      await worker.native.ping();
+      const closed = worker.close();
+      report();
+      assert.equal(worker.native.lastFailurePhase, 'retiring');
+      assert.equal(worker.native.retirementFailure, 'IPC_TIMEOUT');
+      assert.equal(worker.native.activeFailure, 'IPC_TIMEOUT');
+      await closed;
+      assert.equal(alive(pid), false);
+      assert.deepEqual(await readdir(root), []);
+    } finally {
+      await worker.close();
+      await rm(root, { recursive: true, force: true, maxRetries: 3 });
     }
   },
 );
