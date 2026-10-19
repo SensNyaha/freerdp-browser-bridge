@@ -1198,13 +1198,24 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for typed Windows CPU-query prerequisite — Strict bounded schema-1
+  parsing, validated PID, optional cancellation and joined query-helper close
+  return cumulative CPU microseconds without raw OS output/reasons. Actual
+  unconnected native-worker samples and eight cancellations preserve heartbeat
+  and normal cleanup. Windows focused 10/10, full Node 662 / 90 skips and
+  Linux 605 / 150 skips, CTest 16/16 and 17/17 pass. Linux validates common
+  parser/refusals only; CPU-rate enforcement, Linux process queries, Release
+  helper adoption and connected CPU gates remain open.
+  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_304.md).
+
 - [x] DONE for native Windows CPU-counter prerequisite — The existing host
   helper reports bounded cumulative kernel+user microseconds through limited
   query access with RAII handle retirement and exact scalar/overflow checks.
   Actual owned-process CPU growth/grammar controls and portable 2-case/12-assertion
   conversion tests pass. Debug CTest Windows 16/16 and Linux 17/17, full Node
-  654 / 90 skips and 599 / 148 skips pass. No Node CPU sampler/watchdog or Linux
-  process query is claimed; complete CPU/connected resource gates remain open.
+  654 / 90 skips and 599 / 148 skips pass. This native-only block does not claim
+  the separately verified Node reader above, CPU watchdog or Linux process
+  query; complete CPU/connected resource gates remain open.
   [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_300.md); `059c866`.
 
 - [x] DONE for cancellable shared RSS queries — Optional AbortSignal stops

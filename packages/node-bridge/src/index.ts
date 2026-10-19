@@ -12,6 +12,7 @@ export * from './microphone-ownership.js';
 export * from './clipboard-ownership.js';
 export * from './clipboard-transfer.js';
 export * from './process-resident.js';
+export * from './process-cpu.js';
 import { EventEmitter } from 'node:events';
 import type { Writable } from 'node:stream';
 import { SeqpacketOwner, loadPacketAddon } from './seqpacket-owner.js';
