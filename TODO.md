@@ -1222,6 +1222,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for actual unconnected native CPU-limit breach — Fixed 16-flight
+  heartbeat load and genuine platform counter growth trigger WORKER_CPU_LIMIT
+  at an explicit 1% fixture cap on Windows/Linux. The owned PID/runtime retire,
+  all requests join and a sibling keeps heartbeat. CPU focus passes 17/17 each;
+  full Node Windows 680 / 92 skips and Linux 627 / 148 skips, CTest 16/16 and
+  17/17 pass. This is real C++ lifecycle load, not a production budget or
+  connected RDP/media/concurrency/soak acceptance. Release and dependencies
+  remain unchanged. [Evidence](docs/ITERATION_309.md).
+
 - [x] DONE for local Linux CPU-query/policy lifecycle slice — New colocated
   helper uses bounded proc-stat parsing, actual `_SC_CLK_TCK`, checked exact
   conversion and joined descriptor/process retirement. Portable C++ passes
@@ -1231,7 +1240,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   retains exact binaries and passes 4/4 query controls. Focus is Linux 24/24,
   Windows 22 / 2 skips; full Node 626 / 148 skips and 679 / 92 skips, CTest
   17/17 and 16/16 pass. Release settings/artifacts and pins are unchanged.
-  Actual overload, connected/total-session budgets, production adoption,
+  Connected application overload/total-session budgets, production adoption,
   OS-failure and broader platform/sanitizer/soak gates stay open.
   [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_308.md).
 
@@ -1243,7 +1252,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   deadline and late/uncertain-retirement cases. Focus is Windows 26/26 and
   Linux 18 / 8 skips; full Node 678 / 90 skips and 613 / 158 skips, CTest
   16/16 and 17/17 pass. The local Linux extension is separately verified above;
-  real overload, connected/total-session/production-helper/OS/soak gates remain
+  connected application overload/total-session/production-helper/OS/soak gates remain
   open. Defaults, Release
   and dependency pins are unchanged. [Contract](docs/WORKER_CPU_POLICY.md),
   [evidence](docs/ITERATION_306.md).
@@ -1330,6 +1339,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   lifecycle and Debug-install checks. Actual overload, production helper,
   connected/total-session, OS-failure and broader platform/soak acceptance remain
   separate. [Linux CPU extension](docs/ITERATION_308.md).
+  Genuine Windows/Linux CPU-counter breach under bounded native heartbeat load
+  now also verifies owned-process cleanup and sibling survival. Connected
+  RDP/application/media loads and configured resource-policy concurrency remain
+  separate. [Actual native CPU control](docs/ITERATION_309.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

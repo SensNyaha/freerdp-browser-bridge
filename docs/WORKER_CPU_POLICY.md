@@ -59,8 +59,15 @@ option refusals. Actual unconnected Windows/Linux C++ workers verify healthy
 CPU/RSS queries and heartbeat. Synthetic counters separately verify cap breach,
 sibling survival, counter/query faults, deadline and late/uncertain retirement.
 These synthetic breaches do not establish actual overload behavior or connected
-RDP CPU budgets. Wider Linux/platform profiles, real overload,
+RDP CPU budgets. Wider Linux/platform profiles, connected application overload,
 startup/Node/total-session CPU,
 connected policies, production helper packaging and sustained/platform/soak
 acceptance remain open. [Windows verification](ITERATION_306.md),
 [Linux extension and installation](ITERATION_308.md).
+
+The named [actual native heartbeat-load control](ITERATION_309.md) additionally
+verifies a 1% policy breach using ordinary platform counters on Windows/Linux:
+the loaded C++ worker retires, its runtime is empty and a sibling stays healthy.
+The fixed 16-flight request driver is a bounded unconnected test load. It does
+not establish connected desktop/media budgets or configured multi-worker/soak
+acceptance, and 1% is not a recommended production limit.
