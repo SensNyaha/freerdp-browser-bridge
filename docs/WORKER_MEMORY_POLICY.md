@@ -73,3 +73,11 @@ ordinary connected RSS sample exceeds a one-byte fixture cap and produces exact
 WORKER_MEMORY_LIMIT, followed by joined PID/runtime retirement. No memory load
 or remote application action is used. Public registry/sibling isolation,
 production budgets, hard OS failures and sustained acceptance remain open.
+
+The [public connected Windows control](ITERATION_319.md) also composes the
+ordinary API, real control/media sockets, 1080p JPEG and one first connected
+RSS breach. The fixed error, both channel closes, failed snapshot, token
+revocation and joined retirement pass. Its one-byte fixture cap establishes
+failure behavior, not the normal 256 MiB total-session budget or continuous
+memory accounting. Browser terminal display, connected siblings, OS failures
+and soak remain separate requirements.

@@ -66,3 +66,9 @@ RSS failure, token/lease retirement and joined cleanup pass; public HTTP/WS
 resource-error delivery and connected siblings remain open. The earlier named connected CPU/RSS results in
 iterations [315](ITERATION_315.md) and [316](ITERATION_316.md) remain historical
 evidence. No server/network policy or alternate target is used.
+
+The subsequent [public connected RSS control](ITERATION_319.md) also passes
+actual Windows 1080p JPEG over media WS, one exact resource error over control
+WS, terminal channel closes, failed HTTP snapshot, token retirement and joined
+PID/runtime/query cleanup. It uses a Node transport receiver; browser rendering,
+connected CPU failure, siblings and complete resource/soak gates remain open.

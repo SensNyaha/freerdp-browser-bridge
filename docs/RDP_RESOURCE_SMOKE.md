@@ -124,8 +124,8 @@ deadline and no-remote-application/input/image-persistence rules apply. Its
 named actual Windows connected check now passes after access restoration and a
 test-only cleanup-wait correction. The separate
 loopback TLS/native composition passes the pending-certificate failure slice,
-which does not implement a connected desktop. Public HTTP/WS failure delivery,
-connected sibling isolation, CPU composition, full budgets and soak remain open.
+which does not implement a connected desktop. Connected public RSS failure is
+covered below; sibling isolation, CPU composition, full budgets and soak remain open.
 [Evidence and failed runs](ITERATION_317.md).
 
 The automatic [public HTTP/WS native regression](ITERATION_318.md) separately
@@ -134,4 +134,32 @@ error, both channel closes, failed GET snapshot and expired token authority.
 It uses a real linked worker and local synthetic TLS peer, not an RDP desktop.
 It runs with a linked profile in normal Node checking; foundation profiles
 explicitly skip that integration case. Connected public resource-error delivery
-remains an independent acceptance requirement.
+is covered separately below.
+
+## Connected public HTTP/WebSocket RSS control
+
+```powershell
+node scripts/test-rdp-resource-api-lab.mjs `
+  sha256:<approved-session-fingerprint> build/native-clean-EXAMPLE/receipt.json
+```
+
+The Windows-only helper verifies the same receipt/worker/helper before private
+configuration or listener acquisition. It hosts the ordinary API on loopback
+with an ephemeral in-memory host credential and exact Origin/subprotocol.
+RDP creation uses POST, certificate decisions use control WS and JPEG config/
+frames use media WS. Attach credentials use private Authorization headers.
+No credentials/tokens or raw server diagnostics are printed or persisted.
+
+The one-byte RSS fixture and paired five-second policy are unchanged. The first
+1080p JPEG must arrive before sampling. The Node receiver checks bounded RWB1
+framing/dimensions/JPEG markers, ACKs each frame and wipes bytes; it does not
+decode or render an image. A 25-second overall bound covers observation and
+requests owned-worker/socket termination on expiry, followed by joined shutdown.
+
+Acceptance requires exactly one fixed WORKER_MEMORY_LIMIT control error, both
+channels closing 1000 / `session terminal`, HTTP 200 failed snapshot with the
+same error, refused new tokens (409), refused previously unused token upgrade
+(401), pre-factory overflow refusal and joined native/query/runtime retirement.
+[Actual Windows evidence](ITERATION_319.md) retains the measured values and
+separates the passing transport slice from browser rendering, other resource
+budgets, connected siblings and sustained/OS-failure acceptance.

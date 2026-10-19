@@ -25,8 +25,8 @@ The native adapter preserves the exact memory failure; the manager retires
 tokens and releases capacity after joined adapter close. The local TLS peer
 does not implement a desktop. The same iteration's restored Windows lab run
 also passes the named connected native-adapter/manager memory-failure, lease
-and joined cleanup slice. Public HTTP/WS resource-failure delivery and connected
-sibling isolation remain separate open gates.
+and joined cleanup slice. Broader public resource profiles and connected sibling
+isolation remain separate gates; the named public RSS slice is recorded below.
 
 The [public native/TLS regression](ITERATION_318.md) also verifies actual
 HTTP/control/media sockets while the synthetic certificate prompt is pending.
@@ -34,8 +34,16 @@ An OS RSS breach emits one fixed control error and closes both channels with
 1000 / `session terminal`. GET retains HTTP 200 with the failed snapshot;
 new tokens return 409 and a previously unused token cannot upgrade (401).
 Native close/PID/runtime cleanup and known-value diagnostic redaction pass.
-This peer does not implement a desktop; actual connected public resource-error
-delivery and other resource/soak gates remain open.
+This peer does not implement a desktop; the separate connected public RSS
+control follows below. Other resource/soak gates remain open.
+
+The [connected Windows public RSS control](ITERATION_319.md) additionally
+receives actual 1080p JPEG over media WS before sampling and observes the same
+fixed error, terminal control/media closure, failed GET snapshot and token
+retirement after an actual connected RSS breach. It uses a Node ACK receiver,
+not browser rendering. This accepts the named connected memory-error transport
+slice; CPU failure delivery, connected siblings and complete resource/soak
+acceptance remain open.
 
 ## Hosting and authorization
 
