@@ -47,3 +47,32 @@ cap-breach enforcement, between-sample/startup/Node/session-total budgets, exact
 CPU utilization, dirty-to-send/audio/network latency, broad recovery or sustained
 resource/soak behavior. Debug developer-host results do not substitute for
 Release deployment/packaging acceptance. [Observed scope](ITERATION_314.md).
+
+## Explicit connected CPU-limit control
+
+```powershell
+node scripts/test-rdp-resource-lab.mjs --cpu-breach `
+  sha256:<approved-session-fingerprint> build/native-clean-EXAMPLE/receipt.json
+```
+
+This opt-in control uses a **1% fixture CPU cap**, not a recommended desktop
+budget. Equal CPU/RSS polls are five seconds apart; the minimum CPU window
+remains one second and RSS remains 256 MiB. The helper first requires connected
+RDP, heartbeat and one 1080p JPEG before any CPU sample. The initial CPU sample
+must then be the first global sample and already connected, preventing startup/
+authentication work from masquerading as the load baseline.
+
+After that observed baseline, the helper drives ordinary private IPC heartbeats
+to the same owned worker. At most 16 requests are pending; each batch joins
+before another is admitted. Load stops on worker failure or an eight-second
+observation deadline, inside the unchanged 25-second overall test deadline.
+It sends no keyboard/mouse/clipboard/device input or extra remote program action.
+The source RDP connection remains ordinary; no server/network policy is changed.
+
+Acceptance requires real cumulative counter growth and exactly
+`WORKER_CPU_LIMIT`, followed by joined query/process retirement and empty runtime.
+Another resource/transport failure, premature baseline or no limit observation
+fails the check. Synthetic driver tests cover admission, wrong failures and
+deadline behavior separately from the [actual RDP control](ITERATION_315.md).
+This verifies the named private connected CPU breach, not public API/registry
+failure propagation, other connected sessions, RSS breach, hard OS stalls or soak.

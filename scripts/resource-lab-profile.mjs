@@ -5,6 +5,23 @@ import { dirname, resolve, relative, sep } from 'node:path';
 
 const invalid = () => new Error('LAB_NATIVE_PROFILE_INVALID');
 
+export function resourceLabRequest(args) {
+  const cpuBreach = Array.isArray(args) && args[0] === '--cpu-breach';
+  const nativeArgs = cpuBreach ? args.slice(1) : args;
+  resourceLabArguments(nativeArgs);
+  return {
+    nativeArgs: [...nativeArgs],
+    cpuBreach,
+    limits: {
+      maxResidentBytes: 256 * 1024 * 1024,
+      maxCpuPercent: cpuBreach ? 1 : 100,
+      residentPollIntervalMs: cpuBreach ? 5000 : 500,
+      cpuPollIntervalMs: cpuBreach ? 5000 : 500,
+      cpuWindowMs: 1000,
+    },
+  };
+}
+
 export function resourceLabArguments(args) {
   if (
     !Array.isArray(args) ||

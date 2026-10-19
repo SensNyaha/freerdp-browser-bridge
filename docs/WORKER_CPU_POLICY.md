@@ -102,3 +102,10 @@ Release and matched Debug consumers. Query counts, cumulative growth and joined
 cleanup pass for the named short control. This is separate from connected
 cap-breach enforcement, exact utilization, total-session and sustained budgets.
 [Observed values](ITERATION_314.md).
+
+The [explicit connected CPU-limit control](ITERATION_315.md) additionally
+observes a 1% breach from actual platform counters while the authorized Windows
+RDP session is connected. A connected first baseline precedes bounded local
+IPC load; exact WORKER_CPU_LIMIT and joined PID/runtime retirement pass. It is
+separate from registry/public error propagation, connected sibling isolation,
+production budgets and sustained/OS-failure acceptance.

@@ -7,12 +7,35 @@ import { resolve, relative, join } from 'node:path';
 import {
   resourceLabArguments,
   loadResourceLabProfile,
+  resourceLabRequest,
 } from '../../scripts/resource-lab-profile.mjs';
 
 const project = resolve('.');
 const fingerprint = 'sha256:' + 'a'.repeat(64);
 const commit = 'bf217a504e54cc719880c228e82353382cd7d4fa';
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
+
+test('resource lab CPU-failure mode is explicit and preserves the ordinary healthy profile', () => {
+  const args = [fingerprint, 'build/native-clean-example/receipt.json'];
+  const healthy = resourceLabRequest(args),
+    breach = resourceLabRequest(['--cpu-breach', ...args]);
+  assert.equal(healthy.cpuBreach, false);
+  assert.equal(healthy.limits.maxCpuPercent, 100);
+  assert.equal(healthy.limits.cpuPollIntervalMs, 500);
+  assert.equal(breach.cpuBreach, true);
+  assert.equal(breach.limits.maxCpuPercent, 1);
+  assert.equal(breach.limits.cpuPollIntervalMs, 5000);
+  assert.equal(breach.limits.residentPollIntervalMs, 5000);
+  assert.equal(breach.limits.cpuWindowMs, 1000);
+  assert.equal(breach.limits.maxResidentBytes, healthy.limits.maxResidentBytes);
+  assert.deepEqual(breach.nativeArgs, args);
+  for (const bad of [
+    ['--cpu-breach'],
+    ['--other', ...args],
+    ['--cpu-breach', ...args, 'extra'],
+  ])
+    assert.throws(() => resourceLabRequest(bad));
+});
 
 test('resource lab selection requires one verified fingerprint and an explicit isolated consumer receipt', async () => {
   const receipt = 'build/native-clean-example/receipt.json';

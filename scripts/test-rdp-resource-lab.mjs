@@ -3,24 +3,24 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
-import { loadResourceLabProfile } from './resource-lab-profile.mjs';
+import {
+  loadResourceLabProfile,
+  resourceLabRequest,
+} from './resource-lab-profile.mjs';
+import { connectedCpuLoad } from './connected-cpu-load.mjs';
 
 // Explicit authorized lab only. Credentials stay in ignored files/private IPC.
 const project = fileURLToPath(new URL('..', import.meta.url));
 if (resolve('.') !== resolve(project)) throw new Error('Use the project root');
-const profile = await loadResourceLabProfile(process.argv.slice(2), project);
+const request = resourceLabRequest(process.argv.slice(2));
+const profile = await loadResourceLabProfile(request.nativeArgs, project);
 const root = resolve(project, '.runtime/lab-resources');
-const limits = {
-  maxResidentBytes: 256 * 1024 * 1024,
-  maxCpuPercent: 100,
-  residentPollIntervalMs: 500,
-  cpuPollIntervalMs: 500,
-  cpuWindowMs: 1000,
-};
+const limits = request.limits;
 let lastState;
 class ResourceWorker extends WorkerProcess {
   residentSamples = 0;
   cpuSamples = 0;
+  totalCpuSamples = 0;
   peakResidentBytes = 0;
   firstMicros;
   lastMicros;
@@ -34,6 +34,7 @@ class ResourceWorker extends WorkerProcess {
   }
   async sampleCpuMicros(pid, signal) {
     const value = await super.sampleCpuMicros(pid, signal);
+    ++this.totalCpuSamples;
     if (lastState === 'connected' && this.state === 'ready') {
       ++this.cpuSamples;
       this.firstMicros ??= value;
@@ -108,52 +109,102 @@ try {
   });
   delete credentials.password;
   await completion;
-  const until = performance.now() + 10000;
-  while (worker.cpuSamples < 8 || worker.residentSamples < 8) {
+  if (request.cpuBreach) {
+    await delay(1000);
+    await worker.ping();
+    frame = await worker.captureFrame();
     if (
+      !frame.jpeg?.length ||
+      frame.width !== 1920 ||
+      frame.height !== 1080 ||
+      worker.totalCpuSamples !== 0 ||
       lastState !== 'connected' ||
-      worker.state !== 'ready' ||
-      performance.now() >= until
+      worker.state !== 'ready'
+    )
+      throw new Error('LAB_CPU_BASELINE_TOO_EARLY');
+    const baselineDeadline = performance.now() + 7000;
+    while (worker.cpuSamples < 1 || worker.residentSamples < 1) {
+      if (
+        lastState !== 'connected' ||
+        worker.state !== 'ready' ||
+        performance.now() >= baselineDeadline
+      )
+        throw new Error('LAB_CPU_BASELINE_NOT_CONNECTED');
+      await delay(50);
+    }
+    const completedPings = await connectedCpuLoad(
+      worker,
+      () => lastState,
+      () => failureCode,
+    );
+    console.log(
+      JSON.stringify({
+        type: 'lab.connected-cpu-limit',
+        profile: profile.buildType,
+        workerHash: profile.workerHash,
+        helperHash: profile.helperHash,
+        sourceHash: profile.sourceHash,
+        limits,
+        baselineConnected: true,
+        cpuSamples: worker.cpuSamples,
+        cpuGrowthMicros: worker.lastMicros - worker.firstMicros,
+        completedPings,
+        image: {
+          width: frame.width,
+          height: frame.height,
+          bytes: frame.jpeg.length,
+        },
+        observedFailure: failureCode,
+      }),
+    );
+  } else {
+    const until = performance.now() + 10000;
+    while (worker.cpuSamples < 8 || worker.residentSamples < 8) {
+      if (
+        lastState !== 'connected' ||
+        worker.state !== 'ready' ||
+        performance.now() >= until
+      )
+        throw new Error('LAB_RESOURCE_OBSERVATION_FAILED');
+      await delay(50);
+    }
+    await worker.ping();
+    frame = await worker.captureFrame();
+    if (
+      !frame.jpeg?.length ||
+      frame.width !== 1920 ||
+      frame.height !== 1080 ||
+      worker.peakResidentBytes < 1 ||
+      worker.peakResidentBytes > limits.maxResidentBytes ||
+      worker.lastMicros < worker.firstMicros ||
+      lastState !== 'connected' ||
+      worker.state !== 'ready'
     )
       throw new Error('LAB_RESOURCE_OBSERVATION_FAILED');
-    await delay(50);
+    await worker.ping();
+    if (lastState !== 'connected' || worker.state !== 'ready')
+      throw new Error('LAB_RESOURCE_OBSERVATION_FAILED');
+    console.log(
+      JSON.stringify({
+        type: 'lab.resource-smoke',
+        profile: profile.buildType,
+        workerHash: profile.workerHash,
+        helperHash: profile.helperHash,
+        sourceHash: profile.sourceHash,
+        limits,
+        cpuSamples: worker.cpuSamples,
+        residentSamples: worker.residentSamples,
+        cpuGrowthMicros: worker.lastMicros - worker.firstMicros,
+        peakResidentBytes: worker.peakResidentBytes,
+        image: {
+          width: frame.width,
+          height: frame.height,
+          bytes: frame.jpeg.length,
+        },
+        heartbeat: true,
+      }),
+    );
   }
-  await worker.ping();
-  frame = await worker.captureFrame();
-  if (
-    !frame.jpeg?.length ||
-    frame.width !== 1920 ||
-    frame.height !== 1080 ||
-    worker.peakResidentBytes < 1 ||
-    worker.peakResidentBytes > limits.maxResidentBytes ||
-    worker.lastMicros < worker.firstMicros ||
-    lastState !== 'connected' ||
-    worker.state !== 'ready'
-  )
-    throw new Error('LAB_RESOURCE_OBSERVATION_FAILED');
-  await worker.ping();
-  if (lastState !== 'connected' || worker.state !== 'ready')
-    throw new Error('LAB_RESOURCE_OBSERVATION_FAILED');
-  console.log(
-    JSON.stringify({
-      type: 'lab.resource-smoke',
-      profile: profile.buildType,
-      workerHash: profile.workerHash,
-      helperHash: profile.helperHash,
-      sourceHash: profile.sourceHash,
-      limits,
-      cpuSamples: worker.cpuSamples,
-      residentSamples: worker.residentSamples,
-      cpuGrowthMicros: worker.lastMicros - worker.firstMicros,
-      peakResidentBytes: worker.peakResidentBytes,
-      image: {
-        width: frame.width,
-        height: frame.height,
-        bytes: frame.jpeg.length,
-      },
-      heartbeat: true,
-    }),
-  );
 } catch {
   console.error(
     JSON.stringify({

@@ -1247,6 +1247,16 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for named Windows connected CPU-limit breach — Actual connected
+  1080p JPEG and heartbeat precede the first real CPU baseline. Bounded local
+  16-flight IPC load then produces increasing platform counters and exact
+  WORKER_CPU_LIMIT under an explicit 1% fixture cap; joined PID/runtime cleanup
+  and an ordinary healthy-policy repeat pass. Full Node Windows 749 / 51 skips
+  and Linux 652 / 151 skips pass. This is private single-worker acceptance;
+  connected registry/sibling isolation, RSS breach, production budgets and
+  sustained/OS-failure gates remain open.
+  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/ITERATION_315.md).
+
 - [x] DONE for named Windows connected CPU/RSS healthy-policy smoke — Explicit
   native-source receipt selection verifies worker/helper hashes before reading
   lab credentials. Actual approved-session Windows RDP with isolated Release
