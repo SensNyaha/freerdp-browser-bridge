@@ -84,3 +84,10 @@ worker query deadline includes admission and execution. Helper execution still
 has its two-second timeout. This bounds launch contention without extending
 the worker's watchdog deadline. [Configured-capacity evidence](ITERATION_310.md)
 distinguishes retained failed controls from the accepted unconnected slice.
+
+The [native crash/retirement control](ITERATION_311.md) additionally verifies
+registry capacity and private runtime remain owned through an artificially
+held query completion after the target PID exits. Siblings continue actual
+queries/heartbeat and one replacement starts after retirement. This is a
+synthetic completion barrier with actual workers, not an OS-stalled helper or
+connected-RDP failure acceptance.

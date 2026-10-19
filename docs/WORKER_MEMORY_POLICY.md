@@ -53,3 +53,9 @@ through the same policy on a connected Windows 1080p lab worker, with heartbeat,
 JPEG capture and empty-runtime close. It retains only count/peak scalars, no
 sample history. [Short connected smoke](ITERATION_298.md) is separate from
 cap-breach fault injection, Linux connected acceptance or total-session/soak budgets.
+
+The [resource-policy crash control](ITERATION_311.md) composes actual native
+exit with one synthetic query-retirement barrier. Registry slots/runtime remain
+owned until completion, while siblings continue CPU/RSS sampling and heartbeat.
+It adds unconnected lifecycle evidence; actual OS-stalled retirement and
+connected resource faults remain open.

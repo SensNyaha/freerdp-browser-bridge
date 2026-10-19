@@ -1222,6 +1222,17 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for native resource-policy crash/retirement composition — One actual
+  framed worker exits while a synthetic barrier holds completion of an actual
+  OS resource read. Its registry slot/runtime remain owned until completion;
+  two siblings keep CPU/RSS sampling and heartbeat, and one replacement starts
+  after joined retirement. Windows shared CPU/RSS and Linux separate CPU-owner
+  cases pass. Full Node Windows 694 / 92 skips and Linux 639 / 150 skips,
+  CTest 16/16 and 17/17 pass. This does not accept an OS-stalled helper,
+  forced-deadline expiry, simultaneous parent/worker kill or connected RDP
+  failure. Production code, Release and pins are unchanged.
+  [Evidence](docs/ITERATION_311.md).
+
 - [x] DONE for configured unconnected CPU/RSS lifecycle capacity — Forty actual
   framed native workers at ordinary 1,000 ms polls, global 40 / per-principal
   20, pre-factory overflow refusal, five replacements and joined PID/runtime
