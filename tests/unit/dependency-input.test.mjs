@@ -103,19 +103,21 @@ test('dependency build input binds source-only provenance, current recipes and e
 });
 
 test('SDK build refuses an out-of-scope dependency receipt before checkout or configure', () => {
-  const result = spawnSync(
-    process.execPath,
-    [
-      resolve('scripts/build-freerdp.mjs'),
-      '--clean-local',
-      '.local-tests/never-open-this.json',
-    ],
-    { encoding: 'utf8', timeout: 10000, maxBuffer: 65536, windowsHide: true },
-  );
-  assert.equal(result.status, 1);
-  assert.equal(result.stdout, '');
-  assert.match(
-    result.stderr,
-    /Dependency receipt is outside an isolated build prefix/,
-  );
+  for (const mode of ['--clean-local', '--clean-debug']) {
+    const result = spawnSync(
+      process.execPath,
+      [
+        resolve('scripts/build-freerdp.mjs'),
+        mode,
+        '.local-tests/never-open-this.json',
+      ],
+      { encoding: 'utf8', timeout: 10000, maxBuffer: 65536, windowsHide: true },
+    );
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.match(
+      result.stderr,
+      /Dependency receipt is outside an isolated build prefix/,
+    );
+  }
 });

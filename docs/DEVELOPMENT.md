@@ -755,6 +755,35 @@ Compilation has a separate finite ten-minute budget; CTest and process/IPC
 checks retain their existing deadlines. The prepared dependency/toolchain inputs
 remain reused. [Current Windows/Linux acceptance](ITERATION_250.md).
 
+For a separate Windows linked **Debug** consumer, first build an isolated
+Debug SDK with matching Debug CRT:
+
+```powershell
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-freerdp-debug `
+  -DependencyReceipt build/dependencies-source-clean-EXAMPLE/installed/bridge-dependency-build.json
+```
+
+Then pass that new SDK's actual receipt to the Debug consumer:
+
+```powershell
+powershell -NoProfile -File scripts/native-build.ps1 -Task clean-bundled-debug `
+  -RebuiltSdkReceipt build/freerdp-source-clean-EXAMPLE/receipt.json
+```
+
+The underlying SDK mode is `--clean-debug`; it always uses new source/build/
+install directories and leaves ordinary/clean Release modes unchanged. The
+source consumer mode is `linked-debug`. It requires a bound SDK
+receipt before Catch2/toolchain/build preparation, and writes the filtered SDK
+feature input inside its new fixture. On Windows it additionally requires the
+SDK receipt/cache to identify Debug with dynamic Debug CRT. A Release-CRT SDK
+is rejected before output preparation: its returned allocations cannot be
+freed through a different consumer CRT. The private dependency outputs remain
+reused with their recorded build types and API-specific ownership.
+The actual CMake compiler/build-type reply is verified in the consumer receipt.
+The existing `linked` / `clean-bundled` profile remains Release. No ordinary
+worker, helper or generated feature inventory is replaced by this Debug task.
+[Profile scope and verification](ITERATION_312.md).
+
 For an isolated local Linux private dependency rebuild from cached source/tool
 downloads:
 

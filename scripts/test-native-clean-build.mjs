@@ -15,24 +15,29 @@ import { fileURLToPath } from 'node:url';
 import { readDependencyReceipt } from './dependency-input.mjs';
 import { nodeTestDirectories } from './node-test-directories.mjs';
 import { readNativeBuildProfile } from './native-build-profile.mjs';
+import {
+  nativeCleanProfile,
+  requireWindowsDebugSdk,
+} from './native-clean-profile.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const windows = process.platform === 'win32';
 const [catchSource, mode = 'foundation', sdkReceiptPath, ...extra] =
   process.argv.slice(2);
-const linked = mode === 'linked';
+const { linked, buildType, receiptRequired } = nativeCleanProfile(mode);
 if (
   (!windows && process.platform !== 'linux') ||
   process.versions.node.split('.')[0] !== '24' ||
   resolve('.') !== project ||
   !catchSource ||
-  !['foundation', 'linked'].includes(mode) ||
   (sdkReceiptPath && !linked) ||
   extra.length
 )
   throw new Error(
     'Use the project root, Node 24, offline Catch2 source and optional linked mode',
   );
+if (receiptRequired && !sdkReceiptPath)
+  throw new Error('Linked Debug requires a rebuilt SDK receipt');
 const version = await readFile(
   resolve(catchSource, 'src/catch2/catch_version_macros.hpp'),
   'utf8',
@@ -107,6 +112,8 @@ if (sdkReceiptPath) {
   freerdpPrefix = receipt.installed;
   sdkSourcePath = receipt.source;
   sdkCachePath = resolve(receipt.binary, 'CMakeCache.txt');
+  if (windows && mode === 'linked-debug')
+    requireWindowsDebugSdk(receipt, await readFile(sdkCachePath, 'utf8'));
 }
 let sdkSourceCommit;
 const checkSdkSource = () => {
@@ -258,7 +265,7 @@ run('cmake', [
   binary,
   '-G',
   'Ninja',
-  '-DCMAKE_BUILD_TYPE=' + (linked ? 'Release' : 'Debug'),
+  '-DCMAKE_BUILD_TYPE=' + buildType,
   '-DBUILD_TESTING=ON',
   '-DBRIDGE_WITH_FREERDP=' + (linked ? 'ON' : 'OFF'),
   '-DBRIDGE_NODE_IPC=' + (linked && !windows ? 'ON' : 'OFF'),
@@ -279,10 +286,7 @@ run('cmake', [
       ]
     : []),
 ]);
-const buildProfile = await readNativeBuildProfile(
-  binary,
-  linked ? 'Release' : 'Debug',
-);
+const buildProfile = await readNativeBuildProfile(binary, buildType);
 if (sdkReceiptPath) {
   const cache = await readFile(resolve(binary, 'CMakeCache.txt'), 'utf8');
   for (const [name, packageDirectory] of [

@@ -501,6 +501,19 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for local Windows isolated linked Debug SDK/consumer — Additive
+  source-only Debug profiles pair FreeRDP/WinPR and worker with matching dynamic
+  Debug CRT; mixed Release-CRT SDK/Debug consumer now refuses before output.
+  The retained mixed-profile DVC timeout passes unchanged after matching CRT.
+  SDK probe CTest 1/1, bridge CTest 31/31, process/TLS 27 / 1 skip, resource
+  focus 27/27 and full Windows Node 740 / 51 skips pass. Common profile checks
+  and existing Linux foundation CTest 17/17 / Node 643 / 151 skips also pass.
+  Source/dependency receipts, actual compiler/build type and module/codec origins
+  are verified; seven pre-existing Release/pin inputs retain their hashes.
+  Existing Release modes/configuration and dependency versions are unchanged.
+  Private dependency Debug/sanitizer, Debug CRT packaging, new Linux linked SDK,
+  RDP/device/CI and full stage gates remain open. [Evidence](docs/ITERATION_312.md).
+
 - [x] DONE for clean-native compiler provenance — New receipts bind the actual
   CMake version, compiler ID/version/path, Ninja generator
   and verified build type. Four unit cases and actual Clang/GNU reply probes

@@ -57,32 +57,34 @@ test('isolated SDK consumer refuses mixed or incomplete SDK provenance before cr
       ],
     ]) {
       await writeFile(path, body);
-      const result = spawnSync(
-        process.execPath,
-        [
-          resolve('scripts/test-native-clean-build.mjs'),
-          catchSource,
-          'linked',
-          path,
-        ],
-        {
-          encoding: 'utf8',
-          timeout: 10000,
-          maxBuffer: 65536,
-          windowsHide: true,
-        },
-      );
-      assert.equal(result.status, 1, description);
-      assert.match(result.stderr, error, description);
-      assert.equal(
-        result.stderr.includes('receipt-content-must-not-appear-in-errors'),
-        false,
-      );
-      assert.deepEqual(
-        (await readdir(root)).sort(),
-        ['catch', 'receipt.json'],
-        description,
-      );
+      for (const mode of ['linked', 'linked-debug']) {
+        const result = spawnSync(
+          process.execPath,
+          [
+            resolve('scripts/test-native-clean-build.mjs'),
+            catchSource,
+            mode,
+            path,
+          ],
+          {
+            encoding: 'utf8',
+            timeout: 10000,
+            maxBuffer: 65536,
+            windowsHide: true,
+          },
+        );
+        assert.equal(result.status, 1, description);
+        assert.match(result.stderr, error, description);
+        assert.equal(
+          result.stderr.includes('receipt-content-must-not-appear-in-errors'),
+          false,
+        );
+        assert.deepEqual(
+          (await readdir(root)).sort(),
+          ['catch', 'receipt.json'],
+          description,
+        );
+      }
     }
     const outside = spawnSync(
       process.execPath,

@@ -41,6 +41,17 @@ source bytes and pass CTest 16/16 and 15/15 respectively; native lifecycle and
 full platform Node controls also pass. These additional profiles keep GCC 12
 as the GNU minimum. [Provenance/build evidence](ITERATION_289.md).
 
+An explicit local Windows linked Debug profile now also builds a separate
+Debug FreeRDP/WinPR SDK and source-only consumer with matching dynamic Debug
+CRT. A mixed Release-CRT SDK/Debug-CRT consumer exposed a retained DVC timeout;
+that combination now refuses before consumer output. No assertions or timeouts
+are relaxed. The matched profile passes native CTest 31/31, process/TLS checks,
+resource policy composition and full Windows Node 740 / 51 skips. Existing
+Release modes/artifacts and pins remain unchanged; private dependency outputs
+are reused. This is a developer-host profile, separate from production/Debug
+CRT redistribution, new Linux linked SDK and RDP/device/soak acceptance.
+[SDK/consumer evidence](ITERATION_312.md).
+
 Ubuntu GCC 12.4 also passes the standard PIE ASan/UBSan foundation: actual
 library probe, native CTest 16/16 and 100 default-option empty-program launches.
 Its distribution sanitizer runtimes are 14.2; the historical Bookworm/GCC 12.2

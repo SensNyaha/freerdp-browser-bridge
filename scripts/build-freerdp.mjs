@@ -2,21 +2,15 @@ import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { readDependencyReceipt } from './dependency-input.mjs';
+import { freerdpBuildProfile } from './freerdp-build-profile.mjs';
 
 const windows = process.platform === 'win32';
 const triplet = windows ? 'x64-windows-bundled' : 'x64-linux-bundled';
 let dependencyInstalledRoot = resolve('.deps/installed');
 let prefix = resolve(dependencyInstalledRoot, triplet);
-const arguments_ = process.argv.slice(2);
-if (
-  arguments_.length &&
-  (arguments_.length > 2 || arguments_[0] !== '--clean-local')
-)
-  throw new Error(
-    'Expected optional --clean-local and completed dependency receipt',
-  );
-const cleanLocal = arguments_.length >= 1;
-const dependencyReceiptPath = arguments_[1];
+const { cleanLocal, buildType, dependencyReceiptPath } = freerdpBuildProfile(
+  process.argv.slice(2),
+);
 const dependencyInput = dependencyReceiptPath
   ? readDependencyReceipt(dependencyReceiptPath, triplet)
   : undefined;
@@ -119,7 +113,7 @@ run('cmake', [
   'Ninja',
   '-C',
   'native/freerdp-profile.cmake',
-  '-DCMAKE_BUILD_TYPE=Release',
+  '-DCMAKE_BUILD_TYPE=' + buildType,
   `-DCMAKE_PROJECT_FreeRDP_INCLUDE=${resolve('native/freerdp-build.cmake')}`,
   `-DCMAKE_INSTALL_PREFIX=${freerdpPrefix}`,
   `-DCMAKE_TOOLCHAIN_FILE=${resolve('.deps/vcpkg/scripts/buildsystems/vcpkg.cmake')}`,
@@ -137,6 +131,8 @@ run('cmake', [
 ]);
 // Fail if a mandatory dependency accidentally resolves to an external system installation.
 const cache = readFileSync(join(binary, 'CMakeCache.txt'), 'utf8');
+if (!cache.split(/\r?\n/).includes('CMAKE_BUILD_TYPE:STRING=' + buildType))
+  throw new Error('FreeRDP SDK build type does not match the selected profile');
 for (const key of [
   'ZLIB_INCLUDE_DIR',
   'OPENSSL_INCLUDE_DIR',
@@ -210,7 +206,7 @@ if (cleanLocal) {
     'Ninja',
     `-DCMAKE_PREFIX_PATH=${freerdpPrefix};${prefix}`,
     `-DBRIDGE_SDK_PREFIX=${freerdpPrefix}`,
-    '-DCMAKE_BUILD_TYPE=Release',
+    '-DCMAKE_BUILD_TYPE=' + buildType,
     ...(!windows
       ? [`-DCMAKE_EXE_LINKER_FLAGS=-Wl,-rpath-link,${join(prefix, 'lib')}`]
       : []),
@@ -297,6 +293,7 @@ if (cleanLocal) {
   )
     throw new Error('Dependency receipt changed during SDK build');
   const receipt = {
+    buildType,
     source,
     binary,
     installed: freerdpPrefix,
