@@ -32,9 +32,12 @@ not constrain DNS queries or add a bridge DNS cache/resolver.
 
 These settings do not change target identity, certificate/SPN policy, auth,
 timeouts, Gateway/proxy or reconnect support. There is no arbitrary argv,
-alternate target, source-IP selector or system network change. The current
-manual form has no IP-family controls yet; hosts can use the existing typed
-public session configuration. Unknown target settings still refuse.
+alternate target, source-IP selector or system network change. The
+[manual form](WEB_CONNECTION_EXAMPLE.md) exposes preference and family controls
+with independent capability gating. Its defaults omit both keys; returning to
+the default family removes a previous force choice for the next new worker.
+Explicit null remains available in the typed public session configuration.
+Unknown target settings still refuse.
 
 ## Versioned private projection
 
@@ -48,7 +51,7 @@ CONFIGURE schema 12 retains every v11 field and appends three bytes:
 
 | Byte | Meaning | Accepted values |
 | ---: | --- | --- |
-| 0 | Selection mask | 0..3; bit 1 preference, bit 2 forced family |
+| 0 | Selection mask | 0..3; flag 1 selects preference, flag 2 selects forced family |
 | 1 | Prefer IPv6 | 0 or 1 |
 | 2 | Force IP version | 0, 4 or 6 |
 
@@ -87,3 +90,16 @@ PID/runtime cleanup have separate 25-second bounds. Credentials remain private
 IPC; JPEG copies are wiped, not saved. No remote application, input, device or
 system-setting action is used. Passing preference with an IPv4 literal is not a
 measurement of dual-stack DNS ordering or actual IPv6 RDP acceptance.
+
+The separate actual Windows Edge form projection can be checked with:
+
+```powershell
+node scripts/test-rdp-performance-form-lab.mjs --ip-test sha256:<approved-session-fingerprint> `
+  build/native-clean-EXAMPLE/receipt.json
+```
+
+This explicit mode requires both appearance and IP capabilities before reading
+credentials. It selects fixed prefer-6 / force-4 fields alongside the existing
+appearance overrides, checks exact API/native projection, 1080p JPEG canvas,
+heartbeat and form Disconnect. Default helper invocation retains its prior
+appearance-only behavior. [Exact scope](ITERATION_326.md).

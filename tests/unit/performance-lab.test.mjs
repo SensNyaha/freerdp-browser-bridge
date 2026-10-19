@@ -13,6 +13,23 @@ for (const script of [
       ['--other', fingerprint, 'build/native-clean-example/receipt.json'],
       [fingerprint, 'build/bundled/receipt.json'],
       [fingerprint, `build/native-clean-missing-${process.pid}/receipt.json`],
+      ...(script === 'test-rdp-performance-form-lab.mjs'
+        ? [
+            ['--ip-test'],
+            ['--ip-test', fingerprint, 'build/bundled/receipt.json'],
+            [
+              '--ip-test',
+              fingerprint,
+              `build/native-clean-missing-${process.pid}/receipt.json`,
+            ],
+            [
+              '--ip-test',
+              '--ip-test',
+              fingerprint,
+              'build/native-clean-example/receipt.json',
+            ],
+          ]
+        : []),
     ]) {
       const result = spawnSync(
         process.execPath,

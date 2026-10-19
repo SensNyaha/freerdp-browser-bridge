@@ -41,6 +41,50 @@ const caps = {
 };
 const fields = (extra = {}) => new Map(Object.entries({ ...values, ...extra }));
 
+test('manual IP selection: defaults omit keys; explicit system order/family require support and preserve strict schema', () => {
+  for (const ipSettings of [undefined, false, true]) {
+    const available = { ...caps, ipSettings };
+    for (const preferIPv6 of ['', 'true', 'false'])
+      for (const forceIpVersion of ['', '4', '6']) {
+        const input = fields({ preferIPv6, forceIpVersion });
+        if (!ipSettings && (preferIPv6 !== '' || forceIpVersion !== '')) {
+          assert.throws(
+            () => connectionConfig(input, available),
+            /не поддерживается/,
+          );
+          continue;
+        }
+        const config = connectionConfig(input, available).config;
+        assert.deepEqual(config.target, {
+          host: values.host,
+          port: 3389,
+          ...(preferIPv6 === '' ? {} : { preferIPv6: preferIPv6 === 'true' }),
+          ...(forceIpVersion === ''
+            ? {}
+            : { forceIpVersion: Number(forceIpVersion) }),
+        });
+        assert.deepEqual(validateSessionConfig(config), config);
+      }
+    assert.deepEqual(connectionConfig(fields(), available).config.target, {
+      host: values.host,
+      port: 3389,
+    });
+  }
+  for (const extra of [
+    { preferIPv6: 'on' },
+    { preferIPv6: true },
+    { preferIPv6: {} },
+    { forceIpVersion: '0' },
+    { forceIpVersion: '5' },
+    { forceIpVersion: 4 },
+    { forceIpVersion: 'auto' },
+  ])
+    assert.throws(
+      () => connectionConfig(fields(extra), { ...caps, ipSettings: true }),
+      /Проверьте параметры/,
+    );
+});
+
 test('manual appearance: inherit omits keys; explicit true/false require capability and preserve schema booleans', () => {
   for (const capability of [undefined, false, true]) {
     const available = { ...caps, performanceSettings: capability };

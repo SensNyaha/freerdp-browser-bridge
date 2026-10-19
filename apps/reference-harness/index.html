@@ -177,6 +177,28 @@
           </div>
         </details>
         <details>
+          <summary>Семейство IP-адресов</summary>
+          <div class="connection-fields">
+            <label
+              >Предпочтение адресов
+              <select name="preferIPv6" disabled>
+                <option value="">По умолчанию</option>
+                <option value="false">Порядок системы</option>
+                <option value="true">Сначала IPv6</option>
+              </select></label
+            >
+            <label
+              >Допустимые адреса
+              <select name="forceIpVersion" disabled>
+                <option value="">IPv4 и IPv6 (по умолчанию)</option>
+                <option value="4">Только IPv4</option>
+                <option value="6">Только IPv6</option>
+              </select></label
+            >
+          </div>
+          <p id="ip-settings-status" role="status">Проверка выбора IP…</p>
+        </details>
+        <details>
           <summary>Текстовый буфер обмена</summary>
           <div class="connection-fields">
             <label

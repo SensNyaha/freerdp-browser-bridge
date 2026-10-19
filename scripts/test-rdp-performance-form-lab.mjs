@@ -14,7 +14,15 @@ import { loadResourceLabProfile } from './resource-lab-profile.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 if (resolve('.') !== resolve(project)) throw new Error('Use the project root');
-const profile = await loadResourceLabProfile(process.argv.slice(2), project);
+const nativeArgs = process.argv.slice(2);
+const ipTest = nativeArgs[0] === '--ip-test';
+const profile = await loadResourceLabProfile(
+  ipTest ? nativeArgs.slice(1) : nativeArgs,
+  project,
+);
+const ipSelection = ipTest
+  ? { preferIPv6: true, forceIpVersion: 4 }
+  : undefined;
 const root = resolve(project, '.runtime/lab-performance-form');
 const origin = 'http://127.0.0.1:47996';
 const bearer = randomBytes(32).toString('base64url');
@@ -45,6 +53,10 @@ class Adapter extends NativeSessionWorker {
   }
   start(config, signal) {
     assert.deepEqual(config.quality, quality);
+    if (ipTest) {
+      assert.equal(config.target.preferIPv6, true);
+      assert.equal(config.target.forceIpVersion, 4);
+    }
     return super.start(config, signal);
   }
 }
@@ -66,7 +78,8 @@ try {
     const build = await probe.start();
     if (
       build.freeRdpVersion !== '3.32.1' ||
-      !build.capabilities.performanceSettings
+      !build.capabilities.performanceSettings ||
+      (ipTest && !build.capabilities.ipSettings)
     )
       throw new Error('LAB_PERFORMANCE_UNSUPPORTED');
   } finally {
@@ -150,6 +163,15 @@ try {
   await page.locator('[name=certificatePolicy]').selectOption('prompt');
   await page.locator('[name=video]').selectOption('jpeg');
   await page.locator('[name=quality]').selectOption('balanced');
+  if (ipTest) {
+    assert.equal(await page.locator('[name=preferIPv6]').isDisabled(), false);
+    assert.equal(
+      await page.locator('[name=forceIpVersion]').isDisabled(),
+      false,
+    );
+    await page.locator('[name=preferIPv6]').selectOption('true');
+    await page.locator('[name=forceIpVersion]').selectOption('4');
+  }
   await page.locator('[name=fps]').fill('5');
   for (const [name, value] of Object.entries(quality))
     if (typeof value === 'boolean')
@@ -283,6 +305,7 @@ try {
       type: 'lab.performance-form',
       accepted,
       quality,
+      ipSelection,
       image,
       workerHash: profile.workerHash,
       helperHash: profile.helperHash,

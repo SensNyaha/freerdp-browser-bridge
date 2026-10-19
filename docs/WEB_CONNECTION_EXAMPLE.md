@@ -40,6 +40,14 @@ choices; submission checks them again. Browser codec presence is checked;
 existing viewer negotiation performs detailed decoder/provider checks. Microphone
 permission and audio gesture ownership retain separate controls.
 
+The IP-family section exposes default/system/IPv6-first preference and
+default/IPv4-only/IPv6-only family selection. Defaults omit the optional keys;
+system order sends explicit false. Force selection wins over preference. The
+`ipSettings` capability independently gates these fields, with an unavailable
+message for old workers and a second check at submission. No host network
+configuration or DNS cache is changed. [IP semantics](IP_SETTINGS.md),
+[form/actual Windows verification](ITERATION_326.md).
+
 The six appearance controls (wallpaper, font smoothing, desktop composition,
 full-window dragging, menu animations and themes) each offer profile inheritance,
 enabled or disabled. Inheritance omits the optional boolean; explicit disabled

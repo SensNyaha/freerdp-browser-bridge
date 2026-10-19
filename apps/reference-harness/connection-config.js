@@ -90,8 +90,19 @@ export function connectionConfig(fields, capabilities) {
       throw new Error('Выбранная функция не поддерживается этим bridge');
     appearance[name] = value === 'true';
   }
+  const preferIPv6 = choice('preferIPv6', ['', 'true', 'false']);
+  const forceIpVersion = choice('forceIpVersion', ['', '4', '6']);
+  if ((preferIPv6 !== '' || forceIpVersion !== '') && !capabilities?.ipSettings)
+    throw new Error('Выбранная функция не поддерживается этим bridge');
   const config = {
-    target: { host, port: number('port', 1, 65535) },
+    target: {
+      host,
+      port: number('port', 1, 65535),
+      ...(preferIPv6 === '' ? {} : { preferIPv6: preferIPv6 === 'true' }),
+      ...(forceIpVersion === ''
+        ? {}
+        : { forceIpVersion: Number(forceIpVersion) }),
+    },
     auth: {
       username: text('username', 256),
       domain: text('domain', 256),

@@ -1230,6 +1230,16 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 9 — advanced connection/Remmina-like settings
 
+- [x] DONE for named IP-family WEB controls — Independent capability gates
+  default/system/IPv6-first preference and default/IPv4-only/IPv6-only choices;
+  defaults omit fields and explicit system order preserves false. Pure cases
+  and four Edge/HTTP capability combinations pass 11/11, CLI guards 3/3.
+  Actual Windows prefer-6/force-4 form projection, 1080p JPEG, heartbeat and
+  Disconnect pass with joined PID/runtime cleanup. Full Node Windows 783 / 51
+  skips and Linux 675 / 162 skips pass; native artifacts remain unchanged.
+  Broader dual-stack DNS, IPv6 RDP/server and linked Linux gates stay open.
+  [Evidence](docs/ITERATION_326.md).
+
 - [x] DONE for named Windows IP-family backend projection — Existing preference
   and force-4/6/null fields use explicit capability and canonical schema 12;
   false/null require support before CONFIGURE/SECRET while omission preserves
@@ -1237,7 +1247,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   opposite-family refusal pass; actual Windows force-4/prefer-6-on-IPv4-literal
   JPEG/heartbeat and joined cleanup pass. New linked/foundation CTest 33/33 and
   17/17, full Node Windows 780 / 51 skips and Linux 674 / 160 skips pass.
-  Manual UI, linked Linux, dual-stack DNS selection/fallback and actual IPv6
+  Linked Linux, dual-stack DNS selection/fallback and actual IPv6
   RDP/server acceptance remain open. [Contract](docs/IP_SETTINGS.md),
   [evidence](docs/ITERATION_325.md).
 
@@ -1285,7 +1295,8 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [ ] Proxy support.
 - [~] IPv4/IPv6 preference/force options — Typed API/private/native mapping,
   Windows loopback IPv4/IPv6 transport and named actual IPv4 Windows RDP cases
-  pass the backend slice above. Manual controls, linked Linux, dual-stack DNS
+  pass the backend slice above; manual controls pass their named gate.
+  Linked Linux, dual-stack DNS
   preference/fallback history and actual IPv6 RDP/server profiles remain open.
 - [ ] Timeouts/reconnect policy and auto-reconnect cookie where supported.
 - [~] IN PROGRESS — Opt-in single-primary DisplayControl at 100% scale satisfies ADR-011 and works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. Windows-server, DVC resource audit and soak acceptance remain open. [Evidence](docs/ITERATION_019.md).

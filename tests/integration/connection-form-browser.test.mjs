@@ -8,9 +8,14 @@ import { chromium } from 'playwright-core';
 import { validateSessionConfig } from '../../packages/config/dist/index.js';
 import { appearanceFields } from '../../apps/reference-harness/connection-config.js';
 
-for (const performanceSettings of [false, true])
+for (const [performanceSettings, ipSettings] of [
+  [false, false],
+  [true, false],
+  [false, true],
+  [true, true],
+])
   test(
-    `Edge manual form / HTTP fixture: appearance capability ${performanceSettings}, schema, auth refusal, secret clearing, disconnect and late-create cancellation`,
+    `Edge manual form / HTTP fixture: appearance ${performanceSettings} / IP ${ipSettings}, schema, auth refusal, secret clearing, disconnect and late-create cancellation`,
     { skip: process.platform !== 'win32', timeout: 30000 },
     async () => {
       const files = new Map();
@@ -55,6 +60,7 @@ for (const performanceSettings of [false, true])
               clipboardText: true,
               clipboardRevoke: true,
               performanceSettings,
+              ipSettings,
             }),
           );
           return;
@@ -115,6 +121,22 @@ for (const performanceSettings of [false, true])
             !document.querySelector('#connect-session').disabled,
         );
         assert.equal(await page.locator('[name=video]').inputValue(), 'jpeg');
+        await page.locator('details:has([name=preferIPv6]) > summary').click();
+        for (const name of ['preferIPv6', 'forceIpVersion']) {
+          assert.equal(await page.locator(`[name=${name}]`).inputValue(), '');
+          assert.equal(
+            await page.locator(`[name=${name}]`).isDisabled(),
+            !ipSettings,
+          );
+        }
+        assert.match(
+          await page.locator('#ip-settings-status').textContent(),
+          ipSettings ? /ограничивает семейство/ : /недоступен/,
+        );
+        if (ipSettings) {
+          await page.locator('[name=preferIPv6]').selectOption('false');
+          await page.locator('[name=forceIpVersion]').selectOption('6');
+        }
         await page.locator('details:has([name=quality]) > summary').click();
         for (const [index, name] of appearanceFields.entries()) {
           const control = page.locator(`[name=${name}]`);
@@ -170,6 +192,13 @@ for (const performanceSettings of [false, true])
         assert.equal(payload.auth.password, 'synthetic-form-password');
         assert.equal(payload.media.videoCodec, undefined);
         assert.equal(payload.target.port, 3389);
+        assert.deepEqual(payload.target, {
+          host: 'rdp.example.test',
+          port: 3389,
+          ...(ipSettings ? { preferIPv6: false, forceIpVersion: 6 } : {}),
+        });
+        for (const name of ['preferIPv6', 'forceIpVersion'])
+          assert.equal(await page.locator(`[name=${name}]`).isDisabled(), true);
         assert.deepEqual(payload.quality, {
           profile: 'balanced',
           maxFps: 20,
@@ -194,6 +223,13 @@ for (const performanceSettings of [false, true])
             !window.bridgeConnection.state.connected,
         );
         assert.equal(deletes, 1);
+        for (const name of ['preferIPv6', 'forceIpVersion']) {
+          assert.equal(
+            await page.locator(`[name=${name}]`).isDisabled(),
+            !ipSettings,
+          );
+          if (ipSettings) await page.locator(`[name=${name}]`).selectOption('');
+        }
         for (const name of appearanceFields) {
           const control = page.locator(`[name=${name}]`);
           assert.equal(await control.isDisabled(), !performanceSettings);
@@ -214,6 +250,10 @@ for (const performanceSettings of [false, true])
         assert.equal(typeof releaseCreate, 'function');
         assert.equal(payload.clipboard, undefined);
         assert.deepEqual(payload.quality, { profile: 'custom', maxFps: 20 });
+        assert.deepEqual(payload.target, {
+          host: 'rdp.example.test',
+          port: 3389,
+        });
         await page.click('#disconnect-session');
         releaseCreate();
         await page.waitForFunction(
@@ -235,7 +275,9 @@ for (const performanceSettings of [false, true])
         );
         await mkdir(resolve('build'), { recursive: true });
         await page.screenshot({
-          path: resolve(`build/iteration-322-form-${performanceSettings}.png`),
+          path: resolve(
+            `build/iteration-326-form-${performanceSettings}-${ipSettings}.png`,
+          ),
         });
       } finally {
         releaseCreate?.();

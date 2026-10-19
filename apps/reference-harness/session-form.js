@@ -115,6 +115,13 @@ async function refresh() {
   try {
     const value = await request('/v1/capabilities');
     capabilities = value;
+    for (const name of ['preferIPv6', 'forceIpVersion']) {
+      form.elements[name].disabled = !value.ipSettings;
+      if (!value.ipSettings) form.elements[name].value = '';
+    }
+    document.querySelector('#ip-settings-status').textContent = value.ipSettings
+      ? 'Предпочтение IPv6 допускает IPv4; выбор «Только» ограничивает семейство.'
+      : 'Выбор семейства IP недоступен в этой сборке bridge.';
     for (const name of appearanceFields) {
       form.elements[name].disabled = !value.performanceSettings;
       if (!value.performanceSettings) form.elements[name].value = '';
