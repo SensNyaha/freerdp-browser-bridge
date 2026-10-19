@@ -52,8 +52,9 @@ Raw helper/OS output is never included in the public error.
 Cancellation/timeout retires the query helper, not the sampled native worker.
 The promise joins the helper's close/streams even if execFile rejects earlier,
 then checks cancellation again before publishing a scalar. The caller still
-owns identity and post-query state checks. No CPU poller/history, utilization
-budget, background enforcement or public config is added.
+owns identity and post-query state checks. This reader adds no CPU poller/history,
+utilization budget, background enforcement or public config. A separate opt-in
+[Windows host policy](WORKER_CPU_POLICY.md) composes it with owned-worker sampling.
 
 This requires the native CPU command from iteration 300. Existing bundled
 Release artifacts have not been rebuilt to add it; their older helper reports

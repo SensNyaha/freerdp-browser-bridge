@@ -136,6 +136,7 @@ const failures = {
   WORKER_START_TIMEOUT: [504, 'Session worker startup deadline exceeded', true],
   WORKER_FAILED: [500, 'Session worker failed', true],
   WORKER_MEMORY_LIMIT: [503, 'Session worker memory policy exceeded', false],
+  WORKER_CPU_LIMIT: [503, 'Session worker CPU policy exceeded', false],
   WORKER_RESOURCE_UNAVAILABLE: [
     503,
     'Session worker resource measurement is unavailable',

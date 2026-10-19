@@ -1206,15 +1206,28 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 10 — hardening, packaging and performance acceptance
 
+- [x] DONE for optional sampled Windows CPU-policy lifecycle slice — Trusted
+  host opt-in uses bounded cumulative queries and a conservative monotonic
+  rate window, fixed failure codes and joined cancellation/cleanup. Actual
+  unconnected C++ workers pass healthy CPU/RSS sampling; synthetic counters
+  separately pass breach/sibling isolation, invalid/regressing/unavailable,
+  deadline and late/uncertain-retirement cases. Focus is Windows 26/26 and
+  Linux 18 / 8 skips; full Node 678 / 90 skips and 613 / 158 skips, CTest
+  16/16 and 17/17 pass. Linux CPU refuses explicitly; real overload, connected/
+  total-session/production-helper/OS/soak gates remain open. Defaults, Release
+  and dependency pins are unchanged. [Contract](docs/WORKER_CPU_POLICY.md),
+  [evidence](docs/ITERATION_306.md).
+
 - [x] DONE for typed Windows CPU-query prerequisite — Strict bounded schema-1
   parsing, validated PID, optional cancellation and joined query-helper close
   return cumulative CPU microseconds without raw OS output/reasons. Actual
   unconnected native-worker samples and eight cancellations preserve heartbeat
   and normal cleanup. Windows focused 10/10, full Node 662 / 90 skips and
   Linux 605 / 150 skips, CTest 16/16 and 17/17 pass. Linux validates common
-  parser/refusals only; CPU-rate enforcement, Linux process queries, Release
-  helper adoption and connected CPU gates remain open.
-  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_304.md).
+  parser/refusals only; the separately verified sampled Windows policy above
+  does not close Linux process queries, Release helper adoption or actual
+  overload/connected CPU gates. [Contract](docs/PROCESS_CPU.md),
+  [evidence](docs/ITERATION_304.md); `df40276`.
 
 - [x] DONE for native Windows CPU-counter prerequisite — The existing host
   helper reports bounded cumulative kernel+user microseconds through limited
@@ -1279,6 +1292,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   empty-runtime close. This does not accept total-session/CPU, connected faults,
   Linux connected or sustained budgets. [Evidence](docs/ITERATION_298.md).
   Connected smoke helper commit: `be3ee69`.
+  A separate optional Windows CPU policy now passes healthy unconnected native
+  sampling and synthetic limit/fault/lifetime compositions. Actual overload,
+  connected/total-session CPU, Linux CPU and production-helper adoption remain
+  open. [Scoped CPU evidence](docs/ITERATION_306.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

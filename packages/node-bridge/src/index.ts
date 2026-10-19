@@ -20,6 +20,8 @@ import { selectWorkerIpc, type WorkerIpcTransport } from './ipc-selection.js';
 import { PcmSource } from './pcm-source.js';
 import { OpusSource } from './opus-source.js';
 import { workerResidentBytes, ProcessSampleError } from './process-resident.js';
+import { windowsWorkerCpuMicros } from './process-cpu.js';
+import { CpuWindow } from './cpu-window.js';
 export type { PcmSourceEvent } from './pcm-source.js';
 export type { OpusSourceEvent } from './opus-source.js';
 import { mkdir, mkdtemp, rm, writeFile, realpath } from 'node:fs/promises';
@@ -133,6 +135,12 @@ export interface WorkerOptions {
   maxResidentBytes?: number;
   /** 100..60,000 ms; requires maxResidentBytes, default 1,000 ms. */
   residentPollIntervalMs?: number;
+  /** Trusted Windows host sampled CPU limit: 100% is one logical CPU. */
+  maxCpuPercent?: number;
+  /** 100..60,000 ms; requires maxCpuPercent, default 1,000 ms. */
+  cpuPollIntervalMs?: number;
+  /** 1,000..60,000 ms minimum rate window; requires maxCpuPercent. */
+  cpuWindowMs?: number;
 }
 
 type Status =
@@ -195,6 +203,10 @@ export class WorkerProcess extends EventEmitter {
   private residentTimer: NodeJS.Timeout | undefined;
   private residentProbe: ResidentProbe | undefined;
   private residentRetirementFailed = false;
+  private cpuTimer: NodeJS.Timeout | undefined;
+  private cpuProbe: ResidentProbe | undefined;
+  private cpuWindow: CpuWindow | undefined;
+  private cpuRetirementFailed = false;
   private closedPromise: Promise<void> | undefined;
   private closePromise: Promise<void> | undefined;
   private startCompletion: Promise<void> | undefined;
@@ -256,6 +268,9 @@ export class WorkerProcess extends EventEmitter {
       ipcTransport: options.ipcTransport ?? 'auto',
       maxResidentBytes: options.maxResidentBytes ?? 0,
       residentPollIntervalMs: options.residentPollIntervalMs ?? 1000,
+      maxCpuPercent: options.maxCpuPercent ?? 0,
+      cpuPollIntervalMs: options.cpuPollIntervalMs ?? 1000,
+      cpuWindowMs: options.cpuWindowMs ?? 1000,
     };
     if (
       (options.maxResidentBytes !== undefined &&
@@ -268,6 +283,25 @@ export class WorkerProcess extends EventEmitter {
           options.residentPollIntervalMs > 60000))
     )
       throw new WorkerError('INVALID_OPTIONS');
+    if (
+      (options.maxCpuPercent !== undefined &&
+        (!Number.isSafeInteger(options.maxCpuPercent) ||
+          options.maxCpuPercent < 1 ||
+          options.maxCpuPercent > 65535)) ||
+      (options.cpuPollIntervalMs !== undefined &&
+        (options.maxCpuPercent === undefined ||
+          !Number.isSafeInteger(options.cpuPollIntervalMs) ||
+          options.cpuPollIntervalMs < 100 ||
+          options.cpuPollIntervalMs > 60000)) ||
+      (options.cpuWindowMs !== undefined &&
+        (options.maxCpuPercent === undefined ||
+          !Number.isSafeInteger(options.cpuWindowMs) ||
+          options.cpuWindowMs < 1000 ||
+          options.cpuWindowMs > 60000))
+    )
+      throw new WorkerError('INVALID_OPTIONS');
+    if (options.maxCpuPercent !== undefined && process.platform !== 'win32')
+      throw new WorkerError('RESOURCE_WATCHDOG_UNSUPPORTED');
     if (
       options.maxResidentBytes !== undefined &&
       !['win32', 'linux'].includes(process.platform)
@@ -325,6 +359,7 @@ export class WorkerProcess extends EventEmitter {
     if (this.heartbeat) clearInterval(this.heartbeat);
     this.heartbeat = undefined;
     this.stopResidentWatchdog();
+    this.stopCpuWatchdog();
     const error = new WorkerError(code);
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
@@ -405,6 +440,82 @@ export class WorkerProcess extends EventEmitter {
       .finally(() => {
         clearTimeout(deadline);
         if (this.residentProbe === probe) this.residentProbe = undefined;
+        complete();
+      });
+  }
+
+  /** Trusted sampling seam; ordinary use queries this owned Windows child. */
+  protected sampleCpuMicros(pid: number, signal: AbortSignal): Promise<number> {
+    return windowsWorkerCpuMicros(pid, this.options.workerPath, signal);
+  }
+
+  private stopCpuWatchdog(): void {
+    if (this.cpuTimer) clearInterval(this.cpuTimer);
+    this.cpuTimer = undefined;
+    this.cpuWindow = undefined;
+    this.cpuProbe?.abort.abort();
+  }
+
+  private startCpuWatchdog(): void {
+    if (!this.options.maxCpuPercent) return;
+    this.cpuWindow = new CpuWindow(
+      this.options.maxCpuPercent,
+      this.options.cpuWindowMs,
+    );
+    this.cpuTimer = setInterval(
+      () => this.checkCpuTime(),
+      this.options.cpuPollIntervalMs,
+    );
+    this.cpuTimer.unref();
+  }
+
+  private checkCpuTime(): void {
+    if (this.status !== 'ready' || this.cpuProbe) return;
+    const child = this.child;
+    const pid = child?.pid;
+    const window = this.cpuWindow;
+    if (!child || !Number.isInteger(pid) || !pid || !window) {
+      this.fail('WORKER_RESOURCE_UNAVAILABLE');
+      return;
+    }
+    const current = () => this.status === 'ready' && this.child === child;
+    let complete!: () => void;
+    const probe: ResidentProbe = {
+      abort: new AbortController(),
+      completion: new Promise<void>((done) => {
+        complete = done;
+      }),
+    };
+    this.cpuProbe = probe;
+    const deadline = setTimeout(() => {
+      probe.abort.abort();
+      if (current()) this.fail('WORKER_RESOURCE_UNAVAILABLE');
+    }, 3000);
+    deadline.unref();
+    let startedNs: bigint;
+    void Promise.resolve()
+      .then(() => {
+        if (!current() || probe.abort.signal.aborted)
+          throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        startedNs = process.hrtime.bigint();
+        return this.sampleCpuMicros(pid, probe.abort.signal);
+      })
+      .then((micros) => {
+        if (!current()) return;
+        if (window.observe(micros, startedNs, process.hrtime.bigint()))
+          this.fail('WORKER_CPU_LIMIT');
+      })
+      .catch((error: unknown) => {
+        if (
+          !(error instanceof ProcessSampleError) ||
+          error.code === 'PROCESS_SAMPLE_CLOSE_FAILED'
+        )
+          this.cpuRetirementFailed = true;
+        if (current()) this.fail('WORKER_RESOURCE_UNAVAILABLE');
+      })
+      .finally(() => {
+        clearTimeout(deadline);
+        if (this.cpuProbe === probe) this.cpuProbe = undefined;
         complete();
       });
   }
@@ -624,6 +735,7 @@ export class WorkerProcess extends EventEmitter {
       }, this.options.heartbeatIntervalMs);
       this.heartbeat.unref();
       this.startResidentWatchdog();
+      this.startCpuWatchdog();
       return structuredClone(this.report);
     } catch (error) {
       this.fail(
@@ -1497,6 +1609,7 @@ export class WorkerProcess extends EventEmitter {
     if (this.status === 'closed') return;
     if (this.heartbeat) clearInterval(this.heartbeat);
     this.stopResidentWatchdog();
+    this.stopCpuWatchdog();
     if (this.status === 'ready') {
       this.setState('closing');
       const force = setTimeout(
@@ -1517,12 +1630,13 @@ export class WorkerProcess extends EventEmitter {
       if (this.closedPromise) await this.closedPromise;
     }
     if (this.retirementFailed) throw new WorkerError('IPC_CLOSE_FAILED');
-    if (this.residentRetirementFailed)
+    if (this.residentRetirementFailed || this.cpuRetirementFailed)
       throw new WorkerError('WORKER_RESOURCE_CLOSE_FAILED');
   }
 
   private async cleanup(): Promise<void> {
     this.stopResidentWatchdog();
+    this.stopCpuWatchdog();
     if (this.packetOwner) {
       this.packetOwner.destroy();
       try {
@@ -1534,6 +1648,7 @@ export class WorkerProcess extends EventEmitter {
       this.packetOwner = undefined;
     }
     await this.residentProbe?.completion;
+    await this.cpuProbe?.completion;
     this.ipcInput = undefined;
     this.cursorState = undefined;
     this.displayState = undefined;
@@ -1554,7 +1669,7 @@ export class WorkerProcess extends EventEmitter {
       });
       this.directory = undefined;
     }
-    if (this.residentRetirementFailed)
+    if (this.residentRetirementFailed || this.cpuRetirementFailed)
       throw new WorkerError('WORKER_RESOURCE_CLOSE_FAILED');
   }
 }

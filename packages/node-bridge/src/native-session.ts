@@ -111,6 +111,7 @@ export class NativeSessionWorker implements SessionWorker {
       const code =
         error instanceof WorkerError &&
         (error.code === 'WORKER_MEMORY_LIMIT' ||
+          error.code === 'WORKER_CPU_LIMIT' ||
           error.code === 'WORKER_RESOURCE_UNAVAILABLE')
           ? error.code
           : 'WORKER_FAILED';
@@ -185,6 +186,7 @@ export class NativeSessionWorker implements SessionWorker {
           'RDP_SETTING_NOT_IMPLEMENTED',
           'INVALID_SESSION_CONFIG',
           'WORKER_MEMORY_LIMIT',
+          'WORKER_CPU_LIMIT',
           'WORKER_RESOURCE_UNAVAILABLE',
         ].includes(error.code)
       )

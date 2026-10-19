@@ -67,6 +67,7 @@ test('native adapter preserves only known resource failure codes and stable publ
   const unsubscribe = adapter.onFailure((code) => observed.push(code));
   try {
     adapter.peer.emit('failure', new WorkerError('WORKER_MEMORY_LIMIT'));
+    adapter.peer.emit('failure', new WorkerError('WORKER_CPU_LIMIT'));
     adapter.peer.emit(
       'failure',
       new WorkerError('WORKER_RESOURCE_UNAVAILABLE'),
@@ -74,6 +75,7 @@ test('native adapter preserves only known resource failure codes and stable publ
     adapter.peer.emit('failure', new Error('private-diagnostic'));
     assert.deepEqual(observed, [
       'WORKER_MEMORY_LIMIT',
+      'WORKER_CPU_LIMIT',
       'WORKER_RESOURCE_UNAVAILABLE',
       'WORKER_FAILED',
     ]);

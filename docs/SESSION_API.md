@@ -10,6 +10,13 @@ native-backend failures `WORKER_MEMORY_LIMIT` (503, not retryable) and
 adds no public session-create fields. Public errors expose no sample/PID/OS
 diagnostics. Full resource/connected acceptance remains separate.
 
+The optional trusted Windows host [CPU policy](WORKER_CPU_POLICY.md) additionally
+preserves `WORKER_CPU_LIMIT` (503, not retryable), with the fixed message
+`Session worker CPU policy exceeded`. It uses the existing failure envelope;
+there is no public create-policy field or wire layout change. Existing bundled
+Release helpers are not CPU-enabled; the policy is verified with the current
+Debug foundation helper. Broader CPU/connected acceptance remains separate.
+
 ## Hosting and authorization
 
 createSessionServer accepts a trusted authenticate hook and explicit allowedOrigins.
