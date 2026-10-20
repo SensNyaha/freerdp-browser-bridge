@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
-import { audioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs';
+import { AudioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs';
 import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
 import { readPrivateLabInput } from './private-lab-input.mjs';
 
@@ -62,6 +62,7 @@ const report = {
   resetFreshPacket: false,
   pcmNonzero: audioOutput === 'pcm' ? false : undefined,
 };
+const audioNegotiation = new AudioNegotiationDiagnostics();
 class LabWorker extends WorkerProcess {
   spawnWorker(directory, env) {
     const child = super.spawnWorker(directory, env);
@@ -72,7 +73,8 @@ class LabWorker extends WorkerProcess {
       const summaryAt = bytes.indexOf(
         Buffer.from('bridge.audio.summary chunks='),
       );
-      const negotiation = audioNegotiationDiagnostics(bytes);
+      audioNegotiation.push(bytes);
+      const negotiation = audioNegotiation.snapshot();
       if (negotiation) report.negotiation = negotiation;
       const summary =
         summaryAt < 0

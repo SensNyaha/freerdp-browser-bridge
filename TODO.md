@@ -1055,6 +1055,10 @@ accepted smoke below retains its historical scope.
 with a user-started continuous tone also stays waiting and fails before detach;
 the source endpoint/session and current negotiation cause remain unverified.
 [Tone repeat](docs/ITERATION_363.md).
+The local helpers now collect fragmented native negotiation counters through
+joined cleanup; recovery-source failures identify the source-ready phase before
+snapshot/detach. This improves diagnosis without accepting audio playback or
+identifying the current cause. [Helper evidence](docs/ITERATION_364.md).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,

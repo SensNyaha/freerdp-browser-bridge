@@ -476,6 +476,19 @@ node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-recovery
 node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-compat-recovery-test
 ```
 
+Automatic audio viewer runs emit a final schema-1
+`lab.browser.audio-negotiation` record after joined native/server cleanup.
+Its `negotiation` object contains only the worker's fixed numeric server/client
+format, Training/Wave and write/completion/cancellation/failure counters, as
+decimal strings. `null` means no complete diagnostic receipt was observed;
+it must not be interpreted as zero negotiation. The private audio helper uses
+the same stream parser so stderr fragmentation cannot drop a valid receipt.
+Recovery runs require actual ready-source packet/playback evidence before
+detachment; a waiting source fails in phase `audio-source-ready`, before a
+desktop snapshot is taken. The host source must run in the redirected Windows
+audio endpoint/session. Source launch, endpoint selection and audible acceptance
+remain explicit user/lab operations.
+
 PCM viewer modes are `--audio-compat-test` / `--audio-compat-manual`. Manual output
 activation is performed by the dedicated lab helper; no microphone is requested.
 Run actual RDP modes sequentially. Programmatic creation uses

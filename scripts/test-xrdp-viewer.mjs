@@ -10,6 +10,7 @@ import {
   WorkerProcess,
 } from '../packages/node-bridge/dist/index.js';
 import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
+import { AudioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs';
 import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
@@ -79,10 +80,14 @@ const options = {
   runtimeRoot: resolve('.runtime/viewer-lab'),
 };
 const rdpDiagnostics = new LabRdpDiagnostics();
+const audioNegotiation = new AudioNegotiationDiagnostics();
 class DiagnosticProcess extends WorkerProcess {
   spawnWorker(directory, env) {
     const child = super.spawnWorker(directory, env);
-    child.stderr.on('data', (bytes) => rdpDiagnostics.push(bytes));
+    child.stderr.on('data', (bytes) => {
+      rdpDiagnostics.push(bytes);
+      audioNegotiation.push(bytes);
+    });
     return child;
   }
 }
@@ -662,15 +667,7 @@ try {
     const cursorShapesAfterMotion = await page.evaluate(
       () => window.bridgeViewer.stats.cursorShapes,
     );
-    await page.locator('#desktop').screenshot({
-      path: resolve(
-        '.local-tests/' +
-          (mode === 'jpeg'
-            ? 'xrdp-browser.png'
-            : 'xrdp-browser-' + mode + '.png'),
-      ),
-    });
-    phase = 'reattach';
+    if (audioRecoveryTest) phase = 'audio-source-ready';
     const audioBeforeReattach = audioRecoveryTest
       ? await page.evaluate(() => window.bridgeViewer.stats.audio)
       : undefined;
@@ -683,6 +680,16 @@ try {
         !(audioBeforeReattach.remote?.playedFrames > 0))
     )
       throw new Error('LAB_AUDIO_SOURCE_NOT_READY');
+    phase = 'snapshot';
+    await page.locator('#desktop').screenshot({
+      path: resolve(
+        '.local-tests/' +
+          (mode === 'jpeg'
+            ? 'xrdp-browser.png'
+            : 'xrdp-browser-' + mode + '.png'),
+      ),
+    });
+    phase = 'reattach';
     await page.evaluate(() => window.bridgeViewer.detach());
     let nativeCaptureMinIntervalUs;
     if (qualityTest) {
@@ -954,6 +961,15 @@ try {
     console.error('LAB_RUNTIME_NOT_EMPTY');
     process.exitCode = 1;
   }
+  if (audioTest)
+    console.log(
+      JSON.stringify({
+        type: 'lab.browser.audio-negotiation',
+        v: 1,
+        negotiation: audioNegotiation.snapshot() ?? null,
+        runtimeEmpty: leftovers.length === 0,
+      }),
+    );
   if (transportEvidence)
     console.log(
       JSON.stringify({
