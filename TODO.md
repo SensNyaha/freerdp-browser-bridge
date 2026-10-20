@@ -1046,6 +1046,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 
 ## Stage 6 — audio output and microphone
 
+Current repeat: the newly approved Windows Opus/200 ms browser session renders
+1080p H.264 but remains audio-waiting with zero configurations/packets/played
+frames. Recovery preconditions fail and joined cleanup passes. A verified
+active source is needed before playback or quality conclusions; the earlier
+accepted smoke below retains its historical scope.
+[Retained observation](docs/ITERATION_362.md).
+
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,
   fresh-token audio replay and one scheduled Opus reset pass with the 200 ms

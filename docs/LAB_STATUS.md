@@ -99,3 +99,11 @@ verification.
 [Strict refusal](ITERATION_344.md), [approved activation](ITERATION_346.md),
 [private resize](ITERATION_350.md), [local transport regression](ITERATION_351.md),
 [public Edge/H.264 resize](ITERATION_352.md), [public Edge/JPEG resize](ITERATION_353.md).
+
+A subsequent separately authorized Opus/200 ms browser recovery attempt renders
+1080p H.264 but receives only an enabled/waiting audio source, with zero
+configurations, packets, decoded or played frames. It fails the active-source
+precondition and joins cleanup. This does not verify current playback/recovery
+or identify a source/transport root cause; the earlier active-source results
+remain historical. The user is preparing a continuous local source before a
+repeat. [Current observation](ITERATION_362.md).
