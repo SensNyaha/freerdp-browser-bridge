@@ -94,8 +94,8 @@ fresh H.264 IDRs plus intermediate JPEG. The public Edge/H.264 viewer also
 renders the Windows desktop, resizes/restores it with fresh configurations and
 keyframes, and passes display/cursor replay and reattachment with joined cleanup.
 Acceptance covers these named Windows endpoint/profile slices. Remaining gates
-include a Windows Server matrix, JPEG browser resize, application/audio/device,
-resource and soak verification.
+include a Windows Server matrix, application/audio/device, resource and soak
+verification.
 [Strict refusal](ITERATION_344.md), [approved activation](ITERATION_346.md),
 [private resize](ITERATION_350.md), [local transport regression](ITERATION_351.md),
-[public Edge/H.264 resize](ITERATION_352.md).
+[public Edge/H.264 resize](ITERATION_352.md), [public Edge/JPEG resize](ITERATION_353.md).
