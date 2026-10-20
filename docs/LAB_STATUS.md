@@ -124,3 +124,12 @@ this short audible slice does not accept uninterrupted quality, recovery,
 microphone, LAN latency, resource or soak gates. The previous waiting runs are
 retained; their precise cause is not established by this successful repeat.
 [Current fixed-source observation](ITERATION_367.md).
+
+The separately authorized same-profile repeat collects native loss/cause and
+Node reset receipts. Node consumer reset requests are zero, while the native
+packetizer reports 581 skipped publication intervals and the publisher 572
+consumer resets. This narrows the next work to native publication timing;
+the individual stalls' cause remains unverified. The user reports much better
+sound with a few small interruptions. All local owners retire, runtime is empty
+and the listener is released. No production/audio-policy change was made
+between these observations. [Detailed repeat](ITERATION_370.md).

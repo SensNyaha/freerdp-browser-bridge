@@ -46,6 +46,11 @@ count browser-consumer reset calls/results, preparing the authorized repeat.
 No specific cause or quality correction is accepted yet.
 [Native collection](docs/ITERATION_368.md),
 [consumer accounting](docs/ITERATION_369.md).
+The separately authorized repeat reports zero Node consumer reset requests
+and 581 skipped native publication intervals / 572 publisher resets. The user
+reports much better sound with a few small interruptions. Native scheduling,
+callback and graphics stalls remain to be distinguished; no production fix or
+uninterrupted-quality pass is claimed. [Repeat evidence](docs/ITERATION_370.md).
 
 ## Implementation status — 2026-10-18
 
@@ -1096,6 +1101,11 @@ now verifies a short audible output slice; the earlier idle-source results remai
   The browser footer also counts Node consumer reset calls/results without
   altering retries or queue policy. This keeps native lifetime resets separate
   from requested consumer recovery. [Counter evidence](docs/ITERATION_369.md).
+  The authorized same-profile repeat now observes zero Node reset requests,
+  581 native skipped publication intervals and 572 publisher resets. The user
+  reports much better sound with a few short interruptions; publication timing
+  remains the next work item, without a complete cause or quality pass.
+  [Repeat](docs/ITERATION_370.md).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,
