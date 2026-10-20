@@ -92,6 +92,10 @@ maps to `RDP_SERVER_TIMEOUT`, alongside the idle/logon timeout reasons. Other
 Connection Broker reasons remain generic until their public classification is
 individually verified.
 
+`ERRINFO_CB_DESTINATION_NOT_FOUND` maps to the fixed `RDP_SERVER_REJECTED`
+failure, matching its pinned description that the broker could not find the
+target endpoint. Other broker destination/pool errors remain generic.
+
 For a failed connection still classified `RDP_CONNECT_FAILED`, the adapter also
 recognizes the pinned FreeRDP 3.32.1 CONNECT codes for insufficient privileges,
 expired/required-change passwords, revoked accounts, disabled/expired/locked
