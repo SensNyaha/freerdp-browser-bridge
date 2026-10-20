@@ -264,6 +264,12 @@ test('fake-backend HTTP: owner lifecycle, strict input validation, fresh attach 
 test('fake-backend HTTP: recognized remote failures remain fixed in failed session snapshots', async () => {
   await withServer({}, async ({ request, factory }) => {
     for (const [code, message, retryable] of [
+      ['RDP_CONNECT_FAILED', 'Remote connection failed', true],
+      ['RDP_AUTHENTICATION_FAILED', 'Remote authentication failed', false],
+      ['RDP_CERTIFICATE_REJECTED', 'Remote certificate was rejected', false],
+      ['RDP_CONNECT_TIMEOUT', 'Remote connection deadline exceeded', true],
+      ['RDP_CONNECT_CANCELLED', 'Remote connection was cancelled', true],
+      ['RDP_PROTOCOL_ERROR', 'Remote protocol operation failed', false],
       [
         'RDP_SERVER_TIMEOUT',
         'Remote server ended the session on timeout',
