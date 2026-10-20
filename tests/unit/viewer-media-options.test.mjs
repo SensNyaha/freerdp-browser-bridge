@@ -8,6 +8,7 @@ test('compatibility viewer selects exactly 200 ms output without microphone capt
     ['--audio-opus-compat-test', 'opus', false],
     ['--audio-opus-compat-manual', 'opus', true],
     ['--audio-opus-compat-listen', 'opus', true],
+    ['--audio-opus-compat-tone-listen', 'opus', true],
     ['--audio-compat-recovery-test', 'pcm', false],
     ['--audio-opus-compat-recovery-test', 'opus', false],
   ]) {
@@ -30,6 +31,18 @@ test('compatibility viewer selects exactly 200 ms output without microphone capt
   }
   assert.equal(
     viewerMediaOptions('--audio-opus-test').audioRecoveryTest,
+    undefined,
+  );
+  assert.equal(
+    viewerMediaOptions('--audio-opus-compat-tone-listen').tonePreview,
+    true,
+  );
+  assert.equal(
+    viewerMediaOptions('--audio-opus-compat-tone-listen').listenPreview,
+    true,
+  );
+  assert.equal(
+    viewerMediaOptions('--audio-opus-compat-listen').tonePreview,
     undefined,
   );
 });

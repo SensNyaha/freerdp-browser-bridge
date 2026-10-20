@@ -112,3 +112,15 @@ configuration/data, fails before detach and joins cleanup. Which Windows audio
 endpoint/session owns the tone, and the current negotiation cause, remain
 unverified. No further host manipulation is attempted.
 [Continuous-tone repeat](ITERATION_363.md).
+
+The user then authorized an output-only visible Bridge preview with the agent
+starting the source through that connection. The fixed 45-second in-memory
+Windows tone mode receives actual RDPSND formats/Training/Wave, decodes 2,369
+Opus packets and renders 2,014,016 Worklet frames. The user confirms the tone
+is audible, but interrupted by short Morse-like pauses. Joined local cleanup,
+empty runtime and released listener pass.
+Frequent source epochs/configurations, buffering silence and underflows remain;
+this short audible slice does not accept uninterrupted quality, recovery,
+microphone, LAN latency, resource or soak gates. The previous waiting runs are
+retained; their precise cause is not established by this successful repeat.
+[Current fixed-source observation](ITERATION_367.md).

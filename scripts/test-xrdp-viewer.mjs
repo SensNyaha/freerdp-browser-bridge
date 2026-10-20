@@ -15,6 +15,7 @@ import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
 import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
+import { dispatchWindowsLabTone } from './windows-lab-tone.mjs';
 import {
   ViewerSoak,
   soakDurationMs,
@@ -35,6 +36,7 @@ const {
   audioOutput,
   audioOutputBufferMs,
   listenPreview,
+  tonePreview,
   audioRecoveryTest,
   manual,
 } = viewerMediaOptions(process.argv[4]);
@@ -71,6 +73,11 @@ if (
 const readJson = async (path) =>
   JSON.parse((await readFile(resolve(path), 'utf8')).replace(/^\uFEFF/, ''));
 const lab = await readJson('.local-tests/xrdp-lab.json');
+if (
+  tonePreview &&
+  (lab.host !== '192.168.21.149' || (lab.port ?? 3389) !== 3389)
+)
+  throw new Error('LAB_TONE_TARGET_REFUSED');
 const credentials = await readJson('.local-tests/xrdp-lab.secrets.json');
 const origin = 'http://127.0.0.1:47999';
 const bearer = randomBytes(32).toString('base64url');
@@ -450,6 +457,21 @@ try {
         'Микрофон включается только отдельной кнопкой после готовности удалённого канала.',
       );
     if (listenPreview) {
+      if (tonePreview) {
+        phase = 'tone-source-input';
+        await dispatchWindowsLabTone(deliverInput, lab);
+        console.log(
+          JSON.stringify({
+            type: 'lab.browser.tone-input',
+            v: 1,
+            sourceCommandDispatched: true,
+            sourceDurationSeconds: 45,
+            sourceReadbackVerified: false,
+            microphoneCaptured: false,
+          }),
+        );
+      }
+      phase = 'audio-preview';
       const timer = new AbortController();
       try {
         await Promise.race([
@@ -468,7 +490,10 @@ try {
           v: 1,
           observation,
           audibleAcceptance: false,
-          remoteAudioGenerated: false,
+          remoteAudioGenerated: tonePreview ? null : false,
+          ...(tonePreview
+            ? { sourceCommandDispatched: true, sourceReadbackVerified: false }
+            : {}),
         }),
       );
     } else await waitForViewerClose(browser, page);

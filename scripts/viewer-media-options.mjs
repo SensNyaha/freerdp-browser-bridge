@@ -1,6 +1,7 @@
 /** Local viewer modes; input and output codec choices are independent. */
 export function viewerMediaOptions(flag) {
-  const listenPreview = flag === '--audio-opus-compat-listen';
+  const tonePreview = flag === '--audio-opus-compat-tone-listen';
+  const listenPreview = flag === '--audio-opus-compat-listen' || tonePreview;
   const audioRecoveryTest = [
     '--audio-compat-recovery-test',
     '--audio-opus-compat-recovery-test',
@@ -11,6 +12,7 @@ export function viewerMediaOptions(flag) {
     '--audio-opus-compat-manual',
     '--audio-opus-compat-test',
     '--audio-opus-compat-listen',
+    '--audio-opus-compat-tone-listen',
     '--audio-compat-recovery-test',
     '--audio-opus-compat-recovery-test',
   ].includes(flag);
@@ -30,6 +32,7 @@ export function viewerMediaOptions(flag) {
   ].includes(flag);
   const audioManual = [
     '--audio-opus-compat-listen',
+    '--audio-opus-compat-tone-listen',
     '--audio-compat-manual',
     '--audio-opus-compat-manual',
     '--audio-manual',
@@ -48,6 +51,7 @@ export function viewerMediaOptions(flag) {
   const audioOutput = [
     '--audio-opus-compat-recovery-test',
     '--audio-opus-compat-listen',
+    '--audio-opus-compat-tone-listen',
     '--audio-opus-compat-manual',
     '--audio-opus-compat-test',
     '--audio-opus-manual',
@@ -68,6 +72,7 @@ export function viewerMediaOptions(flag) {
     audioOutput,
     ...(compatibility ? { audioOutputBufferMs: 200 } : {}),
     ...(listenPreview ? { listenPreview: true } : {}),
+    ...(tonePreview ? { tonePreview: true } : {}),
     ...(audioRecoveryTest ? { audioRecoveryTest: true } : {}),
     manual: flag === '--manual' || audioManual || microphoneManual,
   };

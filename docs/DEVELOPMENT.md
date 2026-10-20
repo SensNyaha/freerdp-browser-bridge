@@ -510,6 +510,20 @@ restart the source in PowerShell inside this active Bridge viewer after
 connection; the user-started tone in a previous `mstsc` connection did not
 establish that route. The native negotiation footer still follows joined close.
 
+For a separately authorized fixed-source Windows test, use
+`--audio-opus-compat-tone-listen` instead. This opt-in is restricted to the
+named Windows lab `192.168.21.149:3389`. Through private RDP input it opens
+Windows PowerShell and types one fixed in-memory quiet 440 Hz PCM8 source,
+with a 45-second sleep and Stop/Dispose/exit in `finally`. It accepts no command
+or source-file argument, creates no WAV file, and captures no microphone.
+The one-minute viewer then collects the same counters and joins normal cleanup.
+Do not connect with `mstsc` concurrently; it can replace the Bridge connection.
+`lab.browser.tone-input` reports command dispatch, not remote execution or
+process-readback proof. In this mode `remoteAudioGenerated: null` means that
+the helper cannot independently verify source execution; actual packet/playback
+counters and the operator's listening report provide separate evidence.
+[Named audible result and retained quality gaps](ITERATION_367.md).
+
 The recovery modes require real active output before and after browser detach/
 reattach, and fail for an idle source. Opus also requires an observed native
 reset result and a fresh epoch. Leave audio playing on the authorized lab; the

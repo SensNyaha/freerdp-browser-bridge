@@ -1062,8 +1062,18 @@ identifying the current cause. [Helper evidence](docs/ITERATION_364.md).
 The user confirms the tone was started through `mstsc`. The bounded visible
 listening preview now reports one fresh scalar Worklet observation and final
 native negotiation counters, preparing a source restart inside the active
-Bridge viewer. Actual execution of that prepared scenario remains open.
+Bridge viewer. The subsequent explicitly authorized fixed-source preview below
+now verifies a short audible output slice; the earlier idle-source results remain.
 [Preview evidence](docs/ITERATION_365.md).
+
+- [x] DONE for named Windows lab / Edge audible Opus tone preview — The user
+  authorizes a fixed in-memory 45-second tone launched through the active Bridge
+  connection and confirms hearing it with short Morse-like interruptions.
+  Actual RDPSND negotiation, 2,369 decoded
+  packets, 2,014,016 Worklet played frames, 1080p H.264 and joined empty-runtime
+  cleanup pass. Frequent epochs/configurations, buffering silence and underflows
+  remain; continuous quality, recovery, microphone, LAN latency and sustained
+  resource/platform acceptance stay open. [Evidence](docs/ITERATION_367.md).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,
