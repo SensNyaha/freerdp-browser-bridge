@@ -38,6 +38,25 @@ test('remote RDP terminal failures expose fixed public status and retryability',
   }
 });
 
+test('fake-backend manager preserves a recognized remote terminal code in its failed snapshot', async () => {
+  const factory = fakeFactory();
+  await withManager(factory, async (manager) => {
+    const created = manager.create(config(), a, '127.0.0.1');
+    await eventually(
+      () => manager.get(created.sessionId, a).state === 'connected',
+    );
+    factory.workers[0].emit('failure', 'RDP_SESSION_REPLACED');
+    await eventually(
+      () => manager.get(created.sessionId, a).state === 'failed',
+    );
+    assert.deepEqual(manager.get(created.sessionId, a).error, {
+      code: 'RDP_SESSION_REPLACED',
+      message: 'Remote session was replaced by another connection',
+      retryable: true,
+    });
+  });
+});
+
 test('control input is serialized, stale queued commands are discarded and reset precedes a new controller', async () => {
   const factory = fakeFactory();
   await withManager(factory, async (manager) => {
