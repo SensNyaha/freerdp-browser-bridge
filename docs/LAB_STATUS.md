@@ -133,3 +133,11 @@ the individual stalls' cause remains unverified. The user reports much better
 sound with a few small interruptions. All local owners retire, runtime is empty
 and the listener is released. No production/audio-policy change was made
 between these observations. [Detailed repeat](ITERATION_370.md).
+
+The next explicitly authorized preview selects the corrected linked Debug
+worker by its verified receipt. H.264 renders 528 frames at 1080p, but audio
+remains waiting with no Formats, Training, Waves, decoded packets or played
+frames. The fixed tone command is dispatched; its execution is not read back.
+Joined empty-runtime cleanup passes. This is not an active-stream comparison
+or actual acceptance of the deadline correction; the source/negotiation cause
+and quality gates remain open. [Debug preview](ITERATION_373.md).

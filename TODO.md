@@ -52,6 +52,13 @@ reports much better sound with a few small interruptions. Native scheduling,
 callback and graphics stalls remain to be distinguished; no production fix or
 uninterrupted-quality pass is claimed. [Repeat evidence](docs/ITERATION_370.md).
 
+The separately authorized corrected Debug preview renders 528 H.264 1080p
+frames but receives no RDPSND Formats or audio packets. Fixed-tone input was
+dispatched; source execution is unverified. Joined cleanup passes. This run
+does not accept the scheduling correction's actual playback or quality;
+negotiation/source and remaining Stage 6 gates stay open.
+[Debug observation](docs/ITERATION_373.md).
+
 ## Implementation status — 2026-10-18
 
 The user restored access and confirms the target is the Windows RDP lab;
