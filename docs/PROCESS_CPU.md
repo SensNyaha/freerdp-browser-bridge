@@ -121,6 +121,24 @@ They are independent maxima and cannot be summed/subtracted into a per-query
 timeline. They do not identify an OS/driver cause or change enforcement.
 [Collection and observed capacity profile](ITERATION_375.md).
 
+Admitted owners now take successive invocation turns: after the preceding
+task returns its promise, the next invocation crosses a `setImmediate`
+boundary. This prevents a burst of sixteen synchronous launch/setup calls
+from occupying one microtask checkpoint. Only invocation is sequenced;
+already launched helpers continue concurrently. The same sixteen permits
+cover invocation staging through joined helper close, and at most sixteen
+owners can await the invocation chain. No sample cache, additional helper,
+polling interval, recurring idle timer or larger queue is introduced.
+
+The original absolute admission bound is checked again immediately before
+invocation, including staging time. An expired or cancelled staged owner
+starts no helper, releases its turn/permit and preserves following work.
+`maxAdmissionMs` includes this staging; invocation/task maxima retain their
+existing boundaries. Two-second helper execution and three-second worker
+query deadlines stay unchanged. This improves event-loop opportunities;
+it does not establish a hard OS close bound or adequate capacity headroom.
+[Controlled and actual Windows observations](ITERATION_376.md).
+
 The Windows helper also accepts `--process-resources <pid>`. This additive
 private command queries working set and cumulative CPU through one limited
 process handle, closes it before output and returns exactly

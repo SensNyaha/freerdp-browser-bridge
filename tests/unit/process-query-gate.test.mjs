@@ -11,6 +11,7 @@ test('process query timing separates synchronous invocation, pending completion 
   assert.equal(gate.snapshot().maxAdmissionMs, 0);
   assert.equal(gate.snapshot().maxInvokeMs, 0);
   let finish;
+  const begun = Promise.withResolvers();
   const value = { private: 'synthetic-task-result' };
   const active = gate.run(undefined, () => {
     const until = performance.now() + 12;
@@ -19,9 +20,10 @@ test('process query timing separates synchronous invocation, pending completion 
     }
     return new Promise((resolve) => {
       finish = () => resolve(value);
+      begun.resolve();
     });
   });
-  await Promise.resolve();
+  await begun.promise;
   const invoked = gate.snapshot();
   assert.ok(invoked.maxInvokeMs >= 12);
   assert.equal(invoked.maxTaskMs, 0);
@@ -76,14 +78,16 @@ test('process query timing records synchronous failures and preserves cancellati
 test('process query timing counts expired admission without invoking queued work', async () => {
   const gate = new ProcessQueryGate(1, 1, 20);
   let finish;
+  const begun = Promise.withResolvers();
   const active = gate.run(
     undefined,
     () =>
       new Promise((resolve) => {
         finish = resolve;
+        begun.resolve();
       }),
   );
-  await Promise.resolve();
+  await begun.promise;
   const invoked = gate.snapshot().maxInvokeMs;
   try {
     await assert.rejects(
@@ -107,13 +111,16 @@ test('process query admission bounds concurrency and refuses overflow before inv
   const gate = new ProcessQueryGate(1, 1, 1000);
   let finish,
     starts = 0;
+  const begun = Promise.withResolvers();
   const active = gate.run(undefined, async () => {
     ++starts;
     await new Promise((done) => {
       finish = done;
+      begun.resolve();
     });
     return 1;
   });
+  await begun.promise;
   const waiting = gate.run(undefined, async () => {
     ++starts;
     return 2;
@@ -134,13 +141,16 @@ test('process query queued cancellation removes its record and never forwards th
   const gate = new ProcessQueryGate(1, 1, 1000);
   let finish,
     cancelledStarted = false;
+  const begun = Promise.withResolvers();
   const active = gate.run(
     undefined,
     () =>
       new Promise((done) => {
         finish = done;
+        begun.resolve();
       }),
   );
+  await begun.promise;
   const abort = new AbortController();
   const waiting = gate.run(abort.signal, async () => {
     cancelledStarted = true;
@@ -163,13 +173,16 @@ test('process query finite admission deadline removes an expired task and permit
   const gate = new ProcessQueryGate(1, 1, 25);
   let finish,
     expiredStarted = false;
+  const begun = Promise.withResolvers();
   const active = gate.run(
     undefined,
     () =>
       new Promise((done) => {
         finish = done;
+        begun.resolve();
       }),
   );
+  await begun.promise;
   await assert.rejects(
     gate.run(undefined, async () => {
       expiredStarted = true;
@@ -214,20 +227,22 @@ test('process query never starts an expired waiter when event-loop timers are de
   const gate = new ProcessQueryGate(1, 1, 20);
   let finish,
     started = false;
+  const begun = Promise.withResolvers();
   const active = gate.run(
     undefined,
     () =>
       new Promise((done) => {
         finish = done;
+        begun.resolve();
       }),
   );
+  await begun.promise;
   const waiting = gate.run(undefined, async () => {
     started = true;
   });
   const rejected = assert.rejects(waiting, {
     message: 'PROCESS_QUERY_UNAVAILABLE',
   });
-  await Promise.resolve();
   const until = performance.now() + 30;
   while (performance.now() < until) {
     /* Hold this turn past the admission deadline. */

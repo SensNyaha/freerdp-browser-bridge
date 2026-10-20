@@ -169,3 +169,15 @@ during retirement. The preceding active resource-unavailable failures remain
 retained. This instrumentation does not establish a throughput correction,
 connected performance, OS cause or adequate resource/soak headroom.
 [Exact profile](docs/ITERATION_375.md).
+
+A controlled sixteen-task Node regression now proves an observer can run
+between successive invocations, while sixteen incomplete tasks can remain
+concurrent. The former microtask cohort fails that observer check; staged
+invocation across immediate turns passes it without increasing caps or
+deadlines. An unchanged Windows capacity control subsequently reports
+356 ms maximum event-loop delay and 623 ms complete-task maximum, with no
+reported worker failures and joined empty owners. Maximum query time is still
+2,949 ms against the existing 3,000 ms bound, so robust headroom is unproven.
+The run ends after sample-count conditions rather than fixed duration; its
+313 paired queries versus earlier runs are not a throughput comparison.
+[Scheduling control and limits](docs/ITERATION_376.md).

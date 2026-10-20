@@ -16,6 +16,8 @@ export class ProcessQueryGate {
   private maxTaskMs = 0;
   private maxAdmissionMs = 0;
   private maxInvokeMs = 0;
+  // At most `maximum` permit owners can await this invocation chain.
+  private invocationTail: Promise<void> = Promise.resolve();
 
   snapshot() {
     return {
@@ -55,15 +57,23 @@ export class ProcessQueryGate {
     const requested = performance.now();
     try {
       await this.acquire(signal);
-    } finally {
-      this.maxAdmissionMs = Math.max(
-        this.maxAdmissionMs,
-        performance.now() - requested,
-      );
+    } catch (error) {
+      this.observeAdmission(requested);
+      throw error;
     }
     let started: number | undefined;
+    let releaseTurn: (() => void) | undefined;
     try {
+      try {
+        releaseTurn = await this.invocationTurn();
+      } finally {
+        this.observeAdmission(requested);
+      }
       if (signal?.aborted) throw new Error('PROCESS_QUERY_CANCELLED');
+      if (performance.now() >= requested + this.admissionMs) {
+        this.expired = Math.min(Number.MAX_SAFE_INTEGER, this.expired + 1);
+        throw new Error('PROCESS_QUERY_UNAVAILABLE');
+      }
       started = performance.now();
       let completion: Promise<T>;
       try {
@@ -74,6 +84,8 @@ export class ProcessQueryGate {
           this.maxInvokeMs,
           performance.now() - started,
         );
+        releaseTurn();
+        releaseTurn = undefined;
       }
       return await completion;
     } catch (error) {
@@ -84,10 +96,35 @@ export class ProcessQueryGate {
         );
       throw error;
     } finally {
+      releaseTurn?.();
       if (started !== undefined)
         this.maxTaskMs = Math.max(this.maxTaskMs, performance.now() - started);
       --this.active;
       this.drain();
+    }
+  }
+
+  private observeAdmission(requested: number): void {
+    this.maxAdmissionMs = Math.max(
+      this.maxAdmissionMs,
+      performance.now() - requested,
+    );
+  }
+
+  private async invocationTurn(): Promise<() => void> {
+    const preceding = this.invocationTail;
+    let release!: () => void;
+    this.invocationTail = new Promise<void>((done) => {
+      release = done;
+    });
+    try {
+      await preceding;
+      // Start at most one synchronous helper launch per event-loop turn.
+      await new Promise<void>((done) => setImmediate(done));
+      return release;
+    } catch (error) {
+      release();
+      throw error;
     }
   }
 

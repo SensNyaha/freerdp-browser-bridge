@@ -1680,6 +1680,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
   The full repeat still fails this load case (821 passed / 51 skips / one
   failure): twelve active resource-deadline failures, up to 149 ms synchronous
   invocation and 1,466 ms admission/continuation. No load correction is claimed.
+  Invocation staging now yields between successive launches while preserving
+  sixteen concurrent permit owners, cancellation and the original absolute
+  admission/query deadlines. Controlled observer/expiry checks and the first
+  unchanged Windows capacity control pass; the 2,949 ms maximum query remains
+  near its 3,000 ms bound. Wider load/retirement stability remains open.
+  [Scheduling evidence](docs/ITERATION_376.md).
+  Full check still fails that resource sampling case: 825 passed / 51 skips /
+  one failure, two active query expiries at up to 3,057 ms despite event-loop
+  delay reduced to 372 ms. Helper launch volume/query headroom remains open.
   [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md); `6752257`.
   A subsequent short Windows actual RDP 1080p healthy-policy smoke passes
   26 connected samples below the explicit 256 MiB cap, heartbeat/JPEG and joined
