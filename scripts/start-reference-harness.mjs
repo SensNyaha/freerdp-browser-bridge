@@ -7,20 +7,24 @@ import { chromium } from 'playwright-core';
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { waitForViewerClose } from './viewer-window.mjs';
+import { parseReferenceHarnessOptions } from './reference-harness-options.mjs';
+import { loadWindowsNativeProfile } from './resource-lab-profile.mjs';
 
 // Local Windows example: RDP credentials are entered only in the visible form.
 // Hosting authentication reaches this one browser page through its private driver.
-const smoke = process.argv[2] === '--smoke';
-if (
-  process.platform !== 'win32' ||
-  (smoke ? process.argv.length !== 3 : process.argv.length !== 2)
-)
-  throw new Error('Run the local Windows reference harness without arguments');
+const options = parseReferenceHarnessOptions(process.argv.slice(2));
+if (process.platform !== 'win32')
+  throw new Error('Reference harness requires Windows');
+const smoke = options.smoke;
+const selectedProfile = options.receipt
+  ? await loadWindowsNativeProfile(options.receipt, resolve('.'))
+  : undefined;
 const origin = 'http://127.0.0.1:47997';
 const bearer = randomBytes(32).toString('base64url');
 const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-manual-reference-'));
 const worker = {
-  workerPath: resolve('build/bundled/rdp-worker.exe'),
+  workerPath:
+    selectedProfile?.workerPath ?? resolve('build/bundled/rdp-worker.exe'),
   runtimeRoot,
 };
 let server, browser, page;
@@ -94,6 +98,7 @@ try {
       console.log(
         JSON.stringify({
           referenceForm: true,
+          sourceWorkerSelected: selectedProfile !== undefined,
           rdpSessionCreated: false,
           cleanup: true,
         }),

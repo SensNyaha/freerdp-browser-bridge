@@ -19,6 +19,20 @@ Or use the project-local Node 24:
 .\.tools\node-v24.21.0-win-x64\node.exe scripts/start-reference-harness.mjs
 ```
 
+The ordinary command keeps using the bundled worker. A local Windows linked
+source consumer can be selected explicitly with its receipt:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe scripts/start-reference-harness.mjs --native-receipt build/native-clean-ID/receipt.json
+```
+
+The harness accepts only a `build/native-clean-*` receipt for a linked,
+unchanged Windows source build against the pinned FreeRDP commit, and verifies
+both the worker and private runtime-helper hashes before opening Edge. Add
+`--smoke` before or after the receipt option to verify headless form startup and
+cleanup without creating an RDP session. RDP credentials remain typed into the
+visible form; the receipt path does not select or persist a profile.
+
 The helper opens visible Edge with an empty form and a loopback API at
 `127.0.0.1:47997`. Enter RDP host/IP, port, username/password and optional domain;
 choose settings and click Connect. Window close/Ctrl+C joins server and worker

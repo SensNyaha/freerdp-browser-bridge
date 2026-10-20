@@ -501,6 +501,16 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for manual WEB harness source-worker selection — The Windows
+  reference harness optionally selects a linked source build by verified
+  receipt and worker/helper hashes; no option retains the bundled default.
+  Unit/receipt coverage, full Windows `pnpm check` (742 passed / 101
+  platform/profile skips) and source-selected headless Edge startup/cleanup
+  pass without creating an RDP session. A first full run retained an
+  intermittent resource-capacity deadline failure; the standalone control and
+  full repeat pass, so broader resource/load acceptance stays open.
+  [Evidence](docs/ITERATION_330.md).
+
 - [x] DONE for symmetric Windows SDK/consumer CRT admission and current isolated
   Release consumer — Release rejects a Debug SDK before preparing output;
   historical Release receipts retain compatibility with a matching actual cache.

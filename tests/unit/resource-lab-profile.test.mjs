@@ -7,6 +7,7 @@ import { resolve, relative, join } from 'node:path';
 import {
   resourceLabArguments,
   loadResourceLabProfile,
+  loadWindowsNativeProfile,
   resourceLabRequest,
 } from '../../scripts/resource-lab-profile.mjs';
 
@@ -116,9 +117,18 @@ test('resource lab receipt binds linked source profile and both worker/helper by
       project,
       'win32',
     );
+    const selected = await loadWindowsNativeProfile(
+      inputPath,
+      project,
+      'win32',
+    );
     assert.equal(value.workerPath, join(root, 'out/rdp-worker.exe'));
+    assert.equal(selected.receipt, inputPath);
+    assert.equal(selected.workerPath, value.workerPath);
     assert.equal(value.workerHash, sha(worker));
+    assert.equal(selected.workerHash, value.workerHash);
     assert.equal(value.helperHash, sha(helper));
+    assert.equal(selected.helperHash, value.helperHash);
     assert.equal(value.buildType, 'Release');
     await write({ ...body, buildProfile: { buildType: 'Debug' } });
     assert.equal(
@@ -158,6 +168,10 @@ test('resource lab receipt binds linked source profile and both worker/helper by
     await writeFile(join(root, 'out/rdp-worker.exe'), 'changed');
     await assert.rejects(
       loadResourceLabProfile([fingerprint, inputPath], project, 'win32'),
+      { message: 'LAB_NATIVE_PROFILE_INVALID' },
+    );
+    await assert.rejects(
+      loadWindowsNativeProfile(inputPath, project, 'win32'),
       { message: 'LAB_NATIVE_PROFILE_INVALID' },
     );
     for (const text of ['private-receipt-content', 'x'.repeat(65537)]) {

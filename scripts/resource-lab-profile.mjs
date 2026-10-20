@@ -47,6 +47,15 @@ export function resourceLabArguments(args) {
   return { fingerprint: args[0], receipt: args[1] };
 }
 
+export function nativeProfileReceiptArgument(receipt) {
+  if (
+    typeof receipt !== 'string' ||
+    !/^build[\\/]native-clean-[A-Za-z0-9_-]+[\\/]receipt\.json$/.test(receipt)
+  )
+    throw new Error('Use an isolated native receipt');
+  return receipt;
+}
+
 async function artifactHash(path) {
   const stat = await lstat(path);
   if (
@@ -66,15 +75,15 @@ async function artifactHash(path) {
   return hash.digest('hex');
 }
 
-export async function loadResourceLabProfile(
-  args,
+export async function loadWindowsNativeProfile(
+  receiptArgument,
   projectRoot,
   platform = process.platform,
 ) {
-  const options = resourceLabArguments(args);
+  nativeProfileReceiptArgument(receiptArgument);
   if (platform !== 'win32') throw new Error('LAB_NATIVE_PROFILE_UNSUPPORTED');
   try {
-    const path = resolve(projectRoot, options.receipt);
+    const path = resolve(projectRoot, receiptArgument);
     const stat = await lstat(path);
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536)
       throw invalid();
@@ -104,7 +113,7 @@ export async function loadResourceLabProfile(
         throw invalid();
     }
     return {
-      fingerprint: options.fingerprint,
+      receipt: receiptArgument,
       workerPath: resolve(root, 'out/rdp-worker.exe'),
       buildType: receipt.buildProfile.buildType,
       sourceHash: receipt.sourceHash,
@@ -114,4 +123,16 @@ export async function loadResourceLabProfile(
   } catch {
     throw invalid();
   }
+}
+
+export async function loadResourceLabProfile(
+  args,
+  projectRoot,
+  platform = process.platform,
+) {
+  const options = resourceLabArguments(args);
+  return {
+    ...(await loadWindowsNativeProfile(options.receipt, projectRoot, platform)),
+    fingerprint: options.fingerprint,
+  };
 }
