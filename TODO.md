@@ -918,14 +918,15 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [~] IN PROGRESS — Supplied credentials/auth callback are implemented; interactive replacement prompts remain TODO.
 - [~] IN PROGRESS — Strict chain/name validation and one-session certificate prompts pass native/HTTP/WS tests. Persistent trust/TOFU and changed-certificate history remain TODO.
 - [~] IN PROGRESS — Load addins and connect: historical XRDP activation/heartbeat
-  remains verified. Restored Windows RDP endpoint previously passed activation,
-  strict certificate refusal, approved session-only connection, graphics/resize
-  and cleanup. The latest access retry reached a new hostname-mismatched
-  fingerprint. Strict refusal passed; after explicit one-session approval the
-  native helper connects and captures a 1024×768 desktop with heartbeat and
-  joined cleanup. Broader graphics/input/audio/application/device and Windows
-  profiles remain open. [Current lab scope](docs/LAB_STATUS.md),
-  [activation](docs/ITERATION_346.md).
+  remains verified. The restored Windows RDP endpoint passes strict certificate
+  refusal and a separately approved session-only connection. The private native
+  helper and public Edge H.264/JPEG paths render 1920×1080, resize to 1280×720,
+  restore the original display and join cleanup. These named endpoint/profile
+  results do not accept other Windows server profiles, interactive input,
+  application, audio or device behavior. [Current lab scope](docs/LAB_STATUS.md),
+  [strict refusal](docs/ITERATION_344.md), [activation](docs/ITERATION_346.md),
+  [native resize](docs/ITERATION_350.md), [Edge H.264](docs/ITERATION_352.md),
+  [Edge JPEG](docs/ITERATION_353.md).
 - [x] DONE for selected remote disconnect reasons — Pinned FreeRDP ERRINFO idle/logon timeout and logoff codes map to fixed `RDP_SERVER_TIMEOUT` / `RDP_SERVER_LOGOFF` failures. Unknown codes and all non-disconnect errors preserve their existing classification; no private wire change. Other remote reasons and actual server-profile coverage remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_332.md).
 - [x] DONE for selected connection authentication failures — Pinned FreeRDP CONNECT credential/account refusal codes map to the existing fixed `RDP_AUTHENTICATION_FAILED`; transport/TLS and unknown codes remain `RDP_CONNECT_FAILED`. No IPC change or diagnostic numeric disclosure. Other auth methods/server profiles remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_333.md).
 - [x] DONE for selected server ERRINFO refusals — Server-denied and insufficient-privilege reasons map to fixed `RDP_SERVER_REJECTED`; fresh-credentials-required maps to authentication failure. Unknown reasons stay generic. Broader server error history remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_334.md).
