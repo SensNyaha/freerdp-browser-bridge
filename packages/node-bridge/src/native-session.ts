@@ -71,6 +71,10 @@ export function classifyNativeConnectionFailure(
     }
   }
   if (event.error !== 'RDP_DISCONNECTED') return event.error;
+  if (event.nativeError === 0x00010409) {
+    // ERRINFO_CB_CONNECTION_CANCELLED
+    return 'RDP_CONNECT_CANCELLED';
+  }
   switch (event.nativeError) {
     // MAKE_FREERDP_ERROR(ERRINFO, code): ERRINFO class is 1 in pinned 3.32.1.
     case 0x00010001: // ERRINFO_RPC_INITIATED_DISCONNECT

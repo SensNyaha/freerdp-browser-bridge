@@ -28,6 +28,10 @@ test('native connection failure maps documented remote ERRINFO values without re
     'RDP_SERVER_TIMEOUT',
   );
   assert.equal(
+    classifyNativeConnectionFailure(event(0x00010409)),
+    'RDP_CONNECT_CANCELLED',
+  );
+  assert.equal(
     classifyNativeConnectionFailure(event(0x00010007)),
     'RDP_SERVER_REJECTED',
   );
@@ -145,6 +149,7 @@ test('native session adapter publishes classified fixed failures from terminal s
       [0x00010003, 'RDP_DISCONNECTED'],
       [0x00010002, 'RDP_DISCONNECTED'],
       [0x00010411, 'RDP_DISCONNECTED'],
+      [0x00010409, 'RDP_DISCONNECTED'],
       [0x00010001, 'RDP_DISCONNECTED'],
       [0x00010007, 'RDP_DISCONNECTED'],
       [0x00010400, 'RDP_DISCONNECTED'],
@@ -163,6 +168,7 @@ test('native session adapter publishes classified fixed failures from terminal s
       'RDP_SERVER_TIMEOUT',
       'RDP_SERVER_LOGOFF',
       'RDP_SERVER_TIMEOUT',
+      'RDP_CONNECT_CANCELLED',
       'RDP_SERVER_DISCONNECT',
       'RDP_SERVER_REJECTED',
       'RDP_SERVER_REJECTED',

@@ -96,6 +96,10 @@ individually verified.
 failure, matching its pinned description that the broker could not find the
 target endpoint. Other broker destination/pool errors remain generic.
 
+The pinned `ERRINFO_CB_CONNECTION_CANCELLED` maps to `RDP_CONNECT_CANCELLED`,
+reusing the fixed connection-cancellation status. Other broker processing
+failures remain generic until individually classified.
+
 For a failed connection still classified `RDP_CONNECT_FAILED`, the adapter also
 recognizes the pinned FreeRDP 3.32.1 CONNECT codes for insufficient privileges,
 expired/required-change passwords, revoked accounts, disabled/expired/locked
