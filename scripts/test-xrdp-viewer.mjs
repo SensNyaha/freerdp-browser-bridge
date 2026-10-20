@@ -20,6 +20,7 @@ import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
 import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
 import { dispatchWindowsLabTone } from './windows-lab-tone.mjs';
+import { AudioResetDiagnostics } from './audio-reset-diagnostics.mjs';
 import {
   ViewerSoak,
   soakDurationMs,
@@ -113,6 +114,10 @@ class DiagnosticSession extends NativeSessionWorker {
   }
 }
 const nativeWorker = new DiagnosticSession(options);
+const audioResets = new AudioResetDiagnostics();
+nativeWorker.resetAudio = audioResets.wrap(
+  nativeWorker.resetAudio.bind(nativeWorker),
+);
 let nativeState = 'created';
 let nativeFailure;
 let clipboardSourceEvents = 0;
@@ -1015,6 +1020,7 @@ try {
         negotiation: audioNegotiation.snapshot() ?? null,
         nativeCounters: audioSummary.snapshot() ?? null,
         nativeCauses: audioCauses.snapshot() ?? null,
+        consumerRecovery: audioResets.snapshot(),
         runtimeEmpty: leftovers.length === 0,
       }),
     );

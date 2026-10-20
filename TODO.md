@@ -19,7 +19,7 @@ Current stage acceptance:
 | 3 — connection | IN PROGRESS | Remaining Windows application/platform profiles, settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, broader Windows server profiles and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
-| 6 — audio | IN PROGRESS | Real audible output/recording, ready-source recovery and measured LAN queue target |
+| 6 — audio | IN PROGRESS | Uninterrupted audible output/recording, broader ready-source recovery and measured LAN queue target; named short Windows tone is audible with interruptions |
 | 7 — clipboard/drives | IN PROGRESS | Named Windows Notepad Unicode roundtrip and prior offer/revoke/replay pass; browser/host clipboard, wider quotas/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Remaining Gateway/proxy/reconnect/channel settings and broader IP/appearance/platform integration |
@@ -32,6 +32,20 @@ scale/layout profiles are excluded from current required work by explicit user
 instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/adr/ADR-011-single-display-100-percent.md).
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
+
+## Implementation status — 2026-10-20
+
+One explicitly authorized Windows lab / Edge Opus/200 ms preview now passes
+actual format/Training/Wave negotiation, packet decoding and Worklet rendering,
+and the user confirms hearing the fixed remote tone. They also report short
+Morse-like interruptions. Frequent source epochs/configurations, buffering
+silence and underflows remain; Stage 6 stays IN PROGRESS.
+[Audible slice and exact counters](docs/ITERATION_367.md).
+Local helpers now preserve numeric native loss/cause receipts and separately
+count browser-consumer reset calls/results, preparing the authorized repeat.
+No specific cause or quality correction is accepted yet.
+[Native collection](docs/ITERATION_368.md),
+[consumer accounting](docs/ITERATION_369.md).
 
 ## Implementation status — 2026-10-18
 
@@ -1079,6 +1093,9 @@ now verifies a short audible output slice; the earlier idle-source results remai
   chunks, with exact uint64/refusal checks. These diagnostics prepare further
   continuity work; they do not identify the previous run's cause or accept
   uninterrupted quality. [Collector evidence](docs/ITERATION_368.md).
+  The browser footer also counts Node consumer reset calls/results without
+  altering retries or queue policy. This keeps native lifetime resets separate
+  from requested consumer recovery. [Counter evidence](docs/ITERATION_369.md).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,

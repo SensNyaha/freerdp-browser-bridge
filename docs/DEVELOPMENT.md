@@ -490,6 +490,11 @@ formats and Close). Both are exact fixed uint64 decimal-string projections,
 or `null` if absent. The private helper preserves the same field names with
 omitted absent receipts. These are lifetime counters, not a causal diagnosis
 of a specific audible pause. [Collection checks](ITERATION_368.md).
+`consumerRecovery` separately counts calls and fixed results of the existing
+Node reset API: requests, scheduled/stale/busy/unavailable, unexpected results
+and failures. It never includes epochs or error text. A request can be pending
+or refused; it is not a successful source reset or an audible interruption.
+[Wrapper checks](ITERATION_369.md).
 Recovery runs require actual ready-source packet/playback evidence before
 detachment; a waiting source fails in phase `audio-source-ready`, before a
 desktop snapshot is taken. The host source must run in the redirected Windows
