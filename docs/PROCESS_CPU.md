@@ -156,3 +156,10 @@ shared monotonic bracket, including admission. Results are never reused after
 completion. Existing public scalar reader signatures are unchanged.
 [Implementation, failed controls and scoped capacity evidence](ITERATION_310.md).
 Release helper adoption remains pending.
+
+New source builds additionally prepare a bounded sixteen-PID resource command
+and strict positional receipt codec. Current samplers still use the scalar
+command; cross-worker coalescing, per-member cancellation/shared retirement,
+original admission limits and native-support gating require separate adoption.
+[Prepared command and required owner contract](PROCESS_RESOURCE_BATCH.md),
+[component evidence](ITERATION_377.md).

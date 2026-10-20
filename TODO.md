@@ -1689,6 +1689,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Full check still fails that resource sampling case: 825 passed / 51 skips /
   one failure, two active query expiries at up to 3,057 ms despite event-loop
   delay reduced to 372 ms. Helper launch volume/query headroom remains open.
+  A prepared Windows sixteen-PID helper command and strict bounded positional
+  codec now pass new linked Debug CTest 34/34 and actual helper/codec checks
+  14/14. Current watchdogs remain scalar; automatic coalescing, individual
+  cancellation/shared retirement, shared 16/128 admission and native-support
+  gating remain required before adoption or any load-fix acceptance.
+  [Prepared batch evidence](docs/ITERATION_377.md).
+  The new profile's full check passes 832 / 51 skips and retains one failing
+  scalar-watchdog capacity case, with two active deadline failures. Batch
+  command availability alone is not a throughput/adoption acceptance result.
   [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md); `6752257`.
   A subsequent short Windows actual RDP 1080p healthy-policy smoke passes
   26 connected samples below the explicit 256 MiB cap, heartbeat/JPEG and joined
