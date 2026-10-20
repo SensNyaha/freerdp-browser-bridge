@@ -135,6 +135,18 @@ starts a new anchor but preserves monotonic checks and lifetime counters; an epo
 cannot replay an already emitted timestamp. Sink Open/Close/loss/source reset also
 reset packetization. A fresh source starts at the next real packet boundary.
 
+The RDP owner now bounds its event wait by the active packetizer's read-only
+next deadline, shared by PCM and Opus. Microseconds round upward to milliseconds
+without overflow, preserving any shorter media/input/microphone wait. An overdue
+audio deadline permits a bounded 1 ms retry. Before first samples, after reset/
+Close, during retirement, from foreign/reentrant ownership or after failed/
+blocked publication, no active deadline is exposed; the ordinary bounded poll
+remains. This adds no packet queue, catch-up burst, timer or thread and preserves
+the existing late-discard policy. A controlled coarse-wait model reproduces
+cumulative loss with the former relative 20 ms wait and avoids it with anchored
+waits; actual OS/graphics/callback stalls and audible quality remain separate
+acceptance. [Implementation and scoped evidence](ITERATION_371.md).
+
 Queue `discard` removes up to a bounded frame request, preserves the remaining
 FIFO including wrap, and counts `playback_skipped_frames` separately from consumed,
 overflow-dropped and reset-discarded frames. Packet snapshots count output packets,

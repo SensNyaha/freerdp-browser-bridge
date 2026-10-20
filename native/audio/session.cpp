@@ -51,10 +51,17 @@ PublishStatus AudioSession::pump(std::uint64_t now) noexcept {
     return PublishStatus::invalid;
   busy_ = true;
   const auto result = publish(now);
+  publication_blocked_ = result == PublishStatus::blocked;
   if (result == PublishStatus::failed)
     stats_.publication_failed = true;
   busy_ = false;
   return result;
+}
+std::optional<std::uint64_t> AudioSession::publication_deadline() const noexcept {
+  if (!on_thread() || busy_ || publication_blocked_ || stats_.publication_failed ||
+      stats_.retirement != RetireStatus::active)
+    return {};
+  return source_.publication_deadline();
 }
 bool AudioSession::reset() noexcept {
   if (!on_thread() || busy_ || stats_.retirement != RetireStatus::active ||

@@ -132,3 +132,14 @@ total encode p95 is 33.730–39.882 ms across three runs, inside this section's
 40 ms number for the encoder stage alone. The measurement omits callback,
 queue, IPC/Node forwarding and browser decode/render, so it does not satisfy
 the framebuffer-to-browser latency target. [Exact runs and artifact hashes](docs/ITERATION_331.md).
+
+## 13. Audio publication scheduling control
+
+A native virtual-minute control uses the existing packetizer, 3 ms of owner
+work and waits rounded to a specified 15.625 ms quantum. The former relative
+20 ms polling policy skips 1,248 packet intervals; deadline-anchored polling
+skips zero in the identical model. This is a deterministic scheduling comparison,
+not a measurement of the host OS timer, connected CPU/RSS or end-to-end latency.
+The ordinary/compatibility buffers and late-discard policy remain unchanged.
+Actual native stalls and uninterrupted audio acceptance remain open.
+[Implementation and verification](docs/ITERATION_371.md).

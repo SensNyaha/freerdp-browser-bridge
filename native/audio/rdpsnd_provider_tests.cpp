@@ -1604,6 +1604,57 @@ TEST_CASE("Audio session rejects unknown codec before binding and keeps PCM SDK 
   REQUIRE(owner.retire(0) == RetireStatus::done);
 }
 
+TEST_CASE("Audio publication deadline is shared by PCM Opus and suspended by blocked output") {
+  namespace ipc = bridge::ipc;
+  for (const auto codec : {ipc::OutputAudioCodec::pcm, ipc::OutputAudioCodec::opus}) {
+    Fixture fixture;
+    AudioSession *active = nullptr;
+    bool credit = true;
+    unsigned reentrant_deadlines = 0;
+    AudioSession owner(
+        *fixture.context,
+        [&](auto, auto) {
+          if (active->publication_deadline())
+            ++reentrant_deadlines;
+          return credit;
+        },
+        [] { return true; }, {}, 1000000, codec);
+    active = &owner;
+    REQUIRE_FALSE(owner.publication_deadline());
+    StaticHost host(fixture.context.get());
+    host.load(nullptr, true);
+    host.connect();
+    const auto configuration = formats();
+    host.raw(configuration, static_cast<UINT>(configuration.size()));
+    emit_pcm(host, 100, 1, {0, 128, 255, 127});
+    REQUIRE_FALSE(owner.publication_deadline());
+    REQUIRE(owner.pump(1000) == PublishStatus::sent);
+    REQUIRE(owner.publication_deadline() == 21000);
+    REQUIRE(owner.publication_deadline() == 21000);
+    REQUIRE(owner.stats()->publisher.captured_packets == 1);
+    bool foreign_deadline = true;
+    std::thread foreign([&] { foreign_deadline = owner.publication_deadline().has_value(); });
+    foreign.join();
+    REQUIRE_FALSE(foreign_deadline);
+    credit = false;
+    REQUIRE(owner.pump(21000) == PublishStatus::blocked);
+    REQUIRE_FALSE(owner.publication_deadline());
+    credit = true;
+    REQUIRE(owner.pump(22000) == PublishStatus::sent);
+    REQUIRE(owner.publication_deadline() == 41000);
+    REQUIRE(owner.reset());
+    REQUIRE_FALSE(owner.publication_deadline());
+    REQUIRE(owner.pump(23000) == PublishStatus::sent);
+    REQUIRE_FALSE(owner.publication_deadline());
+    emit_pcm(host, 120, 2, {1, 0, 254, 255});
+    REQUIRE(owner.pump(24000) == PublishStatus::sent);
+    REQUIRE(owner.publication_deadline() == 44000);
+    REQUIRE(reentrant_deadlines == 0);
+    REQUIRE(owner.retire(25000) == RetireStatus::done);
+    REQUIRE_FALSE(owner.publication_deadline());
+  }
+}
+
 TEST_CASE("Audio session reset orders discard waiting and fresh PCM Opus prediction") {
   namespace ipc = bridge::ipc;
   for (const auto codec : {ipc::OutputAudioCodec::pcm, ipc::OutputAudioCodec::opus}) {
@@ -1819,6 +1870,7 @@ TEST_CASE("Audio session reset refuses failed publication without source mutatio
         *fixture.context, [](auto, auto) -> bool { throw std::runtime_error("fixture"); },
         [] { return true; }, {}, 1000000, codec);
     REQUIRE(owner.pump(1000) == PublishStatus::failed);
+    REQUIRE_FALSE(owner.publication_deadline());
     const auto revision = owner.stats()->source.stream_revision;
     REQUIRE_FALSE(owner.reset());
     REQUIRE(owner.stats()->source.stream_revision == revision);

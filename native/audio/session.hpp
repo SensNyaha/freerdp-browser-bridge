@@ -37,6 +37,8 @@ public:
   AudioSession(const AudioSession &) = delete;
   AudioSession &operator=(const AudioSession &) = delete;
   PublishStatus pump(std::uint64_t worker_time_us) noexcept;
+  // Serialized active source only. Blocked output keeps the ordinary bounded poll.
+  std::optional<std::uint64_t> publication_deadline() const noexcept;
   // Schedule a fresh epoch and unsent-output barrier; pump completes publication.
   // RDP owner thread only, before retirement. This is not a receiver acknowledgement.
   bool reset() noexcept;
@@ -55,7 +57,7 @@ private:
   const std::uint64_t retire_window_us_;
   const ipc::OutputAudioCodec codec_;
   std::uint64_t observed_us_ = 0, retire_deadline_us_ = 0;
-  bool observed_ = false, busy_ = false;
+  bool observed_ = false, busy_ = false, publication_blocked_ = false;
   SessionStats stats_;
   bool on_thread() const noexcept;
   bool observe(std::uint64_t) noexcept;

@@ -41,6 +41,33 @@ TEST_CASE("RDPSND compatibility buffer retains a whole 186 ms XRDP callback") {
   REQUIRE(sink.stats()->queue.queued_frames == 0);
 }
 
+TEST_CASE("RDPSND publication deadline follows only its active serialized packetizer") {
+  RdpsndSink sink;
+  auto &device = sink.device();
+  const auto pcm = format();
+  const std::vector<std::uint8_t> input(960 * 4, 1);
+  REQUIRE_FALSE(sink.publication_deadline());
+  REQUIRE(device.Open(&device, &pcm, 0));
+  REQUIRE_FALSE(sink.publication_deadline());
+  REQUIRE(play(device, input) == 20);
+  REQUIRE_FALSE(sink.publication_deadline());
+  REQUIRE(sink.packet(1000).status == PacketStatus::ready);
+  REQUIRE(sink.publication_deadline() == 21000);
+  bool foreign_deadline = true;
+  std::thread foreign([&] { foreign_deadline = sink.publication_deadline().has_value(); });
+  foreign.join();
+  REQUIRE_FALSE(foreign_deadline);
+  REQUIRE(sink.reset_stream());
+  REQUIRE_FALSE(sink.publication_deadline());
+  REQUIRE(play(device, input) == 20);
+  REQUIRE(sink.packet(2000).status == PacketStatus::ready);
+  REQUIRE(sink.publication_deadline() == 22000);
+  device.Close(&device);
+  REQUIRE_FALSE(sink.publication_deadline());
+  REQUIRE(sink.retire());
+  REQUIRE_FALSE(sink.publication_deadline());
+}
+
 TEST_CASE("RDPSND availability separates source samples from open device ownership") {
   RdpsndSink sink;
   auto &device = sink.device();

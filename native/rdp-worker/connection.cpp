@@ -5,6 +5,7 @@
 #include "gdi_dirty.hpp"
 #include "ip_settings.hpp"
 #include "performance_settings.hpp"
+#include "publication_wait.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -1341,6 +1342,9 @@ void Connection::run() noexcept {
               wait_ms = std::min<DWORD>(wait_ms, 20);
           }
         }
+        if (audio_)
+          wait_ms = bridge::audio::publication_wait_ms(audio_time_us(),
+                                                       audio_->publication_deadline(), wait_ms);
         if (microphone_) {
           if (const auto microphone_deadline = microphone_->capture_deadline()) {
             const auto now = audio_time_us();

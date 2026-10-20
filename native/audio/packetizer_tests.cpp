@@ -1,4 +1,5 @@
 #include "packetizer.hpp"
+#include "publication_wait.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
@@ -166,4 +167,69 @@ TEST_CASE("PCM sample-derived packet duration has no cumulative drift over a vir
   REQUIRE(packets.stats().packets == 3000);
   REQUIRE(queue.stats().consumed_frames == 2880000);
   REQUIRE(queue.stats().high_water_frames == 960);
+}
+
+TEST_CASE("PCM publication deadline is observational and retires at stream reset") {
+  PcmQueue queue;
+  PcmPacketizer packets;
+  REQUIRE_FALSE(packets.deadline());
+  REQUIRE(packets.read(queue, 0).status == PacketStatus::idle);
+  REQUIRE_FALSE(packets.deadline());
+  REQUIRE(queue.push(samples(1920)) == QueueStatus::accepted);
+  REQUIRE(packets.read(queue, 1000).status == PacketStatus::ready);
+  REQUIRE(packets.deadline() == 21000);
+  REQUIRE(packets.deadline() == 21000);
+  REQUIRE(packets.stats().packets == 1);
+  REQUIRE(packets.read(queue, 20999).status == PacketStatus::idle);
+  REQUIRE(packets.deadline() == 21000);
+  REQUIRE(packets.read(queue, 20998).status == PacketStatus::invalid);
+  REQUIRE(packets.deadline() == 21000);
+  REQUIRE(packets.read(queue, 21000).status == PacketStatus::ready);
+  REQUIRE(packets.deadline() == 41000);
+  packets.reset();
+  REQUIRE_FALSE(packets.deadline());
+  REQUIRE(packets.stats().packets == 2);
+}
+
+TEST_CASE("Audio publication wait bounds overdue wakeups and rounds without uint64 overflow") {
+  REQUIRE(publication_wait_ms(0, std::nullopt, 20) == 20);
+  REQUIRE(publication_wait_ms(1000, 20000, 0) == 0);
+  REQUIRE(publication_wait_ms(1000, 1000, 20) == 1);
+  REQUIRE(publication_wait_ms(1000, 999, 20) == 1);
+  REQUIRE(publication_wait_ms(1000, 1001, 20) == 1);
+  REQUIRE(publication_wait_ms(1000, 2000, 20) == 1);
+  REQUIRE(publication_wait_ms(1000, 2001, 20) == 2);
+  REQUIRE(publication_wait_ms(1000, 40000, 20) == 20);
+  REQUIRE(publication_wait_ms(1000, 20000, 4) == 4);
+  const auto maximum = (std::numeric_limits<std::uint64_t>::max)();
+  REQUIRE(publication_wait_ms(0, maximum, 20) == 20);
+  REQUIRE(publication_wait_ms(maximum, maximum, 20) == 1);
+}
+
+TEST_CASE("Audio deadline scheduling avoids cumulative relative-poll loss under bounded timer "
+          "quantization") {
+  const auto replay = [](bool relative) {
+    PcmQueue queue;
+    PcmPacketizer packets;
+    REQUIRE(queue.push(samples(960)) == QueueStatus::accepted);
+    REQUIRE(packets.read(queue, 0).status == PacketStatus::ready);
+    std::uint64_t now = 0;
+    // Controlled model: 3 ms owner work and waits rounded to a 15.625 ms quantum.
+    // This is not a measurement of the host's current timer implementation.
+    while (now < 60000000) {
+      now += 3000;
+      const auto wait = relative ? 20U : publication_wait_ms(now, packets.deadline(), 20);
+      const auto requested = static_cast<std::uint64_t>(wait) * 1000;
+      now += ((requested + 15624) / 15625) * 15625;
+      REQUIRE(packets.read(queue, now).status == PacketStatus::ready);
+    }
+    return packets.stats();
+  };
+  const auto relative = replay(true);
+  const auto anchored = replay(false);
+  INFO("relative skipped intervals: " << relative.skipped_intervals);
+  INFO("deadline skipped intervals: " << anchored.skipped_intervals);
+  REQUIRE(relative.skipped_intervals > 0);
+  REQUIRE(anchored.skipped_intervals == 0);
+  REQUIRE(anchored.packets >= 3000);
 }

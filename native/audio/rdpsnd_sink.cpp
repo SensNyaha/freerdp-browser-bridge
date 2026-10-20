@@ -182,6 +182,9 @@ PcmPacket RdpsndSink::packet(std::uint64_t now) noexcept {
     return {PacketStatus::invalid, {}};
   return pipeline_->packets.read(pipeline_->queue, now);
 }
+std::optional<std::uint64_t> RdpsndSink::publication_deadline() const noexcept {
+  return usable() && opened_ ? pipeline_->packets.deadline() : std::nullopt;
+}
 bool RdpsndSink::reset_stream(SourceAvailability next) noexcept {
   if (!usable())
     return false;

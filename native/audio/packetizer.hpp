@@ -1,5 +1,6 @@
 #pragma once
 #include "queue.hpp"
+#include <optional>
 
 namespace bridge::audio {
 enum class PacketStatus { ready, idle, invalid };
@@ -20,6 +21,10 @@ public:
   static constexpr std::size_t packet_frames = 960, packet_bytes = packet_frames * 4;
   static constexpr std::uint64_t interval_us = 20000;
   PcmPacket read(PcmQueue &, std::uint64_t worker_time_us) noexcept;
+  // Read-only next sample boundary. No timer exists before first data or after reset.
+  std::optional<std::uint64_t> deadline() const noexcept {
+    return active_ ? std::optional{next_us_} : std::nullopt;
+  }
   // Starts a new stream epoch; preserves monotonic checks and lifetime metrics.
   void reset() noexcept;
   PacketStats stats() const noexcept { return stats_; }

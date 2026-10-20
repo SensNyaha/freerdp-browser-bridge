@@ -53,6 +53,7 @@ public:
   rdpsndDevicePlugin &device() noexcept { return device_; }
   QueueRead read(std::span<std::uint8_t>) noexcept;
   PcmPacket packet(std::uint64_t worker_time_us) noexcept;
+  std::optional<std::uint64_t> publication_deadline() const noexcept;
   std::optional<SinkStats> stats() const noexcept;
   // Discard history/backlog while keeping an open device usable. Only Play marks ready.
   bool reset_stream(SourceAvailability next = SourceAvailability::waiting) noexcept;

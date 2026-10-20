@@ -1183,8 +1183,11 @@ broader format profiles and end-to-end acceptance are separate open work.
   browser underflow, jitter, encode and host-queue export and measured LAN queue/
   latency acceptance remain open. [145](docs/ITERATION_145.md).
 - [~] Underflow/silence behavior that does not block the RDP loop: bounded native/
-  Worklet/capture fixtures pass; connected ready-source scheduling, callback CPU/
-  wakeup budgets and real transport behavior remain open.
+  Worklet/capture fixtures pass. Native PCM/Opus event waits now follow the active
+  packet deadline with bounded overdue retries and ordinary polling under output
+  blockage; portable virtual-minute and Windows linked ownership/lifecycle controls
+  pass. Connected new-worker scheduling, callback CPU/wakeup budgets and real
+  transport/audio-quality acceptance remain open. [Deadline correction](docs/ITERATION_371.md).
 - [~] Audio reconnect/discontinuity reset: epoch, Close/reset, reattachment and
   ownership barriers pass fixtures; actual XRDP private reset and ready-source
   browser attachment recovery pass for the named profiles. Broader recovery and
