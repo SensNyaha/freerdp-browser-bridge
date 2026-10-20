@@ -81,6 +81,12 @@ The private state record and its numeric diagnostic are unchanged. This is a
 selected-code mapping, not complete remote disconnect reason coverage; other
 ERRINFO values and actual server-profile acceptance remain open.
 
+The eleven pinned protocol-independent licensing ERRINFO values
+`ERRINFO_LICENSE_INTERNAL` through `ERRINFO_LICENSE_NO_REMOTE_CONNECTIONS`
+map to the fixed public `RDP_LICENSE_FAILURE` (502, retryable). Unknown values
+remain `RDP_DISCONNECTED`. This identifies a licensing failure without exposing
+the numeric reason; actual server emission remains a separate integration gate.
+
 For a failed connection still classified `RDP_CONNECT_FAILED`, the adapter also
 recognizes the pinned FreeRDP 3.32.1 CONNECT codes for insufficient privileges,
 expired/required-change passwords, revoked accounts, disabled/expired/locked

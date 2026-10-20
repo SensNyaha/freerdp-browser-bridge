@@ -8,7 +8,7 @@ import {
 
 const paths = { workerPath: 'unused-worker', runtimeRoot: 'unused-runtime' };
 
-test('native connection failure maps only documented remote timeout/logoff ERRINFO values', () => {
+test('native connection failure maps documented remote ERRINFO values without reclassifying other failures', () => {
   const event = (nativeError, error = 'RDP_DISCONNECTED') => ({
     nativeError,
     state: 'failed',
@@ -64,6 +64,15 @@ test('native connection failure maps only documented remote timeout/logoff ERRIN
     classifyNativeConnectionFailure(event(0x0001000c)),
     'RDP_SERVER_LOGOFF',
   );
+  for (const nativeError of [
+    0x00010100, 0x00010101, 0x00010102, 0x00010103, 0x00010104, 0x00010105,
+    0x00010106, 0x00010107, 0x00010108, 0x00010109, 0x0001010a,
+  ])
+    assert.equal(
+      classifyNativeConnectionFailure(event(nativeError)),
+      'RDP_LICENSE_FAILURE',
+      nativeError.toString(16),
+    );
   assert.equal(
     classifyNativeConnectionFailure(event(0x0001ffff)),
     'RDP_DISCONNECTED',
@@ -132,6 +141,7 @@ test('native session adapter publishes classified fixed failures from terminal s
       [0x0001000a, 'RDP_DISCONNECTED'],
       [0x00010005, 'RDP_DISCONNECTED'],
       [0x00010010, 'RDP_DISCONNECTED'],
+      [0x00010101, 'RDP_DISCONNECTED'],
       [0x00020015, 'RDP_CONNECT_FAILED'],
       [0x00020008, 'RDP_CONNECT_FAILED'],
       [0x0002001e, 'RDP_CONNECT_FAILED'],
@@ -147,6 +157,7 @@ test('native session adapter publishes classified fixed failures from terminal s
       'RDP_AUTHENTICATION_FAILED',
       'RDP_SESSION_REPLACED',
       'RDP_SERVER_FAILURE',
+      'RDP_LICENSE_FAILURE',
       'RDP_AUTHENTICATION_FAILED',
       'RDP_CONNECT_FAILED',
       'RDP_SECURITY_MODE_REQUIRED',

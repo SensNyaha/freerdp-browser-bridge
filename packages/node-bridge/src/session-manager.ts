@@ -116,6 +116,7 @@ const failures = {
     'Remote server ended the session unexpectedly',
     true,
   ],
+  RDP_LICENSE_FAILURE: [502, 'Remote licensing failed', true],
   RDP_SESSION_REPLACED: [
     502,
     'Remote session was replaced by another connection',

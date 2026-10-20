@@ -276,6 +276,7 @@ test('fake-backend HTTP: recognized remote failures remain fixed in failed sessi
         'Remote server ended the session unexpectedly',
         true,
       ],
+      ['RDP_LICENSE_FAILURE', 'Remote licensing failed', true],
       [
         'RDP_SERVER_DISCONNECT',
         'Remote server ended the session by request',
