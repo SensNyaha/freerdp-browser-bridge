@@ -14,6 +14,8 @@ export class ProcessQueryGate {
   private expired = 0;
   private taskFailures = 0;
   private maxTaskMs = 0;
+  private maxAdmissionMs = 0;
+  private maxInvokeMs = 0;
 
   snapshot() {
     return {
@@ -22,6 +24,8 @@ export class ProcessQueryGate {
       expired: this.expired,
       taskFailures: this.taskFailures,
       maxTaskMs: Math.ceil(this.maxTaskMs),
+      maxAdmissionMs: Math.ceil(this.maxAdmissionMs),
+      maxInvokeMs: Math.ceil(this.maxInvokeMs),
     };
   }
 
@@ -48,12 +52,30 @@ export class ProcessQueryGate {
     signal: AbortSignal | undefined,
     task: () => Promise<T>,
   ): Promise<T> {
-    await this.acquire(signal);
+    const requested = performance.now();
+    try {
+      await this.acquire(signal);
+    } finally {
+      this.maxAdmissionMs = Math.max(
+        this.maxAdmissionMs,
+        performance.now() - requested,
+      );
+    }
     let started: number | undefined;
     try {
       if (signal?.aborted) throw new Error('PROCESS_QUERY_CANCELLED');
       started = performance.now();
-      return await task();
+      let completion: Promise<T>;
+      try {
+        completion = task();
+      } finally {
+        // Includes synchronous child launch/setup, not the asynchronous wait.
+        this.maxInvokeMs = Math.max(
+          this.maxInvokeMs,
+          performance.now() - started,
+        );
+      }
+      return await completion;
     } catch (error) {
       if (started !== undefined)
         this.taskFailures = Math.min(

@@ -108,6 +108,19 @@ Standalone calls can spend up to three seconds awaiting admission plus the
 existing two-second execution timeout; OS retirement must still complete.
 The worker policy's existing three-second total deadline includes both.
 
+The internal query-owner snapshot additionally distinguishes three lifetime
+maxima, rounded upward to milliseconds. `maxAdmissionMs` measures entry through
+admission settlement, including queue/continuation delay and refused or
+cancelled admission. `maxInvokeMs` measures the synchronous call to the admitted
+task, including helper launch/setup or a synchronous exception, until it returns
+its promise. `maxTaskMs` includes invocation and awaited completion; the existing
+readers join native helper close before completion. Pending tasks have an
+invocation sample but contribute no completed-task maximum yet. These fixed
+scalars retain no PID, arguments, outputs, error details or sample history.
+They are independent maxima and cannot be summed/subtracted into a per-query
+timeline. They do not identify an OS/driver cause or change enforcement.
+[Collection and observed capacity profile](ITERATION_375.md).
+
 The Windows helper also accepts `--process-resources <pid>`. This additive
 private command queries working set and cumulative CPU through one limited
 process handle, closes it before output and returns exactly

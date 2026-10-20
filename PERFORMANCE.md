@@ -152,3 +152,20 @@ expensive encode/read work; they do not correlate individual audio skips or
 measure event waits, audio codec time, total CPU or end-to-end latency.
 No new connected measurement is claimed by this local collection change.
 [Collector scope](docs/ITERATION_374.md).
+
+## 14. Host query launch and admission observations
+
+The shared helper-query owner separates maximum admission/continuation time,
+synchronous task invocation and complete admitted-task time. The invocation
+interval includes child launch/setup but excludes the awaited child completion.
+The fixed scalar maxima preserve the existing bounds, cancellation, permit
+retirement and two-/three-second deadlines. They are not samples from one
+query and must not be added or subtracted as a causal decomposition.
+
+One Windows Debug 40-worker/45-start control records 1,625 ms admission,
+107 ms invocation, 2,226 ms complete task and 1,549 ms maximum event-loop delay.
+All 969 paired samples preserve the active owners; three IPC timeouts occur
+during retirement. The preceding active resource-unavailable failures remain
+retained. This instrumentation does not establish a throughput correction,
+connected performance, OS cause or adequate resource/soak headroom.
+[Exact profile](docs/ITERATION_375.md).

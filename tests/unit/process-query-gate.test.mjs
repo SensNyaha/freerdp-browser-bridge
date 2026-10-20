@@ -6,6 +6,103 @@ import {
   withProcessQuery,
 } from '../../packages/node-bridge/dist/process-query-gate.js';
 
+test('process query timing separates synchronous invocation, pending completion and queued admission', async () => {
+  const gate = new ProcessQueryGate(1, 1, 1000);
+  assert.equal(gate.snapshot().maxAdmissionMs, 0);
+  assert.equal(gate.snapshot().maxInvokeMs, 0);
+  let finish;
+  const value = { private: 'synthetic-task-result' };
+  const active = gate.run(undefined, () => {
+    const until = performance.now() + 12;
+    while (performance.now() < until) {
+      /* Model synchronous task setup. */
+    }
+    return new Promise((resolve) => {
+      finish = () => resolve(value);
+    });
+  });
+  await Promise.resolve();
+  const invoked = gate.snapshot();
+  assert.ok(invoked.maxInvokeMs >= 12);
+  assert.equal(invoked.maxTaskMs, 0);
+  const waiting = gate.run(undefined, async () => 2);
+  await delay(25);
+  assert.equal(gate.snapshot().maxInvokeMs, invoked.maxInvokeMs);
+  assert.equal(gate.snapshot().maxTaskMs, 0);
+  finish();
+  assert.equal(await active, value);
+  assert.equal(await waiting, 2);
+  const result = gate.snapshot();
+  assert.ok(result.maxAdmissionMs >= 25);
+  assert.ok(result.maxTaskMs >= result.maxInvokeMs);
+  assert.equal(result.active, 0);
+  assert.equal(result.waiting, 0);
+  assert.ok(!JSON.stringify(result).includes('private'));
+  result.maxInvokeMs = -1;
+  assert.ok(gate.snapshot().maxInvokeMs >= 12);
+});
+
+test('process query timing records synchronous failures and preserves cancellation/error identity', async () => {
+  const gate = new ProcessQueryGate(1, 1, 1000);
+  const before = new AbortController();
+  before.abort('synthetic-private-reason');
+  await assert.rejects(
+    gate.run(before.signal, async () => assert.fail()),
+    {
+      message: 'PROCESS_QUERY_CANCELLED',
+    },
+  );
+  assert.equal(gate.snapshot().maxInvokeMs, 0);
+  const error = new Error('synthetic-private-task-error');
+  await assert.rejects(
+    gate.run(undefined, () => {
+      const until = performance.now() + 12;
+      while (performance.now() < until) {
+        /* Model failed synchronous launch. */
+      }
+      throw error;
+    }),
+    (actual) => actual === error,
+  );
+  const result = gate.snapshot();
+  assert.ok(result.maxInvokeMs >= 12);
+  assert.ok(result.maxTaskMs >= result.maxInvokeMs);
+  assert.equal(result.taskFailures, 1);
+  assert.equal(result.active, 0);
+  assert.equal(result.waiting, 0);
+  assert.ok(!JSON.stringify(result).includes('private'));
+});
+
+test('process query timing counts expired admission without invoking queued work', async () => {
+  const gate = new ProcessQueryGate(1, 1, 20);
+  let finish;
+  const active = gate.run(
+    undefined,
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await Promise.resolve();
+  const invoked = gate.snapshot().maxInvokeMs;
+  try {
+    await assert.rejects(
+      gate.run(undefined, async () => assert.fail()),
+      {
+        message: 'PROCESS_QUERY_UNAVAILABLE',
+      },
+    );
+    const result = gate.snapshot();
+    assert.ok(result.maxAdmissionMs >= 19);
+    assert.equal(result.maxInvokeMs, invoked);
+    assert.equal(result.expired, 1);
+    assert.equal(result.waiting, 0);
+  } finally {
+    finish();
+    await active;
+  }
+});
+
 test('process query admission bounds concurrency and refuses overflow before invoking a task', async () => {
   const gate = new ProcessQueryGate(1, 1, 1000);
   let finish,

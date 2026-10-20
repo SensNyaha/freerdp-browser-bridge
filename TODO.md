@@ -1671,6 +1671,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
   breach/healthy cases and separate synthetic fault/lifetime cases pass; CPU,
   startup/total-session memory, hard kernel/OS deadlines, connected RDP and
   broader abnormal-exit/soak acceptance remain open.
+  Shared query diagnostics now separate admission/continuation, synchronous
+  task invocation and joined task maxima. The current 40-worker control
+  collects 969 paired samples with no active failures but three retirement
+  IPC timeouts; earlier active query-deadline failures remain retained. This
+  instrumentation does not close the load/retirement requirement or change
+  its bounds. [Measured phases](docs/ITERATION_375.md).
+  The full repeat still fails this load case (821 passed / 51 skips / one
+  failure): twelve active resource-deadline failures, up to 149 ms synchronous
+  invocation and 1,466 ms admission/continuation. No load correction is claimed.
   [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md); `6752257`.
   A subsequent short Windows actual RDP 1080p healthy-policy smoke passes
   26 connected samples below the explicit 256 MiB cap, heartbeat/JPEG and joined
