@@ -1059,6 +1059,11 @@ The local helpers now collect fragmented native negotiation counters through
 joined cleanup; recovery-source failures identify the source-ready phase before
 snapshot/detach. This improves diagnosis without accepting audio playback or
 identifying the current cause. [Helper evidence](docs/ITERATION_364.md).
+The user confirms the tone was started through `mstsc`. The bounded visible
+listening preview now reports one fresh scalar Worklet observation and final
+native negotiation counters, preparing a source restart inside the active
+Bridge viewer. Actual execution of that prepared scenario remains open.
+[Preview evidence](docs/ITERATION_365.md).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,

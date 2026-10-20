@@ -476,7 +476,7 @@ node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-recovery
 node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-compat-recovery-test
 ```
 
-Automatic audio viewer runs emit a final schema-1
+Automatic and manual audio viewer runs emit a final schema-1
 `lab.browser.audio-negotiation` record after joined native/server cleanup.
 Its `negotiation` object contains only the worker's fixed numeric server/client
 format, Training/Wave and write/completion/cancellation/failure counters, as
@@ -501,6 +501,14 @@ The `--audio-opus-compat-listen` preview activates output, leaves the visible
 viewer open for one minute after the first rendered frame, and closes through
 ordinary browser/server/worker cleanup. Closing the viewer sooner also finishes
 normally. Use this bounded preview for a short listening check.
+Before timed cleanup it requests one fresh Worklet stats reply and prints a
+schema-1 `lab.browser.audio-preview` observation: fixed video/source/decoder and
+Worklet counters, without raw media. A closed viewer or unavailable reply is
+reported as `observation: null`, never as a fresh reading of stale counters.
+The report does not claim audible acceptance. To verify the source route,
+restart the source in PowerShell inside this active Bridge viewer after
+connection; the user-started tone in a previous `mstsc` connection did not
+establish that route. The native negotiation footer still follows joined close.
 
 The recovery modes require real active output before and after browser detach/
 reattach, and fail for an idle source. Opus also requires an observed native

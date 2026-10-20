@@ -14,6 +14,7 @@ import { AudioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs
 import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
+import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
 import {
   ViewerSoak,
   soakDurationMs,
@@ -458,6 +459,18 @@ try {
       } finally {
         timer.abort();
       }
+      const observation = page.isClosed()
+        ? null
+        : await readViewerAudioObservation(page).catch(() => null);
+      console.log(
+        JSON.stringify({
+          type: 'lab.browser.audio-preview',
+          v: 1,
+          observation,
+          audibleAcceptance: false,
+          remoteAudioGenerated: false,
+        }),
+      );
     } else await waitForViewerClose(browser, page);
   } else {
     phase = 'pixels';
@@ -961,7 +974,7 @@ try {
     console.error('LAB_RUNTIME_NOT_EMPTY');
     process.exitCode = 1;
   }
-  if (audioTest)
+  if (audioTest || audioManual)
     console.log(
       JSON.stringify({
         type: 'lab.browser.audio-negotiation',
