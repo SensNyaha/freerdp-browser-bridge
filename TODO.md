@@ -502,6 +502,8 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for current full workspace regression — With Node 24.21.0 correctly first in the child-process PATH, `pnpm check` passes build, lint, format and Node **748 passed / 101 skipped / 0 failed**. Bundled native CTest passes **29/29** through the project's temporary `R:` workspace alias; no CMake reconfiguration or Release change was made. [Evidence](docs/ITERATION_347.md).
+
 - [x] DONE for manual WEB harness source-worker selection — The Windows
   reference harness optionally selects a linked source build by verified
   receipt and worker/helper hashes; no option retains the bundled default.
