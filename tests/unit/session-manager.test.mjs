@@ -19,6 +19,12 @@ test('remote RDP terminal failures expose fixed public status and retryability',
     ],
     ['RDP_SERVER_LOGOFF', 502, 'Remote server logged off the session', true],
     ['RDP_SERVER_REJECTED', 502, 'Remote server refused the session', false],
+    [
+      'RDP_SERVER_FAILURE',
+      502,
+      'Remote server ended the session unexpectedly',
+      true,
+    ],
   ]) {
     const error = new SessionError(code);
     assert.equal(error.statusCode, statusCode);

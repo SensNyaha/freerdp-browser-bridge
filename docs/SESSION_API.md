@@ -6,13 +6,13 @@ The native process supervisor is tested separately with real C++ workers.
 
 Native RDP terminal failures use fixed public messages. Selected pinned FreeRDP
 server reasons map to `RDP_SERVER_TIMEOUT` (504), `RDP_SERVER_LOGOFF` (502),
-`RDP_SERVER_REJECTED` (502) or the existing
+`RDP_SERVER_REJECTED` (502), `RDP_SERVER_FAILURE` (502) or the existing
 `RDP_AUTHENTICATION_FAILED` (502); unknown reasons remain
 `RDP_DISCONNECTED`. Each error exposes only its stable code, status, fixed
 message and retryability. Numeric FreeRDP diagnostics are not included. These
 selected mappings have unit coverage; full remote reason/server-profile
 acceptance remains open. [Connection contract](CONNECTION_CORE.md),
-[iteration 334](ITERATION_334.md), [public error evidence](ITERATION_335.md).
+[server reason evidence](ITERATION_338.md), [public error evidence](ITERATION_335.md).
 
 An optional trusted-host [worker RSS policy](WORKER_MEMORY_POLICY.md) adds fixed
 native-backend failures `WORKER_MEMORY_LIMIT` (503, not retryable) and

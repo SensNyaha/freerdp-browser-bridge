@@ -106,6 +106,11 @@ const failures = {
   RDP_SERVER_TIMEOUT: [504, 'Remote server ended the session on timeout', true],
   RDP_SERVER_LOGOFF: [502, 'Remote server logged off the session', true],
   RDP_SERVER_REJECTED: [502, 'Remote server refused the session', false],
+  RDP_SERVER_FAILURE: [
+    502,
+    'Remote server ended the session unexpectedly',
+    true,
+  ],
   RDP_SETTING_NOT_IMPLEMENTED: [
     501,
     'Requested connection setting is not implemented',
