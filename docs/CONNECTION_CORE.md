@@ -69,13 +69,14 @@ metadata; they are not copied to public session snapshots. Raw FreeRDP logging i
 OFF.
 
 For a terminal native `RDP_DISCONNECTED`, the Node adapter recognizes only the
-pinned FreeRDP 3.32.1 ERRINFO values for idle/logon timeout and server/user
-logoff, publishing the stable `RDP_SERVER_TIMEOUT` or `RDP_SERVER_LOGOFF`
-failure. Other numeric values retain `RDP_DISCONNECTED`; non-disconnect native
-failure classes are never reclassified. The private state record and its numeric
-diagnostic are unchanged. This is a small known-code mapping, not complete remote
-disconnect reason coverage; other ERRINFO values and actual server-profile
-acceptance remain open.
+pinned FreeRDP 3.32.1 ERRINFO values: idle/logon timeout, server/user logoff,
+server denied connection, insufficient privileges and fresh credentials required.
+They publish fixed `RDP_SERVER_TIMEOUT`, `RDP_SERVER_LOGOFF`,
+`RDP_SERVER_REJECTED` or `RDP_AUTHENTICATION_FAILED` failures. Other numeric
+values retain `RDP_DISCONNECTED`; non-disconnect native failure classes are never
+reclassified. The private state record and its numeric diagnostic are unchanged.
+This is a small known-code mapping, not complete remote disconnect reason
+coverage; other ERRINFO values and actual server-profile acceptance remain open.
 
 For a failed connection still classified `RDP_CONNECT_FAILED`, the adapter also
 recognizes the pinned FreeRDP 3.32.1 CONNECT codes for insufficient privileges,

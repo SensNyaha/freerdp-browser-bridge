@@ -18,6 +18,18 @@ test('native connection failure maps only documented remote timeout/logoff ERRIN
     'RDP_SERVER_TIMEOUT',
   );
   assert.equal(
+    classifyNativeConnectionFailure(event(0x00010007)),
+    'RDP_SERVER_REJECTED',
+  );
+  assert.equal(
+    classifyNativeConnectionFailure(event(0x00010009)),
+    'RDP_SERVER_REJECTED',
+  );
+  assert.equal(
+    classifyNativeConnectionFailure(event(0x0001000a)),
+    'RDP_AUTHENTICATION_FAILED',
+  );
+  assert.equal(
     classifyNativeConnectionFailure(event(0x00010002)),
     'RDP_SERVER_LOGOFF',
   );

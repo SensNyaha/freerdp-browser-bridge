@@ -105,6 +105,7 @@ const failures = {
   RDP_DISCONNECTED: [502, 'Remote session disconnected', true],
   RDP_SERVER_TIMEOUT: [504, 'Remote server ended the session on timeout', true],
   RDP_SERVER_LOGOFF: [502, 'Remote server logged off the session', true],
+  RDP_SERVER_REJECTED: [502, 'Remote server refused the session', false],
   RDP_SETTING_NOT_IMPLEMENTED: [
     501,
     'Requested connection setting is not implemented',
