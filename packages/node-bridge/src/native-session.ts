@@ -71,6 +71,9 @@ export function classifyNativeConnectionFailure(
   if (event.error !== 'RDP_DISCONNECTED') return event.error;
   switch (event.nativeError) {
     // MAKE_FREERDP_ERROR(ERRINFO, code): ERRINFO class is 1 in pinned 3.32.1.
+    case 0x00010001: // ERRINFO_RPC_INITIATED_DISCONNECT
+    case 0x0001000b: // ERRINFO_RPC_INITIATED_DISCONNECT_BY_USER
+      return 'RDP_SERVER_DISCONNECT';
     case 0x00010007: // ERRINFO_SERVER_DENIED_CONNECTION
     case 0x00010009: // ERRINFO_SERVER_INSUFFICIENT_PRIVILEGES
       return 'RDP_SERVER_REJECTED';

@@ -53,12 +53,16 @@ test('native connection failure maps only documented remote timeout/logoff ERRIN
     'RDP_SERVER_LOGOFF',
   );
   assert.equal(
-    classifyNativeConnectionFailure(event(0x0001000c)),
-    'RDP_SERVER_LOGOFF',
+    classifyNativeConnectionFailure(event(0x00010001)),
+    'RDP_SERVER_DISCONNECT',
   );
   assert.equal(
-    classifyNativeConnectionFailure(event(0x00010001)),
-    'RDP_DISCONNECTED',
+    classifyNativeConnectionFailure(event(0x0001000b)),
+    'RDP_SERVER_DISCONNECT',
+  );
+  assert.equal(
+    classifyNativeConnectionFailure(event(0x0001000c)),
+    'RDP_SERVER_LOGOFF',
   );
   assert.equal(
     classifyNativeConnectionFailure(event(0x0001ffff)),
@@ -119,6 +123,7 @@ test('native session adapter publishes classified fixed failures from terminal s
     for (const [nativeError, error] of [
       [0x00010003, 'RDP_DISCONNECTED'],
       [0x00010002, 'RDP_DISCONNECTED'],
+      [0x00010001, 'RDP_DISCONNECTED'],
       [0x00010007, 'RDP_DISCONNECTED'],
       [0x0001000a, 'RDP_DISCONNECTED'],
       [0x00010005, 'RDP_DISCONNECTED'],
@@ -132,6 +137,7 @@ test('native session adapter publishes classified fixed failures from terminal s
     assert.deepEqual(observed, [
       'RDP_SERVER_TIMEOUT',
       'RDP_SERVER_LOGOFF',
+      'RDP_SERVER_DISCONNECT',
       'RDP_SERVER_REJECTED',
       'RDP_AUTHENTICATION_FAILED',
       'RDP_SESSION_REPLACED',

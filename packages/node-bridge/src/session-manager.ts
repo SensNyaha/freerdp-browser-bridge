@@ -116,6 +116,11 @@ const failures = {
     'Remote session was replaced by another connection',
     true,
   ],
+  RDP_SERVER_DISCONNECT: [
+    502,
+    'Remote server ended the session by request',
+    true,
+  ],
   RDP_SETTING_NOT_IMPLEMENTED: [
     501,
     'Requested connection setting is not implemented',

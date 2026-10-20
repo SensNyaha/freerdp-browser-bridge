@@ -6,7 +6,8 @@ The native process supervisor is tested separately with real C++ workers.
 
 Native RDP terminal failures use fixed public messages. Selected pinned FreeRDP
 server reasons map to `RDP_SERVER_TIMEOUT` (504), `RDP_SERVER_LOGOFF` (502),
-`RDP_SESSION_REPLACED` (502), `RDP_SERVER_REJECTED` (502),
+`RDP_SESSION_REPLACED` (502), `RDP_SERVER_DISCONNECT` (502),
+`RDP_SERVER_REJECTED` (502),
 `RDP_SERVER_FAILURE` (502) or the existing `RDP_AUTHENTICATION_FAILED` (502);
 unknown reasons remain
 `RDP_DISCONNECTED`. Each error exposes only its stable code, status, fixed
