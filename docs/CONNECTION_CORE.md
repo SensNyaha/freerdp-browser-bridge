@@ -87,6 +87,11 @@ map to the fixed public `RDP_LICENSE_FAILURE` (502, retryable). Unknown values
 remain `RDP_DISCONNECTED`. This identifies a licensing failure without exposing
 the numeric reason; actual server emission remains a separate integration gate.
 
+The pinned Connection Broker `ERRINFO_CB_SESSION_ONLINE_VM_BOOT_TIMEOUT` also
+maps to `RDP_SERVER_TIMEOUT`, alongside the idle/logon timeout reasons. Other
+Connection Broker reasons remain generic until their public classification is
+individually verified.
+
 For a failed connection still classified `RDP_CONNECT_FAILED`, the adapter also
 recognizes the pinned FreeRDP 3.32.1 CONNECT codes for insufficient privileges,
 expired/required-change passwords, revoked accounts, disabled/expired/locked
