@@ -88,6 +88,14 @@ with a hostname mismatch. The strict run joins worker close and leaves the
 runtime directory empty. No trust was persisted. The user then explicitly
 approved this exact fingerprint for one session; the native helper connected,
 captured a 1024×768 JPEG, exchanged heartbeat and joined cleanup with an empty
-runtime directory. This renews activation evidence only; 1080p, resize, browser,
-application, audio and device regression for the new certificate remain open.
-[Strict refusal](ITERATION_344.md), [approved activation](ITERATION_346.md).
+runtime directory. A subsequent one-session private Display Control check
+negotiates the 1920×1080 → 1280×720 → 1920×1080 resize/restoration and obtains
+fresh H.264 IDRs plus intermediate JPEG. The public Edge/H.264 viewer also
+renders the Windows desktop, resizes/restores it with fresh configurations and
+keyframes, and passes display/cursor replay and reattachment with joined cleanup.
+Acceptance covers these named Windows endpoint/profile slices. Remaining gates
+include a Windows Server matrix, JPEG browser resize, application/audio/device,
+resource and soak verification.
+[Strict refusal](ITERATION_344.md), [approved activation](ITERATION_346.md),
+[private resize](ITERATION_350.md), [local transport regression](ITERATION_351.md),
+[public Edge/H.264 resize](ITERATION_352.md).
