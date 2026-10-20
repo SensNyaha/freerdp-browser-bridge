@@ -1051,7 +1051,10 @@ Current repeat: the newly approved Windows Opus/200 ms browser session renders
 frames. Recovery preconditions fail and joined cleanup passes. A verified
 active source is needed before playback or quality conclusions; the earlier
 accepted smoke below retains its historical scope.
-[Retained observation](docs/ITERATION_362.md).
+[Retained observation](docs/ITERATION_362.md). The explicitly approved repeat
+with a user-started continuous tone also stays waiting and fails before detach;
+the source endpoint/session and current negotiation cause remain unverified.
+[Tone repeat](docs/ITERATION_363.md).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,

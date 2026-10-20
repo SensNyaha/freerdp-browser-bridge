@@ -107,3 +107,8 @@ precondition and joins cleanup. This does not verify current playback/recovery
 or identify a source/transport root cause; the earlier active-source results
 remain historical. The user is preparing a continuous local source before a
 repeat. [Current observation](ITERATION_362.md).
+The user-started continuous-tone repeat also remains waiting with zero audio
+configuration/data, fails before detach and joins cleanup. Which Windows audio
+endpoint/session owns the tone, and the current negotiation cause, remain
+unverified. No further host manipulation is attempted.
+[Continuous-tone repeat](ITERATION_363.md).
