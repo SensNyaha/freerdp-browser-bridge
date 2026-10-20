@@ -85,6 +85,9 @@ the native FreeRDP inspect helper reaches a certificate prompt, and the strict
 helper rejects the endpoint as `RDP_CERTIFICATE_REJECTED`. It now presents
 `sha256:7a826b7c5f71b03b67866a63d03e15279aefb6638a36cfc9c7209e349d5e75ed`
 with a hostname mismatch. The strict run joins worker close and leaves the
-runtime directory empty. No trust was persisted and no connected desktop test
-was run against this new certificate; one-session use of this exact fingerprint
-is pending user confirmation. [Evidence](ITERATION_344.md).
+runtime directory empty. No trust was persisted. The user then explicitly
+approved this exact fingerprint for one session; the native helper connected,
+captured a 1024×768 JPEG, exchanged heartbeat and joined cleanup with an empty
+runtime directory. This renews activation evidence only; 1080p, resize, browser,
+application, audio and device regression for the new certificate remain open.
+[Strict refusal](ITERATION_344.md), [approved activation](ITERATION_346.md).

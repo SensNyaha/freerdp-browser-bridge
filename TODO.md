@@ -918,11 +918,12 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [~] IN PROGRESS — Load addins and connect: historical XRDP activation/heartbeat
   remains verified. Restored Windows RDP endpoint previously passed activation,
   strict certificate refusal, approved session-only connection, graphics/resize
-  and cleanup. The latest access retry reaches the certificate prompt, but the
-  endpoint now presents a new hostname-mismatched fingerprint; strict refusal
-  and joined cleanup pass, while renewed one-session trust and desktop regression
-  are pending. Application/device/audio and broader Windows profiles remain
-  open. [Current lab scope](docs/LAB_STATUS.md), [retry](docs/ITERATION_344.md).
+  and cleanup. The latest access retry reached a new hostname-mismatched
+  fingerprint. Strict refusal passed; after explicit one-session approval the
+  native helper connects and captures a 1024×768 desktop with heartbeat and
+  joined cleanup. Broader graphics/input/audio/application/device and Windows
+  profiles remain open. [Current lab scope](docs/LAB_STATUS.md),
+  [activation](docs/ITERATION_346.md).
 - [x] DONE for selected remote disconnect reasons — Pinned FreeRDP ERRINFO idle/logon timeout and logoff codes map to fixed `RDP_SERVER_TIMEOUT` / `RDP_SERVER_LOGOFF` failures. Unknown codes and all non-disconnect errors preserve their existing classification; no private wire change. Other remote reasons and actual server-profile coverage remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_332.md).
 - [x] DONE for selected connection authentication failures — Pinned FreeRDP CONNECT credential/account refusal codes map to the existing fixed `RDP_AUTHENTICATION_FAILED`; transport/TLS and unknown codes remain `RDP_CONNECT_FAILED`. No IPC change or diagnostic numeric disclosure. Other auth methods/server profiles remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_333.md).
 - [x] DONE for selected server ERRINFO refusals — Server-denied and insufficient-privilege reasons map to fixed `RDP_SERVER_REJECTED`; fresh-credentials-required maps to authentication failure. Unknown reasons stay generic. Broader server error history remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_334.md).
@@ -935,6 +936,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [x] DONE for server-disconnect HTTP snapshot — An actual local Fastify test server with fake backend returns the failed session through GET with exact `RDP_SERVER_DISCONNECT` code, fixed message and retryability. This does not claim remote RDP emission. [Evidence](docs/ITERATION_343.md).
 - [x] DONE for server-initiated disconnect reasons — Pinned generic and user-initiated RPC disconnect ERRINFO codes map to fixed `RDP_SERVER_DISCONNECT`; logoff and replacement reasons stay distinct. Actual server emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_341.md).
 - [x] DONE for pinned NLA-required connect failure — FreeRDP 3.32.1 `ERRCONNECT_HYBRID_REQUIRED_BY_SERVER` maps to fixed non-retryable `RDP_SECURITY_MODE_REQUIRED`, distinct from credentials and generic transport/TLS failures. Actual server emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_345.md).
+- [x] DONE for renewed Windows endpoint activation — After explicit one-session approval of the new exact certificate fingerprint, the native helper connects, captures a 1024×768 JPEG, exchanges heartbeat and joins cleanup with an empty runtime directory. This does not accept the broader graphics/input/audio/application/device gates. [Evidence](docs/ITERATION_346.md).
 - [~] IN PROGRESS — Stable connect/auth/certificate/timeout/disconnect failures are implemented; remaining remote ERRINFO reasons and broader Windows server/application profiles need actual integration acceptance.
 - [~] IN PROGRESS — Graceful disconnect and cancellation verified; reconnect remains unsupported.
 - [x] DONE for current connection slice — Password is delivered through a separate private IPC class after HELLO, with transport copies overwritten. No per-session secrets enter argv/env; unsupported hash/PIN modes are rejected.
