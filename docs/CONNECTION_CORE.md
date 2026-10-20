@@ -64,8 +64,9 @@ bounded by 30 seconds and by connectMs. TOFU/changed-certificate history is pend
 {"v":1,"type":"certificate.response","seq":1,"ts":1791400000123,"data":{"challenge":"1","fingerprint":"sha256:<64 lowercase hex digits>","accept":false}}
 ```
 
-Public failures use fixed messages. Numeric FreeRDP errors are trusted Node events,
-not public session snapshots. Raw FreeRDP logging is OFF.
+Public failures use fixed messages. Numeric FreeRDP errors remain internal event
+metadata; they are not copied to public session snapshots. Raw FreeRDP logging is
+OFF.
 
 For a terminal native `RDP_DISCONNECTED`, the Node adapter recognizes only the
 pinned FreeRDP 3.32.1 ERRINFO values for idle/logon timeout and server/user
@@ -75,6 +76,15 @@ failure classes are never reclassified. The private state record and its numeric
 diagnostic are unchanged. This is a small known-code mapping, not complete remote
 disconnect reason coverage; other ERRINFO values and actual server-profile
 acceptance remain open.
+
+For a failed connection still classified `RDP_CONNECT_FAILED`, the adapter also
+recognizes the pinned FreeRDP 3.32.1 CONNECT codes for insufficient privileges,
+expired/required-change passwords, revoked accounts, disabled/expired/locked
+accounts, logon failure, wrong password, access denied, account restriction,
+logon-type refusal and missing credentials. Those become the existing fixed
+`RDP_AUTHENTICATION_FAILED` public failure. Transport/TLS failures and unknown
+CONNECT codes retain `RDP_CONNECT_FAILED`; no native error number is exposed.
+This is a reviewed subset, not exhaustive authentication policy coverage.
 
 ## Hosting and tests
 

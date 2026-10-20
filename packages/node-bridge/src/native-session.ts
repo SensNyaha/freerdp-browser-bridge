@@ -46,6 +46,28 @@ export function classifyNativeConnectionFailure(
   event: NativeConnectionState,
 ): SessionErrorCode | undefined {
   if (event.error === 'NONE') return undefined;
+  if (event.error === 'RDP_CONNECT_FAILED') {
+    switch (event.nativeError) {
+      // MAKE_FREERDP_ERROR(CONNECT, code): CONNECT class is 2 in pinned 3.32.1.
+      case 0x0002000a: // ERRCONNECT_INSUFFICIENT_PRIVILEGES
+      case 0x0002000e: // ERRCONNECT_PASSWORD_EXPIRED
+      case 0x0002000f: // ERRCONNECT_PASSWORD_CERTAINLY_EXPIRED
+      case 0x00020010: // ERRCONNECT_CLIENT_REVOKED
+      case 0x00020012: // ERRCONNECT_ACCOUNT_DISABLED
+      case 0x00020013: // ERRCONNECT_PASSWORD_MUST_CHANGE
+      case 0x00020014: // ERRCONNECT_LOGON_FAILURE
+      case 0x00020015: // ERRCONNECT_WRONG_PASSWORD
+      case 0x00020016: // ERRCONNECT_ACCESS_DENIED
+      case 0x00020017: // ERRCONNECT_ACCOUNT_RESTRICTION
+      case 0x00020018: // ERRCONNECT_ACCOUNT_LOCKED_OUT
+      case 0x00020019: // ERRCONNECT_ACCOUNT_EXPIRED
+      case 0x0002001a: // ERRCONNECT_LOGON_TYPE_NOT_GRANTED
+      case 0x0002001b: // ERRCONNECT_NO_OR_MISSING_CREDENTIALS
+        return 'RDP_AUTHENTICATION_FAILED';
+      default:
+        return event.error;
+    }
+  }
   if (event.error !== 'RDP_DISCONNECTED') return event.error;
   switch (event.nativeError) {
     // MAKE_FREERDP_ERROR(ERRINFO, code): ERRINFO class is 1 in pinned 3.32.1.
