@@ -79,3 +79,12 @@ IPC load, exact public CPU error, both channel closes, token retirement and
 joined cleanup. The original RSS mode passes again. Complete CPU/session-total
 budgets, other producer/server profiles, browser terminal display, connected
 siblings, OS-failure and soak gates remain open.
+
+On 2026-10-20, the user asked for another access attempt. TCP 3389 succeeds;
+the native FreeRDP inspect helper reaches a certificate prompt, and the strict
+helper rejects the endpoint as `RDP_CERTIFICATE_REJECTED`. It now presents
+`sha256:7a826b7c5f71b03b67866a63d03e15279aefb6638a36cfc9c7209e349d5e75ed`
+with a hostname mismatch. The strict run joins worker close and leaves the
+runtime directory empty. No trust was persisted and no connected desktop test
+was run against this new certificate; one-session use of this exact fingerprint
+is pending user confirmation. [Evidence](ITERATION_344.md).

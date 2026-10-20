@@ -916,10 +916,13 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 - [~] IN PROGRESS — Supplied credentials/auth callback are implemented; interactive replacement prompts remain TODO.
 - [~] IN PROGRESS — Strict chain/name validation and one-session certificate prompts pass native/HTTP/WS tests. Persistent trust/TOFU and changed-certificate history remain TODO.
 - [~] IN PROGRESS — Load addins and connect: historical XRDP activation/heartbeat
-  remains verified. Restored Windows RDP endpoint now also passes activation,
+  remains verified. Restored Windows RDP endpoint previously passed activation,
   strict certificate refusal, approved session-only connection, graphics/resize
-  and cleanup. Application/device/audio and broader Windows profiles remain
-  open. [Current lab scope](docs/LAB_STATUS.md).
+  and cleanup. The latest access retry reaches the certificate prompt, but the
+  endpoint now presents a new hostname-mismatched fingerprint; strict refusal
+  and joined cleanup pass, while renewed one-session trust and desktop regression
+  are pending. Application/device/audio and broader Windows profiles remain
+  open. [Current lab scope](docs/LAB_STATUS.md), [retry](docs/ITERATION_344.md).
 - [x] DONE for selected remote disconnect reasons — Pinned FreeRDP ERRINFO idle/logon timeout and logoff codes map to fixed `RDP_SERVER_TIMEOUT` / `RDP_SERVER_LOGOFF` failures. Unknown codes and all non-disconnect errors preserve their existing classification; no private wire change. Other remote reasons and actual server-profile coverage remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_332.md).
 - [x] DONE for selected connection authentication failures — Pinned FreeRDP CONNECT credential/account refusal codes map to the existing fixed `RDP_AUTHENTICATION_FAILED`; transport/TLS and unknown codes remain `RDP_CONNECT_FAILED`. No IPC change or diagnostic numeric disclosure. Other auth methods/server profiles remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_333.md).
 - [x] DONE for selected server ERRINFO refusals — Server-denied and insufficient-privilege reasons map to fixed `RDP_SERVER_REJECTED`; fresh-credentials-required maps to authentication failure. Unknown reasons stay generic. Broader server error history remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_334.md).
