@@ -33,7 +33,7 @@ export function audioNegotiationDiagnostics(bytes) {
   );
 }
 
-const fields = [
+const negotiationFields = [
   ['server', 'serverFormats', 65535n, 5],
   ['client', 'clientFormats', 65535n, 5],
   ['training', 'training', 0xffffffffffffffffn, 20],
@@ -43,14 +43,10 @@ const fields = [
   ['cancelled', 'cancelled', 0xffffffffffffffffn, 20],
   ['failures', 'failures', 0xffffffffffffffffn, 20],
 ];
-const literals = fields.map(([wire], index) =>
-  Buffer.from(
-    (index === 0 ? 'bridge.audio.negotiation v=1 ' : '') + wire + '=',
-  ),
-);
-
 /** A stderr chunk is not a record: keep only a fixed numeric draft and latest receipt. */
-export class AudioNegotiationDiagnostics {
+class NumericAudioDiagnostics {
+  #fields;
+  #literals;
   #field = 0;
   #offset = 0;
   #number = 0n;
@@ -60,6 +56,12 @@ export class AudioNegotiationDiagnostics {
   #carriage = false;
   #draft = {};
   #latest;
+  constructor(prefix, fields) {
+    this.#fields = fields;
+    this.#literals = fields.map(([wire], index) =>
+      Buffer.from((index === 0 ? prefix + ' ' : '') + wire + '='),
+    );
+  }
   #reset() {
     this.#field = this.#offset = this.#digits = 0;
     this.#number = 0n;
@@ -82,31 +84,31 @@ export class AudioNegotiationDiagnostics {
         }
       }
       if (!this.#readingNumber) {
-        if (byte === literals[this.#field][this.#offset]) {
-          if (++this.#offset === literals[this.#field].length)
+        if (byte === this.#literals[this.#field][this.#offset]) {
+          if (++this.#offset === this.#literals[this.#field].length)
             this.#readingNumber = true;
           continue;
         }
       } else if (byte >= 48 && byte <= 57) {
         this.#number = this.#number * 10n + BigInt(byte - 48);
         if (
-          ++this.#digits <= fields[this.#field][3] &&
-          this.#number <= fields[this.#field][2]
+          ++this.#digits <= this.#fields[this.#field][3] &&
+          this.#number <= this.#fields[this.#field][2]
         )
           continue;
       } else if (
         byte === 13 &&
         this.#digits > 0 &&
-        this.#field === fields.length - 1
+        this.#field === this.#fields.length - 1
       ) {
         this.#carriage = true;
         continue;
       } else if (
         this.#digits > 0 &&
-        byte === (this.#field === fields.length - 1 ? 10 : 32)
+        byte === (this.#field === this.#fields.length - 1 ? 10 : 32)
       ) {
-        this.#draft[fields[this.#field][1]] = this.#number.toString();
-        if (++this.#field === fields.length) {
+        this.#draft[this.#fields[this.#field][1]] = this.#number.toString();
+        if (++this.#field === this.#fields.length) {
           this.#latest = this.#draft;
           this.#reset();
         } else {
@@ -122,5 +124,51 @@ export class AudioNegotiationDiagnostics {
   }
   snapshot() {
     return this.#latest ? { ...this.#latest } : undefined;
+  }
+}
+
+export class AudioNegotiationDiagnostics extends NumericAudioDiagnostics {
+  constructor() {
+    super('bridge.audio.negotiation v=1', negotiationFields);
+  }
+}
+
+const uint64Fields = (names) =>
+  names.map((name) => [name, name, 0xffffffffffffffffn, 20]);
+
+/** Existing code-owned lifetime counters; absent receipts never become zero. */
+export class AudioSummaryDiagnostics extends NumericAudioDiagnostics {
+  constructor() {
+    super(
+      'bridge.audio.summary',
+      uint64Fields([
+        'chunks',
+        'overflow',
+        'skipped',
+        'late',
+        'revisions',
+        'resets',
+        'packets',
+      ]),
+    );
+  }
+}
+
+export class AudioCauseDiagnostics extends NumericAudioDiagnostics {
+  constructor() {
+    super(
+      'bridge.audio.causes',
+      uint64Fields([
+        'first',
+        'profile',
+        'block',
+        'arrivalBackward',
+        'arrivalGap',
+        'timestampBackward',
+        'timestampGap',
+        'formats',
+        'close',
+      ]),
+    );
   }
 }

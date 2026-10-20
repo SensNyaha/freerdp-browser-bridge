@@ -483,6 +483,13 @@ format, Training/Wave and write/completion/cancellation/failure counters, as
 decimal strings. `null` means no complete diagnostic receipt was observed;
 it must not be interpreted as zero negotiation. The private audio helper uses
 the same stream parser so stderr fragmentation cannot drop a valid receipt.
+The browser footer additionally includes `nativeCounters` (chunking, overflow,
+skipped/late publication, revisions, consumer resets and packets) and
+`nativeCauses` (initial/profile/block, arrival/timestamp discontinuities,
+formats and Close). Both are exact fixed uint64 decimal-string projections,
+or `null` if absent. The private helper preserves the same field names with
+omitted absent receipts. These are lifetime counters, not a causal diagnosis
+of a specific audible pause. [Collection checks](ITERATION_368.md).
 Recovery runs require actual ready-source packet/playback evidence before
 detachment; a waiting source fails in phase `audio-source-ready`, before a
 desktop snapshot is taken. The host source must run in the redirected Windows

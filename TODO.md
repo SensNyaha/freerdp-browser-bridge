@@ -1074,6 +1074,11 @@ now verifies a short audible output slice; the earlier idle-source results remai
   cleanup pass. Frequent epochs/configurations, buffering silence and underflows
   remain; continuous quality, recovery, microphone, LAN latency and sustained
   resource/platform acceptance stay open. [Evidence](docs/ITERATION_367.md).
+  Both browser/private lab helpers now preserve the existing native lifetime
+  loss/reset and clock/format/Close cause receipts across arbitrary stderr
+  chunks, with exact uint64/refusal checks. These diagnostics prepare further
+  continuity work; they do not identify the previous run's cause or accept
+  uninterrupted quality. [Collector evidence](docs/ITERATION_368.md).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,

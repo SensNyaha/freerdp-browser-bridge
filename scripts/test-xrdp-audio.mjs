@@ -2,7 +2,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { WorkerProcess } from '../packages/node-bridge/dist/index.js';
-import { AudioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs';
+import {
+  AudioNegotiationDiagnostics,
+  AudioSummaryDiagnostics,
+  AudioCauseDiagnostics,
+} from './audio-negotiation-diagnostics.mjs';
 import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
 import { readPrivateLabInput } from './private-lab-input.mjs';
 
@@ -63,6 +67,8 @@ const report = {
   pcmNonzero: audioOutput === 'pcm' ? false : undefined,
 };
 const audioNegotiation = new AudioNegotiationDiagnostics();
+const audioSummary = new AudioSummaryDiagnostics();
+const audioCauses = new AudioCauseDiagnostics();
 class LabWorker extends WorkerProcess {
   spawnWorker(directory, env) {
     const child = super.spawnWorker(directory, env);
@@ -70,57 +76,15 @@ class LabWorker extends WorkerProcess {
       rdpDiagnostics.push(bytes);
       report.rdpFailure = rdpDiagnostics.snapshot();
       // Match only fixed code-owned fault messages. Never retain/forward raw upstream logs.
-      const summaryAt = bytes.indexOf(
-        Buffer.from('bridge.audio.summary chunks='),
-      );
       audioNegotiation.push(bytes);
       const negotiation = audioNegotiation.snapshot();
       if (negotiation) report.negotiation = negotiation;
-      const summary =
-        summaryAt < 0
-          ? null
-          : bytes
-              .subarray(summaryAt, Math.min(bytes.length, summaryAt + 256))
-              .toString('ascii')
-              .match(
-                /^bridge\.audio\.summary chunks=(\d{1,20}) overflow=(\d{1,20}) skipped=(\d{1,20}) late=(\d{1,20}) revisions=(\d{1,20}) resets=(\d{1,20}) packets=(\d{1,20})\r?\n/,
-              );
-      if (summary)
-        report.nativeCounters = Object.fromEntries(
-          [
-            'chunks',
-            'overflow',
-            'skipped',
-            'late',
-            'revisions',
-            'resets',
-            'packets',
-          ].map((key, index) => [key, summary[index + 1]]),
-        );
-      const causesAt = bytes.indexOf(Buffer.from('bridge.audio.causes first='));
-      const causes =
-        causesAt < 0
-          ? null
-          : bytes
-              .subarray(causesAt, Math.min(bytes.length, causesAt + 384))
-              .toString('ascii')
-              .match(
-                /^bridge\.audio\.causes first=(\d{1,20}) profile=(\d{1,20}) block=(\d{1,20}) arrivalBackward=(\d{1,20}) arrivalGap=(\d{1,20}) timestampBackward=(\d{1,20}) timestampGap=(\d{1,20}) formats=(\d{1,20}) close=(\d{1,20})\r?\n/,
-              );
-      if (causes)
-        report.nativeCauses = Object.fromEntries(
-          [
-            'first',
-            'profile',
-            'block',
-            'arrivalBackward',
-            'arrivalGap',
-            'timestampBackward',
-            'timestampGap',
-            'formats',
-            'close',
-          ].map((key, index) => [key, causes[index + 1]]),
-        );
+      audioSummary.push(bytes);
+      audioCauses.push(bytes);
+      const summary = audioSummary.snapshot();
+      const causes = audioCauses.snapshot();
+      if (summary) report.nativeCounters = summary;
+      if (causes) report.nativeCauses = causes;
       const prefix = Buffer.from('bridge.audio.guard fault=');
       const at = bytes.indexOf(prefix);
       if (at >= 0) {

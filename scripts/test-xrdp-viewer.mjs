@@ -10,7 +10,11 @@ import {
   WorkerProcess,
 } from '../packages/node-bridge/dist/index.js';
 import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
-import { AudioNegotiationDiagnostics } from './audio-negotiation-diagnostics.mjs';
+import {
+  AudioNegotiationDiagnostics,
+  AudioSummaryDiagnostics,
+  AudioCauseDiagnostics,
+} from './audio-negotiation-diagnostics.mjs';
 import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
@@ -89,12 +93,16 @@ const options = {
 };
 const rdpDiagnostics = new LabRdpDiagnostics();
 const audioNegotiation = new AudioNegotiationDiagnostics();
+const audioSummary = new AudioSummaryDiagnostics();
+const audioCauses = new AudioCauseDiagnostics();
 class DiagnosticProcess extends WorkerProcess {
   spawnWorker(directory, env) {
     const child = super.spawnWorker(directory, env);
     child.stderr.on('data', (bytes) => {
       rdpDiagnostics.push(bytes);
       audioNegotiation.push(bytes);
+      audioSummary.push(bytes);
+      audioCauses.push(bytes);
     });
     return child;
   }
@@ -1005,6 +1013,8 @@ try {
         type: 'lab.browser.audio-negotiation',
         v: 1,
         negotiation: audioNegotiation.snapshot() ?? null,
+        nativeCounters: audioSummary.snapshot() ?? null,
+        nativeCauses: audioCauses.snapshot() ?? null,
         runtimeEmpty: leftovers.length === 0,
       }),
     );
