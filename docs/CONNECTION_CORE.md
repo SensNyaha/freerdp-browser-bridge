@@ -87,8 +87,10 @@ expired/required-change passwords, revoked accounts, disabled/expired/locked
 accounts, logon failure, wrong password, access denied, account restriction,
 logon-type refusal and missing credentials. Those become the existing fixed
 `RDP_AUTHENTICATION_FAILED` public failure. Transport/TLS failures and unknown
-CONNECT codes retain `RDP_CONNECT_FAILED`; no native error number is exposed.
-This is a reviewed subset, not exhaustive authentication policy coverage.
+CONNECT codes retain `RDP_CONNECT_FAILED`; the pinned
+`ERRCONNECT_HYBRID_REQUIRED_BY_SERVER` is reported separately as
+`RDP_SECURITY_MODE_REQUIRED`. No native error number is exposed. This is a
+reviewed subset, not exhaustive authentication policy coverage.
 
 ## Hosting and tests
 

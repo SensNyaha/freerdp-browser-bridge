@@ -98,6 +98,11 @@ const failures = {
   MEDIA_FAILED: [502, 'Media frame is unavailable', true],
   RDP_CONNECT_FAILED: [502, 'Remote connection failed', true],
   RDP_AUTHENTICATION_FAILED: [502, 'Remote authentication failed', false],
+  RDP_SECURITY_MODE_REQUIRED: [
+    502,
+    'Remote server requires another security mode',
+    false,
+  ],
   RDP_CERTIFICATE_REJECTED: [502, 'Remote certificate was rejected', false],
   RDP_CONNECT_TIMEOUT: [504, 'Remote connection deadline exceeded', true],
   RDP_PROTOCOL_ERROR: [502, 'Remote protocol operation failed', false],

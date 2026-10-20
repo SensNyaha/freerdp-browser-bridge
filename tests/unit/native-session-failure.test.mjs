@@ -104,6 +104,10 @@ test('native connection failure maps pinned credential/account CONNECT errors an
     'RDP_CONNECT_FAILED',
   );
   assert.equal(
+    classifyNativeConnectionFailure(event(0x0002001e)),
+    'RDP_SECURITY_MODE_REQUIRED',
+  );
+  assert.equal(
     classifyNativeConnectionFailure(event(0x00020015, 'RDP_PROTOCOL_ERROR')),
     'RDP_PROTOCOL_ERROR',
   );
@@ -130,6 +134,7 @@ test('native session adapter publishes classified fixed failures from terminal s
       [0x00010010, 'RDP_DISCONNECTED'],
       [0x00020015, 'RDP_CONNECT_FAILED'],
       [0x00020008, 'RDP_CONNECT_FAILED'],
+      [0x0002001e, 'RDP_CONNECT_FAILED'],
       [0x00010003, 'RDP_PROTOCOL_ERROR'],
     ])
       adapter.peer.emit('rdp-state', { nativeError, state: 'failed', error });
@@ -144,6 +149,7 @@ test('native session adapter publishes classified fixed failures from terminal s
       'RDP_SERVER_FAILURE',
       'RDP_AUTHENTICATION_FAILED',
       'RDP_CONNECT_FAILED',
+      'RDP_SECURITY_MODE_REQUIRED',
       'RDP_PROTOCOL_ERROR',
     ]);
   } finally {

@@ -64,6 +64,8 @@ export function classifyNativeConnectionFailure(
       case 0x0002001a: // ERRCONNECT_LOGON_TYPE_NOT_GRANTED
       case 0x0002001b: // ERRCONNECT_NO_OR_MISSING_CREDENTIALS
         return 'RDP_AUTHENTICATION_FAILED';
+      case 0x0002001e: // ERRCONNECT_HYBRID_REQUIRED_BY_SERVER
+        return 'RDP_SECURITY_MODE_REQUIRED';
       default:
         return event.error;
     }
