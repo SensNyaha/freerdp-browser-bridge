@@ -265,6 +265,18 @@ test('fake-backend HTTP: recognized remote failures remain fixed in failed sessi
   await withServer({}, async ({ request, factory }) => {
     for (const [code, message, retryable] of [
       [
+        'RDP_SERVER_TIMEOUT',
+        'Remote server ended the session on timeout',
+        true,
+      ],
+      ['RDP_SERVER_LOGOFF', 'Remote server logged off the session', true],
+      ['RDP_SERVER_REJECTED', 'Remote server refused the session', false],
+      [
+        'RDP_SERVER_FAILURE',
+        'Remote server ended the session unexpectedly',
+        true,
+      ],
+      [
         'RDP_SERVER_DISCONNECT',
         'Remote server ended the session by request',
         true,
