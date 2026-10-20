@@ -1567,9 +1567,20 @@ profile's target, microphone, recovery, resource or platform acceptance.
   pass, but the repeat still records unclassified IPC timeouts. Original logs
   and thresholds are preserved. A subsequent phase-aware run identifies retiring
   timeouts and longer active query observations; no original root cause or
-  production correction is claimed. Absolute-deadline and wider load/OS timing
+  production correction is claimed. A separate failing-before/passing-after
+  control now proves RSS/CPU samples that return after a three-second deadline
+  during a 3.1-second event-loop stall fail closed across separate and paired
+  Windows queries; the original capacity-failure cause and wider load/OS timing
   acceptance remain open. [Original evidence](docs/ITERATION_327.md),
   [diagnostics](docs/ITERATION_328.md).
+- [x] DONE for worker resource-query deadline enforcement under event-loop
+  stalls — Absolute monotonic expiry checks prevent late RSS/CPU values from
+  reviving an expired query for separate policies, paired Windows policies and
+  the shared Windows helper. The actual-worker stall controls fail before and
+  pass after; Windows resource focus 25/25, full Node 740 passed / 101
+  platform/profile skips and CTest 33/33 pass. This does not identify the
+  earlier capacity spike's root cause or prove hard OS close, Linux, connected
+  fault, total-session or soak bounds. [Evidence](docs/ITERATION_329.md).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.

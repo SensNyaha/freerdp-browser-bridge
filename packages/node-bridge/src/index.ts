@@ -494,6 +494,7 @@ export class WorkerProcess extends EventEmitter {
       }),
     };
     this.residentProbe = probe;
+    const expiresNs = process.hrtime.bigint() + 3_000_000_000n;
     const deadline = setTimeout(() => {
       probe.abort.abort();
       if (current()) this.fail('WORKER_RESOURCE_UNAVAILABLE');
@@ -503,11 +504,21 @@ export class WorkerProcess extends EventEmitter {
       .then(() => {
         if (!current() || probe.abort.signal.aborted)
           throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        if (process.hrtime.bigint() >= expiresNs) {
+          probe.abort.abort();
+          throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        }
         return this.sampleResidentBytes(pid, probe.abort.signal);
       })
       .then((bytes) => {
         if (!current()) return;
-        if (!Number.isSafeInteger(bytes) || bytes < 1)
+        if (
+          probe.abort.signal.aborted ||
+          process.hrtime.bigint() >= expiresNs
+        ) {
+          probe.abort.abort();
+          this.fail('WORKER_RESOURCE_UNAVAILABLE');
+        } else if (!Number.isSafeInteger(bytes) || bytes < 1)
           this.fail('WORKER_RESOURCE_UNAVAILABLE');
         else if (bytes > this.options.maxResidentBytes)
           this.fail('WORKER_MEMORY_LIMIT');
@@ -581,6 +592,7 @@ export class WorkerProcess extends EventEmitter {
       }),
     };
     this.cpuProbe = probe;
+    const expiresNs = process.hrtime.bigint() + 3_000_000_000n;
     const deadline = setTimeout(() => {
       probe.abort.abort();
       if (current()) this.fail('WORKER_RESOURCE_UNAVAILABLE');
@@ -591,11 +603,23 @@ export class WorkerProcess extends EventEmitter {
       .then(() => {
         if (!current() || probe.abort.signal.aborted)
           throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        if (process.hrtime.bigint() >= expiresNs) {
+          probe.abort.abort();
+          throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        }
         startedNs = process.hrtime.bigint();
         return this.sampleCpuMicros(pid, probe.abort.signal);
       })
       .then((micros) => {
         if (!current()) return;
+        if (
+          probe.abort.signal.aborted ||
+          process.hrtime.bigint() >= expiresNs
+        ) {
+          probe.abort.abort();
+          this.fail('WORKER_RESOURCE_UNAVAILABLE');
+          return;
+        }
         const bracket = this.cpuQueryBrackets.get(probe.abort.signal);
         if (
           window.observe(
