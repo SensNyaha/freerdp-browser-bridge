@@ -106,6 +106,9 @@ unchanged polls, local WS writes and valid render-credit round trips. Frame/byte
 counters and credit occupancy distinguish producer work from consumer stalls.
 See [metric semantics](docs/SESSION_API.md) and [iteration evidence](docs/ITERATION_011.md).
 Timing uses one Node monotonic clock; worker media timestamps are preserved.
+Local forwarding samples require every configuration/image record to finish
+successfully; partial write failures cannot contribute a successful sample.
+[Regression evidence](docs/ITERATION_366.md).
 The stages overlap and cannot be summed into an end-to-end bridge latency number.
 Framebuffer dirty-to-send age, independent queue delays, controlled scene replay,
 CPU/RSS and the existing full performance/soak gates remain pending.

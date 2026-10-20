@@ -205,7 +205,8 @@ Media attachments add fixed `codec` (`h264`/`jpeg`) and `stage` labels to
 - `capture_changed`: successful worker capture request to changed encoded response,
   including native scheduling, encode, IPC and Node response validation;
 - `capture_unchanged`: successful polls returning no changed image, kept separate;
-- `forward`: from queuing RWB1 records to the final successful local WS write callback;
+- `forward`: from queuing RWB1 records until all configuration/image write callbacks
+  finish successfully; a failure in any record excludes the entire frame group;
 - `render_credit`: from holding credit before sending records to a valid frame ACK.
 
 All intervals use the Node monotonic clock and are exported in seconds. Forwarding

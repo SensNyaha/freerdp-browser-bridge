@@ -274,12 +274,18 @@ export function installMedia(
         ws.close(1008, 'media acknowledgement deadline');
       }, 5000);
       const writeStarted = performance.now();
-      for (const [index, record] of records.entries())
+      const writeCodec = codec;
+      let pendingWrites = records.length;
+      let writeFailed = false;
+      for (const record of records)
         ws.send(record, { binary: true }, (error) => {
-          if (error) ws.terminate();
-          else if (index === records.length - 1)
+          if (error) {
+            writeFailed = true;
+            ws.terminate();
+          }
+          if (--pendingWrites === 0 && !writeFailed)
             metrics.observe(
-              codec!,
+              writeCodec,
               'forward',
               performance.now() - writeStarted,
             );
