@@ -274,6 +274,11 @@ test('fake-backend HTTP: recognized remote failures remain fixed in failed sessi
         'Remote server requires another security mode',
         false,
       ],
+      [
+        'RDP_SESSION_REPLACED',
+        'Remote session was replaced by another connection',
+        true,
+      ],
     ]) {
       const workerIndex = factory.workers.length;
       const created = await request('POST', '/v1/sessions', config());
