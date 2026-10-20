@@ -485,16 +485,17 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   15,621,256 bytes. Earlier footprints remain in their historical reports.
   [Iteration 5](docs/ITERATION_005.md), [iteration 6](docs/ITERATION_006.md).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
-- **Retained acceptance:** Windows RDP lab is unavailable. Linux runtime/Clang
-  are now available and portable checks pass in iteration 184; linked Linux
-  FreeRDP/private dependency and primary IPC Release checks now pass locally;
-  actual Linux RDP/device and broader platform/resource gates remain.
-  The XRDP lab has passed strict certificate rejection and explicitly
-  user-approved session-only trust, activation, heartbeat and cleanup checks.
-  [Iteration 4](docs/ITERATION_004.md) records the historical absent-Linux scope;
-  primary Linux IPC is implemented and verified in [iteration 200](docs/ITERATION_200.md).
-  CI jobs are prepared but have not run; local sanitizer/fuzz execution is separate
-  evidence and does not establish CI or linked Linux integration acceptance.
+- **Retained acceptance:** Windows RDP access is restored; current endpoint and
+  application evidence are summarized in [lab status](docs/LAB_STATUS.md), with
+  a current verification limitation in [iteration 332](docs/ITERATION_332.md).
+  Historical XRDP results retain their original server scope and include strict
+  certificate rejection, approved session-only trust, activation, heartbeat
+  and cleanup. [Iteration 4](docs/ITERATION_004.md) records the historical
+  absent-Linux scope; primary Linux IPC is implemented and verified in
+  [iteration 200](docs/ITERATION_200.md). Actual Linux RDP/device, broader
+  platform/resource gates and CI execution remain open; local sanitizer/fuzz
+  execution does not establish CI or linked Linux integration acceptance.
+  [Documentation correction](docs/ITERATION_336.md).
 
 Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration report:
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
