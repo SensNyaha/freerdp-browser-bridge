@@ -21,6 +21,7 @@ import { viewerMediaOptions } from './viewer-media-options.mjs';
 import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
 import { dispatchWindowsLabTone } from './windows-lab-tone.mjs';
 import { AudioResetDiagnostics } from './audio-reset-diagnostics.mjs';
+import { viewerWorkerOptions } from './viewer-worker-options.mjs';
 import {
   ViewerSoak,
   soakDurationMs,
@@ -60,8 +61,8 @@ const quality = qualityTest
   : undefined;
 const codecs = [mode === 'jpeg' ? 'jpeg' : 'h264'];
 if (
-  ![3, 4, 5].includes(process.argv.length) ||
-  (process.argv.length === 5 &&
+  ![3, 4, 5, 6].includes(process.argv.length) ||
+  (process.argv.length >= 5 &&
     !manual &&
     !qualityTest &&
     !resizeTest &&
@@ -75,6 +76,22 @@ if (
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '')
 )
   throw new Error('Pass the previously verified certificate fingerprint');
+const { options, profile: nativeProfile } = await viewerWorkerOptions(
+  process.argv[5],
+  resolve('.'),
+);
+if (nativeProfile)
+  console.log(
+    JSON.stringify({
+      type: 'lab.browser.native-profile',
+      v: 1,
+      receipt: nativeProfile.receipt,
+      buildType: nativeProfile.buildType,
+      sourceHash: nativeProfile.sourceHash,
+      workerHash: nativeProfile.workerHash,
+      helperHash: nativeProfile.helperHash,
+    }),
+  );
 const readJson = async (path) =>
   JSON.parse((await readFile(resolve(path), 'utf8')).replace(/^\uFEFF/, ''));
 const lab = await readJson('.local-tests/xrdp-lab.json');
@@ -86,12 +103,6 @@ if (
 const credentials = await readJson('.local-tests/xrdp-lab.secrets.json');
 const origin = 'http://127.0.0.1:47999';
 const bearer = randomBytes(32).toString('base64url');
-const options = {
-  workerPath: resolve(
-    'build/bundled/rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
-  ),
-  runtimeRoot: resolve('.runtime/viewer-lab'),
-};
 const rdpDiagnostics = new LabRdpDiagnostics();
 const audioNegotiation = new AudioNegotiationDiagnostics();
 const audioSummary = new AudioSummaryDiagnostics();

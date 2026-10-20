@@ -536,6 +536,22 @@ the helper cannot independently verify source execution; actual packet/playback
 counters and the operator's listening report provide separate evidence.
 [Named audible result and retained quality gaps](ITERATION_367.md).
 
+On Windows, append one isolated native receipt after the existing viewer mode
+to select its verified worker/helper pair:
+
+```powershell
+node scripts/test-xrdp-viewer.mjs $fingerprint h264 --audio-opus-compat-tone-listen build/native-clean-EXAMPLE/receipt.json
+```
+
+The same receipt validator used by the resource lab checks the pinned linked
+profile, source identity and exact worker/helper bytes before reading lab
+configuration or credentials. It accepts the existing Windows Debug/Release
+receipt profiles. Omitting the receipt keeps the ordinary bundled worker;
+explicit selection does not replace it. A schema-1 `lab.browser.native-profile`
+record reports receipt/build type and source/worker/helper hashes, without
+claiming connection or playback. This prepares the corrected Debug worker for
+a separately authorized actual session. [Selection checks](ITERATION_372.md).
+
 The recovery modes require real active output before and after browser detach/
 reattach, and fail for an idle source. Opus also requires an observed native
 reset result and a fresh epoch. Leave audio playing on the authorized lab; the

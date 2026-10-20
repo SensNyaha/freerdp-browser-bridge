@@ -1188,6 +1188,10 @@ broader format profiles and end-to-end acceptance are separate open work.
   blockage; portable virtual-minute and Windows linked ownership/lifecycle controls
   pass. Connected new-worker scheduling, callback CPU/wakeup budgets and real
   transport/audio-quality acceptance remain open. [Deadline correction](docs/ITERATION_371.md).
+  The Windows lab viewer can explicitly select the corrected isolated Debug
+  worker by its bound native receipt, preserving the bundled default and
+  validating worker/helper bytes before lab configuration. Actual new-worker
+  audio remains pending its own session. [Helper checks](docs/ITERATION_372.md).
 - [~] Audio reconnect/discontinuity reset: epoch, Close/reset, reattachment and
   ownership barriers pass fixtures; actual XRDP private reset and ready-source
   browser attachment recovery pass for the named profiles. Broader recovery and
