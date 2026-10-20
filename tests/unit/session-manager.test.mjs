@@ -51,12 +51,22 @@ test('remote RDP terminal failures expose fixed public status and retryability',
 });
 
 test('fake-backend manager preserves recognized remote terminal codes in failed snapshots', async () => {
-  for (const [code, message] of [
+  for (const [code, message, retryable] of [
     [
       'RDP_SESSION_REPLACED',
       'Remote session was replaced by another connection',
+      true,
     ],
-    ['RDP_SERVER_DISCONNECT', 'Remote server ended the session by request'],
+    [
+      'RDP_SERVER_DISCONNECT',
+      'Remote server ended the session by request',
+      true,
+    ],
+    [
+      'RDP_SECURITY_MODE_REQUIRED',
+      'Remote server requires another security mode',
+      false,
+    ],
   ]) {
     const factory = fakeFactory();
     await withManager(factory, async (manager) => {
@@ -71,7 +81,7 @@ test('fake-backend manager preserves recognized remote terminal codes in failed 
       assert.deepEqual(manager.get(created.sessionId, a).error, {
         code,
         message,
-        retryable: true,
+        retryable,
       });
     });
   }

@@ -261,24 +261,36 @@ test('fake-backend HTTP: owner lifecycle, strict input validation, fresh attach 
   });
 });
 
-test('fake-backend HTTP: recognized server disconnect remains fixed in failed session snapshot', async () => {
+test('fake-backend HTTP: recognized remote failures remain fixed in failed session snapshots', async () => {
   await withServer({}, async ({ request, factory }) => {
-    const created = await request('POST', '/v1/sessions', config());
-    assert.equal(created.statusCode, 202, created.body);
-    const { sessionId } = created.json();
-    await eventually(
-      () => factory.workers.length === 1 && factory.workers[0].started === 1,
-    );
-    factory.workers[0].emit('failure', 'RDP_SERVER_DISCONNECT');
-    await eventually(() => factory.workers[0].closed === 1);
+    for (const [code, message, retryable] of [
+      [
+        'RDP_SERVER_DISCONNECT',
+        'Remote server ended the session by request',
+        true,
+      ],
+      [
+        'RDP_SECURITY_MODE_REQUIRED',
+        'Remote server requires another security mode',
+        false,
+      ],
+    ]) {
+      const workerIndex = factory.workers.length;
+      const created = await request('POST', '/v1/sessions', config());
+      assert.equal(created.statusCode, 202, created.body);
+      const { sessionId } = created.json();
+      await eventually(
+        () =>
+          factory.workers.length === workerIndex + 1 &&
+          factory.workers[workerIndex].started === 1,
+      );
+      factory.workers[workerIndex].emit('failure', code);
+      await eventually(() => factory.workers[workerIndex].closed === 1);
 
-    const response = await request('GET', '/v1/sessions/' + sessionId);
-    assert.equal(response.statusCode, 200);
-    assert.deepEqual(response.json().error, {
-      code: 'RDP_SERVER_DISCONNECT',
-      message: 'Remote server ended the session by request',
-      retryable: true,
-    });
+      const response = await request('GET', '/v1/sessions/' + sessionId);
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(response.json().error, { code, message, retryable });
+    }
   });
 });
 
