@@ -261,6 +261,27 @@ test('fake-backend HTTP: owner lifecycle, strict input validation, fresh attach 
   });
 });
 
+test('fake-backend HTTP: recognized server disconnect remains fixed in failed session snapshot', async () => {
+  await withServer({}, async ({ request, factory }) => {
+    const created = await request('POST', '/v1/sessions', config());
+    assert.equal(created.statusCode, 202, created.body);
+    const { sessionId } = created.json();
+    await eventually(
+      () => factory.workers.length === 1 && factory.workers[0].started === 1,
+    );
+    factory.workers[0].emit('failure', 'RDP_SERVER_DISCONNECT');
+    await eventually(() => factory.workers[0].closed === 1);
+
+    const response = await request('GET', '/v1/sessions/' + sessionId);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json().error, {
+      code: 'RDP_SERVER_DISCONNECT',
+      message: 'Remote server ended the session by request',
+      retryable: true,
+    });
+  });
+});
+
 test('fake-backend WebSocket: Origin, channel/session scope, one controller, replay and detach', async () => {
   await withServer({}, async ({ request, wsBase, logs }) => {
     const one = (await request('POST', '/v1/sessions', config())).json();
