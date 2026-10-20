@@ -8,6 +8,7 @@ import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { eventually } from '../fixtures/session-worker.mjs';
+import { readViewerPipelineObservation } from '../../scripts/viewer-pipeline-observation.mjs';
 import {
   WorkerProcess,
   probeWorkerBuild,
@@ -68,11 +69,22 @@ test('native lifecycle integration: pipeline diagnostics are capability gated an
           maxReadBatch: 0,
           maxReadBatchUs: 0,
         });
+        assert.deepEqual(await readViewerPipelineObservation(worker), {
+          rdpChecks: 0,
+          paints: 0,
+          encodedFrames: 0,
+          encodeMeanUs: 0,
+          encodeP95Us: 0,
+          encodeMaxUs: 0,
+          maxReadBatch: 0,
+          maxReadBatchUs: 0,
+        });
       } else {
         await assert.rejects(
           worker.pipelineStats(),
           /DIAGNOSTICS_NOT_IMPLEMENTED/,
         );
+        assert.equal(await readViewerPipelineObservation(worker), null);
       }
       await worker.ping();
     } finally {

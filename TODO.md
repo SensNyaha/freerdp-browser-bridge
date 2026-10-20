@@ -59,6 +59,18 @@ does not accept the scheduling correction's actual playback or quality;
 negotiation/source and remaining Stage 6 gates stay open.
 [Debug observation](docs/ITERATION_373.md).
 
+Bounded listening previews now additionally collect one native video pipeline
+snapshot using the existing capability/deadline API. Only eight validated
+numeric fields are projected; unavailable evidence remains `null`. This local
+instrumentation prepares encode/read-cost observations without accepting an
+audio stall cause, connected timing, CPU or quality gate.
+[Collector evidence](docs/ITERATION_374.md).
+The full check passes 818 / 51 skips but retains one failing unchanged
+40-worker resource-capacity case; a focused repeat also fails after active
+resource queries exceed their unchanged three-second bound. This local
+collector block does not close the resource/load limitation or claim a clean
+full-suite result. Exact diagnostics remain in the same report.
+
 ## Implementation status — 2026-10-18
 
 The user restored access and confirms the target is the Windows RDP lab;

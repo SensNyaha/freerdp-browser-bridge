@@ -143,3 +143,12 @@ not a measurement of the host OS timer, connected CPU/RSS or end-to-end latency.
 The ordinary/compatibility buffers and late-discard policy remain unchanged.
 Actual native stalls and uninterrupted audio acceptance remain open.
 [Implementation and verification](docs/ITERATION_371.md).
+
+The bounded audio preview now collects one existing native video pipeline
+snapshot before joined close. It reports encode mean/recent-128-frame p95 /
+lifetime max, read-batch maxima and fixed native counters, with `null` for
+unavailable evidence. These independent aggregate observations can reveal
+expensive encode/read work; they do not correlate individual audio skips or
+measure event waits, audio codec time, total CPU or end-to-end latency.
+No new connected measurement is claimed by this local collection change.
+[Collector scope](docs/ITERATION_374.md).

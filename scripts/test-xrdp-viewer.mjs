@@ -19,6 +19,7 @@ import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
 import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
 import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
+import { readViewerPipelineObservation } from './viewer-pipeline-observation.mjs';
 import { dispatchWindowsLabTone } from './windows-lab-tone.mjs';
 import { AudioResetDiagnostics } from './audio-reset-diagnostics.mjs';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
@@ -508,6 +509,14 @@ try {
       const observation = page.isClosed()
         ? null
         : await readViewerAudioObservation(page).catch(() => null);
+      const pipeline = await readViewerPipelineObservation(nativeWorker);
+      console.log(
+        JSON.stringify({
+          type: 'lab.browser.native-pipeline',
+          v: 1,
+          stats: pipeline,
+        }),
+      );
       console.log(
         JSON.stringify({
           type: 'lab.browser.audio-preview',

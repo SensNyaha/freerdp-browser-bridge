@@ -522,6 +522,18 @@ restart the source in PowerShell inside this active Bridge viewer after
 connection; the user-started tone in a previous `mstsc` connection did not
 establish that route. The native negotiation footer still follows joined close.
 
+Each bounded listening preview also awaits one existing native pipeline query
+before cleanup and emits schema-1 `lab.browser.native-pipeline`. Its `stats`
+contains only `rdpChecks`, `paints`, `encodedFrames`, `encodeMeanUs`,
+`encodeP95Us`, `encodeMaxUs`, `maxReadBatch` and `maxReadBatchUs`, or `null`
+when unsupported, closed, refused or unavailable. The existing native request
+deadline owns the query; the helper adds no retry, polling or detached timeout.
+Encode p95 covers the latest 128 encoded frames; mean/max and the other
+counters/maxima cover the worker lifetime. These describe video work, without
+identifying the cause or time of a particular audio pause. They exclude audio
+codec work, event waits, Node/browser processing and end-to-end latency.
+[Collection verification](ITERATION_374.md).
+
 For a separately authorized fixed-source Windows test, use
 `--audio-opus-compat-tone-listen` instead. This opt-in is restricted to the
 named Windows lab `192.168.21.149:3389`. Through private RDP input it opens
