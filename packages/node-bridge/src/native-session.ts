@@ -41,6 +41,25 @@ import type {
   ClipboardStatus,
 } from '@freerdp-bridge/protocol';
 
+/** Map the small, documented FreeRDP ERRINFO subset to stable public failures. */
+export function classifyNativeConnectionFailure(
+  event: NativeConnectionState,
+): SessionErrorCode | undefined {
+  if (event.error === 'NONE') return undefined;
+  if (event.error !== 'RDP_DISCONNECTED') return event.error;
+  switch (event.nativeError) {
+    // MAKE_FREERDP_ERROR(ERRINFO, code): ERRINFO class is 1 in pinned 3.32.1.
+    case 0x00010003: // ERRINFO_IDLE_TIMEOUT
+    case 0x00010004: // ERRINFO_LOGON_TIMEOUT
+      return 'RDP_SERVER_TIMEOUT';
+    case 0x00010002: // ERRINFO_RPC_INITIATED_LOGOFF
+    case 0x0001000c: // ERRINFO_LOGOFF_BY_USER
+      return 'RDP_SERVER_LOGOFF';
+    default:
+      return event.error;
+  }
+}
+
 /** Explicit experimental native backend; full usable-desktop capability remains separately gated. */
 export class NativeSessionWorker implements SessionWorker {
   private readonly worker: WorkerProcess;
@@ -83,7 +102,8 @@ export class NativeSessionWorker implements SessionWorker {
     });
     this.worker.on('rdp-state', (event: NativeConnectionState) => {
       if (this.closing) return;
-      if (event.error !== 'NONE') this.events.emit('failure', event.error);
+      const failure = classifyNativeConnectionFailure(event);
+      if (failure) this.events.emit('failure', failure);
       else this.events.emit('state', event.state);
     });
     this.worker.on('certificate', (prompt: CertificatePrompt) => {

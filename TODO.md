@@ -919,7 +919,8 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
   strict certificate refusal, approved session-only connection, graphics/resize
   and cleanup. Application/device/audio and broader Windows profiles remain
   open. [Current lab scope](docs/LAB_STATUS.md).
-- [~] IN PROGRESS — Stable connect/auth/certificate/timeout/disconnect failures implemented; richer remote disconnect categorization remains TODO.
+- [x] DONE for selected remote disconnect reasons — Pinned FreeRDP ERRINFO idle/logon timeout and logoff codes map to fixed `RDP_SERVER_TIMEOUT` / `RDP_SERVER_LOGOFF` failures. Unknown codes and all non-disconnect errors preserve their existing classification; no private wire change. Other remote reasons and actual server-profile coverage remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_332.md).
+- [~] IN PROGRESS — Stable connect/auth/certificate/timeout/disconnect failures are implemented; remaining remote ERRINFO reasons and broader Windows server/application profiles need actual integration acceptance.
 - [~] IN PROGRESS — Graceful disconnect and cancellation verified; reconnect remains unsupported.
 - [x] DONE for current connection slice — Password is delivered through a separate private IPC class after HELLO, with transport copies overwritten. No per-session secrets enter argv/env; unsupported hash/PIN modes are rejected.
 
