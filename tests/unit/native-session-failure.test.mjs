@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyNativeConnectionFailure } from '../../packages/node-bridge/dist/index.js';
+import { EventEmitter } from 'node:events';
+import {
+  classifyNativeConnectionFailure,
+  NativeSessionWorker,
+} from '../../packages/node-bridge/dist/index.js';
+
+const paths = { workerPath: 'unused-worker', runtimeRoot: 'unused-runtime' };
 
 test('native connection failure maps only documented remote timeout/logoff ERRINFO values', () => {
   const event = (nativeError, error = 'RDP_DISCONNECTED') => ({
@@ -84,4 +90,40 @@ test('native connection failure maps pinned credential/account CONNECT errors an
     classifyNativeConnectionFailure(event(0x00020015, 'RDP_PROTOCOL_ERROR')),
     'RDP_PROTOCOL_ERROR',
   );
+});
+
+test('native session adapter publishes classified fixed failures from terminal state events', () => {
+  class Adapter extends NativeSessionWorker {
+    createWorkerProcess() {
+      this.peer = new EventEmitter();
+      return this.peer;
+    }
+  }
+  const adapter = new Adapter(paths);
+  const observed = [];
+  const unsubscribe = adapter.onFailure((code) => observed.push(code));
+  try {
+    for (const [nativeError, error] of [
+      [0x00010003, 'RDP_DISCONNECTED'],
+      [0x00010002, 'RDP_DISCONNECTED'],
+      [0x00010007, 'RDP_DISCONNECTED'],
+      [0x0001000a, 'RDP_DISCONNECTED'],
+      [0x00020015, 'RDP_CONNECT_FAILED'],
+      [0x00020008, 'RDP_CONNECT_FAILED'],
+      [0x00010003, 'RDP_PROTOCOL_ERROR'],
+    ])
+      adapter.peer.emit('rdp-state', { nativeError, state: 'failed', error });
+
+    assert.deepEqual(observed, [
+      'RDP_SERVER_TIMEOUT',
+      'RDP_SERVER_LOGOFF',
+      'RDP_SERVER_REJECTED',
+      'RDP_AUTHENTICATION_FAILED',
+      'RDP_AUTHENTICATION_FAILED',
+      'RDP_CONNECT_FAILED',
+      'RDP_PROTOCOL_ERROR',
+    ]);
+  } finally {
+    unsubscribe();
+  }
 });
