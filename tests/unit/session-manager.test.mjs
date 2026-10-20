@@ -1,11 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { SessionManager } from '../../packages/node-bridge/dist/index.js';
+import {
+  SessionError,
+  SessionManager,
+} from '../../packages/node-bridge/dist/index.js';
 import { eventually, fakeFactory } from '../fixtures/session-worker.mjs';
 
 const a = { id: 'principal-a' };
 const b = { id: 'principal-b' };
+test('remote RDP terminal failures expose fixed public status and retryability', () => {
+  for (const [code, statusCode, message, retryable] of [
+    [
+      'RDP_SERVER_TIMEOUT',
+      504,
+      'Remote server ended the session on timeout',
+      true,
+    ],
+    ['RDP_SERVER_LOGOFF', 502, 'Remote server logged off the session', true],
+    ['RDP_SERVER_REJECTED', 502, 'Remote server refused the session', false],
+  ]) {
+    const error = new SessionError(code);
+    assert.equal(error.statusCode, statusCode);
+    assert.deepEqual(error.failure, { code, message, retryable });
+  }
+});
+
 test('control input is serialized, stale queued commands are discarded and reset precedes a new controller', async () => {
   const factory = fakeFactory();
   await withManager(factory, async (manager) => {
