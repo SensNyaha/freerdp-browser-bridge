@@ -43,6 +43,19 @@ test('native connection failure maps documented remote ERRINFO values without re
     classifyNativeConnectionFailure(event(0x00010400)),
     'RDP_SERVER_REJECTED',
   );
+  for (const nativeError of [
+    0x00010402, 0x00010404, 0x00010405, 0x00010406, 0x00010407, 0x00010408,
+    0x00010412,
+  ])
+    assert.equal(
+      classifyNativeConnectionFailure(event(nativeError)),
+      'RDP_SERVER_FAILURE',
+      nativeError.toString(16),
+    );
+  assert.equal(
+    classifyNativeConnectionFailure(event(0x00010410)),
+    'RDP_SERVER_REJECTED',
+  );
   assert.equal(
     classifyNativeConnectionFailure(event(0x0001000a)),
     'RDP_AUTHENTICATION_FAILED',

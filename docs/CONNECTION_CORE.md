@@ -87,18 +87,15 @@ map to the fixed public `RDP_LICENSE_FAILURE` (502, retryable). Unknown values
 remain `RDP_DISCONNECTED`. This identifies a licensing failure without exposing
 the numeric reason; actual server emission remains a separate integration gate.
 
-The pinned Connection Broker `ERRINFO_CB_SESSION_ONLINE_VM_BOOT_TIMEOUT` also
-maps to `RDP_SERVER_TIMEOUT`, alongside the idle/logon timeout reasons. Other
-Connection Broker reasons remain generic until their public classification is
-individually verified.
-
-`ERRINFO_CB_DESTINATION_NOT_FOUND` maps to the fixed `RDP_SERVER_REJECTED`
-failure, matching its pinned description that the broker could not find the
-target endpoint. Other broker destination/pool errors remain generic.
-
-The pinned `ERRINFO_CB_CONNECTION_CANCELLED` maps to `RDP_CONNECT_CANCELLED`,
-reusing the fixed connection-cancellation status. Other broker processing
-failures remain generic until individually classified.
+Selected pinned Connection Broker ERRINFO values map to established fixed
+failures: `ERRINFO_CB_SESSION_ONLINE_VM_BOOT_TIMEOUT` to
+`RDP_SERVER_TIMEOUT`; `ERRINFO_CB_CONNECTION_CANCELLED` to
+`RDP_CONNECT_CANCELLED`; `ERRINFO_CB_DESTINATION_NOT_FOUND` and
+`ERRINFO_CB_CONNECTION_ERROR_INVALID_SETTINGS` to `RDP_SERVER_REJECTED`; and
+destination loading/redirection, VM wake/boot/DNS, unavailable pool and session
+monitor failures to `RDP_SERVER_FAILURE`. The latter group represents broker
+or target startup/availability failures; no native numeric reason is exposed.
+Unknown broker values retain `RDP_DISCONNECTED`.
 
 For a failed connection still classified `RDP_CONNECT_FAILED`, the adapter also
 recognizes the pinned FreeRDP 3.32.1 CONNECT codes for insufficient privileges,
