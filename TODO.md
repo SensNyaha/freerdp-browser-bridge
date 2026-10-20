@@ -1621,6 +1621,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   independent artifact-only generation and full platform Node suites pass.
   [Correction provenance](docs/ITERATION_270.md).
 - [ ] Performance report against `PERFORMANCE.md` metrics.
+- [x] DONE for a fresh local synthetic 1080p H.264 encode sample — Three
+  existing-binary runs record total/convert/compress p95 and encoded bytes at
+  1/2/4 threads. Four-thread encode p95 is 33.730–39.882 ms in these samples;
+  forwarding, queue, browser, CPU/RSS and soak measurements remain outside this
+  result, so the full report item above stays open. [Evidence](docs/ITERATION_331.md).
 - [ ] Full Windows + XRDP regression.
 
 **Gate:** release candidate v1.0.0.

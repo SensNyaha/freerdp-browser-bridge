@@ -120,3 +120,12 @@ native/AUDIN queue consumption and remote recording; they must not be interprete
 as the <150 ms LAN end-to-end target. Fixed label/bucket bounds add no sample
 history or queue. [Metric semantics](docs/MICROPHONE_METRICS.md).
 Actual ready-source/jitter/underflow/CPU/RSS/LAN/platform/soak gates remain open.
+
+## 12. Current synthetic encoder sample
+
+A fresh Windows x64 run set on the existing 40-frame 1080p H.264 benchmark
+records total, conversion and compression p95 at 1/2/4 threads. Four-thread
+total encode p95 is 33.730–39.882 ms across three runs, inside this section's
+40 ms number for the encoder stage alone. The measurement omits callback,
+queue, IPC/Node forwarding and browser decode/render, so it does not satisfy
+the framebuffer-to-browser latency target. [Exact runs and artifact hashes](docs/ITERATION_331.md).
