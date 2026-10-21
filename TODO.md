@@ -39,6 +39,16 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+The owned Linux application now confirms actual movable-object drop, both-axis
+content scrolling, three buttons and blur/detach release through fixed X11
+scalar readbacks. This does not imply Linux CLIPRDR acceptance. Two separate
+synthetic accounts also pass short actual native RDP coexistence and sibling
+retirement/cleanup. The initial active soak stops at 26.14 minutes without a
+completion receipt and is not accepted. A hard-loss input control exposes a
+preserved remote button; the user accepts release on the next connection and
+the corrective control reset remains under verification.
+[Evidence](docs/ITERATION_398.md).
+
 An explicitly user-requested owned Linux/XRDP container now passes current
 Release/public Edge JPEG and H.264 1080p, cursor, resize/restoration and viewer
 replay. Actual connected public CPU/RSS failure scenarios pass exact terminal

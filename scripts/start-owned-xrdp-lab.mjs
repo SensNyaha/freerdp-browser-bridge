@@ -75,7 +75,9 @@ try {
   ]);
   if (!/^[0-9a-f]{64}$/.test(created)) throw new Error('OWNED_LAB_ID_INVALID');
   const password = randomBytes(24).toString('base64url');
-  const input = Buffer.from('bridge-lab:' + password + '\n');
+  const input = Buffer.from(
+    'bridge-lab:' + password + '\nbridge-lab-2:' + password + '\n',
+  );
   try {
     command(['exec', '-i', created, 'chpasswd'], input);
   } finally {

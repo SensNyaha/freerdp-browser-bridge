@@ -28,6 +28,11 @@ import { AudioResetDiagnostics } from './audio-reset-diagnostics.mjs';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
 import { viewerLabFiles, requireOwnedLabTarget } from './viewer-lab-files.mjs';
 import {
+  ownedPointerReader,
+  ownedInputStateReader,
+} from './owned-xrdp-pointer.mjs';
+import { runWindowsPointerSmoke } from './windows-lab-pointer.mjs';
+import {
   ViewerSoak,
   soakDurationMs,
   soakIntervalMs,
@@ -58,8 +63,16 @@ const {
 const qualityTest = process.argv[4] === '--quality-test';
 const resizeTest = process.argv[4] === '--resize-test';
 const soakTest = process.argv[4] === '--soak-test';
-const transportLossTest = process.argv[4] === '--transport-loss-test';
+const ownedHeldLossTest = process.argv[4] === '--owned-held-loss-test';
+const transportLossTest =
+  process.argv[4] === '--transport-loss-test' || ownedHeldLossTest;
 const touchInventory = process.argv[4] === '--touch-inventory';
+const ownedPointerTest = process.argv[4] === '--owned-pointer-test';
+if (
+  (ownedPointerTest || ownedHeldLossTest) &&
+  !labFiles.ownedContainer
+)
+  throw new Error('LAB_OWNED_TARGET_REFUSED');
 const quality = qualityTest
   ? {
       profile: 'low-bandwidth',
@@ -78,6 +91,7 @@ if (
     !soakTest &&
     !transportLossTest &&
     !touchInventory &&
+    !ownedPointerTest &&
     !audioTest &&
     !microphoneTest) ||
   (manual && mode === 'h264-reset') ||
@@ -89,6 +103,8 @@ const { options, profile: nativeProfile } = await viewerWorkerOptions(
   process.argv[5],
   resolve('.'),
 );
+if (labFiles.ownedContainer)
+  options.runtimeRoot = resolve('.runtime/owned-viewer-lab');
 if (nativeProfile)
   console.log(
     JSON.stringify({
@@ -166,11 +182,16 @@ const deliverInput = nativeWorker.sendInput.bind(nativeWorker);
 let inputMoves = 0;
 let inputResets = 0;
 nativeWorker.sendInput = async (event) => {
-  if (!manual && !['move', 'reset'].includes(event.type))
+  if (
+    !manual &&
+    !ownedPointerTest &&
+    !ownedHeldLossTest &&
+    !['move', 'reset'].includes(event.type)
+  )
     throw new Error('LAB_READ_ONLY_INPUT');
   await deliverInput(event);
   if (event.type === 'move') inputMoves++;
-  else inputResets++;
+  else if (event.type === 'reset') inputResets++;
 };
 let audioResetRequests = 0;
 let audioResetScheduled = 0;
@@ -450,7 +471,7 @@ try {
   }
   if (transportLossTest) {
     phase = 'transport-loss';
-    await delay(2000);
+    await delay(ownedHeldLossTest ? 15000 : 2000);
     const before = await page.evaluate(() => {
       const canvas = document.querySelector('#desktop');
       const pixels = canvas
@@ -475,6 +496,38 @@ try {
       before.height !== 1080
     )
       throw new Error('LAB_PROXY_DESKTOP_NOT_ACTIVE');
+    let readInputState, heldBefore;
+    if (ownedHeldLossTest) {
+      phase = 'owned-input-baseline';
+      readInputState = await ownedInputStateReader();
+      const initial = await readInputState();
+      if (initial.controlLeft || initial.buttons !== 0)
+        throw new Error('LAB_OWNED_INPUT_NOT_CLEAR');
+      await page.locator('#desktop').scrollIntoViewIfNeeded();
+      const box = await page.locator('#desktop').boundingBox();
+      if (!box) throw new Error('LAB_INPUT_VIEW_UNAVAILABLE');
+      await page.locator('#desktop').focus();
+      await page.mouse.move(box.x + 20, box.y + 20);
+      await page.mouse.down();
+      await page.keyboard.down('ControlLeft');
+      await delay(300);
+      phase = 'owned-input-held';
+      heldBefore = await readInputState();
+      console.log(
+        JSON.stringify({
+          type: 'lab.owned-input-precondition',
+          before: heldBefore,
+          inputMoves,
+          inputResets,
+          viewerClosed: await page.evaluate(
+            () => window.bridgeViewer.stats.closed,
+          ),
+        }),
+      );
+      if (!heldBefore.controlLeft || heldBefore.buttons !== 1)
+        throw new Error('LAB_OWNED_HELD_INPUT_NOT_OBSERVED');
+    }
+    phase = 'transport-loss';
     transportProxy.interrupt();
     const deadline = performance.now() + 7000;
     let retired = false;
@@ -497,6 +550,26 @@ try {
       await delay(50);
     } while (performance.now() < deadline);
     if (!retired) throw new Error('LAB_TRANSPORT_LOSS_NOT_RETIRED');
+    if (ownedHeldLossTest) {
+      // The RDP relay is already interrupted and the old viewer retired:
+      // these local ups cannot conceal missing remote terminal release.
+      await page.keyboard.up('ControlLeft');
+      await page.mouse.up();
+      await delay(300);
+      const after = await readInputState();
+      console.log(
+        JSON.stringify({
+          type: 'lab.owned-transport-held-input',
+          readback: 'owned-X11-state',
+          before: heldBefore,
+          after,
+          // Agreed production boundary: a broken TCP cannot deliver UP.
+          // A separate fresh-connection check must prove startup clearing.
+          requiresFreshConnectionReset:
+            after.controlLeft || after.buttons !== 0,
+        }),
+      );
+    }
     transportEvidence = {
       type: 'lab.transport-loss',
       actualRdp: true,
@@ -506,7 +579,7 @@ try {
       nativeFailure,
       proxy: transportProxy.snapshot(),
       microphoneCaptured: false,
-      remoteInputSent: false,
+      remoteInputSent: ownedHeldLossTest,
     };
   } else if (manual) {
     phase = 'manual';
@@ -646,6 +719,53 @@ try {
       (mode === 'h264-reset' && stats.resets !== 1)
     )
       throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
+    if (ownedPointerTest) {
+      phase = 'owned-application-pointer';
+      const readReceipt = await ownedPointerReader();
+      await page.locator('#desktop').click({ position: { x: 400, y: 300 } });
+      const pointer = await runWindowsPointerSmoke({
+        page,
+        snapshot: async () => {
+          await page.locator('#desktop').focus();
+          await page.keyboard.press('F2');
+          await delay(300);
+          return readReceipt();
+        },
+        reattach: async (releaseLocal) => {
+          await page.evaluate(() => window.bridgeViewer.detach());
+          await releaseLocal();
+          await delay(100);
+          const attach = {};
+          for (const channel of ['control', 'media']) {
+            const response = await server.inject({
+              method: 'POST',
+              url: '/v1/sessions/' + sessionId + '/attach-token',
+              headers: { authorization: 'Bearer ' + bearer },
+              payload: { channel },
+            });
+            if (response.statusCode !== 200)
+              throw new Error('LAB_REATTACH_TOKEN_FAILED');
+            attach[channel] = response.json();
+          }
+          await page.evaluate(
+            ({ sessionId, attach, codecs }) =>
+              window.bridgeViewer.attach({ sessionId, attach }, { codecs }),
+            { sessionId, attach, codecs },
+          );
+          await page.waitForFunction(
+            () => window.bridgeViewer.stats.frames > 0,
+          );
+        },
+      });
+      console.log(
+        JSON.stringify({
+          type: 'lab.owned-application-pointer',
+          readback: 'owned-X11-primary',
+          clipboardSelected: false,
+          ...pointer,
+        }),
+      );
+    }
     if (soakTest) {
       phase = 'soak';
       const collector = new ViewerSoak();

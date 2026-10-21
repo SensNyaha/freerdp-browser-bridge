@@ -26,6 +26,13 @@ scrolling, arbitrary drop targets or physical hardware. Hard transport-loss-held
 input and broader platform profiles remain open.
 [Actual pointer evidence](ITERATION_396.md).
 
+Agreed transport boundary (2026-10-21): after a hard TCP loss, immediate remote
+release cannot be guaranteed because the release records cannot be delivered.
+The user accepts this for production provided the next RDP client connection
+clears preserved button state. Blur/detach on a live connection still requires
+immediate owned release. A new-connection standard-button reset is being
+verified; its preparation alone is not accepted behavior.
+
 An isolated [native touch foundation](#native-touch-foundation) is also tested.
 It is not connected to worker IPC or browser input and does not advertise RDPEI support.
 

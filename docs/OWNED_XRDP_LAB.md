@@ -49,8 +49,19 @@ The prepared desktop contains a coloured scrollable canvas, fixed scalar pointer
 counters and a one-Hz visible marker for an active soak. F2 selects bounded JSON
 in its result field; ordinary Ctrl+C can copy that result. It launches no other
 application and contains no user data, network client or clipboard-data reader.
-Wheel counters advance only when the canvas view actually moves. A prepared
-pointer/CLIPRDR scenario remains unaccepted until its real readbacks pass.
+Wheel counters advance only when the canvas view actually moves. The movable
+tile records displacement only after its drop. The owned `--owned-pointer-test`
+viewer mode verifies these actions through bounded X11 PRIMARY scalar readback,
+separate from CLIPRDR. Exact passing scope is in [398](ITERATION_398.md).
+The optional `--owned-held-loss-test` observes fixed Ctrl/button state around
+controlled RDP loss. A lost TCP cannot deliver release; fresh-connection clearing
+requires its own passing check. Both modes refuse the external default lab.
+
+The setup also prepares `bridge-lab-2`, using the same synthetic random password
+via private stdin, for `node scripts/test-owned-xrdp-pair.mjs <native-receipt>`.
+Separate accounts avoid the server's ordinary same-account connection replacement.
+This bounded control checks actual native coexistence, heartbeat/captures and
+survival of the first owner after the second retires. It is not browser/audio load.
 
 Stop the owned stand when finished:
 
