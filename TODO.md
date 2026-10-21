@@ -39,6 +39,19 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+The combined current Release input/CLIPRDR worker passes CTest 34/34 and an
+actual active owned-XRDP/public Edge H.264 1080p soak: 30 minutes / 61 samples,
+5,781 frames, peak worker RSS 152,342,528 bytes, bounded queues and no observed
+critical failure. Resize/restoration, cursor/display replay, reattachment,
+joined PID/runtime cleanup pass. Audio/clipboard are off in this gate; joint
+Windows and wider V1 acceptance remain separate. [Evidence](docs/ITERATION_401.md).
+
+Bounded XRDP CLIPRDR zero-trailer compatibility now preserves declared quotas,
+original deadlines and the absolute wire cap. Linked CTest 34/34 and isolated
+Node 885 / 61 skips pass. Actual owned XRDP readiness and one fixed Tk/public
+Get read pass; the subsequent fresh-connection re-offer receives no new offer
+and remains open. [Evidence](docs/ITERATION_400.md).
+
 Fresh-controller inherited pointer recovery now passes actual owned XRDP/public
 Edge readback: after hard loss leaves Ctrl/left button held, one post-render
 reset clears the standard buttons even with empty local pressed ownership.
