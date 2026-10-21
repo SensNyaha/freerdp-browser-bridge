@@ -331,6 +331,7 @@ type Entry = {
   snapshot: SessionSnapshot;
   worker: SessionWorker;
   abort: AbortController;
+  startupExpiresNs?: bigint;
   unsubscribers: Array<() => void>;
   tokens: Map<string, Token>;
   attachments: Map<SessionChannel, symbol>;
@@ -957,14 +958,26 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       throw publicSessionError(error);
     }
   }
+  private startupExpired(entry: Entry): boolean {
+    return (
+      entry.startupExpiresNs !== undefined &&
+      process.hrtime.bigint() >= entry.startupExpiresNs
+    );
+  }
   private async start(entry: Entry, config: SessionCreate): Promise<void> {
     let timer: NodeJS.Timeout | undefined;
     let aborted: (() => void) | undefined;
+    entry.startupExpiresNs =
+      process.hrtime.bigint() +
+      BigInt(this.options.startupTimeoutMs) * 1_000_000n;
     try {
       await Promise.race([
         Promise.resolve().then(() => {
-          if (!entry.abort.signal.aborted)
+          if (!entry.abort.signal.aborted) {
+            if (this.startupExpired(entry))
+              throw new SessionError('WORKER_START_TIMEOUT');
             return entry.worker.start(config, entry.abort.signal);
+          }
         }),
         new Promise<never>((_, reject) => {
           timer = setTimeout(
@@ -981,6 +994,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
             });
         }),
       ]);
+      if (this.startupExpired(entry))
+        throw new SessionError('WORKER_START_TIMEOUT');
     } catch (error) {
       if (!terminal(entry.snapshot.state) && entry.snapshot.state !== 'closing')
         this.fail(
@@ -990,6 +1005,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     } finally {
       if (timer) clearTimeout(timer);
       if (aborted) entry.abort.signal.removeEventListener('abort', aborted);
+      delete entry.startupExpiresNs;
       // Remove manager-owned credential references after delivery/deadline; backend must honor abort.
       delete config.auth.password;
       delete config.auth.passwordHash;
@@ -1007,6 +1023,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       entry.snapshot.state === 'closing'
     )
       return;
+    if (this.startupExpired(entry)) {
+      this.fail(entry, 'WORKER_START_TIMEOUT');
+      return;
+    }
     if (state === 'failed') {
       this.fail(entry, 'WORKER_FAILED');
       return;

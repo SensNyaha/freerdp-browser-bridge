@@ -109,6 +109,13 @@ accept integer milliseconds from 1 through 2,147,483,647. The constructor refuse
 larger values before starting the sweep timer or creating a worker: Node would
 otherwise shorten an overflowing delay to one millisecond. Default budgets are
 unchanged. [Admission and runtime control](ITERATION_382.md).
+While the backend `start()` promise is pending, startup also owns a monotonic
+absolute deadline. It is checked before backend invocation, before accepting
+worker state callbacks and after completion, so a delayed timer callback cannot
+admit late startup success. Expiry reports the existing `WORKER_START_TIMEOUT`
+and uses normal abort/cleanup. Completion retires this startup-only deadline;
+later connection progress keeps its separate existing lifecycle/transport rules.
+[Stall, boundary and native lifecycle controls](ITERATION_383.md).
 HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
 backlog to 64 KiB and all messages to 256 per second, with at most 32 non-input
 commands per second. Socket/upgrade counts are bounded. Experimental connected

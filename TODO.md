@@ -918,6 +918,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 1 — native worker process and IPC
 
+- [x] DONE for observed absolute backend startup deadline — One monotonic
+  budget now covers invocation staging, pending startup state callbacks and
+  completion. Overdue work fails with existing WORKER_START_TIMEOUT; a finished
+  startup retires its deadline, preserving later progress and explicit close.
+  Four failing-before controls are retained; corrected focus passes 26/26,
+  composed native lifecycle 2/2, CTest 17/17 and full Windows Node 827 / 102
+  skips pass. Kernel preemption, cleanup deadlines, actual RDP and broader
+  platform gates remain open. [Evidence](docs/ITERATION_383.md).
+
 - [x] DONE for host supervisor timer-range admission — Startup, graceful-close
   and forced-termination budgets refuse integer delays beyond Node's supported
   2,147,483,647 ms maximum before timer/worker creation, preserving existing
