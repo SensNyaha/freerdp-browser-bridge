@@ -1,8 +1,15 @@
-# FreeRDP → Browser Bridge — documentation package
+# FreeRDP → Browser Bridge
 
-Status: implementation blueprint  
+Latest stable MVP: **0.1.0** (named accepted profiles).
+
 Prepared: 2026-10-07  
 Target baseline: FreeRDP 3.32.1, Node.js 24 LTS, Linux x86_64 first
+
+The implemented MVP is [accepted](docs/MVP_ACCEPTANCE.md), with a
+[tested launch runbook](docs/MVP_RUNBOOK.md). The remaining original V1 scope
+is preserved in TODO. See [release notes](CHANGELOG.md) and
+[version/branch policy](docs/VERSIONING.md). A version number alone does not
+make an untagged feature build the stable release.
 
 ## 1. Purpose
 
