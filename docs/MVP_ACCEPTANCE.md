@@ -47,8 +47,10 @@ hashes and checked cleanup receipt pass; the outer tool status discrepancy is
 retained. [Exact scope](ITERATION_402.md).
 
 Next: complete the joint Windows audio/input/clipboard observation. Its latest
-attempt passes both actual Clipboard API/Notepad directions with live audio,
-then stops at an epoch/config waiting observation; the soak remains unaccepted.
+attempt passes both actual Clipboard API/Notepad directions with live audio
+and 21 periodic checks, then stops on a subsequent Get after 625,142 ms. Its
+terminal read status was not retained; the exact cause remains unknown and the
+soak unaccepted. The next repeat retains fixed read-status/revision evidence.
 Preserve the accepted audible scenario and its visible numeric discontinuities.
 Only explicitly prepared lab actions are permitted. Comparison results contain
 no clipboard text, credentials or arbitrary remote application content.

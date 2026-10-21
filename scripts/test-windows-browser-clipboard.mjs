@@ -18,6 +18,7 @@ import { viewerLabFiles, requireOwnedLabTarget } from './viewer-lab-files.mjs';
 import { windowsLabToneCommand } from './windows-lab-tone.mjs';
 import { runMvpBrowserSoak } from './mvp-browser-soak.mjs';
 import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
+import { clipboardStatuses } from '../packages/protocol/dist/clipboard.js';
 import {
   parsePointerReceipt,
   runWindowsPointerSmoke,
@@ -149,10 +150,18 @@ async function copyRemoteAndRead(expected) {
   phase = direction + '-read';
   await page.locator('[data-clipboard=read]').click();
   await page.waitForFunction(() =>
-    document
-      .querySelector('#clipboard-text [role=status]')
-      .textContent.startsWith('Текст получен.'),
+    /^(Текст получен\.|Передача не выполнена)/.test(
+      document.querySelector('#clipboard-text [role=status]').textContent,
+    ),
   );
+  if (
+    !(await page.evaluate(() =>
+      document
+        .querySelector('#clipboard-text [role=status]')
+        .textContent.startsWith('Текст получен.'),
+    ))
+  )
+    throw new Error('LAB_CLIPBOARD_READ_REFUSED');
   phase = direction + '-compare';
   requireResult(await receivedEquals(expected));
   phase = direction;
@@ -239,7 +248,20 @@ try {
         const read = backend.readClipboardText.bind(backend);
         backend.readClipboardText = (revision) => {
           ++report.reads;
-          return read(revision);
+          if (!mvpSoak) return read(revision);
+          report.lastRead = {
+            status: 'pending',
+            requestedRevision: revision.toString(),
+            sourceRevisionAtStart: source.revision.toString(),
+          };
+          return read(revision).then((result) => {
+            report.lastRead.status = clipboardStatuses.includes(result.status)
+              ? result.status
+              : 'invalid-result';
+            report.lastRead.sourceRevisionAtCompletion =
+              source.revision.toString();
+            return result;
+          });
         };
         const write = backend.writeClipboardText.bind(backend);
         backend.writeClipboardText = (bytes) => {
@@ -744,6 +766,7 @@ try {
     'LAB_MVP_AUDIO_PROGRESS_FAILED',
     'LAB_MVP_SOAK_BUDGET_FAILED',
     'LAB_SOAK_INVARIANT_FAILED',
+    'LAB_CLIPBOARD_READ_REFUSED',
   ].includes(error?.message)
     ? error.message
     : 'LAB_OPERATION_FAILED';
@@ -757,6 +780,21 @@ try {
     };
   if (mvpSoak && page && !page.isClosed())
     report.lastAudio = await readViewerAudioObservation(page).catch(() => null);
+  if (mvpSoak && page && !page.isClosed())
+    report.clipboardUiResult = await page
+      .evaluate((statuses) => {
+        const status = document.querySelector(
+          '#clipboard-text [role=status]',
+        ).textContent;
+        if (status.startsWith('Текст получен.')) return 'accepted';
+        for (const candidate of statuses)
+          if (status === 'Передача не выполнена: ' + candidate)
+            return candidate;
+        if (status === 'Передача не выполнена') return 'failed';
+        if (status === 'Передача текста…') return 'in-progress';
+        return 'other';
+      }, clipboardStatuses)
+      .catch(() => 'unavailable');
   if (!mvpSoak && !ownedReceiptRead && focusEditor && state === 'connected') {
     // At most one actual RDP frame, only under the explicit diagnostic permission.
     const frame = await captureFailureFrame().catch(() => undefined);

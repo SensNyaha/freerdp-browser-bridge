@@ -94,3 +94,24 @@ stops before the certificate prompt; a separate 5-second TCP probe cannot reach
 the approved Windows endpoint. There are zero remote key/clipboard operations,
 and PID retirement / empty runtime pass. The user subsequently reports restored
 access; this connection failure is retained separately from audio acceptance.
+
+The restored-access repeat (`build/iteration-402-windows-joint-repeat.log`)
+completes **21 observations / 625,142 ms**, then stops in `mvp-soak-read` on the
+next Get. Both actual Clipboard API directions and the preceding physical-key /
+Notepad exact readbacks pass. The cause of that last Get is unknown: the old
+helper retains its phase but not its native/UI terminal status. It is not a
+completed 30-minute gate. At failure RDP remains connected and audio ready;
+worker retirement and empty runtime pass, with the own-document warning kept.
+Peak worker RSS is 225,153,024 bytes, queues/decoder backlog zero in sampled
+observations. The final audio snapshot records 51 configurations, seven
+underflows / 576 frames and zero overflow-skipped frames. The user explicitly
+reports “Ровный звук, регулярных прерываний нет” after the first several
+minutes. That assessment belongs to this invocation, not its unfinished soak.
+
+For the next exact repeat, the helper retains only the last native read status
+and source/request revisions, plus an allowlisted UI result on failure. It
+recognizes a terminal UI refusal immediately instead of waiting for success
+until the old deadline. No text, raw diagnostic, retry or timeout extension is
+added. Narrow ESLint/format and observer/tone/soak 12/12 pass after this change;
+production code is untouched. The user restarts the finite tone and prepares
+the same disposable Notepad for `build/iteration-403-windows-joint.log`.
