@@ -23,7 +23,7 @@ Current stage acceptance:
 | 3 — connection | IN PROGRESS | Remaining Windows application/platform profiles, settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, broader Windows server profiles and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
-| 6 — audio | IN PROGRESS | User accepts named three-minute Windows Opus/200 ms listening; publication stalls/discontinuities, other profiles, recording, broader ready-source recovery and measured LAN queue target remain |
+| 6 — audio | IN PROGRESS | User accepts named current Release three-minute Windows Opus/200 ms listening; numeric publication stalls/discontinuities, other profiles, recording, broader ready-source recovery and measured LAN queue target remain |
 | 7 — clipboard/drives | IN PROGRESS | Named headed browser/host Clipboard API ↔ Windows Notepad Unicode roundtrip, actual permission refusal and combined viewer/PID/runtime cleanup pass; wider direction/quota/isolation/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Remaining Gateway/proxy/reconnect/channel settings and broader IP/appearance/platform integration |
@@ -38,6 +38,14 @@ All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
+
+The user accepts the current Release Windows Opus/200 ms three-minute scenario
+as excellent sound. Actual rendered samples cover 179.54 seconds; late intervals
+11 / browser configurations 12 / Worklet underflows 4 remain visible, with one
+scheduled consumer reset. This accepts the named audible MVP scenario, not
+zero-loss/reset-free playback, other profiles or complete Stage 6. Joined
+PID/runtime cleanup and unchanged protected inputs pass.
+[Evidence and Debug comparison boundaries](docs/ITERATION_393.md).
 
 The complete headed Edge / current Release / Windows Notepad small-text smoke
 now passes both Unicode directions, actual Clipboard API denial, no-format
@@ -1205,6 +1213,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.
 
 ## Stage 6 — audio output and microphone
+
+- [x] DONE for named current Release Windows Opus/200 ms audible MVP scenario —
+  Three-minute observation starts at first decoded data and renders 179.54
+  seconds. User reports excellent sound; joined PID/runtime cleanup passes.
+  Twelve configurations, eleven late intervals, four Worklet underflows and
+  one scheduled consumer reset remain measured limitations. Other profiles,
+  latency/recording/platform and reset-free continuity stay open.
+  [Evidence](docs/ITERATION_393.md).
 
 - [x] DONE for named Windows Opus/200 ms three-minute listening observation —
   User reports steady normal sound; the bounded observation starts at the first
