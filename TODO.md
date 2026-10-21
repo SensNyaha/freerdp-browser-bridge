@@ -24,7 +24,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, broader Windows server profiles and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | User accepts named three-minute Windows Opus/200 ms listening; publication stalls/discontinuities, other profiles, recording, broader ready-source recovery and measured LAN queue target remain |
-| 7 — clipboard/drives | IN PROGRESS | Named headed browser/host Clipboard API ↔ Windows Notepad Unicode roundtrip and offer/revoke pass; final combined cleanup, wider direction/quota/isolation/formats and managed-drive CRUD remain |
+| 7 — clipboard/drives | IN PROGRESS | Named headed browser/host Clipboard API ↔ Windows Notepad Unicode roundtrip, actual permission refusal and combined viewer/PID/runtime cleanup pass; wider direction/quota/isolation/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Remaining Gateway/proxy/reconnect/channel settings and broader IP/appearance/platform integration |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -38,6 +38,13 @@ All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
+
+The complete headed Edge / current Release / Windows Notepad small-text smoke
+now passes both Unicode directions, actual Clipboard API denial, no-format
+revoke, viewer field clearing and joined PID/runtime cleanup in one invocation.
+The prior failed copy-offer run is retained. Own-document clear keystrokes
+follow verified readback; empty application content is not separately read back.
+Wider Stage 7 matrices remain open. [Evidence](docs/ITERATION_392.md).
 
 A separate current-source Windows Release consumer now passes native CTest
 34/34, process/TLS/lifecycle 27 / one skip and full Node 890 / 51 skips.
@@ -1368,11 +1375,13 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Real Browser Clipboard API, public API/control, CLIPRDR and application
   paste/copy readback pass both ways with Cyrillic/Japanese/emoji and three
   lines under a 1,024-byte cap. One prepared-editor focus click is required.
-  No-format revoke and empty runtime pass; actual browser permission refusal
-  passes separately without RDP. The overall helper still fails its original
-  permission-test step; final combined document/viewer cleanup, actual direction /
-  quota / isolation matrix and full Stage 7 remain open.
-  [Evidence and retained failed runs](docs/ITERATION_385.md).
+  The current Release repeat also passes actual browser permission refusal,
+  accepted no-format revoke, cleared viewer fields and joined PID/runtime close
+  in one invocation. Own-document clear keystrokes follow verified readback;
+  empty application content is not separately read back. The actual wider
+  direction / quota / isolation matrix and full Stage 7 remain open.
+  [Current complete run](docs/ITERATION_392.md),
+  [earlier evidence and retained failures](docs/ITERATION_385.md).
 
 - [x] DONE for named Windows Notepad Unicode roundtrip — Explicit private
   Node/native bidirectional CLIPRDR selection with 1,024-byte cap passes actual

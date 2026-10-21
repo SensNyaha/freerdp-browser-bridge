@@ -1,5 +1,13 @@
 # Current authorized RDP lab
 
+2026-10-21 update: the named Windows Opus/200 ms three-minute observation is
+accepted by the user as steady normal sound; publication skips/discontinuities
+remain measured [390](ITERATION_390.md). The current Release headed Edge /
+Notepad small-text Clipboard smoke passes both actual directions, permission
+refusal, revoke and joined viewer/PID/runtime cleanup [392](ITERATION_392.md).
+Historical runs below keep their original scope; complete input/audio/device
+and wider platform acceptance is not inferred from these slices.
+
 2026-10-18: the user confirms `192.168.21.149` is now the **Windows lab**.
 Current runs must identify it as a Windows RDP endpoint. Historical XRDP
 results retain their original scope; using helpers named `test-xrdp-*` does

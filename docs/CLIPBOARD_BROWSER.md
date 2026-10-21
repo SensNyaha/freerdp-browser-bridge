@@ -1,11 +1,13 @@
 # Explicit reference browser clipboard
 
-Current actual evidence: [Iteration 385](ITERATION_385.md) verifies a named
+Current actual evidence: [Iteration 392](ITERATION_392.md) verifies a named
 headed Edge / public API / Windows Notepad small-text chain in both directions,
 including real local Clipboard API and Cyrillic/Japanese/emoji/multiline
-readback. Real browser permission refusal passes separately without RDP. The
-overall lab helper's original permission-check failure and pending combined
-document/viewer cleanup are retained; this does not accept the complete Stage 7
+readback, actual permission refusal, no-format revoke, cleared viewer fields
+and joined PID/runtime cleanup in one passing invocation. Own-document clear
+keystrokes follow verified readback; an empty application is not separately
+read back. Earlier failed runs remain in [385](ITERATION_385.md) and [392](ITERATION_392.md).
+This does not accept the complete Stage 7
 direction/quota/isolation/resource or other-format matrix. Earlier fixture-only
 statements below retain their historical scope.
 

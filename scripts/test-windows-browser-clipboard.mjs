@@ -41,6 +41,7 @@ const report = {
   keyEvents: 0,
 };
 let browser, context, page, server, backend, source, sessionId, config;
+let captureFailureFrame;
 let state = 'created',
   phase = 'prepare',
   expired = false,
@@ -143,6 +144,27 @@ try {
     sessions: {
       workerFactory: (limits) => {
         backend = new NativeSessionWorker(options, limits);
+        if (focusEditor) {
+          const capture = backend.captureFrame.bind(backend);
+          let paused = false,
+            active;
+          backend.captureFrame = (...args) => {
+            if (paused) return Promise.resolve(undefined);
+            const pending = capture(...args);
+            active = pending.then(
+              () => {},
+              () => {},
+            );
+            return pending;
+          };
+          captureFailureFrame = async () => {
+            // Stop future viewer pulls and join its sole current native request.
+            // Then request just the one separately authorized failure frame.
+            paused = true;
+            await active;
+            return capture(0n, { codec: 'jpeg' });
+          };
+        }
         backend.onState((value) => {
           state = value;
         });
@@ -254,6 +276,11 @@ try {
       window.bridgeViewer.stats.frames > 0 &&
       !document.querySelector('[data-clipboard=send]').disabled,
   );
+  // As in the ordinary viewer smoke, the first RDP frame may still be the
+  // Windows login/desktop transition. Do not spend the single authorized editor
+  // click on that initial frame. This delay is not application-readiness proof.
+  phase = 'desktop-settle';
+  await delay(15000);
   if (focusEditor) {
     phase = 'focus-prepared-editor';
     const canvas = page.locator('#desktop');
@@ -375,7 +402,7 @@ try {
     };
   if (focusEditor && state === 'connected') {
     // At most one actual RDP frame, only under the explicit diagnostic permission.
-    const frame = await backend.captureFrame().catch(() => undefined);
+    const frame = await captureFailureFrame().catch(() => undefined);
     if (frame?.jpeg && frame.jpeg.length <= 16777216) {
       await writeFile(
         resolve('.local-tests/windows-browser-clipboard-failure.jpg'),
