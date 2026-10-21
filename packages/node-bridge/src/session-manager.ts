@@ -448,6 +448,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       )
         throw new Error('Invalid session manager options');
     }
+    // Larger delays are coerced to 1 ms by Node instead of honoring the host budget.
+    for (const value of [
+      this.options.startupTimeoutMs,
+      this.options.shutdownTimeoutMs,
+      this.options.terminationTimeoutMs,
+    ])
+      if (value > 2_147_483_647)
+        throw new Error('Invalid session manager options');
     if (
       this.options.maxTokensPerSession < 2 ||
       this.options.tokenTtlMs > 300000

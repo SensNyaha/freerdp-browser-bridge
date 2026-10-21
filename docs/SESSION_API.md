@@ -104,6 +104,11 @@ registry retains active capacity while awaiting it for a separate bounded
 of two seconds, excluding event-loop scheduling. Legacy void termination gives
 no completion guarantee. Rejected/hung termination is bounded and cannot expose
 backend diagnostics; that fallback does not prove physical resource retirement.
+Trusted-host `startupTimeoutMs`, `shutdownTimeoutMs` and `terminationTimeoutMs`
+accept integer milliseconds from 1 through 2,147,483,647. The constructor refuses
+larger values before starting the sweep timer or creating a worker: Node would
+otherwise shorten an overflowing delay to one millisecond. Default budgets are
+unchanged. [Admission and runtime control](ITERATION_382.md).
 HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
 backlog to 64 KiB and all messages to 256 per second, with at most 32 non-input
 commands per second. Socket/upgrade counts are bounded. Experimental connected

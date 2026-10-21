@@ -918,6 +918,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 1 — native worker process and IPC
 
+- [x] DONE for host supervisor timer-range admission — Startup, graceful-close
+  and forced-termination budgets refuse integer delays beyond Node's supported
+  2,147,483,647 ms maximum before timer/worker creation, preserving existing
+  defaults and exact-maximum admission. Three failing-before controls and
+  actual Node overflow behavior are retained; corrected manager focus passes
+  19/19, current native CTest 17/17 and full Windows Node 818 / 102 skips pass.
+  Delayed callbacks, actual forced-deadline expiry and uncertain OS retirement
+  remain open. [Evidence](docs/ITERATION_382.md).
+
 - [x] DONE for native lifecycle fixture startup cancellation — The test-only
   registry adapter now terminates a still-starting WorkerProcess before joined
   close, matching the production adapter's existing behavior. A failing-before
