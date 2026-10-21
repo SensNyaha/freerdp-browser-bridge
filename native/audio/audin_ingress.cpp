@@ -1,27 +1,28 @@
+#include "../compat/span.hpp"
 #include "audin_ingress.hpp"
 #include <algorithm>
 
 namespace bridge::audio {
 namespace {
-std::uint16_t word(std::span<const std::uint8_t> data, std::size_t at) noexcept {
+std::uint16_t word(::bridge::compat::span<const std::uint8_t> data, std::size_t at) noexcept {
   return static_cast<std::uint16_t>(static_cast<unsigned>(data[at]) |
                                     (static_cast<unsigned>(data[at + 1]) << 8));
 }
-std::uint32_t dword(std::span<const std::uint8_t> data, std::size_t at) noexcept {
+std::uint32_t dword(::bridge::compat::span<const std::uint8_t> data, std::size_t at) noexcept {
   return static_cast<std::uint32_t>(word(data, at)) |
          (static_cast<std::uint32_t>(word(data, at + 2)) << 16);
 }
-void dword(std::span<std::uint8_t> data, std::size_t at, std::size_t value) noexcept {
+void dword(::bridge::compat::span<std::uint8_t> data, std::size_t at, std::size_t value) noexcept {
   for (unsigned i = 0; i < 4; ++i)
     data[at + i] = static_cast<std::uint8_t>(value >> (8 * i));
 }
-bool supported(std::span<const std::uint8_t> data, std::size_t at) noexcept {
+bool supported(::bridge::compat::span<const std::uint8_t> data, std::size_t at) noexcept {
   const auto channels = word(data, at + 2);
   return word(data, at) == 1 && (channels == 1 || channels == 2) && dword(data, at + 4) == 48000 &&
          dword(data, at + 8) == 48000U * channels * 2 && word(data, at + 12) == channels * 2 &&
          word(data, at + 14) == 16 && word(data, at + 16) == 0;
 }
-std::optional<std::size_t> format_size(std::span<const std::uint8_t> data,
+std::optional<std::size_t> format_size(::bridge::compat::span<const std::uint8_t> data,
                                        std::size_t at) noexcept {
   if (at > data.size() || data.size() - at < 18)
     return {};
@@ -41,7 +42,7 @@ void AudinIngress::reset() noexcept {
   phase_ = AudinPhase::version;
   version_ = count_ = frames_ = 0;
 }
-std::optional<AudinPdu> AudinIngress::inspect(std::span<const std::uint8_t> data) noexcept {
+std::optional<AudinPdu> AudinIngress::inspect(::bridge::compat::span<const std::uint8_t> data) noexcept {
   if (phase_ == AudinPhase::failed || data.empty() || data.size() > max_bytes)
     return reject();
   switch (data[0]) {
@@ -89,7 +90,7 @@ std::optional<AudinPdu> AudinIngress::inspect(std::span<const std::uint8_t> data
     count_ = selected;
     phase_ = count_ ? AudinPhase::open : AudinPhase::unsupported;
     return AudinPdu{
-        AudinPduKind::formats, std::span(offer_).first(size), version_, count_, 0, 0, count_ != 0};
+        AudinPduKind::formats, ::bridge::compat::span(offer_).first(size), version_, count_, 0, 0, count_ != 0};
   }
   case 3: {
     if (phase_ != AudinPhase::open || data.size() < 27)

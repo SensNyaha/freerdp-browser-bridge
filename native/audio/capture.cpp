@@ -1,6 +1,7 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "capture.hpp"
 #include <algorithm>
-#include <bit>
 #include <limits>
 
 namespace bridge::audio {
@@ -13,7 +14,7 @@ void add(std::uint64_t &counter, std::size_t amount) noexcept {
 std::int16_t sample(const std::uint8_t *bytes) noexcept {
   const auto value = static_cast<std::uint16_t>(static_cast<std::uint16_t>(bytes[0]) |
                                                 (static_cast<std::uint16_t>(bytes[1]) << 8));
-  return std::bit_cast<std::int16_t>(value);
+  return ::bridge::compat::bit_cast<std::int16_t>(value);
 }
 } // namespace
 PcmCaptureSource::PcmCaptureSource()
@@ -94,7 +95,7 @@ CaptureRead PcmCaptureSource::read() noexcept {
   if (!stats_.active || !format_)
     return {CaptureStatus::inactive, {}};
   const auto stereo_bytes = frames_per_packet_ * 4;
-  std::span<std::uint8_t> output(scratch_->data(), stereo_bytes);
+  ::bridge::compat::span<std::uint8_t> output(scratch_->data(), stereo_bytes);
   const auto threshold = (std::max)(prebuffer_frames, frames_per_packet_);
   if (stats_.buffering && queue_.stats().queued_frames < threshold) {
     std::fill(output.begin(), output.end(), 0);

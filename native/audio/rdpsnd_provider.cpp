@@ -1,6 +1,6 @@
+#include "../compat/bit.hpp"
 #include "rdpsnd_provider.hpp"
 #include "static_gate.hpp"
-#include <bit>
 #include <cstring>
 #include <exception>
 #include <freerdp/freerdp.h>
@@ -46,7 +46,7 @@ PVIRTUALCHANNELENTRY RdpsndProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR 
   auto *scope = active_.load();
   if (scope && scope->gate_ && name && !subsystem && std::strcmp(name, RDPSND_CHANNEL_NAME) == 0) {
     if (flags & FREERDP_ADDIN_CHANNEL_DYNAMIC)
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(dynamic_denied));
+      return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(dynamic_denied));
     if (!(flags & FREERDP_ADDIN_CHANNEL_ENTRYEX))
       return legacy_denied;
     const bool allowed = scope->bound_ && scope->on_thread() && !scope->loading_ &&
@@ -55,7 +55,7 @@ PVIRTUALCHANNELENTRY RdpsndProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR 
                          flags == (FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX) &&
                          scope->scope_.active();
     if (!allowed || !scope->scope_.previous())
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(
+      return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PVIRTUALCHANNELENTRYEX>(channel_denied));
     scope->loading_ = true;
     PVIRTUALCHANNELENTRY delegated = nullptr;
@@ -65,10 +65,10 @@ PVIRTUALCHANNELENTRY RdpsndProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR 
     }
     scope->loading_ = false;
     if (!delegated)
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(
+      return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PVIRTUALCHANNELENTRYEX>(channel_denied));
-    scope->channel_delegate_ = std::bit_cast<PVIRTUALCHANNELENTRYEX>(delegated);
-    return std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PVIRTUALCHANNELENTRYEX>(channel_entry));
+    scope->channel_delegate_ = ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(delegated);
+    return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PVIRTUALCHANNELENTRYEX>(channel_entry));
   }
   if (name && subsystem && std::strcmp(name, RDPSND_CHANNEL_NAME) == 0 &&
       std::strcmp(subsystem, "browser") == 0) {
@@ -77,7 +77,7 @@ PVIRTUALCHANNELENTRY RdpsndProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR 
     const bool allowed = scope && scope->bound_ && scope->on_thread() && !scope->loading_ &&
                          !scope->entering_ && !scope->attempted_ && !type && abi &&
                          !scope->sink_->retired() && scope->scope_.active();
-    return std::bit_cast<PVIRTUALCHANNELENTRY>(
+    return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(
         static_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(allowed ? entry : denied));
   }
   if (!scope || !scope->bound_ || !scope->on_thread() || scope->loading_ || scope->entering_ ||

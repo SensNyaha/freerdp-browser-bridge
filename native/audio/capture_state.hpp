@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "microphone.hpp"
 #include <optional>
 
@@ -17,7 +18,7 @@ class CaptureStatePublisher {
   bool busy_ = false, failed_ = false, retired_ = false;
 
 public:
-  using TrySend = bool (*)(void *, ipc::Kind, std::span<const std::uint8_t>);
+  using TrySend = bool (*)(void *, ipc::Kind, ::bridge::compat::span<const std::uint8_t>);
   explicit CaptureStatePublisher(bool enabled) noexcept : enabled_(enabled) {}
   CaptureStatePublisher(const CaptureStatePublisher &) = delete;
   CaptureStatePublisher &operator=(const CaptureStatePublisher &) = delete;

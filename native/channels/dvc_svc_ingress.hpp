@@ -1,11 +1,12 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "dvc_bounds.hpp"
 #include <functional>
 #include <vector>
 
 namespace bridge::channels {
 struct DvcSvcFragment {
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::size_t total_bytes = 0;
   bool first = false, last = false;
 };
@@ -18,7 +19,7 @@ struct DvcSvcStats {
 // flags and keeps this owner alive until synchronous forwarding returns.
 class DvcSvcIngress final {
 public:
-  using Forward = std::function<bool(std::span<const std::uint8_t>)>;
+  using Forward = std::function<bool(::bridge::compat::span<const std::uint8_t>)>;
   explicit DvcSvcIngress(Forward, DvcAllocationLimits = {}, std::uint64_t timeout_ms = 2000);
   ~DvcSvcIngress();
   DvcSvcIngress(const DvcSvcIngress &) = delete;
@@ -40,6 +41,6 @@ private:
   void release() noexcept;
   bool fail(bool abandoned = false) noexcept;
   bool clock(std::uint64_t) noexcept;
-  bool dispatch(std::span<const std::uint8_t>) noexcept;
+  bool dispatch(::bridge::compat::span<const std::uint8_t>) noexcept;
 };
 } // namespace bridge::channels

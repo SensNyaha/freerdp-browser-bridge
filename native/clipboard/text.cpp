@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "text.hpp"
 #include <optional>
 
@@ -18,14 +19,14 @@ struct Writer {
     return byte(static_cast<std::uint8_t>(value)) && byte(static_cast<std::uint8_t>(value >> 8));
   }
 };
-bool overlap(std::span<const std::uint8_t> input, std::span<std::uint8_t> output) noexcept {
+bool overlap(::bridge::compat::span<const std::uint8_t> input, ::bridge::compat::span<std::uint8_t> output) noexcept {
   if (input.empty() || output.empty())
     return false;
   const auto a = reinterpret_cast<std::uintptr_t>(input.data());
   const auto b = reinterpret_cast<std::uintptr_t>(output.data());
   return a <= b ? b - a < input.size() : a - b < output.size();
 }
-std::optional<std::uint32_t> next_utf8(std::span<const std::uint8_t> input,
+std::optional<std::uint32_t> next_utf8(::bridge::compat::span<const std::uint8_t> input,
                                        std::size_t &at) noexcept {
   if (at == input.size())
     return {};
@@ -60,7 +61,7 @@ std::optional<std::uint32_t> next_utf8(std::span<const std::uint8_t> input,
     return {};
   return value;
 }
-TextStatus encode(std::span<const std::uint8_t> input, Writer &out) noexcept {
+TextStatus encode(::bridge::compat::span<const std::uint8_t> input, Writer &out) noexcept {
   std::size_t at = 0;
   while (at < input.size()) {
     const auto code = next_utf8(input, at);
@@ -83,7 +84,7 @@ TextStatus encode(std::span<const std::uint8_t> input, Writer &out) noexcept {
   }
   return out.word(0) ? TextStatus::ok : TextStatus::too_large;
 }
-std::uint32_t word(std::span<const std::uint8_t> input, std::size_t at) noexcept {
+std::uint32_t word(::bridge::compat::span<const std::uint8_t> input, std::size_t at) noexcept {
   return input[at] | (std::uint32_t{input[at + 1]} << 8);
 }
 bool utf8(Writer &out, std::uint32_t value) noexcept {
@@ -101,7 +102,7 @@ bool utf8(Writer &out, std::uint32_t value) noexcept {
          out.byte(static_cast<std::uint8_t>(0x80 | ((value >> 6) & 0x3f))) &&
          out.byte(static_cast<std::uint8_t>(0x80 | (value & 0x3f)));
 }
-TextStatus decode(std::span<const std::uint8_t> input, Writer &out) noexcept {
+TextStatus decode(::bridge::compat::span<const std::uint8_t> input, Writer &out) noexcept {
   for (std::size_t at = 0; at < input.size();) {
     auto value = word(input, at);
     at += 2;
@@ -132,7 +133,7 @@ TextStatus decode(std::span<const std::uint8_t> input, Writer &out) noexcept {
   return TextStatus::invalid; // Missing UTF16 terminator.
 }
 template <class Convert>
-TextResult convert(std::span<const std::uint8_t> input, std::span<std::uint8_t> output,
+TextResult convert(::bridge::compat::span<const std::uint8_t> input, ::bridge::compat::span<std::uint8_t> output,
                    std::size_t maximum, Convert operation) noexcept {
   if (!maximum || maximum > max_item_bytes || overlap(input, output))
     return {TextStatus::invalid};
@@ -149,11 +150,11 @@ TextResult convert(std::span<const std::uint8_t> input, std::span<std::uint8_t> 
   return {TextStatus::ok, write.size};
 }
 } // namespace
-TextResult encode_unicode_text(std::span<const std::uint8_t> input, std::span<std::uint8_t> output,
+TextResult encode_unicode_text(::bridge::compat::span<const std::uint8_t> input, ::bridge::compat::span<std::uint8_t> output,
                                std::size_t maximum) noexcept {
   return convert(input, output, maximum, encode);
 }
-TextResult decode_unicode_text(std::span<const std::uint8_t> input, std::span<std::uint8_t> output,
+TextResult decode_unicode_text(::bridge::compat::span<const std::uint8_t> input, ::bridge::compat::span<std::uint8_t> output,
                                std::size_t maximum) noexcept {
   if (input.empty() || input.size() % 2)
     return {TextStatus::invalid};

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audio.hpp"
 #include "packetizer.hpp"
 #include <algorithm>
@@ -22,7 +23,7 @@ TEST_CASE("PCM audio config schema matches independent network-order vector") {
   const auto encoded = audio::encode_config({1});
   REQUIRE(std::equal(encoded.begin(), encoded.end(), config.begin(), config.end()));
   for (std::size_t size = 0; size < config.size(); ++size)
-    REQUIRE_THROWS_AS(audio::decode_config(std::span(config).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(audio::decode_config(::bridge::compat::span(config).first(size)), ProtocolError);
   auto extra = config;
   extra.push_back(0);
   REQUIRE_THROWS_AS(audio::decode_config(extra), ProtocolError);
@@ -49,7 +50,7 @@ TEST_CASE("PCM audio packet validates fixed frames silence and borrowed sample e
   const auto encoded = audio::encode_packet(decoded);
   REQUIRE(std::equal(encoded.begin(), encoded.end(), bytes.begin(), bytes.end()));
   for (std::size_t size = 0; size < bytes.size(); ++size)
-    REQUIRE_THROWS_AS(audio::decode_packet(std::span(bytes).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(audio::decode_packet(::bridge::compat::span(bytes).first(size)), ProtocolError);
   for (const auto at : {0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 3863U}) {
     auto bad = bytes;
     bad[at] ^= 255;
@@ -109,7 +110,7 @@ TEST_CASE("PCM audio envelope rejects incorrect exact sizes before payload alloc
   for (const auto kind : {Kind::audio_config, Kind::audio_pcm}) {
     const auto body = kind == Kind::audio_config ? config : packet();
     const auto encoded = encode({kind, 0, body});
-    const auto header = std::span(encoded).first(header_bytes);
+    const auto header = ::bridge::compat::span(encoded).first(header_bytes);
     REQUIRE(decode_header(header).kind == kind);
     REQUIRE(decode_header(header).length == body.size());
     for (const auto size : {0U, 19U, 21U, 3863U, 3865U, 0xffffffffU}) {
@@ -124,7 +125,7 @@ TEST_CASE("Paced native PCM converts to the bounded audio IPC layout without sam
   bridge::audio::PcmQueue queue;
   bridge::audio::PcmPacketizer timeline;
   const auto original = packet();
-  REQUIRE(queue.push(std::span(original).subspan(24, 8)) == bridge::audio::QueueStatus::accepted);
+  REQUIRE(queue.push(::bridge::compat::span(original).subspan(24, 8)) == bridge::audio::QueueStatus::accepted);
   const auto paced = timeline.read(queue, 1000000);
   const auto encoded = audio::encode_packet(
       {1, paced.timestamp_us, static_cast<std::uint16_t>(paced.frames),

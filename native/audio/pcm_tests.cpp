@@ -1,6 +1,7 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "pcm.hpp"
 #include <algorithm>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
@@ -11,10 +12,10 @@ void append(std::vector<std::uint8_t> &bytes, std::int16_t sample) {
   bytes.push_back(static_cast<std::uint8_t>(word));
   bytes.push_back(static_cast<std::uint8_t>(word >> 8));
 }
-std::int16_t sample_at(std::span<const std::uint8_t> bytes, std::size_t at) {
+std::int16_t sample_at(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) {
   const auto word = static_cast<std::uint16_t>(static_cast<unsigned>(bytes[at * 2]) |
                                                (static_cast<unsigned>(bytes[at * 2 + 1]) << 8));
-  return std::bit_cast<std::int16_t>(word);
+  return ::bridge::compat::bit_cast<std::int16_t>(word);
 }
 std::vector<std::uint8_t> stereo(std::size_t frames) {
   std::vector<std::uint8_t> result;
@@ -99,7 +100,7 @@ TEST_CASE("Fractional rate output is invariant to aligned packet fragmentation")
   for (std::size_t at = 0; at < 4410;) {
     random = random * 1664525U + 1013904223U;
     const auto count = (std::min)(4410 - at, static_cast<std::size_t>(1 + random % 173));
-    const auto part = fragmented.process(std::span(input).subspan(at * 4, count * 4));
+    const auto part = fragmented.process(::bridge::compat::span(input).subspan(at * 4, count * 4));
     REQUIRE(part.status == PcmStatus::accepted);
     assembled.insert(assembled.end(), part.bytes.begin(), part.bytes.end());
     at += count;
@@ -133,7 +134,7 @@ TEST_CASE("Invalid and oversized packets leave PCM phase and history unchanged")
   const std::vector<std::uint8_t> capacity(1602), oversized(65538);
   REQUIRE(pcm.process(capacity).status == PcmStatus::capacity);
   REQUIRE(pcm.process(oversized).status == PcmStatus::invalid);
-  REQUIRE(pcm.process(std::span(seed).first(1)).status == PcmStatus::invalid);
+  REQUIRE(pcm.process(::bridge::compat::span(seed).first(1)).status == PcmStatus::invalid);
   REQUIRE(pcm.process({}).status == PcmStatus::invalid);
   REQUIRE(pcm.produced_frames() == 1);
   const auto actual = pcm.process(next), expected = reference.process(next);
@@ -150,11 +151,11 @@ TEST_CASE("Packet ceiling accepts exactly 100 ms and rejects larger output atomi
   const auto large = stereo(4801);
   REQUIRE(pcm.process(large).status == PcmStatus::capacity);
   REQUIRE(pcm.produced_frames() == 0);
-  const auto result = pcm.process(std::span(large).first(19200));
+  const auto result = pcm.process(::bridge::compat::span(large).first(19200));
   REQUIRE(result.status == PcmStatus::accepted);
   REQUIRE(result.frames == 4800);
   REQUIRE(result.bytes.size() == PcmNormalizer::max_output_bytes);
-  REQUIRE(pcm.process(std::span(large).first(3)).status == PcmStatus::invalid);
+  REQUIRE(pcm.process(::bridge::compat::span(large).first(3)).status == PcmStatus::invalid);
 }
 
 TEST_CASE("Reset and format changes discard interpolation across discontinuities") {

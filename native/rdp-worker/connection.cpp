@@ -1,3 +1,5 @@
+#include "../compat/span.hpp"
+#include "../compat/thread.hpp"
 #include "connection.hpp"
 #include "addin_provider.hpp"
 #include "cursor_convert.hpp"
@@ -153,7 +155,7 @@ void Connection::enqueue_clipboard(std::uint64_t request, std::vector<std::uint8
   } else if (!SetEvent(media_event_))
     throw ProtocolError();
 }
-void Connection::configure(std::span<const std::uint8_t> payload) {
+void Connection::configure(::bridge::compat::span<const std::uint8_t> payload) {
   if (config_ || started_)
     throw ProtocolError();
   config_ = decode_connection_config(payload);
@@ -283,7 +285,7 @@ void Connection::configure(std::span<const std::uint8_t> payload) {
   number(FreeRDP_PointerCacheSize, 20);
   number(FreeRDP_ColorPointerCacheSize, 20);
 }
-void Connection::secret(std::span<const std::uint8_t> payload) {
+void Connection::secret(::bridge::compat::span<const std::uint8_t> payload) {
   if (!config_ || supplied_ || started_)
     throw ProtocolError();
   validate_secret(payload);
@@ -489,7 +491,7 @@ std::vector<std::uint8_t> Connection::pipeline_stats() {
     append_be(p, value, 8);
   return p;
 }
-bool Connection::capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc) {
+bool Connection::capture(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload, bool avc) {
   std::lock_guard lock(media_mutex_);
   if (payload.size() != (avc ? 12U : 8U) || request == 0 || frame_request_ != 0 ||
       (avc && (payload[8] > 1 || read_be(payload.subspan(9, 3)) != 0)))
@@ -516,13 +518,13 @@ void Connection::capture_pending(bool ending) {
   const bool changed = !ending && (snapshot.revision != requested_revision_ || force_idr_);
   const auto timestamp = static_cast<std::uint64_t>(
       std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count());
-  std::span<const std::uint8_t> jpeg;
+  ::bridge::compat::span<const std::uint8_t> jpeg;
   media::AvcUnit avc{};
   if (changed) {
     try {
       if (!gdi || gdi->width < 1 || gdi->height < 1 || gdi->stride > INT32_MAX)
         throw ProtocolError();
-      const std::span<const std::uint8_t> pixels{gdi->primary_buffer,
+      const ::bridge::compat::span<const std::uint8_t> pixels{gdi->primary_buffer,
                                                  static_cast<std::size_t>(gdi->stride) *
                                                      static_cast<std::size_t>(gdi->height)};
       if (requested_avc_) {
@@ -595,7 +597,7 @@ void Connection::post_disconnect(freerdp *instance) {
   }
   gdi_free(instance);
 }
-unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload,
+unsigned Connection::enqueue_input(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload,
                                    bool text) {
   const auto event = text ? input::decode_text(payload) : input::decode(payload);
   std::lock_guard lock(input_mutex_);
@@ -615,7 +617,7 @@ unsigned Connection::enqueue_input(std::uint64_t request, std::span<const std::u
     throw ProtocolError();
   return 0;
 }
-unsigned Connection::enqueue_touch(std::uint64_t request, std::span<const std::uint8_t> payload) {
+unsigned Connection::enqueue_touch(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload) {
   // v1 is retained for codec compatibility, but has no geometry ownership token.
   if (payload.size() == 16) {
     (void)touch::decode_ipc(payload);
@@ -855,7 +857,7 @@ void Connection::publish_display() {
   }
 #endif
 }
-void Connection::enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload) {
+void Connection::enqueue_resize(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload) {
   const auto size = decode_display_resize(payload);
   if (!request)
     throw ProtocolError();
@@ -935,7 +937,7 @@ void Connection::resize_pending(bool ending) {
   }
   resizing_ = queued_resize_.has_value() || active_resize_.has_value();
 }
-void Connection::enqueue_audio_reset(std::uint64_t request, std::span<const std::uint8_t> payload) {
+void Connection::enqueue_audio_reset(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload) {
   const auto epoch = ipc::audio::decode_reset(payload);
   std::optional<ipc::audio::ResetResult> result;
   {
@@ -947,7 +949,7 @@ void Connection::enqueue_audio_reset(std::uint64_t request, std::span<const std:
   if (result)
     send_(audio_reset_reply(request, *result));
 }
-bool Connection::publish_microphone(void *owner, Kind kind, std::span<const std::uint8_t> bytes) {
+bool Connection::publish_microphone(void *owner, Kind kind, ::bridge::compat::span<const std::uint8_t> bytes) {
   auto &self = *static_cast<Connection *>(owner);
   if (kind != Kind::microphone_state)
     throw ProtocolError();
@@ -972,7 +974,7 @@ Connection::submit_microphone_opus(void *owner, const ipc::microphone::opus::Pac
   return self.microphone_opus_ ? self.microphone_opus_->submit(packet)
                                : ipc::microphone::Result::unavailable;
 }
-void Connection::enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload,
+void Connection::enqueue_microphone(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload,
                                     bool opus) {
   // Validate the incoming grammar even when its profile is unselected.
   if (opus)
@@ -1036,7 +1038,7 @@ void Connection::service_microphone(bool ending) {
     throw ProtocolError(); // Correlated completion precedes terminal connection failure.
 }
 void Connection::enqueue_microphone_reset(std::uint64_t request,
-                                          std::span<const std::uint8_t> payload) {
+                                          ::bridge::compat::span<const std::uint8_t> payload) {
   const auto epoch = ipc::microphone::decode_reset(payload);
   std::optional<ipc::microphone::ResetResult> result;
   {
@@ -1128,7 +1130,7 @@ int Connection::verify(freerdp *instance, const BYTE *pem, std::size_t length, c
   }
   return 0;
 }
-void Connection::decide(std::span<const std::uint8_t> payload) {
+void Connection::decide(::bridge::compat::span<const std::uint8_t> payload) {
   std::lock_guard lock(mutex_);
   if (payload.size() != 41 || !certificate_ || decision_ || payload[40] > 1 ||
       read_be(payload.first(8)) != challenge_ ||
@@ -1242,7 +1244,7 @@ void Connection::run() noexcept {
     if (config_->pcm_output || config_->opus_output)
       audio_ = std::make_unique<bridge::audio::AudioSession>(
           *context_,
-          [this](Kind kind, std::span<const std::uint8_t> bytes) {
+          [this](Kind kind, ::bridge::compat::span<const std::uint8_t> bytes) {
             std::optional<ipc::audio::State> state;
             if (kind == Kind::audio_state)
               state = config_->opus_output ? ipc::audio::opus::decode_state(bytes)
@@ -1271,7 +1273,7 @@ void Connection::run() noexcept {
       throw ProtocolError();
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(config_->connect_ms);
-    std::jthread watchdog([this, deadline](std::stop_token token) {
+    ::bridge::compat::jthread watchdog([this, deadline](::bridge::compat::stop_token token) {
       std::unique_lock lock(mutex_);
       condition_.wait_until(lock, deadline,
                             [&] { return finished_ || stopping_ || token.stop_requested(); });

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "touch_frame.hpp"
 #include <algorithm>
 #include <freerdp/channels/rdpei.h>
@@ -5,7 +6,7 @@
 namespace bridge::touch {
 namespace {
 struct Reader {
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::size_t at = 0;
   bool byte(std::uint8_t &value) noexcept {
     if (at == bytes.size())
@@ -66,7 +67,7 @@ bool contact(Reader &r, ContactView &out) noexcept {
   return true;
 }
 } // namespace
-std::optional<TouchFrame> read_touch_frame(std::span<const std::uint8_t> bytes) noexcept {
+std::optional<TouchFrame> read_touch_frame(::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (bytes.size() < 10 || bytes.size() > 8192 || bytes[0] != 3 || bytes[1] != 0)
     return std::nullopt;
   std::uint32_t length = 0;
@@ -92,7 +93,7 @@ std::optional<TouchFrame> read_touch_frame(std::span<const std::uint8_t> bytes) 
     return std::nullopt;
   return result;
 }
-std::optional<TerminalPacket> terminal_packet(std::span<const TerminalRecord> records) noexcept {
+std::optional<TerminalPacket> terminal_packet(::bridge::compat::span<const TerminalRecord> records) noexcept {
   if (records.empty() || records.size() > 10)
     return std::nullopt;
   TerminalPacket result;
@@ -109,7 +110,7 @@ std::optional<TerminalPacket> terminal_packet(std::span<const TerminalRecord> re
   }
   for (unsigned i = 0; i < 4; ++i)
     result.bytes[2 + i] = static_cast<std::uint8_t>(result.size >> (i * 8));
-  const auto parsed = read_touch_frame(std::span(result.bytes).first(result.size));
+  const auto parsed = read_touch_frame(::bridge::compat::span(result.bytes).first(result.size));
   if (!parsed)
     return std::nullopt;
   for (std::size_t i = 0; i < parsed->count; ++i)

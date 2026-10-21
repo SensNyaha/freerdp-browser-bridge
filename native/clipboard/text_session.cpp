@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "text_session.hpp"
 #include "ingress.hpp"
 #include <algorithm>
@@ -192,7 +193,7 @@ UINT TextSession::ready(CliprdrClientContext *c, const CLIPRDR_MONITOR_READY *r)
   s->state_.ready = true;
   return s->advertise();
 }
-UINT TextSession::set_local(std::span<const std::uint8_t> text) noexcept {
+UINT TextSession::set_local(::bridge::compat::span<const std::uint8_t> text) noexcept {
   Operation op(*this);
   if (!op || !state_.ready || !policy_.to_server || state_.awaiting_local)
     return ERROR_INVALID_STATE;
@@ -366,7 +367,7 @@ UINT TextSession::received(CliprdrClientContext *c,
   if (s->request_revision_ != s->state_.revision)
     status = TextReply::stale;
   else if (r->common.msgFlags == CB_RESPONSE_OK) {
-    const std::span<const std::uint8_t> wire{r->requestedFormatData, r->common.dataLen};
+    const ::bridge::compat::span<const std::uint8_t> wire{r->requestedFormatData, r->common.dataLen};
     const auto measured = decode_unicode_text(wire, {}, s->policy_.maximum);
     if (measured.status != TextStatus::capacity && measured.status != TextStatus::ok &&
         measured.status != TextStatus::too_large)

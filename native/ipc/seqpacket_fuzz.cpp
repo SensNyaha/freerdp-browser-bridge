@@ -1,9 +1,10 @@
+#include "../compat/span.hpp"
 #include "seqpacket.hpp"
 #include <cstddef>
 #include <cstdint>
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
-  const std::span<const std::uint8_t> bytes(data, size);
+  const ::bridge::compat::span<const std::uint8_t> bytes(data, size);
   bridge::ipc::SeqpacketInspector whole;
   (void)whole.inspect(bytes);
   // Size-prefixed chunk sequences exercise retained partial-record state.

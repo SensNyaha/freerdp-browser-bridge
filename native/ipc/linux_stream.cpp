@@ -1,3 +1,5 @@
+#include "../compat/span.hpp"
+#include "../compat/thread.hpp"
 #include "linux_stream.hpp"
 #include "linux_seqpacket.hpp"
 #include <algorithm>
@@ -63,7 +65,7 @@ struct LinuxStreamOutput::Impl {
   const int old_flags;
   const std::chrono::milliseconds write_timeout;
   const LinuxOutputTransport transport;
-  std::stop_source cancellation;
+  ::bridge::compat::stop_source cancellation;
   OutputDispatcher dispatcher;
   std::atomic<bool> aborting{false}, timeout{false};
   std::thread writer;
@@ -107,7 +109,7 @@ struct LinuxStreamOutput::Impl {
         !(count < 0 && (errno == EAGAIN || errno == EINTR)))
       throw ProtocolError();
   }
-  bool write_bytes(std::span<const std::uint8_t> bytes, Clock::time_point due) {
+  bool write_bytes(::bridge::compat::span<const std::uint8_t> bytes, Clock::time_point due) {
     std::size_t used = 0;
     while (used < bytes.size()) {
       if (aborting.load())
@@ -246,7 +248,7 @@ LinuxStreamOutput::LinuxStreamOutput(int fd, std::chrono::milliseconds period,
     : impl_(std::make_unique<Impl>(fd, period, mode)) {}
 LinuxStreamOutput::~LinuxStreamOutput() = default;
 DispatchAdmission LinuxStreamOutput::try_send(Kind kind, std::uint64_t id,
-                                              std::span<const std::uint8_t> bytes) {
+                                              ::bridge::compat::span<const std::uint8_t> bytes) {
   const auto result = impl_->dispatcher.try_send(kind, id, bytes);
   if (result == DispatchAdmission::accepted)
     impl_->signal();

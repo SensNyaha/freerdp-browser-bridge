@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "../audio/capture_handoff.hpp"
 #include "../audio/microphone_opus_owner.hpp"
 #include "../audio/microphone_session.hpp"
@@ -80,7 +81,7 @@ class Connection {
       std::make_unique<audio::CaptureHandoff>();
   audio::ResetControl microphone_reset_;
   std::optional<ipc::microphone::State> microphone_state_;
-  static bool publish_microphone(void *, ipc::Kind, std::span<const std::uint8_t>);
+  static bool publish_microphone(void *, ipc::Kind, ::bridge::compat::span<const std::uint8_t>);
   static ipc::microphone::Result submit_microphone(void *, const ipc::microphone::PcmPacket &);
   static ipc::microphone::Result submit_microphone_opus(void *,
                                                         const ipc::microphone::opus::Packet &);
@@ -168,18 +169,18 @@ public:
                       audio::PcmPublisher::TryDiscard audio_discard = {},
                       clipboard::WorkerSession::Send clipboard_send = {});
   ~Connection();
-  void configure(std::span<const std::uint8_t> payload);
-  void secret(std::span<const std::uint8_t> payload);
+  void configure(::bridge::compat::span<const std::uint8_t> payload);
+  void secret(::bridge::compat::span<const std::uint8_t> payload);
   void start();
-  void decide(std::span<const std::uint8_t> payload);
-  bool capture(std::uint64_t request, std::span<const std::uint8_t> payload, bool avc);
-  unsigned enqueue_input(std::uint64_t request, std::span<const std::uint8_t> payload,
+  void decide(::bridge::compat::span<const std::uint8_t> payload);
+  bool capture(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload, bool avc);
+  unsigned enqueue_input(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload,
                          bool text = false);
-  unsigned enqueue_touch(std::uint64_t request, std::span<const std::uint8_t> payload);
-  void enqueue_resize(std::uint64_t request, std::span<const std::uint8_t> payload);
-  void enqueue_audio_reset(std::uint64_t request, std::span<const std::uint8_t> payload);
-  void enqueue_microphone_reset(std::uint64_t request, std::span<const std::uint8_t> payload);
-  void enqueue_microphone(std::uint64_t request, std::span<const std::uint8_t> payload,
+  unsigned enqueue_touch(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload);
+  void enqueue_resize(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload);
+  void enqueue_audio_reset(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload);
+  void enqueue_microphone_reset(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload);
+  void enqueue_microphone(std::uint64_t request, ::bridge::compat::span<const std::uint8_t> payload,
                           bool opus = false);
   void enqueue_clipboard(std::uint64_t request, std::vector<std::uint8_t> &payload);
   std::vector<std::uint8_t> pipeline_stats();

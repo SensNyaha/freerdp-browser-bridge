@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_svc_ingress.hpp"
 #include <algorithm>
 #include <limits>
@@ -51,7 +52,7 @@ bool DvcSvcIngress::clock(std::uint64_t now) noexcept {
   return true;
 }
 bool DvcSvcIngress::poll(std::uint64_t now) noexcept { return clock(now); }
-bool DvcSvcIngress::dispatch(std::span<const std::uint8_t> payload) noexcept {
+bool DvcSvcIngress::dispatch(::bridge::compat::span<const std::uint8_t> payload) noexcept {
   if (!inspect_dvc_allocations(payload, limits_))
     return fail();
   busy_ = true;
@@ -107,7 +108,7 @@ bool DvcSvcIngress::receive(DvcSvcFragment fragment, std::uint64_t now) noexcept
     return true;
   if (used_ != total_)
     return fail();
-  return dispatch(std::span(bytes_).first(used_));
+  return dispatch(::bridge::compat::span(bytes_).first(used_));
 }
 DvcSvcStats DvcSvcIngress::stats() const noexcept {
   auto result = counters_;

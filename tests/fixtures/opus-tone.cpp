@@ -1,6 +1,6 @@
+#include "../../native/compat/bit.hpp"
 #include "opus_audio.hpp"
 #include "opus_encoder.hpp"
-#include <bit>
 #include <cmath>
 #include <cstdio>
 #include <numbers>
@@ -21,7 +21,7 @@ int main() {
               std::lround((channel == 0 ? 8000.0 : 4000.0) *
                           std::sin(2.0 * std::numbers::pi * (channel == 0 ? 440.0 : 990.0) *
                                    static_cast<double>(index) / 48000.0)));
-          const auto word = std::bit_cast<std::uint16_t>(value);
+          const auto word = ::bridge::compat::bit_cast<std::uint16_t>(value);
           source[frame * 4 + channel * 2] = static_cast<std::uint8_t>(word);
           source[frame * 4 + channel * 2 + 1] = static_cast<std::uint8_t>(word >> 8);
         }

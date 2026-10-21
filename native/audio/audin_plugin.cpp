@@ -1,5 +1,5 @@
+#include "../compat/bit.hpp"
 #include "audin_plugin.hpp"
-#include <bit>
 #include <cstring>
 #include <exception>
 #include <freerdp/client/channels.h>
@@ -153,7 +153,7 @@ UINT AudinRegistration::install(IDRDYNVC_ENTRY_POINTS *host, PDVC_PLUGIN_ENTRY e
         AUDIN_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
     if (!linked)
       return ERROR_NOT_SUPPORTED;
-    entry = std::bit_cast<PDVC_PLUGIN_ENTRY>(linked);
+    entry = ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(linked);
   }
   attempted_ = busy_ = true;
   host_ = host;

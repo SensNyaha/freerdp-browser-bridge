@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <algorithm>
 
@@ -15,7 +16,7 @@ FragmentResult AudioAssembler::reject() noexcept {
   failed_ = true;
   return {FragmentStatus::invalid, {}};
 }
-FragmentResult AudioAssembler::push(std::span<const std::uint8_t> input, std::size_t total,
+FragmentResult AudioAssembler::push(::bridge::compat::span<const std::uint8_t> input, std::size_t total,
                                     bool first, bool last) noexcept {
   if (failed_ || total == 0 || total > max_bytes || input.size() > total ||
       (first ? active_ : !active_))
@@ -34,17 +35,17 @@ FragmentResult AudioAssembler::push(std::span<const std::uint8_t> input, std::si
   ++fragments_;
   if (!last)
     return {FragmentStatus::collecting, {}};
-  const auto result = std::span(*bytes_).first(used_);
+  const auto result = ::bridge::compat::span(*bytes_).first(used_);
   used_ = total_ = fragments_ = 0;
   active_ = false;
   return {FragmentStatus::complete, result};
 }
 namespace {
-std::uint16_t u16(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
+std::uint16_t u16(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   return static_cast<std::uint16_t>(static_cast<unsigned>(bytes[at]) |
                                     (static_cast<unsigned>(bytes[at + 1]) << 8));
 }
-std::uint32_t u32(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
+std::uint32_t u32(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   return static_cast<std::uint32_t>(u16(bytes, at)) |
          (static_cast<std::uint32_t>(u16(bytes, at + 2)) << 16);
 }
@@ -59,7 +60,7 @@ std::optional<AudioPdu> AudioPduValidator::reject() noexcept {
   pending_wave_ = 0;
   return {};
 }
-std::optional<AudioPdu> AudioPduValidator::validate(std::span<const std::uint8_t> bytes) noexcept {
+std::optional<AudioPdu> AudioPduValidator::validate(::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (failed_ || bytes.size() < 4 || bytes.size() > AudioAssembler::max_bytes)
     return reject();
   if (pending_wave_) {

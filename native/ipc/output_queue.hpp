@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "clipboard.hpp"
 #include "protocol.hpp"
 #include <optional>
@@ -20,7 +21,7 @@ public:
   explicit OutputQueue(OutputAudioCodec codec);
   // One startup choice, before the first accepted audio record. Never resets storage.
   bool select_audio_codec(OutputAudioCodec codec) noexcept;
-  EnqueueStatus push(Kind, std::uint64_t request_id, std::span<const std::uint8_t>);
+  EnqueueStatus push(Kind, std::uint64_t request_id, ::bridge::compat::span<const std::uint8_t>);
   std::optional<Packet> take();
   void discard_audio() noexcept;
   void discard_all() noexcept;

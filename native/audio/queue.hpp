@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "pcm.hpp"
 
 namespace bridge::audio {
@@ -25,9 +26,9 @@ public:
   explicit PcmQueue(OutputBufferProfile profile = OutputBufferProfile::low_latency);
   PcmQueue(const PcmQueue &) = delete;
   PcmQueue &operator=(const PcmQueue &) = delete;
-  QueueStatus push(std::span<const std::uint8_t>) noexcept;
+  QueueStatus push(::bridge::compat::span<const std::uint8_t>) noexcept;
   // Fills all valid destination frames, padding shortages with silence.
-  QueueRead read(std::span<std::uint8_t>) noexcept;
+  QueueRead read(::bridge::compat::span<std::uint8_t>) noexcept;
   // Discard up to this many old frames without synthesizing/consuming silence.
   // Request is bounded by capacity; a nonempty discard marks discontinuity.
   std::size_t discard(std::size_t frames) noexcept;

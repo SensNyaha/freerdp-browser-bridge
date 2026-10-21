@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "jpeg.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <turbojpeg.h>
@@ -29,7 +30,7 @@ TEST_CASE("native JPEG encodes padded BGRA and decodes dimensions and colour") {
   REQUIRE_THROWS_AS(encoder.encode(source, 0, height, stride), bridge::ipc::ProtocolError);
   REQUIRE_THROWS_AS(encoder.encode(source, width, height, width * 4 - 1),
                     bridge::ipc::ProtocolError);
-  REQUIRE_THROWS_AS(encoder.encode(std::span(source).first(3), width, height, stride),
+  REQUIRE_THROWS_AS(encoder.encode(::bridge::compat::span(source).first(3), width, height, stride),
                     bridge::ipc::ProtocolError);
 }
 TEST_CASE("JPEG quality changes actual encoded output and rejects invalid values") {

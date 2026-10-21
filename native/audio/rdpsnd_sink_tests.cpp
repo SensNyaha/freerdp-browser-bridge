@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "rdpsnd_sink.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -15,7 +16,7 @@ AUDIO_FORMAT format(UINT32 rate = 48000, UINT16 channels = 2, UINT16 bits = 16) 
   value.nAvgBytesPerSec = rate * value.nBlockAlign;
   return value;
 }
-UINT play(rdpsndDevicePlugin &device, std::span<const std::uint8_t> bytes) {
+UINT play(rdpsndDevicePlugin &device, ::bridge::compat::span<const std::uint8_t> bytes) {
   return device.Play(&device, bytes.data(), bytes.size());
 }
 } // namespace
@@ -351,7 +352,7 @@ TEST_CASE("RDPSND malformed or over-capacity packets reset interpolation history
   REQUIRE(device.Open(&device, &pcm, 0));
   const std::array<std::uint8_t, 2> first{0, 128}, next{255, 127};
   REQUIRE(play(device, first) == 1);
-  SECTION("misaligned") { REQUIRE(play(device, std::span(first).first(1)) == 0); }
+  SECTION("misaligned") { REQUIRE(play(device, ::bridge::compat::span(first).first(1)) == 0); }
   SECTION("input capacity") {
     const std::vector<std::uint8_t> input(65538);
     REQUIRE(play(device, input) == 0);

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -35,7 +36,7 @@ TEST_CASE("Clipboard PDU inspection bounds capabilities headers and baseline con
   const auto valid = pdu(7, 0, caps);
   REQUIRE(inspect_pdu(valid, false, 1024)->long_names);
   for (std::size_t n = 0; n < valid.size(); ++n)
-    REQUIRE_FALSE(inspect_pdu(std::span(valid).first(n), false, 1024));
+    REQUIRE_FALSE(inspect_pdu(::bridge::compat::span(valid).first(n), false, 1024));
   for (const auto at : {8U, 10U, 12U, 14U, 16U}) {
     auto bad = valid;
     bad[at] = 0xff;
@@ -92,9 +93,9 @@ TEST_CASE("XRDP monitor-ready zero trailer is bounded and normalized before forw
   REQUIRE(whole.stats().allocated == 0);
   for (std::size_t split = 1; split < ready.size(); ++split) {
     ClipboardIngress owner(forward);
-    REQUIRE(owner.receive({std::span(ready).first(split), ready.size(), true, false}, 1));
+    REQUIRE(owner.receive({::bridge::compat::span(ready).first(split), ready.size(), true, false}, 1));
     REQUIRE(owner.stats().allocated <= ready.size());
-    REQUIRE(owner.receive({std::span(ready).subspan(split), ready.size(), false, true}, 2));
+    REQUIRE(owner.receive({::bridge::compat::span(ready).subspan(split), ready.size(), false, true}, 2));
     REQUIRE(owner.stats().allocated == 0);
   }
   REQUIRE(calls == ready.size());
@@ -123,8 +124,8 @@ TEST_CASE("XRDP monitor-ready zero trailer is bounded and normalized before forw
   ClipboardIngress fragmented(forward);
   auto bad_trailer = ready;
   bad_trailer.back() = 1;
-  REQUIRE(fragmented.receive({std::span(bad_trailer).first(8), 12, true, false}, 1));
-  REQUIRE_FALSE(fragmented.receive({std::span(bad_trailer).subspan(8), 12, false, true}, 2));
+  REQUIRE(fragmented.receive({::bridge::compat::span(bad_trailer).first(8), 12, true, false}, 1));
+  REQUIRE_FALSE(fragmented.receive({::bridge::compat::span(bad_trailer).subspan(8), 12, false, true}, 2));
   REQUIRE(fragmented.stats().allocated == 0);
   REQUIRE(calls == ready.size());
 }
@@ -141,8 +142,8 @@ TEST_CASE("XRDP zero trailers preserve declared control bounds and allocation-fr
         ++calls;
         return true;
       });
-      REQUIRE(owner.receive({std::span(padded).first(split), padded.size(), true, false}, 1));
-      REQUIRE(owner.receive({std::span(padded).subspan(split), padded.size(), false, true}, 2));
+      REQUIRE(owner.receive({::bridge::compat::span(padded).first(split), padded.size(), true, false}, 1));
+      REQUIRE(owner.receive({::bridge::compat::span(padded).subspan(split), padded.size(), false, true}, 2));
       REQUIRE(owner.stats().allocated == 0);
     }
     REQUIRE(calls == padded.size() - 1);
@@ -161,10 +162,10 @@ TEST_CASE("XRDP zero trailers preserve declared control bounds and allocation-fr
       ++calls;
       return true;
     }, 3);
-    REQUIRE(owner.receive({std::span(over_quota).first(split), over_quota.size(), true, false}, 1));
+    REQUIRE(owner.receive({::bridge::compat::span(over_quota).first(split), over_quota.size(), true, false}, 1));
     REQUIRE(owner.stats().allocated == 0);
     REQUIRE(calls == 0);
-    REQUIRE(owner.receive({std::span(over_quota).subspan(split), over_quota.size(), false, true}, 2));
+    REQUIRE(owner.receive({::bridge::compat::span(over_quota).subspan(split), over_quota.size(), false, true}, 2));
     REQUIRE(calls == 1);
     REQUIRE(owner.stats().quota_refused == 1);
   }
@@ -172,8 +173,8 @@ TEST_CASE("XRDP zero trailers preserve declared control bounds and allocation-fr
     auto invalid = over_quota;
     invalid[at] = 1;
     ClipboardIngress owner([](auto) { FAIL("Bad trailer reached SDK"); return false; }, 3);
-    REQUIRE(owner.receive({std::span(invalid).first(8), invalid.size(), true, false}, 1));
-    REQUIRE_FALSE(owner.receive({std::span(invalid).subspan(8), invalid.size(), false, true}, 2));
+    REQUIRE(owner.receive({::bridge::compat::span(invalid).first(8), invalid.size(), true, false}, 1));
+    REQUIRE_FALSE(owner.receive({::bridge::compat::span(invalid).subspan(8), invalid.size(), false, true}, 2));
     REQUIRE(owner.stats().allocated == 0);
   }
 }
@@ -194,9 +195,9 @@ TEST_CASE("Clipboard ingress borrows whole PDUs and checks split headers before 
       ++calls;
       return true;
     });
-    REQUIRE(owner.receive({std::span(b).first(split), b.size(), true, false}, 1));
+    REQUIRE(owner.receive({::bridge::compat::span(b).first(split), b.size(), true, false}, 1));
     REQUIRE(owner.stats().allocated == (split < 8 ? 0 : b.size()));
-    REQUIRE(owner.receive({std::span(b).subspan(split), b.size(), false, true}, 2));
+    REQUIRE(owner.receive({::bridge::compat::span(b).subspan(split), b.size(), false, true}, 2));
     REQUIRE(owner.stats().allocated == 0);
     REQUIRE(owner.stats().stored == 0);
     REQUIRE(owner.stats().forwarded == 1);
@@ -207,10 +208,10 @@ TEST_CASE("Clipboard ingress borrows whole PDUs and checks split headers before 
     return true;
   });
   REQUIRE(owner.receive(
-      {std::span(oversized_control).first(7), oversized_control.size(), true, false}, 1));
+      {::bridge::compat::span(oversized_control).first(7), oversized_control.size(), true, false}, 1));
   REQUIRE(owner.stats().allocated == 0);
   REQUIRE_FALSE(owner.receive(
-      {std::span(oversized_control).subspan(7, 1), oversized_control.size(), false, false}, 2));
+      {::bridge::compat::span(oversized_control).subspan(7, 1), oversized_control.size(), false, false}, 2));
   REQUIRE(owner.stats().allocated == 0);
   REQUIRE(owner.stats().rejected == 1);
 }
@@ -220,7 +221,7 @@ TEST_CASE("XRDP padding does not increase the absolute clipboard wire cap") {
   packet.resize(packet.size() + 4);
   REQUIRE_FALSE(inspect_pdu(packet, false, max_item_bytes));
   ClipboardIngress owner([](auto) { FAIL("Outer cap bypass reached SDK"); return false; });
-  REQUIRE_FALSE(owner.receive({std::span(packet).first(8), packet.size(), true, false}, 1));
+  REQUIRE_FALSE(owner.receive({::bridge::compat::span(packet).first(8), packet.size(), true, false}, 1));
   REQUIRE(owner.stats().allocated == 0);
 }
 TEST_CASE("Clipboard ingress preserves negotiated long-name parsing and original deadlines") {
@@ -237,8 +238,8 @@ TEST_CASE("Clipboard ingress preserves negotiated long-name parsing and original
   REQUIRE(owner.receive({list, list.size(), true, true}, 2));
   REQUIRE(calls == 2);
   const auto b = pdu(5, 1, {65, 0, 0, 0});
-  REQUIRE(owner.receive({std::span(b).first(1), b.size(), true, false}, 3));
-  REQUIRE(owner.receive({std::span(b).subspan(1, 1), b.size(), false, false}, 12));
+  REQUIRE(owner.receive({::bridge::compat::span(b).first(1), b.size(), true, false}, 3));
+  REQUIRE(owner.receive({::bridge::compat::span(b).subspan(1, 1), b.size(), false, false}, 12));
   REQUIRE_FALSE(owner.poll(13));
   REQUIRE(owner.stats().failed);
   REQUIRE(owner.stats().stored == 0);
@@ -253,15 +254,15 @@ TEST_CASE("Clipboard ingress framing clock reentry retirement and consumer fault
       return true;
     });
     if (mode < 4) {
-      REQUIRE(owner.receive({std::span(b).first(3), b.size(), true, false}, 5));
+      REQUIRE(owner.receive({::bridge::compat::span(b).first(3), b.size(), true, false}, 5));
       if (mode == 0)
         REQUIRE_FALSE(owner.receive({b, b.size(), true, true}, 6));
       if (mode == 1)
-        REQUIRE_FALSE(owner.receive({std::span(b).subspan(3), b.size() + 1, false, true}, 6));
+        REQUIRE_FALSE(owner.receive({::bridge::compat::span(b).subspan(3), b.size() + 1, false, true}, 6));
       if (mode == 2)
         REQUIRE_FALSE(owner.poll(4));
       if (mode == 3)
-        REQUIRE_FALSE(owner.receive({std::span(b).subspan(3, 1), b.size(), false, true}, 6));
+        REQUIRE_FALSE(owner.receive({::bridge::compat::span(b).subspan(3, 1), b.size(), false, true}, 6));
     } else if (mode == 4)
       REQUIRE_FALSE(owner.receive({b, b.size(), false, true}, 1));
     else if (mode == 5)
@@ -286,8 +287,8 @@ TEST_CASE("Clipboard ingress framing clock reentry retirement and consumer fault
       return true;
     });
     ptr = &owner;
-    REQUIRE(owner.receive({std::span(b).first(9), b.size(), true, false}, 1));
-    REQUIRE_FALSE(owner.receive({std::span(b).subspan(9), b.size(), false, true}, 2));
+    REQUIRE(owner.receive({::bridge::compat::span(b).first(9), b.size(), true, false}, 1));
+    REQUIRE_FALSE(owner.receive({::bridge::compat::span(b).subspan(9), b.size(), false, true}, 2));
     REQUIRE(owner.stats().closed);
     REQUIRE(owner.stats().failed == (mode != 2));
     REQUIRE(owner.stats().allocated == 0);
@@ -297,11 +298,11 @@ TEST_CASE("Clipboard ingress framing clock reentry retirement and consumer fault
     return true;
   });
   const auto large = pdu(5, 1, std::vector<std::uint8_t>(ClipboardIngress::max_fragments + 16));
-  REQUIRE(many.receive({std::span(large).first(1), large.size(), true, false}, 1));
+  REQUIRE(many.receive({::bridge::compat::span(large).first(1), large.size(), true, false}, 1));
   for (std::size_t i = 1; i < ClipboardIngress::max_fragments; ++i)
-    REQUIRE(many.receive({std::span(large).subspan(i, 1), large.size(), false, false}, 1));
+    REQUIRE(many.receive({::bridge::compat::span(large).subspan(i, 1), large.size(), false, false}, 1));
   REQUIRE_FALSE(many.receive(
-      {std::span(large).subspan(ClipboardIngress::max_fragments, 1), large.size(), false, false},
+      {::bridge::compat::span(large).subspan(ClipboardIngress::max_fragments, 1), large.size(), false, false},
       1));
   REQUIRE(many.stats().allocated == 0);
 }
@@ -322,10 +323,10 @@ TEST_CASE("Clipboard item quota substitutes one failure without retaining oversi
         8);
     ptr = &owner;
     if (split) {
-      REQUIRE(owner.receive({std::span(over).first(split), over.size(), true, false}, 1));
+      REQUIRE(owner.receive({::bridge::compat::span(over).first(split), over.size(), true, false}, 1));
       REQUIRE(owner.stats().allocated == 0);
       REQUIRE(owner.stats().stored <= 8);
-      REQUIRE(owner.receive({std::span(over).subspan(split), over.size(), false, true}, 2));
+      REQUIRE(owner.receive({::bridge::compat::span(over).subspan(split), over.size(), false, true}, 2));
     } else
       REQUIRE(owner.receive({over, over.size(), true, true}, 1));
     REQUIRE(owner.stats().quota_refused == 1);
@@ -345,11 +346,11 @@ TEST_CASE("Clipboard oversized-item discard preserves deadline and borrowed fail
         return true;
       },
       8, 10);
-  REQUIRE(abandoned.receive({std::span(over).first(8), over.size(), true, false}, 1));
+  REQUIRE(abandoned.receive({::bridge::compat::span(over).first(8), over.size(), true, false}, 1));
   REQUIRE(abandoned.stats().discarding);
   REQUIRE(abandoned.stats().stored == 8);
   REQUIRE(abandoned.stats().allocated == 0);
-  REQUIRE(abandoned.receive({std::span(over).subspan(8, 1), over.size(), false, false}, 10));
+  REQUIRE(abandoned.receive({::bridge::compat::span(over).subspan(8, 1), over.size(), false, false}, 10));
   REQUIRE_FALSE(abandoned.poll(11));
   REQUIRE(abandoned.stats().quota_refused == 0);
   REQUIRE(abandoned.stats().failed);
@@ -368,8 +369,8 @@ TEST_CASE("Clipboard oversized-item discard preserves deadline and borrowed fail
         },
         8);
     ptr = &owner;
-    REQUIRE(owner.receive({std::span(over).first(8), over.size(), true, false}, 1));
-    REQUIRE_FALSE(owner.receive({std::span(over).subspan(8), over.size(), false, true}, 2));
+    REQUIRE(owner.receive({::bridge::compat::span(over).first(8), over.size(), true, false}, 1));
+    REQUIRE_FALSE(owner.receive({::bridge::compat::span(over).subspan(8), over.size(), false, true}, 2));
     REQUIRE(owner.stats().failed == reenter);
     REQUIRE(owner.stats().quota_refused == 1);
     REQUIRE(owner.stats().allocated == 0);
@@ -386,7 +387,7 @@ TEST_CASE("Clipboard hard maximum supports bounded classic 1600-byte fragmentati
   for (std::size_t offset = 0; offset < data.size();) {
     const auto n = (std::min)(std::size_t{1600}, data.size() - offset);
     REQUIRE(owner.receive(
-        {std::span(data).subspan(offset, n), data.size(), offset == 0, n == data.size() - offset},
+        {::bridge::compat::span(data).subspan(offset, n), data.size(), offset == 0, n == data.size() - offset},
         1));
     offset += n;
   }

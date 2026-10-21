@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_bounds.hpp"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -17,7 +18,7 @@ void le(std::vector<std::uint8_t> &bytes, std::uint32_t value, std::size_t width
 }
 std::size_t width(unsigned selector) { return selector == 0 ? 1 : selector == 1 ? 2 : 4; }
 std::vector<std::uint8_t> first(unsigned command, unsigned id_width, unsigned length_width,
-                                std::uint32_t length, std::span<const std::uint8_t> body = {}) {
+                                std::uint32_t length, ::bridge::compat::span<const std::uint8_t> body = {}) {
   std::vector<std::uint8_t> bytes{
       static_cast<std::uint8_t>((command << 4) | (length_width << 2) | id_width)};
   le(bytes, 0x42, width(id_width));
@@ -75,7 +76,7 @@ TEST_CASE(
       REQUIRE(info->declared_message == 14);
       REQUIRE(info->payload_bytes == 0);
       for (std::size_t end = 0; end < wire.size(); ++end)
-        REQUIRE_FALSE(inspect_dvc_allocations(std::span(wire).first(end)));
+        REQUIRE_FALSE(inspect_dvc_allocations(::bridge::compat::span(wire).first(end)));
     }
   DvcAllocationLimits policy;
   policy.message_bytes = 14;
@@ -139,7 +140,7 @@ TEST_CASE("ZGFX multipart caps count/output and validates each remaining range w
   REQUIRE(info->declared_output == 3);
   REQUIRE(info->allocation_ceiling == 67);
   for (std::size_t end = 0; end < raw.size(); ++end)
-    REQUIRE_FALSE(inspect_zgfx_allocations(std::span(raw).first(end)));
+    REQUIRE_FALSE(inspect_zgfx_allocations(::bridge::compat::span(raw).first(end)));
   auto bad = raw;
   bad[1] = 0xff;
   bad[2] = 0xff;

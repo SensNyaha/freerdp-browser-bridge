@@ -1,8 +1,8 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <span>
 
 namespace bridge::channels {
 struct DvcAllocationLimits {
@@ -31,8 +31,8 @@ struct DvcAllocationInfo {
 // Allocation-free resource-header inspection only, not an entropy decoder or
 // transport/reassembly owner. Caller must bound outer SVC storage before this
 // complete-message inspection and install it before actual host dispatch.
-std::optional<ZgfxAllocationInfo> inspect_zgfx_allocations(std::span<const std::uint8_t>,
+std::optional<ZgfxAllocationInfo> inspect_zgfx_allocations(::bridge::compat::span<const std::uint8_t>,
                                                            DvcAllocationLimits = {}) noexcept;
-std::optional<DvcAllocationInfo> inspect_dvc_allocations(std::span<const std::uint8_t>,
+std::optional<DvcAllocationInfo> inspect_dvc_allocations(::bridge::compat::span<const std::uint8_t>,
                                                          DvcAllocationLimits = {}) noexcept;
 } // namespace bridge::channels

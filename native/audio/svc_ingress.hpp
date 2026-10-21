@@ -1,10 +1,11 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <functional>
 
 namespace bridge::audio {
 struct AudioSvcFragment {
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::size_t total_bytes = 0;
   bool first = false, last = false;
 };
@@ -17,7 +18,7 @@ struct AudioSvcStats {
 // decode PCM or install a public receive callback. The fixed arena survives borrows.
 class AudioSvcIngress final {
 public:
-  using Forward = std::function<bool(std::span<const std::uint8_t>)>;
+  using Forward = std::function<bool(::bridge::compat::span<const std::uint8_t>)>;
   explicit AudioSvcIngress(Forward, std::uint64_t timeout_ms = 2000);
   ~AudioSvcIngress();
   AudioSvcIngress(const AudioSvcIngress &) = delete;

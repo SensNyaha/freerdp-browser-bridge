@@ -1,7 +1,9 @@
+#include "../compat/bit.hpp"
+#include "../compat/ranges.hpp"
+#include "../compat/span.hpp"
 #include "opus_audio.hpp"
 #include "opus_encoder.hpp"
 #include <algorithm>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <limits>
@@ -23,7 +25,7 @@ std::vector<std::uint8_t> pcm(std::size_t first) {
   std::vector<std::uint8_t> bytes(SoftwareOpusEncoder::pcm_bytes);
   for (std::size_t i = 0; i < SoftwareOpusEncoder::packet_frames; ++i)
     for (std::size_t channel = 0; channel < 2; ++channel) {
-      const auto word = std::bit_cast<std::uint16_t>(tone(first + i, channel));
+      const auto word = ::bridge::compat::bit_cast<std::uint16_t>(tone(first + i, channel));
       bytes[i * 4 + channel * 2] = static_cast<std::uint8_t>(word);
       bytes[i * 4 + channel * 2 + 1] = static_cast<std::uint8_t>(word >> 8);
     }
@@ -104,8 +106,8 @@ TEST_CASE("Opus rejects input atomically before mutating prediction or borrowed 
   REQUIRE_THROWS_AS(encoder.encode({source, 1000, true}), std::invalid_argument);
   REQUIRE(copy(borrowed) == saved);
   std::vector<std::uint8_t> unaligned(source.size() + 1);
-  std::ranges::copy(source, unaligned.begin() + 1);
-  const auto next = encoder.encode({std::span<const std::uint8_t>(unaligned).subspan(1), 21000});
+  ::bridge::compat::ranges::copy(source, unaligned.begin() + 1);
+  const auto next = encoder.encode({::bridge::compat::span<const std::uint8_t>(unaligned).subspan(1), 21000});
   REQUIRE(copy(next) == copy(reference.encode({source, 21000})));
   REQUIRE_FALSE(next.discontinuity);
   REQUIRE(encoder.encoded_packets() == 2);
@@ -174,7 +176,7 @@ TEST_CASE("Real private Opus packets satisfy the bounded IPC stereo frame profil
     for (std::uint64_t index = 0; index < 20; ++index) {
       auto input = pcm(static_cast<std::size_t>(index) * SoftwareOpusEncoder::packet_frames);
       if (index % 2)
-        std::ranges::fill(input, 0);
+        ::bridge::compat::ranges::fill(input, 0);
       const auto unit = encoder.encode({input, index * 20000});
       REQUIRE_NOTHROW(wire::validate_payload(unit.bytes));
       REQUIRE(opus_packet_get_nb_frames(unit.bytes.data(),
@@ -184,7 +186,7 @@ TEST_CASE("Real private Opus packets satisfy the bounded IPC stereo frame profil
       const auto owner =
           wire::encode_packet({1, unit.timestamp_us, 960, 0, unit.discontinuity, unit.bytes});
       const auto packet = wire::decode_packet(owner.bytes());
-      REQUIRE(std::ranges::equal(packet.encoded, unit.bytes));
+      REQUIRE(::bridge::compat::ranges::equal(packet.encoded, unit.bytes));
       REQUIRE(packet.timestamp_us == unit.timestamp_us);
       REQUIRE(packet.discontinuity == unit.discontinuity);
     }

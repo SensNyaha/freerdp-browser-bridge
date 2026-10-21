@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dispatch_queue.hpp"
 #include "touch_ipc.hpp"
 #include <algorithm>
@@ -17,13 +18,13 @@ TEST_CASE("Touch v2 generation token and availability records are independently 
   REQUIRE(decode_request(p).generation == 3);
   REQUIRE(decode_request(p).event == Event{Action::begin, 0x01020304, 0x1234, 0x567});
   for (std::size_t n = 0; n < p.size(); ++n)
-    REQUIRE_THROWS_AS(decode_request(std::span(p).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_request(::bridge::compat::span(p).first(n)), ProtocolError);
   p.back() = 0;
   REQUIRE_THROWS_AS(decode_request(p), ProtocolError);
   const Update u{1, 3, 1920, 1080, 10, true, Availability::ready};
   const auto bytes = encode_update(u);
   REQUIRE(bytes.size() == 32);
-  REQUIRE(bridge::ipc::read_be(std::span(bytes).subspan(12, 8)) == 3);
+  REQUIRE(bridge::ipc::read_be(::bridge::compat::span(bytes).subspan(12, 8)) == 3);
   REQUIRE(bytes[24] == 0);
   REQUIRE(bytes[25] == 10);
   for (const auto invalid : {Update{0, 3, 1920, 1080, 10, true, Availability::ready},
@@ -79,7 +80,7 @@ TEST_CASE("Touch IPC v1 independent big-endian contact/action vectors") {
 }
 TEST_CASE("Touch IPC rejects truncation and unknown version/action/reserved byte before decoding") {
   for (std::size_t length = 0; length < canonical.size(); ++length)
-    REQUIRE_THROWS_AS(decode_ipc(std::span(canonical).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_ipc(::bridge::compat::span(canonical).first(length)), ProtocolError);
   std::array<std::uint8_t, 17> longer{};
   std::copy(canonical.begin(), canonical.end(), longer.begin());
   REQUIRE_THROWS_AS(decode_ipc(longer), ProtocolError);
@@ -112,11 +113,11 @@ TEST_CASE(
     "Touch IPC framing checks fixed length before body allocation and preserves request IDs") {
   using namespace bridge::ipc;
   const auto bytes = encode({Kind::input_touch, UINT64_MAX, {canonical.begin(), canonical.end()}});
-  const auto header = decode_header(std::span(bytes).first(header_bytes));
+  const auto header = decode_header(::bridge::compat::span(bytes).first(header_bytes));
   REQUIRE(header.kind == Kind::input_touch);
   REQUIRE(header.request_id == UINT64_MAX);
   REQUIRE(header.length == ipc_event_bytes);
-  REQUIRE(decode_ipc(std::span(bytes).subspan(header_bytes)) ==
+  REQUIRE(decode_ipc(::bridge::compat::span(bytes).subspan(header_bytes)) ==
           Event{Action::begin, 0x01020304, 0x1234, 0x567});
   const std::array<std::uint32_t, 8> invalid{0, 1, 12, 15, 17, 4096, 0x80000000, 0xffffffff};
   for (const auto length : invalid) {

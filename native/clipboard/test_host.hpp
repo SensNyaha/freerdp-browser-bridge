@@ -1,7 +1,8 @@
 #pragma once
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "receive_guard.hpp"
 #include <algorithm>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/client.h>
@@ -113,7 +114,7 @@ struct Host {
     const auto entry_fn = freerdp_channels_load_static_addin_entry(
         "cliprdr", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
     REQUIRE(entry_fn);
-    REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry_fn)(
+    REQUIRE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(entry_fn)(
         reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&points), this));
     REQUIRE(clip);
     REQUIRE(init);
@@ -163,7 +164,7 @@ struct Host {
       init(plugin, this, CHANNEL_EVENT_TERMINATED, nullptr, 0);
     }
   }
-  bool send(std::span<const BYTE> b, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
+  bool send(::bridge::compat::span<const BYTE> b, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
             std::uint64_t now = 1) {
     return guard->receive(1005, b.data(), b.size(), flags, total ? total : b.size(), now);
   }

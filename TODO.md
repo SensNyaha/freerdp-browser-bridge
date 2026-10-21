@@ -41,6 +41,19 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+The user now requires GCC 8.3.0/Astra Linux 1.7.5 and mandatory RED OS 7.3/GCC 11.
+This supersedes the previous GNU 12 fallback policy without removing its
+historical evidence. The separate compiler feature branch passes foundation
+CTest 20/20 on exact GCC 8.3.0 and on the actual RED OS 7.3/GCC 11.4.1 host,
+plus MSVC CTest 19/19 and framed lifecycle 16 / 1 skip. Full linked dependency /
+FreeRDP / addon runtime closure, installed-Astra and actual RDP acceptance remain
+open. With libraries from the supplied Astra ISO, the same foundation binaries
+pass CTest 20/20 and the GCC 8.3 IPC-only Node 24 addon passes 14/14 packet /
+lifecycle tests in a separate unpacked runtime fixture using the Docker host
+kernel. Full Windows foundation `pnpm check` passes 849 / 112 skips / 961 total.
+This is not installed-Astra acceptance.
+[Evidence and remaining gates](docs/ITERATION_407.md).
+
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
 directions across two new RDP connections, repeated server Copy/Get, actual

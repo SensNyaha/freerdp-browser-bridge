@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "text.hpp"
 #include <array>
 #include <functional>
@@ -14,10 +15,10 @@ struct PduInfo {
 };
 // Complete CLIPRDR record inspection; no allocation and no content diagnostics.
 // A quota_refused result must be replaced with failure, never forwarded as data.
-std::optional<PduInfo> inspect_pdu(std::span<const std::uint8_t>, bool long_names,
+std::optional<PduInfo> inspect_pdu(::bridge::compat::span<const std::uint8_t>, bool long_names,
                                    std::size_t maximum) noexcept;
 struct SvcFragment {
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::size_t total;
   bool first, last;
 };
@@ -30,7 +31,7 @@ struct IngressStats {
 // body allocation. A complete packet is borrowed until synchronous forwarding ends.
 class ClipboardIngress final {
 public:
-  using Forward = std::function<bool(std::span<const std::uint8_t>)>;
+  using Forward = std::function<bool(::bridge::compat::span<const std::uint8_t>)>;
   static constexpr std::size_t max_fragments = 16384;
   explicit ClipboardIngress(Forward, std::size_t maximum = max_item_bytes,
                             std::uint64_t timeout_ms = 2000);
@@ -55,6 +56,6 @@ private:
   bool discarding_ = false;
   void release() noexcept;
   bool fail() noexcept;
-  bool dispatch(std::span<const std::uint8_t>, bool quota_refused = false) noexcept;
+  bool dispatch(::bridge::compat::span<const std::uint8_t>, bool quota_refused = false) noexcept;
 };
 } // namespace bridge::clipboard

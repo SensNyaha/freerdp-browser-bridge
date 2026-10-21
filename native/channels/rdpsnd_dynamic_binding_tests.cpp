@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_channel_registry.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <freerdp/channels/rdpsnd.h>
@@ -47,7 +48,7 @@ struct Fixture {
       packet.push_back(static_cast<BYTE>(length >> (i * 8U)));
     return registry.admit(packet, now);
   }
-  UINT data(std::span<const BYTE> bytes) {
+  UINT data(::bridge::compat::span<const BYTE> bytes) {
     wStream stream{};
     REQUIRE(Stream_StaticConstInit(&stream, bytes.data(), bytes.size()));
     const auto status = proxy->OnDataReceived(proxy, &stream);

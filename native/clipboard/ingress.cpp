@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <algorithm>
 #include <exception>
@@ -7,17 +8,17 @@
 
 namespace bridge::clipboard {
 namespace {
-std::uint16_t u16(std::span<const std::uint8_t> b, std::size_t p) noexcept {
+std::uint16_t u16(::bridge::compat::span<const std::uint8_t> b, std::size_t p) noexcept {
   return static_cast<std::uint16_t>(b[p] | (std::uint16_t{b[p + 1]} << 8));
 }
-std::uint32_t u32(std::span<const std::uint8_t> b, std::size_t p) noexcept {
+std::uint32_t u32(::bridge::compat::span<const std::uint8_t> b, std::size_t p) noexcept {
   return u16(b, p) | (std::uint32_t{u16(b, p + 2)} << 16);
 }
 void increment(std::uint64_t &v) noexcept {
   if (v != (std::numeric_limits<std::uint64_t>::max)())
     ++v;
 }
-bool header(std::span<const std::uint8_t> b, std::size_t total, std::size_t maximum) noexcept {
+bool header(::bridge::compat::span<const std::uint8_t> b, std::size_t total, std::size_t maximum) noexcept {
   if (!maximum || maximum > max_item_bytes || b.size() < 8 || total < 8 ||
       total > max_item_bytes + 8)
     return false;
@@ -45,7 +46,7 @@ bool header(std::span<const std::uint8_t> b, std::size_t total, std::size_t maxi
   }
 }
 } // namespace
-std::optional<PduInfo> inspect_pdu(std::span<const std::uint8_t> b, bool long_names,
+std::optional<PduInfo> inspect_pdu(::bridge::compat::span<const std::uint8_t> b, bool long_names,
                                    std::size_t maximum) noexcept {
   if (!header(b, b.size(), maximum))
     return {};
@@ -148,7 +149,7 @@ bool ClipboardIngress::poll(std::uint64_t now) noexcept {
   observed_ = now;
   return true;
 }
-bool ClipboardIngress::dispatch(std::span<const std::uint8_t> b, bool quota_refused) noexcept {
+bool ClipboardIngress::dispatch(::bridge::compat::span<const std::uint8_t> b, bool quota_refused) noexcept {
   const auto info = inspect_pdu(b, long_names_, maximum_);
   if (!info)
     return fail();
@@ -161,7 +162,7 @@ bool ClipboardIngress::dispatch(std::span<const std::uint8_t> b, bool quota_refu
   bool accepted = false;
   try {
     const auto normalized = b.first(8 + u32(b, 4));
-    accepted = forward_(quota_refused ? std::span<const std::uint8_t>(refused) : normalized);
+    accepted = forward_(quota_refused ? ::bridge::compat::span<const std::uint8_t>(refused) : normalized);
   } catch (...) {
     (void)fail();
   }

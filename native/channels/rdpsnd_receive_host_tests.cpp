@@ -1,6 +1,7 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "dvc_receive_guard.hpp"
 #include <array>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/client.h>
@@ -87,7 +88,7 @@ struct Host {
     const auto callback = freerdp_channels_load_static_addin_entry(
         "rdpsnd", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
     REQUIRE(callback);
-    REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(callback)(
+    REQUIRE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(callback)(
         reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&points), this));
     REQUIRE(plugin);
     if (!init)
@@ -109,7 +110,7 @@ struct Host {
       init(plugin, this, CHANNEL_EVENT_TERMINATED, nullptr, 0);
     }
   }
-  bool receive(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 8,
+  bool receive(::bridge::compat::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 8,
                std::uint64_t now = 1) {
     return guard->receive(1006, bytes.data(), bytes.size(), flags, total, now);
   }
@@ -118,13 +119,13 @@ constexpr BYTE volume[]{3, 0, 4, 0, 1, 2, 3, 4};
 } // namespace
 TEST_CASE("Actual static RDPSND fake backend receives only complete admitted records") {
   Host host;
-  REQUIRE(host.receive(std::span(volume).first(3), CHANNEL_FLAG_FIRST));
+  REQUIRE(host.receive(::bridge::compat::span(volume).first(3), CHANNEL_FLAG_FIRST));
   REQUIRE(host.deliveries == 0);
-  REQUIRE(host.receive(std::span(volume).subspan(3), CHANNEL_FLAG_LAST, 8, 2));
+  REQUIRE(host.receive(::bridge::compat::span(volume).subspan(3), CHANNEL_FLAG_LAST, 8, 2));
   REQUIRE(host.deliveries == 1);
   REQUIRE(host.guard->stats().audio.forwarded == 1);
   REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
-  REQUIRE_FALSE(host.receive(std::span(volume).first(1), CHANNEL_FLAG_FIRST, 65537, 3));
+  REQUIRE_FALSE(host.receive(::bridge::compat::span(volume).first(1), CHANNEL_FLAG_FIRST, 65537, 3));
   REQUIRE(host.deliveries == 1);
   REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
 }

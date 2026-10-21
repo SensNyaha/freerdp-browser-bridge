@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "packetizer.hpp"
 #include "volume.hpp"
 #include <atomic>
@@ -51,7 +52,7 @@ public:
   RdpsndSink(const RdpsndSink &) = delete;
   RdpsndSink &operator=(const RdpsndSink &) = delete;
   rdpsndDevicePlugin &device() noexcept { return device_; }
-  QueueRead read(std::span<std::uint8_t>) noexcept;
+  QueueRead read(::bridge::compat::span<std::uint8_t>) noexcept;
   PcmPacket packet(std::uint64_t worker_time_us) noexcept;
   std::optional<std::uint64_t> publication_deadline() const noexcept;
   std::optional<SinkStats> stats() const noexcept;

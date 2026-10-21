@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "microphone.hpp"
 #include "output_queue.hpp"
 #include <algorithm>
@@ -38,7 +39,7 @@ TEST_CASE(
   REQUIRE(microphone::decode_reset(microphone::encode_reset(UINT64_MAX)) == UINT64_MAX);
   REQUIRE_THROWS_AS(microphone::encode_reset(0), ProtocolError);
   for (std::size_t length = 0; length < expected.size(); ++length)
-    REQUIRE_THROWS_AS(microphone::decode_reset(std::span(expected).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(microphone::decode_reset(::bridge::compat::span(expected).first(length)), ProtocolError);
   for (std::size_t at = 0; at < 4; ++at) {
     auto bad = expected;
     bad[at] ^= 1;
@@ -87,7 +88,7 @@ TEST_CASE("Microphone PCM codec validates independent golden fixed profile and b
   const auto encoded = microphone::encode_pcm(packet);
   REQUIRE(std::equal(encoded.begin(), encoded.end(), bytes.begin()));
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(microphone::decode_pcm(std::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(microphone::decode_pcm(::bridge::compat::span(bytes).first(length)), ProtocolError);
   bytes.push_back(0);
   REQUIRE_THROWS_AS(microphone::decode_pcm(bytes), ProtocolError);
   bytes = golden();
@@ -132,7 +133,7 @@ TEST_CASE(
   }
   const auto result = microphone::encode_result(microphone::Result::unavailable);
   for (std::size_t n = 0; n < 4; ++n)
-    REQUIRE_THROWS_AS(microphone::decode_result(std::span(result).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(microphone::decode_result(::bridge::compat::span(result).first(n)), ProtocolError);
   REQUIRE_THROWS_AS(microphone::decode_result(std::array<std::uint8_t, 5>{1, 2}), ProtocolError);
   for (const auto at : {0U, 2U, 3U}) {
     auto bad = result;

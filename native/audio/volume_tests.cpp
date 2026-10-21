@@ -55,9 +55,11 @@ TEST_CASE("PCM volume all codes are monotone bounded and preserve polarity") {
     const auto positive = volume.apply(32767, false);
     const auto negative = volume.apply(-32768, true);
     REQUIRE(positive >= previous);
-    REQUIRE(positive <= 32767);
     REQUIRE(negative <= 0);
     REQUIRE(std::abs(static_cast<int>(positive) + negative) <= 1);
     previous = positive;
   }
+  // int16_t's upper bound is a type invariant. Check the actual full-volume
+  // endpoint instead of a tautological comparison rejected by GCC 8.
+  REQUIRE(previous == 32767);
 }

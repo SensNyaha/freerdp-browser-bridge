@@ -1,3 +1,4 @@
+#include "../compat/thread.hpp"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include "opus_audio.hpp"
@@ -56,7 +57,7 @@ TEST_CASE(
   std::vector<std::uint8_t> received(expected.size());
   bool read_ok = true;
   std::atomic<bool> read_done{false}, read_stop{false};
-  std::jthread reader([&] {
+  ::bridge::compat::jthread reader([&] {
     std::size_t at = 0;
     while (!read_stop.load() && at < received.size()) {
       DWORD count = 0;
@@ -171,7 +172,7 @@ TEST_CASE(
   WindowsPipeOutput output(pipe.write);
   REQUIRE_THROWS_AS(output.finish(0ms), ProtocolError);
   bool refused = false;
-  std::jthread foreign([&] {
+  ::bridge::compat::jthread foreign([&] {
     try {
       (void)output.finish();
     } catch (const ProtocolError &) {

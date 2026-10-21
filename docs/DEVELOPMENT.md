@@ -1074,7 +1074,15 @@ identity regression and complete Windows/Linux checks pass
 offline install/build/relocation/production deploy also passes
 [in iteration 265](ITERATION_265.md).
 
-The GNU compiler minimum is GCC 12 with a matching C++20 library. The local
+The current required GNU target is GCC 8.3.0 for Astra Linux 1.7.5, while RED OS
+7.3/GCC 11 remains mandatory. The compiler port retains C++20 language mode and
+uses the limited bridge compatibility subset where the stock library lacks it.
+See [current acceptance scope](COMPILER_SUPPORT.md) before treating a source
+version check as complete platform support. Use a fresh build tree for each
+compiler and rebuild all C++ dependencies rather than mixing their ABI/runtime
+closures. Node 24 and CMake >=3.24 requirements are unchanged.
+
+The following historical sanitizer profile uses GCC 12 with its C++20 library. The local
 Ubuntu builder now includes g++-12; select it explicitly in a new output tree:
 
 ```sh

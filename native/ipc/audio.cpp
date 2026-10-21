@@ -1,10 +1,11 @@
+#include "../compat/span.hpp"
 #include "audio.hpp"
 #include <algorithm>
 #include <limits>
 
 namespace bridge::ipc::audio {
 namespace {
-void put(std::span<std::uint8_t> bytes, std::size_t at, std::uint64_t value, std::size_t count) {
+void put(::bridge::compat::span<std::uint8_t> bytes, std::size_t at, std::uint64_t value, std::size_t count) {
   for (std::size_t i = 0; i < count; ++i)
     bytes[at + i] = static_cast<std::uint8_t>(value >> ((count - i - 1) * 8));
 }
@@ -20,7 +21,7 @@ void validate(const PcmPacket &packet) {
     throw ProtocolError();
 }
 } // namespace
-Config decode_config(std::span<const std::uint8_t> bytes) {
+Config decode_config(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() != config_bytes || bytes[0] != 1 || bytes[1] != 2 || bytes[2] != 2 ||
       bytes[3] != 1 || read_be(bytes.subspan(4, 4)) != 48000 ||
       read_be(bytes.subspan(8, 2)) != packet_frames || read_be(bytes.subspan(10, 2)) != 0)
@@ -39,7 +40,7 @@ std::array<std::uint8_t, config_bytes> encode_config(Config config) {
   put(bytes, 12, config.epoch, 8);
   return bytes;
 }
-PcmPacket decode_packet(std::span<const std::uint8_t> bytes) {
+PcmPacket decode_packet(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() != packet_bytes || bytes[0] != 1 || (bytes[1] != 0 && bytes[1] != 2) ||
       read_be(bytes.subspan(6, 2)) != 0)
     throw ProtocolError();
@@ -73,7 +74,7 @@ void validate_state(const State &state) {
     throw ProtocolError();
 }
 } // namespace
-State decode_state(std::span<const std::uint8_t> bytes) {
+State decode_state(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() != state_bytes || read_be(bytes.first(2)) != 1 || bytes[2] > 1 ||
       bytes[31] != 0 || read_be(bytes.subspan(38, 2)) != 0)
     throw ProtocolError();

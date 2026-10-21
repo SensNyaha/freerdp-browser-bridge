@@ -1,3 +1,5 @@
+#include "../compat/span.hpp"
+#include "../compat/thread.hpp"
 #include "linux_stream.hpp"
 #include "opus_audio.hpp"
 #include <algorithm>
@@ -42,7 +44,7 @@ DispatchAdmission send(LinuxStreamOutput &output, const Packet &packet) {
     std::this_thread::yield();
   }
 }
-bool read_exact(int fd, std::span<std::uint8_t> bytes, std::stop_token stop = {}) {
+bool read_exact(int fd, ::bridge::compat::span<std::uint8_t> bytes, ::bridge::compat::stop_token stop = {}) {
   const auto due = std::chrono::steady_clock::now() + 5s;
   std::size_t at = 0;
   while (at < bytes.size() && !stop.stop_requested() && std::chrono::steady_clock::now() < due) {
@@ -86,8 +88,8 @@ TEST_CASE("Linux FIFO and Node-style Unix stream drain exact accepted records an
     }
     std::vector<std::uint8_t> received(expected.size());
     bool read_ok = false;
-    std::jthread reader(
-        [&](std::stop_token stop) { read_ok = read_exact(pair.ends[0], received, stop); });
+    ::bridge::compat::jthread reader(
+        [&](::bridge::compat::stop_token stop) { read_ok = read_exact(pair.ends[0], received, stop); });
     bool admitted = true;
     for (std::uint64_t id = 1; id <= 10; ++id)
       admitted = (send(output, {Kind::hello_ack, id, std::vector<std::uint8_t>(4096, id)}) ==
@@ -182,7 +184,7 @@ TEST_CASE("Linux stream owner refuses invalid handles timeouts and foreign finis
   LinuxStreamOutput output(pair.ends[1]);
   REQUIRE_THROWS_AS(output.finish(0ms), ProtocolError);
   bool refused = false;
-  std::jthread foreign([&] {
+  ::bridge::compat::jthread foreign([&] {
     try {
       (void)output.finish();
     } catch (const ProtocolError &) {

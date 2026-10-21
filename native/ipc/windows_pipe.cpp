@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include "windows_pipe.hpp"
@@ -65,7 +66,7 @@ struct WindowsPipeOutput::Impl {
       throw ProtocolError();
     }
   }
-  bool write_bytes(std::span<const std::uint8_t> bytes) noexcept {
+  bool write_bytes(::bridge::compat::span<const std::uint8_t> bytes) noexcept {
     std::size_t used = 0;
     while (used < bytes.size()) {
       if (aborting.load())
@@ -79,7 +80,7 @@ struct WindowsPipeOutput::Impl {
     }
     return true;
   }
-  bool write(std::span<const std::uint8_t> header, std::span<const std::uint8_t> body) {
+  bool write(::bridge::compat::span<const std::uint8_t> header, ::bridge::compat::span<const std::uint8_t> body) {
     if (aborting.load())
       return false;
     deadline.store(GetTickCount64() + write_timeout);
@@ -188,7 +189,7 @@ DispatchAdmission WindowsPipeOutput::try_select_audio_codec(OutputAudioCodec cod
   return impl_->dispatcher.try_select_audio_codec(codec);
 }
 DispatchAdmission WindowsPipeOutput::try_send(Kind kind, std::uint64_t id,
-                                              std::span<const std::uint8_t> bytes) {
+                                              ::bridge::compat::span<const std::uint8_t> bytes) {
   const auto result = impl_->dispatcher.try_send(kind, id, bytes);
   if (result == DispatchAdmission::accepted)
     signal(impl_->wake.get());

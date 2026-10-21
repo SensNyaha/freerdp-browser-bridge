@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "connection_config.hpp"
 #include "display.hpp"
 #include "protocol.hpp"
@@ -57,7 +58,7 @@ TEST_CASE("connection v12 IP selection is canonical and preserves legacy fields"
   bytes[at + 1] = 1;
   bytes[at + 2] = 6;
   for (std::size_t n = 0; n < bytes.size(); ++n)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)), ProtocolError);
   for (std::uint8_t schema = 1; schema < 12; ++schema) {
     bytes[1] = schema;
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -95,7 +96,7 @@ TEST_CASE("connection v11 performance selection is canonical and preserves legac
   bytes[at] = 3;
   bytes[at + 1] = 2;
   for (std::size_t n = 0; n < bytes.size(); ++n)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)), ProtocolError);
   for (unsigned schema = 1; schema < 11; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -142,7 +143,7 @@ TEST_CASE("connection v10 clipboard direction and item quota preserve all legacy
   bytes[at + 4] = bytes[at + 5] = bytes[at + 6] = 0;
   bytes.back() = 1;
   for (std::size_t n = 0; n < bytes.size(); ++n)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)), ProtocolError);
   for (unsigned schema = 1; schema < 10; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -174,7 +175,7 @@ TEST_CASE("connection v9 compatibility buffer requires exactly one output and ke
   }
   bytes[1] = 9;
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
 }
 TEST_CASE(
     "connection v8 Opus microphone flags preserve independent exclusive input and output codecs") {
@@ -197,7 +198,7 @@ TEST_CASE(
   }
   bytes.back() = 32;
   for (std::size_t size = 0; size < bytes.size(); ++size)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(size)), ProtocolError);
   for (unsigned schema = 1; schema < 8; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -228,7 +229,7 @@ TEST_CASE("envelope serialization preserves exact bounded payload bytes") {
       packet.payload[i] = static_cast<std::uint8_t>(i);
     const auto bytes = encode(packet);
     REQUIRE(bytes.size() == header_bytes + size);
-    const auto header = decode_header(std::span(bytes).first(header_bytes));
+    const auto header = decode_header(::bridge::compat::span(bytes).first(header_bytes));
     REQUIRE(header.kind == packet.kind);
     REQUIRE(header.request_id == packet.request_id);
     REQUIRE(header.length == size);
@@ -254,7 +255,7 @@ TEST_CASE("connection v7 private microphone input is independent of the exclusiv
   }
   bytes.back() = 16;
   for (std::size_t size = 0; size < bytes.size(); ++size)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(size)), ProtocolError);
   for (unsigned schema = 1; schema <= 6; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -280,7 +281,7 @@ TEST_CASE("reject malformed headers before allocation") {
     REQUIRE_THROWS_AS(decode_header(bytes), ProtocolError);
   }
   for (std::size_t length = 0; length < header_bytes; ++length)
-    REQUIRE_THROWS_AS(decode_header(std::span(valid).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_header(::bridge::compat::span(valid).first(length)), ProtocolError);
 }
 TEST_CASE("class limits and exact payload lengths") {
   REQUIRE_NOTHROW(encode({Kind::hello_ack, 1, std::vector<std::uint8_t>(4096)}));
@@ -291,7 +292,7 @@ TEST_CASE("class limits and exact payload lengths") {
 TEST_CASE("HELLO rejects incompatible version ranges and unknown required features") {
   const std::vector<std::uint8_t> valid{0, 1, 0, 1, 0, 0, 0, 0};
   REQUIRE_NOTHROW(validate_hello(valid));
-  REQUIRE_THROWS_AS(validate_hello(std::span(valid).first(7)), ProtocolError);
+  REQUIRE_THROWS_AS(validate_hello(::bridge::compat::span(valid).first(7)), ProtocolError);
   for (const auto index : {0, 2, 7}) {
     auto payload = valid;
     payload[static_cast<std::size_t>(index)] = 255;
@@ -304,12 +305,12 @@ TEST_CASE("HELLO rejects incompatible version ranges and unknown required featur
 }
 TEST_CASE("frame payload bounds are checked before allocation") {
   auto bytes = encode({Kind::capture, 1, std::vector<std::uint8_t>(8)});
-  REQUIRE(decode_header(std::span(bytes).first(header_bytes)).length == 8);
+  REQUIRE(decode_header(::bridge::compat::span(bytes).first(header_bytes)).length == 8);
   REQUIRE_THROWS_AS(encode({Kind::capture, 1, {}}), ProtocolError);
   bytes = encode({Kind::frame, 1, std::vector<std::uint8_t>(frame_metadata_bytes)});
-  REQUIRE(decode_header(std::span(bytes).first(header_bytes)).kind == Kind::frame);
+  REQUIRE(decode_header(::bridge::compat::span(bytes).first(header_bytes)).kind == Kind::frame);
   bytes[20] = 0xff;
-  REQUIRE_THROWS_AS(decode_header(std::span(bytes).first(header_bytes)), ProtocolError);
+  REQUIRE_THROWS_AS(decode_header(::bridge::compat::span(bytes).first(header_bytes)), ProtocolError);
   REQUIRE_THROWS_AS(encode({Kind::frame, 1, std::vector<std::uint8_t>(23)}), ProtocolError);
 }
 TEST_CASE("connection settings independently encoded vector, truncation and policy boundaries") {
@@ -325,7 +326,7 @@ TEST_CASE("connection settings independently encoded vector, truncation and poli
   REQUIRE(c.max_bitrate == 4000000);
   REQUIRE_FALSE(c.dynamic_resolution);
   for (std::size_t i = 0; i < connection.size(); ++i)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(connection).first(i)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(connection).first(i)), ProtocolError);
   auto extra = connection;
   extra.push_back(0);
   REQUIRE_THROWS_AS(decode_connection_config(extra), ProtocolError);
@@ -346,7 +347,7 @@ TEST_CASE("connection settings v2 independently encoded quality and rejection bo
   REQUIRE(config.target_bitrate == 1000000);
   REQUIRE(config.max_bitrate == 2000000);
   for (std::size_t i = 0; i < bytes.size(); ++i)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(i)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(i)), ProtocolError);
   for (const auto &[index, value] : {std::pair<std::size_t, std::uint8_t>{38, 0},
                                      {38, 31},
                                      {39, 0},
@@ -371,7 +372,7 @@ TEST_CASE("AVC IPC class bounds are checked before body allocation") {
   REQUIRE_THROWS_AS(encode({Kind::capture_avc, 1, std::vector<std::uint8_t>(11)}), ProtocolError);
   REQUIRE_THROWS_AS(encode({Kind::frame_avc, 1, std::vector<std::uint8_t>(27)}), ProtocolError);
   auto bytes = encode({Kind::frame_avc, 1, std::vector<std::uint8_t>(28)});
-  REQUIRE(decode_header(std::span(bytes).first(header_bytes)).kind == Kind::frame_avc);
+  REQUIRE(decode_header(::bridge::compat::span(bytes).first(header_bytes)).kind == Kind::frame_avc);
   const auto maximum = max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes;
   bytes.resize(20);
   append_be(bytes, maximum, 4);
@@ -389,7 +390,7 @@ TEST_CASE("connection v3 explicit dynamic-resolution flag with strict legacy com
   bytes.back() = 0;
   REQUIRE_FALSE(decode_connection_config(bytes).dynamic_resolution);
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
   for (std::size_t offset = bytes.size() - 4; offset < bytes.size(); ++offset) {
     auto invalid = bytes;
     invalid[offset] = 2;
@@ -425,7 +426,7 @@ TEST_CASE("connection v5 PCM opt-in preserves flags and refuses truncated and le
   }
   bytes.back() = 4;
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
   for (const unsigned flags : {8U, 128U, 255U}) {
     bytes.back() = static_cast<std::uint8_t>(flags);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -458,7 +459,7 @@ TEST_CASE("connection v6 Opus opt-in refuses mixed audio modes and legacy masks"
   }
   bytes.back() = 8;
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(std::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
   for (unsigned schema = 1; schema <= 5; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -499,7 +500,7 @@ TEST_CASE("display IPC independent vectors and exact class bounds before allocat
       REQUIRE_THROWS_AS(decode_header(header), ProtocolError);
     }
   }
-  REQUIRE_THROWS_AS(decode_display_resize(std::span(resize).first(3)), ProtocolError);
+  REQUIRE_THROWS_AS(decode_display_resize(::bridge::compat::span(resize).first(3)), ProtocolError);
   for (const auto index : {0, 1, 2, 3, 4, 5}) {
     auto bad = update;
     switch (index) {

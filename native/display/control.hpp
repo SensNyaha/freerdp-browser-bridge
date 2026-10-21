@@ -9,7 +9,10 @@
 namespace bridge::display {
 struct Size {
   std::uint32_t width, height;
-  bool operator==(const Size &) const = default;
+  bool operator==(const Size &other) const noexcept {
+    return width == other.width && height == other.height;
+  }
+  bool operator!=(const Size &other) const noexcept { return !(*this == other); }
 };
 struct Capabilities {
   std::uint32_t max_monitors;

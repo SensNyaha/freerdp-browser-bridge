@@ -1,3 +1,5 @@
+#include "../compat/span.hpp"
+#include "../compat/thread.hpp"
 #include "audio.hpp"
 #include "opus_audio.hpp"
 #include "output_dispatcher.hpp"
@@ -15,7 +17,7 @@ struct BlockedWrite {
   bool entered = false, released = false;
   Header header{};
   std::vector<std::uint8_t> body;
-  bool operator()(std::span<const std::uint8_t> bytes, std::span<const std::uint8_t> payload) {
+  bool operator()(::bridge::compat::span<const std::uint8_t> bytes, ::bridge::compat::span<const std::uint8_t> payload) {
     std::unique_lock lock(mutex);
     header = decode_header(bytes);
     body.assign(payload.begin(), payload.end());
@@ -63,7 +65,7 @@ TEST_CASE("Stalled external write leaves producer admission free and drains cont
   REQUIRE(owner.try_send(Kind::frame, 100, pixels) == DispatchAdmission::accepted);
   BlockedWrite blocked;
   DispatchResult result = DispatchResult::idle;
-  std::jthread writer([&] { result = owner.write_next(std::ref(blocked)); });
+  ::bridge::compat::jthread writer([&] { result = owner.write_next(std::ref(blocked)); });
   const bool entered = blocked.wait();
   // The callback has a finite deadline so a regression cannot deadlock this test.
   const auto start = std::chrono::steady_clock::now();
@@ -191,7 +193,7 @@ TEST_CASE("Dispatcher reset clears unsent audio and abort waits for the external
   REQUIRE(pcm(owner, 2, 20000) == DispatchAdmission::accepted);
   BlockedWrite blocked;
   DispatchResult result = DispatchResult::idle;
-  std::jthread writer([&] { result = owner.write_next(std::ref(blocked)); });
+  ::bridge::compat::jthread writer([&] { result = owner.write_next(std::ref(blocked)); });
   const bool entered = blocked.wait();
   owner.abort();
   const auto snapshot = owner.try_stats();

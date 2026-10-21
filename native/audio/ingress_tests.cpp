@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -99,7 +100,7 @@ TEST_CASE("Audio assembler preserves bytes across randomized fragmentation and r
       const auto count = (std::min)(input.size() - at, static_cast<std::size_t>(1 + random % 1024));
       const bool last = at + count == input.size();
       const auto result =
-          assembler.push(std::span(input).subspan(at, count), input.size(), at == 0, last);
+          assembler.push(::bridge::compat::span(input).subspan(at, count), input.size(), at == 0, last);
       REQUIRE(result.status == (last ? FragmentStatus::complete : FragmentStatus::collecting));
       if (last)
         REQUIRE(std::equal(input.begin(), input.end(), result.bytes.begin()));
@@ -208,7 +209,7 @@ TEST_CASE("Legacy RDPSND WaveInfo validates the following raw Wave as one ordere
   REQUIRE(second->block == 42);
   REQUIRE(second->sample_bytes == 8);
   REQUIRE(validator.validate(info));
-  REQUIRE_FALSE(validator.validate(std::span(raw).first(4)));
+  REQUIRE_FALSE(validator.validate(::bridge::compat::span(raw).first(4)));
   REQUIRE(validator.failed());
 }
 

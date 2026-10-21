@@ -1,5 +1,5 @@
+#include "../compat/bit.hpp"
 #include "rdpei_plugin.hpp"
-#include <bit>
 #include <cstring>
 #include <freerdp/channels/channels.h>
 #include <freerdp/client/channels.h>
@@ -138,7 +138,7 @@ UINT PluginRegistration::install(IDRDYNVC_ENTRY_POINTS *host, PDVC_PLUGIN_ENTRY 
         RDPEI_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
     if (!linked)
       return ERROR_NOT_SUPPORTED;
-    entry = std::bit_cast<PDVC_PLUGIN_ENTRY>(linked);
+    entry = ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(linked);
   }
   thread_ = std::this_thread::get_id();
   attempted_ = true;

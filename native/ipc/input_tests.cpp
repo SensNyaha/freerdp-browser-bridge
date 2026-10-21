@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "input.hpp"
 #include <catch2/catch_test_macros.hpp>
 using namespace bridge;
@@ -25,12 +26,13 @@ TEST_CASE(
     "Initial remote button failure prevents later releases and never retries an uncertain write") {
   for (std::uint16_t failed = 0; failed < 3; ++failed) {
     unsigned calls = 0;
-    REQUIRE_FALSE(input::initialize_pointer([&](const auto &event) {
+    const auto fail_release = [&](const input::Event &event) {
       ++calls;
       REQUIRE(event.type == input::Type::button);
       REQUIRE(event.flags == 0);
       return event.c != failed;
-    }));
+    };
+    REQUIRE_FALSE(input::initialize_pointer(fail_release));
     REQUIRE(calls == failed + 1U);
   }
 }
@@ -72,7 +74,7 @@ TEST_CASE("Unicode text has independent UTF16BE vectors and rejects malformed bo
   REQUIRE(text.text[3] == 0xde00);
   const auto record = ipc::encode({ipc::Kind::input_text, 42, bytes});
   REQUIRE(record[7] == 30);
-  REQUIRE(ipc::decode_header(std::span(record).first(24)).length == 8);
+  REQUIRE(ipc::decode_header(::bridge::compat::span(record).first(24)).length == 8);
   for (const auto &bad : std::vector<std::vector<std::uint8_t>>{{},
                                                                 {0},
                                                                 {0, 0},
@@ -149,21 +151,23 @@ TEST_CASE("Unicode send failure stops text and retains only an accepted down for
   REQUIRE(calls == 1);
   REQUIRE_FALSE(state.apply(text, [&](const auto &) { return ++calls == 2; }, 1, 1));
   REQUIRE(calls == 3);
-  REQUIRE_FALSE(state.release([&](const auto &e) {
+  const auto fail_unicode_release = [&](const input::Event &e) {
     REQUIRE(e.type == input::Type::unicode);
     REQUIRE(e.flags == 0);
     REQUIRE(e.a == 65);
     ++calls;
     return false;
-  }));
+  };
+  REQUIRE_FALSE(state.release(fail_unicode_release));
   REQUIRE_FALSE(state.apply(text, [](const auto &) { return true; }, 1, 1));
-  REQUIRE(state.release([&](const auto &e) {
+  const auto accept_unicode_release = [&](const input::Event &e) {
     REQUIRE(e.type == input::Type::unicode);
     REQUIRE(e.flags == 0);
     REQUIRE(e.a == 65);
     ++calls;
     return true;
-  }));
+  };
+  REQUIRE(state.release(accept_unicode_release));
   REQUIRE(calls == 5);
   REQUIRE(state.release([](const auto &) { return false; }));
 }
@@ -171,9 +175,9 @@ TEST_CASE("Input records are bounded and validate flags before dispatch") {
   std::vector<std::uint8_t> p{1, 1, 1, 0x1d, 0, 0, 0, 0, 0, 0, 0, 0};
   REQUIRE(input::decode(p).a == 0x11d);
   auto record = ipc::encode({ipc::Kind::input, 1, p});
-  REQUIRE(ipc::decode_header(std::span(record).first(ipc::header_bytes)).length == 12);
+  REQUIRE(ipc::decode_header(::bridge::compat::span(record).first(ipc::header_bytes)).length == 12);
   record[23] = 13;
-  REQUIRE_THROWS_AS(ipc::decode_header(std::span(record).first(ipc::header_bytes)),
+  REQUIRE_THROWS_AS(ipc::decode_header(::bridge::compat::span(record).first(ipc::header_bytes)),
                     ipc::ProtocolError);
   p[1] = 2;
   REQUIRE_THROWS_AS(input::decode(p), ipc::ProtocolError);
@@ -224,11 +228,12 @@ TEST_CASE("Failed releases are retried without skipping other pressed keys") {
     return e.a != 30;
   }));
   REQUIRE(attempts == 2);
-  REQUIRE(state.release([&](const auto &e) {
+  const auto accept_key_release = [&](const input::Event &e) {
     REQUIRE(e.a == 30);
     ++attempts;
     return true;
-  }));
+  };
+  REQUIRE(state.release(accept_key_release));
   REQUIRE(attempts == 3);
 }
 TEST_CASE("Toggle synchronization preserves tracked physical modifier sides and release retry") {

@@ -1,7 +1,8 @@
+#include "../compat/span.hpp"
 #include "display.hpp"
 
 namespace bridge::ipc {
-DisplaySize decode_display_resize(std::span<const std::uint8_t> bytes) {
+DisplaySize decode_display_resize(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() != 4)
     throw ProtocolError();
   // Semantic geometry rejection produces a typed result, not a fatal parser error.

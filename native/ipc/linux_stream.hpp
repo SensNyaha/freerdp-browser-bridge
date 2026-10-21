@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "output_dispatcher.hpp"
 #include <chrono>
 #include <memory>
@@ -16,7 +17,7 @@ public:
   ~LinuxStreamOutput();
   LinuxStreamOutput(const LinuxStreamOutput &) = delete;
   LinuxStreamOutput &operator=(const LinuxStreamOutput &) = delete;
-  DispatchAdmission try_send(Kind, std::uint64_t, std::span<const std::uint8_t>);
+  DispatchAdmission try_send(Kind, std::uint64_t, ::bridge::compat::span<const std::uint8_t>);
   DispatchAdmission try_select_audio_codec(OutputAudioCodec);
   bool try_discard_audio();
   std::optional<DispatcherStats> try_stats() const;

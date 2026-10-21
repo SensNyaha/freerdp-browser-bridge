@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "test_host.hpp"
 #include "worker_session.hpp"
 #include <atomic>
@@ -52,7 +53,7 @@ struct Owner {
   std::vector<std::uint8_t> read(std::uint64_t revision = 1, std::uint64_t generation = 1) {
     return wire::encode_command({wire::Operation::read, generation, revision, {}});
   }
-  std::vector<std::uint8_t> set(std::span<const std::uint8_t> bytes) {
+  std::vector<std::uint8_t> set(::bridge::compat::span<const std::uint8_t> bytes) {
     return wire::encode_command({wire::Operation::set, 1, 0, bytes});
   }
   wire::Result result(std::uint64_t id) const {

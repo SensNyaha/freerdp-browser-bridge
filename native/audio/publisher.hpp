@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "audio.hpp"
 #include "rdpsnd_sink.hpp"
 #include <functional>
@@ -18,7 +19,7 @@ struct PublisherStats {
 // Not installed by the worker until its bounded transport owner is available.
 class PcmPublisher {
 public:
-  using TrySend = std::function<bool(ipc::Kind, std::span<const std::uint8_t>)>;
+  using TrySend = std::function<bool(ipc::Kind, ::bridge::compat::span<const std::uint8_t>)>;
   // Clear only unsent consumer audio; false retains the barrier for a later pump.
   // Both source and callback targets must outlive this owner.
   using TryDiscard = std::function<bool()>;

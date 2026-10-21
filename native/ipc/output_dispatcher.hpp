@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "output_queue.hpp"
 #include <atomic>
 #include <functional>
@@ -20,11 +21,11 @@ public:
   // Called without the producer mutex. Header/body are borrowed until return.
   // Return true only after the complete record has been written in order.
   // The external driver must supply bounded/cancellable I/O and one writer.
-  using Write = std::function<bool(std::span<const std::uint8_t>, std::span<const std::uint8_t>)>;
+  using Write = std::function<bool(::bridge::compat::span<const std::uint8_t>, ::bridge::compat::span<const std::uint8_t>)>;
   OutputDispatcher() = default;
   explicit OutputDispatcher(OutputAudioCodec codec) : queue_(codec) {}
   DispatchAdmission try_select_audio_codec(OutputAudioCodec codec);
-  DispatchAdmission try_send(Kind, std::uint64_t request_id, std::span<const std::uint8_t>);
+  DispatchAdmission try_send(Kind, std::uint64_t request_id, ::bridge::compat::span<const std::uint8_t>);
   DispatchResult write_next(const Write &) noexcept;
   // Refuse new producers, retain pending records for the external driver to drain.
   void finish();

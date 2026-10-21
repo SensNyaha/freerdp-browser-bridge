@@ -1,3 +1,4 @@
+#include "../compat/ranges.hpp"
 #include "audin_source.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -156,7 +157,7 @@ TEST_CASE("Public AUDIN virtual source validates pinned device format and callba
   REQUIRE(source.pump() == AudinPumpStatus::delivered);
   REQUIRE(receiver.calls == 1);
   REQUIRE(receiver.bytes.size() == 3840);
-  REQUIRE(std::ranges::all_of(receiver.bytes, [](auto byte) { return byte == 0; }));
+  REQUIRE(::bridge::compat::ranges::all_of(receiver.bytes, [](auto byte) { return byte == 0; }));
   REQUIRE(source.stats()->emitted_frames == 960);
   REQUIRE(source.stats()->capture.buffering_silence_frames == 960);
   REQUIRE(source.retire());
@@ -207,7 +208,7 @@ TEST_CASE(
   REQUIRE(source.pump() == AudinPumpStatus::delivered);
   REQUIRE(first.calls == 0);
   REQUIRE(second.calls == 1);
-  REQUIRE(std::ranges::all_of(second.bytes, [](auto byte) { return byte == 0; }));
+  REQUIRE(::bridge::compat::ranges::all_of(second.bytes, [](auto byte) { return byte == 0; }));
   REQUIRE(source.submit({2, 0, true, bytes}) == CaptureStatus::accepted);
   REQUIRE(source.submit({2, 20000, false, bytes}) == CaptureStatus::accepted);
   REQUIRE(source.pump() == AudinPumpStatus::delivered);

@@ -1,3 +1,5 @@
+#include "../compat/span.hpp"
+#include "../compat/thread.hpp"
 #include "linux_seqpacket.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -29,11 +31,11 @@ struct Pair {
         std::terminate();
   }
 };
-void raw(int fd, std::span<const std::uint8_t> data) {
+void raw(int fd, ::bridge::compat::span<const std::uint8_t> data) {
   if (::send(fd, data.data(), data.size(), MSG_NOSIGNAL) != static_cast<ssize_t>(data.size()))
     throw ProtocolError();
 }
-std::vector<std::uint8_t> first(std::span<const std::uint8_t> record, std::size_t count) {
+std::vector<std::uint8_t> first(::bridge::compat::span<const std::uint8_t> record, std::size_t count) {
   const auto prefix =
       encode_seqpacket_prefix(1, static_cast<std::uint32_t>(record.size()), 0, count);
   std::vector<std::uint8_t> bytes(prefix.size() + count);
@@ -53,10 +55,10 @@ TEST_CASE("Linux seqpacket sends maximum frame as borrowed chunks and preserves 
   const auto record = encode(
       {Kind::frame, 2, std::vector<std::uint8_t>(max_jpeg_bytes + frame_metadata_bytes, 0xa5)});
   bool sent = false;
-  std::jthread writer([&] {
+  ::bridge::compat::jthread writer([&] {
     try {
       LinuxSeqpacketEndpoint sender(pair.ends[1]);
-      sender.send(std::span(record).first(header_bytes), std::span(record).subspan(header_bytes),
+      sender.send(::bridge::compat::span(record).first(header_bytes), ::bridge::compat::span(record).subspan(header_bytes),
                   5s);
       const auto next = encode({Kind::heartbeat_ack, 3, {}});
       sender.send(next, {});
@@ -93,7 +95,7 @@ TEST_CASE("Linux seqpacket idle waiting does not consume the first partial recor
   LinuxSeqpacketEndpoint receiver(pair.ends[0]);
   const auto record = encode({Kind::frame, 1, std::vector<std::uint8_t>(64, 0x5a)});
   bool sent = false;
-  std::jthread writer([&] {
+  ::bridge::compat::jthread writer([&] {
     try {
       std::this_thread::sleep_for(400ms);
       raw(pair.ends[1], first(record, header_bytes));
@@ -163,26 +165,26 @@ TEST_CASE("Linux seqpacket enforces original partial record and whole write dead
     LinuxSeqpacketEndpoint sender(pair.ends[0]);
     const auto record = encode({Kind::frame, 1, std::vector<std::uint8_t>(max_jpeg_bytes)});
     const auto started = std::chrono::steady_clock::now();
-    REQUIRE_THROWS_AS(sender.send(std::span(record).first(header_bytes),
-                                  std::span(record).subspan(header_bytes), 30ms),
+    REQUIRE_THROWS_AS(sender.send(::bridge::compat::span(record).first(header_bytes),
+                                  ::bridge::compat::span(record).subspan(header_bytes), 30ms),
                       ProtocolError);
     REQUIRE(std::chrono::steady_clock::now() - started < 1s);
     REQUIRE(sender.failed());
-    REQUIRE_THROWS_AS(sender.send(std::span(record).first(header_bytes), {}, 1s), ProtocolError);
+    REQUIRE_THROWS_AS(sender.send(::bridge::compat::span(record).first(header_bytes), {}, 1s), ProtocolError);
   }
 }
 TEST_CASE("Linux seqpacket cancels blocked writes without extending their whole record deadline") {
   Pair pair;
   LinuxSeqpacketEndpoint sender(pair.ends[0]);
   const auto record = encode({Kind::frame, 1, std::vector<std::uint8_t>(max_jpeg_bytes)});
-  std::stop_source stop;
-  std::jthread cancellation([&] {
+  ::bridge::compat::stop_source stop;
+  ::bridge::compat::jthread cancellation([&] {
     std::this_thread::sleep_for(30ms);
     stop.request_stop();
   });
   const auto started = std::chrono::steady_clock::now();
-  REQUIRE_THROWS_AS(sender.send(std::span(record).first(header_bytes),
-                                std::span(record).subspan(header_bytes), 5s, stop.get_token()),
+  REQUIRE_THROWS_AS(sender.send(::bridge::compat::span(record).first(header_bytes),
+                                ::bridge::compat::span(record).subspan(header_bytes), 5s, stop.get_token()),
                     ProtocolError);
   REQUIRE(std::chrono::steady_clock::now() - started < 1s);
   REQUIRE(sender.failed());
@@ -236,7 +238,7 @@ TEST_CASE(
   Pair pair;
   LinuxSeqpacketEndpoint sender(pair.ends[0]);
   bool refused = false;
-  std::jthread foreign([&] {
+  ::bridge::compat::jthread foreign([&] {
     try {
       (void)sender.read(20ms);
     } catch (const ProtocolError &) {

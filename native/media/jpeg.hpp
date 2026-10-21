@@ -1,7 +1,7 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "protocol.hpp"
 #include <memory>
-#include <span>
 
 namespace bridge::media {
 // Replaceable native provider. No raw framebuffer crosses the worker boundary.
@@ -12,7 +12,7 @@ class JpegEncoder {
 public:
   explicit JpegEncoder(int quality = 80);
   ~JpegEncoder();
-  std::span<const std::uint8_t> encode(std::span<const std::uint8_t> bgra, int width, int height,
+  ::bridge::compat::span<const std::uint8_t> encode(::bridge::compat::span<const std::uint8_t> bgra, int width, int height,
                                        int stride);
 };
 } // namespace bridge::media

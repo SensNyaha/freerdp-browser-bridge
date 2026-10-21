@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_channel_registry.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <freerdp/channels/audin.h>
@@ -42,7 +43,7 @@ struct Fixture {
       record.push_back(static_cast<BYTE>(size >> (i * 8U)));
     return registry.admit(record, 1);
   }
-  UINT data(std::span<const BYTE> bytes) {
+  UINT data(::bridge::compat::span<const BYTE> bytes) {
     wStream stream{};
     REQUIRE(Stream_StaticConstInit(&stream, bytes.data(), bytes.size()));
     input = bytes.data();

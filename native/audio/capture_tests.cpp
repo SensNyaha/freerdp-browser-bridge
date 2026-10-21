@@ -1,3 +1,5 @@
+#include "../compat/ranges.hpp"
+#include "../compat/span.hpp"
 #include "capture.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -17,7 +19,7 @@ std::vector<std::uint8_t> samples(std::uint16_t left, std::uint16_t right) {
   }
   return bytes;
 }
-bool silent(std::span<const std::uint8_t> bytes) {
+bool silent(::bridge::compat::span<const std::uint8_t> bytes) {
   return std::all_of(bytes.begin(), bytes.end(), [](auto byte) { return byte == 0; });
 }
 } // namespace
@@ -108,8 +110,8 @@ TEST_CASE(
   REQUIRE(source.stats().queue.queued_frames == 960);
   REQUIRE(source.stats().discontinuities == 1);
   REQUIRE(source.submit({2, 20000, false, second}) == CaptureStatus::accepted);
-  REQUIRE(std::ranges::equal(source.read().bytes, first));
-  REQUIRE(std::ranges::equal(source.read().bytes, second));
+  REQUIRE(::bridge::compat::ranges::equal(source.read().bytes, first));
+  REQUIRE(::bridge::compat::ranges::equal(source.read().bytes, second));
   REQUIRE(source.stats().queue.underflows == 0);
 }
 
@@ -126,7 +128,7 @@ TEST_CASE("Microphone source prebuffer underflow and explicit input gaps separat
   REQUIRE(source.submit({1, 20000, false, two}) == CaptureStatus::accepted);
   const auto initial = source.read();
   REQUIRE(initial.discontinuity);
-  REQUIRE(std::ranges::equal(initial.bytes, one));
+  REQUIRE(::bridge::compat::ranges::equal(initial.bytes, one));
   REQUIRE_FALSE(source.read().discontinuity);
   const auto underflow = source.read();
   REQUIRE(silent(underflow.bytes));
@@ -141,7 +143,7 @@ TEST_CASE("Microphone source prebuffer underflow and explicit input gaps separat
   REQUIRE(source.submit({1, 100000, false, two}) == CaptureStatus::accepted);
   const auto gap = source.read();
   REQUIRE(gap.discontinuity);
-  REQUIRE(std::ranges::equal(gap.bytes, two));
+  REQUIRE(::bridge::compat::ranges::equal(gap.bytes, two));
   const auto borrowed = gap.bytes;
   source.stop();
   REQUIRE(silent(borrowed));
@@ -233,12 +235,12 @@ TEST_CASE("Microphone source partial callback pads exactly and rebuffer restores
   const auto first = source.read();
   REQUIRE(first.frames == 1001);
   REQUIRE(first.silence_frames == 0);
-  REQUIRE(std::ranges::equal(first.bytes.first(3840), one));
-  REQUIRE(std::ranges::equal(first.bytes.subspan(3840), std::span(two).first(41 * 4)));
+  REQUIRE(::bridge::compat::ranges::equal(first.bytes.first(3840), one));
+  REQUIRE(::bridge::compat::ranges::equal(first.bytes.subspan(3840), ::bridge::compat::span(two).first(41 * 4)));
   const auto partial = source.read();
   REQUIRE(partial.frames == 919);
   REQUIRE(partial.silence_frames == 82);
-  REQUIRE(std::ranges::equal(partial.bytes.first(919 * 4), std::span(two).subspan(41 * 4)));
+  REQUIRE(::bridge::compat::ranges::equal(partial.bytes.first(919 * 4), ::bridge::compat::span(two).subspan(41 * 4)));
   REQUIRE(silent(partial.bytes.subspan(919 * 4)));
   REQUIRE(source.stats().queue.underflows == 1);
   REQUIRE(source.stats().queue.silence_frames == 82);

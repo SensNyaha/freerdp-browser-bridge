@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audio.hpp"
 #include "output_queue.hpp"
 #include <algorithm>
@@ -26,7 +27,7 @@ TEST_CASE(
 TEST_CASE(
     "PCM state rejects all malformed flags modes descriptors truncations and scalar boundaries") {
   for (std::size_t length = 0; length < ready.size(); ++length)
-    REQUIRE_THROWS_AS(audio::decode_state(std::span(ready).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(audio::decode_state(::bridge::compat::span(ready).first(length)), ProtocolError);
   std::vector<std::uint8_t> longer(ready.begin(), ready.end());
   longer.push_back(0);
   REQUIRE_THROWS_AS(audio::decode_state(longer), ProtocolError);

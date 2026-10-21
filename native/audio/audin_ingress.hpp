@@ -1,9 +1,9 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <span>
 
 namespace bridge::audio {
 enum class AudinPhase { version, formats, open, recording, unsupported, failed };
@@ -11,7 +11,7 @@ enum class AudinPduKind { version, formats, open, change };
 enum class AudinCaptureProfile { compatibility, worker };
 struct AudinPdu {
   AudinPduKind kind;
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::uint32_t version = 0, format_count = 0, format_index = 0, frames_per_packet = 0;
   bool forward = true; // No common format must not enter upstream's zero-count parser.
 };
@@ -25,7 +25,7 @@ public:
   static constexpr std::uint32_t worker_min_frames = 480, max_frames = 4800;
   explicit AudinIngress(AudinCaptureProfile profile = AudinCaptureProfile::compatibility) noexcept
       : profile_(profile) {}
-  std::optional<AudinPdu> inspect(std::span<const std::uint8_t>) noexcept;
+  std::optional<AudinPdu> inspect(::bridge::compat::span<const std::uint8_t>) noexcept;
   void reset() noexcept;
   AudinPhase phase() const noexcept { return phase_; }
   std::uint32_t format_count() const noexcept { return count_; }

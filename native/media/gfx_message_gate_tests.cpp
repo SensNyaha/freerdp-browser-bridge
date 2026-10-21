@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "gfx_message_gate.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -27,7 +28,7 @@ struct Bits {
     return bytes;
   }
 };
-std::vector<BYTE> compressed(std::span<const BYTE> payload) {
+std::vector<BYTE> compressed(::bridge::compat::span<const BYTE> payload) {
   Bits bits;
   for (auto byte : payload) {
     bits.fixed(0, 1);
@@ -89,7 +90,7 @@ struct Fixture {
       return f.status;
     };
   }
-  UINT data(std::span<const BYTE> bytes, std::size_t position = 0) {
+  UINT data(::bridge::compat::span<const BYTE> bytes, std::size_t position = 0) {
     wStream stream{};
     const BYTE empty_marker = 0;
     REQUIRE(Stream_StaticConstInit(&stream, bytes.empty() ? &empty_marker : bytes.data(),
@@ -245,7 +246,7 @@ TEST_CASE("Isolated GFX message owner measures bounded twelve MiB literal forwar
   UINT32 flags = 0;
   REQUIRE(zgfx_compress_to_stream(encoder.get(), wire.get(), batch.data(),
                                   static_cast<UINT32>(batch.size()), &flags) >= 0);
-  const std::span<const BYTE> encoded(Stream_Buffer(wire.get()), Stream_Length(wire.get()));
+  const ::bridge::compat::span<const BYTE> encoded(Stream_Buffer(wire.get()), Stream_Length(wire.get()));
   Fixture f;
   constexpr unsigned iterations = 6;
   const auto measure = [&](bool guarded) {

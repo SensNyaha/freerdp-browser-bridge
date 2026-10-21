@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "output_queue.hpp"
 #include "audio.hpp"
 #include "audio_reset.hpp"
@@ -44,7 +45,7 @@ struct CursorInfo {
   std::uint16_t width, height, hot_x, hot_y;
   bool shape;
 };
-CursorInfo cursor_info(std::span<const std::uint8_t> bytes) {
+CursorInfo cursor_info(::bridge::compat::span<const std::uint8_t> bytes) {
   const auto flags = read_be(bytes.subspan(2, 2));
   CursorInfo info{read_be(bytes.subspan(4, 8)),
                   read_be(bytes.subspan(12, 8)),
@@ -83,7 +84,7 @@ bool OutputQueue::select_audio_codec(OutputAudioCodec codec) noexcept {
   return true;
 }
 EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
-                                std::span<const std::uint8_t> bytes) {
+                                ::bridge::compat::span<const std::uint8_t> bytes) {
   // Validate the envelope and typed media before constructing owned storage.
   if (bytes.size() > (std::numeric_limits<std::uint32_t>::max)())
     return EnqueueStatus::invalid;

@@ -1,5 +1,37 @@
 # Native compiler support
 
+## Current target and verified scope — 2026-10-21
+
+The user now requires **GCC 8.3.0 / Astra Linux 1.7.5** and retains mandatory
+**RED OS 7.3 / GCC 11** support. This supersedes the earlier GCC 12 fallback
+decision below. The GNU source-version gate is 8.3; CMake remains at least 3.24,
+Node remains 24, and the worker stays in the C++20 language mode (GCC 8 spells
+this experimental mode `-std=c++2a`). This is a port in progress, not a claim of
+complete C++20 standard-library support in GCC 8 or completed distro acceptance.
+
+`native/compat` supplies the bridge's limited borrowed-view, representation-copy,
+whole-range algorithm and joining-thread/stop subset. Modern standard facilities
+are used where available. The fallback lives in `bridge::compat`, never in `std`;
+it retains explicit bounds, constness and joined callback/thread lifetimes.
+Both native and forced-fallback CTest targets exercise these contracts.
+
+The exact GCC 8.3.0 foundation build passes CTest **20/20** in an isolated Debian
+fixture. The actual RED OS 7.3 host with GCC 11.4.1 also passes **20/20**.
+A clean MSVC Debug build passes **19/19** and framed lifecycle **16 passed /
+1 platform skip**. The same GCC 8.3 binaries pass **20/20** with the supplied
+Astra 1.7.5.16 ISO's glibc/libstdc++ in a separate unpacked runtime fixture;
+the GCC 8.3 IPC-only addon passes 14/14 actual Node 24.21.0 packet/lifecycle
+tests there. Windows full foundation `pnpm check` passes 849 / 112 skips /
+961 total. These are foundation
+results, not linked FreeRDP, dependency closure, RDP/device or installed-Astra
+results. The runtime fixture uses the Docker host kernel.
+[Port evidence and remaining gates](ITERATION_407.md).
+
+## Historical GCC 12 decision and acceptance
+
+The following records the earlier decision and its independently verified
+profiles. Its GNU minimum statements describe that historical baseline.
+
 User decision, 2026-10-16: prefer GCC 8 if feasible, otherwise GCC 12. The bridge
 retains its required C++20 implementation and sets **GCC 12 as the GNU minimum**.
 The complete private dependency → FreeRDP 3.32.1 → worker/addon chain already

@@ -1,5 +1,6 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "pcm.hpp"
-#include <bit>
 #include <limits>
 
 namespace bridge::audio {
@@ -19,7 +20,7 @@ void PcmNormalizer::reset() noexcept {
   next_ = produced_ = 0;
   output_->fill(0);
 }
-PcmResult PcmNormalizer::process(std::span<const std::uint8_t> input) noexcept {
+PcmResult PcmNormalizer::process(::bridge::compat::span<const std::uint8_t> input) noexcept {
   if (!format_)
     return {PcmStatus::unconfigured, {}};
   const auto f = *format_;
@@ -53,7 +54,7 @@ PcmResult PcmNormalizer::process(std::span<const std::uint8_t> input) noexcept {
       else {
         const auto value = static_cast<std::uint16_t>(static_cast<unsigned>(input[at]) |
                                                       (static_cast<unsigned>(input[at + 1]) << 8));
-        current[channel] = std::bit_cast<std::int16_t>(value);
+        current[channel] = ::bridge::compat::bit_cast<std::int16_t>(value);
       }
     }
     if (f.channels == 1)
@@ -78,6 +79,6 @@ PcmResult PcmNormalizer::process(std::span<const std::uint8_t> input) noexcept {
     previous_ = current;
   }
   produced_ += count;
-  return {PcmStatus::accepted, std::span(*output_).first(written), written / 4};
+  return {PcmStatus::accepted, ::bridge::compat::span(*output_).first(written), written / 4};
 }
 } // namespace bridge::audio

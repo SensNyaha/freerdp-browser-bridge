@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "avc_decode_probe.hpp"
 #include "video_encoder.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -86,7 +87,7 @@ TEST_CASE("OpenH264 rejects invalid options, source dimensions, buffer bounds an
                            {pixels, 128, 2162, 512, 1},
                            {pixels, 128, 64, 511, 1},
                            {pixels, 128, 64, -1, 1},
-                           {std::span<const std::uint8_t>{}, 128, 64, 512, 1}})
+                           {::bridge::compat::span<const std::uint8_t>{}, 128, 64, 512, 1}})
     REQUIRE_THROWS_AS(encoder.encode(frame, false), bridge::ipc::ProtocolError);
   REQUIRE(encoder.encode({pixels, 128, 64, 512, 1000}, false).keyframe);
   REQUIRE_THROWS_AS(encoder.encode({pixels, 128, 64, 512, 1000}, false),

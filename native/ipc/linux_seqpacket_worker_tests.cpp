@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "linux_seqpacket.hpp"
 #include "linux_stream.hpp"
 #include <algorithm>
@@ -92,7 +93,7 @@ struct Child {
 };
 void send(LinuxSeqpacketEndpoint &endpoint, const Packet &packet) {
   const auto bytes = encode(packet);
-  endpoint.send(std::span(bytes).first(header_bytes), std::span(bytes).subspan(header_bytes));
+  endpoint.send(::bridge::compat::span(bytes).first(header_bytes), ::bridge::compat::span(bytes).subspan(header_bytes));
 }
 Packet receive(LinuxSeqpacketEndpoint &endpoint) {
   const auto bytes = endpoint.read();

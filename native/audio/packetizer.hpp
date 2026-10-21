@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "queue.hpp"
 #include <optional>
 
@@ -6,7 +7,7 @@ namespace bridge::audio {
 enum class PacketStatus { ready, idle, invalid };
 struct PcmPacket {
   PacketStatus status;
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::uint64_t timestamp_us = 0;
   std::size_t frames = 0, silence_frames = 0;
   bool discontinuity = false;

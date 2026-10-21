@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audio.hpp"
 #include "cursor.hpp"
 #include "output_queue.hpp"
@@ -105,16 +106,16 @@ TEST_CASE(
     state.position(i, i);
   REQUIRE(queue.stats().records == 2);
   REQUIRE(queue.stats().bytes == 48 + 40 + 2 * header_bytes);
-  REQUIRE(read_be(std::span(queue.take()->payload).subspan(2, 2)) == 9);
+  REQUIRE(read_be(::bridge::compat::span(queue.take()->payload).subspan(2, 2)) == 9);
   auto metadata = queue.take();
-  REQUIRE(read_be(std::span(metadata->payload).subspan(28, 2)) == 100);
+  REQUIRE(read_be(::bridge::compat::span(metadata->payload).subspan(28, 2)) == 100);
   REQUIRE(push(queue, last) == EnqueueStatus::invalid);
   state.shape({8, 1, 1, 0, 0, {1, 2, 3, 4}});
   state.position(101, 101);
   state.default_shape();
   REQUIRE(queue.stats().records == 1);
   auto default_packet = queue.take();
-  REQUIRE(read_be(std::span(default_packet->payload).subspan(12, 8)) == 0);
+  REQUIRE(read_be(::bridge::compat::span(default_packet->payload).subspan(12, 8)) == 0);
   auto missing_shape = last;
   missing_shape.payload[19] = 9;
   missing_shape.payload[35] = 1;

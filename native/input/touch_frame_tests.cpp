@@ -1,10 +1,11 @@
+#include "../compat/span.hpp"
 #include "touch_frame.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 using namespace bridge::touch;
 namespace {
-std::vector<std::uint8_t> packet(std::span<const std::uint8_t> contacts, std::uint8_t count = 1) {
+std::vector<std::uint8_t> packet(::bridge::compat::span<const std::uint8_t> contacts, std::uint8_t count = 1) {
   const std::array<std::uint8_t, 10> header{3, 0, 0, 0, 0, 0, 0, 1, count, 0};
   std::vector<std::uint8_t> bytes(header.size() + contacts.size());
   std::copy(header.begin(), header.end(), bytes.begin());
@@ -13,7 +14,7 @@ std::vector<std::uint8_t> packet(std::span<const std::uint8_t> contacts, std::ui
     bytes[2 + i] = static_cast<std::uint8_t>(bytes.size() >> (i * 8));
   return bytes;
 }
-TerminalRecord record(std::span<const std::uint8_t> bytes) {
+TerminalRecord record(::bridge::compat::span<const std::uint8_t> bytes) {
   TerminalRecord result;
   REQUIRE(bytes.size() <= result.bytes.size());
   result.size = bytes.size();
@@ -25,7 +26,7 @@ TEST_CASE("touch frame decoder reads signed native records and optional bounded 
   const std::array<std::uint8_t, 15> encoded{7, 7, 0x21, 0x42, 0x58, 36, 0x41, 0x41,
                                              1, 1, 0x41, 0x67, 0x44, 0,  0};
   // All three optional fields: rectangle -1,-1,+1,+1, orientation 359, pressure 1024.
-  const auto bytes = packet(std::span(encoded).first(14));
+  const auto bytes = packet(::bridge::compat::span(encoded).first(14));
   const auto parsed = read_touch_frame(bytes);
   REQUIRE(parsed);
   REQUIRE(parsed->count == 1);
@@ -99,7 +100,7 @@ TEST_CASE("terminal packet preserves native UP fields without replaying active c
   const auto result = terminal_packet(records);
   REQUIRE(result);
   REQUIRE(result->size == 20);
-  const auto parsed = read_touch_frame(std::span(result->bytes).first(result->size));
+  const auto parsed = read_touch_frame(::bridge::compat::span(result->bytes).first(result->size));
   REQUIRE(parsed);
   REQUIRE(parsed->count == 2);
   REQUIRE(parsed->contacts[0].flags == 4);
@@ -114,9 +115,9 @@ TEST_CASE("terminal packet rejects active, duplicate, truncated and excessive te
   records[0] = records[1];
   REQUIRE_FALSE(terminal_packet(records));
   records[0].size = 32;
-  REQUIRE_FALSE(terminal_packet(std::span(records).first(1)));
+  REQUIRE_FALSE(terminal_packet(::bridge::compat::span(records).first(1)));
   records[0].size = 0;
-  REQUIRE_FALSE(terminal_packet(std::span(records).first(1)));
+  REQUIRE_FALSE(terminal_packet(::bridge::compat::span(records).first(1)));
   REQUIRE_FALSE(terminal_packet({}));
   std::array<TerminalRecord, 11> too_many{};
   REQUIRE_FALSE(terminal_packet(too_many));

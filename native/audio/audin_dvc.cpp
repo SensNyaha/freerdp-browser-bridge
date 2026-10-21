@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audin_dvc.hpp"
 #include <algorithm>
 #include <exception>
@@ -12,7 +13,7 @@ void increment(std::uint64_t &value) noexcept {
   if (value != UINT64_MAX)
     ++value;
 }
-std::uint32_t little(std::span<const BYTE> bytes, std::size_t at) noexcept {
+std::uint32_t little(::bridge::compat::span<const BYTE> bytes, std::size_t at) noexcept {
   std::uint32_t value = 0;
   for (unsigned i = 0; i < 4; ++i)
     value |= std::uint32_t{bytes[at + i]} << (8 * i);
@@ -132,7 +133,7 @@ UINT AudinDvcGate::receive(wStream *stream) noexcept {
   const auto before = source_.stats();
   if (!before)
     return fail(ERROR_INVALID_STATE);
-  const std::span<const BYTE> incoming_bytes{static_cast<const BYTE *>(Stream_Pointer(stream)),
+  const ::bridge::compat::span<const BYTE> incoming_bytes{static_cast<const BYTE *>(Stream_Pointer(stream)),
                                              Stream_GetRemainingLength(stream)};
   const auto pdu = ingress_.inspect(incoming_bytes);
   if (!pdu)
@@ -214,7 +215,7 @@ UINT AudinDvcGate::write(ULONG size, const BYTE *data, void *reserved) noexcept 
     return ERROR_INVALID_STATE;
   if (!data || !size || size > 19201 || reserved)
     return fail(ERROR_INVALID_DATA);
-  const std::span<const BYTE> bytes{data, size};
+  const ::bridge::compat::span<const BYTE> bytes{data, size};
   bool valid = false;
   if (receiving_ && pending_) {
     switch (pending_->kind) {

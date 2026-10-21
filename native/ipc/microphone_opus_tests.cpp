@@ -1,3 +1,5 @@
+#include "../compat/ranges.hpp"
+#include "../compat/span.hpp"
 #include "microphone_opus.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -30,7 +32,7 @@ TEST_CASE(
   REQUIRE(p.lookahead_frames == 312);
   REQUIRE(p.discontinuity);
   REQUIRE(p.encoded.data() == golden.data() + 24);
-  REQUIRE(std::ranges::equal(mic::encode_packet(p).bytes(), golden));
+  REQUIRE(::bridge::compat::ranges::equal(mic::encode_packet(p).bytes(), golden));
   REQUIRE_THROWS_AS(bridge::ipc::audio::opus::decode_packet(golden), ProtocolError);
   auto owner = golden;
   auto borrowed = mic::decode_packet(owner);
@@ -39,9 +41,9 @@ TEST_CASE(
 }
 TEST_CASE("Microphone Opus payload bounds lengths fixed metadata and all TOC profiles") {
   for (std::size_t n = 0; n < 26; ++n)
-    REQUIRE_THROWS_AS(mic::decode_packet(std::span(golden).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(mic::decode_packet(::bridge::compat::span(golden).first(n)), ProtocolError);
   std::vector<std::uint8_t> over(1300);
-  std::ranges::copy(golden, over.begin());
+  ::bridge::compat::ranges::copy(golden, over.begin());
   REQUIRE_THROWS_AS(mic::decode_packet(over), ProtocolError);
   for (const auto at : {0U, 1U, 2U, 3U, 4U, 5U}) {
     auto b = golden;
@@ -52,7 +54,7 @@ TEST_CASE("Microphone Opus payload bounds lengths fixed metadata and all TOC pro
   for (unsigned toc = 0; toc < 256; ++toc) {
     auto b = golden;
     b[24] = static_cast<std::uint8_t>(toc);
-    if (std::ranges::find(allowed, b[24]) != allowed.end())
+    if (::bridge::compat::ranges::find(allowed, b[24]) != allowed.end())
       REQUIRE_NOTHROW(mic::decode_packet(b));
     else
       REQUIRE_THROWS_AS(mic::decode_packet(b), ProtocolError);
@@ -79,7 +81,7 @@ TEST_CASE("Microphone Opus payload accepts extrema and rejects invalid fields be
       REQUIRE(decoded.timestamp_us == UINT64_MAX - 20000);
       REQUIRE(decoded.lookahead_frames == delay);
       REQUIRE_FALSE(decoded.discontinuity);
-      REQUIRE(std::ranges::equal(decoded.encoded, encoded));
+      REQUIRE(::bridge::compat::ranges::equal(decoded.encoded, encoded));
       REQUIRE(encoded[0] == 0xfc);
     }
   p = mic::decode_packet(golden);

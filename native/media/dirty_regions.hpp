@@ -1,15 +1,18 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "protocol.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <limits>
-#include <span>
 
 namespace bridge::media {
 struct DirtyRect {
   std::int32_t x, y, width, height;
-  bool operator==(const DirtyRect &) const = default;
+  bool operator==(const DirtyRect &other) const noexcept {
+    return x == other.x && y == other.y && width == other.width && height == other.height;
+  }
+  bool operator!=(const DirtyRect &other) const noexcept { return !(*this == other); }
 };
 class DirtyRegions {
 public:
@@ -86,7 +89,7 @@ public:
     state_.rectangles[0] = {0, 0, static_cast<std::int32_t>(width),
                             static_cast<std::int32_t>(height)};
   }
-  bool paint(std::span<const DirtyRect> rectangles) {
+  bool paint(::bridge::compat::span<const DirtyRect> rectangles) {
     bool changed = false;
     for (const auto &rect : rectangles)
       changed = add(rect) || changed;

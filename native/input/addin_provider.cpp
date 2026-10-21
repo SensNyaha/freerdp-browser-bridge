@@ -1,5 +1,5 @@
+#include "../compat/bit.hpp"
 #include "addin_provider.hpp"
-#include <bit>
 #include <cstring>
 #include <exception>
 #include <winpr/error.h>
@@ -46,7 +46,7 @@ PVIRTUALCHANNELENTRY AddinProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR t
     const auto allowed = scope && scope->bound_ && scope->on_thread() && !scope->loading_ &&
                          !scope->entering_ && !subsystem && !type &&
                          !scope->registration_->retired() && scope->scope_.active();
-    return std::bit_cast<PVIRTUALCHANNELENTRY>(
+    return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(
         static_cast<PDVC_PLUGIN_ENTRY>(allowed ? entry : denied));
   }
   if (!scope || !scope->bound_ || !scope->on_thread() || scope->loading_ || scope->entering_ ||

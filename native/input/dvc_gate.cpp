@@ -1,9 +1,9 @@
+#include "../compat/span.hpp"
 #include "dvc_gate.hpp"
 #include <algorithm>
 #include <freerdp/channels/rdpei.h>
 #include <freerdp/settings.h>
 #include <limits>
-#include <span>
 #include <type_traits>
 #include <winpr/error.h>
 #include <winpr/stream.h>
@@ -12,13 +12,13 @@ namespace bridge::touch {
 namespace {
 constexpr UINT16 sc_ready = 1, cs_ready = 2, touch_event = 3, suspend = 4, resume = 5,
                  pen_event = 7;
-std::uint32_t little(std::span<const BYTE> bytes) noexcept {
+std::uint32_t little(::bridge::compat::span<const BYTE> bytes) noexcept {
   std::uint32_t result = 0;
   for (std::size_t i = 0; i < bytes.size(); ++i)
     result |= std::uint32_t{bytes[i]} << (i * 8);
   return result;
 }
-bool framed(std::span<const BYTE> bytes) noexcept {
+bool framed(::bridge::compat::span<const BYTE> bytes) noexcept {
   return bytes.size() >= RDPINPUT_HEADER_LENGTH && little(bytes.subspan(2, 4)) == bytes.size();
 }
 bool supported(std::uint32_t version) noexcept {
@@ -42,7 +42,7 @@ void DvcGate::phase(Phase value) noexcept {
     observing_ = false;
   }
 }
-UINT DvcGate::inspect(std::span<const BYTE> bytes, FrameDisposition disposition) noexcept {
+UINT DvcGate::inspect(::bridge::compat::span<const BYTE> bytes, FrameDisposition disposition) noexcept {
   if (!observer_.frame)
     return CHANNEL_RC_OK;
   observing_ = true;
@@ -62,7 +62,7 @@ UINT DvcGate::hold(bool value) noexcept {
   held_ = value;
   return CHANNEL_RC_OK;
 }
-UINT DvcGate::submit_cleanup(std::span<const BYTE> bytes) noexcept {
+UINT DvcGate::submit_cleanup(::bridge::compat::span<const BYTE> bytes) noexcept {
   if (!quiescent() || !ready() || !held_ || !observer_.frame || bytes.size() > max_outbound_bytes ||
       bytes.size() < 2 || bytes[0] != touch_event || bytes[1] != 0)
     return ERROR_INVALID_STATE;
@@ -140,7 +140,7 @@ UINT DvcGate::receive(wStream *stream) noexcept {
   const auto length = Stream_GetRemainingLength(stream);
   if (length < RDPINPUT_HEADER_LENGTH || length > 14)
     return fail(ERROR_INVALID_DATA);
-  const std::span<const BYTE> bytes{static_cast<const BYTE *>(Stream_Pointer(stream)), length};
+  const ::bridge::compat::span<const BYTE> bytes{static_cast<const BYTE *>(Stream_Pointer(stream)), length};
   if (!framed(bytes))
     return fail(ERROR_INVALID_DATA);
   const auto type = little(bytes.first(2));
@@ -194,7 +194,7 @@ UINT DvcGate::write(ULONG size, const BYTE *data, void *reserved) noexcept {
     return ERROR_INVALID_STATE;
   if (!data || size < RDPINPUT_HEADER_LENGTH || size > max_outbound_bytes)
     return fail(ERROR_INVALID_DATA);
-  const std::span<const BYTE> bytes{data, size};
+  const ::bridge::compat::span<const BYTE> bytes{data, size};
   if (!framed(bytes))
     return fail(ERROR_INVALID_DATA);
   const auto type = little(bytes.first(2));

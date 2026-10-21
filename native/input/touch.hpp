@@ -9,7 +9,10 @@ enum class Action : std::uint8_t { begin, update, end, cancel };
 struct Event {
   Action action;
   std::uint32_t id, x, y;
-  bool operator==(const Event &) const = default;
+  bool operator==(const Event &other) const noexcept {
+    return action == other.action && id == other.id && x == other.x && y == other.y;
+  }
+  bool operator!=(const Event &other) const noexcept { return !(*this == other); }
 };
 enum class Result { accepted, invalid, full, failed, cleanup_required };
 // RDP-thread owned foundation, with no queue, timer, wire format or feature advertisement.

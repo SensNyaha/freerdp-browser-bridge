@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audio_reset.hpp"
 #include "build_features.hpp"
 #include "clipboard.hpp"
@@ -138,7 +139,7 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
   }
   return bytes;
 }
-bool read_exact(std::span<std::uint8_t> bytes, bool allow_eof = false) {
+bool read_exact(::bridge::compat::span<std::uint8_t> bytes, bool allow_eof = false) {
   std::size_t used = 0;
   while (used < bytes.size()) {
     const auto count = std::fread(bytes.data() + used, 1, bytes.size() - used, stdin);
@@ -172,8 +173,8 @@ int run(int packet_fd = -1) {
   std::unique_ptr<LinuxSeqpacketEndpoint> packet_reader;
   if (packet_mode)
     packet_reader = std::make_unique<LinuxSeqpacketEndpoint>(packet_fd);
-  std::span<const std::uint8_t> pending;
-  const auto read = [&](std::span<std::uint8_t> bytes, bool allow_eof = false) {
+  ::bridge::compat::span<const std::uint8_t> pending;
+  const auto read = [&](::bridge::compat::span<std::uint8_t> bytes, bool allow_eof = false) {
     if (!packet_reader)
       return read_exact(bytes, allow_eof);
     std::size_t used = 0;
@@ -237,7 +238,7 @@ int run(int packet_fd = -1) {
 #if defined(_WIN32) || defined(__linux__)
     bridge::Connection connection(
         send,
-        [&output](Kind kind, std::span<const std::uint8_t> bytes) {
+        [&output](Kind kind, ::bridge::compat::span<const std::uint8_t> bytes) {
           const auto result = output.try_send(kind, 0, bytes);
           if (result == DispatchAdmission::accepted)
             return true;
@@ -246,7 +247,7 @@ int run(int packet_fd = -1) {
           throw ProtocolError();
         },
         [&output] { return output.try_discard_audio(); },
-        [&output](Kind kind, std::uint64_t id, std::span<const std::uint8_t> bytes) {
+        [&output](Kind kind, std::uint64_t id, ::bridge::compat::span<const std::uint8_t> bytes) {
           const auto result = output.try_send(kind, id, bytes);
           if (result == DispatchAdmission::accepted)
             return true;

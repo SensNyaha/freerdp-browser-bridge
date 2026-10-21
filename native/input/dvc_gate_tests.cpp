@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_gate.hpp"
 #include <algorithm>
 #include <array>
@@ -5,7 +6,6 @@
 #include <freerdp/channels/rdpei.h>
 #include <freerdp/client.h>
 #include <memory>
-#include <span>
 #include <stdexcept>
 #include <thread>
 #include <winpr/error.h>
@@ -136,7 +136,7 @@ struct Fixture {
   UINT bind() {
     return gate.open(*context, &listener, &transport.api, nullptr, &accepted, &callback);
   }
-  UINT receive(std::span<BYTE> bytes, std::size_t offset = 0) {
+  UINT receive(::bridge::compat::span<BYTE> bytes, std::size_t offset = 0) {
     const std::unique_ptr<wStream, void (*)(wStream *)> stream(
         Stream_New(bytes.data(), bytes.size()), [](wStream *s) { Stream_Free(s, FALSE); });
     REQUIRE(stream);
@@ -256,7 +256,7 @@ TEST_CASE("DVC gate validates lengths and every header byte before delegated par
     REQUIRE(f.bind() == CHANNEL_RC_OK);
     std::array<BYTE, 32> bytes{1, 0, 10, 0, 0, 0, 0, 0, 1, 0};
     bytes[2] = static_cast<BYTE>(length);
-    const auto result = f.receive(std::span(bytes).first(length));
+    const auto result = f.receive(::bridge::compat::span(bytes).first(length));
     REQUIRE(result == static_cast<UINT>(length == 10 ? CHANNEL_RC_OK : ERROR_INVALID_DATA));
     REQUIRE(f.gate.close() == CHANNEL_RC_OK);
   }

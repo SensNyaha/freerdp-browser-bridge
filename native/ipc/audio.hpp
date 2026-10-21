@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "protocol.hpp"
 
 namespace bridge::ipc::audio {
@@ -20,13 +21,13 @@ struct PcmPacket {
   std::uint64_t epoch, timestamp_us;
   std::uint16_t frames, silence_frames;
   bool discontinuity;
-  std::span<const std::uint8_t> pcm;
+  ::bridge::compat::span<const std::uint8_t> pcm;
 };
 // Fixed schema 1: S16LE stereo 48 kHz, 20 ms. Decode borrows the supplied storage.
-Config decode_config(std::span<const std::uint8_t>);
-PcmPacket decode_packet(std::span<const std::uint8_t>);
+Config decode_config(::bridge::compat::span<const std::uint8_t>);
+PcmPacket decode_packet(::bridge::compat::span<const std::uint8_t>);
 std::array<std::uint8_t, config_bytes> encode_config(Config);
 std::array<std::uint8_t, packet_bytes> encode_packet(const PcmPacket &);
-State decode_state(std::span<const std::uint8_t>);
+State decode_state(::bridge::compat::span<const std::uint8_t>);
 std::array<std::uint8_t, state_bytes> encode_state(const State &);
 } // namespace bridge::ipc::audio

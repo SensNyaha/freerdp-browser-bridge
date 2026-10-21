@@ -1,16 +1,17 @@
+#include "../compat/span.hpp"
 #include "avc_admission.hpp"
 #include <algorithm>
 
 namespace bridge::media {
 namespace {
 class Bits {
-  std::span<const std::uint8_t> data_;
+  ::bridge::compat::span<const std::uint8_t> data_;
   std::size_t cursor_ = 0;
   unsigned remaining_ = 0, zeros_ = 0;
   std::uint8_t byte_ = 0;
 
 public:
-  explicit Bits(std::span<const std::uint8_t> data) : data_(data) {}
+  explicit Bits(::bridge::compat::span<const std::uint8_t> data) : data_(data) {}
   bool read(unsigned count, std::uint32_t &value) noexcept {
     value = 0;
     for (unsigned i = 0; i < count; ++i) {
@@ -56,7 +57,7 @@ public:
     return true;
   }
 };
-bool sps(std::span<const std::uint8_t> bytes, const AvcDecodeLimits &limits) noexcept {
+bool sps(::bridge::compat::span<const std::uint8_t> bytes, const AvcDecodeLimits &limits) noexcept {
   Bits bits(bytes);
   std::uint32_t profile = 0, value = 0;
   if (!bits.read(8, profile) || !bits.read(8, value) || !bits.read(8, value) || !bits.ue(value) ||
@@ -112,14 +113,14 @@ bool sps(std::span<const std::uint8_t> bytes, const AvcDecodeLimits &limits) noe
   // Compare before adding/multiplying remote UE fields. Cropping cannot reduce allocations.
   return width < limits.width / 16U && height < limits.height / 16U;
 }
-std::size_t start(std::span<const std::uint8_t> bytes, std::size_t from) noexcept {
+std::size_t start(::bridge::compat::span<const std::uint8_t> bytes, std::size_t from) noexcept {
   for (std::size_t i = from; i + 2 < bytes.size(); ++i)
     if (bytes[i] == 0 && bytes[i + 1] == 0 && bytes[i + 2] == 1)
       return i;
   return bytes.size();
 }
 } // namespace
-bool admit_avc_decode(std::span<const std::uint8_t> bytes, AvcDecodeLimits limits) noexcept {
+bool admit_avc_decode(::bridge::compat::span<const std::uint8_t> bytes, AvcDecodeLimits limits) noexcept {
   if (!limits.bytes || limits.bytes > AvcDecodeLimits::hard_bytes || !limits.nals ||
       limits.nals > AvcDecodeLimits::hard_nals || limits.width < 16 ||
       limits.width > AvcDecodeLimits::hard_width || limits.height < 16 ||

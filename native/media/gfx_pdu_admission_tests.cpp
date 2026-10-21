@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "gfx_pdu_admission.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
@@ -29,7 +30,7 @@ TEST_CASE("GFX decoded admission bounds complete PDU headers and batched progres
                                        8,    0, 4, 0, 0,  0, 0, 0, 0, 0};
   REQUIRE(admit_gfx_pdus(caps));
   for (std::size_t i = 0; i < caps.size(); ++i)
-    REQUIRE_FALSE(admit_gfx_pdus(std::span(caps).first(i)));
+    REQUIRE_FALSE(admit_gfx_pdus(::bridge::compat::span(caps).first(i)));
   auto bytes = caps;
   bytes.insert(bytes.end(), caps.begin(), caps.end());
   REQUIRE(admit_gfx_pdus(bytes));

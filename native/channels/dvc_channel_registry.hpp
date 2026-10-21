@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "dvc_completion_hook.hpp"
 #include <memory>
 
@@ -24,7 +25,7 @@ public:
   DvcChannelRegistry &operator=(const DvcChannelRegistry &) = delete;
   DvcChannelBinding bind(IWTSVirtualChannelManager &, IWTSVirtualChannel &,
                          IWTSVirtualChannelCallback &, std::uint64_t now_ms) noexcept;
-  bool admit(std::span<const std::uint8_t>, std::uint64_t now_ms) noexcept;
+  bool admit(::bridge::compat::span<const std::uint8_t>, std::uint64_t now_ms) noexcept;
   bool poll(std::uint64_t now_ms) noexcept;
   UINT retire() noexcept;
   DvcChannelRegistryStats stats() const noexcept;
