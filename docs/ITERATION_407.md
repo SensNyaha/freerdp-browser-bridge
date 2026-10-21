@@ -8,6 +8,11 @@ decision; historical reports are preserved. Work is on `feature/astra17-gcc83`,
 based on shared `4e3ec09`. It is not merged or released. The practical MVP tag
 `v0.1.0` remains unchanged.
 
+Verified compiler-foundation checkpoint: **`f9758b5`**
+(`native: port foundation compatibility to GCC 8.3`). The build receipts above
+were produced from its uncommitted source bytes on the feature branch; they do
+not claim binaries rebuilt after assigning the commit ID.
+
 ## Implementation
 
 CMake's GNU floor becomes 8.3 and its compile probe checks the facilities actually

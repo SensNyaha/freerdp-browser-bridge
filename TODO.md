@@ -51,7 +51,8 @@ open. With libraries from the supplied Astra ISO, the same foundation binaries
 pass CTest 20/20 and the GCC 8.3 IPC-only Node 24 addon passes 14/14 packet /
 lifecycle tests in a separate unpacked runtime fixture using the Docker host
 kernel. Full Windows foundation `pnpm check` passes 849 / 112 skips / 961 total.
-This is not installed-Astra acceptance.
+This is not installed-Astra acceptance. Compiler-foundation checkpoint:
+`f9758b5` on `feature/astra17-gcc83`; no shared-branch merge.
 [Evidence and remaining gates](docs/ITERATION_407.md).
 
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
