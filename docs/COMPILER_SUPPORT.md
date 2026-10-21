@@ -27,6 +27,13 @@ results, not linked FreeRDP, dependency closure, RDP/device or installed-Astra
 results. The runtime fixture uses the Docker host kernel.
 [Port evidence and remaining gates](ITERATION_407.md).
 
+A separate QEMU TCG guest additionally boots the ISO's actual Astra
+`6.1.50-1-generic` kernel with the checked runtime libraries and custom initramfs.
+It passes foundation CTest **20/20** and actual Node IPC-only addon **14/14**,
+then powers off cleanly. This is kernel/runtime evidence, separate from a full
+installed Astra/security profile, other kernels, linked FreeRDP and RDP/device
+acceptance. [Guest evidence](ITERATION_408.md).
+
 ## Historical GCC 12 decision and acceptance
 
 The following records the earlier decision and its independently verified

@@ -55,6 +55,13 @@ This is not installed-Astra acceptance. Compiler-foundation checkpoint:
 `f9758b5` on `feature/astra17-gcc83`; no shared-branch merge.
 [Evidence and remaining gates](docs/ITERATION_407.md).
 
+The supplied Astra ISO also boots its actual 6.1.50-1-generic kernel in a separate
+diskless/networkless QEMU guest with checked runtime libraries. Foundation CTest
+20/20, Node IPC-only addon 14/14 and explicit guest acceptance/clean poweroff
+pass with unchanged deadlines. This is kernel/initramfs evidence; installed OS,
+security profiles, other kernels and linked product/RDP acceptance remain open.
+[Guest evidence](docs/ITERATION_408.md).
+
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
 directions across two new RDP connections, repeated server Copy/Get, actual
