@@ -518,6 +518,22 @@ try {
         'Микрофон включается только отдельной кнопкой после готовности удалённого канала.',
       );
     if (listenPreview) {
+      if (manualSource) {
+        phase = 'manual-source-wait';
+        await page.waitForFunction(
+          () => window.bridgeViewer.stats.audio?.decoded > 0,
+          undefined,
+          { timeout: 300000 },
+        );
+        console.log(
+          JSON.stringify({
+            type: 'lab.browser.audio-source-observed',
+            v: 1,
+            firstPacketDecoded: true,
+            observationDurationMs: previewDurationMs,
+          }),
+        );
+      }
       if (tonePreview) {
         phase = 'tone-source-input';
         await dispatchWindowsLabTone(

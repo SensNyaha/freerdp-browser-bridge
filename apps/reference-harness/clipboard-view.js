@@ -88,7 +88,7 @@ export function installClipboardView(panel, client) {
           status.textContent =
             operation === 'read'
               ? 'Текст получен. Копирование — отдельной кнопкой.'
-              : 'Текст предложен удалённому буферу обмена';
+              : 'Текст предложен удалённому буферу обмена. Вставьте его в удалённом приложении командой «Вставить».';
         } else status.textContent = 'Передача не выполнена: ' + result.status;
         changed();
       },

@@ -23,7 +23,7 @@ Current stage acceptance:
 | 3 — connection | IN PROGRESS | Remaining Windows application/platform profiles, settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, broader Windows server profiles and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
-| 6 — audio | IN PROGRESS | User accepts the named corrected-worker short Windows tone; full multi-minute continuity, recording, broader ready-source recovery and measured LAN queue target remain |
+| 6 — audio | IN PROGRESS | User accepts named three-minute Windows Opus/200 ms listening; publication stalls/discontinuities, other profiles, recording, broader ready-source recovery and measured LAN queue target remain |
 | 7 — clipboard/drives | IN PROGRESS | Named headed browser/host Clipboard API ↔ Windows Notepad Unicode roundtrip and offer/revoke pass; final combined cleanup, wider direction/quota/isolation/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Remaining Gateway/proxy/reconnect/channel settings and broader IP/appearance/platform integration |
@@ -38,6 +38,14 @@ All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
+
+The user accepts the named Windows Opus/200 ms three-minute observation as
+steady normal sound. The timer starts at the first decoded packet; rendered
+samples cover 178.65 seconds. Forty configurations, 64 late publication
+intervals and 12 Worklet underflows remain measured scheduling gaps, despite
+the positive listening assessment. Joined PID/runtime cleanup passes; full
+Windows Node passes 890 / 51 skips. Release and pins are unchanged.
+[Current audio evidence](docs/ITERATION_390.md).
 
 The user accepts the corrected Debug worker's actual short Opus/200 ms tone as
 steady with almost no interruptions. The observed 23.52 seconds have one browser
@@ -1183,6 +1191,14 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.
 
 ## Stage 6 — audio output and microphone
+
+- [x] DONE for named Windows Opus/200 ms three-minute listening observation —
+  User reports steady normal sound; the bounded observation starts at the first
+  decoded packet and renders 178.65 seconds of samples. Joined PID/runtime
+  cleanup passes. This does not accept reset-free scheduling: 40 configurations,
+  64 late intervals and 12 Worklet underflows remain. Other profiles, measured
+  latency, recovery, recording and broader platform gates stay open.
+  [Evidence](docs/ITERATION_390.md).
 
 - [x] DONE for the named short corrected-worker Windows Opus/200 ms listening
   slice — User reports steady sound with almost no breaks and accepts it.

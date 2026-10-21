@@ -575,7 +575,7 @@ counters and the operator's listening report provide separate evidence.
 
 For user-operated source startup, `--audio-opus-compat-source-listen` (also
 `--audio-opus-compat-tone-soak`, superseding its unverified automatic dispatch) opens a
-five-minute Opus/200 ms preview and selects browser-to-server text clipboard
+bounded Opus/200 ms preview and selects browser-to-server text clipboard
 with a 2,048-byte cap, including its UTF-16 representation. It places the fixed
 three-minute source command in the
 local draft only: no Send, paste, Enter or application launch is automated.
@@ -583,6 +583,11 @@ The user separately clicks Send, waits for offer acceptance, focuses the already
 open PowerShell in the remote desktop, pastes and executes the command. Existing
 source counters and the operator's assessment remain the evidence. Clipboard
 uses the ordinary grant/revoke lifecycle; server-to-browser reads are disabled.
+The helper permits at most five minutes of preparation, then starts its
+180-second observation only after the existing browser counter reports the
+first decoded audio packet. Missing source fails that explicit scenario and
+joins cleanup; preparation is not misreported as active playback time. This is
+an observation budget, not a change to connection/protocol/record deadlines.
 Opus/200 ms, microphone off, the existing counters and joined cleanup remain.
 Ordinary one-minute/45-second modes stay unchanged. This mode requires a
 separately approved connection and user-prepared PowerShell. Source-start

@@ -78,7 +78,7 @@ export function viewerMediaOptions(flag) {
     ...(compatibility ? { audioOutputBufferMs: 200 } : {}),
     ...(listenPreview ? { listenPreview: true } : {}),
     ...(tonePreview ? { tonePreview: true } : {}),
-    ...(manualSource ? { manualSource: true, previewDurationMs: 300000 } : {}),
+    ...(manualSource ? { manualSource: true, previewDurationMs: 180000 } : {}),
     ...(audioRecoveryTest ? { audioRecoveryTest: true } : {}),
     manual: flag === '--manual' || audioManual || microphoneManual,
   };

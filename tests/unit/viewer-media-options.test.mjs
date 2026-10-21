@@ -5,14 +5,14 @@ test('manual audio source keeps the existing listening mode, with no automatic t
   assert.deepEqual(viewerMediaOptions('--audio-opus-compat-source-listen'), {
     ...viewerMediaOptions('--audio-opus-compat-listen'),
     manualSource: true,
-    previewDurationMs: 300000,
+    previewDurationMs: 180000,
   });
 });
 test('bounded three-minute tone uses the existing Opus/200 ms listening mode with microphone off', () => {
   assert.deepEqual(viewerMediaOptions('--audio-opus-compat-tone-soak'), {
     ...viewerMediaOptions('--audio-opus-compat-listen'),
     manualSource: true,
-    previewDurationMs: 300000,
+    previewDurationMs: 180000,
   });
 });
 test('compatibility viewer selects exactly 200 ms output without microphone capture', () => {
