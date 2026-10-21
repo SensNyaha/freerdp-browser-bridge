@@ -46,6 +46,13 @@ the existing 3,000 ms bound. Native CTest passes 34/34; full Node passes
 sustained resource and broader stages remain unchanged/open.
 [Owner and exact evidence](docs/ITERATION_378.md).
 
+Controlled actual hanging-child timeout, partial/all-member cancellation and
+missing-executable checks additionally pass 3/3, preserving an unrelated real
+helper path and joined empty owners. Full Node passes 857 / 51 skips / 908,
+zero failures, with unchanged production/native sources. Actual Windows query
+API failures and wider connected/OS/load gates stay open.
+[Fault-control evidence](docs/ITERATION_379.md).
+
 ## Implementation status — 2026-10-20
 
 One explicitly authorized Windows lab / Edge Opus/200 ms preview now passes
@@ -1480,6 +1487,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   CTest 34/34 and full Node 854 / 51 skips pass. Shared OS-failure/connected /
   sustained gates, other-platform batching and Release adoption remain open.
   [Contract](docs/PROCESS_RESOURCE_BATCH.md), [evidence](docs/ITERATION_378.md).
+  Controlled actual child timeout, partial/all-member cancellation and missing
+  executable integration now also passes; full Node is 857 / 51 skips / 908,
+  zero failures, on the same unchanged native output. This is simulated helper
+  process failure, not actual Windows query API failure acceptance.
+  [Additional evidence](docs/ITERATION_379.md).
 
 - [x] DONE for phase-aware capacity diagnostics — Lifecycle-only fixtures retain
   startup/active/retiring failure categories, fixed maximum query timings and

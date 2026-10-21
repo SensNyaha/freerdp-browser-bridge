@@ -81,6 +81,11 @@ The complete result is validated before any member is published. Cancelled
 members receive only the fixed cancellation error; raw output/reasons are never
 attached. Synthetic fault/lifetime tests are distinct from actual healthy and
 per-PID-error helper tests; exhaustive OS-failure isolation is still open.
+Controlled actual child timeout, partial/all-member cancellation and missing
+executable tests now also pass with an existing hanging native fixture. They
+use real child execution/close and preserve an unrelated real-helper path;
+they do not simulate failures inside Windows process-query APIs.
+[Fault-control scope and evidence](ITERATION_379.md).
 
 New Windows workers advertise HELLO extension bit 128 and CLI
 `processResourceBatch: true`. Only that support enables automatic batching in
@@ -102,10 +107,12 @@ For the explicit prepared-helper test profile, use a newly built output:
 ```powershell
 $env:BRIDGE_TEST_BINARY_DIR = 'build/native-clean-ACTUAL/out'
 $env:BRIDGE_TEST_RESOURCE_BATCH_HELPER = '1'
-node --test --test-concurrency=1 tests/integration/process-resource-batch-helper.test.mjs
+node --test --test-concurrency=1 tests/integration/process-resource-batch-*.test.mjs
 ```
 
 The opt-in selects tests, not production behavior. Other/older native profiles
 skip these new command cases; opting in requires them to pass and never treats
 an unknown command as success. Portable parser CTest and codec unit tests do
-not depend on this flag. [Current evidence](ITERATION_377.md).
+not depend on this flag. The selected set covers the command, real owner and
+controlled query-child faults. [Command evidence](ITERATION_377.md),
+[owner adoption](ITERATION_378.md), [fault controls](ITERATION_379.md).
