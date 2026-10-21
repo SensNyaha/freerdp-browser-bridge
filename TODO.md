@@ -39,6 +39,14 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+Current tracked-source Linux GCC 12 linked Release + IPC-only addon now passes
+native CTest 35/35, focused process/synthetic-TLS 7/7 and full Node 863 / 81
+skips / 944, zero failures. Exact reused SDK/dependency archives and real private
+module origins are verified; initial missing test-CLI failures remain retained.
+Source/native inputs are unchanged, PID/runtime retirement and container removal
+pass. Actual XRDP/browser/device and full build matrices remain separate.
+[Evidence](docs/ITERATION_395.md).
+
 The user accepts the current Release Windows Opus/200 ms three-minute scenario
 as excellent sound. Actual rendered samples cover 179.54 seconds; late intervals
 11 / browser configurations 12 / Worklet underflows 4 remain visible, with one
