@@ -36,4 +36,7 @@ public:
   bool apply(Event event, const Sink &send, std::uint16_t width, std::uint16_t height);
   bool release(const Sink &send);
 };
+// Explicit control reset also clears standard server buttons that a preceding
+// lost client may have left held outside this owner's local pressed state.
+bool initialize_pointer(const State::Sink &send, std::uint16_t x = 0, std::uint16_t y = 0);
 } // namespace bridge::input

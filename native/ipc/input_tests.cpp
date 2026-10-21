@@ -1,6 +1,39 @@
 #include "input.hpp"
 #include <catch2/catch_test_macros.hpp>
 using namespace bridge;
+TEST_CASE("A new RDP pointer starts with three standard releases without local pressed ownership") {
+  std::vector<input::Event> sent;
+  REQUIRE(input::initialize_pointer([&](const auto &event) {
+    sent.push_back(event);
+    return true;
+  }));
+  REQUIRE(sent.size() == 3);
+  for (std::size_t i = 0; i < sent.size(); ++i) {
+    REQUIRE(sent[i].type == input::Type::button);
+    REQUIRE(sent[i].flags == 0);
+    REQUIRE(sent[i].a == 0);
+    REQUIRE(sent[i].b == 0);
+    REQUIRE(sent[i].c == i);
+  }
+  input::State state;
+  REQUIRE(state.release([&](const auto &) {
+    FAIL("Initial remote releases must not create local held ownership");
+    return false;
+  }));
+}
+TEST_CASE(
+    "Initial remote button failure prevents later releases and never retries an uncertain write") {
+  for (std::uint16_t failed = 0; failed < 3; ++failed) {
+    unsigned calls = 0;
+    REQUIRE_FALSE(input::initialize_pointer([&](const auto &event) {
+      ++calls;
+      REQUIRE(event.type == input::Type::button);
+      REQUIRE(event.flags == 0);
+      return event.c != failed;
+    }));
+    REQUIRE(calls == failed + 1U);
+  }
+}
 TEST_CASE(
     "International set-1 key records retain physical positions and reset releases every held key") {
   constexpr std::array<std::uint8_t, 8> scans{0x70, 0x71, 0x72, 0x73, 0x79, 0x7b, 0x7d, 0x7e};
@@ -19,14 +52,14 @@ TEST_CASE(
   }
   REQUIRE(sent.size() == scans.size());
   REQUIRE(state.apply({input::Type::reset}, sink, 1920, 1080));
-  REQUIRE(sent.size() == scans.size() * 2);
+  REQUIRE(sent.size() == scans.size() * 2 + 3);
   for (std::size_t i = 0; i < scans.size(); ++i) {
     REQUIRE(sent[scans.size() + i].type == input::Type::key);
     REQUIRE(sent[scans.size() + i].a == scans[i]);
     REQUIRE(sent[scans.size() + i].flags == 0);
   }
   REQUIRE(state.release(sink));
-  REQUIRE(sent.size() == scans.size() * 2);
+  REQUIRE(sent.size() == scans.size() * 2 + 3);
 }
 TEST_CASE("Unicode text has independent UTF16BE vectors and rejects malformed bodies and lengths") {
   const std::vector<std::uint8_t> bytes{0x04, 0x16, 0x4e, 0x2d, 0xd8, 0x3d, 0xde, 0x00};

@@ -39,6 +39,14 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+Fresh-controller inherited pointer recovery now passes actual owned XRDP/public
+Edge readback: after hard loss leaves Ctrl/left button held, one post-render
+reset clears the standard buttons even with empty local pressed ownership.
+The previous-worker negative control fails as expected. Current linked Release
+CTest 34/34 and full Windows 898 / 51 skips pass. This does not claim release
+delivery across broken TCP or full reconnect/soak acceptance.
+[Evidence](docs/ITERATION_399.md).
+
 The owned Linux application now confirms actual movable-object drop, both-axis
 content scrolling, three buttons and blur/detach release through fixed X11
 scalar readbacks. This does not imply Linux CLIPRDR acceptance. Two separate

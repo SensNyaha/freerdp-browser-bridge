@@ -27,6 +27,7 @@ class ClipboardViewerWorker extends FakeSessionWorker {
   writes = 0;
   revokes = 0;
   inputs = 0;
+  inputResets = 0;
   text = Buffer.from('\ufeffsynthetic remote Ж😀\n'.repeat(6000));
   onClipboard(listener) {
     this.on('clipboard', listener);
@@ -72,8 +73,9 @@ class ClipboardViewerWorker extends FakeSessionWorker {
       jpeg: since === 1n ? undefined : this.jpeg,
     };
   }
-  async sendInput() {
-    ++this.inputs;
+  async sendInput(event) {
+    if (event.type === 'reset') ++this.inputResets;
+    else ++this.inputs;
   }
   async resetInput() {}
 }
@@ -185,6 +187,8 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
         await page.waitForFunction(
           () => window.bridgeViewer.stats.frames === 1,
         );
+        await eventually(() => worker.inputResets === 1);
+        assert.equal(worker.inputs, 0);
         const send = page.locator('[data-clipboard=send]'),
           read = page.locator('[data-clipboard=read]'),
           paste = page.locator('[data-clipboard=paste]'),

@@ -2,6 +2,13 @@
 #include <algorithm>
 
 namespace bridge::input {
+bool initialize_pointer(const State::Sink &send, std::uint16_t x, std::uint16_t y) {
+  for (std::uint16_t button = 0; button < 3; ++button) {
+    if (!send({Type::button, 0, x, y, button}))
+      return false;
+  }
+  return true;
+}
 Event decode(std::span<const std::uint8_t> p) {
   using namespace ipc;
   if (p.size() != 12 || read_be(p.subspan(8, 4)) != 0)
@@ -92,7 +99,7 @@ bool State::release(const Sink &send) {
 }
 bool State::apply(Event e, const Sink &send, std::uint16_t width, std::uint16_t height) {
   if (e.type == Type::reset)
-    return release(send);
+    return release(send) && initialize_pointer(send, x_, y_);
   if (e.type == Type::text) {
     if (!e.a || e.a > max_text_units || unicode_pressed_)
       return false;

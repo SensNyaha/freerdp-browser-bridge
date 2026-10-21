@@ -68,8 +68,9 @@ const transportLossTest =
   process.argv[4] === '--transport-loss-test' || ownedHeldLossTest;
 const touchInventory = process.argv[4] === '--touch-inventory';
 const ownedPointerTest = process.argv[4] === '--owned-pointer-test';
+const ownedRecoveryTest = process.argv[4] === '--owned-recovery-test';
 if (
-  (ownedPointerTest || ownedHeldLossTest) &&
+  (ownedPointerTest || ownedHeldLossTest || ownedRecoveryTest) &&
   !labFiles.ownedContainer
 )
   throw new Error('LAB_OWNED_TARGET_REFUSED');
@@ -92,6 +93,7 @@ if (
     !transportLossTest &&
     !touchInventory &&
     !ownedPointerTest &&
+    !ownedRecoveryTest &&
     !audioTest &&
     !microphoneTest) ||
   (manual && mode === 'h264-reset') ||
@@ -312,6 +314,12 @@ const clipboardOffInventory = async () => {
   };
 };
 try {
+  let recoveryBefore;
+  if (ownedRecoveryTest) {
+    recoveryBefore = await (await ownedInputStateReader())();
+    if (recoveryBefore.buttons !== 1)
+      throw new Error('LAB_OWNED_RECOVERY_PRECONDITION');
+  }
   if (transportLossTest)
     transportProxy = await createLabRdpProxy(lab.host, lab.port ?? 3389);
   await server.listen({ host: '127.0.0.1', port: 47999 });
@@ -719,6 +727,21 @@ try {
       (mode === 'h264-reset' && stats.resets !== 1)
     )
       throw new Error('LAB_CODEC_OR_RECOVERY_FAILED');
+    if (ownedRecoveryTest) {
+      phase = 'owned-fresh-control-recovery';
+      const after = await (await ownedInputStateReader())();
+      console.log(
+        JSON.stringify({
+          type: 'lab.owned-public-input-recovery',
+          before: recoveryBefore,
+          after,
+          inputResets,
+          observerInjectedInput: false,
+        }),
+      );
+      if (after.buttons !== 0 || after.controlLeft || inputResets !== 1)
+        throw new Error('LAB_OWNED_RECOVERY_FAILED');
+    }
     if (ownedPointerTest) {
       phase = 'owned-application-pointer';
       const readReceipt = await ownedPointerReader();

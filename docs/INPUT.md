@@ -36,6 +36,14 @@ verified; its preparation alone is not accepted behavior.
 An isolated [native touch foundation](#native-touch-foundation) is also tested.
 It is not connected to worker IPC or browser input and does not advertise RDPEI support.
 
+A fresh reference controller sends an initial reset after the matching desktop
+has rendered, before forwarding user input. Reset releases tracked input and
+also sends standard left/middle/right button releases, covering remote button
+state inherited from a lost connection. Actual owned-XRDP/public-viewer
+recovery and the previous-worker negative control pass [399](ITERATION_399.md).
+Hard TCP loss itself cannot guarantee remote release; broader reconnect and
+keyboard/layout acceptance remain separate.
+
 The linked Windows worker advertises `basicInput` (HELLO bit 5); the foundation
 worker does not. This capability covers physical set-1 keyboard events, absolute
 mouse coordinates, five buttons, vertical/horizontal wheel, toggle synchronization

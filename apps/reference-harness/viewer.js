@@ -35,6 +35,7 @@ const textInput = installText(
       current &&
         !current.closed &&
         current.connected &&
+        current.inputInitialized &&
         displayInputReady(current),
     ),
 );
@@ -525,6 +526,7 @@ function attachSession(created, options, playback) {
     decoding: false,
     closed: false,
     configured: false,
+    inputInitialized: false,
     decoder: undefined,
     abortDecode: undefined,
     codec: undefined,
@@ -537,28 +539,46 @@ function attachSession(created, options, playback) {
     audioNegotiated: false,
   };
   current = session;
+  const sendInput = (type, data) => {
+    if (
+      session.control.readyState !== WebSocket.OPEN ||
+      session.control.bufferedAmount > 16384
+    )
+      return false;
+    session.control.send(
+      JSON.stringify({
+        v: 1,
+        type,
+        seq: session.controlSequence++,
+        ts: Date.now(),
+        data,
+      }),
+    );
+    return true;
+  };
+  function initializeInput() {
+    if (
+      session.inputInitialized ||
+      session.closed ||
+      !session.connected ||
+      session !== current ||
+      !session.renderedWidth ||
+      !displayInputReady(session)
+    )
+      return;
+    if (!sendInput('input.reset', {})) {
+      fail();
+      return;
+    }
+    session.inputInitialized = true;
+  }
   session.disposeInput = installInput(
     canvas,
-    (type, data) => {
-      if (
-        session.control.readyState !== WebSocket.OPEN ||
-        session.control.bufferedAmount > 16384
-      )
-        return false;
-      session.control.send(
-        JSON.stringify({
-          v: 1,
-          type,
-          seq: session.controlSequence++,
-          ts: Date.now(),
-          data,
-        }),
-      );
-      return true;
-    },
+    sendInput,
     () =>
       !session.closed &&
       session.connected &&
+      session.inputInitialized &&
       session === current &&
       displayInputReady(session),
     () => detach(),
@@ -647,6 +667,7 @@ function attachSession(created, options, playback) {
         updateMicrophone(session);
         status.textContent = message.data.state;
         updateResize();
+        initializeInput();
       } else if (['display.info', 'display.resize'].includes(message.type)) {
         const observed = displayState(message.data, session.display);
         if (
@@ -658,6 +679,7 @@ function attachSession(created, options, playback) {
         session.display = observed;
         stats.displayGeneration = session.display.generation;
         updateResize();
+        initializeInput();
       } else if (message.type === 'touch.info') {
         const observed = touchState(message.data, session.touch);
         if (
@@ -837,6 +859,7 @@ function attachSession(created, options, playback) {
       session.configuredGeneration;
     session.renderedWidth = width;
     session.renderedHeight = height;
+    initializeInput();
     textInput.refresh();
   }
   async function configureAvc(description) {
