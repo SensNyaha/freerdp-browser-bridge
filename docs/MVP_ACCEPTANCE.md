@@ -14,8 +14,26 @@ One primary monitor, orientation 0 and 100% scale follow
 | **P0: Browser Clipboard API ↔ public control ↔ CLIPRDR ↔ Notepad**                    | Actual headed Edge/Windows small Unicode/multiline exchange passes both directions, including real local Clipboard API read/write and application copy readback [385](ITERATION_385.md). A fixed editor-focus click was required. Actual browser permission refusal passes separately without RDP. Successful document clearing and the complete viewer-cleanup sequence still need combined confirmation; direction/quota/isolation fixtures remain separate evidence. |
 | **P0: stable audible output without regular interruptions**                              | The user accepts the corrected-worker short actual Opus/200 ms tone [387](ITERATION_387.md): one epoch/configuration, zero publication skips and Worklet underflow in 23.52 seconds of rendered samples. Three-minute continuity and wider profiles remain **OPEN**; earlier source-start failures remain recorded.                                                                                                                                                     |
 | Lifecycle and bounded resource ownership                                                 | Current startup/deadline [383](ITERATION_383.md) and unconfirmed-cleanup capacity [384](ITERATION_384.md) checks pass, including actual unconnected native controls. Connected failure cleanup and combined MVP resource behavior remain to verify.                                                                                                                                                                                                                     |
-| 1080p, 30-minute combined observation after fixes                                        | Historical named XRDP observations [182](ITERATION_182.md), [220](ITERATION_220.md) remain scoped evidence. They do not accept the current Windows clipboard/audio MVP.                                                                                                                                                                                                                                                                                                 |
-| Reproducible supported builds                                                            | Current linked Debug output is receipt-bound [378](ITERATION_378.md); current linked CTest 34/34 and Node 890 / 51 skips pass [387](ITERATION_387.md). Release and dependency pins stay unchanged. Current Linux execution is **BLOCKED** by unavailable local Docker daemon/access and WSL inventory access denial; historical Linux build/runtime evidence remains valid within its documented scope.                                                                 |
+| 1080p, 30-minute combined observation after fixes                                        | Current Windows static-desktop H.264 1080p observation passes 30 minutes / 61 samples, resize/replay and cleanup [388](ITERATION_388.md). Audio/Clipboard are off; a combined interactive/audio/clipboard gate remains open. Historical XRDP observations [182](ITERATION_182.md), [220](ITERATION_220.md) keep their scope.                                                                                                                                            |
+| Reproducible supported builds                                                            | Current linked Debug output is receipt-bound [378](ITERATION_378.md); current linked CTest 34/34 and Node 890 / 51 skips pass [387](ITERATION_387.md). Release and dependency pins stay unchanged. Docker access is restored in the ordinary user context after the user starts Desktop. Current offline GCC 12 foundation/Node source regression is **PENDING**; historical Linux linked/runtime evidence retains its scope.                                           |
+
+Connection-error evidence includes actual strict certificate refusal
+[344](ITERATION_344.md), approved session-only activation [346](ITERATION_346.md)
+and the named controlled transport-loss case [183](ITERATION_183.md).
+Other public reason mappings and their unit/integration boundaries remain in
+[Session API](SESSION_API.md); they are not all remote-server acceptance.
+
+Actual connected Windows CPU/RSS failures, public terminal error/token refusal
+and joined PID/runtime cleanup pass their named [RSS](ITERATION_319.md) and
+[CPU](ITERATION_320.md) scenarios. Current linked regression [387](ITERATION_387.md)
+adds current-code local coverage; startup/total-session memory, hard kernel
+deadlines and broader connected/platform failure profiles remain open.
+
+Reproducible interactive launch and capability-gated supported/unsupported
+choices are documented in the [WEB connection example](WEB_CONNECTION_EXAMPLE.md).
+It supports explicit verified linked native receipts and typed credentials;
+audio activation and clipboard actions remain separate user controls. The
+[development guide](DEVELOPMENT.md) records the bounded actual lab scenarios.
 
 Next: finish clipboard cleanup confirmation;
 then active-source audio with the existing diagnostics and the smallest needed

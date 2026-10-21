@@ -1083,6 +1083,14 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
 
 ## Stage 4 — graphics, cursor and browser video
 
+- [x] DONE for current Windows lab static-desktop H.264 1080p 30-minute
+  observation — Linked Debug worker/public API/Edge pass 61 samples over
+  1,800,145 ms, sampled empty queues, worker RSS peak 238.1 MiB below the
+  explicit 256 MiB fixture cap, confirmed resize/restoration and fresh-token
+  display/cursor replay. Joined cleanup leaves no worker or runtime entries.
+  Audio/Clipboard are off; moving/interactive/audio and total-session resource
+  gates remain open. [Evidence](docs/ITERATION_388.md).
+
 - [x] DONE for supported-settings/manual WEB connection example (2026-10-14):
   manual RDP host/port, username/domain/password, supported connection/display /
   quality/media settings, explicit session-only certificate decision and connect /
