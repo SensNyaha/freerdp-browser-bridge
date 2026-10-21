@@ -301,7 +301,7 @@ test('fake-backend manager: forced cleanup owns capacity until termination compl
         assert.ok(performance.now() - start < 1000);
         assert.equal(closed.state, 'closed');
         assert.equal(worker.terminated, 1);
-        assert.equal(manager.statistics().active, 0);
+        assert.equal(manager.statistics().active, 1);
         assert.ok(!JSON.stringify(closed).includes('untrusted'));
       },
     );

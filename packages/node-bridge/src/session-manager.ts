@@ -1105,13 +1105,16 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     }
     entry.cleanup = (async () => {
       let timer: NodeJS.Timeout | undefined;
+      let retired = false;
+      let termination: Promise<void> | undefined;
+      const graceful = Promise.all([
+        Promise.resolve().then(() => entry.worker.close()),
+        microphoneClose,
+        clipboardClose,
+      ]);
       try {
         await Promise.race([
-          Promise.all([
-            Promise.resolve().then(() => entry.worker.close()),
-            microphoneClose,
-            clipboardClose,
-          ]),
+          graceful,
           new Promise<never>((_, reject) => {
             timer = setTimeout(
               () => reject(new Error()),
@@ -1119,10 +1122,12 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
             );
           }),
         ]);
+        retired = true;
       } catch {
         try {
-          const termination = entry.worker.terminate();
-          if (termination) {
+          const completion = entry.worker.terminate();
+          if (completion && typeof completion.then === 'function') {
+            termination = Promise.resolve(completion);
             if (timer) clearTimeout(timer);
             await Promise.race([
               termination,
@@ -1133,13 +1138,24 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                 );
               }),
             ]);
+            retired = true;
           }
         } catch {
           /* Forced cleanup remains bounded even for a faulty trusted backend. */
         }
       } finally {
         if (timer) clearTimeout(timer);
-        entry.released = true;
+        entry.released = retired;
+        if (!retired) {
+          // Bounded API waiting is not proof that an owned worker has retired.
+          const release = () => {
+            if (entry.released) return;
+            entry.released = true;
+            this.prune();
+          };
+          void graceful.then(release).catch(() => {});
+          if (termination) void termination.then(release).catch(() => {});
+        }
         if (!terminal(entry.snapshot.state)) this.transition(entry, 'closed');
         this.prune();
       }

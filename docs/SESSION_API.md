@@ -104,6 +104,15 @@ registry retains active capacity while awaiting it for a separate bounded
 of two seconds, excluding event-loop scheduling. Legacy void termination gives
 no completion guarantee. Rejected/hung termination is bounded and cannot expose
 backend diagnostics; that fallback does not prove physical resource retirement.
+An unconfirmed cleanup keeps its global/per-principal active reservation even
+after the bounded close wait returns a logically `closed` snapshot. A fulfilled
+graceful-close or forced-retirement completion releases that reservation once,
+including a late completion after the waiting deadline. Rejection, a `void` /
+non-promise termination return, or elapsed time alone is not retirement proof.
+The retention sweep preserves these owned entries, bounded by admission limits;
+`statistics().active` counts owned reservations rather than connected desktops.
+This supersedes the historical deadline-release fallback in
+[iteration 56](ITERATION_056.md). [Current controls](ITERATION_384.md).
 Trusted-host `startupTimeoutMs`, `shutdownTimeoutMs` and `terminationTimeoutMs`
 accept integer milliseconds from 1 through 2,147,483,647. The constructor refuses
 larger values before starting the sweep timer or creating a worker: Node would
