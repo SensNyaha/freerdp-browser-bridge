@@ -1,5 +1,15 @@
 # Explicit reference browser clipboard
 
+The additional owned XRDP 0.10.1 profile now passes actual headed Edge Clipboard
+API ↔ CLIPRDR ↔ prepared Tk Unicode/emoji/multiline roundtrips across two fresh
+RDP connections, permission refusal, revoke and PID/runtime cleanup
+[404](ITERATION_404.md). Two further server-origin Copy/Get operations pass
+before a native client write. The fixture's explicit Copy hook supplies the
+XFixes notification omitted by stock Tk repeated copies. This does not fix the
+old XRDP 0.9.21.1 surrogate conversion defect or accept RDP Unicode key input,
+other formats or the full Stage 7 matrix. Full feature-branch regression passes
+900 / 61 skips / 961 total; native/production code remains unchanged.
+
 Current actual evidence: [Iteration 392](ITERATION_392.md) verifies a named
 headed Edge / public API / Windows Notepad small-text chain in both directions,
 including real local Clipboard API and Cyrillic/Japanese/emoji/multiline

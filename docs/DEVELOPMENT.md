@@ -3,6 +3,13 @@
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
+Feature workflow (user instruction, 2026-10-21): start each feature on a separate
+branch from the shared `master`, keep its acceptance criteria/evidence with the
+change, and make focused commits there. Run narrow checks, relevant regression
+and actual RDP/device acceptance where required. Merge the completed feature
+into `master` only after those checks pass; unfinished work stays on its branch.
+This workflow does not mark an entire V1 stage complete after one component.
+
 For the user-authorized local Linux RDP container, use the
 [owned XRDP stand](OWNED_XRDP_LAB.md). Its separate fixed loopback profile keeps
 Windows lab credentials and certificate decisions independent.

@@ -4,7 +4,13 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-Completed feature branches will record changes here after their checks pass.
+- Named owned XRDP 0.10.1 / prepared Tk / headed Edge Unicode Clipboard API
+  roundtrip acceptance, including emoji/multiline text, repeated Copy and new
+  RDP connections, permission refusal, revoke and joined cleanup. Adds an
+  independent fixed Unicode-capable lab profile and a fixture Copy ownership
+  notification; production code, native artifacts and dependency pins are
+  unchanged. Full check: 900 passed / 61 skipped. [Evidence](docs/ITERATION_404.md).
+  Old XRDP 0.9.x surrogate conversion and wider Stage 7 gates remain open.
 
 ## 0.1.0 — 2026-10-21
 

@@ -184,7 +184,8 @@ async function refusedUpgrade(url, token) {
 }
 try {
   const config = await localJson(labFiles.config);
-  if (labFiles.ownedContainer) requireOwnedLabTarget(config);
+  if (labFiles.ownedContainer)
+    requireOwnedLabTarget(config, process.env.BRIDGE_LAB_PROFILE);
   else if (config.host !== '192.168.21.149')
     throw new Error('LAB_TARGET_MISMATCH');
   credentials = await localJson(labFiles.credentials);
