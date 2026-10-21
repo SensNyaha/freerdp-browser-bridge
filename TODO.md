@@ -39,6 +39,16 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+The named practical MVP joint Windows gate now passes: actual public Edge /
+Release H.264 1080p, Opus/200 ms, both Clipboard API/Notepad directions and
+physical edit/readback for 30 minutes / 59 observations / 61 reads, followed
+by resize, viewer/audio replay, actual permission refusal, revoke and joined
+PID/runtime cleanup. The user reports steady sound without regular audible
+interruptions. Numeric discontinuities and the prior unexplained Get stop are
+retained; this does not claim they were fixed or accept broader V1 profiles.
+[Evidence](docs/ITERATION_403.md), [runbook](docs/MVP_RUNBOOK.md),
+[separate full V1 plan](docs/V1_NEXT_STEPS.md).
+
 Linux regression of both current production corrections passes linked Release
 CTest 35/35, focused process/TLS 7/7 and full Node 870 / 82 skips / 952 total,
 with unchanged source/native inputs and a checked cleanup receipt. The outer
