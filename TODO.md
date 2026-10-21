@@ -39,6 +39,13 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+A separate current-source Windows Release consumer now passes native CTest
+34/34, process/TLS/lifecycle 27 / one skip and full Node 890 / 51 skips.
+Its native source hash matches the current Debug consumer. Existing encoder
+benchmarks show substantial Debug conversion overhead; this is not proof of
+every audio stall or new Release audio acceptance. Original Release outputs,
+configuration and pins stay unchanged. [Evidence](docs/ITERATION_391.md).
+
 The user accepts the named Windows Opus/200 ms three-minute observation as
 steady normal sound. The timer starts at the first decoded packet; rendered
 samples cover 178.65 seconds. Forty configurations, 64 late publication
