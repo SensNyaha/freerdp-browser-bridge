@@ -10,6 +10,13 @@ click through actual application/CLIPRDR readback. Full layout/OS-IME, multiline
 button/wheel/touch and disconnect-held-input gates remain open.
 [Current evidence](ITERATION_303.md).
 
+The current Release public-viewer / Notepad keyboard slice additionally passes
+exact Shift/number readback, Ctrl/Shift/Alt release after blur/reset and held
+right Ctrl through viewer detach/fresh-token reattachment of the same RDP
+session. Alt includes Escape to leave application menu mode. This does not
+accept all layouts, mouse/drag/wheel or hard transport-failure-held input.
+[Actual public input evidence](ITERATION_394.md).
+
 An isolated [native touch foundation](#native-touch-foundation) is also tested.
 It is not connected to worker IPC or browser input and does not advertise RDPEI support.
 

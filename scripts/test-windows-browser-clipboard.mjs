@@ -11,10 +11,15 @@ import { viewerWorkerOptions } from './viewer-worker-options.mjs';
 // Explicitly authorized one-session scenario: fresh focused unsaved Notepad,
 // replace both clipboards with fixed synthetic text. Never log their contents.
 const [fingerprint, receipt, ...extra] = process.argv.slice(2);
-const focusEditor = extra.length === 1 && extra[0] === '--focus-editor';
+const focusEditor = extra.includes('--focus-editor');
+const keyboardSmoke = extra.includes('--keyboard-smoke');
 if (
   process.platform !== 'win32' ||
-  (extra.length && !focusEditor) ||
+  new Set(extra).size !== extra.length ||
+  extra.some(
+    (flag) => !['--focus-editor', '--keyboard-smoke'].includes(flag),
+  ) ||
+  (keyboardSmoke && !focusEditor) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '') ||
   !receipt
 )
@@ -343,6 +348,63 @@ try {
     ),
   );
   report.notepadToBrowser = true;
+  if (keyboardSmoke) {
+    report.keyboard = { shift: false, blur: [], detachedRightControl: false };
+    let expected = returned;
+    phase = 'keyboard-shift';
+    await chord('ArrowRight'); // Collapse the selection of our verified document.
+    await chord('Shift+Digit1');
+    await chord('Digit1');
+    expected += '!1'; // Named current Windows layout only; do not change its layout.
+    await copyRemoteAndRead(expected);
+    report.keyboard.shift = true;
+    for (const [modifier, digit] of [
+      ['ControlLeft', 'Digit2'],
+      ['ShiftRight', 'Digit3'],
+      ['AltLeft', 'Digit4'],
+    ]) {
+      phase = 'keyboard-blur-' + modifier;
+      await chord('ArrowRight');
+      await page.keyboard.down(modifier);
+      await page.locator('#unicode-text').focus();
+      // Release outside the canvas: native release must come from blur/reset.
+      await page.keyboard.up(modifier);
+      // A normal standalone Alt release can enter the application's menu mode.
+      // Cancel that mode before testing the next unmodified text key.
+      if (modifier === 'AltLeft') await chord('Escape');
+      await chord(digit);
+      expected += digit.slice(-1);
+      await copyRemoteAndRead(expected);
+      report.keyboard.blur.push(modifier);
+    }
+    phase = 'keyboard-detach-held-right-control';
+    await page.locator('#desktop').focus();
+    await page.keyboard.down('ControlRight');
+    await page.evaluate(() => window.bridgeViewer.detach());
+    await page.keyboard.up('ControlRight');
+    await wait(() => !source.localPending && !source.localAccepted);
+    const attach = {};
+    for (const channel of ['control', 'media'])
+      attach[channel] = await request(
+        '/v1/sessions/' + sessionId + '/attach-token',
+        'POST',
+        { channel },
+      );
+    await page.evaluate(
+      (created) => window.bridgeViewer.attach(created, { codecs: ['jpeg'] }),
+      { sessionId, attach },
+    );
+    await page.waitForFunction(
+      () =>
+        window.bridgeViewer.stats.frames > 0 &&
+        !document.querySelector('[data-clipboard=send]').disabled,
+    );
+    await chord('ArrowRight');
+    await chord('Digit5');
+    expected += '5';
+    await copyRemoteAndRead(expected);
+    report.keyboard.detachedRightControl = true;
+  }
   phase = 'clear-own-document';
   await chord('ControlLeft+KeyA');
   await chord('Backspace');

@@ -1181,6 +1181,14 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
 
 ## Stage 5 — keyboard, mouse, wheel and touch
 
+- [x] DONE for named current Windows public-viewer keyboard/release smoke —
+  Actual Notepad readback confirms Shift/number entry, Ctrl/Shift/Alt blur/reset
+  and held right Ctrl across viewer detach/fresh-token reattachment on the same
+  native session. Alt includes Escape to leave menu mode. Unicode Clipboard,
+  permission refusal and joined viewer/native/runtime cleanup also pass.
+  Wider layouts/shortcuts, mouse/drag/wheel, hard transport loss and full input
+  gates remain open. [Evidence and retained first failure](docs/ITERATION_394.md).
+
 - [x] DONE for named Windows Notepad input/readback smoke — Committed
   Latin/Cyrillic/Japanese/emoji text, physical Shift/number keys, held-left-Ctrl
   reset, extended right-Ctrl copy and fixed left-button/application sequence

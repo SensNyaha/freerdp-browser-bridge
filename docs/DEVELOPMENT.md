@@ -25,6 +25,17 @@ click in the prepared editor and one ignored native RDP frame on failure. It
 does not search the desktop or repeatedly capture frames. A reconnect can change
 remote input focus even when the editor was focused before mstsc disconnected.
 
+The separately authorized `--focus-editor --keyboard-smoke` additionally tests
+physical Shift/number entry, release of left Ctrl / right Shift / left Alt on
+canvas blur, and held right Ctrl across viewer detach/fresh-token reattachment.
+The left-Alt case cancels application menu mode with Escape before the next digit.
+Every step compares actual Notepad copied text through the ordinary Get action;
+it uses only the already verified synthetic document. The fixed `!1` expectation
+is a named current-layout check, not automatic layout selection or acceptance of
+all keyboards. It requires explicit approval for those inputs and reattachment
+in addition to the ordinary Clipboard scenario. No application is launched and
+no file is saved. Preparation or fixtures do not accept actual remote input.
+
 For operator-assisted actual Windows Notepad Unicode/input/clipboard checks,
 use the [application smoke](WINDOWS_APPLICATION_SMOKE.md). It requires an empty
 user-prepared Notepad, fixed test data and phase-by-phase native JPEG inspection;
