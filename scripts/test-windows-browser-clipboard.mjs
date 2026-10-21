@@ -7,19 +7,26 @@ import { chromium } from 'playwright-core';
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
+import {
+  parsePointerReceipt,
+  runWindowsPointerSmoke,
+} from './windows-lab-pointer.mjs';
 
 // Explicitly authorized one-session scenario: fresh focused unsaved Notepad,
 // replace both clipboards with fixed synthetic text. Never log their contents.
 const [fingerprint, receipt, ...extra] = process.argv.slice(2);
 const focusEditor = extra.includes('--focus-editor');
 const keyboardSmoke = extra.includes('--keyboard-smoke');
+const pointerSmoke = extra.includes('--pointer-smoke');
 if (
   process.platform !== 'win32' ||
   new Set(extra).size !== extra.length ||
   extra.some(
-    (flag) => !['--focus-editor', '--keyboard-smoke'].includes(flag),
+    (flag) =>
+      !['--focus-editor', '--keyboard-smoke', '--pointer-smoke'].includes(flag),
   ) ||
-  (keyboardSmoke && !focusEditor) ||
+  ((keyboardSmoke || pointerSmoke) && !focusEditor) ||
+  (keyboardSmoke && pointerSmoke) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '') ||
   !receipt
 )
@@ -134,7 +141,11 @@ try {
     target: { host: lab.host, port: lab.port ?? 3389 },
     auth: { username: credentials.username, password: credentials.password },
     display: { width: 1920, height: 1080 },
-    clipboard: { mode: 'bidirectional', text: true, maxItemBytes: 1024 },
+    clipboard: {
+      mode: pointerSmoke ? 'server-to-browser' : 'bidirectional',
+      text: true,
+      maxItemBytes: 1024,
+    },
     security: { certificatePolicy: 'prompt' },
     timeouts: { connectMs: 20000, tcpAckMs: 10000 },
   };
@@ -237,15 +248,17 @@ try {
   context = await browser.newContext({
     viewport: { width: 1280, height: 900 },
   });
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-    origin,
-  });
+  if (!pointerSmoke)
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+      origin,
+    });
   page = await context.newPage();
   page.setDefaultTimeout(12000);
   await page.goto(origin + '/harness/');
   await page.waitForFunction(() => Boolean(window.bridgeViewer));
   // Seed before any read: never inspect unrelated pre-existing local clipboard data.
-  await page.evaluate((text) => navigator.clipboard.writeText(text), sent);
+  if (!pointerSmoke)
+    await page.evaluate((text) => navigator.clipboard.writeText(text), sent);
   const request = async (path, method = 'GET', payload) => {
     const response = await server.inject({
       method,
@@ -277,9 +290,11 @@ try {
     () => source?.ready && !source.localPending && !source.localAccepted,
   );
   await page.waitForFunction(
-    () =>
+    (pointerOnly) =>
       window.bridgeViewer.stats.frames > 0 &&
-      !document.querySelector('[data-clipboard=send]').disabled,
+      (pointerOnly ||
+        !document.querySelector('[data-clipboard=send]').disabled),
+    pointerSmoke,
   );
   // As in the ordinary viewer smoke, the first RDP frame may still be the
   // Windows login/desktop transition. Do not spend the single authorized editor
@@ -296,155 +311,216 @@ try {
     await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
     await delay(200);
   }
-  phase = 'local-paste';
-  await page.locator('[data-clipboard=paste]').click();
-  await page.waitForFunction(() =>
-    document
-      .querySelector('#clipboard-text [role=status]')
-      .textContent.startsWith('Текст вставлен локально.'),
-  );
-  requireResult(
-    await page.evaluate(
-      (text) => document.querySelector('[data-clipboard-draft]').value === text,
-      sent,
-    ),
-  );
-  requireResult(writes === 0);
-  report.noSendDuringLocalPaste = true;
-  phase = 'browser-to-notepad';
-  await page.locator('[data-clipboard=send]').click();
-  phase = 'browser-offer-ack';
-  await wait(
-    () => writes === 1 && source.localAccepted && !source.localPending,
-  );
-  phase = 'browser-to-notepad-paste';
-  await chord('ControlLeft+KeyV');
-  ownDocument = true;
-  phase = 'browser-to-notepad';
-  await copyRemoteAndRead(sent);
-  report.browserToNotepad = true;
-  phase = 'notepad-to-browser';
-  // Select only our just-verified document, then use the public Unicode input UI.
-  await chord('ControlLeft+KeyA');
-  await page.locator('#unicode-text').fill(returned);
-  await page.locator('#text-input button').click();
-  await page.waitForFunction(
-    () =>
-      document.querySelector('#text-input [role=status]').textContent ===
-      'Текст отправлен',
-  );
-  await copyRemoteAndRead(returned);
-  await page.locator('[data-clipboard=copy]').click();
-  await page.waitForFunction(
-    () =>
-      document.querySelector('#clipboard-text [role=status]').textContent ===
-      'Текст скопирован',
-  );
-  requireResult(
-    await page.evaluate(
-      async (text) =>
-        (await navigator.clipboard.readText()).replace(/\r\n/g, '\n') === text,
-      returned,
-    ),
-  );
-  report.notepadToBrowser = true;
-  if (keyboardSmoke) {
-    report.keyboard = { shift: false, blur: [], detachedRightControl: false };
-    let expected = returned;
-    phase = 'keyboard-shift';
-    await chord('ArrowRight'); // Collapse the selection of our verified document.
-    await chord('Shift+Digit1');
-    await chord('Digit1');
-    expected += '!1'; // Named current Windows layout only; do not change its layout.
-    await copyRemoteAndRead(expected);
-    report.keyboard.shift = true;
-    for (const [modifier, digit] of [
-      ['ControlLeft', 'Digit2'],
-      ['ShiftRight', 'Digit3'],
-      ['AltLeft', 'Digit4'],
-    ]) {
-      phase = 'keyboard-blur-' + modifier;
-      await chord('ArrowRight');
-      await page.keyboard.down(modifier);
-      await page.locator('#unicode-text').focus();
-      // Release outside the canvas: native release must come from blur/reset.
-      await page.keyboard.up(modifier);
-      // A normal standalone Alt release can enter the application's menu mode.
-      // Cancel that mode before testing the next unmodified text key.
-      if (modifier === 'AltLeft') await chord('Escape');
-      await chord(digit);
-      expected += digit.slice(-1);
-      await copyRemoteAndRead(expected);
-      report.keyboard.blur.push(modifier);
-    }
-    phase = 'keyboard-detach-held-right-control';
-    await page.locator('#desktop').focus();
-    await page.keyboard.down('ControlRight');
+  if (pointerSmoke) {
+    phase = 'pointer-smoke';
+    report.pointer = await runWindowsPointerSmoke({
+      page,
+      snapshot: async () => {
+        await chord('F2');
+        const revision = source.revision;
+        await chord('ControlLeft+KeyC');
+        await wait(() => source.remoteText && source.revision > revision);
+        await page.locator('[data-clipboard=read]').click();
+        await page.waitForFunction(() =>
+          document
+            .querySelector('#clipboard-text [role=status]')
+            .textContent.startsWith('Текст получен.'),
+        );
+        return parsePointerReceipt(
+          await page.locator('[data-clipboard-received]').inputValue(),
+        );
+      },
+      reattach: async (releaseLocal) => {
+        await page.evaluate(() => window.bridgeViewer.detach());
+        // Release only after old input listeners are disposed and before a new
+        // viewer can forward the up event and mask missing terminal release.
+        await releaseLocal();
+        await wait(() => !source.localPending && !source.localAccepted);
+        const attach = {};
+        for (const channel of ['control', 'media'])
+          attach[channel] = await request(
+            '/v1/sessions/' + sessionId + '/attach-token',
+            'POST',
+            { channel },
+          );
+        await page.evaluate(
+          (created) =>
+            window.bridgeViewer.attach(created, { codecs: ['jpeg'] }),
+          { sessionId, attach },
+        );
+        await page.waitForFunction(
+          () =>
+            window.bridgeViewer.stats.frames > 0 &&
+            !document.querySelector('[data-clipboard=read]').disabled,
+        );
+      },
+    });
+    // The prepared read-only page replaces Notepad in this explicit mode.
+    // Do not edit a document or run the OS Clipboard API permission steps.
     await page.evaluate(() => window.bridgeViewer.detach());
-    await page.keyboard.up('ControlRight');
     await wait(() => !source.localPending && !source.localAccepted);
-    const attach = {};
-    for (const channel of ['control', 'media'])
-      attach[channel] = await request(
-        '/v1/sessions/' + sessionId + '/attach-token',
-        'POST',
-        { channel },
-      );
-    await page.evaluate(
-      (created) => window.bridgeViewer.attach(created, { codecs: ['jpeg'] }),
-      { sessionId, attach },
+    requireResult(writes === 0);
+    report.detachedFieldsCleared = await page.evaluate(() =>
+      [...document.querySelectorAll('#clipboard-text textarea')].every(
+        (field) => field.value === '',
+      ),
     );
+    requireResult(report.detachedFieldsCleared);
+    await request('/v1/sessions/' + sessionId, 'DELETE');
+    phase = 'done';
+  } else {
+    phase = 'local-paste';
+    await page.locator('[data-clipboard=paste]').click();
+    await page.waitForFunction(() =>
+      document
+        .querySelector('#clipboard-text [role=status]')
+        .textContent.startsWith('Текст вставлен локально.'),
+    );
+    requireResult(
+      await page.evaluate(
+        (text) =>
+          document.querySelector('[data-clipboard-draft]').value === text,
+        sent,
+      ),
+    );
+    requireResult(writes === 0);
+    report.noSendDuringLocalPaste = true;
+    phase = 'browser-to-notepad';
+    await page.locator('[data-clipboard=send]').click();
+    phase = 'browser-offer-ack';
+    await wait(
+      () => writes === 1 && source.localAccepted && !source.localPending,
+    );
+    phase = 'browser-to-notepad-paste';
+    await chord('ControlLeft+KeyV');
+    ownDocument = true;
+    phase = 'browser-to-notepad';
+    await copyRemoteAndRead(sent);
+    report.browserToNotepad = true;
+    phase = 'notepad-to-browser';
+    // Select only our just-verified document, then use the public Unicode input UI.
+    await chord('ControlLeft+KeyA');
+    await page.locator('#unicode-text').fill(returned);
+    await page.locator('#text-input button').click();
     await page.waitForFunction(
       () =>
-        window.bridgeViewer.stats.frames > 0 &&
-        !document.querySelector('[data-clipboard=send]').disabled,
+        document.querySelector('#text-input [role=status]').textContent ===
+        'Текст отправлен',
     );
-    await chord('ArrowRight');
-    await chord('Digit5');
-    expected += '5';
-    await copyRemoteAndRead(expected);
-    report.keyboard.detachedRightControl = true;
+    await copyRemoteAndRead(returned);
+    await page.locator('[data-clipboard=copy]').click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('#clipboard-text [role=status]').textContent ===
+        'Текст скопирован',
+    );
+    requireResult(
+      await page.evaluate(
+        async (text) =>
+          (await navigator.clipboard.readText()).replace(/\r\n/g, '\n') ===
+          text,
+        returned,
+      ),
+    );
+    report.notepadToBrowser = true;
+    if (keyboardSmoke) {
+      report.keyboard = { shift: false, blur: [], detachedRightControl: false };
+      let expected = returned;
+      phase = 'keyboard-shift';
+      await chord('ArrowRight'); // Collapse the selection of our verified document.
+      await chord('Shift+Digit1');
+      await chord('Digit1');
+      expected += '!1'; // Named current Windows layout only; do not change its layout.
+      await copyRemoteAndRead(expected);
+      report.keyboard.shift = true;
+      for (const [modifier, digit] of [
+        ['ControlLeft', 'Digit2'],
+        ['ShiftRight', 'Digit3'],
+        ['AltLeft', 'Digit4'],
+      ]) {
+        phase = 'keyboard-blur-' + modifier;
+        await chord('ArrowRight');
+        await page.keyboard.down(modifier);
+        await page.locator('#unicode-text').focus();
+        // Release outside the canvas: native release must come from blur/reset.
+        await page.keyboard.up(modifier);
+        // A normal standalone Alt release can enter the application's menu mode.
+        // Cancel that mode before testing the next unmodified text key.
+        if (modifier === 'AltLeft') await chord('Escape');
+        await chord(digit);
+        expected += digit.slice(-1);
+        await copyRemoteAndRead(expected);
+        report.keyboard.blur.push(modifier);
+      }
+      phase = 'keyboard-detach-held-right-control';
+      await page.locator('#desktop').focus();
+      await page.keyboard.down('ControlRight');
+      await page.evaluate(() => window.bridgeViewer.detach());
+      await page.keyboard.up('ControlRight');
+      await wait(() => !source.localPending && !source.localAccepted);
+      const attach = {};
+      for (const channel of ['control', 'media'])
+        attach[channel] = await request(
+          '/v1/sessions/' + sessionId + '/attach-token',
+          'POST',
+          { channel },
+        );
+      await page.evaluate(
+        (created) => window.bridgeViewer.attach(created, { codecs: ['jpeg'] }),
+        { sessionId, attach },
+      );
+      await page.waitForFunction(
+        () =>
+          window.bridgeViewer.stats.frames > 0 &&
+          !document.querySelector('[data-clipboard=send]').disabled,
+      );
+      await chord('ArrowRight');
+      await chord('Digit5');
+      expected += '5';
+      await copyRemoteAndRead(expected);
+      report.keyboard.detachedRightControl = true;
+    }
+    phase = 'clear-own-document';
+    await chord('ControlLeft+KeyA');
+    await chord('Backspace');
+    ownDocument = false;
+    phase = 'permission-denial';
+    const cdp = await browser.newBrowserCDPSession();
+    const { browserContextIds } = await cdp.send('Target.getBrowserContexts');
+    requireResult(browserContextIds.length === 1);
+    await cdp.send('Browser.setPermission', {
+      permission: { name: 'clipboard-read' },
+      setting: 'denied',
+      origin,
+      browserContextId: browserContextIds[0],
+    });
+    await page.locator('[data-clipboard=paste]').click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('#clipboard-text [role=status]').textContent ===
+        'Браузер отказал в доступе к буферу обмена',
+    );
+    requireResult(writes === 1);
+    report.permissionDenied = true;
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+      origin,
+    });
+    await cdp.detach();
+    phase = 'detach';
+    await page.evaluate(() => window.bridgeViewer.detach());
+    await wait(
+      () =>
+        report.revokeAccepted && !source.localPending && !source.localAccepted,
+    );
+    report.detachedFieldsCleared = await page.evaluate(() =>
+      [...document.querySelectorAll('#clipboard-text textarea')].every(
+        (field) => field.value === '',
+      ),
+    );
+    requireResult(report.detachedFieldsCleared);
+    await request('/v1/sessions/' + sessionId, 'DELETE');
+    phase = 'done';
   }
-  phase = 'clear-own-document';
-  await chord('ControlLeft+KeyA');
-  await chord('Backspace');
-  ownDocument = false;
-  phase = 'permission-denial';
-  const cdp = await browser.newBrowserCDPSession();
-  const { browserContextIds } = await cdp.send('Target.getBrowserContexts');
-  requireResult(browserContextIds.length === 1);
-  await cdp.send('Browser.setPermission', {
-    permission: { name: 'clipboard-read' },
-    setting: 'denied',
-    origin,
-    browserContextId: browserContextIds[0],
-  });
-  await page.locator('[data-clipboard=paste]').click();
-  await page.waitForFunction(
-    () =>
-      document.querySelector('#clipboard-text [role=status]').textContent ===
-      'Браузер отказал в доступе к буферу обмена',
-  );
-  requireResult(writes === 1);
-  report.permissionDenied = true;
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-    origin,
-  });
-  await cdp.detach();
-  phase = 'detach';
-  await page.evaluate(() => window.bridgeViewer.detach());
-  await wait(
-    () =>
-      report.revokeAccepted && !source.localPending && !source.localAccepted,
-  );
-  report.detachedFieldsCleared = await page.evaluate(() =>
-    [...document.querySelectorAll('#clipboard-text textarea')].every(
-      (field) => field.value === '',
-    ),
-  );
-  requireResult(report.detachedFieldsCleared);
-  await request('/v1/sessions/' + sessionId, 'DELETE');
-  phase = 'done';
 } catch (error) {
   process.exitCode = 1;
   report.failedPhase = phase;

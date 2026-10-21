@@ -36,6 +36,17 @@ all keyboards. It requires explicit approval for those inputs and reattachment
 in addition to the ordinary Clipboard scenario. No application is launched and
 no file is saved. Preparation or fixtures do not accept actual remote input.
 
+For separately authorized basic mouse/scroll acceptance, copy
+`tests/fixtures/rdp-pointer-page.html` to the Windows lab yourself, open it in
+Edge, maximize the window and disconnect mstsc. The page stays local/offline
+and exposes only fixed bounded numeric counters. Use the same helper with
+`--focus-editor --pointer-smoke`, instead of `--keyboard-smoke`. This requires
+approval for the button/drag/wheel sequence, left-button blur and middle-button
+detach/reattach, F2/Ctrl+C scalar readbacks and the existing optional single
+failure frame. It runs no remote command, does not launch an application, does
+not write a remote document and sends no clipboard offer. Exact scope and actual
+acceptance status are in [the pointer iteration](ITERATION_396.md).
+
 For operator-assisted actual Windows Notepad Unicode/input/clipboard checks,
 use the [application smoke](WINDOWS_APPLICATION_SMOKE.md). It requires an empty
 user-prepared Notepad, fixed test data and phase-by-phase native JPEG inspection;

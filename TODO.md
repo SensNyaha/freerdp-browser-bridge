@@ -39,6 +39,14 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+The user-prepared Windows pointer page now passes actual public-viewer
+left/right/middle buttons, captured drag, both wheel directions on both axes,
+left-button blur release and held middle-button detach/reattach release.
+Four bounded CLIPRDR receipts confirm balanced down/up and no held buttons;
+no local Clipboard API or native offer is used. This accepts application event
+delivery, not content scrolling, arbitrary drop targets or physical hardware.
+The initial wrong-application attempt is retained. [Evidence](docs/ITERATION_396.md).
+
 Current tracked-source Linux GCC 12 linked Release + IPC-only addon now passes
 native CTest 35/35, focused process/synthetic-TLS 7/7 and full Node 863 / 81
 skips / 944, zero failures. Exact reused SDK/dependency archives and real private
@@ -1188,6 +1196,14 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
 **Gate:** stable 1080p interactive Windows/XRDP desktop for 30 min, resize safe, cursor smooth, no unbounded queue growth.
 
 ## Stage 5 — keyboard, mouse, wheel and touch
+
+- [x] DONE for named Windows public pointer/application slice — Prepared
+  offline page confirms left/right/middle button pairs, captured drag, both
+  wheel axes/directions, left-button blur release and middle-button release
+  across viewer detach/fresh-token reattachment. Fixed scalar readbacks and
+  joined cleanup pass. Content scrolling, arbitrary drop targets, physical
+  hardware and hard transport-loss-held input remain open.
+  [Evidence](docs/ITERATION_396.md).
 
 - [x] DONE for named current Windows public-viewer keyboard/release smoke —
   Actual Notepad readback confirms Shift/number entry, Ctrl/Shift/Alt blur/reset

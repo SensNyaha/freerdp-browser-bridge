@@ -17,6 +17,15 @@ session. Alt includes Escape to leave application menu mode. This does not
 accept all layouts, mouse/drag/wheel or hard transport-failure-held input.
 [Actual public input evidence](ITERATION_394.md).
 
+The user-opened offline pointer page additionally verifies actual public-viewer
+left/right/middle button pairs, captured drag and both wheel directions on both
+axes. Fixed CLIPRDR scalar receipts also confirm left-button blur release and
+middle-button release across detach/fresh-token reattachment. The page prevents
+default wheel scrolling: this accepts application event delivery, not content
+scrolling, arbitrary drop targets or physical hardware. Hard transport-loss-held
+input and broader platform profiles remain open.
+[Actual pointer evidence](ITERATION_396.md).
+
 An isolated [native touch foundation](#native-touch-foundation) is also tested.
 It is not connected to worker IPC or browser input and does not advertise RDPEI support.
 

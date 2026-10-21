@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Bridge prepared pointer acceptance</title>
+  <style>
+    body {
+      margin: 0;
+      font: 18px sans-serif;
+    }
+    #pad {
+      position: fixed;
+      inset: 0 0 100px;
+      background: #e0f0ff;
+      touch-action: none;
+      user-select: none;
+      padding: 24px;
+    }
+    #result {
+      position: fixed;
+      bottom: 0;
+      width: calc(100% - 16px);
+      height: 88px;
+      margin: 4px;
+    }
+  </style>
+  <div id="pad" tabindex="0">
+    Prepared Bridge input test. Mouse buttons, drag and wheel stay inside this
+    page. F2 selects a bounded, content-free result; Ctrl+C copies that result.
+    No network, file access, application launch or clipboard API is used.
+    <p id="progress">Waiting for pointer input.</p>
+  </div>
+  <textarea id="result" readonly aria-label="Fixed test result"></textarea>
+  <script>
+    'use strict';
+    const pad = document.querySelector('#pad');
+    const result = document.querySelector('#result');
+    const progress = document.querySelector('#progress');
+    const state = {
+      v: 1,
+      fixture: 'bridge-pointer-v1',
+      down: [0, 0, 0],
+      up: [0, 0, 0],
+      moves: 0,
+      dragX: 0,
+      dragY: 0,
+      wheel: { left: 0, right: 0, up: 0, down: 0 },
+      buttons: 0,
+    };
+    let drag;
+    const increment = (value) => Math.min(65535, value + 1);
+    function changed() {
+      progress.textContent = 'Fixed result ready; press F2 then Ctrl+C.';
+    }
+    for (const type of ['pointerdown', 'pointerup'])
+      pad.addEventListener(type, (event) => {
+        if (event.pointerType !== 'mouse' || event.button > 2) return;
+        event.preventDefault();
+        state[type === 'pointerdown' ? 'down' : 'up'][event.button] = increment(
+          state[type === 'pointerdown' ? 'down' : 'up'][event.button],
+        );
+        state.buttons = event.buttons & 7;
+        if (type === 'pointerdown') {
+          pad.focus();
+          pad.setPointerCapture(event.pointerId);
+          if (event.button === 0) drag = [event.clientX, event.clientY];
+        } else if (event.button === 0) drag = undefined;
+        changed();
+      });
+    pad.addEventListener('pointermove', (event) => {
+      if (event.pointerType !== 'mouse') return;
+      state.moves = increment(state.moves);
+      state.buttons = event.buttons & 7;
+      if (drag && event.buttons & 1) {
+        state.dragX = Math.min(
+          65535,
+          Math.max(state.dragX, Math.abs(event.clientX - drag[0])),
+        );
+        state.dragY = Math.min(
+          65535,
+          Math.max(state.dragY, Math.abs(event.clientY - drag[1])),
+        );
+      }
+      changed();
+    });
+    pad.addEventListener('contextmenu', (event) => event.preventDefault());
+    pad.addEventListener(
+      'wheel',
+      (event) => {
+        event.preventDefault();
+        for (const [name, active] of [
+          ['left', event.deltaX < 0],
+          ['right', event.deltaX > 0],
+          ['up', event.deltaY < 0],
+          ['down', event.deltaY > 0],
+        ])
+          if (active) state.wheel[name] = increment(state.wheel[name]);
+        changed();
+      },
+      { passive: false },
+    );
+    window.addEventListener('keydown', (event) => {
+      if (event.code !== 'F2') return;
+      event.preventDefault();
+      result.value = JSON.stringify(state);
+      result.focus();
+      result.select();
+    });
+  </script>
+</html>
