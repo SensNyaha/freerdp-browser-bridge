@@ -1,5 +1,7 @@
 /** Local viewer modes; input and output codec choices are independent. */
 export function viewerMediaOptions(flag) {
+  const toneSoak = flag === '--audio-opus-compat-tone-soak';
+  if (toneSoak) flag = '--audio-opus-compat-tone-listen';
   const tonePreview = flag === '--audio-opus-compat-tone-listen';
   const listenPreview = flag === '--audio-opus-compat-listen' || tonePreview;
   const audioRecoveryTest = [
@@ -73,6 +75,9 @@ export function viewerMediaOptions(flag) {
     ...(compatibility ? { audioOutputBufferMs: 200 } : {}),
     ...(listenPreview ? { listenPreview: true } : {}),
     ...(tonePreview ? { tonePreview: true } : {}),
+    ...(toneSoak
+      ? { toneDurationSeconds: 180, previewDurationMs: 195000 }
+      : {}),
     ...(audioRecoveryTest ? { audioRecoveryTest: true } : {}),
     manual: flag === '--manual' || audioManual || microphoneManual,
   };

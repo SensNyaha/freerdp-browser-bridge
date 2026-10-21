@@ -44,6 +44,8 @@ const {
   audioOutputBufferMs,
   listenPreview,
   tonePreview,
+  toneDurationSeconds = 45,
+  previewDurationMs = 60000,
   audioRecoveryTest,
   manual,
 } = viewerMediaOptions(process.argv[4]);
@@ -484,13 +486,18 @@ try {
     if (listenPreview) {
       if (tonePreview) {
         phase = 'tone-source-input';
-        await dispatchWindowsLabTone(deliverInput, lab);
+        await dispatchWindowsLabTone(
+          deliverInput,
+          lab,
+          undefined,
+          toneDurationSeconds,
+        );
         console.log(
           JSON.stringify({
             type: 'lab.browser.tone-input',
             v: 1,
             sourceCommandDispatched: true,
-            sourceDurationSeconds: 45,
+            sourceDurationSeconds: toneDurationSeconds,
             sourceReadbackVerified: false,
             microphoneCaptured: false,
           }),
@@ -501,7 +508,7 @@ try {
       try {
         await Promise.race([
           waitForViewerClose(browser, page),
-          delay(60000, undefined, { signal: timer.signal }),
+          delay(previewDurationMs, undefined, { signal: timer.signal }),
         ]);
       } finally {
         timer.abort();

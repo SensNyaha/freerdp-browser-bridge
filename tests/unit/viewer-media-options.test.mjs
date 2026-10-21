@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { viewerMediaOptions } from '../../scripts/viewer-media-options.mjs';
+test('bounded three-minute tone uses the existing Opus/200 ms listening mode with microphone off', () => {
+  assert.deepEqual(viewerMediaOptions('--audio-opus-compat-tone-soak'), {
+    ...viewerMediaOptions('--audio-opus-compat-tone-listen'),
+    toneDurationSeconds: 180,
+    previewDurationMs: 195000,
+  });
+});
 test('compatibility viewer selects exactly 200 ms output without microphone capture', () => {
   for (const [flag, codec, manual] of [
     ['--audio-compat-test', 'pcm', false],

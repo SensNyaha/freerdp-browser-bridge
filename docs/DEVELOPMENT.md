@@ -573,6 +573,15 @@ the helper cannot independently verify source execution; actual packet/playback
 counters and the operator's listening report provide separate evidence.
 [Named audible result and retained quality gaps](ITERATION_367.md).
 
+For the MVP several-minute active-source criterion, the separately authorized
+`--audio-opus-compat-tone-soak` uses that same fixed source for 180 seconds and
+observes for 195 seconds after dispatch. It retains Opus/200 ms, microphone off,
+the same existing counters and joined cleanup. Ordinary one-minute/45-second
+modes stay unchanged. The only admitted source durations are 45 and 180 seconds;
+no arbitrary command/duration is accepted. Source dispatch still does not prove
+execution. This mode requires permission for one connection and the three-minute
+tone; listen without a simultaneous mstsc connection.
+
 On Windows, append one isolated native receipt after the existing viewer mode
 to select its verified worker/helper pair:
 

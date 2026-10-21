@@ -12,6 +12,40 @@ import {
 
 const target = { host: '192.168.21.149', port: 3389 };
 
+test('three-minute tone changes only its finite duration and refuses other values before input', async () => {
+  assert.equal(
+    windowsLabToneCommand(180),
+    windowsLabToneCommand().replace(
+      'Start-Sleep -Seconds 45',
+      'Start-Sleep -Seconds 180',
+    ),
+  );
+  let calls = 0;
+  for (const duration of [0, -1, 46, 179, 181, Infinity, '180', null])
+    await assert.rejects(
+      dispatchWindowsLabTone(
+        async () => {
+          ++calls;
+        },
+        target,
+        async () => {},
+        duration,
+      ),
+      { message: 'LAB_TONE_DURATION_REFUSED' },
+    );
+  assert.equal(calls, 0);
+  const chunks = [];
+  await dispatchWindowsLabTone(
+    async (event) => {
+      if (event.type === 'text') chunks.push(event.text);
+    },
+    target,
+    async () => {},
+    180,
+  );
+  assert.equal(chunks.slice(1).join(''), windowsLabToneCommand(180));
+});
+
 test('explicit Windows tone uses bounded private text records and releases every held key', async () => {
   const events = [];
   const waits = [];
@@ -120,18 +154,19 @@ test(
   () => {
     const parse =
       "$text=[Console]::In.ReadToEnd();$tokens=$null;$errors=$null;[void][Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$errors);if($errors.Count){exit 1};'PARSE_OK'";
-    assert.equal(
-      execFileSync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', parse],
-        {
-          input: windowsLabToneCommand(),
-          encoding: 'utf8',
-          windowsHide: true,
-          timeout: 5000,
-        },
-      ).trim(),
-      'PARSE_OK',
-    );
+    for (const duration of [45, 180])
+      assert.equal(
+        execFileSync(
+          'powershell.exe',
+          ['-NoProfile', '-NonInteractive', '-Command', parse],
+          {
+            input: windowsLabToneCommand(duration),
+            encoding: 'utf8',
+            windowsHide: true,
+            timeout: 5000,
+          },
+        ).trim(),
+        'PARSE_OK',
+      );
   },
 );
