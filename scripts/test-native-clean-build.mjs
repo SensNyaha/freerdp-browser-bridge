@@ -10,11 +10,11 @@ import {
 } from 'node:fs/promises';
 import { resolve, dirname, basename, relative, sep } from 'node:path';
 import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { readDependencyReceipt } from './dependency-input.mjs';
 import { nodeTestDirectories } from './node-test-directories.mjs';
 import { readNativeBuildProfile } from './native-build-profile.mjs';
+import { nativeCleanArtifactHashes } from './native-clean-artifacts.mjs';
 import {
   nativeCleanProfile,
   requireWindowsSdkCrt,
@@ -453,7 +453,6 @@ for (const name of entries) {
 }
 if (after.digest('hex') !== sourceHash)
   throw new Error('Native source fixture changed');
-const artifacts = {};
 if (linked) {
   checkSdkSource();
   if (
@@ -476,19 +475,8 @@ if (linked) {
     )
   )
     throw new Error('Build feature input changed');
-  for (const name of windows
-    ? ['rdp-worker.exe', 'rdp-runtime-directory.exe']
-    : ['rdp-worker', 'rdp-ipc.node', 'rdp-worker.ipc.json']) {
-    const hash = createHash('sha256');
-    let bytes = 0;
-    for await (const chunk of createReadStream(resolve(binary, name))) {
-      if ((bytes += chunk.length) > 67108864)
-        throw new Error('Build artifact exceeded');
-      hash.update(chunk);
-    }
-    artifacts[name] = hash.digest('hex');
-  }
 }
+const artifacts = await nativeCleanArtifactHashes(binary, linked);
 const receipt = {
   cleanNativeSource: true,
   buildProfile,
@@ -533,7 +521,7 @@ const receipt = {
         artifacts,
         ...(!windows ? { nodeAddonFreerdpNeeded: false } : {}),
       }
-    : {}),
+    : { artifacts }),
 };
 await writeFile(
   resolve(root, 'receipt.json'),

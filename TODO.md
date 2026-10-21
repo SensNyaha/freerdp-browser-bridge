@@ -60,6 +60,13 @@ their prerequisite from actual native linkage rather than output-directory
 names; all four codec/viewer cases still pass on linked Debug. Original failed
 runs remain recorded. [Foundation evidence](docs/ITERATION_380.md).
 
+New clean-foundation receipts now also bind actual worker/query-helper SHA-256
+outputs through the existing bounded hashing routine. Windows source-only
+Debug CTest 17/17, lifecycle 16 / one skip and full Node 813 / 102 skips pass;
+linked artifact inventories remain unchanged. Linux inventory is portable-test
+coverage only because the local Docker daemon is unavailable. Broader build
+and platform gates stay open. [Receipt evidence](docs/ITERATION_381.md).
+
 ## Implementation status — 2026-10-20
 
 One explicitly authorized Windows lab / Edge Opus/200 ms preview now passes
@@ -566,6 +573,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for Windows clean-foundation output hashes — New source-only
+  receipts bind worker/helper bytes after source/profile/native/lifecycle
+  checks, with the existing streamed 64 MiB bound and complete-map publication.
+  Known digests, exact/over-limit and missing output controls pass; actual new
+  MSVC Debug CTest 17/17, lifecycle 16 / one skip and full Node 813 / 102 skips
+  pass. Historical receipts and linked inventories are preserved. Actual Linux
+  writer/distro/CI, deterministic outputs and wider gates remain open.
+  [Evidence](docs/ITERATION_381.md).
 
 - [x] DONE for current Windows foundation host-resource profile — New offline
   source-only MSVC Debug output has identical native source bytes to linked

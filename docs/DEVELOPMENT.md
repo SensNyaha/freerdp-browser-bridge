@@ -720,6 +720,15 @@ Only the selected scalar fields enter the receipt; existing historical receipts
 are preserved. This records the existing Debug/foundation or Release/linked
 selection and does not change either build configuration.
 
+New receipts additionally bind foundation runtime outputs in `artifacts`:
+Windows `rdp-worker.exe` / `rdp-runtime-directory.exe`, or Linux `rdp-worker` /
+`rdp-process-query`. Each value is SHA-256 over the completed output, streamed
+with the existing 64 MiB per-file bound. A missing/oversized output fails before
+receipt publication. Linked artifact inventories keep their existing fields;
+historical foundation receipts without this map are preserved. These hashes
+bind observed outputs, not deterministic binary reproduction or redistribution
+acceptance. [Receipt evidence](ITERATION_381.md).
+
 On Windows x64, after preparing the ordinary foundation/Catch2 source, use:
 
 ```powershell
