@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
 import {
@@ -12,6 +12,16 @@ import {
   decodeMicrophonePcm,
 } from '../../packages/protocol/dist/index.js';
 const binaryDir = process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation';
+const linked =
+  process.platform === 'win32' &&
+  JSON.parse(
+    execFileSync(resolve(binaryDir, 'rdp-worker.exe'), ['--capabilities'], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 5000,
+      maxBuffer: 8192,
+    }),
+  ).freeRdpVersion !== null;
 async function nativeDecode(packets) {
   assert.ok(packets.length <= 16);
   const records = packets.map((packet) => {
@@ -68,7 +78,7 @@ async function nativeDecode(packets) {
 test(
   'Edge/native microphone Opus: synthetic stereo encoder wire projection and compensated libopus capture clock agree',
   {
-    skip: process.platform !== 'win32' || binaryDir.includes('foundation'),
+    skip: !linked,
     timeout: 25000,
   },
   async () => {

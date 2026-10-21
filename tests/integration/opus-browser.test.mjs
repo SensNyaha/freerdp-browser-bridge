@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright-core';
@@ -13,11 +13,21 @@ import {
   encodeOpusAudioPacketRecord,
 } from '../../packages/protocol/dist/index.js';
 const binaryDir = process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation';
+const linked =
+  process.platform === 'win32' &&
+  JSON.parse(
+    execFileSync(resolve(binaryDir, 'rdp-worker.exe'), ['--capabilities'], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 5000,
+      maxBuffer: 8192,
+    }),
+  ).freeRdpVersion !== null;
 
 test(
   'Edge Opus: actual pinned SDK tones decode as 960-frame raw packets and receive Worklet admission credit',
   {
-    skip: process.platform !== 'win32' || binaryDir.includes('foundation'),
+    skip: !linked,
     timeout: 60000,
   },
   async () => {

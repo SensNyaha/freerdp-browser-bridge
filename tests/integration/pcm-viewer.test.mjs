@@ -4,11 +4,22 @@ import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomInt } from 'node:crypto';
 import { Writable } from 'node:stream';
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chromium } from 'playwright-core';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
+const binaryDir = process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/bundled';
+const linked =
+  process.platform === 'win32' &&
+  JSON.parse(
+    execFileSync(resolve(binaryDir, 'rdp-worker.exe'), ['--capabilities'], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 5000,
+      maxBuffer: 8192,
+    }),
+  ).freeRdpVersion !== null;
 
 /** Actual harness/WebSocket/Worklet; synthetic media backend, no RDP/audio acceptance. */
 class PcmViewerWorker extends FakeSessionWorker {
@@ -72,12 +83,7 @@ for (const codec of ['pcm', 'opus'])
   test(
     `Edge reference ${codec} viewer: gesture precedes sockets, cancelled preparation cannot attach, actual socket/Worklet ACK and stop preserve video`,
     {
-      skip:
-        process.platform !== 'win32' ||
-        (codec === 'opus' &&
-          (process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/bundled').includes(
-            'foundation',
-          )),
+      skip: process.platform !== 'win32' || (codec === 'opus' && !linked),
       timeout: 45000,
     },
     async () => {

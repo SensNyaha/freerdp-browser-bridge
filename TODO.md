@@ -53,6 +53,13 @@ zero failures, with unchanged production/native sources. Actual Windows query
 API failures and wider connected/OS/load gates stay open.
 [Fault-control evidence](docs/ITERATION_379.md).
 
+A new Windows source-only foundation Debug output now verifies the host-batch
+capability without FreeRDP: native CTest 17/17, resource integration 12/12 and
+full Node 809 / 102 skips / 911 total pass. Three SDK browser tests now select
+their prerequisite from actual native linkage rather than output-directory
+names; all four codec/viewer cases still pass on linked Debug. Original failed
+runs remain recorded. [Foundation evidence](docs/ITERATION_380.md).
+
 ## Implementation status — 2026-10-20
 
 One explicitly authorized Windows lab / Edge Opus/200 ms preview now passes
@@ -559,6 +566,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 [contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
 
 ## Stage 0 — repository and reproducible build
+
+- [x] DONE for current Windows foundation host-resource profile — New offline
+  source-only MSVC Debug output has identical native source bytes to linked
+  Debug, reports host batching with null FreeRDP and no connect capability,
+  and starts no resource policy by default. CTest 17/17, resource integration
+  12/12 and full Node 809 / 102 skips pass. SDK codec tests use actual linkage,
+  with linked 4/4 controls; prelaunch staging expiry/cancellation passes too.
+  Release, pins, other-platform/CI/connected/load and wider gates stay open.
+  [Evidence](docs/ITERATION_380.md).
 
 - [x] DONE for current full workspace regression — With Node 24.21.0 correctly first in the child-process PATH, `pnpm check` passes build, lint, format and Node **748 passed / 101 skipped / 0 failed**. Bundled native CTest passes **29/29** through the project's temporary `R:` workspace alias; no CMake reconfiguration or Release change was made. [Evidence](docs/ITERATION_347.md).
 

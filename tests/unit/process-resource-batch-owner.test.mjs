@@ -173,6 +173,57 @@ test('synthetic batch owner excludes cancelled unsent PID and keeps the cancelle
   empty(owner, gate);
 });
 
+test('synthetic batch owner expiry after collection still prevents physical invocation', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let now = 0,
+    calls = 0;
+  t.mock.method(performance, 'now', () => now);
+  const { owner, gate } = fixture(async (_path, pids) => {
+    ++calls;
+    return rows(pids);
+  });
+  const pending = Promise.allSettled(
+    [1, 2].map((pid) => owner.sample(pid, 'batch/worker.exe', signal())),
+  );
+  await until(() => owner.snapshot().activeItems === 2);
+  t.mock.timers.tick(5);
+  assert.equal(owner.snapshot().inFlightGroups, 1);
+  assert.equal(owner.snapshot().collectingGroups, 0);
+  assert.equal(calls, 0);
+  // The collection timer already fired; only physical invocation staging remains.
+  now = 1001;
+  for (const result of await pending) failure(result);
+  assert.equal(calls, 0);
+  assert.equal(gate.snapshot().expired, 2);
+  empty(owner, gate);
+});
+
+test('synthetic batch owner cancellation after collection excludes only that staged PID', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const calls = [];
+  const { owner, gate } = fixture(async (_path, pids) => {
+    calls.push(pids);
+    return rows(pids);
+  });
+  const aborts = [new AbortController(), new AbortController()];
+  const pending = Promise.allSettled(
+    aborts.map((abort, at) =>
+      owner.sample(at + 1, 'batch/worker.exe', abort.signal),
+    ),
+  );
+  await until(() => owner.snapshot().activeItems === 2);
+  t.mock.timers.tick(5);
+  assert.equal(owner.snapshot().inFlightGroups, 1);
+  assert.equal(calls.length, 0);
+  aborts[0].abort('synthetic-private-reason');
+  const results = await pending;
+  failure(results[0], 'PROCESS_SAMPLE_CANCELLED');
+  assert.equal(results[1].status, 'fulfilled');
+  assert.equal(results[1].value.bytes, 20);
+  assert.deepEqual(calls, [[2]]);
+  empty(owner, gate);
+});
+
 test('synthetic batch owner cancellation of one dispatched PID preserves sibling and joins the child', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const finish = Promise.withResolvers();

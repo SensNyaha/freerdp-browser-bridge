@@ -116,3 +116,9 @@ an unknown command as success. Portable parser CTest and codec unit tests do
 not depend on this flag. The selected set covers the command, real owner and
 controlled query-child faults. [Command evidence](ITERATION_377.md),
 [owner adoption](ITERATION_378.md), [fault controls](ITERATION_379.md).
+
+A separate Windows source-only foundation Debug output also verifies the
+host capability with null FreeRDP / `connectCore=false`, resource controls,
+CTest 17/17 and full Node 809 / 102 skips. Capability reporting leaves policies
+off by default. Linked-only SDK browser codec checks remain explicitly outside
+that profile. [Foundation evidence](ITERATION_380.md).
