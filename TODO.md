@@ -23,8 +23,8 @@ Current stage acceptance:
 | 3 — connection | IN PROGRESS | Remaining Windows application/platform profiles, settings/auth/trust history, errors and reconnect |
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, broader Windows server profiles and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
-| 6 — audio | IN PROGRESS | Uninterrupted audible output/recording, broader ready-source recovery and measured LAN queue target; named short Windows tone is audible with interruptions |
-| 7 — clipboard/drives | IN PROGRESS | Named Windows Notepad Unicode roundtrip and prior offer/revoke/replay pass; browser/host clipboard, wider quotas/formats and managed-drive CRUD remain |
+| 6 — audio | IN PROGRESS | User accepts the named corrected-worker short Windows tone; full multi-minute continuity, recording, broader ready-source recovery and measured LAN queue target remain |
+| 7 — clipboard/drives | IN PROGRESS | Named headed browser/host Clipboard API ↔ Windows Notepad Unicode roundtrip and offer/revoke pass; final combined cleanup, wider direction/quota/isolation/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Remaining Gateway/proxy/reconnect/channel settings and broader IP/appearance/platform integration |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -38,6 +38,14 @@ All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
+
+The user accepts the corrected Debug worker's actual short Opus/200 ms tone as
+steady with almost no interruptions. The observed 23.52 seconds have one browser
+epoch/configuration, zero late publication intervals and zero Worklet underflow;
+full three-minute continuity is not yet demonstrated. Earlier source-launch /
+console-input failures are retained. The new manual-source mode leaves fixed
+text in the local draft and requires separate user Send/paste/execute actions.
+[Exact audio scope](docs/ITERATION_387.md), [MVP acceptance](docs/MVP_ACCEPTANCE.md).
 
 New Windows Debug workers advertise bounded host resource batching; trusted
 CPU/RSS policies coalesce admitted requests across workers through the existing
@@ -1157,6 +1165,13 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.
 
 ## Stage 6 — audio output and microphone
+
+- [x] DONE for the named short corrected-worker Windows Opus/200 ms listening
+  slice — User reports steady sound with almost no breaks and accepts it.
+  Actual counters cover 23.52 rendered seconds, one epoch/configuration, no
+  publication skips or Worklet underflow; joined runtime cleanup passes.
+  This does not close full multi-minute, other format/profile/platform, latency
+  or recording acceptance. [Evidence](docs/ITERATION_387.md).
 
 Current repeat: the newly approved Windows Opus/200 ms browser session renders
 1080p H.264 but remains audio-waiting with zero configurations/packets/played

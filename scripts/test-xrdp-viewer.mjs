@@ -20,7 +20,10 @@ import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
 import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
 import { readViewerPipelineObservation } from './viewer-pipeline-observation.mjs';
-import { dispatchWindowsLabTone } from './windows-lab-tone.mjs';
+import {
+  dispatchWindowsLabTone,
+  windowsLabToneCommand,
+} from './windows-lab-tone.mjs';
 import { AudioResetDiagnostics } from './audio-reset-diagnostics.mjs';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
 import {
@@ -46,6 +49,7 @@ const {
   tonePreview,
   toneDurationSeconds = 45,
   previewDurationMs = 60000,
+  manualSource = false,
   audioRecoveryTest,
   manual,
 } = viewerMediaOptions(process.argv[4]);
@@ -127,7 +131,10 @@ class DiagnosticSession extends NativeSessionWorker {
     return new DiagnosticProcess(options);
   }
 }
-const nativeWorker = new DiagnosticSession(options);
+const nativeWorker = new DiagnosticSession(
+  options,
+  manualSource ? { clipboardItemBytes: 2048 } : {},
+);
 const audioResets = new AudioResetDiagnostics();
 nativeWorker.resetAudio = audioResets.wrap(
   nativeWorker.resetAudio.bind(nativeWorker),
@@ -251,6 +258,8 @@ let transportEvidence;
 let transportProxy;
 let restoreNeeded = false;
 const clipboardOffInventory = async () => {
+  if (manualSource)
+    return { clipboardSelected: true, clipboardApiMocked: false };
   const browser = await page.evaluate(() => ({
     clipboardRequests: window.labClipboardRequests,
     clipboardControlsDisabled:
@@ -298,6 +307,15 @@ try {
         dynamicResolution: resizeTest || soakTest || manual,
       },
       input: { touch: manual || touchInventory },
+      ...(manualSource
+        ? {
+            clipboard: {
+              mode: 'browser-to-server',
+              text: true,
+              maxItemBytes: 2048,
+            },
+          }
+        : {}),
       media: {
         audioOutput,
         microphone,
@@ -320,17 +338,18 @@ try {
   page = await browser.newPage({
     viewport: manual ? null : { width: 1980, height: 1240 },
   });
-  await page.addInitScript(() => {
-    window.labClipboardRequests = 0;
-    const refused = () => {
-      ++window.labClipboardRequests;
-      return Promise.reject(new Error('LAB_CLIPBOARD_DISABLED'));
-    };
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { readText: refused, writeText: refused },
+  if (!manualSource)
+    await page.addInitScript(() => {
+      window.labClipboardRequests = 0;
+      const refused = () => {
+        ++window.labClipboardRequests;
+        return Promise.reject(new Error('LAB_CLIPBOARD_DISABLED'));
+      };
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { readText: refused, writeText: refused },
+      });
     });
-  });
   if (microphoneTest)
     await page.addInitScript(() => {
       window.labMicrophoneRequests = 0;
@@ -381,6 +400,21 @@ try {
     { timeout: 20000 },
   );
   await clipboardOffInventory();
+  if (manualSource) {
+    await page
+      .locator('[data-clipboard-draft]')
+      .fill(windowsLabToneCommand(180));
+    await page.locator('[data-clipboard=send]').scrollIntoViewIfNeeded();
+    console.log(
+      JSON.stringify({
+        type: 'lab.browser.manual-source-ready',
+        v: 1,
+        commandSent: false,
+        clipboardDirection: 'browser-to-server',
+        maximum: 2048,
+      }),
+    );
+  }
   if (audioTest) {
     await page.waitForFunction(
       () =>
@@ -530,7 +564,7 @@ try {
           v: 1,
           observation,
           audibleAcceptance: false,
-          remoteAudioGenerated: tonePreview ? null : false,
+          remoteAudioGenerated: tonePreview || manualSource ? null : false,
           ...(tonePreview
             ? { sourceCommandDispatched: true, sourceReadbackVerified: false }
             : {}),

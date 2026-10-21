@@ -573,14 +573,20 @@ the helper cannot independently verify source execution; actual packet/playback
 counters and the operator's listening report provide separate evidence.
 [Named audible result and retained quality gaps](ITERATION_367.md).
 
-For the MVP several-minute active-source criterion, the separately authorized
-`--audio-opus-compat-tone-soak` uses that same fixed source for 180 seconds and
-observes for 195 seconds after dispatch. It retains Opus/200 ms, microphone off,
-the same existing counters and joined cleanup. Ordinary one-minute/45-second
-modes stay unchanged. The only admitted source durations are 45 and 180 seconds;
-no arbitrary command/duration is accepted. Source dispatch still does not prove
-execution. This mode requires permission for one connection and the three-minute
-tone; listen without a simultaneous mstsc connection.
+For user-operated source startup, `--audio-opus-compat-source-listen` (also
+`--audio-opus-compat-tone-soak`, superseding its unverified automatic dispatch) opens a
+five-minute Opus/200 ms preview and selects browser-to-server text clipboard
+with a 2,048-byte cap, including its UTF-16 representation. It places the fixed
+three-minute source command in the
+local draft only: no Send, paste, Enter or application launch is automated.
+The user separately clicks Send, waits for offer acceptance, focuses the already
+open PowerShell in the remote desktop, pastes and executes the command. Existing
+source counters and the operator's assessment remain the evidence. Clipboard
+uses the ordinary grant/revoke lifecycle; server-to-browser reads are disabled.
+Opus/200 ms, microphone off, the existing counters and joined cleanup remain.
+Ordinary one-minute/45-second modes stay unchanged. This mode requires a
+separately approved connection and user-prepared PowerShell. Source-start
+failures and exact acceptance boundaries are retained in [387](ITERATION_387.md).
 
 On Windows, append one isolated native receipt after the existing viewer mode
 to select its verified worker/helper pair:

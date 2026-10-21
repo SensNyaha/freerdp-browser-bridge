@@ -1,11 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { viewerMediaOptions } from '../../scripts/viewer-media-options.mjs';
+test('manual audio source keeps the existing listening mode, with no automatic tone dispatch', () => {
+  assert.deepEqual(viewerMediaOptions('--audio-opus-compat-source-listen'), {
+    ...viewerMediaOptions('--audio-opus-compat-listen'),
+    manualSource: true,
+    previewDurationMs: 300000,
+  });
+});
 test('bounded three-minute tone uses the existing Opus/200 ms listening mode with microphone off', () => {
   assert.deepEqual(viewerMediaOptions('--audio-opus-compat-tone-soak'), {
-    ...viewerMediaOptions('--audio-opus-compat-tone-listen'),
-    toneDurationSeconds: 180,
-    previewDurationMs: 195000,
+    ...viewerMediaOptions('--audio-opus-compat-listen'),
+    manualSource: true,
+    previewDurationMs: 300000,
   });
 });
 test('compatibility viewer selects exactly 200 ms output without microphone capture', () => {

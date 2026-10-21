@@ -13,6 +13,9 @@ import {
 const target = { host: '192.168.21.149', port: 3389 };
 
 test('three-minute tone changes only its finite duration and refuses other values before input', async () => {
+  assert.ok(
+    Buffer.byteLength(windowsLabToneCommand(180), 'utf16le') + 2 <= 2048,
+  );
   assert.equal(
     windowsLabToneCommand(180),
     windowsLabToneCommand().replace(
