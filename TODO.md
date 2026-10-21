@@ -39,6 +39,16 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+Linux regression of both current production corrections passes linked Release
+CTest 35/35, focused process/TLS 7/7 and full Node 870 / 82 skips / 952 total,
+with unchanged source/native inputs and a checked cleanup receipt. The outer
+tool's nonzero status discrepancy is retained. The joint Windows helper reaches
+both real Clipboard API/Notepad directions with live audio, then stops at an
+epoch/config waiting observation; its full soak remains unaccepted. No new
+audible-quality claim is made. The pending joint helper additionally passes
+Windows `pnpm check` 891 / 61 skips / 952 total; actual repeat remains open.
+[Evidence and next experiment](docs/ITERATION_402.md).
+
 The combined current Release input/CLIPRDR worker passes CTest 34/34 and an
 actual active owned-XRDP/public Edge H.264 1080p soak: 30 minutes / 61 samples,
 5,781 frames, peak worker RSS 152,342,528 bytes, bounded queues and no observed

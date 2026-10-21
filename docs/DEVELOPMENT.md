@@ -40,6 +40,27 @@ all keyboards. It requires explicit approval for those inputs and reattachment
 in addition to the ordinary Clipboard scenario. No application is launched and
 no file is saved. Preparation or fixtures do not accept actual remote input.
 
+The pending joint Windows helper uses `--focus-editor --mvp-soak` with the same
+fingerprint/receipt arguments. It requires a user-prepared maximized disposable
+Notepad and the existing fixed tone running inside that RDP session for 33
+minutes. The tone command is offered in the local viewer draft; sending it is
+an explicit user action, and executing it/preparing Notepad remains manual.
+After audio decoding starts, click “Блокнот готов — начать совместный тест”.
+Alternatively the operator can relay an explicit user readiness confirmation
+by creating the exact per-process `build/mvp-notepad-ready-<pid>` file printed
+by that invocation; it contains no secrets or application data.
+
+This mode replaces only the prepared document with synthetic text, verifies
+both Clipboard API directions, then repeats a physical-key/edit/readback check
+every 30 seconds during the full 30-minute H.264/Opus observation. It measures
+existing video/audio/RSS counters, then checks resize, permission refusal,
+revoke, reattachment and cleanup. Its watchdog is 40 minutes; epoch recovery
+is observed for at most 3 seconds and still counts toward total sample loss.
+It captures no failure screenshots. A failed run may leave its test document;
+the finite tone ends itself or the user can stop it with Ctrl+C. Numeric results
+do not replace the user's listening assessment. This mode has **not passed**
+the complete real joint gate: [current evidence](ITERATION_402.md).
+
 For separately authorized basic mouse/scroll acceptance, copy
 `tests/fixtures/rdp-pointer-page.html` to the Windows lab yourself, open it in
 Edge, maximize the window and disconnect mstsc. The page stays local/offline

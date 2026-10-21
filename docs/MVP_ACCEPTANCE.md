@@ -41,9 +41,15 @@ It supports explicit verified linked native receipts and typed credentials;
 audio activation and clipboard actions remain separate user controls. The
 [development guide](DEVELOPMENT.md) records the bounded actual lab scenarios.
 
-Next: joint Windows audio/input/clipboard observation and current Linux
-regression. Preserve the accepted audible scenario and its visible numeric
-discontinuity limitations.
+Current Linux regression of both production corrections passes CTest 35/35,
+focused process/TLS 7/7 and full Node 870 / 82 skips / 952 total. Source/native
+hashes and checked cleanup receipt pass; the outer tool status discrepancy is
+retained. [Exact scope](ITERATION_402.md).
+
+Next: complete the joint Windows audio/input/clipboard observation. Its latest
+attempt passes both actual Clipboard API/Notepad directions with live audio,
+then stops at an epoch/config waiting observation; the soak remains unaccepted.
+Preserve the accepted audible scenario and its visible numeric discontinuities.
 Only explicitly prepared lab actions are permitted. Comparison results contain
 no clipboard text, credentials or arbitrary remote application content.
 

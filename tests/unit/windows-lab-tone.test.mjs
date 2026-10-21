@@ -12,6 +12,20 @@ import {
 
 const target = { host: '192.168.21.149', port: 3389 };
 
+test('combined MVP tone retains the fixed in-memory source and a bounded 33-minute lifetime', () => {
+  const command = windowsLabToneCommand(1980);
+  assert.equal(
+    command,
+    windowsLabToneCommand(180).replace('Seconds 180', 'Seconds 1980'),
+  );
+  assert.ok(Buffer.byteLength(command, 'utf16le') + 2 <= 2048);
+  for (const duration of [1800, 1979, 1981, '1980'])
+    assert.throws(
+      () => windowsLabToneCommand(duration),
+      /LAB_TONE_DURATION_REFUSED/,
+    );
+});
+
 test('three-minute tone changes only its finite duration and refuses other values before input', async () => {
   assert.ok(
     Buffer.byteLength(windowsLabToneCommand(180), 'utf16le') + 2 <= 2048,

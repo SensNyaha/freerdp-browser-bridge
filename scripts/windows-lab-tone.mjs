@@ -7,7 +7,7 @@ import {
 // Fixed, quiet 440 Hz / PCM8 mono source in memory. No remote file or download.
 // This explicit lab mode is separate from ordinary idle-source acceptance.
 export function windowsLabToneCommand(durationSeconds = 45) {
-  if (durationSeconds !== 45 && durationSeconds !== 180)
+  if (![45, 180, 1980].includes(durationSeconds))
     throw new Error('LAB_TONE_DURATION_REFUSED');
   return (
     '$bridgeToneStream=$null;$bridgeTonePlayer=$null;try{' +
