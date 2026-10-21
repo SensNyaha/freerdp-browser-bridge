@@ -1,0 +1,2 @@
+#!/bin/sh
+exec dbus-run-session -- openbox --sm-disable --startup 'python3 /opt/bridge-lab/desktop.py'

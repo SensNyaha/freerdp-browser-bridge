@@ -3,6 +3,10 @@
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
+For the user-authorized local Linux RDP container, use the
+[owned XRDP stand](OWNED_XRDP_LAB.md). Its separate fixed loopback profile keeps
+Windows lab credentials and certificate decisions independent.
+
 For a separately authorized real Browser Clipboard API ↔ Windows Notepad
 check, prepare a fresh empty unsaved editor with input focus, then disconnect
 mstsc without logging off. The headed Edge helper replaces both clipboards

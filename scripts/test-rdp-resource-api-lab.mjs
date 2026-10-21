@@ -19,10 +19,12 @@ import {
   resourceApiLabRequest,
 } from './resource-lab-profile.mjs';
 import { connectedCpuLoad } from './connected-cpu-load.mjs';
+import { viewerLabFiles, requireOwnedLabTarget } from './viewer-lab-files.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 if (resolve('.') !== resolve(project)) throw new Error('Use the project root');
 const args = process.argv.slice(2);
+const labFiles = viewerLabFiles(process.env.BRIDGE_LAB_PROFILE);
 const mode = resourceApiLabRequest(args);
 const profile = await loadResourceLabProfile(mode.nativeArgs, project);
 const limits = mode.limits;
@@ -153,10 +155,7 @@ async function waitFor(predicate, milliseconds) {
 }
 async function localJson(name) {
   return JSON.parse(
-    (await readFile(resolve(project, '.local-tests', name), 'utf8')).replace(
-      /^\uFEFF/,
-      '',
-    ),
+    (await readFile(resolve(project, name), 'utf8')).replace(/^\uFEFF/, ''),
   );
 }
 async function refusedUpgrade(url, token) {
@@ -184,9 +183,11 @@ async function refusedUpgrade(url, token) {
   });
 }
 try {
-  const config = await localJson('xrdp-lab.json');
-  if (config.host !== '192.168.21.149') throw new Error('LAB_TARGET_MISMATCH');
-  credentials = await localJson('xrdp-lab.secrets.json');
+  const config = await localJson(labFiles.config);
+  if (labFiles.ownedContainer) requireOwnedLabTarget(config);
+  else if (config.host !== '192.168.21.149')
+    throw new Error('LAB_TARGET_MISMATCH');
+  credentials = await localJson(labFiles.credentials);
   connection = {
     target: { host: config.host, port: config.port },
     auth: { username: credentials.username, password: credentials.password },

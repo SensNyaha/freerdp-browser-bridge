@@ -1,5 +1,13 @@
 # Current authorized RDP lab
 
+2026-10-21 owned Linux stand: the user explicitly requested a Linux RDP
+container or personal RedOS VM. A separate loopback-only Docker XRDP stand is
+now available, without touching a personal VM. Current public JPEG/H.264
+desktop, cursor/resize/replay and connected CPU/RSS terminal cleanup pass their
+named scenarios. CLIPRDR readiness/input readback and the running active soak
+remain unaccepted. [Setup](OWNED_XRDP_LAB.md), [evidence](ITERATION_397.md).
+This endpoint is separate from the external Windows lab described below.
+
 2026-10-21 update: the named Windows Opus/200 ms three-minute observation is
 accepted by the user as steady normal sound; publication skips/discontinuities
 remain measured [390](ITERATION_390.md). The current Release headed Edge /

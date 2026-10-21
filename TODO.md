@@ -39,6 +39,15 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+An explicitly user-requested owned Linux/XRDP container now passes current
+Release/public Edge JPEG and H.264 1080p, cursor, resize/restoration and viewer
+replay. Actual connected public CPU/RSS failure scenarios pass exact terminal
+errors, token retirement and joined query/PID/runtime cleanup. Strict default
+certificate refusal passes. The Linux CLIPRDR ready/readback attempts remain
+unaccepted; the active 30-minute observation is still running. This does not
+close full platform/device/resource gates. [Evidence](docs/ITERATION_397.md),
+[owned stand](docs/OWNED_XRDP_LAB.md).
+
 The user-prepared Windows pointer page now passes actual public-viewer
 left/right/middle buttons, captured drag, both wheel directions on both axes,
 left-button blur release and held middle-button detach/reattach release.

@@ -7,6 +7,7 @@ import { chromium } from 'playwright-core';
 import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
+import { viewerLabFiles, requireOwnedLabTarget } from './viewer-lab-files.mjs';
 import {
   parsePointerReceipt,
   runWindowsPointerSmoke,
@@ -15,6 +16,7 @@ import {
 // Explicitly authorized one-session scenario: fresh focused unsaved Notepad,
 // replace both clipboards with fixed synthetic text. Never log their contents.
 const [fingerprint, receipt, ...extra] = process.argv.slice(2);
+const labFiles = viewerLabFiles(process.env.BRIDGE_LAB_PROFILE);
 const focusEditor = extra.includes('--focus-editor');
 const keyboardSmoke = extra.includes('--keyboard-smoke');
 const pointerSmoke = extra.includes('--pointer-smoke');
@@ -78,7 +80,7 @@ const privateJson = async (name) => {
   let file;
   const bytes = Buffer.alloc(8193);
   try {
-    file = await open(resolve('.local-tests', name), 'r');
+    file = await open(resolve(name), 'r');
     const { bytesRead } = await file.read(bytes, 0, bytes.length, 0);
     if (bytesRead > 8192) throw new Error();
     return JSON.parse(
@@ -134,9 +136,13 @@ const watchdog = setTimeout(() => {
 }, 120000);
 watchdog.unref();
 try {
-  const lab = await privateJson('xrdp-lab.json');
-  requireResult(lab.host === '192.168.21.149' && (lab.port ?? 3389) === 3389);
-  const credentials = await privateJson('xrdp-lab.secrets.json');
+  const lab = await privateJson(labFiles.config);
+  if (labFiles.ownedContainer) {
+    requireOwnedLabTarget(lab);
+    requireResult(pointerSmoke);
+  } else
+    requireResult(lab.host === '192.168.21.149' && (lab.port ?? 3389) === 3389);
+  const credentials = await privateJson(labFiles.credentials);
   config = {
     target: { host: lab.host, port: lab.port ?? 3389 },
     auth: { username: credentials.username, password: credentials.password },

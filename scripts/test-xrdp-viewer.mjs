@@ -26,6 +26,7 @@ import {
 } from './windows-lab-tone.mjs';
 import { AudioResetDiagnostics } from './audio-reset-diagnostics.mjs';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
+import { viewerLabFiles, requireOwnedLabTarget } from './viewer-lab-files.mjs';
 import {
   ViewerSoak,
   soakDurationMs,
@@ -36,6 +37,7 @@ import {
 
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
+const labFiles = viewerLabFiles(process.env.BRIDGE_LAB_PROFILE);
 const mode = process.argv[3] ?? 'jpeg';
 const {
   microphoneManual,
@@ -101,13 +103,14 @@ if (nativeProfile)
   );
 const readJson = async (path) =>
   JSON.parse((await readFile(resolve(path), 'utf8')).replace(/^\uFEFF/, ''));
-const lab = await readJson('.local-tests/xrdp-lab.json');
+const lab = await readJson(labFiles.config);
+if (labFiles.ownedContainer) requireOwnedLabTarget(lab);
 if (
   tonePreview &&
   (lab.host !== '192.168.21.149' || (lab.port ?? 3389) !== 3389)
 )
   throw new Error('LAB_TONE_TARGET_REFUSED');
-const credentials = await readJson('.local-tests/xrdp-lab.secrets.json');
+const credentials = await readJson(labFiles.credentials);
 const origin = 'http://127.0.0.1:47999';
 const bearer = randomBytes(32).toString('base64url');
 const rdpDiagnostics = new LabRdpDiagnostics();
