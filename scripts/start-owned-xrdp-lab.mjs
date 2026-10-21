@@ -2,14 +2,20 @@ import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { access, mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { ownedLabDefinition } from './viewer-lab-files.mjs';
 
 // Explicitly owned local fixture. No external RDP host or personal VM is changed.
-const container = 'freerdp-bridge-owned-xrdp';
-const image = 'freerdp-bridge-xrdp-lab:397';
+const unicodeServer =
+  process.argv.length === 3 && process.argv[2] === '--unicode-server';
+const definition = ownedLabDefinition(
+  unicodeServer ? 'owned-unicode-container' : 'owned-container',
+);
+const container = definition.container;
+const image = definition.image;
 const files = [
-  '.local-tests/xrdp-container-lab.json',
-  '.local-tests/xrdp-container-lab.secrets.json',
-  '.local-tests/owned-xrdp-lab.receipt.json',
+  '.local-tests/' + definition.stem + '.json',
+  '.local-tests/' + definition.stem + '.secrets.json',
+  '.local-tests/' + definition.receipt,
 ];
 const command = (args, input, timeout = 30000) => {
   const result = spawnSync('docker', args, {
@@ -26,7 +32,8 @@ const command = (args, input, timeout = 30000) => {
 let created;
 const written = [];
 try {
-  if (process.argv.length !== 2) throw new Error('OWNED_LAB_ARGUMENTS_REFUSED');
+  if (process.argv.length !== 2 && !unicodeServer)
+    throw new Error('OWNED_LAB_ARGUMENTS_REFUSED');
   for (const path of files) {
     const exists = await access(path).then(
       () => true,
@@ -44,7 +51,14 @@ try {
   if (ignored.status !== 0 || ignored.stdout.trim().split(/\r?\n/).length !== 3)
     throw new Error('OWNED_LAB_IGNORE_REQUIRED');
   command(
-    ['build', '--tag', image, 'tests/fixtures/xrdp-lab'],
+    [
+      'build',
+      '--file',
+      definition.dockerfile,
+      '--tag',
+      image,
+      'tests/fixtures/xrdp-lab',
+    ],
     undefined,
     600000,
   );
@@ -57,10 +71,10 @@ try {
     '--name',
     container,
     '--label',
-    'freerdp-bridge.owned-lab=397',
+    'freerdp-bridge.owned-lab=' + definition.label,
     '--init',
     '--publish',
-    '127.0.0.1:3391:3389',
+    '127.0.0.1:' + definition.port + ':3389',
     '--cpus',
     '2',
     '--memory',
@@ -135,7 +149,7 @@ try {
   if (
     ports?.length !== 1 ||
     ports[0].HostIp !== '127.0.0.1' ||
-    ports[0].HostPort !== '3391' ||
+    ports[0].HostPort !== String(definition.port) ||
     inspected.Mounts.length !== 0
   )
     throw new Error('OWNED_LAB_SCOPE_INVALID');
@@ -155,7 +169,7 @@ try {
     container: created,
     image: identity,
     host: '127.0.0.1',
-    port: 3391,
+    port: definition.port,
     fingerprint: 'sha256:' + hex,
     versions,
     cpus: 2,
@@ -174,9 +188,9 @@ try {
   await json(files[1], { username: 'bridge-lab', password });
   await json(files[0], {
     host: '127.0.0.1',
-    port: 3391,
+    port: definition.port,
     purpose: 'User-authorized owned Linux XRDP fixture',
-    credentialFile: 'xrdp-container-lab.secrets.json',
+    credentialFile: definition.stem + '.secrets.json',
   });
   await json(files[2], receipt);
   console.log(JSON.stringify(receipt));

@@ -8,8 +8,10 @@ and accepted ADRs. Do not expand the current MVP delivery further.
 1. **Complete remaining core profiles and Stage 7.** Preserve the accepted
    desktop/input/audio/Clipboard regressions. Investigate a recurrent Get refusal
    using its fixed status/revision evidence; do not hide it with retries. Finish
-   repeatable XRDP Clipboard ownership, direction/quota/isolation/resource
-   matrices and additional Clipboard formats. Implement RDPDR managed drives /
+   remaining XRDP producer/server profiles after the named owned XRDP 0.10.1
+   Clipboard roundtrip [acceptance](ITERATION_404.md), along with
+   direction/quota/isolation/resource matrices and additional Clipboard formats.
+   Implement RDPDR managed drives /
    `thinclientDrives` with policy, bounded CRUD and actual remote application
    read/write/cleanup acceptance. Complete remaining audio profiles, measured
    handoff/latency gates and microphone/hardware acceptance separately.

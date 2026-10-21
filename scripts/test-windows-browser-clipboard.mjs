@@ -31,6 +31,8 @@ const labFiles = viewerLabFiles(process.env.BRIDGE_LAB_PROFILE);
 const focusEditor = extra.includes('--focus-editor');
 const keyboardSmoke = extra.includes('--keyboard-smoke');
 const ownedReceiptRead = extra.includes('--owned-clipboard-read');
+const ownedRoundtrip = extra.includes('--owned-clipboard-roundtrip');
+const ownedClipboard = ownedReceiptRead || ownedRoundtrip;
 const mvpSoak = extra.includes('--mvp-soak');
 let sourceWrites = 0;
 const notepadReadyPath = resolve('build/mvp-notepad-ready-' + process.pid);
@@ -46,6 +48,7 @@ if (
         '--keyboard-smoke',
         '--pointer-smoke',
         '--owned-clipboard-read',
+        '--owned-clipboard-roundtrip',
         '--mvp-soak',
       ].includes(flag),
   ) ||
@@ -53,6 +56,12 @@ if (
   (keyboardSmoke && pointerSmoke) ||
   (ownedReceiptRead &&
     (!labFiles.ownedContainer || extra.includes('--pointer-smoke'))) ||
+  (ownedRoundtrip &&
+    (!labFiles.ownedContainer ||
+      !focusEditor ||
+      pointerSmoke ||
+      keyboardSmoke ||
+      mvpSoak)) ||
   (mvpSoak &&
     (labFiles.ownedContainer ||
       !focusEditor ||
@@ -66,12 +75,23 @@ const { options, profile } = await viewerWorkerOptions(receipt, resolve('.'));
 options.runtimeRoot = resolve('.runtime/windows-browser-clipboard');
 const origin = 'http://127.0.0.1:47995';
 const bearer = randomBytes(32).toString('base64url');
-const sent = 'Bridge browser → Notepad\nПривет 日本語 😀\nLine 3';
-const returned = 'Bridge Notepad → browser\nОбратно 日本語 😀\nLine 3';
+const sent = ownedRoundtrip
+  ? 'Bridge browser → Tk\nПривет 日本語 😀\nLine 3'
+  : 'Bridge browser → Notepad\nПривет 日本語 😀\nLine 3';
+const returned = ownedRoundtrip
+  ? 'Bridge Tk → browser\nОбратно 日本語 😀\nLine 3'
+  : 'Bridge Notepad → browser\nОбратно 日本語 😀\nLine 3';
 const report = {
   actualRdp: true,
   browserClipboardMocked: false,
   headedEdge: true,
+  remoteApplication: labFiles.ownedContainer
+    ? 'owned-tk'
+    : pointerSmoke
+      ? 'prepared-pointer-page'
+      : 'windows-notepad',
+  browserToApplication: false,
+  applicationToBrowser: false,
   browserToNotepad: false,
   notepadToBrowser: false,
   permissionDenied: false,
@@ -178,8 +198,8 @@ watchdog.unref();
 try {
   const lab = await privateJson(labFiles.config);
   if (labFiles.ownedContainer) {
-    requireOwnedLabTarget(lab);
-    requireResult(pointerSmoke);
+    requireOwnedLabTarget(lab, process.env.BRIDGE_LAB_PROFILE);
+    requireResult(pointerSmoke || ownedRoundtrip);
   } else
     requireResult(lab.host === '192.168.21.149' && (lab.port ?? 3389) === 3389);
   const credentials = await privateJson(labFiles.credentials);
@@ -213,7 +233,7 @@ try {
     sessions: {
       workerFactory: (limits) => {
         backend = new NativeSessionWorker(options, limits);
-        if (focusEditor) {
+        if (focusEditor && !ownedClipboard) {
           const capture = backend.captureFrame.bind(backend);
           let paused = false,
             active;
@@ -248,7 +268,7 @@ try {
         const read = backend.readClipboardText.bind(backend);
         backend.readClipboardText = (revision) => {
           ++report.reads;
-          if (!mvpSoak) return read(revision);
+          if (!mvpSoak && !ownedRoundtrip) return read(revision);
           report.lastRead = {
             status: 'pending',
             requestedRevision: revision.toString(),
@@ -447,6 +467,10 @@ try {
     await canvas.click({ position: { x: box.width / 2, y: box.height / 2 } });
     await delay(200);
   }
+  if (ownedRoundtrip) {
+    phase = 'focus-prepared-owned-editor';
+    await chord('F3');
+  }
   if (pointerSmoke) {
     phase = 'pointer-smoke';
     const snapshot = async () => {
@@ -465,7 +489,10 @@ try {
       );
     };
     report.pointer = ownedReceiptRead
-      ? { fixedReceipt: await snapshot() }
+      ? {
+          fixedReceipt: await snapshot(),
+          repeatedReceipt: await snapshot(),
+        }
       : await runWindowsPointerSmoke({
           page,
           snapshot,
@@ -510,7 +537,7 @@ try {
   } else {
     phase = 'local-paste';
     const beforeLocalPasteWrites = writes;
-    if (mvpSoak)
+    if (mvpSoak || ownedRoundtrip)
       await page.evaluate((text) => navigator.clipboard.writeText(text), sent);
     await page.locator('[data-clipboard=paste]').click();
     await page.waitForFunction(() =>
@@ -527,7 +554,7 @@ try {
     );
     requireResult(writes === beforeLocalPasteWrites);
     report.noSendDuringLocalPaste = true;
-    phase = 'browser-to-notepad';
+    phase = ownedRoundtrip ? 'browser-to-tk' : 'browser-to-notepad';
     await page.locator('[data-clipboard=send]').click();
     phase = 'browser-offer-ack';
     await wait(
@@ -536,23 +563,27 @@ try {
         source.localAccepted &&
         !source.localPending,
     );
-    phase = 'browser-to-notepad-paste';
+    phase = ownedRoundtrip ? 'browser-to-tk-paste' : 'browser-to-notepad-paste';
     if (mvpSoak) await chord('ControlLeft+KeyA');
     await chord('ControlLeft+KeyV');
     ownDocument = true;
-    phase = 'browser-to-notepad';
+    phase = ownedRoundtrip ? 'browser-to-tk' : 'browser-to-notepad';
     await copyRemoteAndRead(sent);
-    report.browserToNotepad = true;
-    phase = 'notepad-to-browser';
+    report.browserToNotepad = !ownedRoundtrip;
+    report.browserToApplication = true;
+    phase = ownedRoundtrip ? 'tk-to-browser' : 'notepad-to-browser';
     // Select only our just-verified document, then use the public Unicode input UI.
-    await chord('ControlLeft+KeyA');
-    await page.locator('#unicode-text').fill(returned);
-    await page.locator('#text-input button').click();
-    await page.waitForFunction(
-      () =>
-        document.querySelector('#text-input [role=status]').textContent ===
-        'Текст отправлен',
-    );
+    if (ownedRoundtrip) await chord('F4');
+    else {
+      await chord('ControlLeft+KeyA');
+      await page.locator('#unicode-text').fill(returned);
+      await page.locator('#text-input button').click();
+      await page.waitForFunction(
+        () =>
+          document.querySelector('#text-input [role=status]').textContent ===
+          'Текст отправлен',
+      );
+    }
     await copyRemoteAndRead(returned);
     await page.locator('[data-clipboard=copy]').click();
     await page.waitForFunction(
@@ -568,7 +599,8 @@ try {
         returned,
       ),
     );
-    report.notepadToBrowser = true;
+    report.notepadToBrowser = !ownedRoundtrip;
+    report.applicationToBrowser = true;
     if (mvpSoak) {
       phase = 'mvp-soak';
       report.soak = await runMvpBrowserSoak({
@@ -780,7 +812,7 @@ try {
     };
   if (mvpSoak && page && !page.isClosed())
     report.lastAudio = await readViewerAudioObservation(page).catch(() => null);
-  if (mvpSoak && page && !page.isClosed())
+  if ((mvpSoak || ownedRoundtrip) && page && !page.isClosed())
     report.clipboardUiResult = await page
       .evaluate((statuses) => {
         const status = document.querySelector(
@@ -795,7 +827,7 @@ try {
         return 'other';
       }, clipboardStatuses)
       .catch(() => 'unavailable');
-  if (!mvpSoak && !ownedReceiptRead && focusEditor && state === 'connected') {
+  if (!mvpSoak && !ownedClipboard && focusEditor && state === 'connected') {
     // At most one actual RDP frame, only under the explicit diagnostic permission.
     const frame = await captureFailureFrame().catch(() => undefined);
     if (frame?.jpeg && frame.jpeg.length <= 16777216) {
@@ -825,7 +857,7 @@ try {
   );
   if (!report.runtimeEmpty) process.exitCode = 1;
   report.nativeState = state;
-  if (mvpSoak && backend?.pid) {
+  if ((mvpSoak || ownedRoundtrip) && backend?.pid) {
     report.pidRetired = false;
     try {
       process.kill(backend.pid, 0);

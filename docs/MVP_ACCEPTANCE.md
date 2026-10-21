@@ -23,11 +23,15 @@ operation. [Run the tested build](MVP_RUNBOOK.md).
 | 1080p, 30-minute active observation after fixes | The combined-correction worker passes active owned-XRDP H.264 1080p for 30 minutes / 61 observations, bounded queues/RSS, resize/replay and cleanup [401](ITERATION_401.md), with audio/Clipboard off. The separate actual Windows joint H.264/Opus/input/Clipboard gate passes 30 minutes / 59 observations and cleanup [403](ITERATION_403.md). The earlier static Windows [388](ITERATION_388.md), incomplete 26.14-minute attempt [398](ITERATION_398.md), short two-account coexistence [398](ITERATION_398.md), and historical XRDP [182](ITERATION_182.md), [220](ITERATION_220.md) retain their scopes. |
 | Reproducible supported builds | Combined Windows linked Release CTest 34/34 passes [401](ITERATION_401.md); Windows Node 891 / 61 skips and Linux GCC 12 linked Release + IPC addon CTest 35/35, Node 870 / 82 skips pass [402](ITERATION_402.md), with exact scope/outer-tool discrepancy retained. Native source matches all 353 tested files [403](ITERATION_403.md). Original Release outputs/settings and pins stay unchanged. Earlier [391](ITERATION_391.md), [395](ITERATION_395.md) retain their evidence. Wider build matrices remain V1 work. |
 
-Owned XRDP CLIPRDR now reaches ready after bounded zero-trailer normalization.
-One prepared Tk → CLIPRDR → public Edge Get read passes; a subsequent
-fresh-connection re-offer does not produce a new offer and remains open.
-This does not replace the accepted Windows bidirectional chain or establish
-repeatable XRDP clipboard ownership across sessions. [Exact evidence](ITERATION_400.md).
+After stable MVP `v0.1.0`, a separate feature branch accepts the named owned
+XRDP 0.10.1 / Windows Release producer / headed Edge Clipboard API ↔ Tk
+Unicode/emoji/multiline chain: two new RDP connections, repeated Copy/Get,
+actual permission refusal, revoke and PID/runtime cleanup. Full `pnpm check`
+passes 900 / 61 skips / 961 total. The Tk fixture explicitly releases its
+old CLIPBOARD owner before ordinary Copy. This does not repair old XRDP 0.9.x
+surrogate conversion or accept every Linux producer/server/profile.
+[Current evidence](ITERATION_404.md); the earlier single-read and failed
+fresh-connection control remain in [400](ITERATION_400.md).
 
 Connection-error evidence includes actual strict certificate refusal
 [344](ITERATION_344.md), approved session-only activation [346](ITERATION_346.md)

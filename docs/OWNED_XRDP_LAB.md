@@ -77,10 +77,58 @@ This mode uses F2/Ctrl+C and the public Get action, performs no OS Clipboard API
 operation or native offer, and refuses the external/default lab. It does not
 accept arbitrary application clipboard contents or both transfer directions.
 
+## Unicode-capable peer and complete Clipboard check
+
+The legacy XRDP 0.9.21.1 peer has an upstream surrogate-pair defect. Its
+successful scalar/BMP observations do not accept full Unicode with emoji.
+An independent Debian 13/XRDP 0.10.1 fixture supplies that acceptance alongside
+the existing server. Bridge dependency pins and Release artifacts are retained;
+the prepared application Copy hook is described below:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe scripts/start-owned-xrdp-lab.mjs --unicode-server
+$unicode = Get-Content .local-tests/owned-xrdp-unicode-lab.receipt.json -Raw | ConvertFrom-Json
+$env:BRIDGE_LAB_PROFILE = 'owned-unicode-container'
+& .\.tools\node-v24.21.0-win-x64\node.exe scripts/test-windows-browser-clipboard.mjs $unicode.fingerprint build/native-clean-RKqCuA/receipt.json --focus-editor --owned-clipboard-roundtrip
+Remove-Item Env:BRIDGE_LAB_PROFILE
+```
+
+This uses container `freerdp-bridge-owned-xrdp-unicode`, only
+`127.0.0.1:3392`, and separate ignored `xrdp-unicode-lab.json`,
+`xrdp-unicode-lab.secrets.json`, `owned-xrdp-unicode-lab.receipt.json`.
+Resource/no-host-mount constraints and private-stdin account provisioning match
+the legacy stand. The fixed selector rejects crossed ports/credential aliases;
+the old X11 pointer/recovery observers explicitly refuse this new profile.
+
+F3 opens the prepared application's own empty Text document. Browser local
+Paste / Send and application Ctrl+V / Ctrl+A / Ctrl+C verify actual consumption
+and exact CLIPRDR Get. F4 prepares a different fixed Unicode application
+document for its ordinary Copy / Get / local OS Copy/readback. It does not
+inject a clipboard or establish RDP Unicode keyboard input support. Both paths
+retain Cyrillic/Japanese/emoji/multiline comparisons and the finite item cap.
+Actual browser permission refusal, revoke, viewer clearing and PID/runtime
+cleanup follow. Failure screenshots and arbitrary remote text logging are off.
+
+Tk keeps clipboard ownership across copies. The fixture releases CLIPBOARD
+immediately before its ordinary Copy binding when fixture text is selected,
+so XFixes bridges receive a fresh owner notification. No polling/readback loop
+is added to Bridge. F2 hides the Text document and retains its fixed pointer
+receipt behavior. The read-only `--owned-clipboard-read` mode now checks two
+successive Copy/Get operations. [Measured controls/results](ITERATION_404.md).
+
+The two real Unicode roundtrips and a fresh read-only connection pass on the
+new peer; full feature-branch `pnpm check` passes 900 / 61 skips / 961 total
+before merge. Native code and production TypeScript remain unchanged.
+The named Windows scenario is unchanged. These observations do not repair
+old XRDP 0.9.x or accept every Linux producer/server/format/quota profile.
+
+## Stopping a stand
+
 Stop the owned stand when finished:
 
 ```powershell
 docker stop freerdp-bridge-owned-xrdp
+docker stop freerdp-bridge-owned-xrdp-unicode
 ```
 
 The container and local account files remain available for an ordinary Docker

@@ -9,6 +9,8 @@ canvas = tk.Canvas(root, background='#d9efff', highlightthickness=0, scrollregio
 canvas.pack(fill='both', expand=True)
 result = tk.Entry(root)
 result.pack(fill='x')
+editor = tk.Text(root, wrap='none', font=('DejaVu Sans', 14), undo=False)
+clipboard_returned = 'Bridge Tk → browser\nОбратно 日本語 😀\nLine 3'
 for y in range(0, 4096, 256):
     for x in range(0, 4096, 256):
         canvas.create_rectangle(x, y, x + 255, y + 255, fill='#cfe8ff' if (x + y) // 256 % 2 else '#ffe4b8', outline='#536980')
@@ -69,11 +71,47 @@ def motion(event):
         drag = (event.x, event.y, drag[2], drag[3])
 
 def snapshot(event):
+    editor.place_forget()
     result.delete(0, 'end')
     result.insert(0, json.dumps(state, separators=(',', ':')))
     result.focus_set()
     result.selection_range(0, 'end')
     return 'break'
+
+def prepare_copy(event):
+    # Tk 8.6 keeps CLIPBOARD ownership across copies, so XFixes bridges may
+    # never see the second copy. Release it before the normal Entry class
+    # binding copies the explicitly selected fixture text. PRIMARY stays.
+    selected = ((event.widget is result and result.selection_present()) or
+                (event.widget is editor and bool(editor.tag_ranges('sel'))))
+    if selected:
+        root.selection_clear(selection='CLIPBOARD')
+
+result.bind('<<Copy>>', prepare_copy)
+editor.bind('<<Copy>>', prepare_copy)
+
+def select_editor(event=None):
+    editor.tag_add('sel', '1.0', 'end-1c')
+    return 'break'
+
+def show_editor(event):
+    editor.delete('1.0', 'end')
+    editor.place(relx=.1, rely=.1, relwidth=.8, relheight=.7)
+    editor.focus_set()
+    return 'break'
+
+def prepare_returned(event):
+    # Fixed application document, not a clipboard injection or an RDP Unicode
+    # input test. The normal Copy binding must still publish it through X11.
+    editor.delete('1.0', 'end')
+    editor.insert('1.0', clipboard_returned)
+    editor.focus_set()
+    select_editor()
+    return 'break'
+
+editor.bind('<Control-a>', select_editor)
+root.bind('<F3>', show_editor)
+root.bind('<F4>', prepare_returned)
 canvas.bind('<ButtonPress>', press)
 canvas.bind('<ButtonRelease>', release)
 canvas.bind('<Motion>', motion)

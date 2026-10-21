@@ -12,4 +12,5 @@ Certificate verification is strict by default. Device access is policy controlle
 Tests must distinguish native lifecycle integration, fake-worker tests and actual RDP/device integration.
 Check TODO items only after their acceptance conditions pass. Record test evidence and commit references.
 Make focused commits after verified working blocks. Do not claim unsupported or untested capabilities.
+Develop each feature on its own branch. Merge it into the shared branch only after its acceptance conditions and required checks pass.
 Run pnpm check and native CTest for touched foundation code. Update docs when wire contracts change.

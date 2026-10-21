@@ -1,8 +1,10 @@
 # TODO — implementation plan
 
-Current delivery priority: [practical MVP acceptance](docs/MVP_ACCEPTANCE.md).
-It preserves this full v1 plan while prioritizing actual browser clipboard,
-stable audible output and desktop/lifecycle acceptance.
+The named [practical MVP](docs/MVP_ACCEPTANCE.md) is released as **0.1.0**,
+tag `v0.1.0`. Current development follows this remaining full V1 plan while
+preserving the accepted browser clipboard, audible output and desktop/lifecycle
+profiles. Features use separate branches and merge only after their acceptance
+checks pass; [version policy](docs/VERSIONING.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
@@ -24,7 +26,7 @@ Current stage acceptance:
 | 4 — graphics | IN PROGRESS | Remaining GFX/resource/interactive cases, broader Windows server profiles and investigation of an intermittent Windows soak failure; Windows/Linux single-viewer XRDP 30-minute observations pass |
 | 5 — input | IN PROGRESS | Actual keyboard/layout/IME, buttons/wheel/touch and no-stuck-input acceptance |
 | 6 — audio | IN PROGRESS | User accepts named current Release three-minute Windows Opus/200 ms listening; numeric publication stalls/discontinuities, other profiles, recording, broader ready-source recovery and measured LAN queue target remain |
-| 7 — clipboard/drives | IN PROGRESS | Named headed browser/host Clipboard API ↔ Windows Notepad Unicode roundtrip, actual permission refusal and combined viewer/PID/runtime cleanup pass; wider direction/quota/isolation/formats and managed-drive CRUD remain |
+| 7 — clipboard/drives | IN PROGRESS | Named headed browser/host Clipboard API ↔ Windows Notepad and owned XRDP 0.10.1/Tk Unicode roundtrips, actual permission refusal and joined viewer/PID/runtime cleanup pass; wider producer/server/direction/quota/isolation/formats and managed-drive CRUD remain |
 | 8 — devices | TODO | Implementation and per-advertised-device integration matrix |
 | 9 — advanced settings | IN PROGRESS | Remaining Gateway/proxy/reconnect/channel settings and broader IP/appearance/platform integration |
 | 10 — release | IN PROGRESS | Deployment/installers, resource/network/concurrency soak and complete regression |
@@ -38,6 +40,15 @@ All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
+
+The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
+CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
+directions across two new RDP connections, repeated server Copy/Get, actual
+permission refusal, revoke and joined PID/runtime cleanup. A prepared Tk Copy
+hook supplies fresh ownership notifications; old XRDP 0.9.x surrogate handling
+is not repaired. Full feature-branch `pnpm check` passes 900 / 61 skips /
+961 total, with unchanged production/native inputs. Wider Stage 7 remains open.
+[Evidence](docs/ITERATION_404.md).
 
 The named practical MVP joint Windows gate now passes: actual public Edge /
 Release H.264 1080p, Opus/200 ms, both Clipboard API/Notepad directions and
@@ -1478,6 +1489,17 @@ compatibility profile; it does not establish total latency or waive the ordinary
 profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 7 — clipboard and managed drives
+
+- [x] DONE for named owned XRDP 0.10.1/Tk Unicode clipboard slice — Windows
+  Release producer and real headed Edge Clipboard API pass Cyrillic/Japanese/
+  emoji/multiline text both ways under a 1,024-byte cap. Two new RDP connections
+  reuse the prepared Tk process; repeated server-origin Copy/Get also passes
+  before any native client write. Actual browser permission refusal, no-format
+  revoke, viewer clearing and joined PID/runtime cleanup pass. Full feature
+  check: 900 / 61 skips / 961 total. The fixture clears its old CLIPBOARD owner
+  before ordinary Copy. Old XRDP 0.9.x conversion, wider Linux producer/server
+  profiles, direction/quota/isolation/formats and drives remain separate.
+  [Evidence](docs/ITERATION_404.md).
 
 - [x] DONE for named headed Edge/Windows Notepad Unicode clipboard slice —
   Real Browser Clipboard API, public API/control, CLIPRDR and application

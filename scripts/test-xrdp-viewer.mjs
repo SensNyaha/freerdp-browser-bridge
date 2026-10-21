@@ -71,7 +71,7 @@ const ownedPointerTest = process.argv[4] === '--owned-pointer-test';
 const ownedRecoveryTest = process.argv[4] === '--owned-recovery-test';
 if (
   (ownedPointerTest || ownedHeldLossTest || ownedRecoveryTest) &&
-  !labFiles.ownedContainer
+  process.env.BRIDGE_LAB_PROFILE !== 'owned-container'
 )
   throw new Error('LAB_OWNED_TARGET_REFUSED');
 const quality = qualityTest
@@ -122,7 +122,8 @@ if (nativeProfile)
 const readJson = async (path) =>
   JSON.parse((await readFile(resolve(path), 'utf8')).replace(/^\uFEFF/, ''));
 const lab = await readJson(labFiles.config);
-if (labFiles.ownedContainer) requireOwnedLabTarget(lab);
+if (labFiles.ownedContainer)
+  requireOwnedLabTarget(lab, process.env.BRIDGE_LAB_PROFILE);
 if (
   tonePreview &&
   (lab.host !== '192.168.21.149' || (lab.port ?? 3389) !== 3389)
