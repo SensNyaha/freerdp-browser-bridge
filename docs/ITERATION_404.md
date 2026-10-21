@@ -118,3 +118,7 @@ it is not rerun or represented as new Linux-producer acceptance. Native code,
 production TypeScript, dependency pins, wire contracts and Release flags are
 unchanged. This completes the named XRDP Clipboard slice, while full Stage 7
 direction/quota/isolation/resource/formats and managed drives remain open.
+
+Accepted feature commit: `6d3467e27055f45129bc4a7d7702df1426ea2227`.
+Stable MVP baseline: `v0.1.0` / `9d88694984d03af63456997810cbb16e730dff6a`;
+the XRDP acceptance is subsequent unreleased work, not part of that tag.
