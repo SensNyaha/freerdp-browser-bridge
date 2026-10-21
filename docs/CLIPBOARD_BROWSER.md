@@ -1,5 +1,14 @@
 # Explicit reference browser clipboard
 
+Current actual evidence: [Iteration 385](ITERATION_385.md) verifies a named
+headed Edge / public API / Windows Notepad small-text chain in both directions,
+including real local Clipboard API and Cyrillic/Japanese/emoji/multiline
+readback. Real browser permission refusal passes separately without RDP. The
+overall lab helper's original permission-check failure and pending combined
+document/viewer cleanup are retained; this does not accept the complete Stage 7
+direction/quota/isolation/resource or other-format matrix. Earlier fixture-only
+statements below retain their historical scope.
+
 Iteration 238, 2026-10-16. Implements the reference client portion of
 SPECIFICATION §2.7 over [current RWC1 control transfer](CLIPBOARD_CONTROL.md) and
 [controller/native ownership](CLIPBOARD_SESSION.md). Text selection is opt-in;

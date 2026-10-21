@@ -1,5 +1,30 @@
 # Building the foundation
 
+Current delivery criteria and evidence boundaries are in
+[practical MVP acceptance](MVP_ACCEPTANCE.md).
+
+For a separately authorized real Browser Clipboard API ↔ Windows Notepad
+check, prepare a fresh empty unsaved editor with input focus, then disconnect
+mstsc without logging off. The headed Edge helper replaces both clipboards
+with fixed Unicode/multiline test text and uses the ordinary viewer buttons
+and public control input. Pass the exact certificate fingerprint approved for
+that one session and an existing verified linked Windows native receipt:
+
+```powershell
+& .\.tools\node-v24.21.0-win-x64\node.exe scripts/test-windows-browser-clipboard.mjs $fingerprint build/native-clean-4ZhORq/receipt.json
+```
+
+The helper compares text without logging it, checks actual browser permission
+refusal, clears only its verified test document after success, detaches and
+joins native/runtime cleanup. It does not save or close the remote document.
+A failure may leave synthetic text in the prepared document; its fixed result
+reports that possibility. Do not rerun under an already consumed one-session
+authorization. Browser directions/quota fixtures are separate evidence.
+The optional `--focus-editor` additionally requires approval for a single center
+click in the prepared editor and one ignored native RDP frame on failure. It
+does not search the desktop or repeatedly capture frames. A reconnect can change
+remote input focus even when the editor was focused before mstsc disconnected.
+
 For operator-assisted actual Windows Notepad Unicode/input/clipboard checks,
 use the [application smoke](WINDOWS_APPLICATION_SMOKE.md). It requires an empty
 user-prepared Notepad, fixed test data and phase-by-phase native JPEG inspection;

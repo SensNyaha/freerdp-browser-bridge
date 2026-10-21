@@ -1,0 +1,37 @@
+# Practical MVP acceptance
+
+2026-10-21. This is the current delivery subset of SPECIFICATION and TODO, under
+the user's revised priority: working browser desktop, clipboard and audio first.
+The full v1 requirements and historical evidence remain in [TODO](../TODO.md).
+One primary monitor, orientation 0 and 100% scale follow
+[ADR-011](adr/ADR-011-single-display-100-percent.md).
+
+| Required behavior                                                                        | Current evidence and remaining acceptance                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API and browser Windows desktop, H.264/JPEG, cursor, resize and attachment replay | Named Windows browser checks pass [352](ITERATION_352.md), [353](ITERATION_353.md). Current combined MVP regression remains to run.                                                                                                                                                                                                                                                                                                                                     |
+| XRDP desktop through the same architecture                                               | Historical actual browser checks [202](ITERATION_202.md) and Linux producer observation [220](ITERATION_220.md) pass. The current endpoint is Windows; a current XRDP repeat needs a separate available endpoint.                                                                                                                                                                                                                                                       |
+| Keyboard, mouse and safe release                                                         | Named private Notepad Unicode/physical-key/left-button checks pass [303](ITERATION_303.md). Public browser application input, wheel/drag and held-input disconnect still need actual acceptance.                                                                                                                                                                                                                                                                        |
+| **P0: Browser Clipboard API ↔ public control ↔ CLIPRDR ↔ Notepad**                    | Actual headed Edge/Windows small Unicode/multiline exchange passes both directions, including real local Clipboard API read/write and application copy readback [385](ITERATION_385.md). A fixed editor-focus click was required. Actual browser permission refusal passes separately without RDP. Successful document clearing and the complete viewer-cleanup sequence still need combined confirmation; direction/quota/isolation fixtures remain separate evidence. |
+| **P0: stable audible output without regular interruptions**                              | Audible output had interruptions [367](ITERATION_367.md), [370](ITERATION_370.md). Scheduling correction [371](ITERATION_371.md) passes its regression, but the actual corrected-worker attempt [373](ITERATION_373.md) received no formats/packets. Stable output is **not accepted**. Use existing counters for the next actual active-source test.                                                                                                                   |
+| Lifecycle and bounded resource ownership                                                 | Current startup/deadline [383](ITERATION_383.md) and unconfirmed-cleanup capacity [384](ITERATION_384.md) checks pass, including actual unconnected native controls. Connected failure cleanup and combined MVP resource behavior remain to verify.                                                                                                                                                                                                                     |
+| 1080p, 30-minute combined observation after fixes                                        | Historical named XRDP observations [182](ITERATION_182.md), [220](ITERATION_220.md) remain scoped evidence. They do not accept the current Windows clipboard/audio MVP.                                                                                                                                                                                                                                                                                                 |
+| Reproducible supported builds                                                            | Current Windows linked Debug output is verified [378](ITERATION_378.md); Release profile and dependency pins stay unchanged. Current Linux execution is blocked by unavailable local Docker daemon/access; historical Linux build/runtime evidence remains valid within its documented scope.                                                                                                                                                                           |
+
+Next: finish clipboard cleanup confirmation;
+then active-source audio with the existing diagnostics and the smallest needed
+correction; real input/release checks; then one combined 30-minute observation.
+Only explicitly prepared lab actions are permitted. Comparison results contain
+no clipboard text, credentials or arbitrary remote application content.
+
+The existing [clipboard UI](CLIPBOARD_BROWSER.md) deliberately separates local
+paste, send, remote get and local copy. Opt-in directions, item limits,
+16 MiB chunking, revoke, ownership and permission lifetime remain required;
+fixture coverage must not be described as real OS/application acceptance.
+[ADR-012](adr/ADR-012-audio-compatibility-buffer.md) preserves PCM/Opus and
+120/200 ms profiles without waiving audible quality or measured queue targets.
+
+Drives, other clipboard formats, devices, Gateway/proxy/RemoteApp, general RDP
+reconnect, complete hardware/platform matrices and large connected-session load
+remain full v1 work. They are not blockers for this MVP, and are not removed or
+marked accepted. No new diagnostic subsystem, broad security investigation,
+dependency change or Release reconfiguration is part of this delivery.

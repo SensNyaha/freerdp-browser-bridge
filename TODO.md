@@ -1,5 +1,9 @@
 # TODO — implementation plan
 
+Current delivery priority: [practical MVP acceptance](docs/MVP_ACCEPTANCE.md).
+It preserves this full v1 plan while prioritizing actual browser clipboard,
+stable audible output and desktop/lifecycle acceptance.
+
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
 DONE applies to the named component and its explicit platform/test scope. A
@@ -1303,6 +1307,16 @@ compatibility profile; it does not establish total latency or waive the ordinary
 profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 7 — clipboard and managed drives
+
+- [x] DONE for named headed Edge/Windows Notepad Unicode clipboard slice —
+  Real Browser Clipboard API, public API/control, CLIPRDR and application
+  paste/copy readback pass both ways with Cyrillic/Japanese/emoji and three
+  lines under a 1,024-byte cap. One prepared-editor focus click is required.
+  No-format revoke and empty runtime pass; actual browser permission refusal
+  passes separately without RDP. The overall helper still fails its original
+  permission-test step; final combined document/viewer cleanup, actual direction /
+  quota / isolation matrix and full Stage 7 remain open.
+  [Evidence and retained failed runs](docs/ITERATION_385.md).
 
 - [x] DONE for named Windows Notepad Unicode roundtrip — Explicit private
   Node/native bidirectional CLIPRDR selection with 1,024-byte cap passes actual
