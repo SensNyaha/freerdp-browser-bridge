@@ -6,7 +6,14 @@ by capability-gated private `WorkerProcess` (Iteration 232). Public/browser
 selection is not yet enabled.
 
 `ClipboardIngress` stages the eight-byte CLIPRDR header in fixed storage before
-allocating a fragmented body. The complete outer length must match `dataLen`.
+allocating a fragmented body. The complete outer length must match `dataLen`,
+with one fixed compatibility case: XRDP 0.9.21.1 appends exactly four zero bytes
+outside the declared body to its CLIPRDR PDUs. Every trailer byte is checked
+before forwarding only the declared record. Types, flags and body bounds remain
+unchanged; other trailer lengths or nonzero bytes are refused. The original
+outer 16 MiB + 8 byte cap, allocation limits, fragment count and deadline remain.
+An over-quota fragmented response still allocates no body; it checks any trailer
+before completing the refusal. The trailer is never counted as application data.
 Data responses have an absolute 16 MiB wire cap and a configured 1..16 MiB item
 quota; format/capability controls have a separate 64 KiB cap. Unsupported file/lock/temp-directory records are
 refused. A whole message is borrowed without staging allocation. Fragmented

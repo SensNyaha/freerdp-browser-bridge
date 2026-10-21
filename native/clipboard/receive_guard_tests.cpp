@@ -1,6 +1,38 @@
 #include "test_host.hpp"
 using namespace bridge::clipboard;
 using namespace bridge::clipboard::test;
+TEST_CASE("Actual pinned CLIPRDR receives a normalized XRDP monitor-ready trailer") {
+  auto ready = record(1, 0);
+  ready.resize(12, 0);
+  for (std::size_t split = 1; split < ready.size(); ++split) {
+    Host h;
+    REQUIRE(h.send(std::span(ready).first(split), CHANNEL_FLAG_FIRST, ready.size()));
+    REQUIRE(h.monitors == 0);
+    REQUIRE(h.send(std::span(ready).subspan(split), CHANNEL_FLAG_LAST, ready.size()));
+    REQUIRE(h.monitors == 1);
+    REQUIRE(h.guard->stats().allocated == 0);
+    REQUIRE(getChannelError(h.context.get()) == CHANNEL_RC_OK);
+  }
+}
+TEST_CASE("Actual pinned CLIPRDR receives XRDP padded capabilities formats and Unicode data") {
+  Host h;
+  const auto send = [&](auto packet) {
+    packet.resize(packet.size() + 4, 0);
+    REQUIRE(h.send(packet));
+  };
+  send(record(7, 0, long_caps));
+  send(record(1, 0));
+  send(record(2, 0, {13, 0, 0, 0, 0, 0}));
+  REQUIRE(h.capabilities == 1);
+  REQUIRE(h.monitors == 1);
+  REQUIRE(h.lists == 1);
+  REQUIRE(h.format_count == 1);
+  const std::vector<BYTE> text{0x16, 4, 0x3d, 0xd8, 0, 0xde, 0, 0};
+  send(record(5, 1, text));
+  REQUIRE(h.responses == 1);
+  REQUIRE(h.samples == text);
+  REQUIRE(getChannelError(h.context.get()) == CHANNEL_RC_OK);
+}
 TEST_CASE("Actual pinned CLIPRDR receives guarded capabilities monitor and bounded long names") {
   Host h;
   REQUIRE(h.send(record(7, 0, long_caps)));

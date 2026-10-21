@@ -18,10 +18,15 @@ void increment(std::uint64_t &v) noexcept {
     ++v;
 }
 bool header(std::span<const std::uint8_t> b, std::size_t total, std::size_t maximum) noexcept {
-  if (!maximum || maximum > max_item_bytes || b.size() < 8 || total < 8 || u32(b, 4) != total - 8)
+  if (!maximum || maximum > max_item_bytes || b.size() < 8 || total < 8 ||
+      total > max_item_bytes + 8)
     return false;
   const auto kind = u16(b, 0), flags = u16(b, 2);
-  const auto size = total - 8;
+  const auto size = u32(b, 4);
+  // XRDP 0.9.21.1 appends one zero DWORD outside dataLen. Body bounds still
+  // use the declared size; inspect_pdu checks every trailer byte before use.
+  if (size != total - 8 && (total < 12 || size != total - 12))
+    return false;
   switch (kind) {
   case 1:
     return !flags && !size; // Monitor Ready
@@ -45,7 +50,10 @@ std::optional<PduInfo> inspect_pdu(std::span<const std::uint8_t> b, bool long_na
   if (!header(b, b.size(), maximum))
     return {};
   const auto kind = u16(b, 0);
-  const auto body = b.subspan(8);
+  const auto body = b.subspan(8, u32(b, 4));
+  const auto trailer = b.subspan(8 + body.size());
+  if (!std::all_of(trailer.begin(), trailer.end(), [](auto v) { return v == 0; }))
+    return {};
   if (kind == 7) {
     const auto count = u16(body, 0);
     if (!count || count > 16 || u16(body, 2))
@@ -152,7 +160,8 @@ bool ClipboardIngress::dispatch(std::span<const std::uint8_t> b, bool quota_refu
   busy_ = true;
   bool accepted = false;
   try {
-    accepted = forward_(quota_refused ? std::span<const std::uint8_t>(refused) : b);
+    const auto normalized = b.first(8 + u32(b, 4));
+    accepted = forward_(quota_refused ? std::span<const std::uint8_t>(refused) : normalized);
   } catch (...) {
     (void)fail();
   }
@@ -192,7 +201,7 @@ bool ClipboardIngress::receive(SvcFragment f, std::uint64_t now) noexcept {
     if (used_ == 8) {
       if (!header(header_, total_, maximum_))
         return fail();
-      discarding_ = u16(header_, 0) == 5 && u16(header_, 2) == 1 && total_ - 8 > maximum_;
+      discarding_ = u16(header_, 0) == 5 && u16(header_, 2) == 1 && u32(header_, 4) > maximum_;
       if (!discarding_) {
         try {
           bytes_.resize(total_);
@@ -206,6 +215,16 @@ bool ClipboardIngress::receive(SvcFragment f, std::uint64_t now) noexcept {
   if (!remaining.empty()) {
     if (!discarding_)
       std::copy(remaining.begin(), remaining.end(), bytes_.begin() + used_);
+    else {
+      // Even an over-quota drain must validate padding before completing a
+      // refusal. Never store or expose its body; inspect only trailer bytes.
+      const auto end = 8 + static_cast<std::size_t>(u32(header_, 4));
+      if (used_ + remaining.size() > end) {
+        const auto trailer = remaining.subspan(end > used_ ? end - used_ : 0);
+        if (!std::all_of(trailer.begin(), trailer.end(), [](auto v) { return v == 0; }))
+          return fail();
+      }
+    }
     used_ += remaining.size();
   }
   if (!f.last)

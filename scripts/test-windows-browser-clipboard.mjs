@@ -19,16 +19,24 @@ const [fingerprint, receipt, ...extra] = process.argv.slice(2);
 const labFiles = viewerLabFiles(process.env.BRIDGE_LAB_PROFILE);
 const focusEditor = extra.includes('--focus-editor');
 const keyboardSmoke = extra.includes('--keyboard-smoke');
-const pointerSmoke = extra.includes('--pointer-smoke');
+const ownedReceiptRead = extra.includes('--owned-clipboard-read');
+const pointerSmoke = extra.includes('--pointer-smoke') || ownedReceiptRead;
 if (
   process.platform !== 'win32' ||
   new Set(extra).size !== extra.length ||
   extra.some(
     (flag) =>
-      !['--focus-editor', '--keyboard-smoke', '--pointer-smoke'].includes(flag),
+      ![
+        '--focus-editor',
+        '--keyboard-smoke',
+        '--pointer-smoke',
+        '--owned-clipboard-read',
+      ].includes(flag),
   ) ||
   ((keyboardSmoke || pointerSmoke) && !focusEditor) ||
   (keyboardSmoke && pointerSmoke) ||
+  (ownedReceiptRead &&
+    (!labFiles.ownedContainer || extra.includes('--pointer-smoke'))) ||
   !/^sha256:[0-9a-f]{64}$/.test(fingerprint ?? '') ||
   !receipt
 )
@@ -319,48 +327,51 @@ try {
   }
   if (pointerSmoke) {
     phase = 'pointer-smoke';
-    report.pointer = await runWindowsPointerSmoke({
-      page,
-      snapshot: async () => {
-        await chord('F2');
-        const revision = source.revision;
-        await chord('ControlLeft+KeyC');
-        await wait(() => source.remoteText && source.revision > revision);
-        await page.locator('[data-clipboard=read]').click();
-        await page.waitForFunction(() =>
-          document
-            .querySelector('#clipboard-text [role=status]')
-            .textContent.startsWith('Текст получен.'),
-        );
-        return parsePointerReceipt(
-          await page.locator('[data-clipboard-received]').inputValue(),
-        );
-      },
-      reattach: async (releaseLocal) => {
-        await page.evaluate(() => window.bridgeViewer.detach());
-        // Release only after old input listeners are disposed and before a new
-        // viewer can forward the up event and mask missing terminal release.
-        await releaseLocal();
-        await wait(() => !source.localPending && !source.localAccepted);
-        const attach = {};
-        for (const channel of ['control', 'media'])
-          attach[channel] = await request(
-            '/v1/sessions/' + sessionId + '/attach-token',
-            'POST',
-            { channel },
-          );
-        await page.evaluate(
-          (created) =>
-            window.bridgeViewer.attach(created, { codecs: ['jpeg'] }),
-          { sessionId, attach },
-        );
-        await page.waitForFunction(
-          () =>
-            window.bridgeViewer.stats.frames > 0 &&
-            !document.querySelector('[data-clipboard=read]').disabled,
-        );
-      },
-    });
+    const snapshot = async () => {
+      await chord('F2');
+      const revision = source.revision;
+      await chord('ControlLeft+KeyC');
+      await wait(() => source.remoteText && source.revision > revision);
+      await page.locator('[data-clipboard=read]').click();
+      await page.waitForFunction(() =>
+        document
+          .querySelector('#clipboard-text [role=status]')
+          .textContent.startsWith('Текст получен.'),
+      );
+      return parsePointerReceipt(
+        await page.locator('[data-clipboard-received]').inputValue(),
+      );
+    };
+    report.pointer = ownedReceiptRead
+      ? { fixedReceipt: await snapshot() }
+      : await runWindowsPointerSmoke({
+          page,
+          snapshot,
+          reattach: async (releaseLocal) => {
+            await page.evaluate(() => window.bridgeViewer.detach());
+            // Release only after old input listeners are disposed and before a new
+            // viewer can forward the up event and mask missing terminal release.
+            await releaseLocal();
+            await wait(() => !source.localPending && !source.localAccepted);
+            const attach = {};
+            for (const channel of ['control', 'media'])
+              attach[channel] = await request(
+                '/v1/sessions/' + sessionId + '/attach-token',
+                'POST',
+                { channel },
+              );
+            await page.evaluate(
+              (created) =>
+                window.bridgeViewer.attach(created, { codecs: ['jpeg'] }),
+              { sessionId, attach },
+            );
+            await page.waitForFunction(
+              () =>
+                window.bridgeViewer.stats.frames > 0 &&
+                !document.querySelector('[data-clipboard=read]').disabled,
+            );
+          },
+        });
     // The prepared read-only page replaces Notepad in this explicit mode.
     // Do not edit a document or run the OS Clipboard API permission steps.
     await page.evaluate(() => window.bridgeViewer.detach());
@@ -544,7 +555,7 @@ try {
       localPending: source.localPending,
       remotePending: source.remotePending,
     };
-  if (focusEditor && state === 'connected') {
+  if (!ownedReceiptRead && focusEditor && state === 'connected') {
     // At most one actual RDP frame, only under the explicit diagnostic permission.
     const frame = await captureFailureFrame().catch(() => undefined);
     if (frame?.jpeg && frame.jpeg.length <= 16777216) {

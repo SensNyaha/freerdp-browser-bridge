@@ -77,6 +77,106 @@ TEST_CASE("Clipboard format inspection bounds short and long tables before SDK a
   REQUIRE(inspect_pdu(pdu(2, 0, {13, 0, 0, 0, 0, 0, 0, 0, 0}), true, 1));
   REQUIRE_FALSE(inspect_pdu(pdu(2, 0, {13, 0, 0, 0, 0, 0, 1}), true, 1));
 }
+TEST_CASE("XRDP monitor-ready zero trailer is bounded and normalized before forwarding") {
+  auto ready = pdu(1, 0);
+  ready.resize(12, 0); // XRDP 0.9.21.1 adds one zero DWORD outside dataLen.
+  REQUIRE(inspect_pdu(ready, false, 1));
+  unsigned calls = 0;
+  const auto forward = [&](auto bytes) {
+    REQUIRE(std::equal(bytes.begin(), bytes.end(), ready.begin(), ready.begin() + 8));
+    ++calls;
+    return true;
+  };
+  ClipboardIngress whole(forward);
+  REQUIRE(whole.receive({ready, ready.size(), true, true}, 1));
+  REQUIRE(whole.stats().allocated == 0);
+  for (std::size_t split = 1; split < ready.size(); ++split) {
+    ClipboardIngress owner(forward);
+    REQUIRE(owner.receive({std::span(ready).first(split), ready.size(), true, false}, 1));
+    REQUIRE(owner.stats().allocated <= ready.size());
+    REQUIRE(owner.receive({std::span(ready).subspan(split), ready.size(), false, true}, 2));
+    REQUIRE(owner.stats().allocated == 0);
+  }
+  REQUIRE(calls == ready.size());
+  for (std::size_t at = 8; at < ready.size(); ++at) {
+    auto invalid = ready;
+    invalid[at] = 1;
+    REQUIRE_FALSE(inspect_pdu(invalid, false, 1));
+    ClipboardIngress owner(forward);
+    REQUIRE_FALSE(owner.receive({invalid, invalid.size(), true, true}, 1));
+  }
+  for (std::size_t n = 9; n <= 16; ++n) {
+    if (n == 12)
+      continue;
+    auto invalid = ready;
+    invalid.resize(n);
+    REQUIRE_FALSE(inspect_pdu(invalid, false, 1));
+  }
+  for (const auto kind : {0, 3, 4, 5, 6, 7, 8}) {
+    auto invalid = ready;
+    invalid[0] = static_cast<std::uint8_t>(kind);
+    REQUIRE_FALSE(inspect_pdu(invalid, false, 1));
+  }
+  auto nonempty_ready = ready;
+  nonempty_ready[4] = 4;
+  REQUIRE_FALSE(inspect_pdu(nonempty_ready, false, 1));
+  ClipboardIngress fragmented(forward);
+  auto bad_trailer = ready;
+  bad_trailer.back() = 1;
+  REQUIRE(fragmented.receive({std::span(bad_trailer).first(8), 12, true, false}, 1));
+  REQUIRE_FALSE(fragmented.receive({std::span(bad_trailer).subspan(8), 12, false, true}, 2));
+  REQUIRE(fragmented.stats().allocated == 0);
+  REQUIRE(calls == ready.size());
+}
+TEST_CASE("XRDP zero trailers preserve declared control bounds and allocation-free quota drain") {
+  for (auto original : {pdu(2, 0), pdu(3, 1), pdu(4, 0, {13, 0, 0, 0}),
+                        pdu(5, 1, {65, 0}), pdu(7, 0, caps)}) {
+    auto padded = original;
+    padded.resize(padded.size() + 4, 0);
+    REQUIRE(inspect_pdu(padded, false, 1024));
+    unsigned calls = 0;
+    for (std::size_t split = 1; split < padded.size(); ++split) {
+      ClipboardIngress owner([&](auto bytes) {
+        REQUIRE(std::equal(bytes.begin(), bytes.end(), original.begin(), original.end()));
+        ++calls;
+        return true;
+      });
+      REQUIRE(owner.receive({std::span(padded).first(split), padded.size(), true, false}, 1));
+      REQUIRE(owner.receive({std::span(padded).subspan(split), padded.size(), false, true}, 2));
+      REQUIRE(owner.stats().allocated == 0);
+    }
+    REQUIRE(calls == padded.size() - 1);
+    padded.back() = 1;
+    REQUIRE_FALSE(inspect_pdu(padded, false, 1024));
+  }
+  auto over_quota = pdu(5, 1, {65, 0, 0, 0});
+  over_quota.resize(over_quota.size() + 4, 0);
+  REQUIRE_FALSE(inspect_pdu(over_quota, false, 4)->quota_refused);
+  REQUIRE(inspect_pdu(over_quota, false, 3)->quota_refused);
+  for (std::size_t split = 1; split < over_quota.size(); ++split) {
+    unsigned calls = 0;
+    ClipboardIngress owner([&](auto bytes) {
+      const auto refused = pdu(5, 2);
+      REQUIRE(std::equal(bytes.begin(), bytes.end(), refused.begin(), refused.end()));
+      ++calls;
+      return true;
+    }, 3);
+    REQUIRE(owner.receive({std::span(over_quota).first(split), over_quota.size(), true, false}, 1));
+    REQUIRE(owner.stats().allocated == 0);
+    REQUIRE(calls == 0);
+    REQUIRE(owner.receive({std::span(over_quota).subspan(split), over_quota.size(), false, true}, 2));
+    REQUIRE(calls == 1);
+    REQUIRE(owner.stats().quota_refused == 1);
+  }
+  for (std::size_t at = over_quota.size() - 4; at < over_quota.size(); ++at) {
+    auto invalid = over_quota;
+    invalid[at] = 1;
+    ClipboardIngress owner([](auto) { FAIL("Bad trailer reached SDK"); return false; }, 3);
+    REQUIRE(owner.receive({std::span(invalid).first(8), invalid.size(), true, false}, 1));
+    REQUIRE_FALSE(owner.receive({std::span(invalid).subspan(8), invalid.size(), false, true}, 2));
+    REQUIRE(owner.stats().allocated == 0);
+  }
+}
 TEST_CASE("Clipboard ingress borrows whole PDUs and checks split headers before allocation") {
   const auto b = pdu(5, 1, {65, 0, 0, 0});
   std::size_t calls = 0;
@@ -113,6 +213,15 @@ TEST_CASE("Clipboard ingress borrows whole PDUs and checks split headers before 
       {std::span(oversized_control).subspan(7, 1), oversized_control.size(), false, false}, 2));
   REQUIRE(owner.stats().allocated == 0);
   REQUIRE(owner.stats().rejected == 1);
+}
+TEST_CASE("XRDP padding does not increase the absolute clipboard wire cap") {
+  auto packet = pdu(5, 1, std::vector<std::uint8_t>(max_item_bytes, 0));
+  REQUIRE(inspect_pdu(packet, false, max_item_bytes));
+  packet.resize(packet.size() + 4);
+  REQUIRE_FALSE(inspect_pdu(packet, false, max_item_bytes));
+  ClipboardIngress owner([](auto) { FAIL("Outer cap bypass reached SDK"); return false; });
+  REQUIRE_FALSE(owner.receive({std::span(packet).first(8), packet.size(), true, false}, 1));
+  REQUIRE(owner.stats().allocated == 0);
 }
 TEST_CASE("Clipboard ingress preserves negotiated long-name parsing and original deadlines") {
   unsigned calls = 0;

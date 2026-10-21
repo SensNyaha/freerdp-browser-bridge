@@ -63,6 +63,20 @@ Separate accounts avoid the server's ordinary same-account connection replacemen
 This bounded control checks actual native coexistence, heartbeat/captures and
 survival of the first owner after the second retires. It is not browser/audio load.
 
+The bounded server-to-browser CLIPRDR source/read path now passes
+[400](ITERATION_400.md). To repeat only its fixed prepared Tk receipt read
+with a linked receipt containing that correction:
+
+```powershell
+$env:BRIDGE_LAB_PROFILE = 'owned-container'
+node scripts/test-windows-browser-clipboard.mjs $lab.fingerprint $receipt --focus-editor --owned-clipboard-read
+Remove-Item Env:BRIDGE_LAB_PROFILE
+```
+
+This mode uses F2/Ctrl+C and the public Get action, performs no OS Clipboard API
+operation or native offer, and refuses the external/default lab. It does not
+accept arbitrary application clipboard contents or both transfer directions.
+
 Stop the owned stand when finished:
 
 ```powershell
