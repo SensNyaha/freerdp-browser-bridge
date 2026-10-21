@@ -114,8 +114,9 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
   for (const auto *value : {BRIDGE_VERSION, BRIDGE_GIT_COMMIT, freerdp_version(), target_freerdp,
                             platform, arch, transport})
     append_string(bytes, value);
+  unsigned extensions = 0;
 #ifdef BRIDGE_WITH_FREERDP
-  unsigned extensions = 32 | 64;
+  extensions |= 32 | 64;
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   extensions |= 3;
 #endif
@@ -125,11 +126,16 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_CLIPRDR_CLIENT)
   extensions |= 8 | 16;
 #endif
-  // Fixed schema-1 extension; unknown feature bits remain refused by old peers.
-  append_be(bytes, 1, 2);
-  append_be(bytes, 0, 2);
-  append_be(bytes, extensions, 4);
 #endif
+#ifdef _WIN32
+  extensions |= 128;
+#endif
+  if (extensions) {
+    // Fixed schema-1 extension; unknown feature bits remain refused by old peers.
+    append_be(bytes, 1, 2);
+    append_be(bytes, 0, 2);
+    append_be(bytes, extensions, 4);
+  }
   return bytes;
 }
 bool read_exact(std::span<std::uint8_t> bytes, bool allow_eof = false) {
@@ -429,6 +435,9 @@ int main(int argc, char **argv) {
                  "\"clipboardText\":true,\"clipboardRevoke\":true,"
 #else
                  "\"clipboardText\":false,\"clipboardRevoke\":false,"
+#endif
+#ifdef _WIN32
+                 "\"processResourceBatch\":true,"
 #endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP

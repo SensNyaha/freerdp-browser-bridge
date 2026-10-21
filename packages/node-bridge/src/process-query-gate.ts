@@ -7,6 +7,11 @@ type Waiter = {
   reject: (error: Error) => void;
 };
 
+export type ProcessQueryPermit = {
+  beforeDispatch(): 'ready' | 'cancelled' | 'expired';
+  invoke<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>;
+};
+
 /** Shared admission for host query children; a permit lasts through joined close. */
 export class ProcessQueryGate {
   private active = 0;
@@ -50,9 +55,20 @@ export class ProcessQueryGate {
       throw new Error('INVALID_PROCESS_QUERY_OPTIONS');
   }
 
-  async run<T>(
+  run<T>(signal: AbortSignal | undefined, task: () => Promise<T>): Promise<T> {
+    return this.own(signal, () => task());
+  }
+
+  runWithPermit<T>(
+    signal: AbortSignal,
+    task: (permit: ProcessQueryPermit) => Promise<T>,
+  ): Promise<T> {
+    return this.own(signal, task);
+  }
+
+  private async own<T>(
     signal: AbortSignal | undefined,
-    task: () => Promise<T>,
+    task: (permit: ProcessQueryPermit) => Promise<T>,
   ): Promise<T> {
     const requested = performance.now();
     try {
@@ -63,6 +79,36 @@ export class ProcessQueryGate {
     }
     let started: number | undefined;
     let releaseTurn: (() => void) | undefined;
+    let live = true;
+    let delegated: Promise<unknown> | undefined;
+    let decision: 'ready' | 'cancelled' | 'expired' | undefined;
+    const permit: ProcessQueryPermit = {
+      beforeDispatch: () => {
+        if (!live) return 'cancelled';
+        if (!decision || decision === 'ready') {
+          this.observeAdmission(requested);
+          if (signal?.aborted) decision = 'cancelled';
+          else if (performance.now() >= requested + this.admissionMs) {
+            this.expired = Math.min(Number.MAX_SAFE_INTEGER, this.expired + 1);
+            decision = 'expired';
+          } else decision = 'ready';
+        }
+        return decision;
+      },
+      invoke: <U>(groupSignal: AbortSignal, operation: () => Promise<U>) => {
+        if (!live || delegated)
+          return Promise.reject(new Error('PROCESS_QUERY_UNAVAILABLE'));
+        const pending = this.delegatedInvocation(
+          groupSignal,
+          operation,
+          () => live,
+        );
+        delegated = pending;
+        // The permit owns settlement even if a callback forgets its returned promise.
+        void pending.catch(() => {});
+        return pending;
+      },
+    };
     try {
       try {
         releaseTurn = await this.invocationTurn();
@@ -77,7 +123,7 @@ export class ProcessQueryGate {
       started = performance.now();
       let completion: Promise<T>;
       try {
-        completion = task();
+        completion = task(permit);
       } finally {
         // Includes synchronous child launch/setup, not the asynchronous wait.
         this.maxInvokeMs = Math.max(
@@ -97,10 +143,40 @@ export class ProcessQueryGate {
       throw error;
     } finally {
       releaseTurn?.();
+      live = false;
+      // Shared helpers may outlive a logical callback's failure or cancellation.
+      // Keep the original permit through the delegated child's joined completion.
+      if (delegated) await delegated.catch(() => {});
       if (started !== undefined)
         this.maxTaskMs = Math.max(this.maxTaskMs, performance.now() - started);
       --this.active;
       this.drain();
+    }
+  }
+
+  private async delegatedInvocation<T>(
+    signal: AbortSignal,
+    task: () => Promise<T>,
+    live: () => boolean,
+  ): Promise<T> {
+    const release = await this.invocationTurn();
+    try {
+      if (!live()) throw new Error('PROCESS_QUERY_UNAVAILABLE');
+      if (signal.aborted) throw new Error('PROCESS_QUERY_CANCELLED');
+      const started = performance.now();
+      let completion: Promise<T>;
+      try {
+        completion = task();
+      } finally {
+        this.maxInvokeMs = Math.max(
+          this.maxInvokeMs,
+          performance.now() - started,
+        );
+        release();
+      }
+      return await completion;
+    } finally {
+      release();
     }
   }
 
@@ -197,4 +273,10 @@ export function withProcessQuery<T>(
   task: () => Promise<T>,
 ): Promise<T> {
   return processQueries.run(signal, task);
+}
+export function withProcessQueryPermit<T>(
+  signal: AbortSignal,
+  task: (permit: ProcessQueryPermit) => Promise<T>,
+): Promise<T> {
+  return processQueries.runWithPermit(signal, task);
 }

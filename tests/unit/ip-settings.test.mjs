@@ -113,7 +113,7 @@ test('HELLO IP capability requires connectCore, defaults false and preserves unk
       ...strings,
       ...(extension === undefined
         ? []
-        : [Buffer.from([0, 1, 0, 0, 0, 0, 0, extension])]),
+        : [Buffer.from([0, 1, 0, 0, 0, 0, extension >>> 8, extension & 255])]),
     ]);
   };
   assert.equal(decodeBuild(build(5)).capabilities.ipSettings, false);
@@ -122,7 +122,7 @@ test('HELLO IP capability requires connectCore, defaults false and preserves unk
   assert.equal(decodeBuild(build(261, 96)).capabilities.ipSettings, true);
   for (const [base, extension] of [
     [1, 64],
-    [261, 128],
+    [261, 256],
   ])
     assert.throws(() => decodeBuild(build(base, extension)), ProtocolError);
 });

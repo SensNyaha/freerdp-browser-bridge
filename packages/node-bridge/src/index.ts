@@ -21,6 +21,7 @@ import { PcmSource } from './pcm-source.js';
 import { OpusSource } from './opus-source.js';
 import { workerResidentBytes, ProcessSampleError } from './process-resident.js';
 import { workerCpuMicros } from './process-cpu.js';
+import { windowsProcessResourceBatch } from './process-resource-batch.js';
 import { CpuWindow } from './cpu-window.js';
 import {
   windowsProcessResources,
@@ -402,7 +403,16 @@ export class WorkerProcess extends EventEmitter {
           throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
         return value.bytes;
       });
+    if (this.batchResourcesSupported())
+      return this.sampleResourceUsage(pid, signal).then((value) => value.bytes);
     return workerResidentBytes(pid, this.options.workerPath, signal);
+  }
+
+  private batchResourcesSupported(): boolean {
+    return (
+      process.platform === 'win32' &&
+      this.report?.capabilities.processResourceBatch === true
+    );
   }
 
   private combinedPolicy(): boolean {
@@ -419,7 +429,9 @@ export class WorkerProcess extends EventEmitter {
     pid: number,
     signal: AbortSignal,
   ): Promise<ProcessResources> {
-    return windowsProcessResources(pid, this.options.workerPath, signal);
+    return this.batchResourcesSupported()
+      ? windowsProcessResourceBatch(pid, this.options.workerPath, signal)
+      : windowsProcessResources(pid, this.options.workerPath, signal);
   }
 
   private combinedResources(
@@ -544,6 +556,14 @@ export class WorkerProcess extends EventEmitter {
       return this.combinedResources(pid, signal).then((value) => {
         if (signal.aborted)
           throw new ProcessSampleError('PROCESS_SAMPLE_CANCELLED');
+        this.cpuQueryBrackets.set(signal, {
+          startedNs: value.startedNs,
+          completedNs: value.completedNs,
+        });
+        return value.micros;
+      });
+    if (this.batchResourcesSupported())
+      return this.sampleResourceUsage(pid, signal).then((value) => {
         this.cpuQueryBrackets.set(signal, {
           startedNs: value.startedNs,
           completedNs: value.completedNs,

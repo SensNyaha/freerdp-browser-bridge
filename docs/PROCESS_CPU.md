@@ -157,9 +157,12 @@ completion. Existing public scalar reader signatures are unchanged.
 [Implementation, failed controls and scoped capacity evidence](ITERATION_310.md).
 Release helper adoption remains pending.
 
-New source builds additionally prepare a bounded sixteen-PID resource command
-and strict positional receipt codec. Current samplers still use the scalar
-command; cross-worker coalescing, per-member cancellation/shared retirement,
-original admission limits and native-support gating require separate adoption.
-[Prepared command and required owner contract](PROCESS_RESOURCE_BATCH.md),
-[component evidence](ITERATION_377.md).
+New Windows source builds additionally advertise a bounded sixteen-PID resource
+command. Capability-gated worker policies collect admitted requests for the same
+helper path for five milliseconds and launch one helper for the group. They
+preserve the shared sixteen/128 admission, execution/policy bounds, conservative
+CPU brackets and joined per-member cancellation. Missing support retains the
+scalar path; standalone readers are unchanged. Each physical launch still
+crosses the invocation owner. Numeric batch counters distinguish launches from
+logical samples. [Owner contract](PROCESS_RESOURCE_BATCH.md),
+[prepared native component](ITERATION_377.md), [adoption](ITERATION_378.md).

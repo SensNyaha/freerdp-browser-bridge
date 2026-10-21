@@ -181,3 +181,23 @@ reported worker failures and joined empty owners. Maximum query time is still
 The run ends after sample-count conditions rather than fixed duration; its
 313 paired queries versus earlier runs are not a throughput comparison.
 [Scheduling control and limits](docs/ITERATION_376.md).
+
+The next unchanged scalar-policy full run still has two active deadlines
+above three seconds, even though per-invocation yielding improves event-loop
+progress. A capability-gated Windows batch owner now amortizes helper startup
+across up to sixteen admitted logical requests. In a fixed forty-call actual
+owned-process comparison on the new Debug helper, all forty scalar calls
+complete in 1,789 ms; all forty batch items complete in 385 ms via three helper
+launches (16/16/8). An earlier same-host comparison is 2,693 versus 509 ms.
+These are bounded wall-time observations, not a statistical latency guarantee.
+
+The unchanged forty-worker control then gathers 323 dispatched items through
+96 helper launches, with maximum batch eight and 317 paired policy samples.
+It records no startup/active/retiring worker failures, 550 ms maximum active
+query, 228 ms event-loop maximum and empty query/batch owners after close.
+The control ends on sample-count conditions, not fixed duration, so its
+sample totals must not be compared as throughput with earlier runs. Shared
+16/128 admission, one-second polls, two-second helper timeout and three-second
+policy deadline remain unchanged. This accepts the named local unconnected
+control only; connected/OS-failure/sustained capacity and Release adoption
+remain separate. [Ownership and evidence](docs/ITERATION_378.md).

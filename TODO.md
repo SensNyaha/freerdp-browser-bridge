@@ -33,6 +33,19 @@ instruction; they are not unfinished acceptance gates. [Accepted ADR-011](docs/a
 All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
+## Implementation status — 2026-10-21
+
+New Windows Debug workers advertise bounded host resource batching; trusted
+CPU/RSS policies coalesce admitted requests across workers through the existing
+16-active / 128-waiting owner. Per-member cancellation, original deadlines,
+shared-child retirement and legacy scalar fallback pass focused tests. The
+unchanged forty-worker / five-replacement fixture passes both focused and full
+runs, with zero worker failures and maximum active query 550 / 664 ms against
+the existing 3,000 ms bound. Native CTest passes 34/34; full Node passes
+854 / 51 skips / 905 total, zero failures. Release, pins, connected/OS-failure /
+sustained resource and broader stages remain unchanged/open.
+[Owner and exact evidence](docs/ITERATION_378.md).
+
 ## Implementation status — 2026-10-20
 
 One explicitly authorized Windows lab / Edge Opus/200 ms preview now passes
@@ -1456,6 +1469,17 @@ profile's target, microphone, recovery, resource or platform acceptance.
 **Gate:** config schema → FreeRDP settings mapping has unit coverage and at least one integration test per major category.
 
 ## Stage 10 — hardening, packaging and performance acceptance
+
+- [x] DONE for capability-gated local Windows resource batching — New Debug
+  HELLO/CLI support selects a bounded shared Node owner; legacy workers retain
+  scalar queries. Original 16/128 admission, one-second polls and two-/three-second
+  helper/policy bounds stay unchanged. Cancellation/expiry/shared retirement,
+  per-PID errors and malformed-group synthetic checks pass. Actual forty-call
+  control uses three launches; original forty-worker capacity passes focused
+  and full runs, with zero worker failures and joined empty owners. New source
+  CTest 34/34 and full Node 854 / 51 skips pass. Shared OS-failure/connected /
+  sustained gates, other-platform batching and Release adoption remain open.
+  [Contract](docs/PROCESS_RESOURCE_BATCH.md), [evidence](docs/ITERATION_378.md).
 
 - [x] DONE for phase-aware capacity diagnostics — Lifecycle-only fixtures retain
   startup/active/retiring failure categories, fixed maximum query timings and

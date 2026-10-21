@@ -150,7 +150,7 @@ test('HELLO performance capability is additive, defaults false and requires core
       ...strings,
       ...(extension === undefined
         ? []
-        : [Buffer.from([0, 1, 0, 0, 0, 0, 0, extension])]),
+        : [Buffer.from([0, 1, 0, 0, 0, 0, extension >>> 8, extension & 255])]),
     ]);
   };
   assert.equal(decodeBuild(build(261)).capabilities.performanceSettings, false);
@@ -161,7 +161,7 @@ test('HELLO performance capability is additive, defaults false and requires core
   for (const [flags, extension] of [
     [5, 32],
     [1, 32],
-    [261, 128],
+    [261, 256],
   ])
     assert.throws(() => decodeBuild(build(flags, extension)), ProtocolError);
 });

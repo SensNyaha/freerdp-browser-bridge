@@ -359,6 +359,7 @@ export interface WorkerBuild {
     clipboardRevoke: boolean;
     performanceSettings: boolean;
     ipSettings: boolean;
+    processResourceBatch?: true;
     penInput: false;
   };
   bridgeVersion: string;
@@ -413,7 +414,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~127) !== 0 ||
+      (extensions & ~255) !== 0 ||
       ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
       ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4))) ||
       ((extensions & 4) !== 0 && !(capabilities & 4096)) ||
@@ -421,7 +422,8 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       ((extensions & 16) !== 0 && !(extensions & 8)) ||
       ((extensions & 32) !== 0 &&
         (!(capabilities & 4) || !(capabilities & 256))) ||
-      ((extensions & 64) !== 0 && !(capabilities & 4))
+      ((extensions & 64) !== 0 && !(capabilities & 4)) ||
+      ((extensions & 128) !== 0 && os !== 'windows')
     )
       throw new ProtocolError();
     offset += 8;
@@ -457,6 +459,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       clipboardRevoke: Boolean(extensions & 16),
       performanceSettings: Boolean(extensions & 32),
       ipSettings: Boolean(extensions & 64),
+      ...((extensions & 128) !== 0
+        ? { processResourceBatch: true as const }
+        : {}),
       penInput: false,
     },
     bridgeVersion,

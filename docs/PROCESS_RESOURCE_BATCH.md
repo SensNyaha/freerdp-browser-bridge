@@ -1,9 +1,9 @@
-# Prepared Windows host resource batch
+# Windows host resource batch
 
 The private Windows `rdp-runtime-directory` helper accepts
-`--process-resources-batch <pid-list>` in new source builds. This is a prepared
-OS-query component, separate from RDP, device access, public session settings
-and current watchdog activation. The existing scalar CPU/RSS commands keep
+`--process-resources-batch <pid-list>` in new source builds. This is a private
+OS-query component, separate from RDP, device access and public session settings.
+The existing scalar CPU/RSS commands keep
 their grammar, output and exit conventions. Existing Release artifacts and
 dependency versions are unchanged.
 
@@ -50,43 +50,52 @@ keys, exponent notation, extra records or trailing bytes. The caller supplies
 the expected 1..16 item count. Byte/count admission precedes record allocation;
 the returned array contains only validated numeric scalars. Invalid complete
 receipts throw fixed `PROCESS_SAMPLE_INVALID`, without raw input or cause.
-Valid target errors remain separate per-item values for the future owner.
+Valid target errors remain separate per-item values for the Node owner.
 
-The current Node sampler does not call this command. Automatic coalescing,
-per-owner cancellation, shared child retirement, admission accounting and
-capability-gated adoption require separate integration. Existing 16 active /
-128 waiting admission caps and two-/three-second execution/policy bounds are
-not changed by this prepared command. No resource-capacity or production
-adoption gate is closed by its presence alone.
-
-Pending Node-owner integration must preserve the existing shared sixteen
+The internal Node owner uses the existing shared sixteen
 active logical owners / 128 waiting callers across scalar and batch queries.
-Coalescing may register cheap logical requests together; actual process launch
-must still cross the bounded invocation owner. There must be no second,
-independent caller-admission budget or retained path/sample cache. Group/path
-storage must be bounded by admitted owners and removed after dispatch/retirement.
-Only matching helper paths may share a group.
+After admission, requests for the same resolved helper path collect for five
+milliseconds. Group/path/item storage is bounded by the admitted owners, with
+at most sixteen items overall, and is removed after dispatch/retirement. There
+is no second admission budget, retry, idle poller or completed-sample cache.
+The physical launch crosses the same bounded invocation owner and yields to
+the event loop. Unrelated helper paths never share a group.
 
-The original entry deadline must include permit wait, collection and launch
-staging. Cancelled/expired unsent members must not query a PID. Once dispatched,
-one member's cancellation must discard its result and join the shared child
+The original entry deadline includes permit wait, collection and launch
+staging, with a fresh check immediately before dispatch. Cancelled/expired
+unsent members do not query a PID. Once dispatched,
+one member's cancellation discards its result and joins the shared child
 without cancelling healthy sibling requests. If all dispatched members cancel,
-abort the child and join close/streams for every member before releasing its
-permit. A member must be checked again after child close; late completion
-cannot revive an expired/closed worker. There must be no retry or completed
-sample reuse. CPU observation brackets must conservatively include admission
-through joined child completion, matching the existing sampled policy.
+the owner aborts the child and joins close/streams for every member before
+releasing its permit. A fresh group can follow an entirely cancelled collecting
+group. Every member is checked again after child close; worker policies also
+check their original three-second deadline and ready-child identity. CPU
+observation brackets include admission through joined child completion,
+matching the existing sampled policy. The two-second helper execution timeout,
+three-second admission and three-second total worker query deadline are unchanged.
 
-Valid per-PID errors must affect only their corresponding member. Malformed
-complete output or a failed shared helper/transport must fail its participating
+Valid per-PID errors affect only their corresponding member. Malformed
+complete output or a failed shared helper/transport fail its participating
 members with fixed unavailable errors; unrelated groups must remain independent.
-Such shared OS/transport faults and complete isolation still require explicit
-tests rather than being accepted from a healthy batch. Adoption must be gated
-by verified native support, while legacy workers retain the scalar path.
-Physical launch attempts, dispatched item counts and empty owners must be
-measured independently of logical sampler calls before accepting a capacity
-improvement. These ownership/adoption requirements are not implemented by
-the prepared command/codec above.
+The complete result is validated before any member is published. Cancelled
+members receive only the fixed cancellation error; raw output/reasons are never
+attached. Synthetic fault/lifetime tests are distinct from actual healthy and
+per-PID-error helper tests; exhaustive OS-failure isolation is still open.
+
+New Windows workers advertise HELLO extension bit 128 and CLI
+`processResourceBatch: true`. Only that support enables automatic batching in
+trusted-host CPU/RSS policies. Missing/legacy support keeps the scalar commands;
+it never probes an unknown batch command. Equal-interval policies still share
+one logical sample per worker. Separate intervals and single policies may
+coalesce across workers too. Public standalone scalar readers keep their APIs
+and original command paths. Policies remain off by default.
+
+The internal snapshot contains only scalar counters: collecting/staging-running
+group counts, active logical items, physical launch attempts, dispatched items
+and maximum batch count. Attempts count executor calls, not proof of successful
+process startup. They are distinct from logical watchdog queries; final zero
+owners prove joined retirement for the tested cases. No PID/path/sample history
+is retained. [Integration evidence](ITERATION_378.md).
 
 For the explicit prepared-helper test profile, use a newly built output:
 

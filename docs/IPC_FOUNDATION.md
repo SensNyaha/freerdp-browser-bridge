@@ -1,5 +1,13 @@
 # RWI1 foundation wire contract
 
+Current host resource sampling — iteration 378: optional HELLO schema-1
+extension bit 128 adds `processResourceBatch: true` on Windows, including
+foundation workers without FreeRDP. It advertises the colocated private
+sixteen-PID OS-query helper, not RDP/device support or an enabled watchdog.
+Other platforms cannot advertise it. Legacy/missing bits omit this optional
+property and keep scalar sampling; unknown bits at 256 and above still refuse.
+CLI and decoded HELLO agree. [Ownership contract](PROCESS_RESOURCE_BATCH.md).
+
 Current IP selection — iteration 325: HELLO extension bit 64 adds ipSettings,
 requiring connectCore. CONFIGURE schema 12 inherits v11 and appends canonical
 selection/preference/force bytes. Explicit false/null still require capability;

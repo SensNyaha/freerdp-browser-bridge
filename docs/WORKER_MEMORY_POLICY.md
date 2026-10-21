@@ -40,7 +40,10 @@ total-session memory or continuous CPU accounting.
 Windows policies with equal polling intervals share one in-flight combined
 helper query and one polling timer. Either policy's cancellation aborts that
 shared query; close joins both owners. Different intervals retain separate
-queries. Shared helper admission and the unchanged overall query deadline are
+logical queries. Capability-gated new Windows workers may also share physical
+helper launches across workers, with individual cancellation and joined
+retirement as specified by the [batch owner](PROCESS_RESOURCE_BATCH.md).
+Shared helper admission and the unchanged overall query deadline are
 documented in the [CPU policy](WORKER_CPU_POLICY.md). The named unconnected
 40-worker fixture is recorded in [iteration 310](ITERATION_310.md).
 

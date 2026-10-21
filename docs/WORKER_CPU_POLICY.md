@@ -28,7 +28,11 @@ unsampled interval. CPU and RSS policies retain separate one-flight policy
 owners and may be enabled together. On Windows, equal polling intervals use
 one timer and one shared in-flight CPU/RSS helper query. There is no sample
 cache; both owners join its retirement. Different intervals and Linux retain
-separate queries. The CPU window uses the actual shared query's start/completion
+separate logical queries. New Windows workers with `processResourceBatch`
+support additionally coalesce admitted queries across workers through the
+[bounded batch owner](PROCESS_RESOURCE_BATCH.md). Cancelling one worker's
+member preserves healthy siblings; cancelling all dispatched members aborts
+their helper. Legacy workers retain scalar queries. The CPU window uses the actual shared query's start/completion
 bracket, including admission, rather than the later CPU projection callback.
 
 Each query is bracketed by `process.hrtime.bigint()` before invocation and after

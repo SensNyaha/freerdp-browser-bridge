@@ -86,3 +86,9 @@ public scalar readers retain their signatures. Linux direct proc RSS reads do
 not acquire a helper permit. See [limits and private receipt](PROCESS_CPU.md#shared-helper-admission-and-windows-paired-policy-queries)
 and [configured-capacity verification](ITERATION_310.md). Helper execution and
 the worker's overall query deadlines are unchanged.
+
+New Windows worker support additionally enables the internal
+[resource batch owner](PROCESS_RESOURCE_BATCH.md) for trusted CPU/RSS policies.
+It coalesces admitted requests across workers through the same sixteen/128
+budget, preserving per-member cancellation and joined helper retirement.
+Legacy workers and standalone scalar readers keep their existing command paths.

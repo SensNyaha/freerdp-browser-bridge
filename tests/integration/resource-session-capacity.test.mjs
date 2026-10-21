@@ -11,6 +11,7 @@ import {
 import { eventually } from '../fixtures/session-worker.mjs';
 import { NativeLifecycleWorker } from '../fixtures/native-lifecycle-worker.mjs';
 import { processQuerySnapshot } from '../../packages/node-bridge/dist/process-query-gate.js';
+import { processResourceBatchSnapshot } from '../../packages/node-bridge/dist/process-resource-batch.js';
 
 const workerPath = join(
   resolve(process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation'),
@@ -201,7 +202,7 @@ test(
       await Promise.all(active.map((record) => record.worker.native.ping()));
     }
     try {
-      await warm.start();
+      const build = await warm.start();
       warm.phase = 'active';
       pids.add(warm.pid);
       await eventually(() => {
@@ -251,6 +252,15 @@ test(
           totals.combined > 0 && totals.combined < totals.cpu + totals.resident,
         );
       else assert.equal(totals.combined, 0);
+      if (build.capabilities.processResourceBatch) {
+        const batch = processResourceBatchSnapshot();
+        assert.equal(batch.activeItems, 0);
+        assert.equal(batch.inFlightGroups, 0);
+        assert.equal(batch.collectingGroups, 0);
+        assert.ok(batch.dispatchedItems >= totals.combined);
+        assert.ok(batch.launchAttempts < batch.dispatchedItems);
+        assert.ok(batch.maxBatchItems > 1 && batch.maxBatchItems <= 16);
+      }
       t.diagnostic(
         JSON.stringify({
           workers: workers.length,
@@ -311,6 +321,7 @@ test(
             ),
           ),
           queryOwner: processQuerySnapshot(),
+          batchOwner: processResourceBatchSnapshot(),
           parentCpuMicros: cpu.user + cpu.system,
           parentRssPeakBytes: peakParentRssBytes,
           workerRssPeakBytes: Math.max(
