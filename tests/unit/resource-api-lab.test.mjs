@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { resourceApiLabRequest } from '../../scripts/resource-lab-profile.mjs';
 
 test('public resource lab keeps RSS as default and requires exclusive CPU opt-in with unchanged native selection', () => {
@@ -60,5 +62,51 @@ test('public resource lab refuses invalid/unsupported native selection before pr
     );
     assert.equal(result.stderr.includes('xrdp-lab.secrets'), false);
     assert.equal(result.stderr.includes('Server listening'), false);
+  }
+});
+
+test('resource lab rejects arguments and missing profiles before requiring built runtime modules', async () => {
+  await mkdir('build', { recursive: true });
+  const root = await mkdtemp(resolve('build/resource-lab-bootstrap-'));
+  try {
+    await mkdir(join(root, 'scripts'));
+    for (const name of [
+      'test-rdp-resource-api-lab.mjs',
+      'resource-lab-profile.mjs',
+      'connected-cpu-load.mjs',
+      'viewer-lab-files.mjs',
+    ])
+      await copyFile(join('scripts', name), join(root, 'scripts', name));
+    for (const args of [
+      [],
+      ['sha256:' + 'a'.repeat(64), 'build/native-clean-missing/receipt.json'],
+    ]) {
+      const result = spawnSync(
+        process.execPath,
+        ['scripts/test-rdp-resource-api-lab.mjs', ...args],
+        {
+          cwd: root,
+          encoding: 'utf8',
+          timeout: 10000,
+          maxBuffer: 65536,
+          windowsHide: true,
+        },
+      );
+      assert.equal(result.error, undefined);
+      assert.equal(result.status, 1);
+      assert.equal(result.stdout, '');
+      assert.match(
+        result.stderr,
+        /Use verified sha256 fingerprint and isolated native receipt|LAB_NATIVE_PROFILE_INVALID|LAB_NATIVE_PROFILE_UNSUPPORTED/,
+      );
+      assert.doesNotMatch(
+        result.stderr,
+        /ERR_MODULE_NOT_FOUND|xrdp-lab\.secrets|Server listening/,
+      );
+      assert.deepEqual(await readdir(root), ['scripts']);
+    }
+  } finally {
+    assert.equal(dirname(root), resolve('build'));
+    await rm(root, { recursive: true, force: true });
   }
 });

@@ -85,6 +85,78 @@ Release merge/tag remain pending a passing required check. Follow-up work
 checks argument/profile rejection before the CLI loads heavy runtime modules;
 no deadline extension or disabled test is accepted here.
 
+### Focused startup follow-up
+
+Separate branch `fix/resource-lab-startup` defers the resource lab's API,
+protocol and worker imports until its existing lightweight argument/profile
+checks succeed. The valid runtime paths, credentials policy and deadlines
+are unchanged. A new isolated CLI fixture deliberately contains no built API
+or worker modules. It fails before the correction with `ERR_MODULE_NOT_FOUND`,
+then passes with the intended argument/profile refusal and no created context.
+This establishes unnecessary pre-validation runtime loading; it does not
+identify every earlier browser/resource timing failure's cause.
+
+The focused Windows resource-lab tests pass 3/3. The five-case negative CLI
+test takes 0.44 s after correction, versus 4.61 s in the prior passing isolated
+control; neither figure is a general startup benchmark. Combined Linux
+bootstrap/version tests pass 8/8. All 369 current native/CMake/fixture source
+files still match the verified release consumer after CRLF normalization.
+The existing `v0.1.0` still resolves to
+`9d88694984d03af63456997810cbb16e730dff6a`.
+Final aggregate Windows validation and merge/tag remain separate below.
+
+The next Windows aggregate passes the corrected resource CLI cases but still
+fails two owned viewer/Clipboard negative CLI startup deadlines: 902 passed,
+2 failed, 61 skipped, 965 total. Linux passes 881 / 87 skips / 968 total.
+The same branch therefore moves browser/API/worker and dependent diagnostic
+imports in those two lab entry points after argument/profile validation.
+An isolated fixture with only six lightweight scripts and no built runtime
+first fails with `ERR_MODULE_NOT_FOUND`, then passes all four refused selections.
+Combined focused Windows bootstrap/owned CLI tests pass 10/10. Existing five-
+and ten-second deadlines, valid lab behavior and production/native artifacts
+remain unchanged. This proves early validation independence, not the cause of
+every observed timing failure. Logs: `iteration-418-viewer-bootstrap-red.log`
+and `iteration-418-all-bootstrap-green.log`.
+
+With all three CLI changes, Linux full `pnpm check` passes 882 / 87 skips /
+969 total, zero failures/cancellations (`iteration-418-linux-complete-check.log`).
+The unchanged release consumers repeat native CTest at GCC 8.3 37/37 and MSVC
+36/36. CTest requires the original temporary R:/S: build aliases on Windows;
+the initial invocation without those aliases cannot create its log directory
+and is not counted as a test run. The aliases are removed after the passing run.
+All five 0.2.0 archive sidecars match their bytes. Known-lab-password UTF8/UTF16LE
+audits pass for both Windows archives and the three Linux release archives;
+the Linux audit also scans the existing runtime SPDX document without claiming
+that older image inventory as a refreshed 0.2.0 image.
+
+The next Windows aggregate observes native TLS-fixture and Edge deadlines;
+its complete outcome and a standalone Windows repeat remain pending. No test
+deadline or production capability is changed to accept those observations.
+
+### Final required checks
+
+The complete retained Windows attempt finishes with 902 passed, one failure,
+two cancellations and 61 skips / 966 total: a six-second native TLS-fixture
+predicate and the 20/35-second Edge Clipboard tests expire. All corrected CLI
+cases pass. A separate reviewed Windows run after Linux completion passes
+**905 / 61 skips / 966 total**, zero failures/cancellations, **437.26 s**.
+This includes version/build/lint/format and the unchanged test suite/deadlines.
+The prior timing failures remain recorded without a causal claim. Final log:
+`build/iteration-418-windows-standalone-check.log`.
+
+Final Linux full check is **882 / 87 skips / 969 total**, zero failures or
+cancellations, **201.29 s**. Native CTest is **GCC 8.3 37/37**, **MSVC 36/36**.
+The tested code is `c1ee949` on `fix/resource-lab-startup`; following release
+documentation does not change product/native sources or archive bytes.
+The fix's acceptance is complete and its merge into `release/0.2.0` can proceed.
+Stable tagging follows the release documentation and shared-branch merge.
+
+User direction is now to stop feature development at stable 0.2.0 and evaluate
+an imported npm runtime with **Fastify on the application's existing HTTP/WS
+port**, diagnostics/browser integration, and standalone OS distributions.
+The managed-drive branch remains unmerged. Delivery options are a proposal,
+not an implementation or acceptance of a new npm/installer capability.
+
 Evidence: root ignored `build/iteration-418-*` logs, including clean build,
 full/reviewed/focused Windows results, source comparison, package/Node-package
 attempts, pinned public tarballs/cache receipts, real RDP profiles and
