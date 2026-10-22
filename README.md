@@ -17,7 +17,10 @@ Delivery planning: [npm/Fastify on the existing application port and standalone
 release options](docs/DISTRIBUTION_OPTIONS.md). Fastify targets 0.2.1 on its own
 feature branch; these proposed interfaces are not implemented in 0.2.0.
 The selected follow-up sequence is NestJS **0.2.2**, then built-in `node:http`
-**0.2.3**, each developed and accepted separately.
+**0.2.3**, then Express **0.2.4**, each developed and accepted separately.
+Real-project usage documentation belongs in `docs/`; the
+[Fastify development contract](docs/FASTIFY_PLUGIN.md) records the current
+implementation and remaining acceptance gates.
 
 ## 1. Purpose
 

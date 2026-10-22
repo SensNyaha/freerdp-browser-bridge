@@ -4,6 +4,14 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- In-development Fastify 0.2.1 embedding with encapsulated prefixed HTTP/WS,
+  host-owned upgrade dispatch, bounded optional session diagnostics and packaged
+  reference browser assets. External npm/pnpm consumers and named Astra browser
+  profiles pass; native npm runtime and full release acceptance remain open.
+  [Implementation/evidence](docs/ITERATION_419.md), [usage](docs/FASTIFY_USAGE.md).
+- MIT license for project-owned code, as selected by the user. Third-party
+  dependency notices retain their own terms.
+
 ## 0.2.0 — 2026-10-22
 
 Stable `v0.2.0`. Final checks: Windows 905 passed / 61 skipped; Linux 882 /

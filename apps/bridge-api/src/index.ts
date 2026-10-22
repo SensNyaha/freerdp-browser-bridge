@@ -1,4 +1,7 @@
-import Fastify, { type FastifyServerOptions } from 'fastify';
+import Fastify, {
+  type FastifyInstance,
+  type FastifyServerOptions,
+} from 'fastify';
 import {
   probeWorkerBuild,
   probeWorkerFeatures,
@@ -10,9 +13,22 @@ export async function createBuildServer(
   options: WorkerOptions,
   serverOptions?: FastifyServerOptions,
 ) {
+  const server = Fastify({ logger: false, bodyLimit: 65536, ...serverOptions });
+  try {
+    await registerBuildRoutes(server, options);
+    return server;
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
+}
+
+export async function registerBuildRoutes(
+  server: FastifyInstance,
+  options: WorkerOptions,
+) {
   const build = await probeWorkerBuild(options);
   const features = await probeWorkerFeatures(options);
-  const server = Fastify({ logger: false, bodyLimit: 65536, ...serverOptions });
   server.get('/healthz', async () => ({ status: 'ok' }));
   server.get('/readyz', async () => ({
     status: 'ok',
@@ -25,6 +41,7 @@ export async function createBuildServer(
   }));
   server.get('/v1/capabilities', async () => ({
     ...build.capabilities,
+    sessionDiagnostics: 1,
     devices: [],
   }));
   return server;

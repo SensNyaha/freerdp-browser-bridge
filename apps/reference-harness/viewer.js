@@ -346,6 +346,13 @@ function validateAttachment(created) {
 function attach(created, options = {}) {
   detach();
   validateAttachment(created);
+  if (
+    options.basePath !== undefined &&
+    (typeof options.basePath !== 'string' ||
+      options.basePath.length > 128 ||
+      !/^(?:\/[A-Za-z0-9_-]+){1,16}$/.test(options.basePath))
+  )
+    throw new Error('Invalid bridge base path');
   if (![undefined, 'off', 'pcm', 'opus'].includes(options.audioOutput))
     throw new Error('Unsupported audio output');
   if (![undefined, 'off', 'pcm', 'opus'].includes(options.microphone))
@@ -509,7 +516,11 @@ function attachSession(created, options, playback) {
   validateAttachment(created);
   const socket = (channel) => {
     const url = new URL(
-      '/v1/sessions/' + created.sessionId + '/' + channel,
+      (options.basePath ?? '') +
+        '/v1/sessions/' +
+        created.sessionId +
+        '/' +
+        channel,
       location.href,
     );
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';

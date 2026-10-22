@@ -16,6 +16,7 @@ const packages = [
   'packages/config',
   'packages/node-bridge',
   'apps/bridge-api',
+  'packages/fastify',
 ];
 await mkdir(resolve('build'), { recursive: true });
 const root = await mkdtemp(resolve('build/node-clean-'));
@@ -25,12 +26,13 @@ for (const file of [
   'pnpm-lock.yaml',
   'tsconfig.json',
   'tsconfig.base.json',
+  'LICENSE',
 ])
   await cp(resolve(file), resolve(root, file));
 for (const name of packages) {
   const destination = resolve(root, name);
   await mkdir(destination, { recursive: true });
-  for (const file of ['package.json', 'tsconfig.json', 'src'])
+  for (const file of ['package.json', 'tsconfig.json', 'src', 'LICENSE'])
     await cp(resolve(name, file), resolve(destination, file), {
       recursive: true,
     });
@@ -41,6 +43,17 @@ for (const name of packages) {
     if (error.code !== 'ENOENT') throw error;
   }
 }
+await mkdir(resolve(root, 'scripts'), { recursive: true });
+await cp(
+  resolve('scripts/package-browser-assets.mjs'),
+  resolve(root, 'scripts/package-browser-assets.mjs'),
+);
+await mkdir(resolve(root, 'apps/reference-harness'), { recursive: true });
+await cp(
+  resolve('apps/reference-harness'),
+  resolve(root, 'apps/reference-harness'),
+  { recursive: true },
+);
 const run = (args) => {
   const result = spawnSync('pnpm', args, {
     cwd: root,

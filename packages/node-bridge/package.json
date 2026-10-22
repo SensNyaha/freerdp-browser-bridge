@@ -17,5 +17,9 @@
   "dependencies": {
     "@freerdp-bridge/protocol": "workspace:*",
     "@freerdp-bridge/config": "workspace:*"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=24 <25"
   }
 }

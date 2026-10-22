@@ -47,13 +47,13 @@ capability rule below. Future format numbers follow acceptance order; a CPack
 setting, draft API or local npm tarball is not accepted distribution support.
 
 The user's subsequent adapter sequence fixes the next targets explicitly:
-**0.2.1 Fastify → 0.2.2 NestJS → 0.2.3 built-in `node:http`**. Develop in
+**0.2.1 Fastify → 0.2.2 NestJS → 0.2.3 built-in `node:http` → 0.2.4 Express**. Develop in
 `feature/fastify-0.2.1`, `feature/nestjs-0.2.2` and
-`feature/node-http-0.2.3`, respectively. Complete each adapter's required
+`feature/node-http-0.2.3` and `feature/express-0.2.4`, respectively. Complete each adapter's required
 acceptance before merging and starting the next one. These are planned release
-numbers, not current supported adapters or accepted tags. The user considers
-this sufficient as the initial adapter set; other distribution formats remain
-future options. Unassigned formats after this reserved sequence follow the
+numbers, not current supported adapters or accepted tags. The earlier request to stop after node:http is superseded by the explicit
+Express addition. Other popular integrations require a concrete need and
+separate acceptance; other distribution formats remain future options. Unassigned formats after this reserved sequence follow the
 acceptance-order rule above.
 All manifests/native artifacts remain aligned, published/tagged releases remain
 immutable, and incompatible wire/API contracts still require explicit

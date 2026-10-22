@@ -7,6 +7,7 @@ const disconnectButton = document.querySelector('#disconnect-session');
 const message = document.querySelector('#connection-status');
 let capabilities;
 let authorize;
+let basePath = '';
 const updateClipboardQuota = () => {
   form.elements.clipboardMax.disabled = form.elements.clipboard.value === 'off';
 };
@@ -30,7 +31,7 @@ async function request(path, method = 'GET', config) {
   }
   let response;
   try {
-    response = await fetch(path, {
+    response = await fetch(basePath + path, {
       method,
       credentials: 'omit',
       headers: {
@@ -63,7 +64,11 @@ async function request(path, method = 'GET', config) {
 }
 const owner = new ConnectionOwner({
   request,
-  attach: (created, options) => window.bridgeViewer.attach(created, options),
+  attach: (created, options) =>
+    window.bridgeViewer.attach(created, {
+      ...options,
+      ...(basePath ? { basePath } : {}),
+    }),
   detach: () => window.bridgeViewer?.detach(),
   changed: (state) => {
     connectButton.disabled =
@@ -204,7 +209,15 @@ window.bridgeConnection = {
       typeof options.authorize !== 'function'
     )
       throw new Error('Требуется функция авторизации приложения');
+    if (
+      options.basePath !== undefined &&
+      (typeof options.basePath !== 'string' ||
+        options.basePath.length > 128 ||
+        !/^(?:\/[A-Za-z0-9_-]+){1,16}$/.test(options.basePath))
+    )
+      throw new Error('Некорректный путь bridge');
     authorize = options.authorize;
+    basePath = options.basePath ?? '';
   },
   refresh,
   stop: () => owner.stop(),

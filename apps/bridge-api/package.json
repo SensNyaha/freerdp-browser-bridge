@@ -1,13 +1,28 @@
 {
   "name": "@freerdp-bridge/api",
   "version": "0.2.0",
-  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "browser",
+    "LICENSE"
   ],
+  "exports": {
+    "./fastify": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.js"
+    },
+    "./browser": {
+      "types": "./dist/browser-assets.d.ts",
+      "import": "./dist/browser-assets.js"
+    }
+  },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node ../../scripts/package-browser-assets.mjs",
     "start": "node dist/main.js"
   },
   "dependencies": {
