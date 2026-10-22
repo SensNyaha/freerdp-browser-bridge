@@ -131,3 +131,22 @@ that state changes. [Exact-archive publication instructions](NPM_PUBLISHING.md).
 Registry-only install/consumer verification remains unperformed until packages
 are actually available. Independent NestJS feature work may follow the accepted
 Fastify release checkpoint while this external publication task stays pending.
+
+## Later publication and README requirement
+
+After the user configured local npm access, the official interactive CLI opened
+a browser 2FA challenge for `@freerdp-bridge/runtime-win32-x64@0.2.1`. The user
+confirmed it. CLI publication succeeded; the immediate registry read initially
+returned 404, so the original publisher stopped and its receipt did not credit
+a verified package. Later read-only checks confirm public visibility and
+exact accepted integrity:
+
+`sha512-X42u0HuHGDyFousv48/7VGKpeuEKvDlRzyrbwK0jqdIEZumB1zopR+kZDFrHYfKpWm5N//xWgy/aaQuJGJvrKw==`.
+
+This confirms only the Windows runtime, not publication of the whole graph or
+a registry-only consumer. The user then required an explanatory README in
+every npm package release. Only Fastify has a root README in the immutable
+0.2.1 set; the other six archives predate that requirement. Publication of the
+remaining old archives stops. Updated documentation ships in new-version
+artifacts; no accepted archive/tag is replaced, and the published runtime
+version is not republished. [New publication contract](NPM_PUBLISHING.md).

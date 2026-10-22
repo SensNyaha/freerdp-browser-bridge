@@ -12,6 +12,7 @@ import { resolve, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { productVersion } from './product-version.mjs';
+import { checkNpmArchiveReadme } from './npm-readme.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -75,6 +76,7 @@ for (const directory of [
   dependencies[manifest.name] = 'file:' + archive.replaceAll('\\', '/');
   receipts.push({
     name: manifest.name,
+    documentation: await checkNpmArchiveReadme(archive),
     sha256: createHash('sha256')
       .update(await readFile(archive))
       .digest('hex'),
@@ -109,6 +111,7 @@ if (runtimeArchive) {
     'file:' + resolve(runtimeArchive).replaceAll('\\', '/');
   receipts.push({
     name: manifest.name,
+    documentation: await checkNpmArchiveReadme(archive),
     sha256: createHash('sha256')
       .update(await readFile(archive))
       .digest('hex'),

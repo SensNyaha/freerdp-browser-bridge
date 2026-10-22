@@ -9,7 +9,8 @@
   "files": [
     "dist",
     "browser",
-    "LICENSE"
+    "LICENSE",
+    "README.md"
   ],
   "exports": {
     "./fastify": {

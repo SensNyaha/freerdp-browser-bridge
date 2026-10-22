@@ -4,6 +4,12 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Add explanatory root README files to every publishable JS package and both
+  native runtime templates. Check discovered packages during `pnpm check` and
+  actual tarballs during native packaging/external Fastify consumer acceptance.
+  The immutable 0.2.1 artifacts predate this requirement; README changes ship
+  in a subsequent release without changing the reserved adapter versions.
+
 ## 0.2.1 — 2026-10-22
 
 Accepted Fastify distribution, immutable `v0.2.1`. Final full checks: Windows
