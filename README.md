@@ -16,6 +16,8 @@ make an untagged feature build the stable release.
 Delivery planning: [npm/Fastify on the existing application port and standalone
 release options](docs/DISTRIBUTION_OPTIONS.md). Fastify targets 0.2.1 on its own
 feature branch; these proposed interfaces are not implemented in 0.2.0.
+The selected follow-up sequence is NestJS **0.2.2**, then built-in `node:http`
+**0.2.3**, each developed and accepted separately.
 
 ## 1. Purpose
 
