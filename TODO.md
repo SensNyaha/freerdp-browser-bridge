@@ -46,7 +46,13 @@ repositories and report their directories; the user will push/synchronize
 GitHub themselves. The user selects **MIT** for project-owned code; third-party
 native dependency licenses/notices retain their own terms. The user has created
 the npm organization `freerdp-bridge` and selects the `@freerdp-bridge/*` names. [Fastify development
-contract and remaining acceptance](docs/FASTIFY_PLUGIN.md).
+contract and remaining acceptance](docs/FASTIFY_PLUGIN.md). Native npm runtime
+packages/resolver now pass external Windows npm/pnpm and Linux pnpm consumers,
+including strict TypeScript and actual native TLS rejection; full regression
+passes 912 / 61 skips on Windows and 889 / 87 on Linux. This is an unreleased
+checkpoint: final aligned version/native artifacts, package-browser acceptance
+and publication remain open. [Runtime evidence](docs/ITERATION_420.md),
+[real-project runtime usage](docs/NATIVE_NPM_RUNTIME.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 

@@ -136,6 +136,7 @@ actual native strict TLS rejection. Actual Astra Linux 1.7.5 prefixed Edge
 H.264/JPEG, resize/restoration and reattachment pass; RED OS attempts have not
 yet reached certificate admission and remain unaccepted. Full Linux regression
 and both native CTest profiles pass. [Current evidence](ITERATION_419.md).
-Native npm runtime selection/distribution and immutable 0.2.1 packaging remain
-open. [Real-project usage guide](FASTIFY_USAGE.md).
+Native npm runtime packages and resolver now exist as development artifacts;
+[interface and evidence](NATIVE_NPM_RUNTIME.md). Automatic optional installation,
+immutable 0.2.1 version packaging and release acceptance remain open. [Real-project usage guide](FASTIFY_USAGE.md).
 No new device/audio/platform support is inferred from adapter tests.

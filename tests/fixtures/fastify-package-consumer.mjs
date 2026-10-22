@@ -6,13 +6,24 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Fastify from 'fastify';
 import { WebSocket, WebSocketServer } from 'ws';
-import { rdpBridgePlugin, NativeSessionWorker } from '@freerdp-bridge/fastify';
+import {
+  rdpBridgePlugin,
+  NativeSessionWorker,
+  resolveNativeRuntime,
+} from '@freerdp-bridge/fastify';
 import { referenceBrowserDirectory } from '@freerdp-bridge/fastify/browser';
 import { MAX_JPEG_BYTES } from '@freerdp-bridge/protocol';
 import { createRdpTlsFixture } from './tls-fixture.mjs';
 
-const workerPath = process.argv[2];
 const root = await mkdtemp(join(tmpdir(), 'rdp-external-fastify-'));
+const packageRuntime = process.argv[2] === '--package-runtime';
+const workerPath = packageRuntime
+  ? (
+      await resolveNativeRuntime({
+        runtimeRoot: root,
+      })
+    ).workerPath
+  : process.argv[2];
 const app = Fastify();
 const tls = await createRdpTlsFixture();
 let bridge;

@@ -1,6 +1,6 @@
 # Iteration 419 — Fastify same-port embedding checkpoint
 
-2026-10-22, `feature/fastify-0.2.1`. Implements SPECIFICATION §2.1/2.11/3.1/3.2
+2026-10-22, `feature/fastify-0.2.1`. Implementation checkpoint `03aefc6`. Implements SPECIFICATION §2.1/2.11/3.1/3.2
 and ADR-001 with the existing separate native worker. This is an unreleased
 feature checkpoint. Product manifests remain 0.2.0 until release preparation;
 stable tags and their bytes are unchanged.
@@ -30,9 +30,10 @@ No package has been published to npm and no 0.2.1 tag is accepted yet.
   behavior stays intact. Final focused plugin suite 4/4, including actual native
   strict certificate refusal (`iteration-419-unknown-log-green.log`).
 - Full Windows `pnpm check`: 909 passed / 61 skipped / 970 total, no failures
-  (`iteration-419-windows-check.log`). This run preceded the final scoped-404
-  logger correction and the external TypeScript fixture; final full repeat is
-  still required. Native CTest MSVC 36/36 (`iteration-419-windows-ctest.log`).
+  (`iteration-419-windows-check.log`). This initial run preceded the final scoped-404
+  logger correction and external TypeScript fixture. The final repeat against
+  checkpoint `03aefc6` also passes 909 / 61 skips / 970 total, no failures
+  (`iteration-419-windows-final-check.log`), before the next native-runtime block. Native CTest MSVC 36/36 (`iteration-419-windows-ctest.log`).
 - Full GCC 8.3 Linux `pnpm check`: 886 passed / 87 skipped / 973 total, no
   failures (`iteration-419-linux-check.log`), including the logger correction.
   Native CTest 37/37 (`iteration-419-linux-package-ctest2.log`).

@@ -43,7 +43,10 @@ tarball не делает остальные пакеты доступными �
 полный проверенный native комплект, сохраняя рядом worker, platform helpers,
 IPC pairing metadata, библиотеки, лицензии и notices. Нельзя копировать только
 `rdp-worker` из build-каталога или подставлять системный `xfreerdp`.
-Автоматический выбор и доставка platform npm runtime ещё разрабатываются.
+Native npm-комплекты и resolver уже реализованы в development-ветке;
+[установка и проверка runtime](NATIVE_NPM_RUNTIME.md). Runtime пока
+устанавливается явно рядом с adapter, затем `resolveNativeRuntime` выбирает
+и проверяет установленный комплект. Публикация и version-stamped 0.2.1 открыты.
 Рабочий runtime root должен быть частным и доступным учётной записи сервиса;
 не помещайте его внутрь публичной static-директории.
 

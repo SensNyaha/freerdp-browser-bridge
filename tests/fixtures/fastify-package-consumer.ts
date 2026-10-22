@@ -3,6 +3,7 @@ import {
   rdpBridgePlugin,
   type BridgeHandle,
   type RdpBridgePluginOptions,
+  resolveNativeRuntime,
 } from '@freerdp-bridge/fastify';
 import { referenceBrowserDirectory } from '@freerdp-bridge/fastify/browser';
 
@@ -27,6 +28,11 @@ app.server.on('upgrade', (request, socket, head) => {
 });
 const directory: string = referenceBrowserDirectory;
 void directory;
+const nativeOptions = await resolveNativeRuntime({
+  runtimeRoot: '/private/run',
+});
+const nativePath: string = nativeOptions.workerPath;
+void nativePath;
 const invalid: RdpBridgePluginOptions = {
   ...options,
   // @ts-expect-error Arbitrary modes must fail the public declaration.
