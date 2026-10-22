@@ -9,7 +9,9 @@ checks pass; [version policy](docs/VERSIONING.md).
 Latest stable is **0.2.1**, tag `v0.2.1`: same-port Fastify embedding, aligned
 native npm runtimes and installed-package Astra/RED OS desktop acceptance.
 Final checks: Windows 915 / 61 skips, Linux 892 / 87; native CTest 36/36 and
-37/37. [Release evidence and npm publication status](docs/ITERATION_424.md).
+37/37. [Release evidence](docs/ITERATION_424.md). All seven npm packages are
+published at 0.2.1 with exact accepted integrity; fresh registry-only Windows
+and Linux consumers pass. [Publication evidence](docs/ITERATION_426.md).
 
 Prior stable **0.2.0**, tag `v0.2.0`, retains the accepted GCC 8.3 port and
 named Astra Linux 1.7.5 / RED OS 7.3 real desktop profiles. Final full checks:
@@ -30,7 +32,7 @@ Updated user-selected adapter order, 2026-10-22:
 
 | Target release | Adapter | Separate feature branch | Status |
 | --- | --- | --- | --- |
-| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; final external consumers/native/RDP profiles pass; registry publication recorded separately in iteration 424 |
+| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; all seven npm packages published; exact public integrity and fresh Windows/Linux registry-only consumers pass; iteration 426 |
 | 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Planned after accepted Fastify |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Planned after accepted NestJS |
 | 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Planned after accepted node:http |
@@ -60,6 +62,11 @@ release artifacts. Next-adapter version targets remain unchanged. Accepted in
 `4153070`: all seven generated package archives contain their README, Windows
 full check passes 918 / 61 skips / 0 fail, and README tests pass 3/3 on Windows
 and Linux. [Evidence and partial npm publication](docs/ITERATION_425.md).
+Subsequent explicit instruction: finish publishing the already accepted 0.2.1
+set first, preserving its original archives. New README content follows in
+the next release; no version/tag/accepted bytes are replaced.
+That publication is now complete: 7/7 public exact-integrity versions and both
+fresh registry-only consumers pass; [evidence](docs/ITERATION_426.md).
 
 The user selects **MIT** for project-owned code; third-party
 native dependency licenses/notices retain their own terms. The user has created

@@ -23,7 +23,10 @@ The selected follow-up sequence is NestJS **0.2.2**, then built-in `node:http`
 Real-project usage documentation belongs in `docs/`; the
 [Fastify contract](docs/FASTIFY_PLUGIN.md) and
 [real-project guide](docs/FASTIFY_USAGE.md) describe the accepted interface.
-Registry publication is recorded separately in the release evidence.
+All seven **0.2.1** packages are published on npm. Fresh Windows and Linux
+projects install the public dependency graph and pass strict TypeScript,
+same-port HTTP/WS and actual native TLS-refusal checks.
+[Publication evidence and package links](docs/ITERATION_426.md).
 
 ## 1. Purpose
 

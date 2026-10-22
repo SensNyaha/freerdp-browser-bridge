@@ -1,7 +1,9 @@
 # Native runtime в npm-проекте
 
 Native runtime принят вместе с Fastify **0.2.1**: все product manifests и
-нативные бинарники согласованы на 0.2.1. [Финальная приёмка и статус публикации](ITERATION_424.md).
+нативные бинарники согласованы на 0.2.1. [Финальная приёмка](ITERATION_424.md).
+Все семь пакетов опубликованы; integrity и новые registry-only проекты на
+Windows/Linux проверены в [426](ITERATION_426.md).
 Более ранние development-комплекты 0.2.0, их проверки и ограничения сохраняются
 в [итерации 420](ITERATION_420.md) и [итерации 421](ITERATION_421.md);
 они не переименовываются в релизные архивы 0.2.1.
@@ -18,7 +20,7 @@ CMake, compiler, system FreeRDP или сетевой `postinstall`. Node.js и 
 | `@freerdp-bridge/runtime-linux-x64-gnu` | Linux x64 с glibc; worker, IPC-only addon, process query, private DSOs, notices |
 | `@freerdp-bridge/runtime-win32-x64` | Windows x64; worker, private directory/resource helper, DLL/CRT, notices |
 
-Для будущего опубликованного 0.2.1 выберите одну команду под ОС сервера:
+Для опубликованного 0.2.1 выберите одну команду под ОС сервера:
 
 ```sh
 # Linux x64 / glibc
@@ -28,8 +30,8 @@ npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.1 @freerdp-bridge/runtime
 npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.1 @freerdp-bridge/runtime-win32-x64@0.2.1
 ```
 
-До публикации установите соответствующие локальные архивы, заменив также
-неопубликованные JS workspace dependencies. Проверяющий helper делает это
+Для ещё неопубликованного development-снимка установите соответствующие локальные
+архивы, заменив также его JS workspace dependencies. Проверяющий helper делает это
 через overrides в отдельном проекте; [Fastify usage](FASTIFY_USAGE.md).
 Runtime сейчас устанавливается явно рядом с adapter. Автоматическая установка
 через `optionalDependencies` ещё не подключена. Не считайте успешную установку

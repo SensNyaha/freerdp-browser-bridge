@@ -18,6 +18,11 @@ MSVC 36/36, GCC 8.3 37/37. Exact Windows npm/Linux pnpm consumers and current
 Astra/RED OS installed-package desktop profiles pass.
 [Final acceptance and registry publication status](docs/ITERATION_424.md).
 
+All seven exact accepted archives are now published to npm as 0.2.1. Public
+integrity checks and fresh registry-only Windows/Linux consumers pass, including
+strict declarations, host HTTP/WS coexistence and actual native TLS rejection.
+[Publication evidence and package links](docs/ITERATION_426.md).
+
 - Fastify 0.2.1 embedding with encapsulated prefixed HTTP/WS,
   host-owned upgrade dispatch, bounded optional session diagnostics and packaged
   reference browser assets. External npm/pnpm consumers and actual Astra/RED OS H.264/JPEG,

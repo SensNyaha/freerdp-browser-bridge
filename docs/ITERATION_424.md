@@ -150,3 +150,8 @@ every npm package release. Only Fastify has a root README in the immutable
 remaining old archives stops. Updated documentation ships in new-version
 artifacts; no accepted archive/tag is replaced, and the published runtime
 version is not republished. [New publication contract](NPM_PUBLISHING.md).
+
+The user's later explicit instruction requests completing the original accepted
+0.2.1 set first. All seven unchanged tarballs are now public with matching
+integrity, and fresh registry-only Windows/Linux consumers pass. This supersedes
+the partial-publication checkpoint above; [final publication evidence](ITERATION_426.md).

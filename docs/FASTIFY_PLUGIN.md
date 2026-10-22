@@ -2,7 +2,9 @@
 
 Implements SPECIFICATION §2.1/2.11/3.1/3.2 and ADR-001 using the existing
 worker/API/media owners. Implementation is accepted from `feature/fastify-0.2.1`
-and finalized in `release/0.2.1`. [Release acceptance and registry status](ITERATION_424.md).
+and finalized in `release/0.2.1`. [Release acceptance](ITERATION_424.md).
+The seven-package npm 0.2.1 set is public, with exact integrity and fresh
+Windows/Linux registry consumers verified; [publication](ITERATION_426.md).
 NestJS 0.2.2, node:http 0.2.3 and Express 0.2.4 follow
 after this adapter's acceptance.
 
@@ -140,6 +142,7 @@ Native npm runtime packages and resolver are included in the accepted release;
 [interface and evidence](NATIVE_NPM_RUNTIME.md). The supported install explicitly includes the platform runtime package.
 Final aligned 0.2.1 packaging, source companions, external consumers and both
 named real RDP profiles pass; [final evidence](ITERATION_424.md). Registry publication
-is recorded separately there. Automatic optional installation remains a future
+and fresh npm-only Windows/Linux consumers pass; [publication evidence](ITERATION_426.md).
+Automatic optional installation remains a future
 convenience. [Real-project usage guide](FASTIFY_USAGE.md).
 No new device/audio/platform support is inferred from adapter tests.
