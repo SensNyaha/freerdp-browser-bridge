@@ -30,7 +30,8 @@ private:
   FragmentResult reject() noexcept;
 };
 
-enum class AudioPduKind { formats, training, volume, close, wave_info, wave, wave2 };
+enum class AudioPduKind { formats, training, volume, close, wave_info, wave, wave2,
+                          legacy_input_formats };
 struct AudioPdu {
   AudioPduKind kind;
   std::uint32_t timestamp = 0;

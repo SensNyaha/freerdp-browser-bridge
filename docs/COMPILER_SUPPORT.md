@@ -2,6 +2,14 @@
 
 ## Current target and verified scope — 2026-10-21
 
+Latest checkpoint (2026-10-22): the linked GCC 8.3 package now passes actual
+RED OS 7.3 and Astra Linux 1.7.5 public Edge H.264/JPEG, resize/restoration,
+viewer reattachment and cleanup after bounded legacy XRDP RDPSND admission.
+Clean linked CTest passes 37/37 on GCC 8.3 and 36/36 on MSVC; full checks pass
+877 / 87 skips and 900 / 61 skips. [Exact scope and retained failures](ITERATION_417.md).
+This supersedes the earlier open RED OS desktop gate below. It does not accept
+all installed-OS/security/device profiles or a new Windows application/audio run.
+
 The user now requires **GCC 8.3.0 / Astra Linux 1.7.5** and retains mandatory
 **RED OS 7.3 / GCC 11** support. This supersedes the earlier GCC 12 fallback
 decision below. The GNU source-version gate is 8.3; CMake remains at least 3.24,

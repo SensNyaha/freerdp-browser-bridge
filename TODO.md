@@ -8,6 +8,15 @@ checks pass; [version policy](docs/VERSIONING.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
+Current GCC 8.3 / distro checkpoint (2026-10-22): the bounded legacy XRDP
+RDPSND negotiation correction passes clean linked GCC 8.3 and MSVC CTest,
+full checks (877 / 87 skips and 900 / 61 skips), private package relocation,
+and actual RED OS 7.3 plus Astra Linux 1.7.5 public Edge H.264/JPEG desktop,
+resize/restoration, reattachment and cleanup. Earlier intermittent connection,
+locked-desktop and resize observations remain recorded without a cause claim.
+[Current acceptance](docs/ITERATION_417.md). This supersedes the open RED OS
+desktop checkpoint below; 0.2.0 release preparation remains separate.
+
 DONE applies to the named component and its explicit platform/test scope. A
 verified component can be DONE while the containing stage remains IN PROGRESS.
 An entire stage becomes DONE only when its requirements and **Gate** pass;
