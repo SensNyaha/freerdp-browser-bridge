@@ -1,3 +1,4 @@
+import { productVersion } from './product-version.mjs';
 import {
   copyFileSync,
   mkdirSync,
@@ -22,12 +23,13 @@ const artifacts = [
   [
     'native-linux.tar.gz',
     process.argv[2] ??
-      'build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz',
+      `build/packages/freerdp-bridge-native-${productVersion}-Linux.tar.gz`,
     128 * 1024 * 1024,
   ],
   [
     'node-linux.tar.gz',
-    process.argv[3] ?? 'build/packages/freerdp-bridge-node-0.1.0-linux.tar.gz',
+    process.argv[3] ??
+      `build/packages/freerdp-bridge-node-${productVersion}-linux.tar.gz`,
     64 * 1024 * 1024,
   ],
 ];

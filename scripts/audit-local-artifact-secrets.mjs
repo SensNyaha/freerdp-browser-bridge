@@ -1,3 +1,4 @@
+import { productVersion } from './product-version.mjs';
 import { spawn } from 'node:child_process';
 import { readFile, stat, realpath, writeFile, rm } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
@@ -117,12 +118,12 @@ try {
   const selected = windowsAudit
     ? [
         [
-          'build/packages/freerdp-bridge-native-0.1.0-win64.zip',
+          `build/packages/freerdp-bridge-native-${productVersion}-win64.zip`,
           true,
           128 * 1024 * 1024,
         ],
         [
-          'build/packages/freerdp-bridge-sbom-win64.zip',
+          `build/packages/freerdp-bridge-sbom-${productVersion}-win64.zip`,
           true,
           64 * 1024 * 1024,
         ],
@@ -131,7 +132,7 @@ try {
         ['build/service-runtime/native-linux.tar.gz', true, 128 * 1024 * 1024],
         ['build/service-runtime/node-linux.tar.gz', true, 64 * 1024 * 1024],
         [
-          'build/packages/freerdp-bridge-sbom-linux.tar.gz',
+          `build/packages/freerdp-bridge-sbom-${productVersion}-linux.tar.gz`,
           true,
           64 * 1024 * 1024,
         ],

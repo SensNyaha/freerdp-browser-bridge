@@ -2,6 +2,20 @@
 
 ## 1. Supported baseline
 
+Current 0.2.0 baseline (2026-10-22): bridge/owned C++ dependency compilation
+supports **GCC 8.3.0** in C++20 mode through the bounded `bridge::compat` subset;
+**RED OS 7.3/GCC 11** remains a required control. Node.js stays **24**, CMake
+at least **3.24**, with private pinned FreeRDP 3.32.1 and dependencies. Named
+real RDP desktop profiles pass for Astra Linux 1.7.5 and RED OS 7.3; installed
+security/device/installer acceptance remains separate. [Compiler scope](docs/COMPILER_SUPPORT.md),
+[release evidence](docs/ITERATION_418.md). Distribution planning and the explicit
+Fastify **0.2.1** target are in [delivery options](docs/DISTRIBUTION_OPTIONS.md).
+
+### Original starting baseline (historical)
+
+The following initial GCC 12 recommendation and 2026-10-16 fallback decision
+are retained as history; their GNU minimum is superseded by the current port.
+
 First-class build target:
 
 - Ubuntu 24.04/26.04-class Linux x86_64 host/container environment;

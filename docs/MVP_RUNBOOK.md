@@ -50,8 +50,12 @@ session using fresh public attach tokens. Hard TCP loss cannot deliver remote
 key/button release; the accepted recovery clears inherited standard buttons
 when the next controller has rendered the current desktop.
 
-The tested small Unicode Clipboard chain is Windows Notepad. Owned XRDP
-desktop/input work, but repeatable XRDP Clipboard re-offer remains unaccepted.
+The tested small Unicode Clipboard chains include Windows Notepad and the
+named owned XRDP 0.10.1 / prepared Tk profile, including repeated Copy/Get
+and browser OS Clipboard API [404](ITERATION_404.md). Wider XRDP versions,
+producers and applications retain separate acceptance; older 0.9.x surrogate
+conversion is not repaired by the fixture. The GCC 8.3 Linux producer also
+passes its bounded prepared-Tk CLIPRDR profile [412](ITERATION_412.md).
 Numeric audio discontinuities remain measured even in the accepted audible
 profile. Drives, USB, printing, smartcard, serial/parallel and other Clipboard
 formats are explicit unavailable choices;
