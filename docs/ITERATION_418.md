@@ -133,6 +133,30 @@ The next Windows aggregate observes native TLS-fixture and Edge deadlines;
 its complete outcome and a standalone Windows repeat remain pending. No test
 deadline or production capability is changed to accept those observations.
 
+### Final required checks
+
+The complete retained Windows attempt finishes with 902 passed, one failure,
+two cancellations and 61 skips / 966 total: a six-second native TLS-fixture
+predicate and the 20/35-second Edge Clipboard tests expire. All corrected CLI
+cases pass. A separate reviewed Windows run after Linux completion passes
+**905 / 61 skips / 966 total**, zero failures/cancellations, **437.26 s**.
+This includes version/build/lint/format and the unchanged test suite/deadlines.
+The prior timing failures remain recorded without a causal claim. Final log:
+`build/iteration-418-windows-standalone-check.log`.
+
+Final Linux full check is **882 / 87 skips / 969 total**, zero failures or
+cancellations, **201.29 s**. Native CTest is **GCC 8.3 37/37**, **MSVC 36/36**.
+The tested code is `c1ee949` on `fix/resource-lab-startup`; following release
+documentation does not change product/native sources or archive bytes.
+The fix's acceptance is complete and its merge into `release/0.2.0` can proceed.
+Stable tagging follows the release documentation and shared-branch merge.
+
+User direction is now to stop feature development at stable 0.2.0 and evaluate
+an imported npm runtime with **Fastify on the application's existing HTTP/WS
+port**, diagnostics/browser integration, and standalone OS distributions.
+The managed-drive branch remains unmerged. Delivery options are a proposal,
+not an implementation or acceptance of a new npm/installer capability.
+
 Evidence: root ignored `build/iteration-418-*` logs, including clean build,
 full/reviewed/focused Windows results, source comparison, package/Node-package
 attempts, pinned public tarballs/cache receipts, real RDP profiles and
