@@ -34,7 +34,19 @@ separate values. A product release never silently changes those contracts.
    tagged commit with its recorded evidence is the stable release. Put changes
    since that tag in the changelog's Unreleased section.
 
-Compatible fixes use a patch increment (for example 0.1.1); new capabilities
+Explicit delivery-series decision, 2026-10-22: **Fastify/npm embedding on the
+existing application's port targets 0.2.1**, developed separately in
+`feature/fastify-0.2.1`. Each next newly supported distribution variant advances
+the final component in **0.2.x** (0.2.2, 0.2.3, ...), after that variant's
+acceptance passes. This is the user's project-specific exception to the generic
+capability rule below. Future format numbers follow acceptance order; a CPack
+setting, draft API or local npm tarball is not accepted distribution support.
+All manifests/native artifacts remain aligned, published/tagged releases remain
+immutable, and incompatible wire/API contracts still require explicit
+negotiation/versioning and migration notes. [Delivery proposal](DISTRIBUTION_OPTIONS.md).
+
+Outside that explicit delivery-series exception, compatible fixes use a patch
+increment (for example 0.1.1); new capabilities
 use the next minor version (for example 0.2.0). Before 1.0, incompatible API
 changes also require a new minor version and explicit migration notes. After
 1.0, incompatible API changes require a major increment. Documentation/test-only

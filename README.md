@@ -11,6 +11,10 @@ is preserved in TODO. See [release notes](CHANGELOG.md) and
 [version/branch policy](docs/VERSIONING.md). A version number alone does not
 make an untagged feature build the stable release.
 
+Delivery planning: [npm/Fastify on the existing application port and standalone
+release options](docs/DISTRIBUTION_OPTIONS.md). Fastify targets 0.2.1 on its own
+feature branch; these proposed interfaces are not implemented in 0.2.0.
+
 ## 1. Purpose
 
 This package defines a cross-platform bridge that uses FreeRDP as the RDP protocol implementation and exposes a browser-consumable API for remote desktop image, cursor, audio and input. The bridge is not a Remmina clone and does not include a full visual application. A future web client may implement a Remmina-like UI on top of the API described here.

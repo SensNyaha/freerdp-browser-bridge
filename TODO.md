@@ -6,6 +6,14 @@ preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
+Delivery direction, 2026-10-22: stabilize 0.2.0 before new product work. The
+user selects **Fastify npm integration on the existing application's HTTP/WS
+port as 0.2.1**, developed in separate `feature/fastify-0.2.1`. Each next
+accepted distribution variant advances the final number in 0.2.x. The
+[delivery proposal](docs/DISTRIBUTION_OPTIONS.md) records current packaging,
+same-port/diagnostics gaps and platform tradeoffs; it does not accept the
+unimplemented Fastify adapter, installers or unfinished managed drives.
+
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
 Current GCC 8.3 / distro checkpoint (2026-10-22): the bounded legacy XRDP
