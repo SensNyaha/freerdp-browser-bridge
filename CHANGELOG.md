@@ -4,6 +4,12 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Develop the node:http/node:https adapter targeting 0.2.3 on its own branch:
+  explicit same-port request delegation, selective WS ownership, bounded mounts
+  and joined host-owned lifecycle. Windows/Linux external consumers and full
+  checks, HTTPS/WSS and eight installed-package Astra/RED OS desktop profiles
+  pass. Aligned release/publication remains separate; [evidence](docs/ITERATION_431.md).
+
 ## 0.2.2 — 2026-10-22
 
 Accepted NestJS distribution with Express and FastifyAdapter. Fresh aligned
