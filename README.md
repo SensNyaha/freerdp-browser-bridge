@@ -1,8 +1,8 @@
 # FreeRDP → Browser Bridge
 
-Latest stable: **0.2.2**, tag `v0.2.2` (NestJS module with Express and
-FastifyAdapter, shared HTTP/WS port, aligned native npm runtimes).
-[Release evidence and limits](docs/ITERATION_429.md). Fastify 0.2.1 and the immutable `v0.2.0`
+Latest stable: **0.2.3**, tag `v0.2.3` (node:http/node:https embedding,
+explicit HTTP/WS dispatch and aligned native npm runtimes).
+[Release evidence and limits](docs/ITERATION_433.md). NestJS 0.2.2, Fastify 0.2.1 and the immutable `v0.2.0`
 compiler/Astra/RED OS baseline is preserved.
 The original named practical MVP remains the immutable `v0.1.0` baseline.
 
@@ -18,15 +18,19 @@ make an untagged feature build the stable release.
 Delivery planning: [npm/Fastify on the existing application port and standalone
 release options](docs/DISTRIBUTION_OPTIONS.md). Fastify is accepted in 0.2.1
 after separate feature/release branches; it is absent from 0.2.0.
-NestJS **0.2.2** is accepted; the selected follow-up sequence is built-in `node:http`
-**0.2.3**, then Express **0.2.4**, each developed and accepted separately.
+NestJS **0.2.2** and built-in `node:http` **0.2.3** are accepted; Express
+**0.2.4** follows on its own feature/release branches.
 Real-project usage documentation belongs in `docs/`; the
 [Fastify contract](docs/FASTIFY_PLUGIN.md) and
 [real-project guide](docs/FASTIFY_USAGE.md) describe the accepted interface.
 The [NestJS contract](docs/NESTJS_PLUGIN.md) and
 [NestJS real-project guide](docs/NESTJS_USAGE.md) cover both host adapters.
-Eight exact 0.2.2 npm archives pass external Windows/Linux consumers and
-versioned Astra/RED OS desktop checks; registry publication remains pending.
+The [HTTP contract](docs/NODE_HTTP_PLUGIN.md) and
+[HTTP real-project guide](docs/NODE_HTTP_USAGE.md) cover raw HTTP/HTTPS servers.
+[Host identity/cookie boundaries](docs/HOST_AUTHENTICATION.md) apply to all adapters.
+Eight exact 0.2.2 npm archives are staged and download-verified, awaiting owner
+2FA approval. Nine exact 0.2.3 archives pass release acceptance; registry
+publication remains separate and pending.
 All seven **0.2.1** packages are published on npm. Fresh Windows and Linux
 projects install the public dependency graph and pass strict TypeScript,
 same-port HTTP/WS and actual native TLS-refusal checks.

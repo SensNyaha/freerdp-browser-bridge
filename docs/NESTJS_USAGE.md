@@ -57,6 +57,9 @@ export class AppModule {}
 не подтверждает пользователя. Не возвращайте постоянного пользователя и не
 записывайте заголовки, session bodies или attach query tokens. Cookie-based
 identity требует отдельного CSRF/Origin adapter и пока отказывается ядром.
+Отказ относится к любому Cookie header и к WS, даже при наличии bearer.
+Для same-port host ограничьте Cookie Path/Domain вне bridge prefix;
+[полный identity и browser-cookie контракт](HOST_AUTHENTICATION.md).
 
 `runtimeRoot` — абсолютный частный writable каталог на хосте приложения; на
 Windows укажите Windows-путь. Resolver проверяет установленный runtime, product
