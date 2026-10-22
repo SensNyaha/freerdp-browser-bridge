@@ -2,7 +2,9 @@
 
 The latest stable release is **0.2.1**, identified by annotated immutable
 `v0.2.1`. It adds accepted same-port Fastify embedding and matching native npm
-packages; [release checks, limits and publication status](ITERATION_424.md).
+packages; [release checks and limits](ITERATION_424.md). All seven exact npm
+archives are published at 0.2.1 and pass fresh Windows/Linux registry consumers;
+[publication evidence](ITERATION_426.md).
 The prior immutable `v0.2.0` adds the accepted GCC 8.3 port and named real
 Astra/RED OS desktop profiles; [its checks](ITERATION_418.md). The original practical
 MVP remains **0.1.0**, by the user's 2026-10-21 decision, with immutable

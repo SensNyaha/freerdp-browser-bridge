@@ -77,3 +77,9 @@ Updated READMEs ship in a new aligned release; `v0.2.1` and published bytes are
 not replaced. The full registry dependency graph and a registry-only consumer
 remain unverified. Reserved targets remain NestJS 0.2.2, node:http 0.2.3 and
 Express 0.2.4, each with its own feature branch and acceptance gates.
+
+Later user instruction explicitly requests completing publication of all ready
+0.2.1 packages first. That authorizes sending the original accepted set without
+repacking, despite its historical README gap. The general README requirement
+for new releases remains. The stop described above records this iteration's
+checkpoint and is superseded only for that immutable set by the later request.
