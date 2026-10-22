@@ -1,3 +1,4 @@
+import { productVersion } from './product-version.mjs';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
@@ -40,8 +41,8 @@ if (build !== resolve('build') || !build.startsWith(project + sep))
 const inside = (root, path) => path === root || path.startsWith(root + sep);
 const archive = resolve(
   windows
-    ? 'build/packages/freerdp-bridge-sbom-win64.zip'
-    : 'build/packages/freerdp-bridge-sbom-linux.tar.gz',
+    ? `build/packages/freerdp-bridge-sbom-${productVersion}-win64.zip`
+    : `build/packages/freerdp-bridge-sbom-${productVersion}-linux.tar.gz`,
 );
 if (realpathSync(dirname(archive)) !== dirname(archive)) throw fail();
 rmSync(archive, { force: true }); // Never retain a stale success archive after failure.
@@ -80,8 +81,8 @@ const inputs = [
     name: 'native',
     path: resolve(
       windows
-        ? 'build/packages/freerdp-bridge-native-0.1.0-win64.zip'
-        : 'build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz',
+        ? `build/packages/freerdp-bridge-native-${productVersion}-win64.zip`
+        : `build/packages/freerdp-bridge-native-${productVersion}-Linux.tar.gz`,
     ),
     maximum: 128 * 1024 * 1024,
     strip: windows ? 1 : 3,
@@ -91,7 +92,7 @@ const inputs = [
         {
           name: 'node',
           path: resolve(
-            'build/packages/freerdp-bridge-node-0.1.0-linux.tar.gz',
+            `build/packages/freerdp-bridge-node-${productVersion}-linux.tar.gz`,
           ),
           maximum: 64 * 1024 * 1024,
           strip: 0,
@@ -404,7 +405,7 @@ const document = validateSpdx({
     randomUUID(),
   creationInfo: {
     created: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
-    creators: ['Tool: freerdp-bridge-sbom-0.1.0'],
+    creators: [`Tool: freerdp-bridge-sbom-${productVersion}`],
   },
   comment:
     (windows

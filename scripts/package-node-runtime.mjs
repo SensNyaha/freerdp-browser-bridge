@@ -1,3 +1,4 @@
+import { productVersion } from './product-version.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -29,13 +30,13 @@ run('pnpm', [
 ]);
 mkdirSync(resolve('build/packages'), { recursive: true });
 const archive = resolve(
-  'build/packages/freerdp-bridge-node-0.1.0-linux.tar.gz',
+  `build/packages/freerdp-bridge-node-${productVersion}-linux.tar.gz`,
 );
 run('tar', ['-czf', archive, '-C', destination, '.']);
 const bytes = readFileSync(archive);
 console.log(
   JSON.stringify({
-    nodeArchive: 'build/packages/freerdp-bridge-node-0.1.0-linux.tar.gz',
+    nodeArchive: `build/packages/freerdp-bridge-node-${productVersion}-linux.tar.gz`,
     bytes: bytes.length,
     sha256: createHash('sha256').update(bytes).digest('hex'),
   }),

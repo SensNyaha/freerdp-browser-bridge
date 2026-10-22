@@ -1,3 +1,4 @@
+import { productVersion } from './product-version.mjs';
 import {
   copyFileSync,
   mkdirSync,
@@ -19,7 +20,7 @@ const build = realpathSync(resolve('build'));
 const archive = realpathSync(
   resolve(
     process.argv[2] ??
-      'build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz',
+      `build/packages/freerdp-bridge-native-${productVersion}-Linux.tar.gz`,
   ),
 );
 const size = statSync(archive).size;

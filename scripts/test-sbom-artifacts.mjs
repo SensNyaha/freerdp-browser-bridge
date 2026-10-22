@@ -1,3 +1,4 @@
+import { productVersion } from './product-version.mjs';
 import { spawnSync } from 'node:child_process';
 import {
   copyFile,
@@ -30,6 +31,7 @@ for (const path of [
   'package.json',
   'native/dependencies.json',
   'scripts/generate-sbom.mjs',
+  'scripts/product-version.mjs',
   'scripts/sbom-model.mjs',
   'scripts/freerdp-override-model.mjs',
   'scripts/windows-runtime-model.mjs',
@@ -39,10 +41,10 @@ for (const path of [
   await copyFile(resolve(path), join(fixture, path));
 const windows = process.platform === 'win32';
 for (const name of windows
-  ? ['freerdp-bridge-native-0.1.0-win64.zip']
+  ? [`freerdp-bridge-native-${productVersion}-win64.zip`]
   : [
-      'freerdp-bridge-native-0.1.0-Linux.tar.gz',
-      'freerdp-bridge-node-0.1.0-linux.tar.gz',
+      `freerdp-bridge-native-${productVersion}-Linux.tar.gz`,
+      `freerdp-bridge-node-${productVersion}-linux.tar.gz`,
     ]) {
   const source = resolve('build/packages', name);
   if (

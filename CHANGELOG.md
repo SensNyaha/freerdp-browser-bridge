@@ -6,6 +6,9 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## 0.2.0 — 2026-10-22
 
+- Product/native versions and package/runtime/SBOM archive selectors agree on
+  the release version; current archive selection preserves older releases.
+  [Release preparation and artifact evidence](docs/ITERATION_418.md).
 - GCC 8.3.0 source support for the required Astra Linux 1.7.5 target, retaining
   C++20 mode and bounded compatibility facilities in `bridge::compat`.
   Mandatory RED OS 7.3/GCC 11 and MSVC linked checks pass. Private CUPS,
