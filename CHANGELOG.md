@@ -4,6 +4,21 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.2.0 — 2026-10-22
+
+- GCC 8.3.0 source support for the required Astra Linux 1.7.5 target, retaining
+  C++20 mode and bounded compatibility facilities in `bridge::compat`.
+  Mandatory RED OS 7.3/GCC 11 and MSVC linked checks pass. Private CUPS,
+  numactl and libfuse build corrections preserve the pinned dependency versions.
+- Actual Astra and RED OS public Edge H.264/JPEG desktop, resize/restoration,
+  viewer reattachment and cleanup. A bounded legacy XRDP format proposal is
+  validated before pinned RDPSND ignores it; microphone policy remains gated.
+  [Current evidence and retained failures](docs/ITERATION_417.md).
+- Exact GCC 8.3 container foundation CI recipe, locally verified with CTest
+  20/20; hosted execution remains separate. Strict installed Linux runtime
+  closure and relocation pass. [Build/package evidence](docs/ITERATION_411.md),
+  [CI scope](docs/ITERATION_413.md).
+
 - Named owned XRDP 0.10.1 / prepared Tk / headed Edge Unicode Clipboard API
   roundtrip acceptance, including emoji/multiline text, repeated Copy and new
   RDP connections, permission refusal, revoke and joined cleanup. Adds an
