@@ -6,7 +6,14 @@ preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
-Latest stable is **0.2.1**, tag `v0.2.1`: same-port Fastify embedding, aligned
+Latest stable is **0.2.2**, tag `v0.2.2`: NestJS with Express and FastifyAdapter,
+same-port HTTP/WS and aligned native runtimes. Final full checks: Windows
+932 / 61 skips, Linux 909 / 87; clean CTest 36/36 and 37/37. Eight exact
+README-complete npm archives, both external adapter consumers and all eight
+versioned Astra/RED OS desktop profiles pass. npm publication remains separate
+and pending. [Release acceptance](docs/ITERATION_429.md).
+
+Prior stable **0.2.1**, tag `v0.2.1`: same-port Fastify embedding, aligned
 native npm runtimes and installed-package Astra/RED OS desktop acceptance.
 Final checks: Windows 915 / 61 skips, Linux 892 / 87; native CTest 36/36 and
 37/37. [Release evidence](docs/ITERATION_424.md). All seven npm packages are
@@ -33,7 +40,7 @@ Updated user-selected adapter order, 2026-10-22:
 | Target release | Adapter | Separate feature branch | Status |
 | --- | --- | --- | --- |
 | 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; all seven npm packages published; exact public integrity and fresh Windows/Linux registry-only consumers pass; iteration 426 |
-| 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Feature acceptance: Windows/Linux external npm/strict TypeScript and 15 installed checks, both adapter HTTPS/WSS, eight Astra/RED OS H.264/JPEG desktop profiles; full checks 930/61 and 907/87, CTest 36/36 and 37/37; aligned release/npm remain; iteration 427 |
+| 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Accepted aligned v0.2.2: full checks 932/61 and 909/87, CTest 36/36 and 37/37, exact external consumers with reinstall and eight versioned Astra/RED OS desktop profiles; npm pending; iterations 427–429 |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Planned after accepted NestJS |
 | 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Planned after accepted node:http |
 
