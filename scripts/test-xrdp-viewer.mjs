@@ -3,42 +3,9 @@ import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { Writable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
-import { chromium } from 'playwright-core';
-import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
-import {
-  NativeSessionWorker,
-  WorkerProcess,
-} from '../packages/node-bridge/dist/index.js';
-import { LabRdpDiagnostics } from './lab-rdp-diagnostics.mjs';
-import {
-  AudioNegotiationDiagnostics,
-  AudioSummaryDiagnostics,
-  AudioCauseDiagnostics,
-} from './audio-negotiation-diagnostics.mjs';
-import { createLabRdpProxy } from './lab-rdp-proxy.mjs';
-import { waitForViewerClose } from './viewer-window.mjs';
 import { viewerMediaOptions } from './viewer-media-options.mjs';
-import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
-import { readViewerPipelineObservation } from './viewer-pipeline-observation.mjs';
-import {
-  dispatchWindowsLabTone,
-  windowsLabToneCommand,
-} from './windows-lab-tone.mjs';
-import { AudioResetDiagnostics } from './audio-reset-diagnostics.mjs';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
 import { viewerLabFiles, requireOwnedLabTarget } from './viewer-lab-files.mjs';
-import {
-  ownedPointerReader,
-  ownedInputStateReader,
-} from './owned-xrdp-pointer.mjs';
-import { runWindowsPointerSmoke } from './windows-lab-pointer.mjs';
-import {
-  ViewerSoak,
-  soakDurationMs,
-  soakIntervalMs,
-  windowsWorkerResidentBytes,
-  mediaCredit,
-} from './viewer-soak.mjs';
 
 // User-authorized local XRDP check: browser and API bind only to this machine.
 const fingerprint = process.argv[2];
@@ -105,6 +72,43 @@ const { options, profile: nativeProfile } = await viewerWorkerOptions(
   process.argv[5],
   resolve('.'),
 );
+// Validate the lab selection/receipt before loading browser and runtime modules.
+const { chromium } = await import('playwright-core');
+const { createSessionServer } = await import(
+  '../apps/bridge-api/dist/session-server.js'
+);
+const { NativeSessionWorker, WorkerProcess } = await import(
+  '../packages/node-bridge/dist/index.js'
+);
+const { LabRdpDiagnostics } = await import('./lab-rdp-diagnostics.mjs');
+const {
+  AudioNegotiationDiagnostics,
+  AudioSummaryDiagnostics,
+  AudioCauseDiagnostics,
+} = await import('./audio-negotiation-diagnostics.mjs');
+const { createLabRdpProxy } = await import('./lab-rdp-proxy.mjs');
+const { waitForViewerClose } = await import('./viewer-window.mjs');
+const { readViewerAudioObservation } = await import(
+  './viewer-audio-observation.mjs'
+);
+const { readViewerPipelineObservation } = await import(
+  './viewer-pipeline-observation.mjs'
+);
+const { dispatchWindowsLabTone, windowsLabToneCommand } = await import(
+  './windows-lab-tone.mjs'
+);
+const { AudioResetDiagnostics } = await import('./audio-reset-diagnostics.mjs');
+const { ownedPointerReader, ownedInputStateReader } = await import(
+  './owned-xrdp-pointer.mjs'
+);
+const { runWindowsPointerSmoke } = await import('./windows-lab-pointer.mjs');
+const {
+  ViewerSoak,
+  soakDurationMs,
+  soakIntervalMs,
+  windowsWorkerResidentBytes,
+  mediaCredit,
+} = await import('./viewer-soak.mjs');
 if (labFiles.ownedContainer)
   options.runtimeRoot = resolve('.runtime/owned-viewer-lab');
 if (nativeProfile)

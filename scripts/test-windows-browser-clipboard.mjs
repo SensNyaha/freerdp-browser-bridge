@@ -10,19 +10,8 @@ import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { Writable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
-import { chromium } from 'playwright-core';
-import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
-import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { viewerWorkerOptions } from './viewer-worker-options.mjs';
 import { viewerLabFiles, requireOwnedLabTarget } from './viewer-lab-files.mjs';
-import { windowsLabToneCommand } from './windows-lab-tone.mjs';
-import { runMvpBrowserSoak } from './mvp-browser-soak.mjs';
-import { readViewerAudioObservation } from './viewer-audio-observation.mjs';
-import { clipboardStatuses } from '../packages/protocol/dist/clipboard.js';
-import {
-  parsePointerReceipt,
-  runWindowsPointerSmoke,
-} from './windows-lab-pointer.mjs';
 
 // Explicitly authorized one-session scenario: fresh focused unsaved Notepad,
 // replace both clipboards with fixed synthetic text. Never log their contents.
@@ -36,7 +25,6 @@ const ownedClipboard = ownedReceiptRead || ownedRoundtrip;
 const mvpSoak = extra.includes('--mvp-soak');
 let sourceWrites = 0;
 const notepadReadyPath = resolve('build/mvp-notepad-ready-' + process.pid);
-const tone = mvpSoak ? windowsLabToneCommand(1980) : undefined;
 const pointerSmoke = extra.includes('--pointer-smoke') || ownedReceiptRead;
 if (
   process.platform !== 'win32' ||
@@ -72,6 +60,26 @@ if (
 )
   throw new Error('Use the approved fingerprint and linked native receipt');
 const { options, profile } = await viewerWorkerOptions(receipt, resolve('.'));
+// Validate the lab selection/receipt before loading browser and runtime modules.
+const { chromium } = await import('playwright-core');
+const { createSessionServer } = await import(
+  '../apps/bridge-api/dist/session-server.js'
+);
+const { NativeSessionWorker } = await import(
+  '../packages/node-bridge/dist/index.js'
+);
+const { windowsLabToneCommand } = await import('./windows-lab-tone.mjs');
+const { runMvpBrowserSoak } = await import('./mvp-browser-soak.mjs');
+const { readViewerAudioObservation } = await import(
+  './viewer-audio-observation.mjs'
+);
+const { clipboardStatuses } = await import(
+  '../packages/protocol/dist/clipboard.js'
+);
+const { parsePointerReceipt, runWindowsPointerSmoke } = await import(
+  './windows-lab-pointer.mjs'
+);
+const tone = mvpSoak ? windowsLabToneCommand(1980) : undefined;
 options.runtimeRoot = resolve('.runtime/windows-browser-clipboard');
 const origin = 'http://127.0.0.1:47995';
 const bearer = randomBytes(32).toString('base64url');

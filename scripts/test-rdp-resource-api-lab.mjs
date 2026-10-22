@@ -8,13 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
-  NativeSessionWorker,
-  WorkerProcess,
-} from '../packages/node-bridge/dist/index.js';
-import { MAX_JPEG_BYTES } from '../packages/protocol/dist/index.js';
-import { processQuerySnapshot } from '../packages/node-bridge/dist/process-query-gate.js';
-import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
-import {
   loadResourceLabProfile,
   resourceApiLabRequest,
 } from './resource-lab-profile.mjs';
@@ -27,6 +20,17 @@ const args = process.argv.slice(2);
 const labFiles = viewerLabFiles(process.env.BRIDGE_LAB_PROFILE);
 const mode = resourceApiLabRequest(args);
 const profile = await loadResourceLabProfile(mode.nativeArgs, project);
+// Refuse invalid arguments/profiles before loading the API/runtime graph.
+const { NativeSessionWorker, WorkerProcess } = await import(
+  '../packages/node-bridge/dist/index.js'
+);
+const { MAX_JPEG_BYTES } = await import('../packages/protocol/dist/index.js');
+const { processQuerySnapshot } = await import(
+  '../packages/node-bridge/dist/process-query-gate.js'
+);
+const { createSessionServer } = await import(
+  '../apps/bridge-api/dist/session-server.js'
+);
 const limits = mode.limits;
 const { WebSocket } = createRequire(
   new URL('../apps/bridge-api/package.json', import.meta.url),
