@@ -98,6 +98,16 @@ passes an unprivileged artifact-only probe on actual RED OS without SDK/build
 paths. Real desktop regression remains separate; no 0.2.0 tag is accepted here.
 [Portable source/package evidence](docs/ITERATION_411.md).
 
+The final exact GCC 8.3 package also passes an unprivileged cold Astra-library
+container probe. Actual owned XRDP desktop, resize/restoration, both IPC
+transports and controlled transport loss pass. Public Edge H.264/JPEG rendering,
+viewer reattachment and Linux-producer CLIPRDR ↔ prepared Tk Unicode/multiline
+roundtrips with repeated fresh Copy/Get pass their bounded profiles. Earlier
+display/clipboard failures are retained without an unsupported cause claim.
+The user defers Windows-host access for 60 minutes; its new-worker joint
+regression remains unrun. No new audible, OS Clipboard API, installed-Astra or
+0.2.0 acceptance is claimed. [Evidence](docs/ITERATION_412.md).
+
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
 directions across two new RDP connections, repeated server Copy/Get, actual
