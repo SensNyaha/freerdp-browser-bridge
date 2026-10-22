@@ -105,6 +105,7 @@ async function main() {
   )
     refuse();
   const build = await realpath('build');
+  const canonicalProject = await realpath(project);
   phase = 'stage';
   const stage = await realpath(process.argv[2]);
   if (!inside(build, stage)) refuse();
@@ -334,9 +335,9 @@ async function main() {
     platform: process.platform,
     files: files.length,
     unpackedBytes: total,
-    sourceStage: relative(project, stage).replaceAll('\\', '/'),
-    packageDirectory: relative(project, root).replaceAll('\\', '/'),
-    archive: relative(project, archive).replaceAll('\\', '/'),
+    sourceStage: relative(canonicalProject, stage).replaceAll('\\', '/'),
+    packageDirectory: relative(canonicalProject, root).replaceAll('\\', '/'),
+    archive: relative(canonicalProject, archive).replaceAll('\\', '/'),
     ...(await digest(archive, 128 * 1024 * 1024)),
     published: false,
   };
