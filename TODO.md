@@ -48,7 +48,20 @@ publication, full real-project usage guides as Markdown in `docs/`, separate
 GitHub delivery repositories, then standalone installers
 for the target OS families. Subsequent clarification: prepare the local Git
 repositories and report their directories; the user will push/synchronize
-GitHub themselves. The user selects **MIT** for project-owned code; third-party
+GitHub themselves.
+
+Additional user requirement, 2026-10-22: every npm package release includes its
+own explanatory root README: purpose, installation, dependencies/platforms,
+usage, limitations and licenses. This applies to shared JS packages and both
+native runtimes as well as adapters. Workspace discovery and actual archive
+checks enforce it; [publication contract](docs/NPM_PUBLISHING.md). Historical
+accepted tags/tarballs remain immutable; new README content ships in new
+release artifacts. Next-adapter version targets remain unchanged. Accepted in
+`4153070`: all seven generated package archives contain their README, Windows
+full check passes 918 / 61 skips / 0 fail, and README tests pass 3/3 on Windows
+and Linux. [Evidence and partial npm publication](docs/ITERATION_425.md).
+
+The user selects **MIT** for project-owned code; third-party
 native dependency licenses/notices retain their own terms. The user has created
 the npm organization `freerdp-bridge` and selects the `@freerdp-bridge/*` names. [Fastify development
 contract and remaining acceptance](docs/FASTIFY_PLUGIN.md). Native npm runtime

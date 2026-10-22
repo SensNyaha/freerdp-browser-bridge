@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { productVersion } from './product-version.mjs';
 import { copyNativePackageSources } from './native-package-sources.mjs';
+import { checkNpmArchiveReadme } from './npm-readme.mjs';
 import {
   nativeRuntimePackageName,
   parseNativeRuntimeManifest,
@@ -226,7 +227,7 @@ async function main() {
       {
         name,
         version: productVersion,
-        description: 'Private native runtime for FreeRDP Browser Bridge',
+        description: 'Native runtime for FreeRDP Browser Bridge',
         license: 'SEE LICENSE IN THIRD_PARTY_NOTICES.md',
         os: [process.platform],
         cpu: ['x64'],
@@ -248,6 +249,7 @@ async function main() {
           'LICENSE',
           'THIRD_PARTY_NOTICES.md',
           'corresponding-source',
+          'README.md',
         ],
         publishConfig: {
           access: 'public',
@@ -263,6 +265,15 @@ async function main() {
     JSON.stringify(metadata, null, 2) + '\n',
   );
   await copyFile('LICENSE', join(root, 'LICENSE'));
+  await copyFile(
+    join(
+      project,
+      'docs/npm/runtime-' +
+        (process.platform === 'win32' ? 'win32-x64' : 'linux-x64-gnu') +
+        '.README.md',
+    ),
+    join(root, 'README.md'),
+  );
   await writeFile(
     join(root, 'THIRD_PARTY_NOTICES.md'),
     '# Native runtime notices\n\nProject-owned bridge code uses MIT (LICENSE). Bundled FreeRDP and native dependencies retain their own terms. Read every document under runtime/share/freerdp-bridge/licenses/ and the accompanying runtime/share/freerdp-bridge/sbom/vcpkg/ metadata before redistribution. Corresponding LGPL source archives and their exact build recipes/patches accompany this package under corresponding-source/; see its README.md and manifest.json. The runtime manifest records integrity/compatibility, not a publisher signature. This package includes no Node.js executable and runs no installation scripts.\n' +
@@ -353,6 +364,7 @@ async function main() {
     archive: relative(canonicalProject, archive).replaceAll('\\', '/'),
     ...(await digest(archive, 128 * 1024 * 1024)),
     published: false,
+    documentation: await checkNpmArchiveReadme(archive),
   };
   await writeFile(
     join(destination, 'receipt.json'),

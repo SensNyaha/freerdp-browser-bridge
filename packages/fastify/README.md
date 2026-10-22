@@ -1,8 +1,12 @@
 # FreeRDP Browser Bridge — Fastify
 
+## Purpose
+
 Mount RDP HTTP and WebSocket routes inside an existing Fastify 5 application,
 on its existing port. Each session runs a separate native worker; FreeRDP does
-not run inside Node.js. Requires Node.js 24.
+not run inside Node.js. Package name: `@freerdp-bridge/fastify`.
+
+## Installation
 
 Install the adapter and the matching native runtime version for your server:
 
@@ -16,9 +20,18 @@ npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.1 @freerdp-bridge/runtime
 
 For an unreleased source checkout, use locally built tarballs instead;
 a source version number alone does not establish registry availability.
+## Requirements
+
+Requires Node.js 24, ESM, Fastify 5 and a native runtime of the same product
+version as all JS bridge packages. Install the runtime explicitly.
 Runtime packages include their private native libraries, helpers and notices.
+This adapter contains JavaScript/declarations; the compiled C++ worker and
+native IPC components are supplied by the separate platform runtime, not by
+the adapter. The runtime also carries its third-party source companions.
 They require no compiler or network installation script. Node/browser binaries
 are separate prerequisites. macOS, ARM and musl are not supported by this set.
+
+## Usage
 
 ```ts
 import Fastify from 'fastify';
@@ -43,6 +56,8 @@ returning `{ id: verifiedUserId }` or `undefined`. There is no default identity.
 Cookie-based identity needs a separate CSRF/Origin adapter and is currently
 refused. On Windows, use an absolute Windows path for runtimeRoot. The host
 owns external TLS and access logging; exclude credentials and attach URL tokens.
+
+## Limitations
 
 The plugin validates bodies strictly within 64 KiB, preserves session ownership,
 uses single-use control/media tokens, and verifies RDP certificates strictly by
@@ -70,5 +85,7 @@ The host owns presentation, identity and browser permission policy.
 
 Complete source-tree guides are `docs/FASTIFY_USAGE.md` and
 `docs/NATIVE_NPM_RUNTIME.md`; the public `.d.ts` files describe the options.
-Project-owned code uses MIT. Native dependencies retain their own licenses in
+## License
+
+Project-owned code uses MIT (LICENSE). Native dependencies retain their own licenses in
 the platform runtime package's THIRD_PARTY_NOTICES.md and bundled notices.

@@ -31,6 +31,10 @@ separate values. A product release never silently changes those contracts.
 2. Keep release changes separate in `release/<version>`. Include only completed
    work, update the changelog and align all product version manifests. Do not
    collect uncommitted or unfinished work from another feature branch.
+   Every npm package, including common libraries and platform runtimes, must
+   ship its own explanatory root README. Run the source and exact-archive checks
+   in [the publication contract](NPM_PUBLISHING.md); update examples/dependency
+   versions for that release. README changes do not replace accepted archives.
 3. Run the version guard, relevant regression and required real RDP/device
    gates. Merge the release branch after checks pass, then create an annotated
    immutable `v<version>` tag on the release commit. Never move an existing tag
