@@ -123,6 +123,7 @@ TEST_CASE("Public AUDIN virtual source validates pinned device format and callba
   REQUIRE(source.pump() == AudinPumpStatus::inactive);
   REQUIRE(device.Open(&device, Receiver::receive, &receiver) != CHANNEL_RC_OK);
   REQUIRE_FALSE(device.FormatSupported(&device, nullptr));
+  REQUIRE(device.SetFormat(&device, nullptr, 960) != CHANNEL_RC_OK);
   for (const auto channels : {UINT16{1}, UINT16{2}}) {
     const auto pcm = format(channels);
     REQUIRE(device.FormatSupported(&device, &pcm));
@@ -135,16 +136,33 @@ TEST_CASE("Public AUDIN virtual source validates pinned device format and callba
   invalid = format();
   invalid.nBlockAlign++;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
   invalid = format();
   invalid.cbSize = 1;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
   BYTE extra = 0;
   invalid = format();
   invalid.data = &extra;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
   invalid = format();
   invalid.nSamplesPerSec = 44100;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  invalid = format();
+  invalid.wFormatTag = WAVE_FORMAT_ALAW;
+  REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  invalid = format();
+  invalid.wBitsPerSample = 8;
+  REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  for (const auto channels : {UINT16{0}, UINT16{3}}) {
+    invalid = format(channels);
+    REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+    REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  }
   const auto pcm = format();
   REQUIRE(device.SetFormat(&device, &pcm, 0) != CHANNEL_RC_OK);
   REQUIRE(device.SetFormat(&device, &pcm, 4801) != CHANNEL_RC_OK);

@@ -34,6 +34,19 @@ then powers off cleanly. This is kernel/runtime evidence, separate from a full
 installed Astra/security profile, other kernels, linked FreeRDP and RDP/device
 acceptance. [Guest evidence](ITERATION_408.md).
 
+The next exact GCC 8.3.0 source build completes all ten required private
+dependency roots and the pinned FreeRDP/WinPR SDK, including strict private
+origins and foreign-prefix refusal. A fresh Release linked consumer passes
+CTest **37/37** and real-worker Node IPC/lifecycle/protocol-fixture checks
+**40/40**, with unchanged source and recorded compiler/artifact receipts.
+Full `pnpm check` against that clean linked worker/addon passes **877 / 87 skips /
+964 total**, zero failures.
+The libfuse example's language flag is selected by Meson; bridge origin probes
+use PIC, AUDIN avoids an old optimized-optional warning, and the owned tone has
+an exact-value `pi` fallback. This linked build is separate from linked Astra
+runtime, installed-OS, RED OS product, Windows regression and actual RDP gates.
+[Linked source-chain evidence](ITERATION_409.md).
+
 ## Historical GCC 12 decision and acceptance
 
 The following records the earlier decision and its independently verified

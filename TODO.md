@@ -41,13 +41,19 @@ platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
 
+The user selected **0.2.0** as the next release for the GCC 8.3 port on
+2026-10-22. Complete and verify `feature/astra17-gcc83`, then prepare the
+separate release branch and version manifests; no 0.2.0 tag is accepted yet.
+The prior `v0.1.0` remains the immutable practical MVP baseline.
+
 The user now requires GCC 8.3.0/Astra Linux 1.7.5 and mandatory RED OS 7.3/GCC 11.
 This supersedes the previous GNU 12 fallback policy without removing its
 historical evidence. The separate compiler feature branch passes foundation
 CTest 20/20 on exact GCC 8.3.0 and on the actual RED OS 7.3/GCC 11.4.1 host,
-plus MSVC CTest 19/19 and framed lifecycle 16 / 1 skip. Full linked dependency /
-FreeRDP / addon runtime closure, installed-Astra and actual RDP acceptance remain
-open. With libraries from the supplied Astra ISO, the same foundation binaries
+plus MSVC CTest 19/19 and framed lifecycle 16 / 1 skip. At this checkpoint,
+linked dependency / FreeRDP / addon runtime closure, installed-Astra and actual
+RDP acceptance were still open. With libraries from the supplied Astra ISO,
+the same foundation binaries
 pass CTest 20/20 and the GCC 8.3 IPC-only Node 24 addon passes 14/14 packet /
 lifecycle tests in a separate unpacked runtime fixture using the Docker host
 kernel. Full Windows foundation `pnpm check` passes 849 / 112 skips / 961 total.
@@ -61,6 +67,15 @@ diskless/networkless QEMU guest with checked runtime libraries. Foundation CTest
 pass with unchanged deadlines. This is kernel/initramfs evidence; installed OS,
 security profiles, other kernels and linked product/RDP acceptance remain open.
 [Guest evidence](docs/ITERATION_408.md).
+
+The subsequent exact GCC 8.3.0 source chain completes all ten required private
+dependency roots and pinned FreeRDP/WinPR, with strict origins/foreign-prefix
+refusal. A fresh linked Release consumer passes CTest 37/37 and real-worker
+Node IPC/lifecycle/protocol-fixture checks 40/40 with source/artifact receipts.
+Full linked `pnpm check` passes 877 / 87 skips / 964 total, zero failures.
+Linked Astra closure, installed-OS/security profiles, actual RED OS product,
+Windows linked regression and actual RDP gates remain open; no shared merge or
+0.2.0 tag is accepted here. [Linked source build](docs/ITERATION_409.md).
 
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both

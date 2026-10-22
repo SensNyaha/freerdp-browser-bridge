@@ -5,6 +5,12 @@ Its scope and limits are [MVP acceptance](MVP_ACCEPTANCE.md), not completion
 of the full original V1 plan. Major version zero still permits API evolution
 under [Semantic Versioning](https://semver.org/).
 
+User decision, 2026-10-22: the next release is **0.2.0**, containing the verified
+GCC 8.3 compiler port. Complete the compiler feature's acceptance first, then
+prepare `release/0.2.0`, align the manifests and run the release checks below.
+Until that happens, 0.2.0 is a release target rather than an accepted tag;
+the existing `v0.1.0` and its artifacts remain immutable.
+
 Root/workspace `package.json` versions and CMake `project(VERSION)` use one
 product version. `pnpm version:check` verifies their consistency; an explicit
 release check is `node scripts/check-version.mjs 0.1.0`. It validates the

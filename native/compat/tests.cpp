@@ -1,4 +1,5 @@
 #include "bit.hpp"
+#include "numbers.hpp"
 #include "ranges.hpp"
 #include "span.hpp"
 #include "thread.hpp"
@@ -62,6 +63,7 @@ TEST_CASE(
   REQUIRE(restored == original);
   const auto number = c::bit_cast<std::uint32_t>(1.0F);
   REQUIRE(number == 0x3f800000);
+  REQUIRE(c::bit_cast<std::uint64_t>(c::numbers::pi) == 0x400921fb54442d18ULL);
   std::array<int, 3> first{{1, 2, 3}}, second{};
   c::ranges::copy(first, second.begin());
   REQUIRE(c::ranges::equal(first, second));

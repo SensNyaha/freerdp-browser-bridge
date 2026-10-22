@@ -4,14 +4,14 @@
 
 namespace bridge::audio {
 namespace {
-std::optional<PcmFormat> capture_format(const AUDIO_FORMAT *format) noexcept {
+bool valid_capture_format(const AUDIO_FORMAT *format) noexcept {
   if (!format || format->wFormatTag != WAVE_FORMAT_PCM || format->cbSize || format->data ||
       format->nSamplesPerSec != 48000 || format->wBitsPerSample != 16 ||
       (format->nChannels != 1 && format->nChannels != 2) ||
       format->nBlockAlign != format->nChannels * 2 ||
       format->nAvgBytesPerSec != format->nSamplesPerSec * format->nBlockAlign)
-    return {};
-  return PcmFormat{format->nSamplesPerSec, format->nChannels, format->wBitsPerSample};
+    return false;
+  return true;
 }
 void add(std::uint64_t &counter, std::uint64_t amount) noexcept {
   const auto limit = (std::numeric_limits<std::uint64_t>::max)();
@@ -38,15 +38,17 @@ AudinSource *AudinSource::owner(IAudinDevice *device) noexcept {
 }
 BOOL AudinSource::supported(IAudinDevice *device, const AUDIO_FORMAT *format) noexcept {
   const auto *source = owner(device);
-  return source && source->usable() && capture_format(format) ? TRUE : FALSE;
+  return source && source->usable() && valid_capture_format(format) ? TRUE : FALSE;
 }
 UINT AudinSource::set_format(IAudinDevice *device, const AUDIO_FORMAT *format,
                              UINT32 frames) noexcept {
   auto *source = owner(device);
-  const auto pcm = capture_format(format);
   if (!source || !source->usable() || source->busy_ || source->stats_.opened)
     return CHANNEL_RC_BAD_CHANNEL_HANDLE;
-  if (!pcm || !source->capture_->configure(*pcm, frames))
+  if (!valid_capture_format(format))
+    return ERROR_INVALID_PARAMETER;
+  const PcmFormat pcm{format->nSamplesPerSec, format->nChannels, format->wBitsPerSample};
+  if (!source->capture_->configure(pcm, frames))
     return ERROR_INVALID_PARAMETER;
   source->format_ = *format; // PCM has no borrowed extra-format data.
   return CHANNEL_RC_OK;

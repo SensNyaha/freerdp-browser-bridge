@@ -293,6 +293,8 @@ if(BRIDGE_WITH_FREERDP)
   add_executable(rdp-runtime-check native/runtime/dependency_probe.cpp)
   target_link_libraries(rdp-runtime-check PRIVATE ZLIB::ZLIB freerdp freerdp-client bridge_jpeg bridge_h264 bridge_opus bridge_warnings ${CMAKE_DL_LIBS})
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # GCC without distro PIE defaults can otherwise report this executable's PLT as the origin.
+    target_compile_options(rdp-runtime-check PRIVATE -fPIC)
     find_path(BRIDGE_LIBUDEV_INCLUDE_DIR NAMES libudev.h
       PATHS "${BRIDGE_DEPENDENCY_PREFIX}/include" NO_DEFAULT_PATH REQUIRED)
     find_library(BRIDGE_LIBUDEV_LIBRARY NAMES udev

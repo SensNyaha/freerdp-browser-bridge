@@ -1,4 +1,5 @@
 #include "../compat/bit.hpp"
+#include "../compat/numbers.hpp"
 #include "../compat/ranges.hpp"
 #include "../compat/span.hpp"
 #include "opus_audio.hpp"
@@ -7,7 +8,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <limits>
-#include <numbers>
 #include <opus/opus.h>
 #include <stdexcept>
 #include <vector>
@@ -18,7 +18,7 @@ std::int16_t tone(std::size_t frame, std::size_t channel) {
   const auto frequency = channel == 0 ? 440.0 : 990.0;
   const auto amplitude = channel == 0 ? 8000.0 : 4000.0;
   return static_cast<std::int16_t>(
-      std::lround(amplitude * std::sin(2.0 * std::numbers::pi * frequency *
+      std::lround(amplitude * std::sin(2.0 * ::bridge::compat::numbers::pi * frequency *
                                        static_cast<double>(frame) / 48000.0)));
 }
 std::vector<std::uint8_t> pcm(std::size_t first) {

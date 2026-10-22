@@ -16,6 +16,8 @@ or standard-library profiles.
   a constant-evaluation facility.
 - `ranges.hpp`: whole-range `all_of`, `any_of`, `find`, `equal`, `copy` and `fill`
   through existing standard algorithms. No views, projections or concepts.
+- `numbers.hpp`: the double-precision `pi` used by the owned Opus test tone,
+  with exactly the standard binary64 value. No general math-constant library.
 - `thread.hpp`: the joining-thread, stop-source/token and copyable stop-callback
   operations currently used by the bridge. Modern libraries use their standard
   implementation. The fallback shares stop authority, invokes callbacks once,

@@ -3,7 +3,7 @@
 #include "opus_encoder.hpp"
 #include <cmath>
 #include <cstdio>
-#include <numbers>
+#include "../../native/compat/numbers.hpp"
 #include <vector>
 
 // Test-only, fixed synthetic tones. No session input, files or command arguments.
@@ -19,7 +19,7 @@ int main() {
           const auto index = packet * 960 + frame;
           const auto value = static_cast<std::int16_t>(
               std::lround((channel == 0 ? 8000.0 : 4000.0) *
-                          std::sin(2.0 * std::numbers::pi * (channel == 0 ? 440.0 : 990.0) *
+                          std::sin(2.0 * ::bridge::compat::numbers::pi * (channel == 0 ? 440.0 : 990.0) *
                                    static_cast<double>(index) / 48000.0)));
           const auto word = ::bridge::compat::bit_cast<std::uint16_t>(value);
           source[frame * 4 + channel * 2] = static_cast<std::uint8_t>(word);
