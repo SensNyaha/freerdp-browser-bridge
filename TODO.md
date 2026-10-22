@@ -6,7 +6,12 @@ preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
-Latest stable is **0.2.0**, tag `v0.2.0`, with the accepted GCC 8.3 port and
+Latest stable is **0.2.1**, tag `v0.2.1`: same-port Fastify embedding, aligned
+native npm runtimes and installed-package Astra/RED OS desktop acceptance.
+Final checks: Windows 915 / 61 skips, Linux 892 / 87; native CTest 36/36 and
+37/37. [Release evidence and npm publication status](docs/ITERATION_424.md).
+
+Prior stable **0.2.0**, tag `v0.2.0`, retains the accepted GCC 8.3 port and
 named Astra Linux 1.7.5 / RED OS 7.3 real desktop profiles. Final full checks:
 Windows 905 / 61 skips, Linux 882 / 87 skips; native CTest 36/36 and 37/37.
 [Release evidence and retained failures](docs/ITERATION_418.md). Intermediate
@@ -19,13 +24,13 @@ port as 0.2.1**, developed in separate `feature/fastify-0.2.1`. Each next
 accepted distribution variant advances the final number in 0.2.x. The
 [delivery proposal](docs/DISTRIBUTION_OPTIONS.md) records current packaging,
 same-port/diagnostics gaps and platform tradeoffs; it does not accept the
-unimplemented Fastify adapter, installers or unfinished managed drives.
+then-unimplemented Fastify adapter, installers or unfinished managed drives.
 
 Updated user-selected adapter order, 2026-10-22:
 
 | Target release | Adapter | Separate feature branch | Status |
 | --- | --- | --- | --- |
-| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | IN PROGRESS; implementation, external npm/native consumers and current Astra/RED OS desktop profiles pass; aligned 0.2.1 release preparation/publication remain open |
+| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; final external consumers/native/RDP profiles pass; registry publication recorded separately in iteration 424 |
 | 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Planned after accepted Fastify |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Planned after accepted NestJS |
 | 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Planned after accepted node:http |
@@ -48,9 +53,9 @@ native dependency licenses/notices retain their own terms. The user has created
 the npm organization `freerdp-bridge` and selects the `@freerdp-bridge/*` names. [Fastify development
 contract and remaining acceptance](docs/FASTIFY_PLUGIN.md). Native npm runtime
 packages/resolver now pass external Windows npm/pnpm and Linux pnpm consumers,
-including strict TypeScript and actual native TLS rejection; full regression
-passes 912 / 61 skips on Windows and 889 / 87 on Linux. This is an unreleased
-checkpoint: final aligned version/native artifacts and publication remain open.
+including strict TypeScript and actual native TLS rejection. The earlier
+unreleased checkpoint passes 912 / 61 skips on Windows and 889 / 87 on Linux;
+the final aligned 0.2.1 release evidence supersedes it for the named profiles.
 Installed-package browser H.264/JPEG, resize/restoration, reattach and cleanup
 now pass on the current Astra/RED OS addresses; [acceptance](docs/ITERATION_421.md). [Runtime evidence](docs/ITERATION_420.md),
 [real-project runtime usage](docs/NATIVE_NPM_RUNTIME.md).

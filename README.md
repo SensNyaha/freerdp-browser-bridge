@@ -1,7 +1,9 @@
 # FreeRDP → Browser Bridge
 
-Latest stable: **0.2.0**, tag `v0.2.0` (GCC 8.3 port and named Astra/RED OS
-desktop profiles). [Release evidence and limits](docs/ITERATION_418.md).
+Latest stable: **0.2.1**, tag `v0.2.1` (Fastify integration on the host's
+existing HTTP/WS port, explicit native npm runtime installation).
+[Release evidence and limits](docs/ITERATION_424.md). The immutable `v0.2.0`
+compiler/Astra/RED OS baseline is preserved.
 The original named practical MVP remains the immutable `v0.1.0` baseline.
 
 Prepared: 2026-10-07  
@@ -14,13 +16,14 @@ is preserved in TODO. See [release notes](CHANGELOG.md) and
 make an untagged feature build the stable release.
 
 Delivery planning: [npm/Fastify on the existing application port and standalone
-release options](docs/DISTRIBUTION_OPTIONS.md). Fastify targets 0.2.1 on its own
-feature branch; these proposed interfaces are not implemented in 0.2.0.
+release options](docs/DISTRIBUTION_OPTIONS.md). Fastify is accepted in 0.2.1
+after separate feature/release branches; it is absent from 0.2.0.
 The selected follow-up sequence is NestJS **0.2.2**, then built-in `node:http`
 **0.2.3**, then Express **0.2.4**, each developed and accepted separately.
 Real-project usage documentation belongs in `docs/`; the
-[Fastify development contract](docs/FASTIFY_PLUGIN.md) records the current
-implementation and remaining acceptance gates.
+[Fastify contract](docs/FASTIFY_PLUGIN.md) and
+[real-project guide](docs/FASTIFY_USAGE.md) describe the accepted interface.
+Registry publication is recorded separately in the release evidence.
 
 ## 1. Purpose
 
