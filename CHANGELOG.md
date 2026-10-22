@@ -4,11 +4,25 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-- In-development Fastify 0.2.1 embedding with encapsulated prefixed HTTP/WS,
+## 0.2.1 — 2026-10-22
+
+Accepted Fastify distribution, immutable `v0.2.1`. Final full checks: Windows
+915 passed / 61 skipped, Linux 892 / 87 skipped; clean linked native CTest
+MSVC 36/36, GCC 8.3 37/37. Exact Windows npm/Linux pnpm consumers and current
+Astra/RED OS installed-package desktop profiles pass.
+[Final acceptance and registry publication status](docs/ITERATION_424.md).
+
+- Fastify 0.2.1 embedding with encapsulated prefixed HTTP/WS,
   host-owned upgrade dispatch, bounded optional session diagnostics and packaged
-  reference browser assets. External npm/pnpm consumers and named Astra browser
-  profiles pass; native npm runtime and full release acceptance remain open.
+  reference browser assets. External npm/pnpm consumers and actual Astra/RED OS H.264/JPEG,
+  resize/restoration and reattachment pass with installed native npm packages.
   [Implementation/evidence](docs/ITERATION_419.md), [usage](docs/FASTIFY_USAGE.md).
+- Matching native runtime packages include ready worker/IPC components,
+  private FreeRDP dependencies, notices and pinned LGPL corresponding sources
+  with their exact build recipes/patches. Installation requires no compiler
+  or system FreeRDP. Windows x64 and Linux x64/glibc are the supported package
+  profiles; this does not imply arbitrary OS/CPU support or new device support.
+  [Runtime installation](docs/NATIVE_NPM_RUNTIME.md).
 - MIT license for project-owned code, as selected by the user. Third-party
   dependency notices retain their own terms.
 

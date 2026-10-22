@@ -1,8 +1,10 @@
 # Product versions and release branches
 
-The latest stable release is **0.2.0**, identified by annotated immutable
-`v0.2.0`. It adds the accepted GCC 8.3 port and named real Astra/RED OS desktop
-profiles; [release checks and limits](ITERATION_418.md). The original practical
+The latest stable release is **0.2.1**, identified by annotated immutable
+`v0.2.1`. It adds accepted same-port Fastify embedding and matching native npm
+packages; [release checks, limits and publication status](ITERATION_424.md).
+The prior immutable `v0.2.0` adds the accepted GCC 8.3 port and named real
+Astra/RED OS desktop profiles; [its checks](ITERATION_418.md). The original practical
 MVP remains **0.1.0**, by the user's 2026-10-21 decision, with immutable
 `v0.1.0` and its [MVP acceptance](MVP_ACCEPTANCE.md). Neither release completes
 the full original V1 plan. Major version zero still permits API evolution
@@ -17,7 +19,7 @@ carrying the same manifest number is not the stable tagged snapshot. Existing
 
 Root/workspace `package.json` versions and CMake `project(VERSION)` use one
 product version. `pnpm version:check` verifies their consistency; an explicit
-release check is `node scripts/check-version.mjs 0.2.0`. It validates the
+release check is `node scripts/check-version.mjs 0.2.1`. It validates the
 currently supported stable `MAJOR.MINOR.PATCH` form, not prerelease syntax.
 FreeRDP/other dependency pins and public/private wire schema versions are
 separate values. A product release never silently changes those contracts.

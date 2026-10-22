@@ -1,9 +1,9 @@
-# Fastify embedding (0.2.1 development)
+# Fastify embedding (0.2.1)
 
 Implements SPECIFICATION §2.1/2.11/3.1/3.2 and ADR-001 using the existing
-worker/API/media owners. Work is on `feature/fastify-0.2.1`. This document
-describes the implemented development interface, not an accepted 0.2.1 tag or
-a package already published to npm. NestJS 0.2.2, node:http 0.2.3 and Express 0.2.4 follow
+worker/API/media owners. Implementation is accepted from `feature/fastify-0.2.1`
+and finalized in `release/0.2.1`. [Release acceptance and registry status](ITERATION_424.md).
+NestJS 0.2.2, node:http 0.2.3 and Express 0.2.4 follow
 after this adapter's acceptance.
 
 ```ts
@@ -35,8 +35,8 @@ there or at a configured reverse proxy. HTTP/2-only servers are not accepted.
 The plugin defaults to one `NativeSessionWorker` per session. Supplying
 `sessions.workerFactory` explicitly replaces the backend, chiefly for tests.
 It does not change feature capabilities or turn fake-worker evidence into RDP
-desktop acceptance. Product versions remain at 0.2.0 during development;
-version stamping and native packaging for 0.2.1 are a separate release gate.
+desktop acceptance. Product/native versions are aligned at 0.2.1; their final
+clean builds and installed-package acceptance are recorded in the release report.
 
 ## Routes and ownership
 
@@ -124,7 +124,7 @@ history, raw native logs, credentials, target names, paths, screen/Clipboard
 contents or cross-session detail is added. This is not the original full V1
 performance report or private pipeline-counter exposure.
 
-## Acceptance still required
+## Accepted profile and limits
 
 Focused tests cover prefix/HTTP/WS composition, strict admission, diagnostic
 privacy, independent shutdown, refused installation and actual native strict
@@ -136,8 +136,10 @@ actual native strict TLS rejection. Actual Astra Linux 1.7.5 and RED OS 7.3 pref
 resize/restoration, reattachment and runtime cleanup now pass with installed
 native npm packages. [Current-address acceptance and retained failures](ITERATION_421.md). Full Linux regression
 and both native CTest profiles pass. [Current evidence](ITERATION_419.md).
-Native npm runtime packages and resolver now exist as development artifacts;
+Native npm runtime packages and resolver are included in the accepted release;
 [interface and evidence](NATIVE_NPM_RUNTIME.md). The supported install explicitly includes the platform runtime package.
-Immutable 0.2.1 version packaging and release acceptance remain open; automatic
-optional installation is a future convenience. [Real-project usage guide](FASTIFY_USAGE.md).
+Final aligned 0.2.1 packaging, source companions, external consumers and both
+named real RDP profiles pass; [final evidence](ITERATION_424.md). Registry publication
+is recorded separately there. Automatic optional installation remains a future
+convenience. [Real-project usage guide](FASTIFY_USAGE.md).
 No new device/audio/platform support is inferred from adapter tests.
