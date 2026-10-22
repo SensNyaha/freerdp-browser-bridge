@@ -33,7 +33,7 @@ Updated user-selected adapter order, 2026-10-22:
 | Target release | Adapter | Separate feature branch | Status |
 | --- | --- | --- | --- |
 | 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; all seven npm packages published; exact public integrity and fresh Windows/Linux registry-only consumers pass; iteration 426 |
-| 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Planned after accepted Fastify |
+| 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Feature acceptance: Windows/Linux external npm/strict TypeScript and 15 installed checks, both adapter HTTPS/WSS, eight Astra/RED OS H.264/JPEG desktop profiles; full checks 930/61 and 907/87, CTest 36/36 and 37/37; aligned release/npm remain; iteration 427 |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Planned after accepted NestJS |
 | 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Planned after accepted node:http |
 
