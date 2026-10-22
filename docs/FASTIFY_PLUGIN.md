@@ -132,11 +132,12 @@ TLS rejection. An external pnpm tarball consumer has passed fake binary media,
 same-port host WS survival and native build probing. Real npm installation
 and external actual-native strict TLS rejection also pass in a fresh consumer.
 The external Linux consumer also passes strict TypeScript declarations and
-actual native strict TLS rejection. Actual Astra Linux 1.7.5 prefixed Edge
-H.264/JPEG, resize/restoration and reattachment pass; RED OS attempts have not
-yet reached certificate admission and remain unaccepted. Full Linux regression
+actual native strict TLS rejection. Actual Astra Linux 1.7.5 and RED OS 7.3 prefixed Edge H.264/JPEG,
+resize/restoration, reattachment and runtime cleanup now pass with installed
+native npm packages. [Current-address acceptance and retained failures](ITERATION_421.md). Full Linux regression
 and both native CTest profiles pass. [Current evidence](ITERATION_419.md).
 Native npm runtime packages and resolver now exist as development artifacts;
-[interface and evidence](NATIVE_NPM_RUNTIME.md). Automatic optional installation,
-immutable 0.2.1 version packaging and release acceptance remain open. [Real-project usage guide](FASTIFY_USAGE.md).
+[interface and evidence](NATIVE_NPM_RUNTIME.md). The supported install explicitly includes the platform runtime package.
+Immutable 0.2.1 version packaging and release acceptance remain open; automatic
+optional installation is a future convenience. [Real-project usage guide](FASTIFY_USAGE.md).
 No new device/audio/platform support is inferred from adapter tests.

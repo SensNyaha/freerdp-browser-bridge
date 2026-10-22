@@ -25,7 +25,7 @@ Updated user-selected adapter order, 2026-10-22:
 
 | Target release | Adapter | Separate feature branch | Status |
 | --- | --- | --- | --- |
-| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | IN PROGRESS; plugin, packaged assets and focused native/API/media checks exist; full delivery acceptance remains open |
+| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | IN PROGRESS; implementation, external npm/native consumers and current Astra/RED OS desktop profiles pass; aligned 0.2.1 release preparation/publication remain open |
 | 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Planned after accepted Fastify |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Planned after accepted NestJS |
 | 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Planned after accepted node:http |
@@ -50,8 +50,9 @@ contract and remaining acceptance](docs/FASTIFY_PLUGIN.md). Native npm runtime
 packages/resolver now pass external Windows npm/pnpm and Linux pnpm consumers,
 including strict TypeScript and actual native TLS rejection; full regression
 passes 912 / 61 skips on Windows and 889 / 87 on Linux. This is an unreleased
-checkpoint: final aligned version/native artifacts, package-browser acceptance
-and publication remain open. [Runtime evidence](docs/ITERATION_420.md),
+checkpoint: final aligned version/native artifacts and publication remain open.
+Installed-package browser H.264/JPEG, resize/restoration, reattach and cleanup
+now pass on the current Astra/RED OS addresses; [acceptance](docs/ITERATION_421.md). [Runtime evidence](docs/ITERATION_420.md),
 [real-project runtime usage](docs/NATIVE_NPM_RUNTIME.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
