@@ -6,6 +6,11 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## 0.2.0 — 2026-10-22
 
+Stable `v0.2.0`. Final checks: Windows 905 passed / 61 skipped; Linux 882 /
+87 skipped; native CTest MSVC 36/36 and GCC 8.3 37/37. Full V1 and installer
+acceptance remain open. Fastify same-port npm integration targets **0.2.1**
+on its own feature branch under the explicit [0.2.x delivery policy](docs/VERSIONING.md).
+
 - Product/native versions and package/runtime/SBOM archive selectors agree on
   the release version; current archive selection preserves older releases.
   [Release preparation and artifact evidence](docs/ITERATION_418.md).

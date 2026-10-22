@@ -6,6 +6,13 @@ preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
+Latest stable is **0.2.0**, tag `v0.2.0`, with the accepted GCC 8.3 port and
+named Astra Linux 1.7.5 / RED OS 7.3 real desktop profiles. Final full checks:
+Windows 905 / 61 skips, Linux 882 / 87 skips; native CTest 36/36 and 37/37.
+[Release evidence and retained failures](docs/ITERATION_418.md). Intermediate
+pre-release checkpoints below retain their original scope/status and are
+superseded only for the explicitly accepted release profiles.
+
 Delivery direction, 2026-10-22: stabilize 0.2.0 before new product work. The
 user selects **Fastify npm integration on the existing application's HTTP/WS
 port as 0.2.1**, developed in separate `feature/fastify-0.2.1`. Each next
@@ -16,7 +23,7 @@ unimplemented Fastify adapter, installers or unfinished managed drives.
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
-Current GCC 8.3 / distro checkpoint (2026-10-22): the bounded legacy XRDP
+Pre-release GCC 8.3 / distro checkpoint (2026-10-22): the bounded legacy XRDP
 RDPSND negotiation correction passes clean linked GCC 8.3 and MSVC CTest,
 full checks (877 / 87 skips and 900 / 61 skips), private package relocation,
 and actual RED OS 7.3 plus Astra Linux 1.7.5 public Edge H.264/JPEG desktop,

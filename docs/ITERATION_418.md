@@ -157,6 +157,16 @@ port**, diagnostics/browser integration, and standalone OS distributions.
 The managed-drive branch remains unmerged. Delivery options are a proposal,
 not an implementation or acceptance of a new npm/installer capability.
 
+The verified CLI fix merges into `release/0.2.0` at `bd6d197`. Separate
+documentation branch `docs/distribution-options` records the delivery analysis
+at `0ff7b49` and is merged after local link/version checks. The user explicitly
+selects **Fastify 0.2.1** on `feature/fastify-0.2.1`, with each later accepted
+distribution advancing the last number in 0.2.x. This overrides the generic
+minor-version recommendation for that delivery series. No new Fastify adapter,
+diagnostics wire contract, native package resolver or installer is implemented
+in 0.2.0. Shared release merge and annotated `v0.2.0` identify the stable source;
+the existing `v0.1.0` remains `9d88694984d03af63456997810cbb16e730dff6a`.
+
 Evidence: root ignored `build/iteration-418-*` logs, including clean build,
 full/reviewed/focused Windows results, source comparison, package/Node-package
 attempts, pinned public tarballs/cache receipts, real RDP profiles and

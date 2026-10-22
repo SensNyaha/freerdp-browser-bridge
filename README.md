@@ -1,6 +1,8 @@
 # FreeRDP → Browser Bridge
 
-Latest stable MVP: **0.1.0** (named accepted profiles).
+Latest stable: **0.2.0**, tag `v0.2.0` (GCC 8.3 port and named Astra/RED OS
+desktop profiles). [Release evidence and limits](docs/ITERATION_418.md).
+The original named practical MVP remains the immutable `v0.1.0` baseline.
 
 Prepared: 2026-10-07  
 Target baseline: FreeRDP 3.32.1, Node.js 24 LTS, Linux x86_64 first

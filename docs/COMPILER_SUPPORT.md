@@ -1,6 +1,13 @@
 # Native compiler support
 
-## Current target and verified scope — 2026-10-21
+## Current target and verified scope — 2026-10-22
+
+Release 0.2.0 accepts the named compiler port and distro desktop profiles;
+final checks pass GCC 8.3 CTest 37/37, MSVC 36/36, Linux full 882 / 87 skips
+and Windows full 905 / 61 skips. [Release evidence](ITERATION_418.md). The
+intermediate checkpoints below preserve their historical open/completed states;
+they do not remove the remaining installed-security/device/platform matrix or
+override that later scoped acceptance.
 
 Latest checkpoint (2026-10-22): the linked GCC 8.3 package now passes actual
 RED OS 7.3 and Astra Linux 1.7.5 public Edge H.264/JPEG, resize/restoration,
