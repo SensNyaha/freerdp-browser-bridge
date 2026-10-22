@@ -16,6 +16,7 @@ import { resolve, relative, join, dirname, isAbsolute, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { productVersion } from './product-version.mjs';
+import { copyNativePackageSources } from './native-package-sources.mjs';
 import {
   nativeRuntimePackageName,
   parseNativeRuntimeManifest,
@@ -212,6 +213,13 @@ async function main() {
   phase = 'inventory';
   parseNativeRuntimeManifest(metadata, productVersion, process.platform);
   const name = nativeRuntimePackageName(process.platform);
+  phase = 'corresponding-source';
+  const sourceReceipt = await copyNativePackageSources({
+    project: canonicalProject,
+    stage,
+    destination: root,
+    platform: process.platform,
+  });
   await writeFile(
     join(root, 'package.json'),
     JSON.stringify(
@@ -239,6 +247,7 @@ async function main() {
           'runtime-manifest.json',
           'LICENSE',
           'THIRD_PARTY_NOTICES.md',
+          'corresponding-source',
         ],
         publishConfig: {
           access: 'public',
@@ -256,7 +265,10 @@ async function main() {
   await copyFile('LICENSE', join(root, 'LICENSE'));
   await writeFile(
     join(root, 'THIRD_PARTY_NOTICES.md'),
-    '# Native runtime notices\n\nProject-owned bridge code uses MIT (LICENSE). Bundled FreeRDP and native dependencies retain their own terms. Read every document under runtime/share/freerdp-bridge/licenses/ and the accompanying runtime/share/freerdp-bridge/sbom/vcpkg/ metadata before redistribution. The runtime manifest records integrity/compatibility, not a publisher signature. This package includes no Node.js executable and runs no installation scripts.\n',
+    '# Native runtime notices\n\nProject-owned bridge code uses MIT (LICENSE). Bundled FreeRDP and native dependencies retain their own terms. Read every document under runtime/share/freerdp-bridge/licenses/ and the accompanying runtime/share/freerdp-bridge/sbom/vcpkg/ metadata before redistribution. Corresponding LGPL source archives and their exact build recipes/patches accompany this package under corresponding-source/; see its README.md and manifest.json. The runtime manifest records integrity/compatibility, not a publisher signature. This package includes no Node.js executable and runs no installation scripts.\n' +
+      (process.platform === 'win32'
+        ? '\nMicrosoft Visual C++ Runtime DLLs in runtime/bin retain Microsoft copyright and their applicable terms; the bridge MIT license does not cover them. These are unmodified app-local runtime files, not compiler/debug redistributables. See the [Visual Studio 2022 redistributable list](https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution) and [Visual C++ Runtime terms](https://visualstudio.microsoft.com/license-terms/vs2022-cruntime/). Further redistribution remains subject to those terms.\n'
+        : ''),
   );
   phase = 'verify';
   await resolveNativeRuntime({
@@ -335,6 +347,7 @@ async function main() {
     platform: process.platform,
     files: files.length,
     unpackedBytes: total,
+    ...sourceReceipt,
     sourceStage: relative(canonicalProject, stage).replaceAll('\\', '/'),
     packageDirectory: relative(canonicalProject, root).replaceAll('\\', '/'),
     archive: relative(canonicalProject, archive).replaceAll('\\', '/'),

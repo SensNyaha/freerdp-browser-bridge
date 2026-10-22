@@ -108,6 +108,24 @@ pairing и relocation при чистом loader environment. Итоговый t
 128 MiB. В receipt записываются точные archive SHA-256, размеры, platform и
 `published: false`.
 
+Пакет также содержит `corresponding-source/`: полные исходные архивы LGPL
+компонентов (Windows: libusb; Linux: libusb, eudev, libfuse, numactl), точные
+port recipes/патчи из SBOM и platform triplets. Исходники сохраняют собственные
+лицензии. Они не извлекаются и не исполняются при установке и не требуют
+компилятора у потребителя готового runtime. README внутри объясняет пересборку
+и использование собственной совместимой модификации библиотеки; manifest
+фиксирует SHA-512 архивов и SHA-256 recipes/патчей.
+
+На машине подготовки нужны исходные архивы в `.tools/vcpkg-downloads/` и
+recipes из проверенного stage, `native/vcpkg/ports/` или `.deps/vcpkg/ports/`.
+Упаковщик сверяет source revision/version/checksum с build SBOM и ожидаемыми
+пинами; отсутствие или несовпадение останавливает упаковку. Он не скачивает
+недостающий source автоматически. Лимиты source companions: 8 MiB на архив,
+1 MiB на JSON/recipe, 16 MiB суммарных исходных данных, до 64 recipes на
+компонент; source tarballs копируются целиком без распаковки. Receipt дополнен
+`sourceComponents` и `sourceBytes`. Эти файлы лежат вне исполняемого `runtime/`;
+добавление исходников не меняет native бинарники или pairing manifest.
+
 Linux `bin`-записи служат для сохранения executable permissions при npm/pnpm
 установке. `freerdp-bridge-worker` и process-query — внутренние IPC executables,
 а не пользовательский RDP CLI; у worker нет произвольных FreeRDP argv.
@@ -134,6 +152,11 @@ refusal. Успех fake media transport не заменяет browser decode/re
 licenses, port metadata и [SBOM](SBOM.md). MIT не перелицензирует FreeRDP,
 libusb, codecs или Microsoft runtime. Этот инвентарь не заменяет provenance,
 подписи, upstream license review и требования конкретного deployment.
+LGPL-исходники и патчи сопровождают бинарники в том же npm-архиве; читайте
+их исходные license files и [LGPL 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html).
+Windows notices отдельно ссылаются на [Microsoft redistribution list](https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution)
+и [Visual C++ Runtime terms](https://visualstudio.microsoft.com/license-terms/vs2022-cruntime/);
+Microsoft DLL остаются под применимыми условиями Microsoft.
 
 Проверка GCC 8.3 и runtime relocation отделена от установленной Astra Linux
 1.7.5 / RED OS 7.3 и их security profiles. Сохраняется обязательная поддержка

@@ -126,3 +126,14 @@ The real-project guide now distinguishes the Node.js application host from
 the remote RDP server and explains where the compiled C++ binaries are shipped.
 Ready native packages require compatible OS/runtime libraries rather than an
 installed compiler or system FreeRDP. This does not claim arbitrary host support.
+
+The user subsequently restarts the RED OS session and explicitly requests a
+repeat. The identical candidate packages then pass JPEG through the reference
+form (wallpaper=true) and H.264 through the direct API, with both display sizes,
+restoration, fresh-token reattach, host route, diagnostics and joined cleanup.
+Evidence: `build/iteration-422-redos-restarted-jpeg-form.log` and
+`build/iteration-422-redos-restarted-h264-api.log`. No product, archive,
+certificate pin, predicate or timeout is changed. Earlier failures remain
+failures; this observation follows the user-reported session restart and does
+not prove an internal XRDP cause. Subsequent source-companion packaging and
+final release checks are recorded in [iteration 423](ITERATION_423.md).
