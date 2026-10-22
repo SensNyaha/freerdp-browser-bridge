@@ -25,15 +25,35 @@ Updated user-selected adapter order, 2026-10-22:
 
 | Target release | Adapter | Separate feature branch | Status |
 | --- | --- | --- | --- |
-| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Planned; branch exists, implementation/acceptance not complete |
+| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | IN PROGRESS; implementation, external npm/native consumers and current Astra/RED OS desktop profiles pass; aligned 0.2.1 release preparation/publication remain open |
 | 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Planned after accepted Fastify |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Planned after accepted NestJS |
+| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Planned after accepted node:http |
 
-This is the selected initial framework-adapter set. Other standalone/installer
+The latest user decision adds Express 0.2.4 to the selected initial set. Other
+popular server integrations will be evaluated for concrete unmet requirements
+after these adapters; they are not accepted merely by similarity. Other standalone/installer
 delivery options remain documented for later selection. No adapter is DONE by
 being assigned a version. Each requires external npm-consumer integration,
 same-port HTTP/WS coexistence, scoped identity/diagnostics, bounded media and
 joined cleanup, plus real RDP in its declared profiles before merging/release.
+
+The user additionally requests external Node.js-project verification, npmjs.org
+publication, full real-project usage guides as Markdown in `docs/`, separate
+GitHub delivery repositories, then standalone installers
+for the target OS families. Subsequent clarification: prepare the local Git
+repositories and report their directories; the user will push/synchronize
+GitHub themselves. The user selects **MIT** for project-owned code; third-party
+native dependency licenses/notices retain their own terms. The user has created
+the npm organization `freerdp-bridge` and selects the `@freerdp-bridge/*` names. [Fastify development
+contract and remaining acceptance](docs/FASTIFY_PLUGIN.md). Native npm runtime
+packages/resolver now pass external Windows npm/pnpm and Linux pnpm consumers,
+including strict TypeScript and actual native TLS rejection; full regression
+passes 912 / 61 skips on Windows and 889 / 87 on Linux. This is an unreleased
+checkpoint: final aligned version/native artifacts and publication remain open.
+Installed-package browser H.264/JPEG, resize/restoration, reattach and cleanup
+now pass on the current Astra/RED OS addresses; [acceptance](docs/ITERATION_421.md). [Runtime evidence](docs/ITERATION_420.md),
+[real-project runtime usage](docs/NATIVE_NPM_RUNTIME.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 

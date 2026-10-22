@@ -1,5 +1,5 @@
 import type { IncomingMessage } from 'node:http';
-import { LogController } from 'fastify';
+import { LogController, type FastifyInstance } from 'fastify';
 import { Type, type Static } from '@sinclair/typebox';
 import {
   SessionManager,
@@ -119,156 +119,211 @@ export async function createSessionServer(options: SessionServerOptions) {
     },
   });
   server.server.maxConnections = 128;
-  const manager = new SessionManager(options.sessions);
-  const identities = new WeakMap<IncomingMessage, Principal>();
-  const metrics = createSessionMetrics(manager);
-  server.addHook('onRequest', async (request) => {
-    const route = request.routeOptions.config as { requiresIdentity?: boolean };
-    if (!route.requiresIdentity) return;
-    if (request.headers.cookie || !options.authenticate)
-      throw new SessionError('AUTH_REQUIRED');
-    const origin = request.headers.origin;
-    if (origin && !allowedOrigins.has(origin)) {
-      const error = new SessionError('AUTH_REQUIRED');
-      throw error;
-    }
-    let timer: NodeJS.Timeout | undefined;
-    try {
-      const principal = await Promise.race([
-        Promise.resolve().then(() => options.authenticate!(request.raw)),
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new SessionError('AUTH_REQUIRED')),
-            5000,
-          );
-        }),
-      ]);
-      if (
-        !principal ||
-        typeof principal.id !== 'string' ||
-        !principal.id ||
-        principal.id.length > 256
-      )
-        throw new SessionError('AUTH_REQUIRED');
-      identities.set(request.raw, { id: principal.id });
-    } catch {
-      throw new SessionError('AUTH_REQUIRED');
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  });
-  const identity = (request: IncomingMessage) => {
-    const principal = identities.get(request);
-    if (!principal) throw new SessionError('AUTH_REQUIRED');
-    return principal;
-  };
-  server.setErrorHandler((error, request, reply) => {
-    let safe = publicSessionError(error);
-    if (typeof error === 'object' && error !== null && 'code' in error) {
-      if (error.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
-        reply.code(413).send({
-          code: 'PAYLOAD_TOO_LARGE',
-          message: 'Request body exceeds its limit',
-          retryable: false,
-        });
-        return;
-      }
-      if (error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
-        reply.code(415).send({
-          code: 'UNSUPPORTED_CONTENT_TYPE',
-          message: 'Request content type is unsupported',
-          retryable: false,
-        });
-        return;
-      }
-      if (
-        error.code === 'FST_ERR_VALIDATION' ||
-        error.code === 'FST_ERR_CTP_INVALID_JSON_BODY' ||
-        error.code === 'FST_ERR_CTP_EMPTY_JSON_BODY'
-      )
-        safe = new SessionError('INVALID_SESSION_CONFIG');
-    }
-    request.log.info({ code: safe.code }, 'request rejected');
-    reply
-      .header('Cache-Control', 'no-store')
-      .code(safe.statusCode)
-      .send(safe.failure);
-  });
-  server.setNotFoundHandler((_request, reply) => {
-    reply.code(404).send({
-      code: 'NOT_FOUND',
-      message: 'Endpoint was not found',
-      retryable: false,
-    });
-  });
-  server.addHook('onSend', async (_request, reply) => {
-    reply.header('Cache-Control', 'no-store');
-  });
-  server.post(
-    '/v1/sessions',
-    {
-      config: { requiresIdentity: true },
-      schema: { body: SessionCreateSchema, response: { 202: createResponse } },
-    },
-    async (request, reply) => {
-      const principal = identity(request.raw);
-      const session = manager.create(request.body, principal, request.ip);
-      const control = manager.mintToken(
-        session.sessionId,
-        principal,
-        'control',
-      );
-      const media = manager.mintToken(session.sessionId, principal, 'media');
-      return reply.code(202).send({ ...session, attach: { control, media } });
-    },
-  );
-  server.get<{ Params: Static<typeof paramsSchema> }>(
-    '/v1/sessions/:id',
-    {
-      config: { requiresIdentity: true },
-      schema: { params: paramsSchema, response: { 200: sessionResponse } },
-    },
-    async (request) => manager.get(request.params.id, identity(request.raw)),
-  );
-  server.delete<{ Params: Static<typeof paramsSchema> }>(
-    '/v1/sessions/:id',
-    {
-      config: { requiresIdentity: true },
-      schema: { params: paramsSchema, response: { 200: sessionResponse } },
-    },
-    async (request) => manager.close(request.params.id, identity(request.raw)),
-  );
-  server.post<{
-    Params: Static<typeof paramsSchema>;
-    Body: Static<typeof tokenSchema>;
-  }>(
-    '/v1/sessions/:id/attach-token',
-    {
-      config: { requiresIdentity: true },
-      schema: {
-        params: paramsSchema,
-        body: tokenSchema,
-        response: { 200: tokenResponse },
-      },
-    },
-    async (request) =>
-      manager.mintToken(
-        request.params.id,
-        identity(request.raw),
-        request.body.channel,
-      ),
-  );
-  server.get(
-    '/metrics',
-    { config: { requiresIdentity: true } },
-    async (request, reply) => {
-      identity(request.raw);
-      return reply.type(metrics.contentType).send(await metrics.render());
-    },
-  );
-  installSessionWebSockets(server, manager, allowedOrigins, metrics.media);
-  server.addHook('onClose', async () => {
-    await manager.shutdown();
-  });
+  await registerSessionRoutes(server, options);
   return server;
+}
+
+/** Installs only bridge-owned routes/hooks in the caller's encapsulation context. */
+export async function registerSessionRoutes(
+  server: FastifyInstance,
+  options: SessionServerOptions,
+  transport: { prefix?: string; upgradeMode?: 'automatic' | 'manual' } = {},
+) {
+  const allowedOrigins = new Set(options.allowedOrigins ?? []);
+  for (const origin of allowedOrigins) {
+    const parsed = new URL(origin);
+    if (
+      !['http:', 'https:'].includes(parsed.protocol) ||
+      parsed.origin !== origin
+    )
+      throw new Error('Allowed origins must be exact HTTP(S) origins');
+  }
+  const logger = createSecureLogger(options.logDestination);
+  const manager = new SessionManager(options.sessions);
+  let closing: Promise<void> | undefined;
+  let sockets: ReturnType<typeof installSessionWebSockets> | undefined;
+  const close = (): Promise<void> =>
+    (closing ??= (async () => {
+      await sockets?.close();
+      await manager.shutdown();
+    })());
+  server.addHook('preClose', close);
+  server.addHook('onClose', close);
+  try {
+    const identities = new WeakMap<IncomingMessage, Principal>();
+    const metrics = createSessionMetrics(manager);
+    server.addHook('onRequest', async (request) => {
+      if (closing) throw new SessionError('SERVER_CLOSING');
+      const route = request.routeOptions.config as {
+        requiresIdentity?: boolean;
+      };
+      if (!route.requiresIdentity) return;
+      if (request.headers.cookie || !options.authenticate)
+        throw new SessionError('AUTH_REQUIRED');
+      const origin = request.headers.origin;
+      if (origin && !allowedOrigins.has(origin)) {
+        const error = new SessionError('AUTH_REQUIRED');
+        throw error;
+      }
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        const principal = await Promise.race([
+          Promise.resolve().then(() => options.authenticate!(request.raw)),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new SessionError('AUTH_REQUIRED')),
+              5000,
+            );
+          }),
+        ]);
+        if (
+          !principal ||
+          typeof principal.id !== 'string' ||
+          !principal.id ||
+          principal.id.length > 256
+        )
+          throw new SessionError('AUTH_REQUIRED');
+        identities.set(request.raw, { id: principal.id });
+      } catch {
+        throw new SessionError('AUTH_REQUIRED');
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    });
+    const identity = (request: IncomingMessage) => {
+      const principal = identities.get(request);
+      if (!principal) throw new SessionError('AUTH_REQUIRED');
+      return principal;
+    };
+    server.setErrorHandler((error, _request, reply) => {
+      let safe = publicSessionError(error);
+      if (typeof error === 'object' && error !== null && 'code' in error) {
+        if (error.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+          reply.code(413).send({
+            code: 'PAYLOAD_TOO_LARGE',
+            message: 'Request body exceeds its limit',
+            retryable: false,
+          });
+          return;
+        }
+        if (error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
+          reply.code(415).send({
+            code: 'UNSUPPORTED_CONTENT_TYPE',
+            message: 'Request content type is unsupported',
+            retryable: false,
+          });
+          return;
+        }
+        if (
+          error.code === 'FST_ERR_VALIDATION' ||
+          error.code === 'FST_ERR_CTP_INVALID_JSON_BODY' ||
+          error.code === 'FST_ERR_CTP_EMPTY_JSON_BODY'
+        )
+          safe = new SessionError('INVALID_SESSION_CONFIG');
+      }
+      logger.info({ code: safe.code }, 'request rejected');
+      reply
+        .header('Cache-Control', 'no-store')
+        .code(safe.statusCode)
+        .send(safe.failure);
+    });
+    server.setNotFoundHandler((_request, reply) => {
+      reply.code(404).send({
+        code: 'NOT_FOUND',
+        message: 'Endpoint was not found',
+        retryable: false,
+      });
+    });
+    server.addHook('onSend', async (_request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+    });
+    server.post(
+      '/v1/sessions',
+      {
+        config: { requiresIdentity: true },
+        schema: {
+          body: SessionCreateSchema,
+          response: { 202: createResponse },
+        },
+      },
+      async (request, reply) => {
+        const principal = identity(request.raw);
+        const session = manager.create(request.body, principal, request.ip);
+        const control = manager.mintToken(
+          session.sessionId,
+          principal,
+          'control',
+        );
+        const media = manager.mintToken(session.sessionId, principal, 'media');
+        return reply.code(202).send({ ...session, attach: { control, media } });
+      },
+    );
+    server.get<{ Params: Static<typeof paramsSchema> }>(
+      '/v1/sessions/:id',
+      {
+        config: { requiresIdentity: true },
+        schema: { params: paramsSchema, response: { 200: sessionResponse } },
+      },
+      async (request) => manager.get(request.params.id, identity(request.raw)),
+    );
+    server.delete<{ Params: Static<typeof paramsSchema> }>(
+      '/v1/sessions/:id',
+      {
+        config: { requiresIdentity: true },
+        schema: { params: paramsSchema, response: { 200: sessionResponse } },
+      },
+      async (request) =>
+        manager.close(request.params.id, identity(request.raw)),
+    );
+    server.post<{
+      Params: Static<typeof paramsSchema>;
+      Body: Static<typeof tokenSchema>;
+    }>(
+      '/v1/sessions/:id/attach-token',
+      {
+        config: { requiresIdentity: true },
+        schema: {
+          params: paramsSchema,
+          body: tokenSchema,
+          response: { 200: tokenResponse },
+        },
+      },
+      async (request) =>
+        manager.mintToken(
+          request.params.id,
+          identity(request.raw),
+          request.body.channel,
+        ),
+    );
+    server.get(
+      '/metrics',
+      { config: { requiresIdentity: true } },
+      async (request, reply) => {
+        identity(request.raw);
+        return reply.type(metrics.contentType).send(await metrics.render());
+      },
+    );
+    sockets = installSessionWebSockets(
+      server,
+      manager,
+      allowedOrigins,
+      metrics.media,
+      transport,
+    );
+    const installed = sockets;
+    return {
+      close,
+      handleUpgrade: installed.handleUpgrade,
+      diagnostics: () => ({
+        schema: 1 as const,
+        closing: closing !== undefined,
+        activeSessions: manager.statistics().active,
+        totals: { ...manager.totals },
+        ...installed.diagnostics(),
+      }),
+    };
+  } catch (error) {
+    await close();
+    throw error;
+  }
 }

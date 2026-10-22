@@ -41,6 +41,22 @@ GET    /v1/sessions/:id/print-jobs/:jobId
 
 ## 3. Control WebSocket
 
+### Additive session diagnostics (schema 1; 0.2.1 development)
+
+Capability `sessionDiagnostics: 1` advertises the optional
+`session.diagnostics.request` command. It uses the ordinary v1 control envelope
+with a new increasing `seq` and empty `data: {}`. The reply type is
+`session.diagnostics`; its data has `schema: 1`, matching `requestSeq`, owned
+`sessionId`, current session `state`, `bufferedBytes` (0..65536) and optional
+`display: { width, height }` from current public display metadata. No remote
+contents, endpoint/identity/credential fields, raw errors or private pipeline
+counters are included. Replies require the current authorized control lease,
+share the 32-command/second budget and bounded send queue; this is request/reply,
+not an automatic telemetry stream. Clients not using it need no wire change.
+The required `stats.update`/performance scope below remains unfinished.
+Fastify embedding adds a host-selected prefix without changing record bytes.
+[Embedding and diagnostic scope](docs/FASTIFY_PLUGIN.md).
+
 Endpoint:
 
 ```text

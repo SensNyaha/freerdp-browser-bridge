@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Type } from '@sinclair/typebox';
@@ -12,6 +13,7 @@ import type {
   CursorState,
   DisplayState,
   TouchState,
+  SessionState,
 } from '@freerdp-bridge/protocol';
 import {
   publicSessionError,
@@ -47,6 +49,7 @@ const knownCommands = new Set([
   'certificate.response',
   'media.request-keyframe',
   'session.detach',
+  'session.diagnostics.request',
 ]);
 function touchData(state: TouchState) {
   return {
@@ -81,7 +84,9 @@ export function installSessionWebSockets(
   manager: SessionManager,
   origins: ReadonlySet<string>,
   mediaMetrics: MediaMetrics,
+  options: { prefix?: string; upgradeMode?: 'automatic' | 'manual' } = {},
 ) {
+  const prefix = options.prefix ?? '';
   const config = {
     noServer: true as const,
     maxPayload: 4096,
@@ -102,6 +107,7 @@ export function installSessionWebSockets(
       sequence: number;
       alive: boolean;
       channel: 'control' | 'media';
+      state: SessionState;
       cursor?: (state: CursorState) => void;
       display?: (state: DisplayState, resizing: boolean) => void;
     }
@@ -138,6 +144,7 @@ export function installSessionWebSockets(
   const event = (value: SessionEvent) => {
     for (const [ws, entry] of connections) {
       if (entry.id !== value.session.sessionId) continue;
+      entry.state = value.session.state;
       if (value.type === 'cursor.state' && value.cursor) {
         if (entry.channel === 'control') sendCursor(ws, value.cursor);
         else entry.cursor?.(value.cursor);
@@ -182,13 +189,14 @@ export function installSessionWebSockets(
       send(ws, 'cursor.position', { x: cursor.x, y: cursor.y });
   }
   manager.on('event', event);
-  server.server.on('upgrade', (request, socket, head) => {
+  const upgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     socket.on('error', () => socket.destroy());
     if (
       stopping ||
       pending.size >= 64 ||
       connections.size >= 64 ||
-      head.length > 4096
+      head.length > 4096 ||
+      (request.url?.length ?? 0) > 8192
     ) {
       reject(socket, 503);
       return;
@@ -201,7 +209,7 @@ export function installSessionWebSockets(
       return;
     }
     const match = /^\/v1\/sessions\/([0-9a-f]{32})\/(control|media)$/.exec(
-      url.pathname,
+      url.pathname.slice(prefix.length),
     );
     if (!match || request.method !== 'GET') {
       reject(socket, 404);
@@ -271,6 +279,7 @@ export function installSessionWebSockets(
           sequence: 0,
           alive: true,
           channel: match[2] === 'control' ? 'control' : 'media',
+          state: lease.session.state,
         });
         ws.on('error', () => ws.terminate());
         ws.once('close', () => {
@@ -351,6 +360,26 @@ export function installSessionWebSockets(
             return;
           }
           lastSequence = data.seq;
+          if (data.type === 'session.diagnostics.request') {
+            if (Object.keys(data.data).length !== 0 || ++commands > 32) {
+              ws.close(1008, 'invalid diagnostics request');
+              return;
+            }
+            send(ws, 'session.diagnostics', {
+              schema: 1,
+              requestSeq: data.seq,
+              sessionId: lease.session.sessionId,
+              state: connections.get(ws)?.state,
+              bufferedBytes: ws.bufferedAmount,
+              display: lease.display
+                ? {
+                    width: lease.display.width,
+                    height: lease.display.height,
+                  }
+                : undefined,
+            });
+            return;
+          }
           if (
             [
               'input.key',
@@ -515,7 +544,25 @@ export function installSessionWebSockets(
       lease.release();
       socket.destroy();
     }
-  });
+  };
+  const handleUpgrade = (
+    request: IncomingMessage,
+    socket: Duplex,
+    head: Buffer,
+  ): boolean => {
+    // Do not inspect tokens, install listeners or touch another application's socket.
+    const target = request.url ?? '';
+    if (
+      prefix &&
+      (!target.startsWith(prefix) ||
+        ![undefined, '/', '?'].includes(target[prefix.length]))
+    )
+      return false;
+    upgrade(request, socket, head);
+    return true;
+  };
+  if (options.upgradeMode !== 'manual')
+    server.server.on('upgrade', handleUpgrade);
   const heartbeat = setInterval(() => {
     for (const [ws, value] of connections) {
       if (!value.alive) ws.terminate();
@@ -529,12 +576,23 @@ export function installSessionWebSockets(
   wss.on('error', () =>
     server.log.info({ code: 'WS_SERVER_ERROR' }, 'WebSocket server failure'),
   );
-  server.addHook('preClose', async () => {
-    stopping = true;
-    clearInterval(heartbeat);
-    manager.off('event', event);
-    for (const socket of pending) socket.destroy();
-    for (const ws of connections.keys()) ws.terminate();
-    await new Promise<void>((done) => wss.close(() => done()));
-  });
+  let closing: Promise<void> | undefined;
+  const close = (): Promise<void> =>
+    (closing ??= (async () => {
+      stopping = true;
+      server.server.off('upgrade', handleUpgrade);
+      clearInterval(heartbeat);
+      manager.off('event', event);
+      for (const socket of pending) socket.destroy();
+      for (const ws of connections.keys()) ws.terminate();
+      await new Promise<void>((done) => wss.close(() => done()));
+    })());
+  return {
+    handleUpgrade,
+    close,
+    diagnostics: () => ({
+      connections: connections.size,
+      pendingUpgrades: pending.size,
+    }),
+  };
 }

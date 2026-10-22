@@ -13,5 +13,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=24 <25"
   }
 }

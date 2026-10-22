@@ -71,6 +71,15 @@ importers:
         specifier: 0.34.41
         version: 0.34.41
 
+  packages/fastify:
+    dependencies:
+      '@freerdp-bridge/api':
+        specifier: workspace:*
+        version: link:../../apps/bridge-api
+      fastify:
+        specifier: ^5.12.5
+        version: 5.12.5
+
   packages/node-bridge:
     dependencies:
       '@freerdp-bridge/config':
