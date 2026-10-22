@@ -1,6 +1,7 @@
 #include "../compat/bit.hpp"
 #include "../compat/span.hpp"
 #include "dvc_receive_guard.hpp"
+#include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
@@ -136,6 +137,34 @@ TEST_CASE("Actual static RDPSND fake backend cannot parse refused format-table c
   REQUIRE(host.deliveries == 0);
   REQUIRE(host.writes == 0);
   REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE("Actual pinned RDPSND ignores a bounded legacy XRDP recording proposal without replying") {
+  constexpr BYTE proposal[]{39, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 5, 0,
+                            1, 0, 2, 0, 68, 172, 0, 0, 16, 177, 2, 0, 4, 0, 16, 0, 0, 0,
+                            1, 0, 2, 0, 34, 86, 0, 0, 136, 88, 1, 0, 4, 0, 16, 0, 0, 0};
+  static_assert(sizeof(proposal) == 52);
+  for (std::size_t split = 1; split < sizeof(proposal); ++split) {
+    Host host;
+    REQUIRE(host.receive(::bridge::compat::span(proposal).first(split), CHANNEL_FLAG_FIRST,
+                         sizeof(proposal)));
+    REQUIRE(host.deliveries == 0);
+    REQUIRE(host.receive(::bridge::compat::span(proposal).subspan(split), CHANNEL_FLAG_LAST,
+                         sizeof(proposal), 2));
+    REQUIRE(host.deliveries == 1);
+    REQUIRE(host.writes == 0); // No recording negotiation, start, capture or format selection.
+    REQUIRE(host.guard->stats().audio.forwarded == 1);
+    REQUIRE(host.receive(volume, CHANNEL_FLAG_ONLY, sizeof(volume), 3));
+    REQUIRE(host.deliveries == 2);
+    REQUIRE_FALSE(host.guard->stats().failed);
+    REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  }
+  Host malformed;
+  std::array<BYTE, sizeof(proposal)> oversized{};
+  std::copy(std::begin(proposal), std::end(proposal), oversized.begin());
+  oversized[12] = 65;
+  REQUIRE_FALSE(malformed.receive(oversized, CHANNEL_FLAG_ONLY, oversized.size()));
+  REQUIRE(malformed.deliveries == 0);
+  REQUIRE(malformed.writes == 0);
 }
 TEST_CASE("Actual static RDPSND fake backend negotiates PCM and consumes a legacy Wave pair") {
   Host host;

@@ -98,13 +98,20 @@ std::optional<AudioPdu> AudioPduValidator::validate(::bridge::compat::span<const
     if (body < 4)
       return reject();
     return AudioPdu{AudioPduKind::training};
-  case 7: {
-    if (body < 20)
+  case 7:
+  case 39: {
+    // XRDP's optional legacy recording proposal uses the same bounded
+    // WAVEFORMATEX table after a shorter, version-5 header. Pinned RDPSND
+    // ignores this unsupported control: admitting its structure enables no
+    // capture device, negotiation response or legacy recording data path.
+    const bool legacy_input = bytes[0] == 39;
+    const std::size_t header = legacy_input ? 16 : 24;
+    if (bytes.size() < header || (legacy_input && u16(bytes, 14) != 5))
       return reject();
-    const auto count = u16(bytes, 18);
+    const auto count = u16(bytes, legacy_input ? 12 : 18);
     if (count > max_formats)
       return reject();
-    std::size_t at = 24;
+    std::size_t at = header;
     for (std::size_t i = 0; i < count; ++i) {
       if (bytes.size() - at < 18)
         return reject();
@@ -116,7 +123,7 @@ std::optional<AudioPdu> AudioPduValidator::validate(::bridge::compat::span<const
     }
     if (at != bytes.size())
       return reject();
-    AudioPdu result{AudioPduKind::formats};
+    AudioPdu result{legacy_input ? AudioPduKind::legacy_input_formats : AudioPduKind::formats};
     result.format_count = count;
     return result;
   }

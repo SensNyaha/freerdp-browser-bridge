@@ -8,6 +8,15 @@ checks pass; [version policy](docs/VERSIONING.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
+Current GCC 8.3 / distro checkpoint (2026-10-22): the bounded legacy XRDP
+RDPSND negotiation correction passes clean linked GCC 8.3 and MSVC CTest,
+full checks (877 / 87 skips and 900 / 61 skips), private package relocation,
+and actual RED OS 7.3 plus Astra Linux 1.7.5 public Edge H.264/JPEG desktop,
+resize/restoration, reattachment and cleanup. Earlier intermittent connection,
+locked-desktop and resize observations remain recorded without a cause claim.
+[Current acceptance](docs/ITERATION_417.md). This supersedes the open RED OS
+desktop checkpoint below; 0.2.0 release preparation remains separate.
+
 DONE applies to the named component and its explicit platform/test scope. A
 verified component can be DONE while the containing stage remains IN PROGRESS.
 An entire stage becomes DONE only when its requirements and **Gate** pass;
@@ -113,6 +122,17 @@ inputs and runs build/CTest without network or host runtime mounts. Its actual
 local container passes CTest 20/20 and the full linked Linux `pnpm check`
 passes 877 / 87 skips / 964 total, zero failures. The GitHub-hosted workflow
 has not run from these local commits. [Evidence](docs/ITERATION_413.md).
+
+The user now explicitly requires real RDP connections to both Astra 1.7.5 and
+RED OS 7.3 before 0.2.0. The separately confirmed real Astra node passes native
+activation/heartbeat and public Edge H.264/JPEG desktop, resize/restoration,
+reattachment and cleanup. Its 1.7.5 version is user-reported from astra_version;
+no security-profile or application/audio acceptance is inferred.
+[Astra evidence](docs/ITERATION_415.md). Actual RED OS XRDP 0.10.6.1 activates
+but fails on an RDPSND receive callback before application input. Scalar-only
+diagnostics narrow the failure; a verified diagnosis is not a repair.
+The required RED OS RDP gate and 0.2.0 release remain open.
+[RED OS evidence and active root worktree](docs/ITERATION_416.md).
 
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both

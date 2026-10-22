@@ -66,6 +66,12 @@ BOOL Connection::receive_channels(freerdp *instance, UINT16 channel, const BYTE 
   auto &self = owner(instance);
   if (!self.dvc_receive_ ||
       !self.dvc_receive_->receive(channel, data, size, flags, total, audio_time_us() / 1000)) {
+    self.receive_failure_ = {channel,
+                             freerdp_channels_get_id_by_name(instance, "drdynvc"),
+                             freerdp_channels_get_id_by_name(instance, "rdpsnd"),
+                             freerdp_channels_get_id_by_name(instance, "cliprdr"),
+                             freerdp_channels_get_id_by_name(instance, "rdpdr"),
+                             flags, size, total};
     self.reason_ = RdpError::protocol;
     return FALSE;
   }
@@ -1185,14 +1191,23 @@ void Connection::run() noexcept {
     (void)std::fprintf(
         stderr,
         "bridge.rdp.failure v=1 stage=%u channel=%u receive=%u assembly=%u registry=%u plugins=%u "
-        "reserved=%llu active=%llu abandoned=%llu\n",
+        "reserved=%llu active=%llu abandoned=%llu svc=%u dvc=%u audio=%u clipboard=%u device=%u "
+        "flags=%u bytes=%llu total=%llu\n",
         diagnostic_stage, static_cast<unsigned>(getChannelError(context_.get())),
         static_cast<unsigned>(receive.failed), static_cast<unsigned>(receive.assembly.failed),
         static_cast<unsigned>(registry.failed),
         static_cast<unsigned>(dvc_plugins_ && dvc_plugins_->stats().failed),
         static_cast<unsigned long long>(registry.budget.reserved_bytes),
         static_cast<unsigned long long>(registry.budget.active),
-        static_cast<unsigned long long>(registry.budget.abandonments));
+        static_cast<unsigned long long>(registry.budget.abandonments),
+        static_cast<unsigned>(receive_failure_.channel),
+        static_cast<unsigned>(receive_failure_.dynamic_channel),
+        static_cast<unsigned>(receive_failure_.audio_channel),
+        static_cast<unsigned>(receive_failure_.clipboard_channel),
+        static_cast<unsigned>(receive_failure_.device_channel),
+        static_cast<unsigned>(receive_failure_.flags),
+        static_cast<unsigned long long>(receive_failure_.bytes),
+        static_cast<unsigned long long>(receive_failure_.total));
   };
   UINT dvc_retirement = CHANNEL_RC_OK;
   const auto retire_dvc = [&]() noexcept -> UINT {
