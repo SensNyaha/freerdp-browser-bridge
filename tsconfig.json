@@ -5,6 +5,7 @@
     { "path": "packages/config" },
     { "path": "packages/node-bridge" },
     { "path": "apps/bridge-api" },
-    { "path": "packages/fastify" }
+    { "path": "packages/fastify" },
+    { "path": "packages/nestjs" }
   ]
 }

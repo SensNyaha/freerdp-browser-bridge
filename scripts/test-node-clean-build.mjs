@@ -1,5 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { access, cp, mkdir, mkdtemp, readFile } from 'node:fs/promises';
+import {
+  access,
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+} from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -11,13 +18,21 @@ if (
   process.argv.length !== 2
 )
   throw new Error('Run clean Node build check from the Linux project root');
-const packages = [
-  'packages/protocol',
-  'packages/config',
-  'packages/node-bridge',
-  'apps/bridge-api',
-  'packages/fastify',
-];
+// Discover adapters as well as the shared core so a new workspace package is
+// never silently omitted from the clean source/declaration build.
+const packages = [];
+for (const parent of ['packages', 'apps']) {
+  for (const entry of await readdir(resolve(parent), { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const name = `${parent}/${entry.name}`;
+    try {
+      await access(resolve(name, 'package.json'));
+      packages.push(name);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+}
 await mkdir(resolve('build'), { recursive: true });
 const root = await mkdtemp(resolve('build/node-clean-'));
 for (const file of [

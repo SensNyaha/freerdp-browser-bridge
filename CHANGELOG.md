@@ -4,6 +4,13 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Develop NestJS module targeting 0.2.2 on its separate feature branch: DI
+  configuration, shared-port Express/FastifyAdapter routing and existing native
+  session/media core. Windows/Linux external npm consumers, strict declarations,
+  HTTPS/WSS, lifecycle/admission and real installed-package Astra/RED OS desktop
+  profiles pass for both adapters. Aligned release/publication remains separate;
+  [feature acceptance](docs/ITERATION_427.md).
+
 - Add explanatory root README files to every publishable JS package and both
   native runtime templates. Check discovered packages during `pnpm check` and
   actual tarballs during native packaging/external Fastify consumer acceptance.
