@@ -4,10 +4,16 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-- In-development Fastify 0.2.1 embedding with encapsulated prefixed HTTP/WS,
+## 0.2.1 — release preparation
+
+Not tagged or published yet. Implementation acceptance is recorded in
+[421](docs/ITERATION_421.md); final version-stamped native checks are pending.
+
+- Fastify 0.2.1 embedding with encapsulated prefixed HTTP/WS,
   host-owned upgrade dispatch, bounded optional session diagnostics and packaged
-  reference browser assets. External npm/pnpm consumers and named Astra browser
-  profiles pass; native npm runtime and full release acceptance remain open.
+  reference browser assets. External npm/pnpm consumers and actual Astra/RED OS H.264/JPEG,
+  resize/restoration and reattachment pass with installed native npm packages.
+  Final stamped release acceptance remains open.
   [Implementation/evidence](docs/ITERATION_419.md), [usage](docs/FASTIFY_USAGE.md).
 - MIT license for project-owned code, as selected by the user. Third-party
   dependency notices retain their own terms.
