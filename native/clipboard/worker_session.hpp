@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "../ipc/clipboard.hpp"
 #include "text_session.hpp"
 #include <memory>
@@ -10,7 +11,7 @@ namespace bridge::clipboard {
 // or the SDK context. No callback/transport call runs under the producer mutex.
 class WorkerSession final {
 public:
-  using Send = std::function<bool(ipc::Kind, std::uint64_t, std::span<const std::uint8_t>)>;
+  using Send = std::function<bool(ipc::Kind, std::uint64_t, ::bridge::compat::span<const std::uint8_t>)>;
   using Clock = TextSession::Clock;
   WorkerSession(TextPolicy, Send, Clock, TextSession::Resolve = TextSession::resolve_channel);
   ~WorkerSession();
@@ -49,8 +50,8 @@ private:
   bool retire_requested_ = false;
   bool current_thread() const noexcept;
   bool observe() noexcept;
-  bool complete(ipc::clipboard::Status, std::span<const std::uint8_t> = {}) noexcept;
-  bool reply(std::uint64_t, TextReply, std::span<const std::uint8_t>) noexcept;
+  bool complete(ipc::clipboard::Status, ::bridge::compat::span<const std::uint8_t> = {}) noexcept;
+  bool reply(std::uint64_t, TextReply, ::bridge::compat::span<const std::uint8_t>) noexcept;
   bool publish(const TextSnapshot &);
   void release_job() noexcept;
   bool fail() noexcept;

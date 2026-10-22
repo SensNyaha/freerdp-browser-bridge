@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "capture_state.hpp"
 #include "output_queue.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -13,7 +14,7 @@ struct Receiver {
   unsigned calls = 0;
   bool accepted = true, throws = false, reenter = false, observed = true, retired = true;
   CapturePublication nested = CapturePublication::published;
-  static bool send(void *owner, bridge::ipc::Kind kind, std::span<const std::uint8_t> bytes) {
+  static bool send(void *owner, bridge::ipc::Kind kind, ::bridge::compat::span<const std::uint8_t> bytes) {
     auto &self = *static_cast<Receiver *>(owner);
     REQUIRE(kind == bridge::ipc::Kind::microphone_state);
     self.state = bridge::ipc::microphone::decode_state(bytes);
@@ -39,7 +40,7 @@ TEST_CASE("Microphone state codec fixes input profile and zero-ID preallocation 
   REQUIRE(microphone::encode_state(state) == golden);
   REQUIRE(microphone::decode_state(golden).epoch == 4);
   for (std::size_t n = 0; n < golden.size(); ++n)
-    REQUIRE_THROWS_AS(microphone::decode_state(std::span(golden).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(microphone::decode_state(::bridge::compat::span(golden).first(n)), ProtocolError);
   REQUIRE_THROWS_AS(microphone::decode_state(std::array<std::uint8_t, 41>{}), ProtocolError);
   for (const auto at :
        {0U, 1U, 2U, 3U, 28U, 29U, 30U, 31U, 32U, 33U, 34U, 35U, 36U, 37U, 38U, 39U}) {

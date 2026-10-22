@@ -1,20 +1,20 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <span>
 
 namespace bridge::audio {
 struct OpusOptions {
   int bitrate = 64000;
 };
 struct OpusFrame {
-  std::span<const std::uint8_t> pcm; // Interleaved S16LE, 48 kHz stereo, 960 frames.
+  ::bridge::compat::span<const std::uint8_t> pcm; // Interleaved S16LE, 48 kHz stereo, 960 frames.
   std::uint64_t timestamp_us;
   bool discontinuity = false;
 };
 struct OpusUnit {
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::uint64_t timestamp_us;
   bool discontinuity;
 };

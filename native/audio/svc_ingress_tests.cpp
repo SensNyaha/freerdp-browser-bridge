@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "svc_ingress.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
@@ -27,7 +28,7 @@ struct Fixture {
             throw std::runtime_error("fixture");
           return accept;
         }) {}
-  bool whole(std::span<const std::uint8_t> bytes, std::uint64_t now = 1) {
+  bool whole(::bridge::compat::span<const std::uint8_t> bytes, std::uint64_t now = 1) {
     return ingress.receive({bytes, bytes.size(), true, true}, now);
   }
 };
@@ -40,9 +41,9 @@ TEST_CASE("Audio SVC owner preserves padded Training across fragmented delivery 
   packet[3] = 4;
   for (const auto split : {std::size_t{1}, std::size_t{7}, std::size_t{512}, std::size_t{1027}}) {
     Fixture f;
-    REQUIRE(f.ingress.receive({std::span(packet).first(split), packet.size(), true, false}, 1));
+    REQUIRE(f.ingress.receive({::bridge::compat::span(packet).first(split), packet.size(), true, false}, 1));
     REQUIRE(f.calls == 0);
-    REQUIRE(f.ingress.receive({std::span(packet).subspan(split), packet.size(), false, true}, 2));
+    REQUIRE(f.ingress.receive({::bridge::compat::span(packet).subspan(split), packet.size(), false, true}, 2));
     REQUIRE(f.observed == packet);
     REQUIRE(f.calls == 1);
     REQUIRE_FALSE(f.ingress.stats().awaiting_wave);
@@ -59,10 +60,10 @@ TEST_CASE("Audio SVC owner assembles bounded whole and fragmented PDUs before di
   REQUIRE(whole.ingress.stats().stored_bytes == 0);
   for (std::size_t split = 1; split < volume.size(); ++split) {
     Fixture f;
-    REQUIRE(f.ingress.receive({std::span(volume).first(split), volume.size(), true, false}, 1));
+    REQUIRE(f.ingress.receive({::bridge::compat::span(volume).first(split), volume.size(), true, false}, 1));
     REQUIRE(f.calls == 0);
     REQUIRE(f.ingress.stats().partial);
-    REQUIRE(f.ingress.receive({std::span(volume).subspan(split), volume.size(), false, true}, 2));
+    REQUIRE(f.ingress.receive({::bridge::compat::span(volume).subspan(split), volume.size(), false, true}, 2));
     REQUIRE(f.calls == 1);
     REQUIRE(f.observed == volume);
     REQUIRE_FALSE(f.ingress.stats().partial);
@@ -82,11 +83,11 @@ TEST_CASE("Audio SVC owner refuses oversized and contradictory claims without ta
   REQUIRE_FALSE(short_last.ingress.receive({volume, 9, true, true}, 1));
   REQUIRE(short_last.calls == 0);
   Fixture changed;
-  REQUIRE(changed.ingress.receive({std::span(volume).first(2), 8, true, false}, 1));
-  REQUIRE_FALSE(changed.ingress.receive({std::span(volume).subspan(2), 9, false, true}, 2));
+  REQUIRE(changed.ingress.receive({::bridge::compat::span(volume).first(2), 8, true, false}, 1));
+  REQUIRE_FALSE(changed.ingress.receive({::bridge::compat::span(volume).subspan(2), 9, false, true}, 2));
   REQUIRE(changed.calls == 0);
   Fixture repeated;
-  REQUIRE(repeated.ingress.receive({std::span(volume).first(2), 8, true, false}, 1));
+  REQUIRE(repeated.ingress.receive({::bridge::compat::span(volume).first(2), 8, true, false}, 1));
   REQUIRE_FALSE(repeated.ingress.receive({volume, 8, true, true}, 2));
   REQUIRE(repeated.calls == 0);
 }
@@ -110,8 +111,8 @@ TEST_CASE("Audio SVC owner validates advertised format counts and extras before 
 }
 TEST_CASE("Audio SVC owner keeps one nonrenewing deadline through partial assembly") {
   Fixture f;
-  REQUIRE(f.ingress.receive({std::span(volume).first(1), 8, true, false}, 10));
-  REQUIRE(f.ingress.receive({std::span(volume).subspan(1, 1), 8, false, false}, 2000));
+  REQUIRE(f.ingress.receive({::bridge::compat::span(volume).first(1), 8, true, false}, 10));
+  REQUIRE(f.ingress.receive({::bridge::compat::span(volume).subspan(1, 1), 8, false, false}, 2000));
   REQUIRE(f.ingress.poll(2009));
   REQUIRE_FALSE(f.ingress.poll(2010));
   REQUIRE(f.calls == 0);
@@ -123,7 +124,7 @@ TEST_CASE("Audio SVC owner bounds legacy WaveInfo and subsequent raw Wave as one
   Fixture f;
   REQUIRE(f.whole(wave_info, 1));
   REQUIRE(f.ingress.stats().awaiting_wave);
-  REQUIRE(f.ingress.receive({std::span(wave_data).first(4), 8, true, false}, 1900));
+  REQUIRE(f.ingress.receive({::bridge::compat::span(wave_data).first(4), 8, true, false}, 1900));
   REQUIRE_FALSE(f.ingress.poll(2001));
   REQUIRE(f.calls == 1);
   REQUIRE(f.ingress.stats().abandoned == 1);
@@ -185,7 +186,7 @@ TEST_CASE("Audio SVC exact fixed-arena and fragment-count ceilings remain admiss
   Fixture split;
   constexpr auto part = AudioAssembler::max_bytes / AudioAssembler::max_fragments;
   for (std::size_t i = 0; i < AudioAssembler::max_fragments; ++i)
-    REQUIRE(split.ingress.receive({std::span(wave).subspan(i * part, part), wave.size(), i == 0,
+    REQUIRE(split.ingress.receive({::bridge::compat::span(wave).subspan(i * part, part), wave.size(), i == 0,
                                    i + 1 == AudioAssembler::max_fragments},
                                   1));
   REQUIRE(split.calls == 1);
@@ -193,8 +194,8 @@ TEST_CASE("Audio SVC exact fixed-arena and fragment-count ceilings remain admiss
   Fixture excessive;
   for (std::size_t i = 0; i < AudioAssembler::max_fragments; ++i)
     REQUIRE(
-        excessive.ingress.receive({std::span(wave).subspan(i, 1), wave.size(), i == 0, false}, 1));
+        excessive.ingress.receive({::bridge::compat::span(wave).subspan(i, 1), wave.size(), i == 0, false}, 1));
   REQUIRE_FALSE(
-      excessive.ingress.receive({std::span(wave).subspan(4096, 1), wave.size(), false, false}, 1));
+      excessive.ingress.receive({::bridge::compat::span(wave).subspan(4096, 1), wave.size(), false, false}, 1));
   REQUIRE(excessive.calls == 0);
 }

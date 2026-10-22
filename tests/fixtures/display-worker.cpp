@@ -1,3 +1,4 @@
+#include "../../native/compat/thread.hpp"
 // Explicit fake IPC peer. No FreeRDP context, desktop or remote channel is used here.
 #include "connection_config.hpp"
 #include "display.hpp"
@@ -30,7 +31,7 @@ int main() {
   std::optional<ConnectionConfig> config;
   DisplayUpdate display{1, 1, {1024, 768}, false, true, {3840, 2160}, 3840U * 2160U};
   std::atomic<bool> busy = false;
-  std::jthread confirmation;
+  ::bridge::compat::jthread confirmation;
   try {
     for (;;) {
       std::array<std::uint8_t, header_bytes> bytes{};
@@ -113,9 +114,9 @@ int main() {
               confirmation.join();
             busy = true;
             confirmation =
-                std::jthread([&, size, request = header.request_id](std::stop_token stop) {
+                ::bridge::compat::jthread([&, size, request = header.request_id](::bridge::compat::stop_token stop) {
                   std::unique_lock lock(wait_mutex);
-                  std::stop_callback cancel(stop, [&] { wait.notify_all(); });
+                  ::bridge::compat::stop_callback cancel(stop, [&] { wait.notify_all(); });
                   if (wait.wait_for(lock, std::chrono::milliseconds(2300),
                                     [&] { return stop.stop_requested(); }))
                     return;

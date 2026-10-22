@@ -8,6 +8,15 @@ checks pass; [version policy](docs/VERSIONING.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
+Current GCC 8.3 / distro checkpoint (2026-10-22): the bounded legacy XRDP
+RDPSND negotiation correction passes clean linked GCC 8.3 and MSVC CTest,
+full checks (877 / 87 skips and 900 / 61 skips), private package relocation,
+and actual RED OS 7.3 plus Astra Linux 1.7.5 public Edge H.264/JPEG desktop,
+resize/restoration, reattachment and cleanup. Earlier intermittent connection,
+locked-desktop and resize observations remain recorded without a cause claim.
+[Current acceptance](docs/ITERATION_417.md). This supersedes the open RED OS
+desktop checkpoint below; 0.2.0 release preparation remains separate.
+
 DONE applies to the named component and its explicit platform/test scope. A
 verified component can be DONE while the containing stage remains IN PROGRESS.
 An entire stage becomes DONE only when its requirements and **Gate** pass;
@@ -40,6 +49,90 @@ All other requirements, including confirmed resize, input, audio, devices,
 platforms, resource limits and soak verification, remain.
 
 ## Implementation status — 2026-10-21
+
+The user selected **0.2.0** as the next release for the GCC 8.3 port on
+2026-10-22. Complete and verify `feature/astra17-gcc83`, then prepare the
+separate release branch and version manifests; no 0.2.0 tag is accepted yet.
+The prior `v0.1.0` remains the immutable practical MVP baseline.
+
+The user now requires GCC 8.3.0/Astra Linux 1.7.5 and mandatory RED OS 7.3/GCC 11.
+This supersedes the previous GNU 12 fallback policy without removing its
+historical evidence. The separate compiler feature branch passes foundation
+CTest 20/20 on exact GCC 8.3.0 and on the actual RED OS 7.3/GCC 11.4.1 host,
+plus MSVC CTest 19/19 and framed lifecycle 16 / 1 skip. At this checkpoint,
+linked dependency / FreeRDP / addon runtime closure, installed-Astra and actual
+RDP acceptance were still open. With libraries from the supplied Astra ISO,
+the same foundation binaries
+pass CTest 20/20 and the GCC 8.3 IPC-only Node 24 addon passes 14/14 packet /
+lifecycle tests in a separate unpacked runtime fixture using the Docker host
+kernel. Full Windows foundation `pnpm check` passes 849 / 112 skips / 961 total.
+This is not installed-Astra acceptance. Compiler-foundation checkpoint:
+`f9758b5` on `feature/astra17-gcc83`; no shared-branch merge.
+[Evidence and remaining gates](docs/ITERATION_407.md).
+
+The supplied Astra ISO also boots its actual 6.1.50-1-generic kernel in a separate
+diskless/networkless QEMU guest with checked runtime libraries. Foundation CTest
+20/20, Node IPC-only addon 14/14 and explicit guest acceptance/clean poweroff
+pass with unchanged deadlines. This is kernel/initramfs evidence; installed OS,
+security profiles, other kernels and linked product/RDP acceptance remain open.
+[Guest evidence](docs/ITERATION_408.md).
+
+The subsequent exact GCC 8.3.0 source chain completes all ten required private
+dependency roots and pinned FreeRDP/WinPR, with strict origins/foreign-prefix
+refusal. A fresh linked Release consumer passes CTest 37/37 and real-worker
+Node IPC/lifecycle/protocol-fixture checks 40/40 with source/artifact receipts.
+Full linked `pnpm check` passes 877 / 87 skips / 964 total, zero failures.
+Linked Astra closure, installed-OS/security profiles, actual RED OS product,
+Windows linked regression and actual RDP gates remain open; no shared merge or
+0.2.0 tag is accepted here. [Linked source build](docs/ITERATION_409.md).
+
+The same GCC 8.3 linked worker/addon subsequently pass in the checked Astra
+ISO-library container: CTest 37/37, codec/private-origin probes and actual Node
+IPC/lifecycle/TLS fixtures 54/54. No OS/VM is installed for this check. A fresh
+MSVC Release consumer with a separately rebuilt corrected SDK binds identical
+native source bytes and passes CTest 36/36, focused process/protocol checks
+27 / 1 skip and full physical-path Windows `pnpm check` 900 / 61 skips / 961.
+Actual RED OS GCC 11 compiles all linked targets, but CTest passes 25/37 with
+12 loader/worker failures from the reused CUPS library's absent `libcrypt.so.1`.
+RED OS linked runtime and real desktop acceptance remain open.
+[Runtime/control evidence](docs/ITERATION_410.md).
+
+The CUPS client link and numactl byte-atomic configure corrections subsequently
+retain all exported APIs and remove unused private-runtime dependencies.
+Actual RED OS GCC 11 passes CTest 37/37 and Node IPC/lifecycle/TLS 54/54.
+The final complete GCC 8.3 dependency/SDK/worker source chain passes CTest 37/37,
+focused Node 40/40, full `pnpm check` 877 / 87 skips / 964, strict package closure
+34 ELF files / 333 resolutions and relocation 1/1. The exact final package
+passes an unprivileged artifact-only probe on actual RED OS without SDK/build
+paths. Real desktop regression remains separate; no 0.2.0 tag is accepted here.
+[Portable source/package evidence](docs/ITERATION_411.md).
+
+The final exact GCC 8.3 package also passes an unprivileged cold Astra-library
+container probe. Actual owned XRDP desktop, resize/restoration, both IPC
+transports and controlled transport loss pass. Public Edge H.264/JPEG rendering,
+viewer reattachment and Linux-producer CLIPRDR ↔ prepared Tk Unicode/multiline
+roundtrips with repeated fresh Copy/Get pass their bounded profiles. Earlier
+display/clipboard failures are retained without an unsupported cause claim.
+The user defers Windows-host access for 60 minutes; its new-worker joint
+regression remains unrun. No new audible, OS Clipboard API, installed-Astra or
+0.2.0 acceptance is claimed. [Evidence](docs/ITERATION_412.md).
+
+An exact GCC 8.3 foundation CI recipe now retains the pinned compiler/tool
+inputs and runs build/CTest without network or host runtime mounts. Its actual
+local container passes CTest 20/20 and the full linked Linux `pnpm check`
+passes 877 / 87 skips / 964 total, zero failures. The GitHub-hosted workflow
+has not run from these local commits. [Evidence](docs/ITERATION_413.md).
+
+The user now explicitly requires real RDP connections to both Astra 1.7.5 and
+RED OS 7.3 before 0.2.0. The separately confirmed real Astra node passes native
+activation/heartbeat and public Edge H.264/JPEG desktop, resize/restoration,
+reattachment and cleanup. Its 1.7.5 version is user-reported from astra_version;
+no security-profile or application/audio acceptance is inferred.
+[Astra evidence](docs/ITERATION_415.md). Actual RED OS XRDP 0.10.6.1 activates
+but fails on an RDPSND receive callback before application input. Scalar-only
+diagnostics narrow the failure; a verified diagnosis is not a repair.
+The required RED OS RDP gate and 0.2.0 release remain open.
+[RED OS evidence and active root worktree](docs/ITERATION_416.md).
 
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both

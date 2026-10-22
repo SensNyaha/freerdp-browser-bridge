@@ -1,8 +1,8 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -76,11 +76,11 @@ class ProtocolError final : public std::runtime_error {
 public:
   ProtocolError() : std::runtime_error("Invalid worker IPC record") {}
 };
-std::uint64_t read_be(std::span<const std::uint8_t> bytes);
+std::uint64_t read_be(::bridge::compat::span<const std::uint8_t> bytes);
 void append_be(std::vector<std::uint8_t> &bytes, std::uint64_t value, std::size_t count);
-Header decode_header(std::span<const std::uint8_t> bytes);
+Header decode_header(::bridge::compat::span<const std::uint8_t> bytes);
 void validate_header(const Header &header);
 std::array<std::uint8_t, header_bytes> encode_header(const Header &header);
-void validate_hello(std::span<const std::uint8_t> payload);
+void validate_hello(::bridge::compat::span<const std::uint8_t> payload);
 std::vector<std::uint8_t> encode(const Packet &packet);
 } // namespace bridge::ipc

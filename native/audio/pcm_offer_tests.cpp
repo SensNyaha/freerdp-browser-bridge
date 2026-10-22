@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "pcm_offer.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -16,7 +17,7 @@ void header(std::vector<std::uint8_t> &bytes, std::size_t count) {
   bytes[18] = static_cast<std::uint8_t>(count);
   bytes[19] = static_cast<std::uint8_t>(count >> 8);
 }
-std::vector<std::uint8_t> packet(std::span<const std::uint8_t> descriptor, std::size_t count = 1) {
+std::vector<std::uint8_t> packet(::bridge::compat::span<const std::uint8_t> descriptor, std::size_t count = 1) {
   std::vector<std::uint8_t> bytes(24 + count * descriptor.size());
   for (std::size_t i = 0; i < count; ++i)
     std::copy(descriptor.begin(), descriptor.end(), bytes.data() + 24 + i * descriptor.size());
@@ -99,7 +100,7 @@ TEST_CASE("PCM offers accept 64 descriptors and validate complete output capacit
   const auto input = packet(stereo48, 64);
   std::array<std::uint8_t, max_pcm_offer_bytes> output{};
   output.fill(77);
-  REQUIRE_FALSE(select_pcm_offers(input, std::span(output).first(output.size() - 1)));
+  REQUIRE_FALSE(select_pcm_offers(input, ::bridge::compat::span(output).first(output.size() - 1)));
   REQUIRE(std::all_of(output.begin(), output.end(), [](auto value) { return value == 77; }));
   const auto result = select_pcm_offers(input, output);
   REQUIRE(result);
@@ -134,6 +135,6 @@ TEST_CASE("Empty PCM offer lists retain a bounded valid no-common-format respons
   REQUIRE(result->bytes.size() == 24);
   REQUIRE(std::vector(result->bytes.begin(), result->bytes.end()) == input);
   output.fill(77);
-  REQUIRE_FALSE(select_pcm_offers(input, std::span(output).first(23)));
+  REQUIRE_FALSE(select_pcm_offers(input, ::bridge::compat::span(output).first(23)));
   REQUIRE(std::all_of(output.begin(), output.end(), [](auto value) { return value == 77; }));
 }

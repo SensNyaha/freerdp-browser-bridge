@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -6,7 +7,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
   using namespace bridge::clipboard;
   if (size > 16384)
     return 0;
-  const std::span<const std::uint8_t> b{data, size};
+  const ::bridge::compat::span<const std::uint8_t> b{data, size};
   (void)inspect_pdu(b, false, 16384);
   (void)inspect_pdu(b, true, 16384);
   const std::size_t maximum = 128 + (size ? data[0] : 0);
@@ -15,7 +16,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
   ClipboardIngress owner(
       [&](auto complete) {
         const auto expected =
-            inspected && inspected->quota_refused ? std::span<const std::uint8_t>(refused) : b;
+            inspected && inspected->quota_refused ? ::bridge::compat::span<const std::uint8_t>(refused) : b;
         if (!std::equal(complete.begin(), complete.end(), expected.begin(), expected.end()))
           std::abort();
         return true;

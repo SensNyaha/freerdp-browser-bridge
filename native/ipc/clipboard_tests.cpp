@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "clipboard.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -26,7 +27,7 @@ TEST_CASE("Clipboard private state uses an independent versioned scalar vector")
   const auto encoded = encode_state(s);
   REQUIRE(std::equal(encoded.begin(), encoded.end(), state_vector.begin(), state_vector.end()));
   for (std::size_t n = 0; n < state_vector.size(); ++n)
-    REQUIRE_THROWS_AS(decode_state(std::span(state_vector).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_state(::bridge::compat::span(state_vector).first(n)), ProtocolError);
   for (const auto at : {1U, 2U, 3U, 5U, 15U, 23U}) {
     auto bad = state_vector;
     bad[at] = at == 2 ? 1 : 0;
@@ -74,8 +75,8 @@ TEST_CASE("Clipboard private commands and results borrow UTF8 after exact metada
 }
 TEST_CASE("Clipboard private malformed metadata and text never disclose their input") {
   for (std::size_t n = 0; n < read_vector.size(); ++n) {
-    REQUIRE_THROWS_AS(decode_command(std::span(read_vector).first(n)), ProtocolError);
-    REQUIRE_THROWS_AS(decode_result(std::span(read_vector).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_command(::bridge::compat::span(read_vector).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_result(::bridge::compat::span(read_vector).first(n)), ProtocolError);
   }
   for (const auto at : {0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 15U, 23U}) {
     auto bad = read_vector;
@@ -105,7 +106,7 @@ TEST_CASE("Clipboard revoke is an exact schema-2 content-free command and result
   REQUIRE(encode_result({Operation::revoke, Status::accepted, 1, 0, {}}) == golden);
   REQUIRE(decode_result(golden).operation == Operation::revoke);
   for (std::size_t n = 0; n < golden.size(); ++n)
-    REQUIRE_THROWS_AS(decode_command(std::span(golden).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_command(::bridge::compat::span(golden).first(n)), ProtocolError);
   for (unsigned status = 0; status <= 7; ++status) {
     auto bytes = golden;
     bytes[5] = static_cast<std::uint8_t>(status);

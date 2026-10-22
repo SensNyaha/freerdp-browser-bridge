@@ -1,6 +1,7 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "rdpsnd_sink.hpp"
 #include <algorithm>
-#include <bit>
 #include <limits>
 
 namespace bridge::audio {
@@ -100,7 +101,7 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
   // No consumer can borrow this serialized owner in the middle of the callback.
   for (std::size_t offset = 0; offset < size;) {
     const auto count = (std::min)(quantum, size - offset);
-    const auto normalized = pipeline.pcm.process(std::span(data + offset, count));
+    const auto normalized = pipeline.pcm.process(::bridge::compat::span(data + offset, count));
     if (normalized.status != PcmStatus::accepted) {
       increment(sink->stats_.rejected_packets);
       sink->discontinuity(SourceAvailability::failed);
@@ -110,7 +111,7 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
       const auto word =
           static_cast<std::uint16_t>(static_cast<unsigned>(normalized.bytes[at]) |
                                      (static_cast<unsigned>(normalized.bytes[at + 1]) << 8));
-      const auto sample = std::bit_cast<std::int16_t>(word);
+      const auto sample = ::bridge::compat::bit_cast<std::int16_t>(word);
       const auto scaled = sink->volume_.apply(sample, at / 2 % 2 != 0);
       const auto bits = static_cast<std::uint16_t>(scaled);
       pipeline.volume[at] = static_cast<std::uint8_t>(bits);
@@ -120,7 +121,7 @@ UINT RdpsndSink::play(rdpsndDevicePlugin *device, const BYTE *data, std::size_t 
       const auto free = pipeline.queue.capacity() - pipeline.queue.stats().queued_frames;
       if (chunked && normalized.frames > free)
         (void)pipeline.queue.discard_unstamped(normalized.frames - free);
-      if (pipeline.queue.push(std::span(pipeline.volume).first(normalized.bytes.size())) !=
+      if (pipeline.queue.push(::bridge::compat::span(pipeline.volume).first(normalized.bytes.size())) !=
           QueueStatus::accepted) {
         increment(sink->stats_.overflow_resets);
         sink->discontinuity(SourceAvailability::waiting);
@@ -162,7 +163,7 @@ BOOL RdpsndSink::default_format(rdpsndDevicePlugin *device, const AUDIO_FORMAT *
   *result = pcm;
   return TRUE;
 }
-QueueRead RdpsndSink::read(std::span<std::uint8_t> output) noexcept {
+QueueRead RdpsndSink::read(::bridge::compat::span<std::uint8_t> output) noexcept {
   if (!usable() || !opened_)
     return {QueueStatus::invalid};
   return pipeline_->queue.read(output);

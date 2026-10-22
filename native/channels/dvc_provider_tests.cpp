@@ -1,5 +1,5 @@
+#include "../compat/bit.hpp"
 #include "dvc_provider.hpp"
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/client.h>
@@ -81,10 +81,10 @@ struct Fixture {
       return static_entry;
     if (!name || std::strcmp(name, "missing") == 0)
       return nullptr;
-    return std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(dynamic_entry));
+    return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(dynamic_entry));
   }
   PDVC_PLUGIN_ENTRY select(const char *value, DWORD flags = FREERDP_ADDIN_CHANNEL_DYNAMIC) {
-    return std::bit_cast<PDVC_PLUGIN_ENTRY>(
+    return ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(
         freerdp_get_current_addin_provider()(value, nullptr, nullptr, flags));
   }
 };
@@ -179,7 +179,7 @@ TEST_CASE("Scoped public DVC provider requires synchronous profile and serialize
   const auto load = freerdp_get_current_addin_provider();
   UINT status = CHANNEL_RC_OK, close = CHANNEL_RC_OK;
   std::thread foreign([&] {
-    const auto entry = std::bit_cast<PDVC_PLUGIN_ENTRY>(
+    const auto entry = ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(
         load("fixture", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC));
     status = entry(nullptr);
     close = f.provider.close();

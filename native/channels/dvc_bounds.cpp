@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_bounds.hpp"
 
 namespace bridge::channels {
@@ -8,7 +9,7 @@ bool DvcAllocationLimits::valid() const noexcept {
 }
 namespace {
 struct Reader {
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::size_t position = 0;
   std::optional<std::uint32_t> integer(std::size_t width) noexcept {
     if (width == 0 || width > 4 || width > bytes.size() - position)
@@ -19,7 +20,7 @@ struct Reader {
     position += width;
     return value;
   }
-  std::optional<std::span<const std::uint8_t>> take(std::size_t size) noexcept {
+  std::optional<::bridge::compat::span<const std::uint8_t>> take(std::size_t size) noexcept {
     if (size > bytes.size() - position)
       return std::nullopt;
     const auto result = bytes.subspan(position, size);
@@ -31,7 +32,7 @@ constexpr std::size_t width(std::uint8_t selector) noexcept {
   // Pinned drdynvc_cblen_to_bytes/read_variable_uint both map selectors 2/3 to 4.
   return selector == 0 ? 1 : selector == 1 ? 2 : 4;
 }
-std::optional<std::size_t> segment(std::span<const std::uint8_t> bytes) noexcept {
+std::optional<std::size_t> segment(::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (bytes.size() < 2)
     return std::nullopt;
   if ((bytes.front() & 0x20) == 0) {
@@ -47,7 +48,7 @@ std::optional<std::size_t> segment(std::span<const std::uint8_t> bytes) noexcept
 }
 } // namespace
 
-std::optional<ZgfxAllocationInfo> inspect_zgfx_allocations(std::span<const std::uint8_t> bytes,
+std::optional<ZgfxAllocationInfo> inspect_zgfx_allocations(::bridge::compat::span<const std::uint8_t> bytes,
                                                            DvcAllocationLimits limits) noexcept {
   if (!limits.valid() || bytes.empty() || bytes.size() > limits.encoded_bytes)
     return std::nullopt;
@@ -95,7 +96,7 @@ std::optional<ZgfxAllocationInfo> inspect_zgfx_allocations(std::span<const std::
   return ZgfxAllocationInfo{*count, *output, *count ? static_cast<std::size_t>(*output) + 64 : 0};
 }
 
-std::optional<DvcAllocationInfo> inspect_dvc_allocations(std::span<const std::uint8_t> bytes,
+std::optional<DvcAllocationInfo> inspect_dvc_allocations(::bridge::compat::span<const std::uint8_t> bytes,
                                                          DvcAllocationLimits limits) noexcept {
   if (!limits.valid() || bytes.empty() || bytes.size() > limits.encoded_bytes)
     return std::nullopt;

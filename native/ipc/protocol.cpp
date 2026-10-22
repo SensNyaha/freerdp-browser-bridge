@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "protocol.hpp"
 #include "audio.hpp"
 #include "audio_reset.hpp"
@@ -11,7 +12,7 @@
 #include <limits>
 
 namespace bridge::ipc {
-std::uint64_t read_be(std::span<const std::uint8_t> bytes) {
+std::uint64_t read_be(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() > 8)
     throw ProtocolError();
   std::uint64_t result = 0;
@@ -103,7 +104,7 @@ static std::uint32_t limit(Kind kind) {
   }
   throw ProtocolError();
 }
-Header decode_header(std::span<const std::uint8_t> bytes) {
+Header decode_header(::bridge::compat::span<const std::uint8_t> bytes) {
   constexpr std::array<std::uint8_t, 4> magic{'R', 'W', 'I', '1'};
   if (bytes.size() != header_bytes || !std::equal(magic.begin(), magic.end(), bytes.begin()) ||
       read_be(bytes.subspan(4, 2)) != version || read_be(bytes.subspan(8, 4)) != 0)
@@ -165,7 +166,7 @@ std::vector<std::uint8_t> encode(const Packet &packet) {
   std::copy(packet.payload.begin(), packet.payload.end(), bytes.begin() + header_bytes);
   return bytes;
 }
-void validate_hello(std::span<const std::uint8_t> payload) {
+void validate_hello(::bridge::compat::span<const std::uint8_t> payload) {
   if (payload.size() != 8 || read_be(payload.subspan(0, 2)) > version ||
       read_be(payload.subspan(2, 2)) < version || read_be(payload.subspan(4, 4)) != 0)
     throw ProtocolError();

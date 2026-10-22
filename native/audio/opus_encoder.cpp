@@ -1,7 +1,7 @@
+#include "../compat/bit.hpp"
 #include "opus_encoder.hpp"
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <limits>
 #include <opus/opus.h>
 #include <stdexcept>
@@ -79,7 +79,7 @@ OpusUnit SoftwareOpusEncoder::encode(const OpusFrame &frame) {
     const auto word =
         static_cast<std::uint16_t>(static_cast<std::uint16_t>(frame.pcm[i * 2]) |
                                    (static_cast<std::uint16_t>(frame.pcm[i * 2 + 1]) << 8));
-    state.samples[i] = std::bit_cast<opus_int16>(word);
+    state.samples[i] = ::bridge::compat::bit_cast<opus_int16>(word);
   }
   const auto bytes =
       opus_encode(state.encoder.get(), state.samples.data(), static_cast<int>(packet_frames),

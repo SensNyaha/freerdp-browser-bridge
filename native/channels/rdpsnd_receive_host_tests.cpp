@@ -1,6 +1,8 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "dvc_receive_guard.hpp"
+#include <algorithm>
 #include <array>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/client.h>
@@ -87,7 +89,7 @@ struct Host {
     const auto callback = freerdp_channels_load_static_addin_entry(
         "rdpsnd", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
     REQUIRE(callback);
-    REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(callback)(
+    REQUIRE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(callback)(
         reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&points), this));
     REQUIRE(plugin);
     if (!init)
@@ -109,7 +111,7 @@ struct Host {
       init(plugin, this, CHANNEL_EVENT_TERMINATED, nullptr, 0);
     }
   }
-  bool receive(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 8,
+  bool receive(::bridge::compat::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 8,
                std::uint64_t now = 1) {
     return guard->receive(1006, bytes.data(), bytes.size(), flags, total, now);
   }
@@ -118,13 +120,13 @@ constexpr BYTE volume[]{3, 0, 4, 0, 1, 2, 3, 4};
 } // namespace
 TEST_CASE("Actual static RDPSND fake backend receives only complete admitted records") {
   Host host;
-  REQUIRE(host.receive(std::span(volume).first(3), CHANNEL_FLAG_FIRST));
+  REQUIRE(host.receive(::bridge::compat::span(volume).first(3), CHANNEL_FLAG_FIRST));
   REQUIRE(host.deliveries == 0);
-  REQUIRE(host.receive(std::span(volume).subspan(3), CHANNEL_FLAG_LAST, 8, 2));
+  REQUIRE(host.receive(::bridge::compat::span(volume).subspan(3), CHANNEL_FLAG_LAST, 8, 2));
   REQUIRE(host.deliveries == 1);
   REQUIRE(host.guard->stats().audio.forwarded == 1);
   REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
-  REQUIRE_FALSE(host.receive(std::span(volume).first(1), CHANNEL_FLAG_FIRST, 65537, 3));
+  REQUIRE_FALSE(host.receive(::bridge::compat::span(volume).first(1), CHANNEL_FLAG_FIRST, 65537, 3));
   REQUIRE(host.deliveries == 1);
   REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
 }
@@ -135,6 +137,34 @@ TEST_CASE("Actual static RDPSND fake backend cannot parse refused format-table c
   REQUIRE(host.deliveries == 0);
   REQUIRE(host.writes == 0);
   REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+}
+TEST_CASE("Actual pinned RDPSND ignores a bounded legacy XRDP recording proposal without replying") {
+  constexpr BYTE proposal[]{39, 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 5, 0,
+                            1, 0, 2, 0, 68, 172, 0, 0, 16, 177, 2, 0, 4, 0, 16, 0, 0, 0,
+                            1, 0, 2, 0, 34, 86, 0, 0, 136, 88, 1, 0, 4, 0, 16, 0, 0, 0};
+  static_assert(sizeof(proposal) == 52);
+  for (std::size_t split = 1; split < sizeof(proposal); ++split) {
+    Host host;
+    REQUIRE(host.receive(::bridge::compat::span(proposal).first(split), CHANNEL_FLAG_FIRST,
+                         sizeof(proposal)));
+    REQUIRE(host.deliveries == 0);
+    REQUIRE(host.receive(::bridge::compat::span(proposal).subspan(split), CHANNEL_FLAG_LAST,
+                         sizeof(proposal), 2));
+    REQUIRE(host.deliveries == 1);
+    REQUIRE(host.writes == 0); // No recording negotiation, start, capture or format selection.
+    REQUIRE(host.guard->stats().audio.forwarded == 1);
+    REQUIRE(host.receive(volume, CHANNEL_FLAG_ONLY, sizeof(volume), 3));
+    REQUIRE(host.deliveries == 2);
+    REQUIRE_FALSE(host.guard->stats().failed);
+    REQUIRE(getChannelError(host.context.get()) == CHANNEL_RC_OK);
+  }
+  Host malformed;
+  std::array<BYTE, sizeof(proposal)> oversized{};
+  std::copy(std::begin(proposal), std::end(proposal), oversized.begin());
+  oversized[12] = 65;
+  REQUIRE_FALSE(malformed.receive(oversized, CHANNEL_FLAG_ONLY, oversized.size()));
+  REQUIRE(malformed.deliveries == 0);
+  REQUIRE(malformed.writes == 0);
 }
 TEST_CASE("Actual static RDPSND fake backend negotiates PCM and consumes a legacy Wave pair") {
   Host host;

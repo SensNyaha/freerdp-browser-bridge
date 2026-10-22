@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "avc_admission.hpp"
 #include <algorithm>
 #include <array>
@@ -193,7 +194,7 @@ TEST_CASE(
   REQUIRE_FALSE(admit_avc_decode(incomplete));
   bytes = parameter();
   for (std::size_t length = 0; length < 8; ++length)
-    REQUIRE_FALSE(admit_avc_decode(std::span(bytes).first(length)));
+    REQUIRE_FALSE(admit_avc_decode(::bridge::compat::span(bytes).first(length)));
   bytes[4] |= 0x80;
   REQUIRE_FALSE(admit_avc_decode(bytes));
   bytes = parameter();

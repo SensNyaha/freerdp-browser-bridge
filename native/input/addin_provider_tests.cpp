@@ -1,5 +1,5 @@
+#include "../compat/bit.hpp"
 #include "addin_provider.hpp"
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/client.h>
@@ -68,7 +68,7 @@ struct Fixture {
   }
   static UINT enter(PVIRTUALCHANNELENTRY entry, Host &host) {
     REQUIRE(entry);
-    return std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&host.api);
+    return ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&host.api);
   }
 };
 struct Previous {
@@ -152,7 +152,7 @@ TEST_CASE("RDPEI provider verifies the public entry context and denies selector 
   host.throw_context = true;
   REQUIRE(Fixture::enter(entry, host) == ERROR_INTERNAL_ERROR);
   host.throw_context = false;
-  REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(nullptr) == ERROR_INVALID_PARAMETER);
+  REQUIRE(::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(nullptr) == ERROR_INVALID_PARAMETER);
   REQUIRE(Fixture::enter(Fixture::load(RDPEI_CHANNEL_NAME, "unexpected"), host) ==
           ERROR_INVALID_STATE);
   REQUIRE(Fixture::enter(Fixture::load(RDPEI_CHANNEL_NAME, nullptr, "unexpected"), host) ==
@@ -173,8 +173,8 @@ TEST_CASE(
   std::thread foreign([&] {
     const auto refused =
         callback(RDPEI_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
-    loaded = refused ? std::bit_cast<PDVC_PLUGIN_ENTRY>(refused)(&host.api) : ERROR_INVALID_DATA;
-    cached = std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&host.api);
+    loaded = refused ? ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(refused)(&host.api) : ERROR_INVALID_DATA;
+    cached = ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&host.api);
     closed = f.provider.close();
   });
   foreign.join();
@@ -252,7 +252,7 @@ TEST_CASE("RDPEI actual addin cleanup precedes context free after joining its RD
     const auto entry = freerdp_load_channel_addin_entry(RDPEI_CHANNEL_NAME, nullptr, nullptr,
                                                         FREERDP_ADDIN_CHANNEL_DYNAMIC);
     if (entry)
-      installed = std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&host.api);
+      installed = ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&host.api);
     had_client = f.registration.client() != nullptr;
     closed = f.provider.close();
   });

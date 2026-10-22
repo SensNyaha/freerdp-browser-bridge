@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "queue.hpp"
 #include <algorithm>
 #include <limits>
@@ -26,7 +27,7 @@ std::size_t capacity(OutputBufferProfile profile) {
 PcmQueue::PcmQueue(OutputBufferProfile profile)
     : capacity_(bridge::audio::capacity(profile)),
       bytes_(std::make_unique<std::array<std::uint8_t, compatibility_frames * 4>>()) {}
-QueueStatus PcmQueue::push(std::span<const std::uint8_t> input) noexcept {
+QueueStatus PcmQueue::push(::bridge::compat::span<const std::uint8_t> input) noexcept {
   if (!valid(input.size())) {
     add(stats_.invalid_calls, 1);
     return QueueStatus::invalid;
@@ -47,7 +48,7 @@ QueueStatus PcmQueue::push(std::span<const std::uint8_t> input) noexcept {
   add(stats_.accepted_frames, frames);
   return QueueStatus::accepted;
 }
-QueueRead PcmQueue::read(std::span<std::uint8_t> output) noexcept {
+QueueRead PcmQueue::read(::bridge::compat::span<std::uint8_t> output) noexcept {
   if (!valid(output.size())) {
     add(stats_.invalid_calls, 1);
     return {QueueStatus::invalid};

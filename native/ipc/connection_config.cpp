@@ -1,9 +1,10 @@
+#include "../compat/span.hpp"
 #include "connection_config.hpp"
 #include <algorithm>
 
 namespace bridge::ipc {
 namespace {
-bool utf8(std::span<const std::uint8_t> bytes) {
+bool utf8(::bridge::compat::span<const std::uint8_t> bytes) {
   std::size_t i = 0;
   while (i < bytes.size()) {
     const auto c = bytes[i++];
@@ -42,7 +43,7 @@ bool utf8(std::span<const std::uint8_t> bytes) {
   return true;
 }
 } // namespace
-ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
+ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() > 2048)
     throw ProtocolError();
   std::size_t offset = 0;
@@ -152,11 +153,11 @@ ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes) {
     throw ProtocolError();
   return config;
 }
-void validate_secret(std::span<const std::uint8_t> bytes) {
+void validate_secret(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() > 4096 || !utf8(bytes))
     throw ProtocolError();
 }
-void wipe(std::span<std::uint8_t> bytes) noexcept {
+void wipe(::bridge::compat::span<std::uint8_t> bytes) noexcept {
   volatile std::uint8_t *output = bytes.data();
   for (std::size_t i = 0; i < bytes.size(); ++i)
     output[i] = 0;

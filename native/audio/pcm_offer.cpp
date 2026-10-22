@@ -1,17 +1,18 @@
+#include "../compat/span.hpp"
 #include "pcm_offer.hpp"
 #include <algorithm>
 
 namespace bridge::audio {
 namespace {
-std::uint16_t u16(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
+std::uint16_t u16(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   return static_cast<std::uint16_t>(static_cast<unsigned>(bytes[at]) |
                                     (static_cast<unsigned>(bytes[at + 1]) << 8));
 }
-std::uint32_t u32(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
+std::uint32_t u32(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   return static_cast<std::uint32_t>(u16(bytes, at)) |
          (static_cast<std::uint32_t>(u16(bytes, at + 2)) << 16);
 }
-bool supported(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
+bool supported(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   const auto tag = u16(bytes, at), channels = u16(bytes, at + 2), bits = u16(bytes, at + 14);
   const auto rate = u32(bytes, at + 4);
   if (tag != 1 || (channels != 1 && channels != 2) || (bits != 8 && bits != 16) || rate < 8000 ||
@@ -20,13 +21,13 @@ bool supported(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   const auto align = channels * (bits / 8U);
   return u16(bytes, at + 12) == align && u32(bytes, at + 8) == rate * align;
 }
-void word(std::span<std::uint8_t> bytes, std::size_t at, std::size_t value) noexcept {
+void word(::bridge::compat::span<std::uint8_t> bytes, std::size_t at, std::size_t value) noexcept {
   bytes[at] = static_cast<std::uint8_t>(value);
   bytes[at + 1] = static_cast<std::uint8_t>(value >> 8);
 }
 } // namespace
-std::optional<PcmOffer> select_pcm_offers(std::span<const std::uint8_t> input,
-                                          std::span<std::uint8_t> output) noexcept {
+std::optional<PcmOffer> select_pcm_offers(::bridge::compat::span<const std::uint8_t> input,
+                                          ::bridge::compat::span<std::uint8_t> output) noexcept {
   AudioPduValidator validator;
   const auto pdu = validator.validate(input);
   if (!pdu || pdu->kind != AudioPduKind::formats)

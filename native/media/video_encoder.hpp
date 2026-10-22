@@ -1,10 +1,11 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "avc.hpp"
 #include <memory>
 
 namespace bridge::media {
 struct VideoFrame {
-  std::span<const std::uint8_t> bgra;
+  ::bridge::compat::span<const std::uint8_t> bgra;
   int width, height, stride;
   std::uint64_t timestamp_us;
 };

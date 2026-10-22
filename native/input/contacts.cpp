@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "contacts.hpp"
 #include "rdpei.hpp"
 #include <algorithm>
@@ -10,7 +11,7 @@ Contacts::Contacts(PluginRegistration &registration)
     : registration_(registration), sink_([this](const Event &event) { return send(event); }) {
   GateObserver observer{
       this,
-      [](void *p, std::span<const BYTE> bytes, FrameDisposition disposition) noexcept -> UINT {
+      [](void *p, ::bridge::compat::span<const BYTE> bytes, FrameDisposition disposition) noexcept -> UINT {
         return static_cast<Contacts *>(p)->frame(bytes, disposition);
       },
       [](void *p, Phase value) noexcept { static_cast<Contacts *>(p)->phase(value); }};
@@ -94,7 +95,7 @@ bool Contacts::send(const Event &event) noexcept {
   }
   return submission.accepted();
 }
-UINT Contacts::frame(std::span<const BYTE> bytes, FrameDisposition disposition) noexcept {
+UINT Contacts::frame(::bridge::compat::span<const BYTE> bytes, FrameDisposition disposition) noexcept {
   if (!on_thread())
     return ERROR_INVALID_STATE;
   const auto parsed = read_touch_frame(bytes);
@@ -185,9 +186,9 @@ Drain Contacts::service(std::chrono::steady_clock::time_point now) noexcept {
     records[count++] = slot.record;
   }
   if (count) {
-    const auto packet = terminal_packet(std::span(records).first(count));
+    const auto packet = terminal_packet(::bridge::compat::span(records).first(count));
     if (!packet || registration_.gate().submit_cleanup(
-                       std::span(packet->bytes).first(packet->size)) != CHANNEL_RC_OK) {
+                       ::bridge::compat::span(packet->bytes).first(packet->size)) != CHANNEL_RC_OK) {
       failed_ = true;
       return Drain::failed;
     }

@@ -1,3 +1,4 @@
+#include "../../native/compat/span.hpp"
 // Fake private IPC peer. No FreeRDP, remote transport or audible audio.
 #include "audio.hpp"
 #include "audio_reset.hpp"
@@ -28,7 +29,7 @@ int main() {
   std::optional<ConnectionConfig> config;
   // Reset request IDs are nonzero; zero means that no fixture reply is held.
   std::uint64_t pending_reset = 0;
-  const auto audio_record = [&](Kind kind, std::span<const std::uint8_t> body) {
+  const auto audio_record = [&](Kind kind, ::bridge::compat::span<const std::uint8_t> body) {
     send({kind, 0, {body.begin(), body.end()}});
   };
   audio::State status{true, audio::Availability::ready, 1, 1, 100000};

@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "protocol.hpp"
 #include <string>
 
@@ -26,7 +27,7 @@ struct ConnectionConfig {
   std::uint8_t performance_mask = 0, performance_values = 0;
   std::uint8_t ip_mask = 0, prefer_ipv6 = 0, force_ip_version = 0;
 };
-ConnectionConfig decode_connection_config(std::span<const std::uint8_t> bytes);
-void validate_secret(std::span<const std::uint8_t> bytes);
-void wipe(std::span<std::uint8_t> bytes) noexcept;
+ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint8_t> bytes);
+void validate_secret(::bridge::compat::span<const std::uint8_t> bytes);
+void wipe(::bridge::compat::span<std::uint8_t> bytes) noexcept;
 } // namespace bridge::ipc

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "gdi_dirty.hpp"
 #include <freerdp/freerdp.h>
 #include <freerdp/settings.h>
@@ -58,7 +59,7 @@ bool end_gdi_paint(rdpGdi *gdi, DirtyRegions &dirty) noexcept {
         for (std::size_t i = 0; i < count; ++i)
           rectangles[i] = copy(wnd->cinvalid[i]);
       }
-      dirty.paint(std::span(rectangles).first(count));
+      dirty.paint(::bridge::compat::span(rectangles).first(count));
     }
     return begin_gdi_paint(gdi); // Only metadata is cleared; pending dirty state survives.
   } catch (...) {

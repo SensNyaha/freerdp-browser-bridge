@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "worker_session.hpp"
 #include <algorithm>
 #include <limits>
@@ -105,7 +106,7 @@ std::optional<wire::Status> WorkerSession::submit(std::uint64_t id,
     return wire::Status::invalid;
   }
 }
-bool WorkerSession::complete(wire::Status status, std::span<const std::uint8_t> bytes) noexcept {
+bool WorkerSession::complete(wire::Status status, ::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (!active_ || !result_.empty())
     return false;
   try {
@@ -118,7 +119,7 @@ bool WorkerSession::complete(wire::Status status, std::span<const std::uint8_t> 
   }
 }
 bool WorkerSession::reply(std::uint64_t id, TextReply status,
-                          std::span<const std::uint8_t> bytes) noexcept {
+                          ::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (!current_thread() || !active_ || active_->id != id ||
       active_->operation != wire::Operation::read)
     return false;
@@ -192,7 +193,7 @@ bool WorkerSession::pump() noexcept {
           const auto rc =
               job.operation == wire::Operation::read ? text_->request(job.revision, job.id)
               : job.operation == wire::Operation::set
-                  ? text_->set_local(std::span(job.payload).subspan(wire::metadata_bytes))
+                  ? text_->set_local(::bridge::compat::span(job.payload).subspan(wire::metadata_bytes))
                   : text_->revoke_local();
           // The delegate may synchronously complete a read into result_.
           if (rc != CHANNEL_RC_OK)

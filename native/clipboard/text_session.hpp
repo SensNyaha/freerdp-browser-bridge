@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "text.hpp"
 #include <freerdp/client/cliprdr.h>
 #include <functional>
@@ -25,7 +26,7 @@ class TextSession final {
 public:
   using Clock = std::function<std::uint64_t()>;
   using Offer = std::function<bool(std::uint64_t, bool)>;
-  using Reply = std::function<bool(std::uint64_t, TextReply, std::span<const std::uint8_t>)>;
+  using Reply = std::function<bool(std::uint64_t, TextReply, ::bridge::compat::span<const std::uint8_t>)>;
   using Resolve = UINT16 (*)(freerdp *);
   static UINT16 resolve_channel(freerdp *);
   TextSession(TextPolicy, Offer, Reply, Clock, Resolve = resolve_channel);
@@ -33,7 +34,7 @@ public:
   TextSession(const TextSession &) = delete;
   TextSession &operator=(const TextSession &) = delete;
   UINT bind(CliprdrClientContext &) noexcept;
-  UINT set_local(std::span<const std::uint8_t>) noexcept;
+  UINT set_local(::bridge::compat::span<const std::uint8_t>) noexcept;
   // No formats, distinct from offering an empty Unicode value. One local ACK
   // must finish before revocation; cached text is wiped before the SDK call.
   UINT revoke_local() noexcept;

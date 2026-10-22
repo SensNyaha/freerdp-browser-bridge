@@ -1,9 +1,9 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <cstdint>
 #include <freerdp/dvc.h>
 #include <freerdp/freerdp.h>
 #include <optional>
-#include <span>
 #include <thread>
 
 namespace bridge::touch {
@@ -12,13 +12,16 @@ enum class FrameDisposition { prepare, cleanup_prepare, suppressed, delivered };
 struct GateObserver {
   // Synchronous callbacks may change hold only; no API dispatch/lifetime reentry.
   void *user = nullptr;
-  UINT (*frame)(void *, std::span<const BYTE>, FrameDisposition) noexcept = nullptr;
+  UINT (*frame)(void *, ::bridge::compat::span<const BYTE>, FrameDisposition) noexcept = nullptr;
   void (*phase)(void *, Phase) noexcept = nullptr;
 };
 struct Negotiated {
   std::uint32_t version;
   std::uint16_t contacts;
-  bool operator==(const Negotiated &) const = default;
+  bool operator==(const Negotiated &other) const noexcept {
+    return version == other.version && contacts == other.contacts;
+  }
+  bool operator!=(const Negotiated &other) const noexcept { return !(*this == other); }
 };
 // A synchronous, single-channel public-DVC adapter. Owns the delegated callback
 // until OnClose, not the plugin/transport. Its lifetime must cover host callbacks.
@@ -47,7 +50,7 @@ class DvcGate {
   bool held_ = false, cleanup_ = false, observing_ = false;
   GateObserver observer_;
   void phase(Phase value) noexcept;
-  UINT inspect(std::span<const BYTE>, FrameDisposition) noexcept;
+  UINT inspect(::bridge::compat::span<const BYTE>, FrameDisposition) noexcept;
   bool on_thread() const noexcept;
   UINT fail(UINT error) noexcept;
   UINT receive(wStream *stream) noexcept;
@@ -69,7 +72,7 @@ public:
   UINT close() noexcept;
   UINT observe(GateObserver observer) noexcept;
   UINT hold(bool value) noexcept;
-  UINT submit_cleanup(std::span<const BYTE> bytes) noexcept;
+  UINT submit_cleanup(::bridge::compat::span<const BYTE> bytes) noexcept;
   Phase phase() const noexcept { return on_thread() ? phase_ : Phase::closed; }
   bool ready() const noexcept { return on_thread() && phase_ == Phase::running; }
   bool timestamps_disabled() const noexcept { return on_thread() && (ready_flags_ & 2U); }

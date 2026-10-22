@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_svc_ingress.hpp"
 #include <algorithm>
 #include <array>
@@ -39,7 +40,7 @@ TEST_CASE("SVC ingress owns one bounded fragmented message and releases storage 
       REQUIRE(std::equal(bytes.begin(), bytes.end(), std::begin(packet), std::end(packet)));
       return true;
     });
-    const auto data = std::span(packet);
+    const auto data = ::bridge::compat::span(packet);
     REQUIRE(ingress.receive({data.first(split), data.size(), true, false}, 1));
     REQUIRE(calls == 0);
     REQUIRE(ingress.stats().stored_bytes == split);
@@ -86,7 +87,7 @@ TEST_CASE("SVC ingress refuses total changes duplicate first early last overflow
       ++calls;
       return true;
     });
-    const auto data = std::span(packet);
+    const auto data = ::bridge::compat::span(packet);
     REQUIRE(ingress.receive({data.first(2), data.size(), true, false}, 0));
     DvcSvcFragment fragment{data.subspan(2), data.size(), false, true};
     if (mode == 0)
@@ -119,7 +120,7 @@ TEST_CASE("SVC ingress abandoned deadline never extends on progress and applies 
           return true;
         },
         {}, 20);
-    const auto data = std::span(packet);
+    const auto data = ::bridge::compat::span(packet);
     REQUIRE(ingress.receive({data.first(1), data.size(), true, false}, 10));
     REQUIRE(ingress.receive({data.subspan(1, 1), data.size(), false, false}, 29));
     REQUIRE(ingress.poll(29));
@@ -159,7 +160,7 @@ TEST_CASE(
       return true;
     });
     owner = &ingress;
-    const auto data = std::span(packet);
+    const auto data = ::bridge::compat::span(packet);
     REQUIRE(ingress.receive({data.first(2), data.size(), true, false}, 0));
     REQUIRE_FALSE(ingress.receive({data.subspan(2), data.size(), false, true}, 1));
     REQUIRE(calls == 1);

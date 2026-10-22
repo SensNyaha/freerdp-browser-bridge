@@ -1,5 +1,5 @@
+#include "../compat/bit.hpp"
 #include "dvc_provider.hpp"
-#include <bit>
 #include <cstring>
 #include <exception>
 #include <winpr/error.h>
@@ -38,7 +38,7 @@ UINT DvcProvider::bind(rdpContext &context) noexcept {
 PVIRTUALCHANNELENTRY DvcProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR type,
                                        DWORD flags) noexcept {
   auto *self = active_.load();
-  const auto refused = std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(denied));
+  const auto refused = ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(denied));
   // Pinned dynamic rdpsnd also uses this flag for device entrypoints. A subsystem/type
   // selects a different ABI, which must remain with the previous scoped provider.
   const bool dynamic = (flags & FREERDP_ADDIN_CHANNEL_DYNAMIC) != 0 && !subsystem && !type;
@@ -56,7 +56,7 @@ PVIRTUALCHANNELENTRY DvcProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR typ
       return refused;
     for (const auto &candidate : self->entries_)
       if (candidate.delegate && std::strcmp(candidate.name.data(), name) == 0)
-        return std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(entry));
+        return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(entry));
     Entry *slot = nullptr;
     for (auto &candidate : self->entries_)
       if (!candidate.delegate) {
@@ -75,8 +75,8 @@ PVIRTUALCHANNELENTRY DvcProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR typ
     if (!original || self->registry_.stats().closed)
       return refused; // Non-null refusal blocks dynamic-library fallback.
     std::memcpy(slot->name.data(), name, length + 1);
-    slot->delegate = std::bit_cast<PDVC_PLUGIN_ENTRY>(original);
-    return std::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(entry));
+    slot->delegate = ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(original);
+    return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(static_cast<PDVC_PLUGIN_ENTRY>(entry));
   }
   self->loading_ = true;
   PVIRTUALCHANNELENTRY original = nullptr;

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "capture_handoff.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -18,7 +19,7 @@ struct Sink {
   const std::uint8_t *first_address = nullptr;
   Result status = Result::accepted;
   CaptureHandoff *handoff = nullptr;
-  std::span<const std::uint8_t> input;
+  ::bridge::compat::span<const std::uint8_t> input;
   std::optional<Result> nested_enqueue;
   static Result submit(void *owner, const bridge::ipc::microphone::PcmPacket &packet) {
     auto &sink = *static_cast<Sink *>(owner);
@@ -54,7 +55,7 @@ TEST_CASE("Microphone handoff owns one copied PCM request and preserves it throu
   REQUIRE(handoff.enqueue(2, input, 101, 4, true) == Result::busy);
   REQUIRE_FALSE(handoff.retire());
   REQUIRE_THROWS_AS(handoff.enqueue(0, input, 101, 4, true), bridge::ipc::ProtocolError);
-  REQUIRE_THROWS_AS(handoff.enqueue(2, std::span(input).first(3863), 101, 4, true),
+  REQUIRE_THROWS_AS(handoff.enqueue(2, ::bridge::compat::span(input).first(3863), 101, 4, true),
                     bridge::ipc::ProtocolError);
   std::fill(input.begin() + 24, input.end(), 99); // Producer storage is independent.
   const auto completed = handoff.service(19999, 4, true, Sink::submit, &sink);

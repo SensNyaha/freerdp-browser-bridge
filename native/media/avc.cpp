@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "avc.hpp"
 #include <algorithm>
 
@@ -8,7 +9,7 @@ void AvcPacketizer::begin() {
   unit_.clear();
   vcl_ = keyframe_ = false;
 }
-void AvcPacketizer::append(std::span<const std::uint8_t> bytes) {
+void AvcPacketizer::append(::bridge::compat::span<const std::uint8_t> bytes) {
   const std::array<std::uint8_t, 4> prefix4{0, 0, 0, 1};
   const std::array<std::uint8_t, 3> prefix3{0, 0, 1};
   std::size_t prefix = 0;

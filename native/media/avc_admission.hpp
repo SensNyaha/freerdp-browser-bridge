@@ -1,7 +1,7 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <cstddef>
 #include <cstdint>
-#include <span>
 
 namespace bridge::media {
 // Admission of decoder-controlled SPS dimensions, not a full H.264 validator or RSS budget.
@@ -14,5 +14,5 @@ struct AvcDecodeLimits {
 };
 // Complete Annex-B input, including predictive units without a new SPS. All SPS/subset SPS
 // prefixes must fit the limits before any part of the unit reaches the decoder.
-[[nodiscard]] bool admit_avc_decode(std::span<const std::uint8_t>, AvcDecodeLimits = {}) noexcept;
+[[nodiscard]] bool admit_avc_decode(::bridge::compat::span<const std::uint8_t>, AvcDecodeLimits = {}) noexcept;
 } // namespace bridge::media

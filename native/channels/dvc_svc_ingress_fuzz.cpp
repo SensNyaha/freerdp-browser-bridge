@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_svc_ingress.hpp"
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
   using namespace bridge::channels;
@@ -5,7 +6,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
   limits.message_bytes = limits.codec_bytes = limits.encoded_bytes = 65536;
   limits.segments = 64;
   DvcSvcIngress ingress([](auto) { return true; }, limits);
-  std::span<const std::uint8_t> bytes{data, size};
+  ::bridge::compat::span<const std::uint8_t> bytes{data, size};
   std::size_t position = 0;
   std::uint64_t now = 0;
   for (unsigned record = 0; record < 16 && size - position >= 9; ++record) {

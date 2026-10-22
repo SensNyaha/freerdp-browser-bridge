@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "packetizer.hpp"
 #include "publication_wait.hpp"
 #include <algorithm>
@@ -17,7 +18,7 @@ std::vector<std::uint8_t> samples(std::size_t frames, std::uint32_t first = 0) {
   }
   return bytes;
 }
-void equal(std::span<const std::uint8_t> actual, const std::vector<std::uint8_t> &expected) {
+void equal(::bridge::compat::span<const std::uint8_t> actual, const std::vector<std::uint8_t> &expected) {
   REQUIRE(actual.size() == expected.size());
   REQUIRE(std::equal(actual.begin(), actual.end(), expected.begin()));
 }

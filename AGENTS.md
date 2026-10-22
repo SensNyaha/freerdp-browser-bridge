@@ -6,6 +6,7 @@ Preserve the original documentation. Record gaps and blockers; never silently re
 One C++20 worker per session. FreeRDP must not run inside Node; no GUI capture or arbitrary FreeRDP argv.
 Pin FreeRDP 3.32.1 to the commit in native/dependencies.json. Use its public headers as authority.
 Node.js 24, pnpm, strict TypeScript; CMake/Ninja, C++20, RAII, warnings as errors.
+Explicit user target (2026-10-21): port to GCC 8.3.0 for Astra Linux 1.7.5 and retain mandatory RED OS 7.3/GCC 11 support. Keep platform acceptance separate from compiler/foundation results.
 Use bounded queues and parser limits before allocation. No production/session secrets in argv, env, files, logs, errors or metrics.
 Explicit user exception (2026-10-08): during local development, authorized XRDP lab credentials may be stored in plaintext in Git-ignored .local-tests/ files and read by local test helpers. This exception does not permit secrets in argv, env, logs, commits, build artifacts or production persistence. Test credentials must still reach the worker through private IPC.
 Certificate verification is strict by default. Device access is policy controlled and capability gated.

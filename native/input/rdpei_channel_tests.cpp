@@ -1,3 +1,5 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "addin_provider.hpp"
 #include "contacts.hpp"
 #include "dvc_gate.hpp"
@@ -5,7 +7,6 @@
 #include "rdpei_plugin.hpp"
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cstring>
@@ -14,7 +15,6 @@
 #include <freerdp/client/channels.h>
 #include <freerdp/dvc.h>
 #include <memory>
-#include <span>
 #include <thread>
 #include <type_traits>
 #include <winpr/error.h>
@@ -124,14 +124,14 @@ struct ChannelFixture {
       const auto entry = freerdp_load_channel_addin_entry(RDPEI_CHANNEL_NAME, nullptr, nullptr,
                                                           FREERDP_ADDIN_CHANNEL_DYNAMIC);
       REQUIRE(entry);
-      REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api) == CHANNEL_RC_OK);
+      REQUIRE(::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api) == CHANNEL_RC_OK);
     } else if (managed) {
       REQUIRE(registration.install(&entries.api) == CHANNEL_RC_OK);
     } else {
       const auto entry = freerdp_channels_load_static_addin_entry(
           RDPEI_CHANNEL_NAME, nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
       REQUIRE(entry);
-      REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api) == CHANNEL_RC_OK);
+      REQUIRE(::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api) == CHANNEL_RC_OK);
     }
     REQUIRE(plugin);
     initialize_status = plugin->Initialize(plugin, &manager.api);
@@ -169,7 +169,7 @@ struct ChannelFixture {
     }
     return ok;
   }
-  UINT receive(std::span<BYTE> bytes) {
+  UINT receive(::bridge::compat::span<BYTE> bytes) {
     const std::unique_ptr<wStream, void (*)(wStream *)> stream(
         Stream_New(bytes.data(), bytes.size()), [](wStream *s) { Stream_Free(s, FALSE); });
     REQUIRE(stream);
@@ -189,13 +189,13 @@ struct ChannelFixture {
     std::this_thread::sleep_for(std::chrono::milliseconds(40));
     return freerdp_channels_check_fds(context->channels, context->instance) != FALSE;
   }
-  std::span<const BYTE> packet(std::size_t i) const {
+  ::bridge::compat::span<const BYTE> packet(std::size_t i) const {
     REQUIRE(i < count);
     return {writes[i].data(), lengths[i]};
   }
 };
 struct Reader {
-  std::span<const BYTE> bytes;
+  ::bridge::compat::span<const BYTE> bytes;
   std::size_t at = 6;
   BYTE byte() {
     REQUIRE(at < bytes.size());
@@ -214,7 +214,7 @@ struct Reader {
     return value;
   }
 };
-void check_touch(std::span<const BYTE> bytes, UINT32 flags, UINT32 x, UINT32 y) {
+void check_touch(::bridge::compat::span<const BYTE> bytes, UINT32 flags, UINT32 x, UINT32 y) {
   REQUIRE(bytes.size() >= 6);
   REQUIRE(bytes[0] == 3);
   REQUIRE(bytes[1] == 0);
@@ -384,7 +384,7 @@ TEST_CASE("DVC gate observes real v1.1 v2 v3 and future-server version negotiati
       bytes[6 + i] = static_cast<BYTE>(version >> (i * 8));
     if (length == 14)
       bytes[10] = SC_READY_MULTIPEN_INJECTION_SUPPORTED;
-    REQUIRE(f.receive(std::span(bytes).first(length)) == CHANNEL_RC_OK);
+    REQUIRE(f.receive(::bridge::compat::span(bytes).first(length)) == CHANNEL_RC_OK);
     REQUIRE(f.gate.ready());
     const auto negotiated = f.gate.negotiated();
     REQUIRE(negotiated);

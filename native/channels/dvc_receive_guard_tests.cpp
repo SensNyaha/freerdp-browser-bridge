@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_receive_guard.hpp"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -62,7 +63,7 @@ struct Fixture {
       throw std::runtime_error("fixture");
     return f.accept ? TRUE : FALSE;
   }
-  bool receive(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 4,
+  bool receive(::bridge::compat::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 4,
                std::uint64_t now = 1) {
     return guard.receive(1004, bytes.data(), bytes.size(), flags, total, now);
   }
@@ -84,9 +85,9 @@ TEST_CASE("Public DVC receive guard forwards only complete inspected input with 
   for (std::size_t split = 1; split <= sizeof(data); ++split) {
     Fixture f;
     REQUIRE(
-        f.receive(std::span(data).first(split), CHANNEL_FLAG_FIRST | CHANNEL_FLAG_SHOW_PROTOCOL));
+        f.receive(::bridge::compat::span(data).first(split), CHANNEL_FLAG_FIRST | CHANNEL_FLAG_SHOW_PROTOCOL));
     REQUIRE(f.calls == 0);
-    REQUIRE(f.receive(std::span(data).subspan(split),
+    REQUIRE(f.receive(::bridge::compat::span(data).subspan(split),
                       CHANNEL_FLAG_LAST | CHANNEL_FLAG_SHADOW_PERSISTENT, 4, 2));
     REQUIRE(f.calls == 1);
     REQUIRE(f.received_flags ==
@@ -138,14 +139,14 @@ TEST_CASE("Public DVC raw flag and pointer refusal occurs before host dispatch")
   REQUIRE_FALSE(inner.receive(claim, CHANNEL_FLAG_ONLY, sizeof(claim)));
   REQUIRE(inner.calls == 0);
   Fixture outer;
-  REQUIRE_FALSE(outer.receive(std::span(data).first(1), CHANNEL_FLAG_FIRST, 0xffffffffU));
+  REQUIRE_FALSE(outer.receive(::bridge::compat::span(data).first(1), CHANNEL_FLAG_FIRST, 0xffffffffU));
   REQUIRE(outer.calls == 0);
   REQUIRE(outer.guard.stats().assembly.allocated_bytes == 0);
 }
 TEST_CASE(
     "Public DVC empty suspend/resume notifications preserve deadline and cannot hide payload") {
   Fixture f;
-  REQUIRE(f.receive(std::span(data).first(1), CHANNEL_FLAG_FIRST));
+  REQUIRE(f.receive(::bridge::compat::span(data).first(1), CHANNEL_FLAG_FIRST));
   REQUIRE(f.guard.receive(1004, nullptr, 0, CHANNEL_FLAG_SUSPEND, 0, 100));
   REQUIRE(f.guard.receive(1004, nullptr, 0, CHANNEL_FLAG_RESUME, 0, 2000));
   REQUIRE(f.calls == 2);
@@ -169,7 +170,7 @@ TEST_CASE(
 }
 TEST_CASE("Public DVC unrelated traffic polls partial expiry before any host call") {
   Fixture f;
-  REQUIRE(f.receive(std::span(data).first(1), CHANNEL_FLAG_FIRST));
+  REQUIRE(f.receive(::bridge::compat::span(data).first(1), CHANNEL_FLAG_FIRST));
   REQUIRE_FALSE(f.guard.receive(1005, data, 4, CHANNEL_FLAG_ONLY, 4, 2001));
   REQUIRE(f.calls == 0);
   REQUIRE(f.guard.stats().assembly.abandoned == 1);
@@ -181,9 +182,9 @@ TEST_CASE(
   for (const auto mode :
        {Fixture::Reentry::close, Fixture::Reentry::receive, Fixture::Reentry::poll}) {
     Fixture f;
-    REQUIRE(f.receive(std::span(data).first(2), CHANNEL_FLAG_FIRST));
+    REQUIRE(f.receive(::bridge::compat::span(data).first(2), CHANNEL_FLAG_FIRST));
     f.reentry = mode;
-    REQUIRE_FALSE(f.receive(std::span(data).subspan(2), CHANNEL_FLAG_LAST, 4, 2));
+    REQUIRE_FALSE(f.receive(::bridge::compat::span(data).subspan(2), CHANNEL_FLAG_LAST, 4, 2));
     REQUIRE(f.copied == std::vector<BYTE>(std::begin(data), std::end(data)));
     REQUIRE(f.guard.stats().assembly.allocated_bytes == 0);
     REQUIRE(f.guard.stats().closed);

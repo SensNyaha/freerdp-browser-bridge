@@ -1,3 +1,4 @@
+#include "../../native/compat/span.hpp"
 #include "opus_capture.hpp"
 #include <array>
 #include <cstdio>
@@ -27,7 +28,7 @@ int main() {
           std::fread(storage.data(), 1, size, stdin) != size)
         return 1;
       const auto packet =
-          bridge::ipc::microphone::opus::decode_packet(std::span(storage).first(size));
+          bridge::ipc::microphone::opus::decode_packet(::bridge::compat::span(storage).first(size));
       const auto output = decoder.decode(packet);
       storage.fill(0);
       if (!output) {

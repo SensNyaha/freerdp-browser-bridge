@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "test_host.hpp"
 #include "text_session.hpp"
 #include <freerdp/channels/channels.h>
@@ -7,7 +8,7 @@
 using namespace bridge::clipboard;
 using namespace bridge::clipboard::test;
 namespace {
-std::span<const std::uint8_t> utf8(std::string_view s) {
+::bridge::compat::span<const std::uint8_t> utf8(std::string_view s) {
   return {reinterpret_cast<const std::uint8_t *>(s.data()), s.size()};
 }
 struct Observer {
@@ -403,10 +404,10 @@ TEST_CASE("Actual CLIPRDR refuses over-policy text without retiring the Unicode 
     REQUIRE(o.owner.request(1, 1) == CHANNEL_RC_OK);
     const auto over = record(5, 1, std::vector<BYTE>(2048, 65));
     if (fragmented) {
-      REQUIRE(h.send(std::span(over).first(8), CHANNEL_FLAG_FIRST, over.size()));
+      REQUIRE(h.send(::bridge::compat::span(over).first(8), CHANNEL_FLAG_FIRST, over.size()));
       REQUIRE(h.guard->stats().allocated == 0);
       REQUIRE(h.guard->stats().discarding);
-      REQUIRE(h.send(std::span(over).subspan(8), CHANNEL_FLAG_LAST, over.size()));
+      REQUIRE(h.send(::bridge::compat::span(over).subspan(8), CHANNEL_FLAG_LAST, over.size()));
     } else
       REQUIRE(h.send(over));
     REQUIRE(o.replies.size() == 1);

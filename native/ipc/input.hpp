@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "protocol.hpp"
 #include <bitset>
 #include <functional>
@@ -22,8 +23,8 @@ struct Event {
   std::uint16_t a{}, b{}, c{};
   std::array<std::uint16_t, max_text_units> text{};
 };
-Event decode(std::span<const std::uint8_t> payload);
-Event decode_text(std::span<const std::uint8_t> payload);
+Event decode(::bridge::compat::span<const std::uint8_t> payload);
+Event decode_text(::bridge::compat::span<const std::uint8_t> payload);
 // Owned exclusively by the RDP thread. A failed send preserves the pressed state for cleanup.
 class State {
   std::bitset<512> keys_;

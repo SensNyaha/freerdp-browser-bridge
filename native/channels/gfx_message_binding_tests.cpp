@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_channel_registry.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <freerdp/channels/rdpgfx.h>
@@ -44,7 +45,7 @@ struct Fixture {
     proxy = binding.callback;
   }
   ~Fixture() { (void)registry.retire(); }
-  UINT data(std::span<const BYTE> bytes) {
+  UINT data(::bridge::compat::span<const BYTE> bytes) {
     std::vector<BYTE> first{0x28, 1};
     for (unsigned i = 0; i < 4; ++i)
       first.push_back(static_cast<BYTE>(bytes.size() >> (i * 8U)));

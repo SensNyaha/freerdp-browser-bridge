@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "queue.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -137,7 +138,7 @@ TEST_CASE("Invalid PCM queue calls preserve bytes, backlog and discontinuity") {
   std::vector<std::uint8_t> output(19204, 77);
   REQUIRE(queue.read(output).status == QueueStatus::invalid);
   REQUIRE(std::all_of(output.begin(), output.end(), [](auto byte) { return byte == 77; }));
-  REQUIRE(queue.read(std::span(output).first(3)).status == QueueStatus::invalid);
+  REQUIRE(queue.read(::bridge::compat::span(output).first(3)).status == QueueStatus::invalid);
   REQUIRE(queue.read({}).status == QueueStatus::invalid);
   REQUIRE(queue.stats().invalid_calls == 6);
   REQUIRE(queue.stats().queued_frames == 40);

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -99,7 +100,7 @@ TEST_CASE("Audio assembler preserves bytes across randomized fragmentation and r
       const auto count = (std::min)(input.size() - at, static_cast<std::size_t>(1 + random % 1024));
       const bool last = at + count == input.size();
       const auto result =
-          assembler.push(std::span(input).subspan(at, count), input.size(), at == 0, last);
+          assembler.push(::bridge::compat::span(input).subspan(at, count), input.size(), at == 0, last);
       REQUIRE(result.status == (last ? FragmentStatus::complete : FragmentStatus::collecting));
       if (last)
         REQUIRE(std::equal(input.begin(), input.end(), result.bytes.begin()));
@@ -191,6 +192,65 @@ TEST_CASE("RDPSND formats have bounded counts, complete descriptors and bounded 
   REQUIRE(validator.failed());
 }
 
+TEST_CASE("Legacy XRDP input-format proposals are bounded control records, not capture data") {
+  const auto proposal = [](std::size_t count, std::size_t extra = 0) {
+    const auto output = formats(count, extra);
+    std::vector<std::uint8_t> input(16 + output.size() - 24);
+    input[0] = 39; // XRDP SNDC_REC_NEGOTIATE, version 5; no recording is selected.
+    input[2] = static_cast<std::uint8_t>(input.size() - 4);
+    input[3] = static_cast<std::uint8_t>((input.size() - 4) >> 8);
+    input[12] = static_cast<std::uint8_t>(count);
+    input[13] = static_cast<std::uint8_t>(count >> 8);
+    input[14] = 5;
+    std::copy(output.begin() + 24, output.end(), input.begin() + 16);
+    return input;
+  };
+  for (const auto count : {std::size_t{0}, std::size_t{2}, std::size_t{64}}) {
+    AudioPduValidator validator;
+    const auto accepted = validator.validate(proposal(count));
+    REQUIRE(accepted);
+    REQUIRE(accepted->kind == AudioPduKind::legacy_input_formats);
+    REQUIRE(accepted->format_count == count);
+    REQUIRE(accepted->sample_bytes == 0);
+  }
+  AudioPduValidator maximum;
+  REQUIRE(maximum.validate(proposal(1, 1024)));
+  for (const auto &bad : {proposal(65), proposal(1, 1025)}) {
+    AudioPduValidator validator;
+    REQUIRE_FALSE(validator.validate(bad));
+    REQUIRE(validator.failed());
+  }
+  const auto valid = proposal(2);
+  REQUIRE(valid.size() == 52);
+  for (std::size_t length = 0; length < valid.size(); ++length) {
+    auto truncated = valid;
+    truncated.resize(length);
+    if (length >= 4) {
+      truncated[2] = static_cast<std::uint8_t>(length - 4);
+      truncated[3] = 0;
+    }
+    AudioPduValidator validator;
+    REQUIRE_FALSE(validator.validate(truncated));
+  }
+  for (const auto offset : {std::size_t{14}, std::size_t{12}}) {
+    auto bad = valid;
+    bad[offset] = 255; // Unsupported version or excess format-count claim.
+    AudioPduValidator validator;
+    REQUIRE_FALSE(validator.validate(bad));
+  }
+  auto trailing = valid;
+  trailing.push_back(0);
+  ++trailing[2];
+  AudioPduValidator validator;
+  REQUIRE_FALSE(validator.validate(trailing));
+  for (std::uint8_t type = 40; type <= 43; ++type) {
+    auto unsupported = valid;
+    unsupported[0] = type; // Legacy recording start/stop/data/volume stay unsupported.
+    AudioPduValidator refused;
+    REQUIRE_FALSE(refused.validate(unsupported));
+  }
+}
+
 TEST_CASE("Legacy RDPSND WaveInfo validates the following raw Wave as one ordered pair") {
   AudioPduValidator validator;
   const std::array<std::uint8_t, 16> info{2, 0, 16, 0, 255, 255, 3, 0, 42, 0, 0, 0, 1, 2, 3, 4};
@@ -208,7 +268,7 @@ TEST_CASE("Legacy RDPSND WaveInfo validates the following raw Wave as one ordere
   REQUIRE(second->block == 42);
   REQUIRE(second->sample_bytes == 8);
   REQUIRE(validator.validate(info));
-  REQUIRE_FALSE(validator.validate(std::span(raw).first(4)));
+  REQUIRE_FALSE(validator.validate(::bridge::compat::span(raw).first(4)));
   REQUIRE(validator.failed());
 }
 

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "static_gate.hpp"
 #include <algorithm>
 #include <cstdio>
@@ -15,10 +16,10 @@ void increment(std::uint64_t &value) noexcept {
   if (value != (std::numeric_limits<std::uint64_t>::max)())
     ++value;
 }
-std::uint16_t u16(std::span<const BYTE> bytes, std::size_t at) noexcept {
+std::uint16_t u16(::bridge::compat::span<const BYTE> bytes, std::size_t at) noexcept {
   return static_cast<std::uint16_t>(bytes[at] | static_cast<unsigned>(bytes[at + 1]) << 8);
 }
-std::uint32_t u32(std::span<const BYTE> bytes, std::size_t at) noexcept {
+std::uint32_t u32(::bridge::compat::span<const BYTE> bytes, std::size_t at) noexcept {
   return static_cast<std::uint32_t>(u16(bytes, at)) | static_cast<std::uint32_t>(u16(bytes, at + 2))
                                                           << 16;
 }
@@ -153,7 +154,7 @@ UINT VCAPITYPE AudioStaticGate::write(LPVOID opaque, DWORD handle, LPVOID data, 
     return ERROR_NOT_ENOUGH_MEMORY;
   *slot = completion;
   increment(gate->stats_.writes);
-  const auto record = std::span<const BYTE>(static_cast<const BYTE *>(data), size);
+  const auto record = ::bridge::compat::span<const BYTE>(static_cast<const BYTE *>(data), size);
   if (size >= 20 && record[0] == SNDC_FORMATS) // Scalar client count, not payload logging.
     gate->stats_.client_formats = u16(record, 18);
   UINT status = ERROR_INTERNAL_ERROR;
@@ -258,7 +259,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       return;
     }
     const auto joined =
-        gate->assembler_.push(std::span(static_cast<const BYTE *>(data), size), total,
+        gate->assembler_.push(::bridge::compat::span(static_cast<const BYTE *>(data), size), total,
                               (flags & CHANNEL_FLAG_FIRST) != 0, (flags & CHANNEL_FLAG_LAST) != 0);
     if (joined.status == FragmentStatus::invalid) {
       gate->fail(1);

@@ -1,6 +1,6 @@
+#include "../compat/bit.hpp"
 #include "audin_provider.hpp"
 #include "audin_plugin.hpp"
-#include <bit>
 #include <cstring>
 #include <exception>
 #include <winpr/error.h>
@@ -56,7 +56,7 @@ PVIRTUALCHANNELENTRY AudinProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR t
                            !provider->loading_ && !provider->entering_ && !provider->attempted_ &&
                            !provider->source_->retired() && provider->scope_.active() && !type &&
                            flags == 0 && std::strcmp(subsystem, "browser") == 0;
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(
+      return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(allowed ? entry : denied));
     }
     // Non-null refusal prevents FreeRDP's dynamic-library fallback. Only the
@@ -67,11 +67,11 @@ PVIRTUALCHANNELENTRY AudinProvider::load(LPCSTR name, LPCSTR subsystem, LPCSTR t
                            !provider->channel_entering_ && !provider->channel_attempted_ &&
                            !provider->source_->retired() && provider->scope_.active() && !type &&
                            flags == FREERDP_ADDIN_CHANNEL_DYNAMIC;
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(
+      return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PDVC_PLUGIN_ENTRY>(allowed ? channel_entry : dynamic_denied));
     }
     if (flags & FREERDP_ADDIN_CHANNEL_ENTRYEX)
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(
+      return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(
           static_cast<PVIRTUALCHANNELENTRYEX>(static_ex_denied));
     return static_denied;
   }

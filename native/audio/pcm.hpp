@@ -1,22 +1,25 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <span>
 
 namespace bridge::audio {
 struct PcmFormat {
   std::uint32_t rate;
   std::uint16_t channels;
   std::uint16_t bits;
-  bool operator==(const PcmFormat &) const = default;
+  bool operator==(const PcmFormat &other) const noexcept {
+    return rate == other.rate && channels == other.channels && bits == other.bits;
+  }
+  bool operator!=(const PcmFormat &other) const noexcept { return !(*this == other); }
 };
 enum class PcmStatus { accepted, unconfigured, invalid, capacity };
 struct PcmResult {
   PcmStatus status;
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::size_t frames = 0;
 };
 // Single serialized owner. Results borrow fixed storage until process/reset/configure.
@@ -33,7 +36,7 @@ public:
   PcmNormalizer &operator=(const PcmNormalizer &) = delete;
   bool configure(PcmFormat) noexcept;
   void reset() noexcept;
-  PcmResult process(std::span<const std::uint8_t>) noexcept;
+  PcmResult process(::bridge::compat::span<const std::uint8_t>) noexcept;
   std::uint64_t produced_frames() const noexcept { return produced_; }
   std::optional<PcmFormat> format() const noexcept { return format_; }
 

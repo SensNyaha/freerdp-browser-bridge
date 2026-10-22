@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "capture_handoff.hpp"
 #include <algorithm>
 #include <exception>
@@ -55,12 +56,12 @@ void CaptureHandoff::count(Result result) noexcept {
   }
 }
 std::optional<Result> CaptureHandoff::enqueue(std::uint64_t id,
-                                              std::span<const std::uint8_t> payload,
+                                              ::bridge::compat::span<const std::uint8_t> payload,
                                               std::uint64_t now, std::uint64_t epoch, bool ready) {
   if (!id)
     throw ipc::ProtocolError();
   Request request{id, 0, 0, now, false};
-  std::span<const std::uint8_t> input;
+  ::bridge::compat::span<const std::uint8_t> input;
   // Decode only the selected grammar and bound before copying the sole slot.
   if (codec_ == CaptureCodec::pcm) {
     const auto packet = ipc::microphone::decode_pcm(payload);
@@ -123,7 +124,7 @@ std::optional<CaptureCompletion> CaptureHandoff::service_impl(std::uint64_t now,
   if (!result) {
     servicing_ = true;
     try {
-      const auto input = std::span<const std::uint8_t>(bytes_.get(), request.bytes);
+      const auto input = ::bridge::compat::span<const std::uint8_t>(bytes_.get(), request.bytes);
       if (codec_ == CaptureCodec::pcm)
         result =
             submit && owner

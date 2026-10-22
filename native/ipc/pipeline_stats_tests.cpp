@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "pipeline_stats.hpp"
 #include "protocol.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -22,7 +23,7 @@ TEST_CASE("Pipeline diagnostic records require exact lengths before body allocat
   const auto request = encode({Kind::pipeline_stats, 1, {}});
   REQUIRE(decode_header(request).length == 0);
   const auto reply = encode({Kind::pipeline_stats_ack, 1, std::vector<std::uint8_t>(64)});
-  REQUIRE(decode_header(std::span(reply).first(header_bytes)).length == 64);
+  REQUIRE(decode_header(::bridge::compat::span(reply).first(header_bytes)).length == 64);
   REQUIRE_THROWS_AS(encode({Kind::pipeline_stats, 1, {0}}), ProtocolError);
   REQUIRE_THROWS_AS(encode({Kind::pipeline_stats_ack, 1, std::vector<std::uint8_t>(63)}),
                     ProtocolError);

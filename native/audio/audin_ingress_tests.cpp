@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audin_ingress.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -191,7 +192,7 @@ TEST_CASE("AUDIN ingress limits format counts extras lengths and complete-record
   for (std::size_t size = 0; size < complete.size(); ++size) {
     AudinIngress parser;
     version(parser);
-    REQUIRE_FALSE(parser.inspect(std::span(complete).first(size)));
+    REQUIRE_FALSE(parser.inspect(::bridge::compat::span(complete).first(size)));
     REQUIRE(parser.format_count() == 0);
   }
   for (const auto &record : {format(2, 16, 48000, 6, 1025), format(2, 16, 48000, 0xfffe, 21)}) {
@@ -264,7 +265,7 @@ TEST_CASE(
   for (std::size_t size = 0; size < complete.size(); ++size) {
     AudinIngress parser;
     ready(parser);
-    REQUIRE_FALSE(parser.inspect(std::span(complete).first(size)));
+    REQUIRE_FALSE(parser.inspect(::bridge::compat::span(complete).first(size)));
   }
   for (const auto &record : {format(2, 16, 48000, 6, 1025), format(2, 16, 48000, 0xfffe, 23)}) {
     AudinIngress parser;

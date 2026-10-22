@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audio_reset.hpp"
 #include "output_queue.hpp"
 #include <catch2/catch_test_macros.hpp>
@@ -11,7 +12,7 @@ TEST_CASE("Audio reset request validates schema reserved bytes epoch and exact l
   REQUIRE(audio::decode_reset(audio::encode_reset(UINT64_MAX)) == UINT64_MAX);
   REQUIRE_THROWS_AS(audio::encode_reset(0), ProtocolError);
   for (std::size_t n = 0; n < golden.size(); ++n)
-    REQUIRE_THROWS_AS(audio::decode_reset(std::span(golden).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(audio::decode_reset(::bridge::compat::span(golden).first(n)), ProtocolError);
   auto extra = std::vector<std::uint8_t>(golden.begin(), golden.end());
   extra.push_back(0);
   REQUIRE_THROWS_AS(audio::decode_reset(extra), ProtocolError);
@@ -40,7 +41,7 @@ TEST_CASE("Audio reset results and envelopes require typed status and correlated
   }
   const auto result = audio::encode_reset_result(audio::ResetResult::unavailable);
   for (std::size_t n = 0; n < result.size(); ++n)
-    REQUIRE_THROWS_AS(audio::decode_reset_result(std::span(result).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(audio::decode_reset_result(::bridge::compat::span(result).first(n)), ProtocolError);
   REQUIRE_THROWS_AS(audio::decode_reset_result(std::array<std::uint8_t, 5>{1, 2}), ProtocolError);
   for (const auto i : {0U, 2U, 3U}) {
     auto bad = result;

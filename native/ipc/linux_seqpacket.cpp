@@ -1,3 +1,5 @@
+#include "../compat/span.hpp"
+#include "../compat/thread.hpp"
 #include "linux_seqpacket.hpp"
 #include "connection_config.hpp"
 #include <algorithm>
@@ -57,7 +59,7 @@ struct LinuxSeqpacketEndpoint::Impl {
     if (failed || closed || timeout.count() < 20 || timeout.count() > 5000)
       refuse();
   }
-  bool wait(short events, Clock::time_point due, std::stop_token cancellation = {}) {
+  bool wait(short events, Clock::time_point due, ::bridge::compat::stop_token cancellation = {}) {
     for (;;) {
       if (cancellation.stop_requested())
         refuse();
@@ -82,8 +84,8 @@ struct LinuxSeqpacketEndpoint::Impl {
       return true; // recv/send obtains the precise EOF/error outcome.
     }
   }
-  void send(std::span<const std::uint8_t> header, std::span<const std::uint8_t> body,
-            std::chrono::milliseconds timeout, std::stop_token cancellation) {
+  void send(::bridge::compat::span<const std::uint8_t> header, ::bridge::compat::span<const std::uint8_t> body,
+            std::chrono::milliseconds timeout, ::bridge::compat::stop_token cancellation) {
     check(timeout);
     try {
       if (header.size() != header_bytes || next_message > UINT32_MAX ||
@@ -179,7 +181,7 @@ struct LinuxSeqpacketEndpoint::Impl {
       // deadline when received, even if it arrives near the idle poll deadline.
       const auto arrived = Clock::now();
       const auto bytes =
-          inspector.inspect(std::span(scratch).first(static_cast<std::size_t>(received)));
+          inspector.inspect(::bridge::compat::span(scratch).first(static_cast<std::size_t>(received)));
       if (!bytes || (read_due && Clock::now() >= *read_due))
         refuse();
       if (inspector.at_record_boundary())
@@ -192,9 +194,9 @@ struct LinuxSeqpacketEndpoint::Impl {
 };
 LinuxSeqpacketEndpoint::LinuxSeqpacketEndpoint(int fd) : impl_(std::make_unique<Impl>(fd)) {}
 LinuxSeqpacketEndpoint::~LinuxSeqpacketEndpoint() = default;
-void LinuxSeqpacketEndpoint::send(std::span<const std::uint8_t> header,
-                                  std::span<const std::uint8_t> body,
-                                  std::chrono::milliseconds timeout, std::stop_token cancellation) {
+void LinuxSeqpacketEndpoint::send(::bridge::compat::span<const std::uint8_t> header,
+                                  ::bridge::compat::span<const std::uint8_t> body,
+                                  std::chrono::milliseconds timeout, ::bridge::compat::stop_token cancellation) {
   impl_->send(header, body, timeout, cancellation);
 }
 SeqpacketRead LinuxSeqpacketEndpoint::read(std::chrono::milliseconds timeout) {

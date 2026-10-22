@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "opus_publisher.hpp"
 #include <stdexcept>
 
@@ -24,7 +25,7 @@ void OpusPublisher::clear() noexcept {
   cached_->storage.fill(0);
   cached_->size = 0;
 }
-bool OpusPublisher::send(ipc::Kind kind, std::span<const std::uint8_t> bytes,
+bool OpusPublisher::send(ipc::Kind kind, ::bridge::compat::span<const std::uint8_t> bytes,
                          const TrySend &consumer) {
   if (kind == ipc::Kind::audio_state) {
     const auto state = ipc::audio::decode_state(bytes);

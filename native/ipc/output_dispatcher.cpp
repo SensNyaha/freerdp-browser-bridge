@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "output_dispatcher.hpp"
 #include <limits>
 
@@ -12,7 +13,7 @@ DispatchAdmission OutputDispatcher::try_select_audio_codec(OutputAudioCodec code
                                           : DispatchAdmission::invalid;
 }
 DispatchAdmission OutputDispatcher::try_send(Kind kind, std::uint64_t request_id,
-                                             std::span<const std::uint8_t> bytes) {
+                                             ::bridge::compat::span<const std::uint8_t> bytes) {
   const std::unique_lock lock(mutex_, std::try_to_lock);
   if (!lock.owns_lock())
     return DispatchAdmission::busy;

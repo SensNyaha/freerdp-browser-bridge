@@ -1,17 +1,17 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <span>
 
 namespace bridge::audio {
 struct OpusDecodePacket {
-  std::span<const std::uint8_t> encoded;
+  ::bridge::compat::span<const std::uint8_t> encoded;
   std::uint64_t timestamp_us;
   bool discontinuity = false;
 };
 struct OpusPcmUnit {
-  std::span<const std::uint8_t> pcm;
+  ::bridge::compat::span<const std::uint8_t> pcm;
   std::uint64_t timestamp_us;
   bool discontinuity;
 };

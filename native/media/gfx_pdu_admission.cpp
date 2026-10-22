@@ -1,19 +1,20 @@
+#include "../compat/span.hpp"
 #include "gfx_pdu_admission.hpp"
 
 namespace bridge::media {
 namespace {
-std::uint16_t le16(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
+std::uint16_t le16(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   return static_cast<std::uint16_t>(bytes[at] | (std::uint16_t{bytes[at + 1]} << 8));
 }
-std::uint32_t le32(std::span<const std::uint8_t> bytes, std::size_t at) noexcept {
+std::uint32_t le32(::bridge::compat::span<const std::uint8_t> bytes, std::size_t at) noexcept {
   return bytes[at] | (std::uint32_t{bytes[at + 1]} << 8) | (std::uint32_t{bytes[at + 2]} << 16) |
          (std::uint32_t{bytes[at + 3]} << 24);
 }
-bool array(std::span<const std::uint8_t> body, std::size_t prefix, std::size_t count,
+bool array(::bridge::compat::span<const std::uint8_t> body, std::size_t prefix, std::size_t count,
            std::size_t item) noexcept {
   return body.size() >= prefix && count <= (body.size() - prefix) / item;
 }
-bool wire(std::span<const std::uint8_t> body, bool first, GfxPduLimits limits) noexcept {
+bool wire(::bridge::compat::span<const std::uint8_t> body, bool first, GfxPduLimits limits) noexcept {
   const std::size_t prefix = first ? 17U : 13U;
   if (body.size() < prefix)
     return false;
@@ -32,7 +33,7 @@ bool wire(std::span<const std::uint8_t> body, bool first, GfxPduLimits limits) n
   const auto regions = le32(bitmap, 0);
   return regions <= limits.regions && array(bitmap, 4, regions, 10);
 }
-bool body(std::uint16_t command, std::span<const std::uint8_t> bytes,
+bool body(std::uint16_t command, ::bridge::compat::span<const std::uint8_t> bytes,
           GfxPduLimits limits) noexcept {
   switch (command) {
   case 1:
@@ -55,7 +56,7 @@ bool body(std::uint16_t command, std::span<const std::uint8_t> bytes,
   }
 }
 } // namespace
-bool admit_gfx_pdus(std::span<const std::uint8_t> bytes, GfxPduLimits limits) noexcept {
+bool admit_gfx_pdus(::bridge::compat::span<const std::uint8_t> bytes, GfxPduLimits limits) noexcept {
   if (!limits.bytes || limits.bytes > GfxPduLimits::hard_bytes || !limits.pdus ||
       limits.pdus > GfxPduLimits::hard_pdus || !limits.regions ||
       limits.regions > GfxPduLimits::hard_regions || bytes.empty() || bytes.size() > limits.bytes)

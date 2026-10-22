@@ -1,3 +1,5 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "addin_scope.hpp"
 #include "dvc_channel_handoff.hpp"
 #include "dvc_channel_registry.hpp"
@@ -11,7 +13,6 @@
 #include "pinned_dvc_manager.hpp"
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/channels/rdpgfx.h>
@@ -118,7 +119,7 @@ struct Host {
   static PVIRTUALCHANNELENTRY load(LPCSTR name, LPCSTR subsystem, LPCSTR type, DWORD flags) {
     if (active && name && std::strcmp(name, plugin_name) == 0 &&
         flags == FREERDP_ADDIN_CHANNEL_DYNAMIC)
-      return std::bit_cast<PVIRTUALCHANNELENTRY>(&Host::entry);
+      return ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRY>(&Host::entry);
     return active && active->provider.previous()
                ? active->provider.previous()(name, subsystem, type, flags)
                : nullptr;
@@ -366,7 +367,7 @@ struct Host {
           "drdynvc", nullptr, nullptr,
           FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
       REQUIRE(static_entry);
-      REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(static_entry)(
+      REQUIRE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(static_entry)(
           reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&points), this));
       if (!plugin || !init)
         throw std::runtime_error("Missing fixture channel callbacks");
@@ -427,7 +428,7 @@ struct Host {
     }
     budget.close();
   }
-  bool send(std::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
+  bool send(::bridge::compat::span<const BYTE> bytes, UINT32 flags = CHANNEL_FLAG_ONLY, std::size_t total = 0,
             std::uint64_t now = 1) {
     if (!guard)
       return false;
@@ -448,7 +449,7 @@ struct Host {
       REQUIRE(channels[id - 0x42].opens == 1);
   }
 };
-std::vector<BYTE> first(BYTE command, BYTE id, UINT32 size, std::span<const BYTE> body) {
+std::vector<BYTE> first(BYTE command, BYTE id, UINT32 size, ::bridge::compat::span<const BYTE> body) {
   std::vector<BYTE> bytes{static_cast<BYTE>((command << 4) | 8), id};
   for (unsigned index = 0; index < 4; ++index)
     bytes.push_back(static_cast<BYTE>(size >> (index * 8)));
@@ -502,9 +503,9 @@ TEST_CASE(
   const auto baseline = host.deliveries;
   const BYTE initial[]{1, 2};
   const auto begin = first(2, 0x42, 8, initial);
-  REQUIRE(host.send(std::span(begin).first(3), CHANNEL_FLAG_FIRST, begin.size()));
+  REQUIRE(host.send(::bridge::compat::span(begin).first(3), CHANNEL_FLAG_FIRST, begin.size()));
   REQUIRE(host.deliveries == baseline);
-  REQUIRE(host.send(std::span(begin).subspan(3), CHANNEL_FLAG_LAST, begin.size(), 2));
+  REQUIRE(host.send(::bridge::compat::span(begin).subspan(3), CHANNEL_FLAG_LAST, begin.size(), 2));
   REQUIRE(host.deliveries == baseline + 1);
   REQUIRE(host.channels[0].packets == 0);
   const BYTE end[]{0x30, 0x42, 3, 4, 5, 6, 7, 8};
@@ -574,7 +575,7 @@ TEST_CASE("Actual drdynvc host shutdown retires logical partials after outer aba
   REQUIRE(host.send(first(2, 0x42, 8, initial)));
   const auto baseline = host.deliveries;
   const BYTE next[]{0x30, 0x42, 3, 4, 5, 6, 7, 8};
-  REQUIRE(host.send(std::span(next).first(1), CHANNEL_FLAG_FIRST, sizeof(next)));
+  REQUIRE(host.send(::bridge::compat::span(next).first(1), CHANNEL_FLAG_FIRST, sizeof(next)));
   REQUIRE_FALSE(host.guard->poll(2001));
   REQUIRE(host.deliveries == baseline);
   REQUIRE(host.guard->stats().assembly.allocated_bytes == 0);
@@ -672,9 +673,9 @@ TEST_CASE("Actual drdynvc completion proxy releases after compressed continuatio
   REQUIRE(host.budget.stats().releases == 1);
   const BYTE initial[]{1, 2, 3, 4};
   const auto whole = first(2, 0x42, 4, initial);
-  REQUIRE(host.send(std::span(whole).first(3), CHANNEL_FLAG_FIRST, whole.size()));
+  REQUIRE(host.send(::bridge::compat::span(whole).first(3), CHANNEL_FLAG_FIRST, whole.size()));
   REQUIRE(host.budget.stats().active == 0); // Outer staging has not forwarded a logical claim.
-  REQUIRE(host.send(std::span(whole).subspan(3), CHANNEL_FLAG_LAST, whole.size()));
+  REQUIRE(host.send(::bridge::compat::span(whole).subspan(3), CHANNEL_FLAG_LAST, whole.size()));
   REQUIRE(host.channels[0].charged_during_callback == 4);
   REQUIRE(host.budget.stats().active == 0);
   REQUIRE(host.budget.stats().releases == 2);

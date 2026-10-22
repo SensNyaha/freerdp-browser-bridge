@@ -1,8 +1,9 @@
+#include "../compat/span.hpp"
 #include "touch_ipc.hpp"
 #include <algorithm>
 
 namespace bridge::touch {
-Event decode_ipc(std::span<const std::uint8_t> p) {
+Event decode_ipc(::bridge::compat::span<const std::uint8_t> p) {
   if (p.size() != ipc_event_bytes || ipc::read_be(p.first(2)) != 1 || p[2] < 1 || p[2] > 4 ||
       p[3] != 0)
     throw ipc::ProtocolError();
@@ -17,7 +18,7 @@ Event decode_ipc(std::span<const std::uint8_t> p) {
     throw ipc::ProtocolError();
   return event;
 }
-Request decode_request(std::span<const std::uint8_t> p) {
+Request decode_request(::bridge::compat::span<const std::uint8_t> p) {
   if (p.size() != 24 || ipc::read_be(p.first(2)) != 2)
     throw ipc::ProtocolError();
   std::array<std::uint8_t, 16> record{};

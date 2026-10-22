@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "queue.hpp"
 
 namespace bridge::audio {
@@ -6,11 +7,11 @@ enum class CaptureStatus { accepted, inactive, stale, invalid };
 struct CapturePacket {
   std::uint64_t epoch, timestamp_us;
   bool discontinuity;
-  std::span<const std::uint8_t> stereo;
+  ::bridge::compat::span<const std::uint8_t> stereo;
 };
 struct CaptureRead {
   CaptureStatus status;
-  std::span<const std::uint8_t> bytes;
+  ::bridge::compat::span<const std::uint8_t> bytes;
   std::size_t frames = 0, silence_frames = 0;
   bool discontinuity = false;
 };

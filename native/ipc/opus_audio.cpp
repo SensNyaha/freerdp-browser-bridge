@@ -1,10 +1,11 @@
+#include "../compat/span.hpp"
 #include "opus_audio.hpp"
 #include <algorithm>
 #include <limits>
 
 namespace bridge::ipc::audio::opus {
 namespace {
-void put(std::span<std::uint8_t> bytes, std::size_t at, std::uint64_t value, std::size_t count) {
+void put(::bridge::compat::span<std::uint8_t> bytes, std::size_t at, std::uint64_t value, std::size_t count) {
   for (std::size_t i = 0; i < count; ++i)
     bytes[at + i] = static_cast<std::uint8_t>(value >> ((count - i - 1) * 8));
 }
@@ -21,7 +22,7 @@ void validate(const Packet &packet) {
   validate_payload(packet.encoded);
 }
 } // namespace
-void validate_payload(std::span<const std::uint8_t> bytes) {
+void validate_payload(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() < min_payload_bytes || bytes.size() > max_payload_bytes)
     throw ProtocolError();
   const auto toc = bytes[0];
@@ -43,7 +44,7 @@ void validate_payload(std::span<const std::uint8_t> bytes) {
     throw ProtocolError();
   }
 }
-Config decode_config(std::span<const std::uint8_t> bytes) {
+Config decode_config(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() != config_bytes || bytes[0] != 1 || bytes[1] != 1 || bytes[2] != 2 ||
       bytes[3] != 0 || read_be(bytes.subspan(4, 4)) != 48000 ||
       read_be(bytes.subspan(8, 2)) != packet_frames)
@@ -62,7 +63,7 @@ std::array<std::uint8_t, config_bytes> encode_config(Config config) {
   put(bytes, 12, config.epoch, 8);
   return bytes;
 }
-Packet decode_packet(std::span<const std::uint8_t> bytes) {
+Packet decode_packet(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() < min_packet_bytes || bytes.size() > max_packet_bytes || bytes[0] != 1 ||
       (bytes[1] != 0 && bytes[1] != 2) || read_be(bytes.subspan(6, 2)) != 0)
     throw ProtocolError();
@@ -88,7 +89,7 @@ EncodedPacket encode_packet(const Packet &packet) {
   std::copy(packet.encoded.begin(), packet.encoded.end(), bytes.begin() + metadata_bytes);
   return output;
 }
-State decode_state(std::span<const std::uint8_t> bytes) {
+State decode_state(::bridge::compat::span<const std::uint8_t> bytes) {
   if (bytes.size() != state_bytes || bytes[2] > 1 || bytes[28] != (bytes[2] ? 1 : 0) ||
       bytes[30] != 0)
     throw ProtocolError();

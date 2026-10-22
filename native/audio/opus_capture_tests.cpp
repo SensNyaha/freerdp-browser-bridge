@@ -1,9 +1,11 @@
+#include "../compat/bit.hpp"
+#include "../compat/ranges.hpp"
+#include "../compat/span.hpp"
 #include "capture.hpp"
 #include "capture_handoff.hpp"
 #include "opus_capture.hpp"
 #include "opus_encoder.hpp"
 #include <algorithm>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
 #include <vector>
@@ -15,13 +17,13 @@ std::vector<std::uint8_t> pcm(std::size_t packet) {
   for (std::size_t i = 0; i < 1920; ++i) {
     const auto value =
         static_cast<std::int16_t>(static_cast<int>((packet * 1920 + i) % 24000) - 12000);
-    const auto word = std::bit_cast<std::uint16_t>(value);
+    const auto word = ::bridge::compat::bit_cast<std::uint16_t>(value);
     result[i * 2] = static_cast<std::uint8_t>(word);
     result[i * 2 + 1] = static_cast<std::uint8_t>(word >> 8);
   }
   return result;
 }
-ipc::microphone::opus::Packet packet(std::span<const std::uint8_t> bytes, std::uint64_t pts,
+ipc::microphone::opus::Packet packet(::bridge::compat::span<const std::uint8_t> bytes, std::uint64_t pts,
                                      std::uint16_t delay, bool boundary = false,
                                      std::uint64_t epoch = 1) {
   return {epoch, pts, delay, boundary, bytes};
@@ -54,7 +56,7 @@ TEST_CASE("Opus capture removes measured delay and reblocks against an independe
       REQUIRE(capture.stats().decoded_packets == i + 1);
     }
     REQUIRE(outputs == (delay == 0 ? 20U : 19U));
-    REQUIRE(std::ranges::equal(actual, std::span(expected).subspan(delay * 4, actual.size())));
+    REQUIRE(::bridge::compat::ranges::equal(actual, ::bridge::compat::span(expected).subspan(delay * 4, actual.size())));
     REQUIRE(capture.stats().queued_frames == (delay == 0 ? 0U : 960 - delay));
     REQUIRE(capture.stats().skipped_delay_frames == delay);
     REQUIRE(capture.stats().output_packets == outputs);
@@ -81,7 +83,7 @@ TEST_CASE("Opus capture rejects epoch metadata and clock changes atomically befo
                          packet(c, 40000, 961), packet(c, 40000, 313), packet(c, 20000, 312, true),
                          packet(c, 40001, 312), packet(c, UINT64_MAX - 19999, 312)}) {
     REQUIRE_THROWS_AS(capture.decode(bad), std::invalid_argument);
-    REQUIRE(std::ranges::equal(borrowed.pcm, saved));
+    REQUIRE(::bridge::compat::ranges::equal(borrowed.pcm, saved));
     REQUIRE(capture.stats().queued_frames == stats.queued_frames);
     REQUIRE(capture.stats().decoded_packets == stats.decoded_packets);
     REQUIRE(capture.stats().output_packets == stats.output_packets);
@@ -89,7 +91,7 @@ TEST_CASE("Opus capture rejects epoch metadata and clock changes atomically befo
   }
   const auto actual = *capture.decode(packet(c, 40000, 312));
   const auto expected = *reference.decode(packet(c, 40000, 312));
-  REQUIRE(std::ranges::equal(actual.pcm, expected.pcm));
+  REQUIRE(::bridge::compat::ranges::equal(actual.pcm, expected.pcm));
   REQUIRE(actual.timestamp_us == 20000);
   OpusCaptureDecoder fresh(1);
   REQUIRE_THROWS_AS(fresh.decode(packet(a, 0, 312)), std::invalid_argument);
@@ -108,23 +110,23 @@ TEST_CASE("Opus capture forward discontinuity and new epochs wipe carry and keep
   const auto borrowed = *capture.decode(packet(b, 20000, 312));
   REQUIRE(capture.stats().queued_frames == 648);
   REQUIRE_FALSE(capture.decode(packet(a, 200000, 312, true)));
-  REQUIRE(std::ranges::all_of(borrowed.pcm, [](auto value) { return value == 0; }));
+  REQUIRE(::bridge::compat::ranges::all_of(borrowed.pcm, [](auto value) { return value == 0; }));
   REQUIRE(capture.stats().reset_discarded_frames == 648);
   fresh.decode(packet(a, 200000, 312, true));
   const auto restarted = *capture.decode(packet(b, 220000, 312));
   const auto expected = *fresh.decode(packet(b, 220000, 312));
-  REQUIRE(std::ranges::equal(restarted.pcm, expected.pcm));
+  REQUIRE(::bridge::compat::ranges::equal(restarted.pcm, expected.pcm));
   REQUIRE(restarted.timestamp_us == 200000);
   REQUIRE(restarted.discontinuity);
   for (const auto epoch : {std::uint64_t{0}, std::uint64_t{1}}) {
     REQUIRE_THROWS_AS(capture.reset(epoch), std::invalid_argument);
-    REQUIRE(std::ranges::equal(restarted.pcm, expected.pcm));
+    REQUIRE(::bridge::compat::ranges::equal(restarted.pcm, expected.pcm));
   }
   capture.reset(2);
   REQUIRE(capture.stats().epoch == 2);
   REQUIRE(capture.stats().queued_frames == 0);
   REQUIRE(capture.stats().priming);
-  REQUIRE(std::ranges::all_of(restarted.pcm, [](auto value) { return value == 0; }));
+  REQUIRE(::bridge::compat::ranges::all_of(restarted.pcm, [](auto value) { return value == 0; }));
   REQUIRE_THROWS_AS(capture.decode(packet(a, 0, 0, true)), std::invalid_argument);
   const auto immediate = *capture.decode(packet(a, 0, 0, true, 2));
   REQUIRE(immediate.timestamp_us == 0);
@@ -181,7 +183,7 @@ TEST_CASE("Opus capture handoff primes and feeds the bounded PCM source while re
   const auto read = sink.source.read();
   REQUIRE(read.frames == 960);
   REQUIRE(read.silence_frames == 0);
-  REQUIRE(std::ranges::equal(read.bytes, sink.first_pcm));
+  REQUIRE(::bridge::compat::ranges::equal(read.bytes, sink.first_pcm));
   const auto old = encoder.encode({pcm(3), 60000});
   const auto queued = ipc::microphone::opus::encode_packet(
       {1, 60000, encoder.lookahead_frames(), false, old.bytes});

@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_channel_registry.hpp"
 #include "../audio/audin_ingress.hpp"
 #include "../audio/ingress.hpp"
@@ -128,7 +129,7 @@ DvcChannelBinding DvcChannelRegistry::bind(IWTSVirtualChannelManager &manager,
   busy_ = false;
   return result;
 }
-bool DvcChannelRegistry::admit(std::span<const std::uint8_t> payload, std::uint64_t now) noexcept {
+bool DvcChannelRegistry::admit(::bridge::compat::span<const std::uint8_t> payload, std::uint64_t now) noexcept {
   if (!poll(now))
     return false;
   const auto info = inspect_dvc_allocations(payload, allocations_);

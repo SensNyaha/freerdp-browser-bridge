@@ -1,8 +1,9 @@
+#include "../compat/span.hpp"
 #include "dvc_bounds.hpp"
 #include <initializer_list>
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
   using namespace bridge::channels;
-  const std::span<const std::uint8_t> bytes{data, size};
+  const ::bridge::compat::span<const std::uint8_t> bytes{data, size};
   for (const auto logical :
        {std::size_t{14}, std::size_t{65536}, DvcAllocationLimits::hard_message_bytes}) {
     DvcAllocationLimits limits;

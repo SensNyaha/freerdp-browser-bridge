@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "gfx_message_gate.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -12,7 +13,7 @@ void append(std::vector<BYTE> &bytes, std::uint32_t value, unsigned count) {
   for (unsigned i = 0; i < count; ++i)
     bytes.push_back(static_cast<BYTE>(value >> (8U * i)));
 }
-std::vector<BYTE> literal(std::span<const BYTE> decoded) {
+std::vector<BYTE> literal(::bridge::compat::span<const BYTE> decoded) {
   constexpr std::size_t segment = ZGFX_SEGMENTED_MAXSIZE;
   const auto count = (decoded.size() + segment - 1U) / segment;
   std::vector<BYTE> bytes;

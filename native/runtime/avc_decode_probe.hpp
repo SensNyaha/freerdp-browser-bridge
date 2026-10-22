@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 // Diagnostic decoder used only by native tests and the relocated runtime probe.
 #include "avc.hpp"
 #include <array>
@@ -35,7 +36,7 @@ public:
         config[5] != 0xe1 || unit.bytes.empty() || unit.bytes.size() > media::max_access_unit_bytes)
       throw ipc::ProtocolError();
     std::vector<std::uint8_t> annex;
-    const auto add = [&](std::span<const std::uint8_t> nal) {
+    const auto add = [&](::bridge::compat::span<const std::uint8_t> nal) {
       annex.insert(annex.end(), {0, 0, 0, 1});
       annex.insert(annex.end(), nal.begin(), nal.end());
     };

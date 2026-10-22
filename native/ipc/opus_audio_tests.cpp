@@ -1,3 +1,5 @@
+#include "../compat/ranges.hpp"
+#include "../compat/span.hpp"
 #include "opus_audio.hpp"
 #include "output_queue.hpp"
 #include <algorithm>
@@ -19,7 +21,7 @@ TEST_CASE("Opus IPC profile bounds every TOC before a decoder sees its bytes") {
   const std::array<std::uint8_t, 9> allowed{0x0c, 0x2c, 0x4c, 0x6c, 0x7c, 0x9c, 0xbc, 0xdc, 0xfc};
   for (unsigned toc = 0; toc < 256; ++toc) {
     const std::array<std::uint8_t, 3> bytes{static_cast<std::uint8_t>(toc), 0xff, 0xfe};
-    if (std::ranges::find(allowed, bytes[0]) != allowed.end())
+    if (::bridge::compat::ranges::find(allowed, bytes[0]) != allowed.end())
       REQUIRE_NOTHROW(opus::validate_payload(bytes));
     else
       REQUIRE_THROWS_AS(opus::validate_payload(bytes), ProtocolError);
@@ -41,7 +43,7 @@ TEST_CASE("Opus IPC config golden vector bounds queried lookahead and separates 
   REQUIRE(opus::encode_config(decoded) == config);
   REQUIRE_THROWS_AS(bridge::ipc::audio::decode_config(config), ProtocolError);
   for (std::size_t size = 0; size < config.size(); ++size)
-    REQUIRE_THROWS_AS(opus::decode_config(std::span(config).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(opus::decode_config(::bridge::compat::span(config).first(size)), ProtocolError);
   std::vector<std::uint8_t> extra(config.begin(), config.end());
   extra.push_back(0);
   REQUIRE_THROWS_AS(opus::decode_config(extra), ProtocolError);
@@ -77,10 +79,10 @@ TEST_CASE("Opus IPC packet golden vector bounds metadata and borrows encoded sto
   REQUIRE(decoded.encoded.data() == packet.data() + 24);
   const auto encoded = opus::encode_packet(decoded);
   REQUIRE(encoded.size == packet.size());
-  REQUIRE(std::ranges::equal(encoded.bytes(), packet));
+  REQUIRE(::bridge::compat::ranges::equal(encoded.bytes(), packet));
   REQUIRE_THROWS_AS(bridge::ipc::audio::decode_packet(packet), ProtocolError);
   for (std::size_t size = 0; size < opus::min_packet_bytes; ++size)
-    REQUIRE_THROWS_AS(opus::decode_packet(std::span(packet).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(opus::decode_packet(::bridge::compat::span(packet).first(size)), ProtocolError);
   for (const auto at : {0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 24U}) {
     auto bad = packet;
     bad[at] ^= 255;
@@ -92,7 +94,7 @@ TEST_CASE("Opus IPC packet golden vector bounds metadata and borrows encoded sto
     bounded.encoded = bytes;
     const auto output = opus::encode_packet(bounded);
     REQUIRE(output.size == 24 + size);
-    REQUIRE(std::ranges::equal(opus::decode_packet(output.bytes()).encoded, bytes));
+    REQUIRE(::bridge::compat::ranges::equal(opus::decode_packet(output.bytes()).encoded, bytes));
   }
   for (const auto size : {0U, 1U, 1276U}) {
     const std::vector<std::uint8_t> bytes(size, 0xfc);
@@ -122,7 +124,7 @@ TEST_CASE("Opus IPC packet golden vector bounds metadata and borrows encoded sto
   REQUIRE(boundary.epoch == UINT64_MAX);
   REQUIRE(boundary.timestamp_us == UINT64_MAX - 20000);
   std::vector<std::uint8_t> oversized(opus::max_packet_bytes + 1);
-  std::ranges::copy(packet, oversized.begin());
+  ::bridge::compat::ranges::copy(packet, oversized.begin());
   REQUIRE_THROWS_AS(opus::decode_packet(oversized), ProtocolError);
 }
 
@@ -186,7 +188,7 @@ TEST_CASE("Opus source state rejects descriptor corruption before common semanti
   using namespace bridge::ipc;
   const auto ready = opus::encode_state({true, audio::Availability::ready, 1, 9, 1000000});
   for (std::size_t size = 0; size < ready.size(); ++size)
-    REQUIRE_THROWS_AS(opus::decode_state(std::span(ready).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(opus::decode_state(::bridge::compat::span(ready).first(size)), ProtocolError);
   auto extra = std::vector<std::uint8_t>(ready.begin(), ready.end());
   extra.push_back(0);
   REQUIRE_THROWS_AS(opus::decode_state(extra), ProtocolError);

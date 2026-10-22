@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "certificate.hpp"
 #include <memory>
 #include <openssl/pem.h>
@@ -6,7 +7,7 @@
 #include <stdexcept>
 
 namespace bridge {
-CertificateCheck check_certificate(std::span<const std::uint8_t> pem, const std::string &host) {
+CertificateCheck check_certificate(::bridge::compat::span<const std::uint8_t> pem, const std::string &host) {
   if (pem.empty() || pem.size() > 262144 || host.empty())
     throw std::runtime_error("Invalid certificate");
   const std::unique_ptr<BIO, decltype(&BIO_free)> bio(

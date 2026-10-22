@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "opus_audio.hpp"
 #include "opus_encoder.hpp"
 #include "publisher.hpp"
@@ -28,6 +29,6 @@ private:
   std::optional<std::uint64_t> configured_epoch_;
   PcmPublisher source_;
   void clear() noexcept;
-  bool send(ipc::Kind, std::span<const std::uint8_t>, const TrySend &);
+  bool send(ipc::Kind, ::bridge::compat::span<const std::uint8_t>, const TrySend &);
 };
 } // namespace bridge::audio

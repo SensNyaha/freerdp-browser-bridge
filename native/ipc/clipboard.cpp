@@ -1,10 +1,11 @@
+#include "../compat/span.hpp"
 #include "clipboard.hpp"
 #include "../clipboard/text.hpp"
 #include <algorithm>
 
 namespace bridge::ipc::clipboard {
 namespace {
-void put(std::span<std::uint8_t> b, std::size_t at, std::uint64_t value, std::size_t count) {
+void put(::bridge::compat::span<std::uint8_t> b, std::size_t at, std::uint64_t value, std::size_t count) {
   for (std::size_t i = 0; i < count; ++i)
     b[at + i] = static_cast<std::uint8_t>(value >> ((count - i - 1) * 8));
 }
@@ -21,7 +22,7 @@ void validate(Operation op, std::uint64_t generation, std::uint64_t revision) {
       (op == Operation::read ? !revision : revision != 0))
     throw ProtocolError();
 }
-void text(std::span<const std::uint8_t> bytes) {
+void text(::bridge::compat::span<const std::uint8_t> bytes) {
   const auto result = bridge::clipboard::encode_unicode_text(bytes, {}, max_text_bytes);
   if (result.status != bridge::clipboard::TextStatus::capacity)
     throw ProtocolError();
@@ -43,13 +44,13 @@ void validate(const Result &r) {
   else if (!r.text.empty())
     throw ProtocolError();
 }
-void header(std::span<const std::uint8_t> b) {
+void header(::bridge::compat::span<const std::uint8_t> b) {
   if (b.size() < metadata_bytes || b.size() > max_record_bytes || read_be(b.subspan(6, 2)) ||
       read_be(b.first(2)) != (read_be(b.subspan(2, 2)) == 3 ? 2u : 1u))
     throw ProtocolError();
 }
 std::vector<std::uint8_t> encode(Operation op, Status status, std::uint64_t generation,
-                                 std::uint64_t revision, std::span<const std::uint8_t> text) {
+                                 std::uint64_t revision, ::bridge::compat::span<const std::uint8_t> text) {
   std::vector<std::uint8_t> b(metadata_bytes + text.size());
   put(b, 0, op == Operation::revoke ? 2 : 1, 2);
   put(b, 2, static_cast<std::uint16_t>(op), 2);
@@ -74,7 +75,7 @@ std::array<std::uint8_t, metadata_bytes> encode_state(const State &s) {
   put(b, 16, s.revision, 8);
   return b;
 }
-State decode_state(std::span<const std::uint8_t> b) {
+State decode_state(::bridge::compat::span<const std::uint8_t> b) {
   if (b.size() != metadata_bytes || read_be(b.first(2)) != 1 || read_be(b.subspan(2, 2)) > 127)
     throw ProtocolError();
   const auto f = read_be(b.subspan(2, 2));
@@ -95,7 +96,7 @@ std::vector<std::uint8_t> encode_command(const Command &c) {
   validate(c);
   return encode(c.operation, Status::accepted, c.generation, c.revision, c.text);
 }
-Command decode_command(std::span<const std::uint8_t> b) {
+Command decode_command(::bridge::compat::span<const std::uint8_t> b) {
   header(b);
   if (read_be(b.subspan(4, 2)))
     throw ProtocolError();
@@ -108,7 +109,7 @@ std::vector<std::uint8_t> encode_result(const Result &r) {
   validate(r);
   return encode(r.operation, r.status, r.generation, r.revision, r.text);
 }
-Result decode_result(std::span<const std::uint8_t> b) {
+Result decode_result(::bridge::compat::span<const std::uint8_t> b) {
   header(b);
   Result r{static_cast<Operation>(read_be(b.subspan(2, 2))),
            static_cast<Status>(read_be(b.subspan(4, 2))), read_be(b.subspan(8, 8)),

@@ -1,3 +1,5 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "addin_provider.hpp"
 #include "ingress.hpp"
 #include "output_queue.hpp"
@@ -7,7 +9,6 @@
 #include "session.hpp"
 #include "static_gate.hpp"
 #include <algorithm>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cstring>
@@ -92,7 +93,7 @@ struct DynamicHost {
   }
   void enter(PVIRTUALCHANNELENTRY entry) {
     REQUIRE(entry);
-    REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&api) == CHANNEL_RC_OK);
+    REQUIRE(::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&api) == CHANNEL_RC_OK);
     REQUIRE(registrations == 1);
   }
 };
@@ -226,7 +227,7 @@ struct StaticHost {
             ? freerdp_load_channel_addin_entry("rdpsnd", nullptr, nullptr, static_abi)
             : freerdp_channels_load_static_addin_entry("rdpsnd", nullptr, nullptr, static_abi);
     REQUIRE(entry);
-    const auto callback = std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry);
+    const auto callback = ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(entry);
     if (gate)
       REQUIRE(gate->install(&points, this, callback));
     else
@@ -251,11 +252,11 @@ struct StaticHost {
       opened(plugin, 1, event, value, 0, 0, 0);
     }
   }
-  void raw(std::span<const BYTE> bytes, UINT total, UINT flags = CHANNEL_FLAG_ONLY) {
+  void raw(::bridge::compat::span<const BYTE> bytes, UINT total, UINT flags = CHANNEL_FLAG_ONLY) {
     opened(plugin, 1, CHANNEL_EVENT_DATA_RECEIVED, const_cast<BYTE *>(bytes.data()),
            static_cast<UINT>(bytes.size()), total, flags);
   }
-  bool ingest(std::span<const BYTE> bytes, std::size_t total, bool first, bool last) {
+  bool ingest(::bridge::compat::span<const BYTE> bytes, std::size_t total, bool first, bool last) {
     const auto joined = assembler.push(bytes, total, first, last);
     if (joined.status == FragmentStatus::collecting)
       return true;
@@ -270,8 +271,8 @@ struct StaticHost {
   void send(std::vector<BYTE> &bytes) {
     REQUIRE(bytes.size() <= 65536);
     const auto split = (std::min)(std::size_t{5}, bytes.size());
-    REQUIRE(ingest(std::span(bytes).first(split), bytes.size(), true, false));
-    REQUIRE(ingest(std::span(bytes).subspan(split), bytes.size(), false, true));
+    REQUIRE(ingest(::bridge::compat::span(bytes).first(split), bytes.size(), true, false));
+    REQUIRE(ingest(::bridge::compat::span(bytes).subspan(split), bytes.size(), false, true));
     REQUIRE(getChannelError(points.context) == CHANNEL_RC_OK);
   }
 };
@@ -322,22 +323,22 @@ TEST_CASE("RDPSND scoped provider enforces synchronous ownership and exact devic
   for (const auto flags : {static_abi, DWORD{FREERDP_ADDIN_CHANNEL_DYNAMIC}}) {
     const auto device = current("rdpsnd", "browser", nullptr, flags);
     REQUIRE(device);
-    REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr) ==
+    REQUIRE(::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr) ==
             ERROR_INVALID_PARAMETER);
   }
   for (const auto flags :
        {DWORD{0}, DWORD{FREERDP_ADDIN_CHANNEL_STATIC}, DWORD{FREERDP_ADDIN_CHANNEL_DEVICE}}) {
     const auto device = current("rdpsnd", "browser", nullptr, flags);
     REQUIRE(device);
-    REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr) == ERROR_INVALID_STATE);
+    REQUIRE(::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr) == ERROR_INVALID_STATE);
   }
   const auto wrong = current("rdpsnd", "browser", "wrong", static_abi);
   REQUIRE(wrong);
-  REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(wrong)(nullptr) == ERROR_INVALID_STATE);
+  REQUIRE(::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(wrong)(nullptr) == ERROR_INVALID_STATE);
   UINT foreign = CHANNEL_RC_OK;
   std::thread thread([&] {
     const auto device = current("rdpsnd", "browser", nullptr, static_abi);
-    foreign = std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr);
+    foreign = ::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr);
   });
   thread.join();
   REQUIRE(foreign == ERROR_INVALID_STATE);
@@ -431,7 +432,7 @@ TEST_CASE("RDPSND provider binds actual opaque plugin to its owning client conte
   points.pRegisterRdpsndDevice = [](rdpsndPlugin *, rdpsndDevicePlugin *) {};
   const auto entry = freerdp_get_current_addin_provider()("rdpsnd", "browser", nullptr, static_abi);
   REQUIRE(entry);
-  REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_PARAMETER);
+  REQUIRE(::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_PARAMETER);
   REQUIRE(fixture.sink.device().rdpsnd == nullptr);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
@@ -457,8 +458,8 @@ TEST_CASE("RDPSND provider refuses uncertain void registration without retry") {
   points.pRegisterRdpsndDevice = [](rdpsndPlugin *, rdpsndDevicePlugin *) {};
   const auto entry = freerdp_get_current_addin_provider()("rdpsnd", "browser", nullptr, static_abi);
   REQUIRE(entry);
-  REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_STATE);
-  REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_STATE);
+  REQUIRE(::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_STATE);
+  REQUIRE(::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(entry)(&points) == ERROR_INVALID_STATE);
   REQUIRE(fixture.sink.device().rdpsnd == nullptr);
   REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
@@ -517,10 +518,10 @@ TEST_CASE("Public static audio gate bounds actual RDPSND ingress and handles str
   host.load(&gate);
   host.connect();
   auto configuration = formats();
-  host.raw(std::span(configuration).first(5), static_cast<UINT>(configuration.size()),
+  host.raw(::bridge::compat::span(configuration).first(5), static_cast<UINT>(configuration.size()),
            CHANNEL_FLAG_FIRST);
   REQUIRE(host.writes.empty());
-  host.raw(std::span(configuration).subspan(5), static_cast<UINT>(configuration.size()),
+  host.raw(::bridge::compat::span(configuration).subspan(5), static_cast<UINT>(configuration.size()),
            CHANNEL_FLAG_LAST);
   REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
   REQUIRE(host.writes.size() == 2);
@@ -729,7 +730,7 @@ TEST_CASE("RDPSND full public loader selects guarded static PCM browser backend"
   host.connect();
   REQUIRE(fixture.sink.device().rdpsnd);
   REQUIRE(freerdp_rdpsnd_get_context(fixture.sink.device().rdpsnd) == fixture.context.get());
-  REQUIRE_FALSE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(cached)(nullptr, nullptr));
+  REQUIRE_FALSE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(cached)(nullptr, nullptr));
   auto configuration = formats();
   host.raw(configuration, static_cast<UINT>(configuration.size()));
   const std::vector<BYTE> wave{SNDC_WAVE2, 0, 20, 0, 100, 0,   0,   0,   1, 0, 0,   0,
@@ -752,20 +753,20 @@ TEST_CASE("Guarded RDPSND loader refuses unprotected dynamic and legacy channel 
   const auto loader = freerdp_get_current_addin_provider();
   const auto dynamic = loader("rdpsnd", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
   REQUIRE(dynamic);
-  REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(dynamic)(nullptr) == ERROR_NOT_SUPPORTED);
+  REQUIRE(::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(dynamic)(nullptr) == ERROR_NOT_SUPPORTED);
   const auto device = loader("rdpsnd", "browser", nullptr, FREERDP_ADDIN_CHANNEL_DYNAMIC);
   REQUIRE(device);
-  REQUIRE(std::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr) == ERROR_INVALID_STATE);
+  REQUIRE(::bridge::compat::bit_cast<PFREERDP_RDPSND_DEVICE_ENTRY>(device)(nullptr) == ERROR_INVALID_STATE);
   const auto legacy = loader("rdpsnd", nullptr, nullptr, FREERDP_ADDIN_CHANNEL_STATIC);
   REQUIRE(legacy);
   REQUIRE_FALSE(legacy(nullptr));
   const auto wrong = loader("rdpsnd", nullptr, "wrong", static_abi);
   REQUIRE(wrong);
-  REQUIRE_FALSE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(wrong)(nullptr, nullptr));
+  REQUIRE_FALSE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(wrong)(nullptr, nullptr));
   BOOL foreign = TRUE;
   std::thread thread([&] {
     const auto entry = loader("rdpsnd", nullptr, nullptr, static_abi);
-    foreign = std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry)(nullptr, nullptr);
+    foreign = ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(entry)(nullptr, nullptr);
   });
   thread.join();
   REQUIRE_FALSE(foreign);
@@ -1321,7 +1322,7 @@ TEST_CASE("Touch nested over audio delegates static entry and backend before LIF
   dynamic.enter(freerdp_load_channel_addin_entry(RDPEI_CHANNEL_NAME, nullptr, nullptr,
                                                  FREERDP_ADDIN_CHANNEL_DYNAMIC));
   StaticHost host(fixture.context.get());
-  REQUIRE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(cached_audio)(
+  REQUIRE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(cached_audio)(
       reinterpret_cast<PCHANNEL_ENTRY_POINTS_EX>(&host.points), &host));
   host.connect();
   const auto configuration = formats();
@@ -2120,7 +2121,7 @@ TEST_CASE("Actual FreeRDP core registers guarded audio and disconnects after own
   const auto entry = freerdp_load_channel_addin_entry("rdpsnd", nullptr, nullptr, static_abi);
   REQUIRE(entry);
   REQUIRE(freerdp_channels_client_load_ex(fixture.context->channels, fixture.context->settings,
-                                          std::bit_cast<PVIRTUALCHANNELENTRYEX>(entry),
+                                          ::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(entry),
                                           nullptr) == 0);
   std::unique_ptr<StaticClientChannelStats, decltype(&freerdp_channel_client_stats_free)> inventory{
       freerdp_channels_client_stats(fixture.context->channels), freerdp_channel_client_stats_free};

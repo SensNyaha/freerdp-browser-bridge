@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "input.hpp"
 #include <algorithm>
 
@@ -9,7 +10,7 @@ bool initialize_pointer(const State::Sink &send, std::uint16_t x, std::uint16_t 
   }
   return true;
 }
-Event decode(std::span<const std::uint8_t> p) {
+Event decode(::bridge::compat::span<const std::uint8_t> p) {
   using namespace ipc;
   if (p.size() != 12 || read_be(p.subspan(8, 4)) != 0)
     throw ProtocolError();
@@ -46,7 +47,7 @@ Event decode(std::span<const std::uint8_t> p) {
     throw ProtocolError();
   return e;
 }
-Event decode_text(std::span<const std::uint8_t> p) {
+Event decode_text(::bridge::compat::span<const std::uint8_t> p) {
   if (p.empty() || p.size() > max_text_units * 2 || p.size() % 2)
     throw ipc::ProtocolError();
   Event e{Type::text};

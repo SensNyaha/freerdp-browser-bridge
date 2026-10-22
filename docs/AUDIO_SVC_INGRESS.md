@@ -35,3 +35,16 @@ received record. `wPackSize` is echoed by the pinned channel, not used as an
 allocation claim. A real XRDP 1,028-byte Training record previously failed the
 four-byte-only check; fragmented portable and actual linked channel fixtures now
 cover padding and the exact confirmation. [Iteration 175](ITERATION_175.md).
+
+XRDP's optional legacy `SNDC_REC_NEGOTIATE` (type 39) version-5 control proposal
+uses a 16-byte fixed header with a WAVEFORMATEX table at offset 16. Admission
+validates the exact outer body length, version 5, at most 64 complete formats,
+at most 1,024 extra bytes per format and no trailing data, within the unchanged
+64 KiB/fragment/deadline limits. This is separately classified as
+`legacy_input_formats`, never output-format selection or sample data. Pinned
+FreeRDP 3.32.1 RDPSND ignores this unsupported control without a reply. The
+bridge preserves that behavior after validating its allocation claims; it does
+not select a capture device or enable legacy recording. Other legacy recording
+opcodes remain rejected. Microphone support still requires the existing
+explicit policy/capability-gated AUDIN path. This exception does not admit
+arbitrary unknown RDPSND messages.

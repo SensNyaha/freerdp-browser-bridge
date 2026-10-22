@@ -42,6 +42,7 @@ if(BRIDGE_WITH_FREERDP)
     DESTINATION share/freerdp-bridge/ports)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/cups" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/eudev"
+      "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/libfuse" "${CMAKE_SOURCE_DIR}/native/vcpkg/ports/numactl"
       DESTINATION share/freerdp-bridge/ports)
   endif()
   if(NOT EXISTS "${CMAKE_SOURCE_DIR}/build/native-features.json")

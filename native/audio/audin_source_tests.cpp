@@ -1,3 +1,4 @@
+#include "../compat/ranges.hpp"
 #include "audin_source.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -122,6 +123,7 @@ TEST_CASE("Public AUDIN virtual source validates pinned device format and callba
   REQUIRE(source.pump() == AudinPumpStatus::inactive);
   REQUIRE(device.Open(&device, Receiver::receive, &receiver) != CHANNEL_RC_OK);
   REQUIRE_FALSE(device.FormatSupported(&device, nullptr));
+  REQUIRE(device.SetFormat(&device, nullptr, 960) != CHANNEL_RC_OK);
   for (const auto channels : {UINT16{1}, UINT16{2}}) {
     const auto pcm = format(channels);
     REQUIRE(device.FormatSupported(&device, &pcm));
@@ -134,16 +136,33 @@ TEST_CASE("Public AUDIN virtual source validates pinned device format and callba
   invalid = format();
   invalid.nBlockAlign++;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
   invalid = format();
   invalid.cbSize = 1;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
   BYTE extra = 0;
   invalid = format();
   invalid.data = &extra;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
   invalid = format();
   invalid.nSamplesPerSec = 44100;
   REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  invalid = format();
+  invalid.wFormatTag = WAVE_FORMAT_ALAW;
+  REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  invalid = format();
+  invalid.wBitsPerSample = 8;
+  REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+  REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  for (const auto channels : {UINT16{0}, UINT16{3}}) {
+    invalid = format(channels);
+    REQUIRE_FALSE(device.FormatSupported(&device, &invalid));
+    REQUIRE(device.SetFormat(&device, &invalid, 960) != CHANNEL_RC_OK);
+  }
   const auto pcm = format();
   REQUIRE(device.SetFormat(&device, &pcm, 0) != CHANNEL_RC_OK);
   REQUIRE(device.SetFormat(&device, &pcm, 4801) != CHANNEL_RC_OK);
@@ -156,7 +175,7 @@ TEST_CASE("Public AUDIN virtual source validates pinned device format and callba
   REQUIRE(source.pump() == AudinPumpStatus::delivered);
   REQUIRE(receiver.calls == 1);
   REQUIRE(receiver.bytes.size() == 3840);
-  REQUIRE(std::ranges::all_of(receiver.bytes, [](auto byte) { return byte == 0; }));
+  REQUIRE(::bridge::compat::ranges::all_of(receiver.bytes, [](auto byte) { return byte == 0; }));
   REQUIRE(source.stats()->emitted_frames == 960);
   REQUIRE(source.stats()->capture.buffering_silence_frames == 960);
   REQUIRE(source.retire());
@@ -207,7 +226,7 @@ TEST_CASE(
   REQUIRE(source.pump() == AudinPumpStatus::delivered);
   REQUIRE(first.calls == 0);
   REQUIRE(second.calls == 1);
-  REQUIRE(std::ranges::all_of(second.bytes, [](auto byte) { return byte == 0; }));
+  REQUIRE(::bridge::compat::ranges::all_of(second.bytes, [](auto byte) { return byte == 0; }));
   REQUIRE(source.submit({2, 0, true, bytes}) == CaptureStatus::accepted);
   REQUIRE(source.submit({2, 20000, false, bytes}) == CaptureStatus::accepted);
   REQUIRE(source.pump() == AudinPumpStatus::delivered);

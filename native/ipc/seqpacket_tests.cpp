@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "seqpacket.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -7,7 +8,7 @@ namespace {
 constexpr std::array<std::uint8_t, 48> hello{
     'R', 'W', 'S', '1', 0, 0, 0, 1, 0, 0, 0, 32, 0, 0, 0, 0, 'R', 'W', 'I', '1', 0, 1, 0, 1,
     0,   0,   0,   0,   0, 0, 0, 0, 0, 0, 0, 1,  0, 0, 0, 8, 0,   1,   0,   1,   0, 0, 0, 0};
-std::vector<std::uint8_t> chunk(std::span<const std::uint8_t> record, std::uint32_t id,
+std::vector<std::uint8_t> chunk(::bridge::compat::span<const std::uint8_t> record, std::uint32_t id,
                                 std::size_t offset, std::size_t count) {
   const auto prefix = encode_seqpacket_prefix(id, static_cast<std::uint32_t>(record.size()),
                                               static_cast<std::uint32_t>(offset), count);
@@ -41,7 +42,7 @@ TEST_CASE("RWS1 carrier independent vector preserves borrowed RWI1 bytes and adv
 TEST_CASE("RWS1 complete first header precedes payload progression and partial EOF stays visible") {
   for (std::size_t size = 0; size <= hello.size(); ++size) {
     SeqpacketInspector inspector;
-    const auto data = inspector.inspect(std::span(hello).first(size));
+    const auto data = inspector.inspect(::bridge::compat::span(hello).first(size));
     if (size < seqpacket_prefix_bytes + header_bytes) {
       REQUIRE_FALSE(data);
       REQUIRE(inspector.failed());

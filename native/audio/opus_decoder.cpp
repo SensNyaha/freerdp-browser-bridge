@@ -1,6 +1,7 @@
+#include "../compat/bit.hpp"
+#include "../compat/span.hpp"
 #include "opus_decoder.hpp"
 #include <array>
-#include <bit>
 #include <cstring>
 #include <limits>
 #include <opus/opus.h>
@@ -18,7 +19,7 @@ Decoder create() {
     sdk_failed();
   return decoder;
 }
-void validate(std::span<const std::uint8_t> packet) {
+void validate(::bridge::compat::span<const std::uint8_t> packet) {
   if (packet.size() < SoftwareOpusDecoder::min_packet_bytes ||
       packet.size() > SoftwareOpusDecoder::max_packet_bytes)
     invalid();
@@ -86,7 +87,7 @@ OpusPcmUnit SoftwareOpusDecoder::decode(const OpusDecodePacket &packet) {
     state.fail();
   }
   for (std::size_t i = 0; i < state.samples.size(); ++i) {
-    const auto word = std::bit_cast<std::uint16_t>(state.samples[i]);
+    const auto word = ::bridge::compat::bit_cast<std::uint16_t>(state.samples[i]);
     state.pcm[i * 2] = static_cast<std::uint8_t>(word);
     state.pcm[i * 2 + 1] = static_cast<std::uint8_t>(word >> 8);
   }

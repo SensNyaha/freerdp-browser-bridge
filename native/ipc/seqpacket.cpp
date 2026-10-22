@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "seqpacket.hpp"
 #include <algorithm>
 
@@ -24,13 +25,13 @@ std::array<std::uint8_t, seqpacket_prefix_bytes> encode_seqpacket_prefix(std::ui
       bytes[4 + field * 4 + i] = static_cast<std::uint8_t>(fields[field] >> ((3 - i) * 8));
   return bytes;
 }
-std::optional<std::span<const std::uint8_t>> SeqpacketInspector::refuse() noexcept {
+std::optional<::bridge::compat::span<const std::uint8_t>> SeqpacketInspector::refuse() noexcept {
   failed_ = true;
   total_ = offset_ = 0;
   return std::nullopt;
 }
-std::optional<std::span<const std::uint8_t>>
-SeqpacketInspector::inspect(std::span<const std::uint8_t> bytes) noexcept {
+std::optional<::bridge::compat::span<const std::uint8_t>>
+SeqpacketInspector::inspect(::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (failed_ || bytes.size() <= seqpacket_prefix_bytes ||
       bytes.size() > seqpacket_datagram_bytes ||
       !std::equal(magic.begin(), magic.end(), bytes.begin()))

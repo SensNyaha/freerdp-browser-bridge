@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "text.hpp"
 #include <algorithm>
 #include <array>
@@ -7,7 +8,7 @@
 
 using namespace bridge::clipboard;
 namespace {
-std::span<const std::uint8_t> bytes(std::string_view value) {
+::bridge::compat::span<const std::uint8_t> bytes(std::string_view value) {
   return {reinterpret_cast<const std::uint8_t *>(value.data()), value.size()};
 }
 } // namespace
@@ -97,7 +98,7 @@ TEST_CASE(
   out.fill(0x5a);
   REQUIRE(encode_unicode_text(bytes("A\n"), out, 7).status == TextStatus::too_large);
   REQUIRE(std::all_of(out.begin(), out.end(), [](auto value) { return value == 0x5a; }));
-  const auto limited = encode_unicode_text(bytes("A\n"), std::span(out).first(7), 8);
+  const auto limited = encode_unicode_text(bytes("A\n"), ::bridge::compat::span(out).first(7), 8);
   REQUIRE(limited.status == TextStatus::capacity);
   REQUIRE(limited.bytes == 8);
   REQUIRE(std::all_of(out.begin(), out.end(), [](auto value) { return value == 0x5a; }));
@@ -106,11 +107,11 @@ TEST_CASE(
   std::vector<std::uint8_t> oversized(max_item_bytes + 1, 65);
   REQUIRE(encode_unicode_text(oversized, out, max_item_bytes).status == TextStatus::too_large);
   const std::array<std::uint8_t, 8> wire{65, 0, 13, 0, 10, 0, 0, 0};
-  REQUIRE(decode_unicode_text(wire, std::span(out).first(1), 8).status == TextStatus::capacity);
+  REQUIRE(decode_unicode_text(wire, ::bridge::compat::span(out).first(1), 8).status == TextStatus::capacity);
   REQUIRE(decode_unicode_text(wire, out, 7).status == TextStatus::too_large);
   std::array<std::uint8_t, 8> overlap{65, 66, 67};
   const auto original = overlap;
-  REQUIRE(encode_unicode_text(std::span(overlap).first(3), overlap, 8).status ==
+  REQUIRE(encode_unicode_text(::bridge::compat::span(overlap).first(3), overlap, 8).status ==
           TextStatus::invalid);
   REQUIRE(overlap == original);
   REQUIRE(decode_unicode_text(overlap, overlap, 8).status == TextStatus::invalid);

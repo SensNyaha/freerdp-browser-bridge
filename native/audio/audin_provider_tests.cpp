@@ -1,3 +1,6 @@
+#include "../compat/bit.hpp"
+#include "../compat/ranges.hpp"
+#include "../compat/span.hpp"
 #include "../channels/dvc_channel_registry.hpp"
 #include "audin_dvc.hpp"
 #include "audin_ingress.hpp"
@@ -11,7 +14,6 @@
 #include "rdpsnd_provider.hpp"
 #include "reset_control.hpp"
 #include <algorithm>
-#include <bit>
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 #include <freerdp/client.h>
@@ -57,7 +59,7 @@ struct Fixture {
   PFREERDP_AUDIN_DEVICE_ENTRY entry() {
     const auto result = freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, "browser", nullptr, 0);
     REQUIRE(result);
-    return std::bit_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(result);
+    return ::bridge::compat::bit_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(result);
   }
 };
 struct Registrar : IWTSPlugin {
@@ -225,7 +227,7 @@ struct Host {
             : freerdp_channels_load_static_addin_entry(AUDIN_CHANNEL_NAME, nullptr, nullptr,
                                                        FREERDP_ADDIN_CHANNEL_DYNAMIC);
     REQUIRE(entry);
-    return std::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api);
+    return ::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(entry)(&entries.api);
   }
   void open() {
     REQUIRE(plugin);
@@ -242,7 +244,7 @@ struct Host {
     REQUIRE(callback);
   }
   UINT send(std::vector<BYTE> bytes) {
-    std::span<const BYTE> forwarded = bytes;
+    ::bridge::compat::span<const BYTE> forwarded = bytes;
     if (guarded && !via_gate) {
       const auto pdu = ingress.inspect(bytes);
       if (!pdu)
@@ -410,7 +412,7 @@ TEST_CASE("Microphone reset control clears actual source before fresh admitted a
     ResetControl reset;
     bool admitted = true;
   } probe;
-  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+  const auto send = [](void *owner, bridge::ipc::Kind kind, ::bridge::compat::span<const BYTE> bytes) {
     auto &value = *static_cast<Probe *>(owner);
     REQUIRE(kind == bridge::ipc::Kind::microphone_state);
     if (!value.admitted)
@@ -470,7 +472,7 @@ TEST_CASE("Opus microphone owner checks published actual AUDIN readiness before 
           "compensated PCM") {
   Fixture fixture;
   bool admitted = false;
-  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+  const auto send = [](void *owner, bridge::ipc::Kind kind, ::bridge::compat::span<const BYTE> bytes) {
     REQUIRE(kind == bridge::ipc::Kind::microphone_state);
     REQUIRE(bridge::ipc::microphone::decode_state(bytes).enabled);
     return *static_cast<bool *>(owner);
@@ -512,7 +514,7 @@ TEST_CASE("Opus microphone owner checks published actual AUDIN readiness before 
   REQUIRE(session.stats()->source.capture.queue.queued_frames == 1920);
   REQUIRE(session.pump(20001) == MicrophonePump::delivered);
   REQUIRE(host.writes.back().size() == 3841);
-  REQUIRE(std::ranges::any_of(std::span(host.writes.back()).subspan(1),
+  REQUIRE(::bridge::compat::ranges::any_of(::bridge::compat::span(host.writes.back()).subspan(1),
                               [](auto byte) { return byte != 0; }));
   REQUIRE(input.retire());
   REQUIRE(input.stats()->partial_frames == 0);
@@ -524,7 +526,7 @@ TEST_CASE("Opus microphone owner clears partial prediction across unpublished re
           "fresh boundary") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted);
@@ -590,7 +592,7 @@ TEST_CASE("Opus microphone owner refuses wrong threads and malformed packets wit
           "prediction or host lifetime") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted);
@@ -652,7 +654,7 @@ TEST_CASE("Opus microphone owner retires prediction after decoded PCM is refused
           "uncertain admission") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted);
@@ -691,7 +693,7 @@ TEST_CASE("Opus microphone owner observes actual channel Close before stale read
           "another packet") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted);
@@ -729,7 +731,7 @@ TEST_CASE("Opus microphone owner observes actual channel Close before stale read
 TEST_CASE("Microphone worker profile refuses tiny callbacks and accepts a later compatible Open") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted);
@@ -779,7 +781,7 @@ TEST_CASE(
   for (const unsigned frames : {480U, 481U, 4096U, 4800U}) {
     Fixture fixture;
     bool admitted = true;
-    const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
       return *static_cast<bool *>(owner);
     };
     MicrophoneSession session(*fixture.context, send, &admitted);
@@ -806,7 +808,7 @@ TEST_CASE("Microphone worker profile checks refused Open writes without opening 
   for (const bool throws : {false, true}) {
     Fixture fixture;
     bool admitted = true;
-    const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+    const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
       return *static_cast<bool *>(owner);
     };
     MicrophoneSession session(*fixture.context, send, &admitted);
@@ -833,7 +835,7 @@ TEST_CASE(
     "Microphone session expires closed metadata backpressure without retrying released handles") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted, 20000);
@@ -862,7 +864,7 @@ TEST_CASE(
 TEST_CASE("Microphone session stops uncertain publication and never replays borrowed status") {
   Fixture fixture;
   unsigned attempts = 0;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) -> bool {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) -> bool {
     ++*static_cast<unsigned *>(owner);
     throw std::runtime_error("fixture uncertain publication");
   };
@@ -889,7 +891,7 @@ TEST_CASE("Microphone session stops uncertain publication and never replays borr
 TEST_CASE("Microphone session stops capture below another provider before ordered retirement") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted);
@@ -925,7 +927,7 @@ TEST_CASE("Microphone session refuses foreign reentrant and regressing owner ope
     AudinCaptureResetStatus reset = AudinCaptureResetStatus::reset;
     bool snapshots = true;
   } probe;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     auto &value = *static_cast<Probe *>(owner);
     value.pump = value.session->pump(1000000);
     value.retirement = value.session->retire(1000000);
@@ -975,7 +977,7 @@ TEST_CASE(
     "Microphone session owns guarded PCM scheduling reset status and delayed host termination") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+  const auto send = [](void *owner, bridge::ipc::Kind kind, ::bridge::compat::span<const BYTE> bytes) {
     REQUIRE(kind == bridge::ipc::Kind::microphone_state);
     REQUIRE(bridge::ipc::microphone::decode_state(bytes).enabled);
     return *static_cast<bool *>(owner);
@@ -1026,7 +1028,7 @@ TEST_CASE(
     "Microphone session retains failed listener for finite owner retries and disables source") {
   Fixture fixture;
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind, std::span<const BYTE>) {
+  const auto send = [](void *owner, bridge::ipc::Kind, ::bridge::compat::span<const BYTE>) {
     return *static_cast<bool *>(owner);
   };
   MicrophoneSession session(*fixture.context, send, &admitted, 20000);
@@ -1059,7 +1061,7 @@ TEST_CASE(
   host.open();
   CaptureStatePublisher publisher(true);
   bool admitted = true;
-  const auto send = [](void *owner, bridge::ipc::Kind kind, std::span<const BYTE> bytes) {
+  const auto send = [](void *owner, bridge::ipc::Kind kind, ::bridge::compat::span<const BYTE> bytes) {
     REQUIRE(kind == bridge::ipc::Kind::microphone_state);
     REQUIRE(bridge::ipc::microphone::decode_state(bytes).enabled);
     return *static_cast<bool *>(owner);
@@ -1858,12 +1860,12 @@ TEST_CASE("AUDIN provider refuses channel paths and foreign selectors without lo
   for (const auto subsystem : {"winmm", "browser"}) {
     const auto raw = freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, subsystem, "wrong", 0);
     REQUIRE(raw);
-    REQUIRE(std::bit_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(raw)(nullptr) == ERROR_INVALID_STATE);
+    REQUIRE(::bridge::compat::bit_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(raw)(nullptr) == ERROR_INVALID_STATE);
   }
   const auto dynamic = freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, nullptr, nullptr,
                                                         FREERDP_ADDIN_CHANNEL_DYNAMIC);
   REQUIRE(dynamic);
-  REQUIRE(std::bit_cast<PDVC_PLUGIN_ENTRY>(dynamic)(nullptr) == ERROR_NOT_SUPPORTED);
+  REQUIRE(::bridge::compat::bit_cast<PDVC_PLUGIN_ENTRY>(dynamic)(nullptr) == ERROR_NOT_SUPPORTED);
   const auto legacy = freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, nullptr, nullptr,
                                                        FREERDP_ADDIN_CHANNEL_STATIC);
   REQUIRE(legacy);
@@ -1872,7 +1874,7 @@ TEST_CASE("AUDIN provider refuses channel paths and foreign selectors without lo
                                                    FREERDP_ADDIN_CHANNEL_STATIC |
                                                        FREERDP_ADDIN_CHANNEL_ENTRYEX);
   REQUIRE(ex);
-  REQUIRE_FALSE(std::bit_cast<PVIRTUALCHANNELENTRYEX>(ex)(nullptr, nullptr));
+  REQUIRE_FALSE(::bridge::compat::bit_cast<PVIRTUALCHANNELENTRYEX>(ex)(nullptr, nullptr));
   Registrar registrar;
   auto args = points(fixture, registrar);
   auto entry = fixture.entry();
@@ -1881,7 +1883,7 @@ TEST_CASE("AUDIN provider refuses channel paths and foreign selectors without lo
   std::thread thread([&] {
     const auto raw = freerdp_load_channel_addin_entry(AUDIN_CHANNEL_NAME, "browser", nullptr, 0);
     nonnull = raw != nullptr;
-    foreign = raw ? std::bit_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(raw)(&args) : CHANNEL_RC_OK;
+    foreign = raw ? ::bridge::compat::bit_cast<PFREERDP_AUDIN_DEVICE_ENTRY>(raw)(&args) : CHANNEL_RC_OK;
     close = fixture.provider.close();
   });
   thread.join();

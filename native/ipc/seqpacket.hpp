@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "clipboard.hpp"
 #include "protocol.hpp"
 #include <optional>
@@ -20,7 +21,7 @@ class SeqpacketInspector {
 public:
   // Refusal permanently invalidates this transport. Returned data is borrowed
   // from the caller's datagram; first RWI1 header is validated before allocation.
-  std::optional<std::span<const std::uint8_t>> inspect(std::span<const std::uint8_t>) noexcept;
+  std::optional<::bridge::compat::span<const std::uint8_t>> inspect(::bridge::compat::span<const std::uint8_t>) noexcept;
   bool failed() const noexcept { return failed_; }
   bool at_record_boundary() const noexcept { return !failed_ && offset_ == 0; }
 
@@ -28,6 +29,6 @@ private:
   std::uint64_t next_message_ = 1;
   std::uint32_t total_ = 0, offset_ = 0;
   bool failed_ = false;
-  std::optional<std::span<const std::uint8_t>> refuse() noexcept;
+  std::optional<::bridge::compat::span<const std::uint8_t>> refuse() noexcept;
 };
 } // namespace bridge::ipc

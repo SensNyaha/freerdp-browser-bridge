@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "dvc_channel_registry.hpp"
 #include "gfx_pdu_admission.hpp"
 #include <algorithm>
@@ -81,7 +82,7 @@ struct Fixture {
     proxy = result.callback;
     return result.status;
   }
-  UINT data(std::span<const BYTE> bytes) {
+  UINT data(::bridge::compat::span<const BYTE> bytes) {
     const auto length = static_cast<UINT32>(bytes.size());
     std::vector<BYTE> first{0x28, 1};
     for (unsigned at = 0; at < 4; ++at)

@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "audio.hpp"
 
 namespace bridge::ipc::audio::opus {
@@ -13,12 +14,12 @@ struct Packet {
   std::uint64_t epoch, timestamp_us;
   std::uint16_t frames, silence_frames;
   bool discontinuity;
-  std::span<const std::uint8_t> encoded;
+  ::bridge::compat::span<const std::uint8_t> encoded;
 };
 struct EncodedPacket {
   std::array<std::uint8_t, max_packet_bytes> storage{};
   std::size_t size = 0;
-  std::span<const std::uint8_t> bytes() const {
+  ::bridge::compat::span<const std::uint8_t> bytes() const {
     if (size > storage.size())
       throw ProtocolError();
     return {storage.data(), size};
@@ -26,11 +27,11 @@ struct EncodedPacket {
 };
 // Restricted bridge profile: exactly one stereo 20 ms Opus frame, no empty DTX.
 // Validates framing/duration; entropy decoding remains the SDK's responsibility.
-void validate_payload(std::span<const std::uint8_t>);
-Config decode_config(std::span<const std::uint8_t>);
+void validate_payload(::bridge::compat::span<const std::uint8_t>);
+Config decode_config(::bridge::compat::span<const std::uint8_t>);
 std::array<std::uint8_t, config_bytes> encode_config(Config);
-Packet decode_packet(std::span<const std::uint8_t>);
+Packet decode_packet(::bridge::compat::span<const std::uint8_t>);
 EncodedPacket encode_packet(const Packet &);
-State decode_state(std::span<const std::uint8_t>);
+State decode_state(::bridge::compat::span<const std::uint8_t>);
 std::array<std::uint8_t, state_bytes> encode_state(const State &);
 } // namespace bridge::ipc::audio::opus

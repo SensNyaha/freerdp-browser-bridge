@@ -1,7 +1,7 @@
 #pragma once
+#include "../compat/span.hpp"
 #include <cstddef>
 #include <cstdint>
-#include <span>
 
 namespace bridge::media {
 struct GfxPduLimits {
@@ -12,5 +12,5 @@ struct GfxPduLimits {
 };
 // Allocation-free inspection of an already decoded whole GFX batch. Not installed
 // before pinned metadata parsing until a production decoded-message owner exists.
-[[nodiscard]] bool admit_gfx_pdus(std::span<const std::uint8_t>, GfxPduLimits = {}) noexcept;
+[[nodiscard]] bool admit_gfx_pdus(::bridge::compat::span<const std::uint8_t>, GfxPduLimits = {}) noexcept;
 } // namespace bridge::media

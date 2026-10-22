@@ -1,3 +1,5 @@
+#include "../compat/ranges.hpp"
+#include "../compat/span.hpp"
 #include "capture_handoff.hpp"
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -17,21 +19,21 @@ struct OpusSink {
        throws = false;
   Result result = Result::accepted;
   CaptureHandoff *handoff = nullptr;
-  std::span<const std::uint8_t> source, borrowed;
+  ::bridge::compat::span<const std::uint8_t> source, borrowed;
   std::optional<Result> nested_enqueue;
   static Result submit(void *owner, const ipc::microphone::opus::Packet &packet) {
     auto &s = *static_cast<OpusSink *>(owner);
     ++s.calls;
     s.valid &= packet.epoch == 4 && packet.timestamp_us == 1000000 &&
                packet.lookahead_frames == 312 && packet.discontinuity;
-    s.valid &= std::ranges::all_of(packet.encoded, [](auto byte) { return byte == 0xfc; });
+    s.valid &= ::bridge::compat::ranges::all_of(packet.encoded, [](auto byte) { return byte == 0xfc; });
     s.borrowed = packet.encoded;
     if (s.reenter) {
       s.owned = s.handoff->stats().owned_bytes == 1275;
       s.nested_enqueue = s.handoff->enqueue(2, s.source, 101, 4, true);
       s.nested_service = s.handoff->service_opus(101, 4, true, submit, owner).has_value();
       s.retired = s.handoff->retire();
-      s.valid &= std::ranges::all_of(packet.encoded, [](auto byte) { return byte == 0xfc; });
+      s.valid &= ::bridge::compat::ranges::all_of(packet.encoded, [](auto byte) { return byte == 0xfc; });
     }
     if (s.throws)
       throw std::runtime_error("Synthetic Opus handoff callback failure");
@@ -63,8 +65,8 @@ TEST_CASE("Opus microphone handoff owns one bounded compressed slot and wipes on
     REQUIRE(sink.nested_enqueue == Result::busy);
     REQUIRE_FALSE(sink.nested_service);
     REQUIRE_FALSE(sink.retired);
-    REQUIRE(std::ranges::equal(input.bytes(), saved.bytes()));
-    REQUIRE(std::ranges::all_of(sink.borrowed, [](auto byte) { return byte == 0; }));
+    REQUIRE(::bridge::compat::ranges::equal(input.bytes(), saved.bytes()));
+    REQUIRE(::bridge::compat::ranges::all_of(sink.borrowed, [](auto byte) { return byte == 0; }));
     REQUIRE(handoff.stats().owned_bytes == 0);
     REQUIRE(handoff.retire());
     REQUIRE(handoff.enqueue(3, input.bytes(), 102, 4, true) == Result::unavailable);

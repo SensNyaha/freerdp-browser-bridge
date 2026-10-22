@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "rdpei_plugin.hpp"
 #include "touch.hpp"
 #include "touch_frame.hpp"
@@ -26,7 +27,7 @@ class Contacts {
   std::optional<std::chrono::steady_clock::time_point> deadline_;
   bool on_thread() const noexcept;
   bool send(const Event &) noexcept;
-  UINT frame(std::span<const BYTE>, FrameDisposition) noexcept;
+  UINT frame(::bridge::compat::span<const BYTE>, FrameDisposition) noexcept;
   void phase(Phase) noexcept;
 
 public:

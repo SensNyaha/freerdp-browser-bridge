@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 // IPC-only Node binding. No FreeRDP/WinPR headers or calls belong in this module.
 #include "connection_config.hpp"
 #include "seqpacket.hpp"
@@ -168,7 +169,7 @@ struct Pair {
       return result;
     }
     const auto bytes =
-        inspector.inspect(std::span(scratch).first(static_cast<std::size_t>(received)));
+        inspector.inspect(::bridge::compat::span(scratch).first(static_cast<std::size_t>(received)));
     if (!bytes)
       refuse();
     if (read_due && Clock::now() >= *read_due)

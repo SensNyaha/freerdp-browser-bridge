@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "microphone.hpp"
 #include "microphone_opus.hpp"
 #include <memory>
@@ -48,7 +49,7 @@ public:
   ~CaptureHandoff();
   // Empty means queued, not accepted by AUDIN. Otherwise reply immediately.
   std::optional<ipc::microphone::Result> enqueue(std::uint64_t id,
-                                                 std::span<const std::uint8_t> payload,
+                                                 ::bridge::compat::span<const std::uint8_t> payload,
                                                  std::uint64_t now_us, std::uint64_t current_epoch,
                                                  bool ready);
   std::optional<CaptureCompletion> service(std::uint64_t now_us, std::uint64_t current_epoch,

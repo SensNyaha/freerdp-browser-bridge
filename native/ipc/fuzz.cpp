@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "audio.hpp"
 #include "audio_reset.hpp"
 #include "connection_config.hpp"
@@ -12,12 +13,12 @@
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size) {
   // Also exercise the bounded raw input grammar before framed dispatch.
   try {
-    (void)bridge::ipc::microphone::opus::decode_packet(std::span(data, size));
+    (void)bridge::ipc::microphone::opus::decode_packet(::bridge::compat::span(data, size));
   } catch (const bridge::ipc::ProtocolError &) {
   }
   try {
     using namespace bridge::ipc;
-    const auto bytes = std::span(data, size);
+    const auto bytes = ::bridge::compat::span(data, size);
     if (size < header_bytes) {
       (void)decode_header(bytes);
     } else {

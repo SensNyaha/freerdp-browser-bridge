@@ -1,4 +1,5 @@
 #pragma once
+#include "../compat/span.hpp"
 #include "protocol.hpp"
 
 namespace bridge::ipc::clipboard {
@@ -23,21 +24,21 @@ struct State {
 struct Command {
   Operation operation;
   std::uint64_t generation, revision;
-  std::span<const std::uint8_t> text;
+  ::bridge::compat::span<const std::uint8_t> text;
 };
 struct Result {
   Operation operation;
   Status status;
   std::uint64_t generation, revision;
-  std::span<const std::uint8_t> text;
+  ::bridge::compat::span<const std::uint8_t> text;
 };
 // Schema-1 state/read/set and schema-2 revoke for RWI1 kinds 45/46/47.
 // Revoke requires the separate HELLO capability. Text borrows immutable input;
 // encoders copy only after validation. Ownership/capability checks are separate.
 std::array<std::uint8_t, metadata_bytes> encode_state(const State &);
-State decode_state(std::span<const std::uint8_t>);
+State decode_state(::bridge::compat::span<const std::uint8_t>);
 std::vector<std::uint8_t> encode_command(const Command &);
-Command decode_command(std::span<const std::uint8_t>);
+Command decode_command(::bridge::compat::span<const std::uint8_t>);
 std::vector<std::uint8_t> encode_result(const Result &);
-Result decode_result(std::span<const std::uint8_t>);
+Result decode_result(::bridge::compat::span<const std::uint8_t>);
 } // namespace bridge::ipc::clipboard

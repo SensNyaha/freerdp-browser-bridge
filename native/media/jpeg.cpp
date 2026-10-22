@@ -1,3 +1,4 @@
+#include "../compat/span.hpp"
 #include "jpeg.hpp"
 #include <turbojpeg.h>
 
@@ -25,7 +26,7 @@ struct JpegEncoder::State {
 };
 JpegEncoder::JpegEncoder(int quality) : state_(std::make_unique<State>(quality)) {}
 JpegEncoder::~JpegEncoder() = default;
-std::span<const std::uint8_t> JpegEncoder::encode(std::span<const std::uint8_t> bgra, int width,
+::bridge::compat::span<const std::uint8_t> JpegEncoder::encode(::bridge::compat::span<const std::uint8_t> bgra, int width,
                                                   int height, int stride) {
   if (width < 1 || width > 7680 || height < 1 || height > 4320 || stride < width * 4 ||
       bgra.size() < static_cast<std::size_t>(stride) * static_cast<std::size_t>(height))
@@ -36,6 +37,6 @@ std::span<const std::uint8_t> JpegEncoder::encode(std::span<const std::uint8_t> 
           0 ||
       output != state_->buffer.data() || size < 4 || size > ipc::max_jpeg_bytes)
     throw ipc::ProtocolError();
-  return std::span(state_->buffer).first(size);
+  return ::bridge::compat::span(state_->buffer).first(size);
 }
 } // namespace bridge::media
