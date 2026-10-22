@@ -112,3 +112,22 @@ tag, complete tarball set, exact integrity and absence of conflicting registry
 bytes, publishes dependencies before Fastify, and records per-package registry
 integrity. Registry publication and a fresh registry-only external consumer
 will be appended after actual success. No npm token/OTP is recorded here.
+
+Release commit is `4d183d586cba2a3e694ab0157eabad08b6f87f95`; the shared
+merge is `88d8c27`. The annotated tag and prior tag identities are verified.
+The guarded publisher confirms current authenticated organization ownership,
+then the registry rejects its first publish (`runtime-win32-x64`) with E403.
+A bounded diagnostic repeat classifies the registry message as
+`NPM_TWO_FACTOR_REQUIRED`. No package is credited as published by either run;
+the publication receipt has an empty package list. Evidence:
+`build/iteration-424-npm-publication-diagnostic.log` and
+`build/release-423-npm-publication.json`.
+
+Publication awaits user-configured local npm authentication or the user's
+interactive 2FA publication of the exact artifacts. This is an external npm
+authentication requirement, not an automatic approval-review rejection.
+No secret/OTP is requested in chat and no registry-write retries follow until
+that state changes. [Exact-archive publication instructions](NPM_PUBLISHING.md).
+Registry-only install/consumer verification remains unperformed until packages
+are actually available. Independent NestJS feature work may follow the accepted
+Fastify release checkpoint while this external publication task stays pending.
