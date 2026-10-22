@@ -21,6 +21,20 @@ accepted distribution variant advances the final number in 0.2.x. The
 same-port/diagnostics gaps and platform tradeoffs; it does not accept the
 unimplemented Fastify adapter, installers or unfinished managed drives.
 
+Updated user-selected adapter order, 2026-10-22:
+
+| Target release | Adapter | Separate feature branch | Status |
+| --- | --- | --- | --- |
+| 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Planned; branch exists, implementation/acceptance not complete |
+| 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Planned after accepted Fastify |
+| 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Planned after accepted NestJS |
+
+This is the selected initial framework-adapter set. Other standalone/installer
+delivery options remain documented for later selection. No adapter is DONE by
+being assigned a version. Each requires external npm-consumer integration,
+same-port HTTP/WS coexistence, scoped identity/diagnostics, bounded media and
+joined cleanup, plus real RDP in its declared profiles before merging/release.
+
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
 
 Pre-release GCC 8.3 / distro checkpoint (2026-10-22): the bounded legacy XRDP

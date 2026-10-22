@@ -45,6 +45,16 @@ the final component in **0.2.x** (0.2.2, 0.2.3, ...), after that variant's
 acceptance passes. This is the user's project-specific exception to the generic
 capability rule below. Future format numbers follow acceptance order; a CPack
 setting, draft API or local npm tarball is not accepted distribution support.
+
+The user's subsequent adapter sequence fixes the next targets explicitly:
+**0.2.1 Fastify → 0.2.2 NestJS → 0.2.3 built-in `node:http`**. Develop in
+`feature/fastify-0.2.1`, `feature/nestjs-0.2.2` and
+`feature/node-http-0.2.3`, respectively. Complete each adapter's required
+acceptance before merging and starting the next one. These are planned release
+numbers, not current supported adapters or accepted tags. The user considers
+this sufficient as the initial adapter set; other distribution formats remain
+future options. Unassigned formats after this reserved sequence follow the
+acceptance-order rule above.
 All manifests/native artifacts remain aligned, published/tagged releases remain
 immutable, and incompatible wire/API contracts still require explicit
 negotiation/versioning and migration notes. [Delivery proposal](DISTRIBUTION_OPTIONS.md).
