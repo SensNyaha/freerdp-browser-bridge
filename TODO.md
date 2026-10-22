@@ -77,6 +77,17 @@ Linked Astra closure, installed-OS/security profiles, actual RED OS product,
 Windows linked regression and actual RDP gates remain open; no shared merge or
 0.2.0 tag is accepted here. [Linked source build](docs/ITERATION_409.md).
 
+The same GCC 8.3 linked worker/addon subsequently pass in the checked Astra
+ISO-library container: CTest 37/37, codec/private-origin probes and actual Node
+IPC/lifecycle/TLS fixtures 54/54. No OS/VM is installed for this check. A fresh
+MSVC Release consumer with a separately rebuilt corrected SDK binds identical
+native source bytes and passes CTest 36/36, focused process/protocol checks
+27 / 1 skip and full physical-path Windows `pnpm check` 900 / 61 skips / 961.
+Actual RED OS GCC 11 compiles all linked targets, but CTest passes 25/37 with
+12 loader/worker failures from the reused CUPS library's absent `libcrypt.so.1`.
+RED OS linked runtime and real desktop acceptance remain open.
+[Runtime/control evidence](docs/ITERATION_410.md).
+
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
 directions across two new RDP connections, repeated server Copy/Get, actual

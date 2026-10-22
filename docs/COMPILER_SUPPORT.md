@@ -47,6 +47,20 @@ an exact-value `pi` fallback. This linked build is separate from linked Astra
 runtime, installed-OS, RED OS product, Windows regression and actual RDP gates.
 [Linked source-chain evidence](ITERATION_409.md).
 
+The identical GCC 8.3 worker/addon also run in a separate `scratch` container
+with the checked Astra 1.7.5 ISO's glibc/libstdc++ and private rebuilt DSOs.
+Native CTest **37/37**, codec/origin probes and actual Node IPC/lifecycle/TLS
+fixture checks **54/54** pass. This uses the Docker host kernel, with no OS/VM
+installation. A fresh MSVC Release consumer with a separately rebuilt corrected
+SDK binds exactly the same native source hash and passes CTest **36/36** and
+focused process/protocol checks **27 / 1 skip**. Full physical-path Windows
+`pnpm check` also passes **900 / 61 skips / 961**.
+The actual RED OS GCC 11 linked consumer compiles all targets, but its runtime
+finds a retained missing `libcrypt.so.1` imported by the reused private CUPS
+library: CTest 25/37, 12 loader/worker failures. RED OS linked runtime and
+actual RDP gates remain separate and open; installed/security profiles are
+not accepted by these results. [Astra runtime and Windows control](ITERATION_410.md).
+
 ## Historical GCC 12 decision and acceptance
 
 The following records the earlier decision and its independently verified
