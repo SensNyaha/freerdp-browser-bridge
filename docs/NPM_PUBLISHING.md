@@ -1,14 +1,56 @@
 # Публикация проверенных npm-архивов
 
-## Новый принятый набор 0.2.2
+## Новый принятый набор 0.2.3
+
+node:http/node:https 0.2.3 проходит aligned release-приёмку;
+[проверки и accepted digests](ITERATION_433.md). Девять точных архивов находятся
+в `build/release-432-archives/`: два runtime, protocol/config/node/api,
+fastify/nestjs/http. Все содержат root README и проходят exact external
+consumers/reinstall, native/full checks, versioned actual RDP и npm dry-run.
+Registry publication и registry-only consumers остаются отдельным шагом.
+
+```sh
+node scripts/test-http-package.mjs --archives build/release-432-archives
+```
+
+## Предыдущий принятый набор 0.2.2: staging
 
 NestJS 0.2.2 проходит aligned release-приёмку; [полные проверки и SHA-256](ITERATION_429.md).
 В `build/release-428-archives/` находятся восемь точных архивов: два runtime,
 protocol, config, node, api, fastify и nestjs. Все содержат корневой README,
 проходят bounded pack audit, внешний Windows/Linux npm consumer и official npm
 dry-run с совпадающим SHA-512. Не перепаковывайте эти архивы для публикации.
-Publication write, публичный integrity и registry-only consumers пока pending;
-принятый локальный tag сам по себе не подтверждает доступность в npm.
+Все восемь архивов уже успешно приняты официальным npm staging. Они скачаны
+обратно и совпадают с исходными accepted SHA-512. Финальное owner approve с 2FA,
+публичный integrity и registry-only consumers остаются pending; локальный tag
+и accepted stage сами по себе не подтверждают доступность release version в npm.
+
+## Staging и окончательное подтверждение владельцем
+
+Официальный [npm staged publishing](https://docs.npmjs.com/staged-publishing/)
+позволяет загрузить точный архив через `npm stage publish <archive>` без 2FA,
+а затем подтвердить существующий stage через `npm stage approve <stage-id>`
+с 2FA. Текущий закреплённый Node 24/npm 11.19 поддерживает этот workflow.
+Владелец может также использовать раздел Staged Packages на npmjs.com.
+Сверяйте имя/version и скачанный stage archive с accepted audit до approve.
+Уже созданный stage той же версии не отправляется повторно; другой integrity
+отказывает. Нельзя заменять accepted tarball, unpublish или двигать старый tag.
+
+Для 0.2.2 isolated publication worktree — `build/npm-publication-430`.
+Локальный receipt `build/npm-publication-430/build/npm-staging-0.2.2.json`
+содержит восемь stage IDs и download/integrity результаты. Account settings,
+токены и OTP не копируются в worktree, npm artifacts или delivery repos.
+Staging нового package может создать публичный placeholder `0.0.0-stage`;
+это не запрошенный release number и не работоспособная версия adapter.
+
+При нескольких версиях подтверждайте их по возрастанию: 0.2.2, затем 0.2.3,
+затем 0.2.4; внутри версии — runtimes/shared dependencies перед adapters.
+После каждого полного accepted graph сравните публичный dist.integrity и
+запустите новые registry-only Windows/Linux consumers без local overrides.
+До их успеха публикация не считается DONE. 2FA подтверждается в официальном
+интерфейсе владельца; секреты не передаются в чат или argv/env.
+
+## Проверка exact NestJS набора
 
 Для воспроизводимой проверки точного NestJS набора из корня проекта:
 

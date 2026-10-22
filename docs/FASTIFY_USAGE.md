@@ -185,6 +185,11 @@ desktop. Audio/Clipboard/microphone имеют собственную полит
 
 ## Существующие WebSocket приложения
 
+Любой Cookie header отказывается на защищённых REST и WS, даже вместе с bearer. Для
+same-port приложения настройте Cookie Path/Domain так, чтобы bridge prefix
+оставался cookie-free. REST `credentials: 'omit'` не выключает cookies браузерного
+WebSocket; [подробный identity контракт](HOST_AUTHENTICATION.md).
+
 Автоматический режим добавляет только prefix-selective listener. Он подходит,
 когда остальные upgrade listeners также выбирают только свои маршруты.
 Если host использует catch-all router или WebSocket plugin, отклоняющий чужие

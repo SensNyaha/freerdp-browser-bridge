@@ -1,10 +1,11 @@
-# node:http integration — development target 0.2.3
+# node:http integration — 0.2.3
 
 Implemented on separate `feature/node-http-0.2.3`, after accepted NestJS 0.2.2.
 Implements SPECIFICATION §2.1/2.11/2.12 and §3.1/3.2 with ADR-001/005/007/008.
-This is an unreleased adapter: source manifests remain at the last stable
-product version until separate release preparation. It is not a published
-`@freerdp-bridge/http@0.2.2` package. Prior tags/archives are immutable.
+The implementation and aligned 0.2.3 release checks are accepted through
+separate feature/release branches; [release evidence](ITERATION_433.md).
+Registry publication remains separate. No `@freerdp-bridge/http@0.2.2` release
+is asserted. Prior tags/archives are immutable.
 
 ## Public interface
 
@@ -107,6 +108,8 @@ confirmed resize/restoration, fresh-token reattach, host HTTP/diagnostics and
 joined cleanup. These use the accepted local native 0.2.2 archive, not a newly
 published runtime. [Evidence and retained failures](ITERATION_431.md).
 
-Aligned 0.2.3 artifacts/tag and npm publication remain required. Fake media and
-native certificate fixtures remain distinct from actual desktop/device support.
+Subsequent aligned 0.2.3 native builds, nine exact archives, consumer/reinstall
+regressions and all eight versioned HTTP RDP profiles pass; [evidence](ITERATION_433.md).
+npm publication remains required. Fake media and native certificate fixtures
+remain distinct from actual desktop/device support.
 Original full V1/installer gates remain in TODO.

@@ -1,6 +1,12 @@
 # Product versions and release branches
 
-The latest stable release is **0.2.2**, identified by annotated immutable
+The latest stable release is **0.2.3**, identified by annotated immutable
+`v0.2.3`: node:http/node:https embedding with explicit HTTP/WS dispatch and
+matching JS/native packages. Final checks, exact consumers/reinstall and
+versioned Astra/RED OS desktop profiles pass. Registry publication is separate.
+[Release acceptance](ITERATION_433.md).
+
+Prior stable **0.2.2** is identified by annotated immutable
 `v0.2.2`: NestJS module with Express/FastifyAdapter and matching README-complete
 native/JS archives. Final checks and exact consumers pass; registry publication
 is separately pending. [Release acceptance](ITERATION_429.md).
@@ -64,7 +70,8 @@ The user's subsequent adapter sequence fixes the next targets explicitly:
 `feature/fastify-0.2.1`, `feature/nestjs-0.2.2` and
 `feature/node-http-0.2.3` and `feature/express-0.2.4`, respectively. Complete each adapter's required
 acceptance before merging and starting the next one. These are planned release
-numbers, not current supported adapters or accepted tags. The earlier request to stop after node:http is superseded by the explicit
+numbers until their gates pass. Fastify 0.2.1, NestJS 0.2.2 and node:http 0.2.3
+now have accepted immutable tags; Express 0.2.4 remains next. The earlier request to stop after node:http is superseded by the explicit
 Express addition. Other popular integrations require a concrete need and
 separate acceptance; other distribution formats remain future options. Unassigned formats after this reserved sequence follow the
 acceptance-order rule above.

@@ -7,20 +7,19 @@ application on its existing port. One native C++ worker runs outside Node per
 session. The bounded session/media engine uses an internal Fastify router;
 your application does not need to use Fastify as its server framework.
 
-Development adapter targeting **0.2.3**. Its manifest retains the last stable
-product version during implementation; this is not a published 0.2.2 adapter.
-Feature, release and publication acceptance are pending.
+HTTP/HTTPS integration introduced in **0.2.3**. All bridge packages and the
+native runtime use one product version.
 
 ## Installation
 
-After the 0.2.3 release is published, install the matching native runtime:
+Install the published release with the matching native runtime:
 
 ```sh
 npm install @freerdp-bridge/http@0.2.3 @freerdp-bridge/runtime-linux-x64-gnu@0.2.3
 ```
 
 Windows x64 uses `runtime-win32-x64` instead. All bridge versions must match.
-Until publication use a complete local tarball graph.
+For an unpublished development snapshot use a complete local tarball graph.
 
 ## Requirements
 

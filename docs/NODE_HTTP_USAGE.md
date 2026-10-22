@@ -1,9 +1,10 @@
 # Встраивание RDP в сервер на node:http
 
-Адаптер предназначен для **0.2.3** и пока разрабатывается. Это не опубликованный
-`http@0.2.2`: текущий development manifest временно сохраняет номер последней
-стабильной версии. [Контракт и приёмка](NODE_HTTP_PLUGIN.md). До release/npm
-подтверждения используйте полный набор локальных development tarballs.
+Адаптер принят в **0.2.3**, после отдельных feature/release branches и всех
+versioned native/consumer/RDP checks. [Контракт](NODE_HTTP_PLUGIN.md),
+[release-приёмка](ITERATION_433.md). npm-публикация выполняется отдельно; до её
+подтверждения используйте точные локальные 0.2.3 tarballs. Версия `http@0.2.2`
+не выпускалась.
 
 ## Роли и установка
 
@@ -112,6 +113,8 @@ server.on('upgrade', (request, socket, head) => {
 Не вызывайте removeAllListeners. Закрытый manual handle сохраняется в dispatcher
 до shutdown хоста для явного отказа поздним bridge upgrades. Cookie identity
 отклоняется; cookie auth требует отдельной CSRF/Origin интеграции.
+Запрет относится к любому Cookie header, включая WS. Согласуйте Cookie Path/Domain
+приложения, чтобы `/rdp` оставался cookie-free: [подробный identity контракт](HOST_AUTHENTICATION.md).
 
 ## Session и browser flow
 
@@ -138,6 +141,7 @@ credentials поступают из UI в памяти по HTTPS и уходя�
 ```js
 const response = await fetch('/rdp/v1/sessions', {
   method: 'POST',
+  credentials: 'omit',
   headers: { ...applicationAuthorizationHeaders(), 'content-type': 'application/json' },
   body: JSON.stringify(sessionConfigFromUi),
 });

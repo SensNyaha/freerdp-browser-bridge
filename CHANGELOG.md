@@ -4,11 +4,21 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-- Develop the node:http/node:https adapter targeting 0.2.3 on its own branch:
+## 0.2.3 — 2026-10-23
+
+Accepted node:http/node:https distribution with explicit same-port HTTP/WS
+dispatch. Fresh aligned CTest: MSVC 36/36, exact GCC 8.3 37/37. Full checks:
+Windows 941 passed / 61 skipped, Linux 918 / 87. Nine exact README-complete
+archives pass audits/dry-run, external HTTP/NestJS/Fastify consumers and reinstall;
+all eight versioned Astra/RED OS HTTP desktop profiles pass. Registry publication
+remains separate. [Release acceptance](docs/ITERATION_433.md).
+
+- Add the node:http/node:https adapter on its own branch:
   explicit same-port request delegation, selective WS ownership, bounded mounts
   and joined host-owned lifecycle. Windows/Linux external consumers and full
   checks, HTTPS/WSS and eight installed-package Astra/RED OS desktop profiles
-  pass. Aligned release/publication remains separate; [evidence](docs/ITERATION_431.md).
+  pass. Aligned release checks pass; registry publication remains separate;
+  [feature evidence](docs/ITERATION_431.md).
 
 ## 0.2.2 — 2026-10-22
 
