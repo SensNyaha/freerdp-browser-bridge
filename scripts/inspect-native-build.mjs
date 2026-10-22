@@ -129,6 +129,51 @@ const report = {
                 ),
               )
               .digest('hex'),
+            asNeededLinkPatchSha256: createHash('sha256')
+              .update(
+                readFileSync(
+                  resolve(
+                    'native/vcpkg/ports/cups/002-client-as-needed-link.patch',
+                  ),
+                ),
+              )
+              .digest('hex'),
+          },
+          libfuse: {
+            portfileSha256: createHash('sha256')
+              .update(
+                readFileSync(
+                  resolve('native/vcpkg/ports/libfuse/portfile.cmake'),
+                ),
+              )
+              .digest('hex'),
+            compilerStandardPatchSha256: createHash('sha256')
+              .update(
+                readFileSync(
+                  resolve(
+                    'native/vcpkg/ports/libfuse/001-compiler-selected-cxx20-example.patch',
+                  ),
+                ),
+              )
+              .digest('hex'),
+          },
+          numactl: {
+            portfileSha256: createHash('sha256')
+              .update(
+                readFileSync(
+                  resolve('native/vcpkg/ports/numactl/portfile.cmake'),
+                ),
+              )
+              .digest('hex'),
+            byteAtomicsPatchSha256: createHash('sha256')
+              .update(
+                readFileSync(
+                  resolve(
+                    'native/vcpkg/ports/numactl/001-probe-byte-atomic-builtins.patch',
+                  ),
+                ),
+              )
+              .digest('hex'),
           },
         }
       : {}),

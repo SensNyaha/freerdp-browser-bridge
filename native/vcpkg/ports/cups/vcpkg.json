@@ -1,6 +1,7 @@
 {
   "name": "cups",
   "version": "2.4.20",
+  "port-version": 1,
   "description": "Private OpenPrinting CUPS client library with OpenSSL TLS and driver APIs",
   "homepage": "https://openprinting.github.io/cups/",
   "license": "Apache-2.0",

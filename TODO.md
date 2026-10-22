@@ -88,6 +88,16 @@ Actual RED OS GCC 11 compiles all linked targets, but CTest passes 25/37 with
 RED OS linked runtime and real desktop acceptance remain open.
 [Runtime/control evidence](docs/ITERATION_410.md).
 
+The CUPS client link and numactl byte-atomic configure corrections subsequently
+retain all exported APIs and remove unused private-runtime dependencies.
+Actual RED OS GCC 11 passes CTest 37/37 and Node IPC/lifecycle/TLS 54/54.
+The final complete GCC 8.3 dependency/SDK/worker source chain passes CTest 37/37,
+focused Node 40/40, full `pnpm check` 877 / 87 skips / 964, strict package closure
+34 ELF files / 333 resolutions and relocation 1/1. The exact final package
+passes an unprivileged artifact-only probe on actual RED OS without SDK/build
+paths. Real desktop regression remains separate; no 0.2.0 tag is accepted here.
+[Portable source/package evidence](docs/ITERATION_411.md).
+
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
 directions across two new RDP connections, repeated server Copy/Get, actual

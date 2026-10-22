@@ -218,6 +218,42 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
         createHash('sha256').update(cupsPatch).digest('hex'),
         features.portOverlays.cups.localQueuesPatchSha256,
       );
+      const cupsLinkPatch = await readFile(
+        join(
+          relocated,
+          'share',
+          'freerdp-bridge',
+          'ports',
+          'cups',
+          '002-client-as-needed-link.patch',
+        ),
+      );
+      assert.equal(
+        createHash('sha256').update(cupsLinkPatch).digest('hex'),
+        features.portOverlays.cups.asNeededLinkPatchSha256,
+      );
+      for (const [name, filename, field] of [
+        ['libfuse', 'portfile.cmake', 'portfileSha256'],
+        [
+          'libfuse',
+          '001-compiler-selected-cxx20-example.patch',
+          'compilerStandardPatchSha256',
+        ],
+        ['numactl', 'portfile.cmake', 'portfileSha256'],
+        [
+          'numactl',
+          '001-probe-byte-atomic-builtins.patch',
+          'byteAtomicsPatchSha256',
+        ],
+      ]) {
+        const input = await readFile(
+          join(relocated, 'share', 'freerdp-bridge', 'ports', name, filename),
+        );
+        assert.equal(
+          createHash('sha256').update(input).digest('hex'),
+          features.portOverlays[name][field],
+        );
+      }
     }
     const usbPort = await readFile(
       join(

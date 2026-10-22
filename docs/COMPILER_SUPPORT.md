@@ -61,6 +61,18 @@ library: CTest 25/37, 12 loader/worker failures. RED OS linked runtime and
 actual RDP gates remain separate and open; installed/security profiles are
 not accepted by these results. [Astra runtime and Windows control](ITERATION_410.md).
 
+The subsequent source-level CUPS client link correction removes its unused
+legacy libcrypt dependency. A numactl configure correction links its actual
+byte atomic builtins before requesting libatomic, retaining the external-library
+fallback where required. GCC 8.3 and GCC 12 controls preserve both exported
+ABIs and upstream IPP/bitmap checks. Actual RED OS GCC 11 then passes CTest
+**37/37** and Node fixtures **54/54**. A final complete GCC 8.3 source chain
+passes CTest **37/37**, focused Node **40/40**, full `pnpm check` **877 / 87 skips /
+964**, strict installed-runtime closure and relocation. Its exact self-contained
+package passes an unprivileged artifact-only probe on actual RED OS without
+SDK/build paths. Actual RDP regression remains separate.
+[Portable dependency/package evidence](ITERATION_411.md).
+
 ## Historical GCC 12 decision and acceptance
 
 The following records the earlier decision and its independently verified
