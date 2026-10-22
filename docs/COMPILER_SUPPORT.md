@@ -82,6 +82,13 @@ CI recipe is also locally verified at CTest **20/20**; full linked Linux
 `pnpm check` remains **877 / 87 skips / 964**, zero failures. The hosted workflow
 itself is not claimed as executed. [CI evidence](ITERATION_413.md).
 
+The user additionally requires real RDP connections to both named distros for
+0.2.0. The real user-confirmed Astra 1.7.5 node passes public Edge H.264/JPEG,
+resize/restoration, reattachment and cleanup with the final GCC 8.3 package.
+[Exact scope](ITERATION_415.md). The real RED OS 7.3 / XRDP 0.10.6.1 node
+activates but fails on RDPSND reception. Its installed-package/build checks
+do not satisfy that still-open desktop gate. [Current diagnosis](ITERATION_416.md).
+
 ## Historical GCC 12 decision and acceptance
 
 The following records the earlier decision and its independently verified

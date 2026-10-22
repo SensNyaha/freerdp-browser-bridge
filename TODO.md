@@ -114,6 +114,17 @@ local container passes CTest 20/20 and the full linked Linux `pnpm check`
 passes 877 / 87 skips / 964 total, zero failures. The GitHub-hosted workflow
 has not run from these local commits. [Evidence](docs/ITERATION_413.md).
 
+The user now explicitly requires real RDP connections to both Astra 1.7.5 and
+RED OS 7.3 before 0.2.0. The separately confirmed real Astra node passes native
+activation/heartbeat and public Edge H.264/JPEG desktop, resize/restoration,
+reattachment and cleanup. Its 1.7.5 version is user-reported from astra_version;
+no security-profile or application/audio acceptance is inferred.
+[Astra evidence](docs/ITERATION_415.md). Actual RED OS XRDP 0.10.6.1 activates
+but fails on an RDPSND receive callback before application input. Scalar-only
+diagnostics narrow the failure; a verified diagnosis is not a repair.
+The required RED OS RDP gate and 0.2.0 release remain open.
+[RED OS evidence and active root worktree](docs/ITERATION_416.md).
+
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
 directions across two new RDP connections, repeated server Copy/Get, actual

@@ -65,6 +65,14 @@ class Connection {
   std::unique_ptr<channels::DvcChannelRegistry> dvc_channels_;
   std::unique_ptr<channels::DvcPluginRegistry> dvc_plugins_;
   std::unique_ptr<channels::DvcReceiveGuard> dvc_receive_;
+  // RDP-thread-owned scalar description of the last rejected SVC callback.
+  // Never retain channel payload, names, authentication or application data.
+  struct ReceiveFailure {
+    UINT16 channel = 0, dynamic_channel = 0, audio_channel = 0, clipboard_channel = 0,
+           device_channel = 0;
+    UINT32 flags = 0;
+    std::size_t bytes = 0, total = 0;
+  } receive_failure_;
   pReceiveChannelData receive_original_ = nullptr;
   std::unique_ptr<clipboard::WorkerSession> clipboard_;
   std::unique_ptr<clipboard::ClipboardReceiveGuard> clipboard_receive_;
