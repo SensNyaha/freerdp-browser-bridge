@@ -1,6 +1,11 @@
 # Product versions and release branches
 
-The latest stable release is **0.2.1**, identified by annotated immutable
+The latest stable release is **0.2.2**, identified by annotated immutable
+`v0.2.2`: NestJS module with Express/FastifyAdapter and matching README-complete
+native/JS archives. Final checks and exact consumers pass; registry publication
+is separately pending. [Release acceptance](ITERATION_429.md).
+
+Prior stable **0.2.1** is identified by annotated immutable
 `v0.2.1`. It adds accepted same-port Fastify embedding and matching native npm
 packages; [release checks and limits](ITERATION_424.md). All seven exact npm
 archives are published at 0.2.1 and pass fresh Windows/Linux registry consumers;

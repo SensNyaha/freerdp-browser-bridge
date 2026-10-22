@@ -1,10 +1,11 @@
-# NestJS module — development target 0.2.2
+# NestJS module — 0.2.2
 
 Implements the user's next adapter request in `feature/nestjs-0.2.2`, using
 SPECIFICATION §2.1/2.11/3.1/3.2, ADR-001 and the accepted Fastify session/media
-engine. This is an unreleased feature, not an accepted 0.2.2 release. Source
-manifests retain the last stable product number until release preparation.
-The immutable published 0.2.1 set is unchanged.
+engine. The implementation and aligned 0.2.2 release checks are accepted through
+separate feature/release branches. [Final release evidence](ITERATION_429.md).
+Registry publication is a separate pending step. The immutable published 0.2.1
+set is unchanged.
 
 ## Interface
 
@@ -99,5 +100,6 @@ the unchanged accepted 0.2.1 package; this is development adapter acceptance,
 not an aligned 0.2.2 release. [Evidence and retained setup failures](ITERATION_427.md).
 
 Feature acceptance does not imply new devices, sound quality, platform families
-or complete V1. Release alignment, new native/JS package archives and versioned
-RDP regression plus npm 0.2.2 publication remain separate required work.
+or complete V1. Subsequent aligned native/JS 0.2.2 archives and all eight
+versioned RDP profiles pass; [release acceptance](ITERATION_429.md). npm 0.2.2
+publication remains separate required work.

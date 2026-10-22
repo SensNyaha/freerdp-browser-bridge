@@ -1,16 +1,16 @@
 # Встраивание RDP в NestJS
 
-Разрабатываемый модуль предназначен для **0.2.2**. Эта версия пока не принята
-и не опубликована; сейчас используются локальные development-архивы из
-`feature/nestjs-0.2.2`. [Контракт и оставшиеся проверки](NESTJS_PLUGIN.md).
-Уже опубликованный Fastify 0.2.1 не становится NestJS-модулем от совпадения
-номера в development manifest.
+Модуль принят в **0.2.2**, после отдельных feature/release branches,
+внешних npm consumers и реальных Astra/RED OS проверок обоих host adapter.
+[Контракт](NESTJS_PLUGIN.md), [release-приёмка](ITERATION_429.md).
+Публикация npm пока выполняется отдельно; до её подтверждения используйте
+точные локальные 0.2.2 tarballs. Опубликованная 0.2.1 содержит только Fastify.
 
 ## Зависимости и размещение worker
 
 На хосте приложения нужны Node.js 24, NestJS 12.2, выбранный platform adapter,
 `reflect-metadata`, RxJS и native runtime той же product version, что и bridge.
-Для принятого будущего релиза команды будут такими:
+После подтверждения npm-публикации команды будут такими:
 
 ```sh
 # Linux x64 / glibc; выполните после публикации 0.2.2
@@ -239,7 +239,8 @@ joined cleanup и не завершайте Node через немедленны
 
 Framework/fake-media/native-TLS проверки, external npm tarball consumers и
 actual Astra/RED OS desktop учитываются отдельно; [приёмка](ITERATION_427.md).
-Versioned 0.2.2/release/npm gates остаются отдельным следующим блоком. Полная
+Versioned 0.2.2 release gates проходят в [429](ITERATION_429.md); npm publication
+остаётся отдельным следующим блоком. Полная
 V1-программа и незавершённые device/installers requirements сохраняются.
 
 Модель host adapter, lifecycle и штатного raw body описана в официальных

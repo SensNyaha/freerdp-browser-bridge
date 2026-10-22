@@ -6,14 +6,12 @@ NestJS module for mounting FreeRDP Browser Bridge HTTP/WebSocket routes on the
 application's existing port. Uses the existing session/media engine and one
 native C++ worker per session; FreeRDP runs outside Node.js.
 
-Development integration targeting **0.2.2**, not a published 0.2.1 adapter.
-The source manifest retains the latest stable product version until release
-preparation. Feature acceptance and publication are still pending.
+NestJS integration introduced in **0.2.2**, with Express and FastifyAdapter
+profiles. All bridge packages and the native runtime use one product version.
 
 ## Installation
 
-Use freshly packed development archives until the 0.2.2 release is accepted.
-The intended published installation on Linux x64/glibc is:
+Install the published release on Linux x64/glibc:
 
 ```sh
 npm install @freerdp-bridge/nestjs@0.2.2 @freerdp-bridge/runtime-linux-x64-gnu@0.2.2

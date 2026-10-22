@@ -18,14 +18,16 @@ const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const args = process.argv.slice(2);
 const registryOnly = args[0] === '--registry-only';
 if (registryOnly) args.shift();
+const exactArchives =
+  args[0] === '--archives' && args.length === 2 ? args[1] : undefined;
 const runtimeArchive =
   args[0] === '--runtime-archive' && args.length === 2 ? args[1] : undefined;
 if (
   resolve('.') !== project ||
   process.versions.node.split('.')[0] !== '24' ||
   !['win32', 'linux'].includes(process.platform) ||
-  !(args.length === 0 || runtimeArchive) ||
-  (registryOnly && runtimeArchive)
+  !(args.length === 0 || runtimeArchive || exactArchives) ||
+  (registryOnly && (runtimeArchive || exactArchives))
 )
   throw Error('NEST_PACKAGE_CHECK_USAGE');
 await mkdir('build', { recursive: true });
@@ -54,6 +56,16 @@ const pnpm = (args, cwd) =>
     : run('pnpm', args, cwd);
 const dependencies = {};
 const receipts = [];
+let publicationArchives;
+if (exactArchives) {
+  publicationArchives = await realpath(resolve(exactArchives));
+  const build = await realpath(resolve('build'));
+  if (
+    !publicationArchives.startsWith(build + sep) ||
+    !(await stat(publicationArchives)).isDirectory()
+  )
+    throw Error('NEST_PUBLICATION_ARCHIVES_INVALID');
+}
 if (!registryOnly)
   for (const directory of [
     'packages/protocol',
@@ -67,14 +79,36 @@ if (!registryOnly)
     );
     if (manifest.version !== productVersion || manifest.license !== 'MIT')
       throw Error('NEST_PACKAGE_MANIFEST');
-    pnpm(['pack', '--pack-destination', archives], resolve(directory));
+    if (!publicationArchives)
+      pnpm(['pack', '--pack-destination', archives], resolve(directory));
     const archive = join(
-      archives,
+      publicationArchives ?? archives,
       manifest.name.replace('@', '').replace('/', '-') +
         '-' +
         productVersion +
         '.tgz',
     );
+    const archivePath = await realpath(archive);
+    const archiveInfo = await stat(archivePath);
+    if (
+      !archivePath.startsWith((publicationArchives ?? archives) + sep) ||
+      !archiveInfo.isFile() ||
+      archiveInfo.size > 128 * 1024 * 1024
+    )
+      throw Error('NEST_PACKAGE_ARCHIVE_INVALID');
+    const archiveMetadata = spawnSync(
+      'tar',
+      ['-xOf', archivePath, 'package/package.json'],
+      { encoding: 'utf8', maxBuffer: 65536, timeout: 10000, windowsHide: true },
+    );
+    if (archiveMetadata.error || archiveMetadata.status !== 0)
+      throw Error('NEST_PACKAGE_ARCHIVE_INVALID');
+    const packedManifest = JSON.parse(archiveMetadata.stdout);
+    if (
+      packedManifest.name !== manifest.name ||
+      packedManifest.version !== productVersion
+    )
+      throw Error('NEST_PACKAGE_ARCHIVE_MISMATCH');
     dependencies[manifest.name] = 'file:' + archive.replaceAll('\\', '/');
     receipts.push({
       name: manifest.name,
@@ -88,8 +122,18 @@ if (registryOnly) dependencies['@freerdp-bridge/nestjs'] = productVersion;
 const runtimeName =
   '@freerdp-bridge/runtime-' +
   (process.platform === 'win32' ? 'win32-x64' : 'linux-x64-gnu');
-if (runtimeArchive) {
-  const archive = await realpath(resolve(runtimeArchive));
+if (runtimeArchive || publicationArchives) {
+  const archive = await realpath(
+    runtimeArchive
+      ? resolve(runtimeArchive)
+      : join(
+          publicationArchives,
+          runtimeName.replace('@', '').replace('/', '-') +
+            '-' +
+            productVersion +
+            '.tgz',
+        ),
+  );
   const build = await realpath(resolve('build'));
   const info = await stat(archive);
   if (
@@ -252,6 +296,7 @@ const report = {
   registryOnly,
   published: registryOnly,
   developmentArtifacts: !registryOnly,
+  exactPublicationArchives: !!publicationArchives,
   strictTypeScript: true,
   checkoutImports: false,
   nativeRuntimePackage: true,

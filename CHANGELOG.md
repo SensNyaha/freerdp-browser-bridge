@@ -4,18 +4,27 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-- Develop NestJS module targeting 0.2.2 on its separate feature branch: DI
+## 0.2.2 — 2026-10-22
+
+Accepted NestJS distribution with Express and FastifyAdapter. Fresh aligned
+native CTest: MSVC 36/36, exact GCC 8.3 37/37. Full checks: Windows 932 passed /
+61 skipped, Linux 909 / 87. Exact Windows/Linux NestJS and Fastify consumers,
+uninstall/reinstall and eight versioned Astra/RED OS H.264/JPEG profiles pass.
+Eight README-complete archives pass integrity audits and npm dry-run; registry
+publication is pending. [Release acceptance](docs/ITERATION_429.md).
+
+- Add NestJS module on its separate feature branch: DI
   configuration, shared-port Express/FastifyAdapter routing and existing native
   session/media core. Windows/Linux external npm consumers, strict declarations,
   HTTPS/WSS, lifecycle/admission and real installed-package Astra/RED OS desktop
-  profiles pass for both adapters. Aligned release/publication remains separate;
+  profiles pass for both adapters. Aligned release checks pass; publication remains separate;
   [feature acceptance](docs/ITERATION_427.md).
 
 - Add explanatory root README files to every publishable JS package and both
   native runtime templates. Check discovered packages during `pnpm check` and
   actual tarballs during native packaging/external Fastify consumer acceptance.
   The immutable 0.2.1 artifacts predate this requirement; README changes ship
-  in a subsequent release without changing the reserved adapter versions.
+  in 0.2.2 without changing earlier accepted bytes or the reserved adapter versions.
 
 ## 0.2.1 — 2026-10-22
 

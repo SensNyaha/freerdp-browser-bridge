@@ -1,5 +1,30 @@
 # Публикация проверенных npm-архивов
 
+## Новый принятый набор 0.2.2
+
+NestJS 0.2.2 проходит aligned release-приёмку; [полные проверки и SHA-256](ITERATION_429.md).
+В `build/release-428-archives/` находятся восемь точных архивов: два runtime,
+protocol, config, node, api, fastify и nestjs. Все содержат корневой README,
+проходят bounded pack audit, внешний Windows/Linux npm consumer и official npm
+dry-run с совпадающим SHA-512. Не перепаковывайте эти архивы для публикации.
+Publication write, публичный integrity и registry-only consumers пока pending;
+принятый локальный tag сам по себе не подтверждает доступность в npm.
+
+Для воспроизводимой проверки точного NestJS набора из корня проекта:
+
+```sh
+node scripts/test-nestjs-package.mjs --archives build/release-428-archives
+```
+
+Архивы должны находиться внутри `build/` данного проекта. Helper проверяет
+упакованные имена/версии, bounded metadata, README, strict TypeScript, оба
+host adapter, HTTPS/WSS и actual native certificate refusal. Флаг
+`--registry-only` применяется после публикации вместо `--archives`, в новом
+проекте без file/workspace overrides. Windows использует закреплённый локальный
+Node/pnpm toolchain; Linux — Node 24 и pnpm 10.11.0 из PATH.
+
+## Предыдущий опубликованный набор 0.2.1
+
 Fastify 0.2.1 принят в локальном `v0.2.1`. Последующее прямое решение
 пользователя: **сначала допубликовать все готовые версии 0.2.1**. Для этого
 используется исходный принятый набор без перепаковки. Добавленные README

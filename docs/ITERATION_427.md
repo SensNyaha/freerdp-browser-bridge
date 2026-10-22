@@ -6,6 +6,9 @@ implementation and development-consumer profiles. Product manifests still use
 the last stable **0.2.1**; no published NestJS 0.2.1, aligned 0.2.2 release,
 new immutable tag or npm publication is asserted by this checkpoint.
 
+Verified implementation commit: `a8afefb`. The accepted feature is subsequently
+merged into shared master before creating the separate `release/0.2.2` branch.
+
 ## Implementation
 
 `@freerdp-bridge/nestjs` provides `RdpBridgeModule.forRoot/forRootAsync`,
