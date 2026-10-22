@@ -1,0 +1,47 @@
+name: GCC 8.3 foundation
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  foundation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: catchorg/Catch2
+          ref: 2b60af89e23d28eefc081bc930831ee9d45ea58b
+          path: build/gcc83-context/catch2
+          persist-credentials: false
+      - name: Prepare pinned public build inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          context=build/gcc83-context
+          mkdir -p "$context/tools"
+          git archive --output="$context/source.tar" HEAD CMakeLists.txt CMakePresets.json native tests
+          cp tests/fixtures/gcc83/Dockerfile "$context/Dockerfile"
+          cp tests/fixtures/gcc83/dockerignore "$context/.dockerignore"
+          curl --fail --location --retry 2 --output "$context/cmake.whl" \
+            https://files.pythonhosted.org/packages/59/e8/096984b89133681533650b9078c5ed1c5c9b534e869b5487f22d4de1935c/cmake-3.31.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+          curl --fail --location --retry 2 --output "$context/ninja.whl" \
+            https://files.pythonhosted.org/packages/eb/7a/455d2877fe6cf99886849c7f9755d897df32eaf3a0fba47b56e615f880f7/ninja-1.11.1.4-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl
+          sha256sum --check <<'HASHES'
+          1c8b05df0602365da91ee6a3336fe57525b137706c4ab5675498f662ae1dbcec  build/gcc83-context/cmake.whl
+          096487995473320de7f65d622c3f1d16c3ad174797602218ca8c967f51ec38a0  build/gcc83-context/ninja.whl
+          HASHES
+          python3 -m zipfile --extract "$context/cmake.whl" "$context/tools"
+          python3 -m zipfile --extract "$context/ninja.whl" "$context/tools"
+      - name: Fetch the exact compiler image
+        run: docker pull --platform linux/amd64 gcc@sha256:1a0bcc0c30351efce55d76fd419dc74aa4d449204e4d66cf86a0ee9bb95a9d61
+      - name: Build without network or host runtime mounts
+        run: docker build --platform linux/amd64 --network none --tag bridge-gcc83-foundation:${{ github.sha }} build/gcc83-context
+      - name: Run actual GCC 8.3 foundation CTest
+        run: >-
+          docker run --rm --init --platform linux/amd64 --network none
+          --cpus 2 --memory 4g --pids-limit 256 --cap-drop ALL
+          --security-opt no-new-privileges
+          bridge-gcc83-foundation:${{ github.sha }}

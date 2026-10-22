@@ -73,6 +73,15 @@ package passes an unprivileged artifact-only probe on actual RED OS without
 SDK/build paths. Actual RDP regression remains separate.
 [Portable dependency/package evidence](ITERATION_411.md).
 
+The exact final package subsequently passes a cold unprivileged Astra-library
+container probe and actual owned XRDP desktop/resize/transport-loss regression.
+Public Edge H.264/JPEG and Linux-producer CLIPRDR ↔ prepared Tk Unicode
+roundtrips pass their named profiles, with earlier failed attempts retained.
+[Actual RDP evidence](ITERATION_412.md). A dedicated exact GCC 8.3 foundation
+CI recipe is also locally verified at CTest **20/20**; full linked Linux
+`pnpm check` remains **877 / 87 skips / 964**, zero failures. The hosted workflow
+itself is not claimed as executed. [CI evidence](ITERATION_413.md).
+
 ## Historical GCC 12 decision and acceptance
 
 The following records the earlier decision and its independently verified

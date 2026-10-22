@@ -108,6 +108,12 @@ The user defers Windows-host access for 60 minutes; its new-worker joint
 regression remains unrun. No new audible, OS Clipboard API, installed-Astra or
 0.2.0 acceptance is claimed. [Evidence](docs/ITERATION_412.md).
 
+An exact GCC 8.3 foundation CI recipe now retains the pinned compiler/tool
+inputs and runs build/CTest without network or host runtime mounts. Its actual
+local container passes CTest 20/20 and the full linked Linux `pnpm check`
+passes 877 / 87 skips / 964 total, zero failures. The GitHub-hosted workflow
+has not run from these local commits. [Evidence](docs/ITERATION_413.md).
+
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
 directions across two new RDP connections, repeated server Copy/Get, actual

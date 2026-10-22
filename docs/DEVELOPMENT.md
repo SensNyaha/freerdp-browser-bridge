@@ -47,7 +47,7 @@ all keyboards. It requires explicit approval for those inputs and reattachment
 in addition to the ordinary Clipboard scenario. No application is launched and
 no file is saved. Preparation or fixtures do not accept actual remote input.
 
-The pending joint Windows helper uses `--focus-editor --mvp-soak` with the same
+The joint Windows helper uses `--focus-editor --mvp-soak` with the same
 fingerprint/receipt arguments. It requires a user-prepared maximized disposable
 Notepad and the existing fixed tone running inside that RDP session for 33
 minutes. The tone command is offered in the local viewer draft; sending it is
@@ -65,8 +65,10 @@ revoke, reattachment and cleanup. Its watchdog is 40 minutes; epoch recovery
 is observed for at most 3 seconds and still counts toward total sample loss.
 It captures no failure screenshots. A failed run may leave its test document;
 the finite tone ends itself or the user can stop it with Ctrl+C. Numeric results
-do not replace the user's listening assessment. This mode has **not passed**
-the complete real joint gate: [current evidence](ITERATION_402.md).
+do not replace the user's listening assessment. The named complete real joint
+gate passes in [403](ITERATION_403.md); the earlier failed run remains recorded
+in [402](ITERATION_402.md). New compiler/profile regressions retain their own
+acceptance and do not inherit that result merely by using this helper.
 
 For separately authorized basic mouse/scroll acceptance, copy
 `tests/fixtures/rdp-pointer-page.html` to the Windows lab yourself, open it in
@@ -1081,6 +1083,12 @@ See [current acceptance scope](COMPILER_SUPPORT.md) before treating a source
 version check as complete platform support. Use a fresh build tree for each
 compiler and rebuild all C++ dependencies rather than mixing their ABI/runtime
 closures. Node 24 and CMake >=3.24 requirements are unchanged.
+
+The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)
+uses the pinned compiler image and hash-checked offline build tools. Follow the
+[container instructions](../tests/fixtures/gcc83/README.md) to repeat it without
+installing an OS VM. It tests foundation compilation/CTest; the linked private
+runtime and actual RDP checks remain separate. [Local verification](ITERATION_413.md).
 
 The following historical sanitizer profile uses GCC 12 with its C++20 library. The local
 Ubuntu builder now includes g++-12; select it explicitly in a new output tree:
