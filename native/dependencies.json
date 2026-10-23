@@ -1,0 +1,31 @@
+{
+  "freerdp": {
+    "version": "3.32.1",
+    "repository": "https://github.com/FreeRDP/FreeRDP.git",
+    "tagObject": "6a416c893c33a902fffb3586d1f3b2201e33a7ed",
+    "commit": "bf217a504e54cc719880c228e82353382cd7d4fa"
+  },
+  "catch2": { "version": "3.8.1" },
+  "eudev": {
+    "version": "3.2.14",
+    "repository": "https://github.com/eudev-project/eudev.git",
+    "commit": "9e7c4e744b9e7813af9acee64b5e8549ea1fbaa3",
+    "sourceSha512": "343b29a8db9ce2e1d136fe3049f2ad492ebd96804eca149e0fadc88a2e92b7fa0dd57c1ce4cb13d9d184d76cee06bcaa69f064b0c90d0cf99a322941944a7678"
+  },
+  "cups": {
+    "version": "2.4.20",
+    "repository": "https://github.com/OpenPrinting/cups.git",
+    "commit": "ef80eeaea51430a055948240eea3f28ef5354edf",
+    "sourceSha512": "50d628f1c54d7f3ff7aa5819f4c79a5ee2cd192857e1ebda80ffc70eb1e17a3bbadb89917eba863656426bd576545c97f4b22991e73a725c20b794b6a56e7b52"
+  },
+  "opus": {
+    "version": "1.6.1",
+    "repository": "https://github.com/xiph/opus",
+    "ref": "v1.6.1",
+    "sourceSha512": "b9a504f8576c977df57caee808412ab95e7424e9a64e3dd4045f05616c3ed58706bc3549195b61e25721e299547509d15206d246d96f1a307b82562b703b412c"
+  },
+  "vcpkg": {
+    "repository": "https://github.com/microsoft/vcpkg.git",
+    "commit": "2750401336fb7c95f6619657a46a7e798661341c"
+  }
+}

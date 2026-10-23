@@ -1,0 +1,12 @@
+{
+  "name": "eudev",
+  "version": "3.2.14",
+  "description": "Private libudev client library, without a device daemon or utilities",
+  "homepage": "https://github.com/eudev-project/eudev",
+  "license": "LGPL-2.1-or-later",
+  "supports": "linux",
+  "dependencies": [
+    { "name": "gperf", "host": true },
+    { "name": "vcpkg-make", "host": true }
+  ]
+}

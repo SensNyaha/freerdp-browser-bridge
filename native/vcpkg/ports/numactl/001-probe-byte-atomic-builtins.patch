@@ -1,0 +1,20 @@
+diff --git a/configure.ac b/configure.ac
+--- a/configure.ac
++++ b/configure.ac
+@@ -28,5 +28,15 @@ AM_CONDITIONAL([HAVE_TREE_VECTORIZE], [test x"${tree_vectorize}" = x"true"])
+ AC_CONFIG_FILES([Makefile])
+ 
+-AC_SEARCH_LIBS([__atomic_fetch_and_1], [atomic])
++AC_MSG_CHECKING([whether byte atomic builtins need a library])
++AC_LINK_IFELSE(
++    [AC_LANG_PROGRAM([[static volatile char value = 1;]], [[
++        char result = __atomic_and_fetch(&value, 0xff, __ATOMIC_RELAXED);
++        result |= __atomic_fetch_and(&value, 0, __ATOMIC_RELAXED);
++        __atomic_store_n(&value, result, __ATOMIC_RELAXED);
++        return value;
++    ]])],
++    [AC_MSG_RESULT([no])],
++    [AC_MSG_RESULT([yes])
++     AC_SEARCH_LIBS([__atomic_fetch_and_1], [atomic])])
+ 
+ # GCC tries to be "helpful" and only issue a warning for unrecognized

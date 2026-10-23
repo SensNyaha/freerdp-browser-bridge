@@ -1,0 +1,63 @@
+# Explicit packet transport in the Node supervisor
+
+Current capacity evidence — iteration 212: 32 simultaneously live native workers
+pass automatic/manual heartbeat at the addon's exact fixed capacity. A 33rd
+request is refused before spawn with runtime cleanup; closing 16 and starting
+16 replacements preserves surviving owners. Full close restores parent FD count
+and empty runtime. This is unconnected worker/IPC evidence, not a 30-session RDP
+soak. Larger configured policies remain open. [Evidence](ITERATION_212.md).
+
+A separate configured **40 global / 20 per-principal** registry test now covers
+explicit `framed-pipes` native lifecycle workers on Windows/Linux, including
+pre-factory refusal and ten-slot replacement. It does not allocate packet pairs
+or change the addon's fixed 32-pair limit. Larger configured primary-carrier and
+actual RDP/resource gates remain open. [Framed evidence](ITERATION_291.md).
+
+Current default — iteration 200: WorkerOptions also accepts auto, now the default.
+Linux prefers primary after exact private pairing/hash verification; no pairing
+metadata preserves legacy framed transport. A present malformed/mismatched
+manifest refuses startup before credentials. Windows remains framed. Installed
+hashes are regenerated after RPATH rewrite; the loaded addon comes from the
+canonical worker directory. The explicit selector semantics below remain valid.
+[Automatic preference evidence](ITERATION_200.md).
+
+Iteration 199 exposes trusted-host `WorkerOptions.ipcTransport` with two exact
+values: `framed-pipes` (current default) and `unix-seqpacket-rws1` (Linux only).
+This is not a browser/session RDP setting and never maps to arbitrary FreeRDP
+argv. The primary selector uses only `--ipc-seqpacket-fd=3`; credentials continue
+to follow HELLO through separate private RWI1 settings/secret messages.
+
+Before spawn, startup creates the private runtime marker, loads the colocated
+schema-1 IPC-only addon and asynchronously binds the bounded packet owner. Current
+startup authority is rechecked after binding, so cancellation cannot spawn a late
+child. Windows/unknown transport values fail explicitly; a missing/invalid addon
+does not silently downgrade an explicit packet request. Capacity is the addon's
+documented fixed 32 pairs/environment; larger host policies remain an integration
+gate, not a reduced public maxSessions setting.
+
+Spawn inherits the child endpoint as FD3 and closes the parent's copy after child
+supervision is registered. The existing bounded request map, parser, secrets wipe,
+heartbeat and lifecycle use the packet owner instead of stdin/stdout. Unused
+stdout and all stderr are drained without forwarding upstream text. HELLO must
+report `unix-seqpacket-rws1` before ready/configure/secret; a mismatched peer is
+refused. The default framed path and explicit fake-peer seams remain unchanged.
+
+Failure revokes native IPC immediately. Child completion and observed native
+socket retirement both precede runtime cleanup. Uncertain native retirement
+keeps its owner and causes close rejection; a complete child alone is not taken
+as released socket ownership. Normal close/force/crash/parent-death/startup
+cancellation retain bounded deadlines and no stale reuse of pair handles.
+
+`probeWorkerBuild` and build REST report the selected transport from the actual
+handshake. Standalone CLI/default invocation still report framed pipes; when
+comparing CLI to an explicitly selected primary handshake, transport is the
+expected differing field. No public RWI1/browser fields change.
+
+Verification distinguishes actual kernel/native lifecycle/private connection
+refusal from fake legacy peers and synthetic metadata mutation. No connected
+Linux remote desktop/audio/device or changed-certificate integration is claimed.
+[Evidence](ITERATION_199.md).
+
+The historical iteration-199 default-preference gate is now implemented by
+iteration 200. Larger configured-capacity admission, connected resource/release,
+sanitizer/platform/CI and broader Stage 1 acceptance remain open.

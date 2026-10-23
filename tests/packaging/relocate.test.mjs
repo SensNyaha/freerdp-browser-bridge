@@ -1,0 +1,314 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { cp, mkdtemp, rm, readFile, readdir } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { resolve, join, relative, basename } from 'node:path';
+import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
+import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
+import { verifyLinuxRuntime } from '../../scripts/linux-runtime.mjs';
+
+const source = resolve(process.env.BRIDGE_NATIVE_STAGE ?? 'build/native-stage');
+const windows = process.platform === 'win32';
+const suffix = windows ? '.exe' : '';
+
+test('native bundle relocates with its own ZLIB and FreeRDP, without dependency PATH', async () => {
+  const temporary = await mkdtemp(join(tmpdir(), 'rdp-private-bundle-'));
+  const relocated = join(temporary, 'relocated application');
+  const env = windows
+    ? {
+        SystemRoot: process.env.SystemRoot,
+        PATH: join(process.env.SystemRoot, 'System32'),
+      }
+    : { PATH: '/usr/bin:/bin' };
+  try {
+    await cp(source, relocated, { recursive: true, verbatimSymlinks: true });
+    if (process.platform === 'linux') {
+      const closure = await verifyLinuxRuntime(relocated);
+      assert.ok(closure.files >= 2 && closure.dependencies >= closure.files);
+    }
+    const files = await readdir(relocated, { recursive: true });
+    assert.ok(files.every((file) => !/\.(pdb|obj|lib)$/i.test(file)));
+    if (windows) {
+      const directory = join(temporary, 'приватный runtime с пробелами');
+      const creation = await promisify(execFile)(
+        join(relocated, 'bin', 'rdp-runtime-directory.exe'),
+        ['--create-private-directory', directory],
+        {
+          env,
+          cwd: temporary,
+          windowsHide: true,
+          timeout: 5000,
+          maxBuffer: 128,
+        },
+      );
+      assert.equal(creation.stderr, '');
+      assert.deepEqual(JSON.parse(creation.stdout), {
+        v: 1,
+        created: true,
+        error: 0,
+      });
+      assert.deepEqual(await readdir(directory), []);
+      const resident = await promisify(execFile)(
+        join(relocated, 'bin', 'rdp-runtime-directory.exe'),
+        ['--process-resident-bytes', String(process.pid)],
+        {
+          env,
+          cwd: temporary,
+          windowsHide: true,
+          timeout: 2000,
+          maxBuffer: 128,
+        },
+      );
+      assert.equal(resident.stderr, '');
+      const receipt = JSON.parse(resident.stdout);
+      assert.deepEqual(Object.keys(receipt).sort(), ['bytes', 'error', 'v']);
+      assert.equal(receipt.v, 1);
+      assert.equal(receipt.error, 0);
+      assert.ok(Number.isSafeInteger(receipt.bytes) && receipt.bytes > 0);
+    }
+    const probe = await promisify(execFile)(
+      join(relocated, 'bin', 'rdp-runtime-check' + suffix),
+      [],
+      { env, cwd: temporary, windowsHide: true, timeout: 10000 },
+    );
+    const lines = Object.fromEntries(
+      probe.stdout
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => {
+          const index = line.indexOf('=');
+          return [line.slice(0, index), line.slice(index + 1)];
+        }),
+    );
+    const features = JSON.parse(
+      await readFile(
+        join(relocated, 'share', 'freerdp-bridge', 'native-features.json'),
+        'utf8',
+      ),
+    );
+    assert.equal(lines.zlib, features.dependencies.zlib);
+    assert.equal(lines.freerdp, '3.32.1');
+    assert.equal(lines.jpegRoundtrip, 'true');
+    assert.equal(lines.h264Roundtrip, 'true');
+    assert.equal(lines.freerdpAvc420Roundtrip, 'true');
+    assert.equal(lines.opusRoundtrip, 'true');
+    assert.equal(lines.opus, `libopus ${features.dependencies.opus}`);
+    assert.match(
+      basename(lines.opusRuntime),
+      windows ? /^opus\.dll$/i : /^libopus\.so(?:\..*)?$/,
+    );
+    assert.equal(features.diagnostics.openH264, true);
+    assert.equal(features.diagnostics.gfxH264, true);
+    assert.equal(features.diagnostics.openH264DynamicLoading, false);
+    assert.equal(lines.openh264, features.dependencies.openh264);
+    for (const runtime of [
+      lines.runtime,
+      lines.freerdpRuntime,
+      lines.jpegRuntime,
+      lines.openh264Runtime,
+      lines.opusRuntime,
+      ...(process.platform === 'linux' ? [lines.udevRuntime] : []),
+    ]) {
+      const loadedPath = relative(relocated, resolve(runtime));
+      assert.ok(
+        loadedPath &&
+          !loadedPath.startsWith('..') &&
+          !resolve(runtime).includes('.deps'),
+      );
+    }
+    assert.deepEqual(
+      lines.channels.split(',').filter(Boolean),
+      features.enabledChannels,
+    );
+    const cli = await promisify(execFile)(
+      join(relocated, 'bin', 'rdp-worker' + suffix),
+      ['--version'],
+      { env, cwd: temporary, windowsHide: true, timeout: 10000 },
+    );
+    assert.equal(JSON.parse(cli.stdout).freeRdpVersion, '3.32.1');
+    assert.equal(JSON.parse(cli.stdout).capabilities.rdp, false);
+    assert.equal(JSON.parse(cli.stdout).capabilities.jpegCapture, true);
+    assert.equal(JSON.parse(cli.stdout).capabilities.h264Capture, true);
+    assert.equal(JSON.parse(cli.stdout).capabilities.basicInput, true);
+    assert.ok(features.codecProviders.includes('libjpeg-turbo'));
+    assert.ok(features.codecProviders.includes('openh264'));
+    assert.ok(features.codecProviders.includes('libopus'));
+    const opusVersionPatch = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'opus',
+        '001-pinned-package-version.patch',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(opusVersionPatch).digest('hex'),
+      features.portOverlays.opus.versionPatchSha256,
+    );
+    const patch = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'openh264',
+        '002-relative-windows-nasm-includes.patch',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(patch).digest('hex'),
+      features.portOverlays.openh264.nasmPatchSha256,
+    );
+    const simdPatch = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'openh264',
+        '003-enable-windows-x86-simd.patch',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(simdPatch).digest('hex'),
+      features.portOverlays.openh264.simdPatchSha256,
+    );
+    if (process.platform === 'linux') {
+      assert.equal(lines.udevContextRoundtrip, 'true');
+      assert.match(basename(lines.udevRuntime), /^libudev\.so(?:\..*)?$/);
+      const lock = JSON.parse(
+        await readFile(
+          join(relocated, 'share', 'freerdp-bridge', 'dependencies.json'),
+          'utf8',
+        ),
+      );
+      const cupsPatch = await readFile(
+        join(
+          relocated,
+          'share',
+          'freerdp-bridge',
+          'ports',
+          'cups',
+          '001-local-queues-without-dnssd.patch',
+        ),
+      );
+      assert.equal(features.dependencies.cups, lock.cups.version);
+      assert.equal(features.portOverlays.cups.sourceCommit, lock.cups.commit);
+      assert.equal(features.dependencies.eudev, lock.eudev.version);
+      assert.equal(features.portOverlays.eudev.sourceCommit, lock.eudev.commit);
+      const eudevPort = await readFile(
+        join(
+          relocated,
+          'share',
+          'freerdp-bridge',
+          'ports',
+          'eudev',
+          'portfile.cmake',
+        ),
+      );
+      assert.equal(
+        createHash('sha256').update(eudevPort).digest('hex'),
+        features.portOverlays.eudev.portfileSha256,
+      );
+      assert.equal(
+        createHash('sha256').update(cupsPatch).digest('hex'),
+        features.portOverlays.cups.localQueuesPatchSha256,
+      );
+      const cupsLinkPatch = await readFile(
+        join(
+          relocated,
+          'share',
+          'freerdp-bridge',
+          'ports',
+          'cups',
+          '002-client-as-needed-link.patch',
+        ),
+      );
+      assert.equal(
+        createHash('sha256').update(cupsLinkPatch).digest('hex'),
+        features.portOverlays.cups.asNeededLinkPatchSha256,
+      );
+      for (const [name, filename, field] of [
+        ['libfuse', 'portfile.cmake', 'portfileSha256'],
+        [
+          'libfuse',
+          '001-compiler-selected-cxx20-example.patch',
+          'compilerStandardPatchSha256',
+        ],
+        ['numactl', 'portfile.cmake', 'portfileSha256'],
+        [
+          'numactl',
+          '001-probe-byte-atomic-builtins.patch',
+          'byteAtomicsPatchSha256',
+        ],
+      ]) {
+        const input = await readFile(
+          join(relocated, 'share', 'freerdp-bridge', 'ports', name, filename),
+        );
+        assert.equal(
+          createHash('sha256').update(input).digest('hex'),
+          features.portOverlays[name][field],
+        );
+      }
+    }
+    const usbPort = await readFile(
+      join(
+        relocated,
+        'share',
+        'freerdp-bridge',
+        'ports',
+        'libusb',
+        'portfile.cmake',
+      ),
+    );
+    assert.equal(
+      createHash('sha256').update(usbPort).digest('hex'),
+      features.portOverlays.libusb.portfileSha256,
+    );
+    for (const dependency of [
+      'zlib',
+      'openssl',
+      'libusb',
+      'freerdp',
+      'libjpeg-turbo',
+      'libspng',
+      'openh264',
+      'opus',
+      ...(process.platform === 'linux'
+        ? ['krb5', 'icu', 'cups', 'libfuse', 'numactl', 'eudev']
+        : []),
+    ]) {
+      assert.ok(
+        (
+          await readFile(
+            join(
+              relocated,
+              'share',
+              'freerdp-bridge',
+              'licenses',
+              dependency,
+              dependency === 'freerdp' ? 'LICENSE' : 'copyright',
+            ),
+          )
+        ).length,
+      );
+    }
+    const worker = new WorkerProcess({
+      workerPath: join(relocated, 'bin', 'rdp-worker' + suffix),
+      runtimeRoot: join(temporary, 'runtime'),
+    });
+    try {
+      await worker.start();
+      await worker.ping();
+    } finally {
+      await worker.close();
+    }
+    assert.deepEqual(await readdir(join(temporary, 'runtime')), []);
+  } finally {
+    await rm(temporary, { recursive: true, force: true, maxRetries: 3 });
+  }
+});

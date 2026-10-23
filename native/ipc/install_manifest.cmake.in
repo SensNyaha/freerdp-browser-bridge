@@ -1,0 +1,11 @@
+# RPATH replacement changes ELF bytes; pair the actual installed artifacts.
+set(packet_install_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin")
+execute_process(COMMAND "@CMAKE_COMMAND@"
+  "-DIPC_WORKER=${packet_install_root}/rdp-worker"
+  "-DIPC_ADAPTER=${packet_install_root}/rdp-ipc.node"
+  "-DIPC_MANIFEST=${packet_install_root}/rdp-worker.ipc.json"
+  -P "@CMAKE_SOURCE_DIR@/native/ipc/write_manifest.cmake"
+  RESULT_VARIABLE packet_install_result)
+if(NOT packet_install_result EQUAL 0)
+  message(FATAL_ERROR "Installed packet pairing failed")
+endif()

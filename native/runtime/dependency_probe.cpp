@@ -1,0 +1,193 @@
+#include "avc_decode_probe.hpp"
+#include "jpeg.hpp"
+#include "opus_encoder.hpp"
+#include "video_encoder.hpp"
+#include <array>
+#include <filesystem>
+#include <freerdp/client/channels.h>
+#include <freerdp/codec/h264.h>
+#include <freerdp/freerdp.h>
+#include <iostream>
+#include <memory>
+#include <opus/opus.h>
+#include <set>
+#include <string>
+#include <turbojpeg.h>
+#include <vector>
+#include <zlib.h>
+#if defined(__linux__)
+#include <libudev.h>
+#endif
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
+namespace {
+std::filesystem::path module_path(const void *address) {
+#ifdef _WIN32
+  HMODULE module = nullptr;
+  if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                              GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          reinterpret_cast<LPCWSTR>(address), &module))
+    return {};
+  std::vector<wchar_t> path(32768);
+  const auto length = GetModuleFileNameW(module, path.data(), static_cast<DWORD>(path.size()));
+  if (length == 0 || length == path.size())
+    return {};
+  return std::wstring(path.data(), length);
+#else
+  Dl_info info{};
+  if (!dladdr(address, &info) || !info.dli_fname)
+    return {};
+  return info.dli_fname;
+#endif
+}
+std::string utf8(const std::filesystem::path &path) {
+  const auto bytes = path.generic_u8string();
+  return std::string(bytes.begin(), bytes.end());
+}
+bool jpeg_roundtrip() {
+  try {
+    bridge::media::JpegEncoder encoder;
+    std::vector<std::uint8_t> source(32 * 16 * 4, 240);
+    const auto jpeg = encoder.encode(source, 32, 16, 32 * 4);
+    const auto decoder = tj3Init(TJINIT_DECOMPRESS);
+    if (!decoder)
+      return false;
+    const std::unique_ptr<void, decltype(&tj3Destroy)> guard(decoder, tj3Destroy);
+    if (tj3DecompressHeader(decoder, jpeg.data(), jpeg.size()) != 0 ||
+        tj3Get(decoder, TJPARAM_JPEGWIDTH) != 32 || tj3Get(decoder, TJPARAM_JPEGHEIGHT) != 16)
+      return false;
+    std::vector<std::uint8_t> rgb(32 * 16 * 3);
+    return tj3Decompress8(decoder, jpeg.data(), jpeg.size(), rgb.data(), 32 * 3, TJPF_RGB) == 0 &&
+           rgb[0] > 230 && rgb[1] > 230 && rgb[2] > 230;
+  } catch (...) {
+    return false;
+  }
+}
+bool h264_roundtrip() {
+  try {
+    bridge::media::SoftwareH264Encoder encoder;
+    bridge::diagnostics::AvcDecodeProbe decoder;
+    std::vector<std::uint8_t> source(32 * 16 * 4, 240);
+    const auto unit = encoder.encode({source, 32, 16, 32 * 4, 1000}, true);
+    const auto sample = decoder.decode(unit);
+    return unit.keyframe && sample.width == 32 && sample.height == 16 && sample.yuv[0] >= 218 &&
+           sample.yuv[0] <= 226 && sample.yuv[1] >= 124 && sample.yuv[1] <= 132 &&
+           sample.yuv[2] >= 124 && sample.yuv[2] <= 132;
+  } catch (...) {
+    return false;
+  }
+}
+bool opus_roundtrip() {
+  try {
+    bridge::audio::SoftwareOpusEncoder encoder;
+    int error = OPUS_OK;
+    const std::unique_ptr<OpusDecoder, decltype(&opus_decoder_destroy)> decoder(
+        opus_decoder_create(48000, 2, &error), opus_decoder_destroy);
+    if (error != OPUS_OK || !decoder)
+      return false;
+    std::vector<std::uint8_t> pcm(bridge::audio::SoftwareOpusEncoder::pcm_bytes);
+    const auto unit = encoder.encode({pcm, 1000});
+    std::vector<opus_int16> samples(bridge::audio::SoftwareOpusEncoder::packet_frames * 2);
+    return unit.discontinuity && unit.timestamp_us == 1000 && !unit.bytes.empty() &&
+           unit.bytes.size() <= bridge::audio::SoftwareOpusEncoder::max_packet_bytes &&
+           opus_decode(decoder.get(), unit.bytes.data(), static_cast<opus_int32>(unit.bytes.size()),
+                       samples.data(), 960, 0) == 960;
+  } catch (...) {
+    return false;
+  }
+}
+bool freerdp_avc420_roundtrip() {
+  try {
+    bridge::media::SoftwareH264Encoder encoder;
+    std::vector<std::uint8_t> source(32 * 16 * 4, 240);
+    const auto unit = encoder.encode({source, 32, 16, 32 * 4, 1000}, true);
+    const auto annex = bridge::diagnostics::AvcDecodeProbe::annex_b(unit);
+    const std::unique_ptr<H264_CONTEXT, decltype(&h264_context_free)> decoder(
+        h264_context_new(FALSE), h264_context_free);
+    if (!decoder || !h264_context_set_option(decoder.get(), H264_CONTEXT_OPTION_HW_ACCEL, 0) ||
+        !h264_context_reset(decoder.get(), 32, 16))
+      return false;
+    std::vector<std::uint8_t> bgra(32 * 16 * 4);
+    const RECTANGLE_16 rectangle{0, 0, 32, 16};
+    const auto result =
+        avc420_decompress(decoder.get(), annex.data(), static_cast<UINT32>(annex.size()),
+                          bgra.data(), PIXEL_FORMAT_BGRA32, 32 * 4, 32, 16, &rectangle, 1);
+    // The browser encoder's limited-range Y=222 becomes neutral RGB=222 in RDP's
+    // full-range conversion. This probes the FreeRDP decoder, not browser color conversion.
+    return result > 0 && bgra[0] >= 218 && bgra[0] <= 226 && bgra[1] >= 218 && bgra[1] <= 226 &&
+           bgra[2] >= 218 && bgra[2] <= 226;
+  } catch (...) {
+    return false;
+  }
+}
+} // namespace
+int main() {
+  constexpr std::array<unsigned char, 11> original{'b', 'u', 'n', 'd', 'l', 'e',
+                                                   '-', 't', 'e', 's', 't'};
+  std::array<unsigned char, 128> compressed{};
+  std::array<unsigned char, 11> decoded{};
+  uLongf compressed_size = static_cast<uLongf>(compressed.size());
+  uLongf decoded_size = static_cast<uLongf>(decoded.size());
+  if (std::string(zlibVersion()) != ZLIB_VERSION ||
+      compress2(compressed.data(), &compressed_size, original.data(),
+                static_cast<uLong>(original.size()), Z_BEST_SPEED) != Z_OK ||
+      uncompress(decoded.data(), &decoded_size, compressed.data(), compressed_size) != Z_OK ||
+      decoded_size != original.size() || decoded != original)
+    return 2;
+  const auto zlib_path = module_path(reinterpret_cast<const void *>(&zlibVersion));
+  const auto freerdp_path =
+      module_path(reinterpret_cast<const void *>(&freerdp_get_version_string));
+  const auto jpeg_path = module_path(reinterpret_cast<const void *>(&tj3InitVersion));
+  const auto h264_path = module_path(reinterpret_cast<const void *>(&WelsGetCodecVersion));
+  const auto opus_path = module_path(reinterpret_cast<const void *>(&opus_get_version_string));
+  if (zlib_path.empty() || freerdp_path.empty() || jpeg_path.empty() || h264_path.empty() ||
+      opus_path.empty())
+    return 3;
+  if (!jpeg_roundtrip())
+    return 5;
+  if (!h264_roundtrip())
+    return 6;
+  if (!freerdp_avc420_roundtrip())
+    return 7;
+  if (!opus_roundtrip())
+    return 8;
+#if defined(__linux__)
+  const auto udev_path = module_path(reinterpret_cast<const void *>(&udev_new));
+  const std::unique_ptr<udev, decltype(&udev_unref)> udev_context(udev_new(), udev_unref);
+  if (udev_path.empty() || !udev_context)
+    return 9;
+#endif
+  const auto h264_version = WelsGetCodecVersion();
+  const std::unique_ptr<FREERDP_ADDIN *, decltype(&freerdp_channels_addin_list_free)> addins(
+      freerdp_channels_list_addins(nullptr, nullptr, nullptr,
+                                   FREERDP_ADDIN_CLIENT | FREERDP_ADDIN_STATIC),
+      freerdp_channels_addin_list_free);
+  if (!addins)
+    return 4;
+  std::set<std::string> channels;
+  for (std::size_t i = 0; i < 128 && addins.get()[i]; ++i) {
+    const auto *addin = addins.get()[i];
+    if ((addin->dwFlags & FREERDP_ADDIN_SUBSYSTEM) == 0)
+      channels.insert(addin->cName);
+  }
+  std::cout << "zlib=" << zlibVersion() << "\nruntime=" << utf8(zlib_path)
+            << "\nfreerdp=" << freerdp_get_version_string()
+            << "\nfreerdpRuntime=" << utf8(freerdp_path) << "\njpegRuntime=" << utf8(jpeg_path)
+            << "\njpegRoundtrip=true\nopenh264=" << h264_version.uMajor << '.'
+            << h264_version.uMinor << '.' << h264_version.uRevision
+            << "\nopenh264Runtime=" << utf8(h264_path)
+            << "\nh264Roundtrip=true\nfreerdpAvc420Roundtrip=true\nopus="
+            << opus_get_version_string() << "\nopusRuntime=" << utf8(opus_path)
+            << "\nopusRoundtrip=true\nchannels=";
+  for (const auto &channel : channels)
+    std::cout << channel << ',';
+  std::cout << '\n';
+#if defined(__linux__)
+  std::cout << "udevRuntime=" << utf8(udev_path) << "\nudevContextRoundtrip=true\n";
+#endif
+  return 0;
+}

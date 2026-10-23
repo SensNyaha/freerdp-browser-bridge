@@ -1,0 +1,12 @@
+diff --git a/cups/Makefile b/cups/Makefile
+--- a/cups/Makefile
++++ b/cups/Makefile
+@@ -357,7 +357,7 @@
+ 
+ libcups.so.2:	$(LIBOBJS)
+ 	echo Linking $@...
+-	$(DSO) $(ARCHFLAGS) $(ALL_DSOFLAGS) -o $@ $(LIBOBJS) $(LIBS)
++	$(DSO) $(ARCHFLAGS) $(ALL_DSOFLAGS) -Wl,--as-needed -o $@ $(LIBOBJS) $(LIBS)
+ 	$(RM) `basename $@ .2`
+ 	$(LN) $@ `basename $@ .2`
+ 

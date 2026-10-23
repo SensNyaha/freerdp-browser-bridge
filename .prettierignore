@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+.tools
+.deps
+.local-tests
+.runtime
+pnpm-lock.yaml
+*.md
+native
+CMakeLists.txt
+*.cmake
+scripts/schemas/spdx-2.3.schema.json

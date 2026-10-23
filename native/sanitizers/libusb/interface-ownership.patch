@@ -1,0 +1,12 @@
+--- a/libusb/descriptor.c
++++ b/libusb/descriptor.c
+@@ -440,6 +440,9 @@
+ 		if (r < 0)
+ 			goto err;
+ 		if (r == 0) {
++			/* A zero return can still own an altsetting allocation.
++			 * Retire this slot before excluding it from later cleanup. */
++			clear_interface(usb_interface + i);
+ 			config->bNumInterfaces = i;
+ 			break;
+ 		}

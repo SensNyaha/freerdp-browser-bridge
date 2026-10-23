@@ -1,0 +1,18 @@
+diff --git a/meson.build b/meson.build
+--- a/meson.build
++++ b/meson.build
+@@ -160,6 +160,14 @@ else
+   error('FIXME: Unhandled system @0@'.format(system))
+ endif
+ 
++# NASM on Windows cannot open the resolved Unicode workspace include path.
++# Source arguments are already relative; use the same convention for includes.
++if system == 'windows' and ['x86', 'x86_64'].contains(cpu_family)
++  fs = import('fs')
++  asm_inc = join_paths(fs.relative_to(meson.project_source_root(), meson.project_build_root()),
++    'codec', 'common', 'x86', '')
++endif
++
+ use_asm_gen = false
+ if cpu_family in ['x86', 'x86_64']
+   nasm = find_program('nasm')

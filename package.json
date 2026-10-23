@@ -1,0 +1,47 @@
+{
+  "name": "freerdp-node-bridge-workspace",
+  "version": "0.2.4",
+  "private": true,
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "node --test --test-concurrency=1 tests/unit/*.test.mjs tests/integration/*.test.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write apps packages scripts tests examples .github \"*.{json,yaml,yml,mjs,js,cjs,ts,html,css}\" .prettierrc.json",
+    "format:check": "prettier --check apps packages scripts tests examples .github \"*.{json,yaml,yml,mjs,js,cjs,ts,html,css}\" .prettierrc.json",
+    "version:check": "node scripts/check-version.mjs",
+    "npm:readme:check": "node scripts/check-npm-readmes.mjs",
+    "check": "pnpm version:check && pnpm npm:readme:check && pnpm build && pnpm lint && pnpm format:check && pnpm test",
+    "build:native": "cmake --preset foundation && cmake --build --preset foundation",
+    "test:native": "ctest --preset foundation",
+    "build:dependencies": "node scripts/build-dependencies.mjs",
+    "build:freerdp": "node scripts/build-freerdp.mjs",
+    "build:bundled": "node scripts/build-bundled.mjs",
+    "test:bundle": "node --test tests/packaging/*.test.mjs"
+  },
+  "devDependencies": {
+    "@nestjs/common": "12.2.0",
+    "@nestjs/core": "12.2.0",
+    "@nestjs/platform-express": "12.2.0",
+    "@nestjs/platform-fastify": "12.2.0",
+    "@types/node": "24.10.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "eslint": "10.12.0",
+    "express": "5.3.0",
+    "playwright-core": "1.64.0",
+    "prettier": "3.6.2",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SensNyaha/freerdp-browser-bridge.git"
+  }
+}

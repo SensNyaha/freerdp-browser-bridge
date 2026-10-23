@@ -1,0 +1,4 @@
+#pragma once
+namespace bridge {
+inline constexpr const char* build_features = R"features(@BRIDGE_BUILD_FEATURES@)features";
+}
