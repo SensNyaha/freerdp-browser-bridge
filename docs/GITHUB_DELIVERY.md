@@ -111,6 +111,22 @@ foundation workflows на push; их фактический результат �
 
 ## Проверка и загрузка assets
 
+Для следующей принятой версии в уже существующих repositories используйте
+`--continue-history` при экспорте, например после окончательной приёмки 0.2.5:
+
+```sh
+node scripts/export-github-deliveries.mjs --tag v0.2.5 --archives build/release-451-archives --acceptance docs/ITERATION_451.md --continue-history
+```
+
+Имена каталога/report в примере замените на фактические принятые входы.
+Режим читает существующую public `main` каждого из пяти repositories и делает
+новый source commit её потомком. Он сохраняет новые exported bytes, учитывает
+удаления старых файлов и отказывает, если remote tag новой версии уже существует.
+Экспорт не выполняет push; обычный push дополнительно откажет, если remote main
+успела измениться. Force, переписывание истории и изменение старых tags не нужны.
+Настоящая локальная Git-проверка ancestry/deletions/tag refusal проходит; первый
+экспорт следующей версии и его public push остаются отдельной приёмкой.
+
 Команды выполняются из исходного рабочего проекта под Node.js 24. Оригинальный
 принятый tag в нём нужен скрипту для независимой сверки SHA-256 с tagged
 acceptance report. Публичные source repositories не содержат эту старую Git

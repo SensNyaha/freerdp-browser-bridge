@@ -95,6 +95,9 @@ export async function loadBundle(
       gitText(source, ['rev-parse', 'HEAD']) !== item.commit ||
       gitText(source, ['cat-file', '-t', tag]) !== 'tag' ||
       gitText(source, ['rev-parse', tag + '^{commit}']) !== item.commit ||
+      (item.parent !== undefined &&
+        (!/^[a-f0-9]{40}$/.test(item.parent) ||
+          gitText(source, ['rev-parse', 'HEAD^']) !== item.parent)) ||
       gitText(source, ['remote', 'get-url', 'origin']) !==
         'https://github.com/' + repository + '.git'
     )

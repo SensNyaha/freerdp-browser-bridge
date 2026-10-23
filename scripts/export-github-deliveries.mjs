@@ -29,12 +29,15 @@ import {
 import { formattedNpmWorkflow } from './github-delivery/templates.mjs';
 import { adapterKit } from './github-delivery/adapter-kit.mjs';
 import { publicLock } from './github-delivery/lock.mjs';
+import { continueDeliveryHistory } from './github-delivery/history.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 let bundle;
 try {
   const args = process.argv.slice(2),
     options = new Map();
+  const continueHistory = args.at(-1) === '--continue-history';
+  if (continueHistory) args.pop();
   if (
     args.length !== 6 ||
     process.versions.node.split('.')[0] !== '24' ||
@@ -344,7 +347,7 @@ try {
     );
     await write(
       'DELIVERY.md',
-      `# Accepted ${version} delivery\n\nUpstream: ${tag}, ${commit}. GitHub: ${repository}.\n\nPush main and the annotated ${tag} tag to your empty repository. Do not force existing history or tags.\n\nThe exact accepted archives stay in the sibling release-assets folder, outside Git. After the repository/workflow exists, configure npm Trusted Publishing with owner SensNyaha, this repository and npm-publish.yml, allowing direct npm publish. Then upload the checked assets through the bootstrap release helper. No manual per-package publishing token is used by CI.\n\nCore must be public before adapter workflows install their exact core dependencies. HTTP precedes Express. New Express-name bootstrap and the seven old 0.2.3 stages remain separate owner interactions; do not start manual approval loops automatically.\n\nWorkflow validation is distinct from the original native/compiler and actual desktop/device acceptance. A local export does not prove hosted OIDC or public availability.\n`,
+      `# Accepted ${version} delivery\n\nUpstream: ${tag}, ${commit}. GitHub: ${repository}.\n\nPush main and the annotated ${tag} tag with an ordinary fast-forward push. Preserve existing public history and immutable tags.\n\nThe exact accepted archives stay in the sibling release-assets folder, outside Git. After the repository/workflow exists, configure npm Trusted Publishing with owner SensNyaha, this repository and npm-publish.yml, allowing direct npm publish. Then upload the checked assets through the bootstrap release helper. No manual per-package publishing token is used by CI.\n\nCore must be public before adapter workflows install their exact core dependencies. HTTP precedes Express. New Express-name bootstrap and the seven old 0.2.3 stages remain separate owner interactions; do not start manual approval loops automatically.\n\nWorkflow validation is distinct from the original native/compiler and actual desktop/device acceptance. A local export does not prove hosted OIDC or public availability.\n`,
     );
     if (kind !== 'core') {
       const temporary = structuredClone(privateManifest),
@@ -384,9 +387,16 @@ try {
       );
       await write('package-lock.json', JSON.stringify(lock, null, 2) + '\n');
     }
-    localGit(root, ['init', '--quiet']);
-    localGit(root, ['symbolic-ref', 'HEAD', 'refs/heads/main']);
-    localGit(root, ['add', '.']);
+    const parent = continueHistory
+      ? continueDeliveryHistory(root, repository, version, {
+          run: (args) => localGit(root, args),
+        })
+      : undefined;
+    if (!continueHistory) {
+      localGit(root, ['init', '--quiet']);
+      localGit(root, ['symbolic-ref', 'HEAD', 'refs/heads/main']);
+    }
+    localGit(root, ['add', '--all', '.']);
     if (kind === 'core')
       for (const path of executables)
         localGit(root, ['update-index', '--chmod=+x', path]);
@@ -422,12 +432,13 @@ try {
       '-m',
       'Import accepted ' + version + ' source and exact release inputs',
     ]);
-    localGit(root, [
-      'remote',
-      'add',
-      'origin',
-      'https://github.com/' + repository + '.git',
-    ]);
+    if (!continueHistory)
+      localGit(root, [
+        'remote',
+        'add',
+        'origin',
+        'https://github.com/' + repository + '.git',
+      ]);
     await verifySources(root, manifest);
     const payload = join(bundle, 'release-assets', short, tag);
     await mkdir(payload, { recursive: true });
@@ -516,6 +527,7 @@ try {
     exported.push({
       kind,
       repository,
+      ...(parent ? { parent } : {}),
       directory: 'repositories/' + short,
       assets: 'release-assets/' + short + '/' + tag,
       commit: localGit(root, ['rev-parse', 'HEAD']),
