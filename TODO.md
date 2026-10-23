@@ -110,6 +110,14 @@ Development MSI/DEB artifacts build, independent archive/database checks pass,
 and the private Linux CLI passes as UID 1000. Full regression: Windows 981/63
 skips, Linux repeat 957/90, no failures. These are prototype 0.2.4 dependencies,
 not aligned 0.2.5 or installed SCM/systemd acceptance; [iteration 445](docs/ITERATION_445.md).
+The following pinned-assembly block passes the actual installed-service matrix
+on Windows Server 2025 and Ubuntu 24.04 at `4f3b886`: JWT/native TLS, non-root
+identity, crash recovery, same-version reinstall and uninstall. The common Linux
+stage also builds a real RPM whose header/cpio byte check passes. Astra/RED OS
+installed service, cross-version upgrade, real standalone RDP and final release
+remain separate; [iteration 446](docs/ITERATION_446.md).
+Full regression for this assembly/staging block passes Windows 985/63 skips
+and Linux 961/90, with zero failures; installed RPM/Astra/RED OS remain open.
 
 Clarified user scope, 2026-10-23: retain the standalone web server and OS
 installers; exclude a separate desktop GUI application. The browser reference

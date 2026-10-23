@@ -140,10 +140,19 @@ Linux payload. The Windows payload must include the pinned
 [WiX Util notice](../packaging/standalone/notices/README.md). Use a short build
 path for WiX native CAB tooling. Neither tool installs the produced package.
 
-The following [pinned-assembly/hosted gate](ITERATION_446.md) uses clean Windows
-and Linux CI machines for actual service installation and removal. Its prepared
-workflow has no publication permission and does not accept installation until
-the real run passes.
+The [pinned-assembly/hosted gate](ITERATION_446.md) uses clean Windows and Linux CI
+machines for actual service installation and removal. Named Windows Server 2025
+and Ubuntu 24.04 jobs pass identity/native TLS/crash recovery/reinstall/uninstall;
+the evidence records their exact commits and remaining matrix/profile gates.
+The workflow has no publication permission. These results do not accept Astra/
+RED OS service installation, newer-version upgrade or a 0.2.5 release.
+
+`scripts/build-standalone-rpm.mjs` uses the same Linux staging contract and
+creates an actual gzip RPM with protected config(noreplace). Header and complete
+extracted-byte verification pass; installed RED OS/systemd remains separate.
+[Distribution license references](../packaging/standalone/THIRD_PARTY.md) point to
+the shipped Node, npm and native inventories rather than assigning one license
+to every bundled component.
 
 ## Required distribution acceptance
 

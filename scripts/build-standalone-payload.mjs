@@ -182,6 +182,10 @@ await copyFile(
 );
 await copyFile(join(repository, 'LICENSE'), join(payload, 'LICENSE'));
 await copyFile(
+  join(repository, 'packaging/standalone/THIRD_PARTY.md'),
+  join(payload, 'THIRD_PARTY.md'),
+);
+await copyFile(
   join(repository, 'packaging/standalone/notices/WIX-UTIL-LICENSE.txt'),
   join(payload, 'notices/WIX-UTIL-LICENSE.txt'),
 );
