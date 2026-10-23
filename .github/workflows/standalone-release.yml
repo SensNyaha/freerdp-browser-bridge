@@ -1,7 +1,7 @@
 name: Standalone release
 on:
   push:
-    branches: [main, master, feature/standalone-installers-0.2.5]
+    branches: [main, master, feature/standalone-installers-0.2.5, release/0.2.5]
     paths:
       - apps/**
       - packages/**
@@ -96,9 +96,16 @@ jobs:
       - name: Linux package inspectors
         if: runner.os == 'Linux'
         run: sudo apt-get -o APT::Update::Error-Mode=any update && sudo apt-get install -y rpm rpm2cpio cpio
+      - name: Optional hash-pinned prepublication candidate inputs
+        id: candidates
+        run: node scripts/standalone/candidate-release.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Production namespace, portable formats, RPM and previous-version seed
         id: build
         run: node scripts/standalone/release-build.mjs
+        env:
+          STANDALONE_CANDIDATE_ARCHIVES: ${{ steps.candidates.outputs.directory }}
       - name: Initialize the Windows OpenSSL test tool
         if: runner.os == 'Windows'
         shell: powershell

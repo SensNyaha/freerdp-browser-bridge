@@ -32,6 +32,8 @@ export function standaloneReleaseManifest(receipts) {
   )
     invalid();
   const { version, sourceCommit } = receipts[0];
+  const candidateOnly = receipts[0].candidateOnly ?? false;
+  if (typeof candidateOnly !== 'boolean') invalid();
   if (!/^[a-f0-9]{40}$/.test(sourceCommit ?? '')) invalid();
   const platforms = new Set(['win32-x64', 'linux-x64-gnu']);
   const files = [];
@@ -41,6 +43,7 @@ export function standaloneReleaseManifest(receipts) {
       receipt.schema !== 1 ||
       receipt.version !== version ||
       receipt.sourceCommit !== sourceCommit ||
+      (receipt.candidateOnly ?? false) !== candidateOnly ||
       !platforms.delete(receipt.platform)
     )
       invalid();
@@ -86,6 +89,7 @@ export function standaloneReleaseManifest(receipts) {
     schema: 1,
     version,
     sourceCommit,
+    candidateOnly,
     files: files.sort((a, b) => a.name.localeCompare(b.name, 'en')),
     acceptance: acceptance.sort((a, b) =>
       a.platform.localeCompare(b.platform, 'en'),
@@ -106,6 +110,7 @@ export function parseStandaloneReleaseManifest(value) {
     schema: 1,
     version: value.version,
     sourceCommit: value.sourceCommit,
+    candidateOnly: value.candidateOnly,
     platform,
     files: value.files.filter((file) =>
       standaloneReleaseNames(value.version, platform).includes(file?.name),

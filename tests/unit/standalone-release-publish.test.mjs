@@ -101,6 +101,23 @@ test('standalone publisher preserves core assets, publishes manifest last, skips
         .alreadyPublished,
       true,
     );
+    for (const platform of ['win32-x64', 'linux-x64-gnu']) {
+      const path = join(root, 'standalone-' + platform + '.json');
+      const receipt = JSON.parse(await readFile(path, 'utf8'));
+      receipt.candidateOnly = true;
+      await writeFile(path, JSON.stringify(receipt));
+    }
+    await assert.rejects(
+      publishStandaloneRelease(options),
+      /STANDALONE_RELEASE_PUBLISH_SOURCE_REFUSED/,
+    );
+    assert.equal(writes.length, 9);
+    for (const platform of ['win32-x64', 'linux-x64-gnu']) {
+      const path = join(root, 'standalone-' + platform + '.json');
+      const receipt = JSON.parse(await readFile(path, 'utf8'));
+      receipt.candidateOnly = false;
+      await writeFile(path, JSON.stringify(receipt));
+    }
     release.assets[1].digest = 'sha256:' + 'd'.repeat(64);
     await assert.rejects(
       publishStandaloneRelease(options),

@@ -65,6 +65,7 @@ const receipt = {
   schema: 1,
   version: report.version,
   sourceCommit: report.sourceCommit,
+  candidateOnly: report.candidateOnly,
   platform,
   files,
   acceptance: {

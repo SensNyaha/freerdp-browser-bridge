@@ -7,6 +7,7 @@ console.log(
   JSON.stringify({
     version: manifest.version,
     sourceCommit: manifest.sourceCommit,
+    candidateOnly: manifest.candidateOnly,
     files: manifest.files.length,
     platforms: manifest.acceptance,
   }),

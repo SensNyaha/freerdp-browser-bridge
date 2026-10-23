@@ -2,6 +2,7 @@ import { readFile, mkdir, writeFile, appendFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { standaloneReleasePreflight } from './release-preflight.mjs';
+import { readStandaloneCandidatePointer } from './candidate-release.mjs';
 
 export function standaloneUpgradeSeed(version) {
   if (!/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(version ?? ''))
@@ -24,6 +25,12 @@ if (
   const metadata = JSON.parse(await readFile('package.json', 'utf8'));
   const seed = standaloneUpgradeSeed(metadata.version);
   const publish = process.env.STANDALONE_PUBLISH === 'true';
+  const candidate = await readStandaloneCandidatePointer(
+    resolve('.'),
+    metadata.version,
+  );
+  if (publish && candidate)
+    throw new Error('STANDALONE_CANDIDATE_PUBLICATION_REFUSED');
   if (
     process.env.GITHUB_ACTIONS !== 'true' ||
     process.env.GITHUB_REPOSITORY !== 'SensNyaha/freerdp-browser-bridge' ||

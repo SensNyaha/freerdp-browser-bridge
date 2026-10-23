@@ -296,6 +296,20 @@ system trust and packages no CA into the service. The input must be one regular,
 bounded public CA certificate. Do not disable TLS verification or supply a
 private key here.
 
+Before initial npm publication, CI can optionally consume exact candidate
+archives from an explicitly named draft prerelease. The temporary public
+`packaging/standalone/candidate-release.json` contains only schema/version/tag/
+source commit, never credentials. The annotated source tag, unchanged application
+inputs, archive sizes/SHA-256 and production-lock SHA-512 are checked before
+assembly. A separate download step receives the repository token; npm and
+packagers do not. See [iteration 452](ITERATION_452.md).
+
+These receipts/manifests are marked `candidateOnly`; neither the main/master
+plan nor the final publisher accepts them for publication. Remove the pointer
+and rebuild from verified public registry inputs for final delivery. Candidate
+CI transport and upgrade acceptance require their own actual run; unit tests
+alone do not prove that profile.
+
 ## Required distribution acceptance
 
 The prepared [standalone release workflow](../.github/workflows/standalone-release.yml)

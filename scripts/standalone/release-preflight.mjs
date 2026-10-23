@@ -104,7 +104,7 @@ export async function standaloneReleasePreflight(
   const manifest = parseStandaloneReleaseManifest(
     JSON.parse(bytes.toString('utf8')),
   );
-  if (manifest.version !== version)
+  if (manifest.version !== version || manifest.candidateOnly)
     throw new Error('STANDALONE_RELEASE_MANIFEST_READBACK_INVALID');
   const matches = (asset, file) =>
     asset?.state === 'uploaded' &&

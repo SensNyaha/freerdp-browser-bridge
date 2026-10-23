@@ -3,11 +3,17 @@ import { writeFile, appendFile, readdir } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
 
 const windows = process.platform === 'win32';
-const production = process.argv[2] === '--production';
+const args = process.argv.slice(2);
+const production = args[0] === '--production';
+if (production) args.shift();
+const candidateDirectory =
+  args.length === 2 && args[0] === '--candidate-archives'
+    ? resolve(args[1])
+    : undefined;
 if (
   !['win32', 'linux'].includes(process.platform) ||
   process.versions.node !== '24.21.0' ||
-  (process.argv.length !== 2 && !(production && process.argv.length === 3))
+  (args.length !== 0 && !candidateDirectory)
 )
   throw new Error('STANDALONE_CI_BUILD_USAGE');
 const platform = windows ? 'win32-x64' : 'linux-x64-gnu';
@@ -46,6 +52,7 @@ const archive = await node('scripts/fetch-standalone-input.mjs', [
 const payload = await node('scripts/build-standalone-payload.mjs', [
   archive.path,
   ...(windows ? [resolve('build/standalone-host/bridge-service.exe')] : []),
+  ...(candidateDirectory ? ['--candidate-archives', candidateDirectory] : []),
 ]);
 let artifact;
 if (windows) {
@@ -93,6 +100,7 @@ const portable = await node('scripts/build-standalone-portable.mjs', [
 const report = {
   ...artifact,
   platform,
+  candidateOnly: payload.candidateOnly,
   payload: payload.payload,
   portableArchive: portable.output,
   portableRoot: dirname(portable.output),

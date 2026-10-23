@@ -9,6 +9,7 @@ import {
 import { resolve, join, dirname, basename } from 'node:path';
 import { standaloneUpgradeSeed } from './release-plan.mjs';
 import { standalonePayloadInventory } from './payload.mjs';
+import { readStandaloneCandidatePointer } from './candidate-release.mjs';
 
 const windows = process.platform === 'win32';
 if (
@@ -61,11 +62,22 @@ async function node(script, args = [], cwd = repository) {
     throw new Error('STANDALONE_RELEASE_BUILD_RECEIPT_INVALID');
   }
 }
-await node('scripts/standalone/ci-build.mjs', ['--production']);
-const report = JSON.parse(await readFile('build/standalone-ci.json', 'utf8'));
 const metadata = JSON.parse(await readFile('package.json', 'utf8'));
+const pointer = await readStandaloneCandidatePointer(
+  repository,
+  metadata.version,
+);
+const candidateDirectory = process.env.STANDALONE_CANDIDATE_ARCHIVES;
+if (Boolean(pointer) !== Boolean(candidateDirectory))
+  throw new Error('STANDALONE_CANDIDATE_INPUT_REQUIRED');
+await node('scripts/standalone/ci-build.mjs', [
+  '--production',
+  ...(candidateDirectory ? ['--candidate-archives', candidateDirectory] : []),
+]);
+const report = JSON.parse(await readFile('build/standalone-ci.json', 'utf8'));
 if (
   report.version !== metadata.version ||
+  report.candidateOnly !== Boolean(pointer) ||
   (windows && report.development !== false)
 )
   throw new Error('STANDALONE_RELEASE_BUILD_VERSION_INVALID');

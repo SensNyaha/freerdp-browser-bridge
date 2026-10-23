@@ -24,6 +24,7 @@ export async function publishStandaloneRelease({
   const manifest = await readStandaloneReleaseReceipts(directory);
   if (
     Number(manifest.version.split('.')[2]) < 5 ||
+    manifest.candidateOnly ||
     manifest.sourceCommit !== environment.GITHUB_SHA
   )
     throw new Error('STANDALONE_RELEASE_PUBLISH_SOURCE_REFUSED');
