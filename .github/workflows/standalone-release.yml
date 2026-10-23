@@ -27,7 +27,7 @@ permissions:
   contents: read
 concurrency:
   group: standalone-release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
 jobs:
   plan:
     runs-on: ubuntu-24.04

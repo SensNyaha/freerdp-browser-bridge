@@ -81,6 +81,11 @@ root process has no DAC override. Debug artifact **12526534226** proves the
 ownership mismatch. The build container now runs as the actual runner UID/GID;
 capability drop, no-new-privileges and disabled runtime network stay in place.
 This corrected identity requires the following actual hosted verification.
+Superseded feature-only release validations may now be cancelled by a newer
+push, avoiding a wait behind an already failed Linux matrix while an unchanged
+Windows case repeats. Main/master publication retains non-cancelling serialization;
+its uploads must never be interrupted automatically. The first Windows baseline
+success remains independently recorded above.
 
 Full local Linux check for `1a4fe88` passes **972 / 90 skips / zero failures**,
 child exit zero, in 257 seconds. Receipt/log:
