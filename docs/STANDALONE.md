@@ -140,6 +140,11 @@ Linux payload. The Windows payload must include the pinned
 [WiX Util notice](../packaging/standalone/notices/README.md). Use a short build
 path for WiX native CAB tooling. Neither tool installs the produced package.
 
+The following [pinned-assembly/hosted gate](ITERATION_446.md) uses clean Windows
+and Linux CI machines for actual service installation and removal. Its prepared
+workflow has no publication permission and does not accept installation until
+the real run passes.
+
 ## Required distribution acceptance
 
 Portable Windows ZIP/Linux TGZ, Windows service/MSI, Astra DEB and RED OS RPM

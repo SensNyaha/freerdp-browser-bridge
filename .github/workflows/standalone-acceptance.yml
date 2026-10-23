@@ -1,0 +1,69 @@
+name: Standalone installed-service acceptance
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/standalone-installers-0.2.5]
+    paths:
+      - apps/standalone/**
+      - packaging/standalone/**
+      - scripts/build-standalone-*
+      - scripts/fetch-standalone-input.mjs
+      - scripts/standalone/**
+      - tests/packaging/standalone-*
+      - tests/unit/standalone-*
+      - .github/workflows/standalone-acceptance.yml
+permissions:
+  contents: read
+concurrency:
+  group: standalone-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  installed:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - name: Pinned build tools
+        run: npm install --global npm@11.19.0 pnpm@10.11.0 --ignore-scripts --no-audit --no-fund --logs-max=0
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm build
+      - run: node --test tests/unit/standalone-production-lock.test.mjs tests/unit/standalone-payload.test.mjs tests/unit/standalone-msi.test.mjs
+      - name: Windows service host
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./scripts/build-standalone-host.ps1
+      - name: Build development installer from pinned public inputs
+        id: installer
+        run: node --use-system-ca scripts/standalone/ci-build.mjs
+      - name: Windows private runtime and supervisor
+        if: runner.os == 'Windows'
+        run: node --test tests/packaging/standalone-windows.test.mjs
+        env:
+          BRIDGE_STANDALONE_TEST_ROOT: ${{ steps.installer.outputs.payload }}
+      - name: Install, native lifecycle, crash recovery, reinstall and uninstall on Windows
+        if: runner.os == 'Windows'
+        run: node tests/packaging/standalone-installed.mjs
+      - name: Install, native lifecycle, crash recovery, reinstall and uninstall with systemd
+        if: runner.os == 'Linux'
+        run: sudo --preserve-env=GITHUB_ACTIONS "$(command -v node)" tests/packaging/standalone-installed.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: standalone-development-${{ runner.os }}-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            build/standalone-ci.json
+            build/standalone-installed.json
+            build/standalone-*.log
+            ${{ steps.installer.outputs.artifact }}
