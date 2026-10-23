@@ -160,3 +160,13 @@ push. The previous separate standalone repository plan is superseded in TODO
 and the current delivery docs; no such repository is created. Original scope
 still includes real OS installer acceptance, cleanup of project-owned unused
 artifacts and consolidation of documentation after earlier release gates.
+
+Final complete Linux check after all 18 delivery regressions passes **870 /
+164 skips / zero failures**, total 1034 (`iteration-440-check-linux-final.log`).
+This complements Windows foundation 914/117, Windows linked 968/62, focused
+linked checks on both OSes, fresh MSVC foundation and GCC 8.3 CTest above.
+The isolated registry-only publication worktree is prepared at
+`build/npm-publication-441`, branch `feature/npm-publication-0.2.4`, from
+immutable original v0.2.4. It contains only a binary tool junction; no account
+config or local npm-package override is copied. Actual consumers are not
+credited before public installation/tests run.
