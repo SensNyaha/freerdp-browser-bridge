@@ -85,3 +85,26 @@ test timeout. The service-host binary hash remains exactly unchanged at
 Changed JS passes lint/format. Corrected hosted Windows upgrade/cross-job
 verification, final registry-only publication and stable installer delivery
 remain open gates.
+
+## Final exact-consumer and full-check repeats
+
+The following full Windows repeat completes successfully: **1002 / 63 skips /
+zero fail**, child exit zero, 619 seconds. Together with Linux **977 / 90**,
+both final logs/receipts are `build/iteration-454-check-{win32,linux}-final.*`.
+These complete source checks precede only the subsequent explicit packaging
+observer/dependency fixture and Fastify consumer-helper changes; their narrow
+actual runtime checks remain separately recorded.
+
+Fastify's helper now accepts `--npm --archives <accepted-directory>`, verifies
+each real archive's metadata and reuses exact JS/runtime bytes. The first Windows
+attempt times out during npm install; its previous helper inherits account
+registry configuration and default network retries. The final recipe uses
+empty user/global config, explicit official registry URLs, system CA validation
+and bounded fetch/retries. Both Windows and Linux exact-archive consumers pass
+strict TS, native build/TLS, same-port HTTP/WS isolation, binary media and cleanup.
+Receipts are `build/fastify-consumer-K7jMEw/receipt.json` (Windows) and
+`/work/build/release-453-consumers/build/fastify-consumer-jNCPn1/receipt.json`
+(owned Linux viewer container). Every reported SHA-256 matches the accepted
+0.2.5 audit; this supersedes the earlier repacked-JS limitation for those final
+two runs. Changed helper passes lint/format; no archive is repacked or changed.
+All four adapters now have exact 0.2.5 external consumers on both platforms.
