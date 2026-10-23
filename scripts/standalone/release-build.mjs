@@ -146,6 +146,8 @@ if (!windows) {
   ]);
   const id = await command('docker', [
     'create',
+    '--user',
+    String(process.getuid()) + ':' + String(process.getgid()),
     '--network',
     'none',
     '--cap-drop',

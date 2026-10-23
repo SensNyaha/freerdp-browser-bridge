@@ -72,6 +72,21 @@ explicit recipe path. The old Windows job remains running independently; no
 publication occurs from this feature branch. The corrected Linux path still
 requires an actual follow-up run.
 
+In that first run, Windows completes successfully: production MSI, private
+supervisor/process-tree checks, portable verification, installed lifecycle and
+collection. Publication remains skipped. The follow-up **40012757751** builds
+the RPM image and copies inputs, then Linux fails with EACCES creating its build
+directory: copied source belongs to the runner UID, while the capability-dropped
+root process has no DAC override. Debug artifact **12526534226** proves the
+ownership mismatch. The build container now runs as the actual runner UID/GID;
+capability drop, no-new-privileges and disabled runtime network stay in place.
+This corrected identity requires the following actual hosted verification.
+
+Full local Linux check for `1a4fe88` passes **972 / 90 skips / zero failures**,
+child exit zero, in 257 seconds. Receipt/log:
+`build/iteration-451-check-linux-final.{json,log}`. Windows full check remains
+live at this checkpoint. These Node results do not accept the pending RPM step.
+
 The pipeline currently requires public version-matching npm inputs. Prepublication
 Windows upgrade verification still needs candidate-archive transport into CI;
 the local offline candidate assembler alone does not accept that missing gate.
