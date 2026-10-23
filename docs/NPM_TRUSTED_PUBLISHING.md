@@ -33,7 +33,11 @@ OIDC workflow публикует без этих локальных browser prom
 | `SensNyaha/freerdp-bridge-nestjs` | `@freerdp-bridge/nestjs` |
 | `SensNyaha/freerdp-bridge-http` | `@freerdp-bridge/http` |
 | `SensNyaha/freerdp-bridge-express` | `@freerdp-bridge/express` |
-| `SensNyaha/freerdp-bridge-standalone` | OS installers; отдельный GitHub Releases workflow |
+
+Standalone OS installers по последнему решению пользователя добавляются в
+Releases существующего `SensNyaha/freerdp-browser-bridge`, с автоматическим
+workflow на push в `master`/`main`. Отдельный standalone repository больше не
+планируется. Этот GitHub installer workflow не является npm Trusted Publisher.
 
 В текущем релизном checkout Git remote отсутствует. npm manifests 0.2.4 и
 генератор native package получают соответствующие `repository.url` до
@@ -73,9 +77,14 @@ npm trust github @freerdp-bridge/fastify --repo SensNyaha/freerdp-bridge-fastify
 возможность пропуска повторной 2FA на следующие пять минут для этой настройки.
 Остальные привязки можно создавать циклом, оставляя рекомендуемый интервал
 2 секунды. Не создавайте дубликаты и не удаляйте существующие trust configs
-автоматически. Сейчас команды настройки не выполнены: remote repositories и
-workflow уже запушены, фактические trust/hosted publish gates ещё остаются.
-Успешный dry-run не проверяет реальную OIDC identity.
+автоматически. Настройка девяти существующих packages теперь выполнена:
+после официального login владельца `sensnyaha` и одного подтверждения доступа
+официальный `npm trust github --allow-publish --yes` создаёт и read-back
+проверяет все девять привязок. Пяти минутный skip-window позволяет выполнить
+это без новой очереди per-package browser approvals. Express создаётся
+отдельно как новое имя и ещё не имеет этой привязки.
+[Фактический checkpoint](ITERATION_440.md). Dry-run сам по себе не является
+проверкой реальной OIDC identity.
 
 ## Уже загруженные версии
 
@@ -90,7 +99,14 @@ OIDC. Их нельзя автоматически approve, перепублик
 незавершённый gate, а не успешная публикация полного 0.2.3 набора.
 
 0.2.4: [локальная приёмка десяти точных архивов](ITERATION_438.md) проходит
-с верным GitHub owner и repository metadata; новая ручная stage-очередь не открывается. Реальная OIDC
-публикация подтверждается только после пользовательского push, настройки
-publisher и успешного hosted workflow. GitHub Releases для standalone должны
+с верным GitHub owner и repository metadata. Core GitHub Release опубликован,
+обе hosted npm validate-матрицы проходят; фактический OIDC publish первой
+Windows runtime версии подтверждён независимым public integrity. Остальная
+публикация ещё продолжается: registry visibility запаздывает относительно
+accepted CLI upload; неизменяемый workflow останавливается до public read-back.
+Нельзя объявлять весь набор опубликованным на основании первого пакета.
+После отдельного разрешения пользователя создан только один stage нового
+Express имени `df36c3b9-2b42-4849-9736-956495651a31`; exact integrity совпадает,
+approve ожидает публичных core/HTTP dependencies. Старая 0.2.3 очередь не
+возобновлена. GitHub Releases для standalone должны
 генерироваться отдельно на push в `master`/`main`, согласно запросу пользователя.

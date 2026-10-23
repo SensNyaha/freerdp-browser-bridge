@@ -82,11 +82,13 @@ main branches and annotated v0.2.4 tags are now pushed without force; remote
 commits and public npm workflow bytes match. GitHub Releases and npm trust/OIDC
 publication remain separate. [Delivery evidence](docs/ITERATION_439.md).
 
-Additional user requirement, 2026-10-23: standalone installers also get a
-separate GitHub delivery repository with a Releases workflow that generates
-releases automatically on push to `master` or `main`. Prepare and verify the
-local repository/workflow; hosted execution and release publication require
-the user's subsequent push and must be reported separately from local checks.
+Superseding user requirement, 2026-10-23: standalone installers belong in
+GitHub Releases of the existing **SensNyaha/freerdp-browser-bridge**, with a
+workflow generating releases automatically on push to `master` or `main`.
+This replaces the earlier separate-standalone-repository plan. Prepare and
+verify the installer/workflow in core; actual hosted installer builds and
+published releases remain distinct from local checks. Do not create a new
+standalone repository for the superseded plan.
 
 Additional user direction, 2026-10-23: stop the rapid per-package npm approval
 queue and prepare direct npm Trusted Publishing through GitHub Actions/OIDC.

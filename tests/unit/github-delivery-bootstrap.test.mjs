@@ -138,6 +138,8 @@ function remoteFixture(value, initial) {
           };
         else if (endpoint.endsWith('/releases/tags/v0.2.4'))
           return state.release ? response(state.release) : response({}, 404);
+        else if (endpoint.includes('/releases?'))
+          return response(state.release ? [state.release] : []);
         else
           body = {
             full_name: value.repository,
@@ -213,6 +215,37 @@ test('Delivery bootstrap resumes missing draft assets without replacing existing
     await assert.rejects(bootstrapRelease(value, fixture.options));
     assert.equal(fixture.state.commands.length, 0);
   }
+});
+
+test('Delivery bootstrap finds authenticated drafts omitted by the by-tag endpoint and refuses duplicate draft tags', async () => {
+  const value = item(),
+    fixture = remoteFixture(value, { ...release(value), assets: [] });
+  const read = fixture.options.apiCommand;
+  fixture.options.apiCommand = async (args) => {
+    if (
+      args[2].endsWith('/releases/tags/v0.2.4') &&
+      fixture.state.release.draft
+    )
+      return response({}, 404);
+    return read(args);
+  };
+  await bootstrapRelease(value, fixture.options);
+  assert.deepEqual(
+    fixture.state.commands.map((args) => args[1]),
+    ['upload', 'edit'],
+  );
+  const duplicate = remoteFixture(value);
+  // Keep all other endpoints valid while forcing only release discovery missing.
+  const original = remoteFixture(value).options.apiCommand;
+  duplicate.options.apiCommand = async (args) =>
+    args[2].includes('/releases?')
+      ? response([release(value), release(value)])
+      : original(args);
+  await assert.rejects(
+    bootstrapRelease(value, duplicate.options),
+    (error) => error.code === 'DELIVERY_GH_RELEASE_DUPLICATE',
+  );
+  assert.equal(duplicate.state.commands.length, 0);
 });
 
 test('Delivery bootstrap does not retry uncertain uploads or publish the draft after failed digest verification', async () => {

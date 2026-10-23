@@ -171,12 +171,14 @@ export async function publishAccepted({
       fail('DELIVERY_NPM_PUBLISH_UNCONFIRMED');
     }
     let verified = false;
-    for (let attempt = 0; attempt < 8; attempt++) {
+    // The real registry can accept an OIDC upload several minutes before the
+    // version endpoint exposes it. Poll reads only; never repeat the write.
+    for (let attempt = 0; attempt < 60; attempt++) {
       if (exact(await metadata(item.name, item.version), item)) {
         verified = true;
         break;
       }
-      await pause(1500);
+      await pause(5000);
     }
     const record = {
       name: item.name,
