@@ -67,6 +67,12 @@ for the target OS families. Subsequent clarification: prepare the local Git
 repositories and report their directories; the user will push/synchronize
 GitHub themselves.
 
+Additional user requirement, 2026-10-23: standalone installers also get a
+separate GitHub delivery repository with a Releases workflow that generates
+releases automatically on push to `master` or `main`. Prepare and verify the
+local repository/workflow; hosted execution and release publication require
+the user's subsequent push and must be reported separately from local checks.
+
 Additional user requirement, 2026-10-22: every npm package release includes its
 own explanatory root README: purpose, installation, dependencies/platforms,
 usage, limitations and licenses. This applies to shared JS packages and both
