@@ -1,6 +1,6 @@
 {
   "name": "@freerdp-bridge/api",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "license": "MIT",
   "engines": {
     "node": ">=24 <25"
@@ -38,5 +38,9 @@
   },
   "devDependencies": {
     "@types/ws": "8.18.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SensNyaha/freerdp-browser-bridge.git"
   }
 }

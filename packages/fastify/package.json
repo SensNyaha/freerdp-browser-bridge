@@ -1,6 +1,6 @@
 {
   "name": "@freerdp-bridge/fastify",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -29,5 +29,9 @@
   },
   "peerDependencies": {
     "fastify": "^5.12.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SensNyaha/freerdp-bridge-fastify.git"
   }
 }

@@ -4,12 +4,24 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.2.4 — 2026-10-23
+
+Accepted local Express release with root middleware and same-port HTTP/HTTPS/WS.
+Full checks: Windows 951 pass / 61 skips, Linux 928 / 87, zero failures. Fresh
+CTest passes MSVC 36/36 and exact GCC 8.3 37/37. Ten exact README-complete
+archives pass bounded audit, SensNyaha repository binding and npm dry-run;
+all four external consumers/reinstall matrices and all eight versioned
+Astra/RED OS Express desktop profiles pass. Public npm/GitHub/OIDC execution
+remains pending; manual approvals are stopped by user direction.
+[Local release acceptance](docs/ITERATION_438.md).
+
 - Implement Express 5 root middleware on the accepted HTTP core, retaining
   strict raw-body limits, selective upgrades and joined lifecycle. Add public
   type/browser exports, independent consumer checks and real-project guides.
   Feature checks pass Windows 951/61 and Linux 928/87, external/reinstall 11/11
-  on both and all eight actual Astra/RED OS desktop profiles. Aligned release
-  remains pending; manifests retain stable 0.2.3. [Evidence](docs/ITERATION_435.md).
+  on both and all eight actual Astra/RED OS desktop profiles. Separate aligned
+  release checks also pass; public publication remains separate.
+  [Feature evidence](docs/ITERATION_435.md).
 
 ## 0.2.3 — 2026-10-23
 
@@ -35,6 +47,10 @@ native CTest: MSVC 36/36, exact GCC 8.3 37/37. Full checks: Windows 932 passed /
 uninstall/reinstall and eight versioned Astra/RED OS H.264/JPEG profiles pass.
 Eight README-complete archives pass integrity audits and npm dry-run; registry
 publication is pending. [Release acceptance](docs/ITERATION_429.md).
+
+Subsequent publication is complete: all eight exact archives are public and
+fresh registry-only Windows/Linux NestJS consumers pass strict TypeScript and
+15/15 each. [Publication acceptance](docs/ITERATION_437.md).
 
 - Add NestJS module on its separate feature branch: DI
   configuration, shared-port Express/FastifyAdapter routing and existing native

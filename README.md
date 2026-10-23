@@ -1,8 +1,9 @@
 # FreeRDP → Browser Bridge
 
-Latest stable: **0.2.3**, tag `v0.2.3` (node:http/node:https embedding,
-explicit HTTP/WS dispatch and aligned native npm runtimes).
-[Release evidence and limits](docs/ITERATION_433.md). NestJS 0.2.2, Fastify 0.2.1 and the immutable `v0.2.0`
+Latest accepted local stable: **0.2.4**, tag `v0.2.4` (Express root middleware,
+same-port HTTP/HTTPS/WS and aligned native runtimes). npm/GitHub publication
+remains separate. [Release evidence and limits](docs/ITERATION_438.md).
+HTTP 0.2.3, NestJS 0.2.2, Fastify 0.2.1 and the immutable `v0.2.0`
 compiler/Astra/RED OS baseline is preserved.
 The original named practical MVP remains the immutable `v0.1.0` baseline.
 
@@ -18,8 +19,8 @@ make an untagged feature build the stable release.
 Delivery planning: [npm/Fastify on the existing application port and standalone
 release options](docs/DISTRIBUTION_OPTIONS.md). Fastify is accepted in 0.2.1
 after separate feature/release branches; it is absent from 0.2.0.
-NestJS **0.2.2** and built-in `node:http` **0.2.3** are accepted; Express
-**0.2.4** follows on its own feature/release branches.
+NestJS **0.2.2**, built-in `node:http` **0.2.3** and Express **0.2.4** are
+accepted after their own feature/release branches.
 Real-project usage documentation belongs in `docs/`; the
 [Fastify contract](docs/FASTIFY_PLUGIN.md) and
 [real-project guide](docs/FASTIFY_USAGE.md) describe the accepted interface.
@@ -27,13 +28,19 @@ The [NestJS contract](docs/NESTJS_PLUGIN.md) and
 [NestJS real-project guide](docs/NESTJS_USAGE.md) cover both host adapters.
 The [HTTP contract](docs/NODE_HTTP_PLUGIN.md) and
 [HTTP real-project guide](docs/NODE_HTTP_USAGE.md) cover raw HTTP/HTTPS servers.
-The developing [Express contract](docs/EXPRESS_PLUGIN.md) and
+The [Express contract](docs/EXPRESS_PLUGIN.md) and
 [Express project guide](docs/EXPRESS_USAGE.md) describe root middleware mounting,
 body-parser order and same-port upgrades for the 0.2.4 target.
 [Host identity/cookie boundaries](docs/HOST_AUTHENTICATION.md) apply to all adapters.
-Eight exact 0.2.2 npm archives are staged and download-verified, awaiting owner
-2FA approval. Nine exact 0.2.3 archives also pass release acceptance and are
-staged/download-verified; owner approval and public registry checks remain pending.
+[Framework selection and additional-adapter assessment](docs/FRAMEWORK_SELECTION.md)
+distinguish tested adapters from unverified integration possibilities.
+All eight **0.2.2** npm packages are public at exact accepted integrity;
+fresh Windows/Linux registry-only NestJS consumers pass 15/15 each.
+[Publication evidence](docs/ITERATION_437.md). For 0.2.3, both runtimes are public
+and seven JS stages remain pending. The user stops manual approvals; future
+publishing uses the prepared [GitHub OIDC direction](docs/NPM_TRUSTED_PUBLISHING.md)
+under GitHub owner **SensNyaha**. Ten exact 0.2.4 archives pass local acceptance;
+hosted repository/publisher setup and public 0.2.4 remain pending.
 All seven **0.2.1** packages are published on npm. Fresh Windows and Linux
 projects install the public dependency graph and pass strict TypeScript,
 same-port HTTP/WS and actual native TLS-refusal checks.

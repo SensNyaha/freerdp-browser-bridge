@@ -8,6 +8,11 @@ versioned native/consumer/RDP checks. [Контракт](NODE_HTTP_PLUGIN.md),
 
 ## Роли и установка
 
+Общие `api`, `node`, `config` и `protocol` npm устанавливает автоматически
+как зависимости HTTP adapter; отдельные `npm install` для них не нужны.
+Native runtime своей ОС устанавливается явно.
+[Цепочка и причина публикации](NPM_PUBLISHING.md#почему-публикуются-общие-js-пакеты).
+
 Node.js-приложение владеет HTTP(S) listener, TLS, identity, разрешением целевых
 подключений, своими маршрутами и WebSocket. Bridge подключает свой префикс к
 этому же порту, управляет сессиями и запускает один native worker на сессию.

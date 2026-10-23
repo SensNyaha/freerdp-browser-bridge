@@ -1,6 +1,6 @@
 {
   "name": "@freerdp-bridge/protocol",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "files": [
     "dist",
@@ -18,5 +18,9 @@
   "license": "MIT",
   "engines": {
     "node": ">=24 <25"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SensNyaha/freerdp-browser-bridge.git"
   }
 }

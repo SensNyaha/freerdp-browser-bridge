@@ -1,6 +1,7 @@
 # Встраивание bridge в настоящий Express-проект
 
-Целевой выпуск адаптера — **0.2.4**. До приёмки и публикации используйте
+Адаптер принят локально в **0.2.4**, tag `v0.2.4`;
+[release-проверки](ITERATION_438.md) проходят. До публичной npm-публикации используйте
 локальные архивы из соответствующего release-каталога; наличие документации
 не означает доступность этой версии в публичном npm. Статус находится в
 [TODO](../TODO.md), интерфейс — в [EXPRESS_PLUGIN.md](EXPRESS_PLUGIN.md).
@@ -11,7 +12,7 @@
 После публикации установка в существующем проекте:
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.2.4
+npm install express@5.3.0 @freerdp-bridge/express@0.2.4 @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -21,9 +22,14 @@ npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 Для JavaScript компилятор не нужен. В `package.json` приложения задайте
 `"type": "module"`. Не копируйте workspace-исходники в `node_modules`.
 
-На Windows x64 и Linux x64 glibc `resolveNativeRuntime()` выбирает optional
-пакет нужной платформы, проверяет версию, FreeRDP pin, inventory и hashes.
-Не отключайте optional dependencies при установке native варианта. При
+На Windows x64 вместо Linux runtime явно установите
+`@freerdp-bridge/runtime-win32-x64@0.2.4`. На Windows x64 и Linux x64 glibc
+`resolveNativeRuntime()` выбирает уже установленный пакет нужной платформы,
+проверяет версию, FreeRDP pin, inventory и hashes. Resolver не скачивает runtime.
+Общие JS-пакеты http/api/node/config/protocol устанавливаются автоматически
+как зависимости adapter; отдельных команд для них не требуется.
+[Зачем публикуются общие пакеты](NPM_PUBLISHING.md#почему-публикуются-общие-js-пакеты).
+При
 собственной сборке можно явно передать `worker`, но это отдельная проверяемая
 конфигурация. Для production из принятых runtime-пакетов не нужны CMake,
 компилятор, глобальный FreeRDP или дополнительный HTTP-порт.
