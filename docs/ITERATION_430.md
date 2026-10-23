@@ -65,3 +65,11 @@ Final owner approval, public exact integrity and fresh registry-only
 Windows/Linux consumers remain pending. Staging is concrete publication
 preparation and does not complete that gate. The pending owner interaction is
 an npm account requirement, not a sandbox or automatic approval-review block.
+
+## Superseding public acceptance
+
+All eight existing stages are subsequently approved by the owner. Public
+integrity is exact for 8/8 and fresh registry-only Windows/Linux NestJS
+consumers pass strict TypeScript and all 15 installed-package cases on each.
+[Iteration 437](ITERATION_437.md) supersedes the pending-publication status above;
+the original attempts/timeouts and staged-only checkpoint remain preserved.
