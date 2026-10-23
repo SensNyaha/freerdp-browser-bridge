@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { once } from 'node:events';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -19,6 +20,15 @@ const workerPath = resolve(
   process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
   'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
 );
+const linked =
+  JSON.parse(
+    execFileSync(workerPath, ['--capabilities'], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 5000,
+      maxBuffer: 65536,
+    }),
+  ).capabilities.connectCore === true;
 const origin = 'https://app.example.test';
 const config = {
   target: { host: 'synthetic.invalid' },
@@ -295,57 +305,65 @@ test(
   },
 );
 
-test(
-  'Fastify plugin / actual native worker: default factory, strict TLS rejection and joined retirement on the host port',
-  { timeout: 20000 },
-  async () => {
-    const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-plugin-native-'));
-    const endpoint = await createRdpTlsFixture();
-    const app = Fastify();
-    let bridge;
-    app.register(rdpBridgePlugin, {
-      prefix: '/rdp',
-      worker: { workerPath, runtimeRoot },
-      authenticate: () => ({ id: 'synthetic-native-owner' }),
-      onReady: (value) => {
-        bridge = value;
+async function verifyNativeFailure(expectedCode) {
+  const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-plugin-native-'));
+  const endpoint = await createRdpTlsFixture();
+  const app = Fastify();
+  let bridge;
+  app.register(rdpBridgePlugin, {
+    prefix: '/rdp',
+    worker: { workerPath, runtimeRoot },
+    authenticate: () => ({ id: 'synthetic-native-owner' }),
+    onReady: (value) => {
+      bridge = value;
+    },
+  });
+  try {
+    await app.listen({ host: '127.0.0.1', port: 0 });
+    const result = await app.inject({
+      method: 'POST',
+      url: '/rdp/v1/sessions',
+      payload: {
+        target: { host: '127.0.0.1', port: endpoint.port },
+        auth: {
+          username: 'synthetic',
+          password: 'private synthetic fixture',
+        },
+        security: { protocol: 'tls', certificatePolicy: 'strict' },
+        timeouts: { connectMs: 5000 },
       },
     });
-    try {
-      await app.listen({ host: '127.0.0.1', port: 0 });
-      const result = await app.inject({
-        method: 'POST',
-        url: '/rdp/v1/sessions',
-        payload: {
-          target: { host: '127.0.0.1', port: endpoint.port },
-          auth: {
-            username: 'synthetic',
-            password: 'private synthetic fixture',
-          },
-          security: { protocol: 'tls', certificatePolicy: 'strict' },
-          timeouts: { connectMs: 5000 },
-        },
-      });
-      assert.equal(result.statusCode, 202, result.body);
-      const { sessionId } = result.json();
-      let final;
-      const deadline = performance.now() + 7000;
-      do {
-        final = (await app.inject('/rdp/v1/sessions/' + sessionId)).json();
-        if (final.state === 'failed') break;
-        if (performance.now() > deadline)
-          throw new Error('Native plugin outcome deadline');
-        await new Promise((done) => setTimeout(done, 10));
-      } while (true);
-      assert.equal(final.error.code, 'RDP_CERTIFICATE_REJECTED');
-      assert.equal(endpoint.applicationBytes, 0);
-      await bridge.close();
-      assert.equal(bridge.diagnostics().activeSessions, 0);
-      assert.deepEqual(await readdir(runtimeRoot), []);
-    } finally {
-      await app.close();
-      await endpoint.close();
-      await rm(runtimeRoot, { recursive: true, force: true });
-    }
-  },
+    assert.equal(result.statusCode, 202, result.body);
+    const { sessionId } = result.json();
+    let final;
+    const deadline = performance.now() + 7000;
+    do {
+      final = (await app.inject('/rdp/v1/sessions/' + sessionId)).json();
+      if (final.state === 'failed') break;
+      if (performance.now() > deadline)
+        throw new Error('Native plugin outcome deadline');
+      await new Promise((done) => setTimeout(done, 10));
+    } while (true);
+    assert.equal(final.error.code, expectedCode);
+    assert.equal(endpoint.applicationBytes, 0);
+    await bridge.close();
+    assert.equal(bridge.diagnostics().activeSessions, 0);
+    assert.deepEqual(await readdir(runtimeRoot), []);
+  } finally {
+    await app.close();
+    await endpoint.close();
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+}
+
+test(
+  'Fastify plugin / actual linked native worker: default factory, strict TLS rejection and joined retirement on the host port',
+  { timeout: 20000, skip: !linked },
+  () => verifyNativeFailure('RDP_CERTIFICATE_REJECTED'),
+);
+
+test(
+  'Fastify plugin / actual native foundation worker: unlinked connect refusal and joined retirement on the host port',
+  { timeout: 20000, skip: linked },
+  () => verifyNativeFailure('RDP_NOT_IMPLEMENTED'),
 );
