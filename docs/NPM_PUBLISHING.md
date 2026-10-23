@@ -1,5 +1,47 @@
 # Публикация проверенных npm-архивов
 
+## Почему публикуются общие JS-пакеты
+
+Потребитель устанавливает выбранный adapter и native runtime своей ОС.
+Общие JS-пакеты npm устанавливает автоматически как транзитивные зависимости;
+перечислять их вручную в обычной команде установки не требуется.
+
+```text
+fastify / nestjs / http adapter → api → node → config / protocol
+                                      └────→ config / protocol
+express adapter → http → тот же общий граф
+```
+
+| Пакет | Для чего нужен |
+| --- | --- |
+| `@freerdp-bridge/protocol` | Общие протокольные контракты и типы |
+| `@freerdp-bridge/config` | Схемы и проверка конфигурации подключения |
+| `@freerdp-bridge/node` | Управление native worker, приватный IPC и lifecycle |
+| `@freerdp-bridge/api` | Общие HTTP/WS routes, сессии, identity/ownership и diagnostics |
+
+Они должны быть опубликованы: готовый adapter ссылается на них через обычные
+`dependencies`. Если требуемой версии зависимости нет в registry, установка
+adapter в чужом проекте не завершится. При `pnpm pack` workspace-ссылки
+превращаются в точные product versions; `workspace:*` не является требованием
+к проекту потребителя. Общая версия всех bridge-пакетов следует принятой
+[version policy](VERSIONING.md), даже когда код отдельного слоя не менялся.
+
+Пример уже опубликованного 0.2.1 для Linux:
+
+```sh
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.1 @freerdp-bridge/runtime-linux-x64-gnu@0.2.1
+npm ls @freerdp-bridge/api @freerdp-bridge/node @freerdp-bridge/config @freerdp-bridge/protocol
+```
+
+Runtime — отдельная **явная** platform dependency; JS adapter не скачивает
+его автоматически и resolver не выполняет установку. Windows выбирает
+`runtime-win32-x64` вместо `runtime-linux-x64-gnu`. Публикация обеих платформ
+позволяет потребителям выбрать нужную, а не устанавливать их одновременно.
+
+Это проверяется registry-only consumer: его начальный manifest задаёт только
+выбранный adapter, native runtime и host/dev dependencies, без прямого
+перечисления четырёх внутренних JS-модулей и без локальных overrides.
+
 ## Новый принятый набор 0.2.3
 
 node:http/node:https 0.2.3 проходит aligned release-приёмку;

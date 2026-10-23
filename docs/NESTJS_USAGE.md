@@ -30,6 +30,11 @@ native worker другого релиза. Один JS tarball не публик
 
 ## Подключение модуля
 
+Общие `api`, `node`, `config` и `protocol` npm устанавливает транзитивно.
+В обычной registry-установке указывайте adapter и явный native runtime своей ОС;
+перечислять внутренние JS-пакеты не требуется.
+[Зачем они публикуются](NPM_PUBLISHING.md#почему-публикуются-общие-js-пакеты).
+
 Пример предполагает существующие `HostConfigModule`, `HostConfigService`,
 `HostAuthModule` и `HostAuthService` приложения. Они не поставляются bridge.
 

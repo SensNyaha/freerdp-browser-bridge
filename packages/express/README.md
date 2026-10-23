@@ -9,17 +9,21 @@ The adapter delegates bounded routing and lifecycle to `@freerdp-bridge/http`.
 ## Installation
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.2.3
+npm install express@5.3.0 @freerdp-bridge/express@0.2.3 @freerdp-bridge/runtime-linux-x64-gnu@0.2.3
 ```
 
 This is development for Express delivery 0.2.4. The workspace retains stable
 0.2.3 until release preparation; this new adapter is not published at 0.2.3.
+Windows x64 selects `@freerdp-bridge/runtime-win32-x64` of the same version
+instead. Install the runtime explicitly; it is not downloaded by the resolver.
+Shared JS packages (http/api/node/config/protocol) install automatically as
+transitive dependencies and do not need separate commands.
 
 ## Requirements
 
 Node.js 24, ESM, Express 5 (initial test profile 5.3.0), HTTP/1.1 with WebSocket
 upgrades, and a linked native runtime for Windows x64 or Linux x64 glibc. Use
-`resolveNativeRuntime` to select the matching optional native package, or supply
+`resolveNativeRuntime` to select the matching installed native package, or supply
 an explicitly built worker through `worker`. Production installs do not need
 CMake, a compiler, global FreeRDP or a second bridge listener.
 
