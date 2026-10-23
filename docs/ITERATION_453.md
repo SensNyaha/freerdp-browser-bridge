@@ -59,3 +59,12 @@ The user's 2026-10-24 goal update continues development after final cleanup/docs
 new feature branches, stable checks before merge, scope-appropriate versioning
 and coordinated npm/standalone releases. This supersedes the previous stop
 instruction without skipping the current release gates.
+
+Official npm dry-run also passes all ten exact archive integrity checks, without
+publication (`build/release-453-npm-dry-run.json`). Candidate source `de2018f`
+and annotated `standalone-candidate-0.2.5-de2018fbb95e` are pushed separately from
+stable tags. Draft prerelease **422280431** contains the six exact core/runtime
+inputs, every server digest verified; it remains private/unpublished. Receipt:
+`build/iteration-453-candidate-draft.json`. A temporary public pointer now enables
+actual prepublication download/upgrade CI; it contains no token or credentials.
+The draft is a build input, not a stable release acceptance or npm publication.
