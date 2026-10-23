@@ -9,3 +9,10 @@ target_compile_definitions(bridge-service PRIVATE UNICODE _UNICODE WIN32_LEAN_AN
 target_compile_options(bridge-service PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
 set_property(TARGET bridge-service PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 target_link_libraries(bridge-service PRIVATE advapi32)
+
+# A test observer only; build-standalone-payload copies bridge-service.exe alone.
+add_executable(bridge-process-inventory process-inventory.cpp)
+target_compile_features(bridge-process-inventory PRIVATE cxx_std_20)
+target_compile_definitions(bridge-process-inventory PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(bridge-process-inventory PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+set_property(TARGET bridge-process-inventory PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

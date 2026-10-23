@@ -37,13 +37,8 @@ function processSnapshot() {
   // Only public process IDs/parents/names; never command lines or environment.
   return JSON.parse(
     execFileSync(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        "@(Get-CimInstance Win32_Process -Filter \"Name='node.exe' OR Name='rdp-worker.exe' OR Name='bridge-service.exe'\" | Select-Object ProcessId,ParentProcessId,Name) | ConvertTo-Json -Compress",
-      ],
+      resolve('build/standalone-host/bridge-process-inventory.exe'),
+      [],
       {
         encoding: 'utf8',
         windowsHide: true,

@@ -161,9 +161,7 @@ test(
         ).status,
         401,
       );
-      const require = createRequire(
-        new URL('../../apps/standalone/package.json', import.meta.url),
-      );
+      const require = createRequire(join(root, 'service/package.json'));
       const { SignJWT } = await import(
         pathToFileURL(require.resolve('jose')).href
       );
