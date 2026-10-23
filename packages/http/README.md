@@ -15,7 +15,7 @@ native runtime use one product version.
 Install the published release with the matching native runtime:
 
 ```sh
-npm install @freerdp-bridge/http@0.2.3 @freerdp-bridge/runtime-linux-x64-gnu@0.2.3
+npm install @freerdp-bridge/http@0.2.4 @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
 ```
 
 Windows x64 uses `runtime-win32-x64` instead. All bridge versions must match.

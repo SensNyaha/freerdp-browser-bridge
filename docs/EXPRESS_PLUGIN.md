@@ -1,8 +1,9 @@
 # Express adapter contract
 
-Target delivery: **0.2.4**, `@freerdp-bridge/express`. During feature development
-the workspace retains stable 0.2.3. This document describes the implemented
-interface; release/publication acceptance is recorded separately in TODO.
+Target delivery: **0.2.4**, `@freerdp-bridge/express`. Feature `3c13ff6` is
+accepted; [aligned release preparation](ITERATION_436.md) is in progress.
+This document describes the implemented interface; release/publication
+acceptance is recorded separately in TODO.
 
 `createRdpBridgeExpress(server, options)` prepares the bridge against an existing
 Node.js 24 HTTP/1.1 `http.Server` or `https.Server`. It returns a Promise of:
