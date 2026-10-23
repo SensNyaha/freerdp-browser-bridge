@@ -160,3 +160,12 @@ repository/default-branch metadata and exact public npm workflow contents.
 All five match. Core push starts existing foundation CI; its actual run is
 tracked separately, not credited as npm validation. No npm workflow, release
 asset upload, trust setting or npm 0.2.4 publication has run yet.
+
+Actual core CI run `39915569156` is inspected after push. The separate GCC 8.3
+foundation run `39915569139` completes successfully. In the general foundation
+run, native builds/CTest pass on both Ubuntu compiler jobs, but `pnpm check`
+fails; matrix fail-fast cancels the Windows job. Sanitizer CTest passes and its
+Node tests are still running at observation. The general run is not accepted
+as green; exact logs/root cause and a forward correction remain required.
+Evidence: `build/iteration-439-core-ci.json`. No old tag is moved or archive
+replaced to hide the failure.
