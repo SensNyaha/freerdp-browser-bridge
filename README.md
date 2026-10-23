@@ -27,10 +27,13 @@ The [NestJS contract](docs/NESTJS_PLUGIN.md) and
 [NestJS real-project guide](docs/NESTJS_USAGE.md) cover both host adapters.
 The [HTTP contract](docs/NODE_HTTP_PLUGIN.md) and
 [HTTP real-project guide](docs/NODE_HTTP_USAGE.md) cover raw HTTP/HTTPS servers.
+The developing [Express contract](docs/EXPRESS_PLUGIN.md) and
+[Express project guide](docs/EXPRESS_USAGE.md) describe root middleware mounting,
+body-parser order and same-port upgrades for the 0.2.4 target.
 [Host identity/cookie boundaries](docs/HOST_AUTHENTICATION.md) apply to all adapters.
 Eight exact 0.2.2 npm archives are staged and download-verified, awaiting owner
-2FA approval. Nine exact 0.2.3 archives pass release acceptance; registry
-publication remains separate and pending.
+2FA approval. Nine exact 0.2.3 archives also pass release acceptance and are
+staged/download-verified; owner approval and public registry checks remain pending.
 All seven **0.2.1** packages are published on npm. Fresh Windows and Linux
 projects install the public dependency graph and pass strict TypeScript,
 same-port HTTP/WS and actual native TLS-refusal checks.
