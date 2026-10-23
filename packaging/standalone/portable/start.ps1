@@ -17,8 +17,12 @@ try {
     $RuntimeRoot = Join-Path $parent 'portable-runtime'
   }
   foreach ($path in @($Configuration, $RuntimeRoot)) {
-    if (![IO.Path]::IsPathRooted($path) -or $path.StartsWith('\\')) { throw 'Local absolute paths required' }
+    if ($path -notmatch '^[A-Za-z]:[\\/]') { throw 'Local absolute paths required' }
   }
+  # Use the same fully qualified paths for access checks and the child. A
+  # drive-relative PowerShell provider path can resolve differently in .NET.
+  $Configuration = [IO.Path]::GetFullPath($Configuration)
+  $RuntimeRoot = [IO.Path]::GetFullPath($RuntimeRoot)
   if (!(Test-Path -LiteralPath $RuntimeRoot)) {
     $failure = 'RUNTIME_CREATE'
     $helper = Join-Path $PSScriptRoot 'service\node_modules\@freerdp-bridge\runtime-win32-x64\runtime\bin\rdp-runtime-directory.exe'

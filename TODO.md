@@ -124,8 +124,11 @@ TLS, crash recovery, running/stopped reinstall and retained rpmsave on uninstall
 [iteration 447](docs/ITERATION_447.md). These remain prototype 0.2.4 artifacts;
 Astra 1.7.5 DEB service identity/native TLS/crash recovery/running reinstall
 and retained config on uninstall also pass. Full checks: Windows 988/63 skips,
-Linux 963/90, zero failures. Newer-version upgrade, real standalone desktops and
-new hosted checks remain separate gates. The temporary approval-review usage
+Linux 963/90, zero failures. The next block passes all eight real standalone
+desktop profiles (Windows portable and installed Astra/RED OS, H.264/JPEG),
+including resize, reattachment and empty-runtime cleanup; [iteration 448](docs/ITERATION_448.md).
+The preceding `992997c` also passes all three hosted workflows. Newer-version
+upgrade and aligned 0.2.5 release remain separate gates. The temporary approval-review usage
 failure is resolved through the normal review path, and the probe passes.
 
 Clarified user scope, 2026-10-23: retain the standalone web server and OS

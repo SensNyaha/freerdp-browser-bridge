@@ -234,6 +234,32 @@ test(
         assert.equal(refused, true);
         assert.equal((await lstat(runtime)).mode & 0o777, 0o755);
       } else {
+        for (const badPath of [
+          'C:public-config.json',
+          '\\public-config.json',
+          'relative.json',
+        ]) {
+          const rejected = await run(
+            command,
+            [
+              '-NoProfile',
+              '-NonInteractive',
+              '-File',
+              join(root, 'start.ps1'),
+              '-Configuration',
+              badPath,
+              '-RuntimeRoot',
+              runtime,
+            ],
+            { cwd: scratch, env, timeout: 10000, windowsHide: true },
+          ).then(
+            () => undefined,
+            (error) => error,
+          );
+          assert.equal(rejected?.code, 1);
+          assert.match(rejected.stderr, /STANDALONE_PORTABLE_PATHS_FAILED/);
+          assert.deepEqual(await readdir(runtime), []);
+        }
         // Modify only this owned directory's DACL; PowerShell Set-Acl may also
         // attempt a SACL write requiring SeSecurityPrivilege on ordinary users.
         await run(

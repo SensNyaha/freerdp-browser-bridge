@@ -18,6 +18,7 @@ Windows x64, from PowerShell:
 ./start.ps1 -Configuration C:\bridge-config\bridge.json -RuntimeRoot C:\bridge-runtime\portable
 ```
 
+Custom paths must be fully qualified drive paths, as in the example above.
 The default runtime is private per-user LocalAppData. A custom runtime's parent
 must already exist. The launcher creates a private directory when absent and
 refuses a reparse point, foreign owner or permissive existing ACL. It never

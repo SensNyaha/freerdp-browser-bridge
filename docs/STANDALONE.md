@@ -248,7 +248,14 @@ ordinary developer execution, a different OS, or pre-existing program/config
 and service in owned-lab mode. Tests cover identity/JWT, native TLS, crash
 recovery, running reinstall, retained public config and uninstall. The RED OS
 case also checks that reinstall preserves an administrator-stopped service.
-Real desktops/devices and newer-version upgrade are separate acceptance gates.
+The repeatable `tests/packaging/standalone-rdp.mjs` driver additionally passes
+eight actual desktop profiles through Windows portable and installed Astra/RED OS
+services with H.264/JPEG, resize, reattachment and joined cleanup;
+[iteration 448](ITERATION_448.md). It runs from Windows with Edge and the explicit
+owned-lab inputs; it is not part of a credential-free hosted job. Its Linux
+backend requires an already pinned SSH key and an exact package path/hash.
+The pure sudo-control tests run in hosted acceptance without SSH or credentials.
+Devices, newer-version upgrade and final aligned 0.2.5 remain separate gates.
 
 DEB/MSI uninstall retain the public `bridge.json` configuration. RPM moves a
 modified config to `bridge.json.rpmsave`; administrators should review and restore

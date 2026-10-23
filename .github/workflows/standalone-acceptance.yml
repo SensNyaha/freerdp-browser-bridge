@@ -38,6 +38,8 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm build
       - run: node --test tests/unit/standalone-production-lock.test.mjs tests/unit/standalone-payload.test.mjs tests/unit/standalone-msi.test.mjs
+      - name: Owned-lab private control protocol (no SSH or credentials)
+        run: python tests/packaging/standalone-lab-protocol.py
       - name: Windows service host
         if: runner.os == 'Windows'
         shell: powershell
