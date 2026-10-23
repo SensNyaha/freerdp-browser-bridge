@@ -58,7 +58,15 @@ async function invoke(command, args, timeout = 30000) {
   } finally {
     clearTimeout(timer);
   }
-  if (code !== 0) throw new Error('STANDALONE_INSTALLED_COMMAND_FAILED');
+  if (code !== 0) {
+    // These commands carry only fixed service names, public package/config paths
+    // and PIDs. Session credentials/JWT are used exclusively by in-memory fetch.
+    await writeFile(
+      'build/standalone-command-failure.log',
+      JSON.stringify({ command, exitCode: code }) + '\n' + output,
+    );
+    throw new Error('STANDALONE_INSTALLED_COMMAND_FAILED');
+  }
   return output.trim();
 }
 const ps = (code) =>
