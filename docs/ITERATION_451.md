@@ -95,6 +95,24 @@ child exit zero, in 257 seconds. Receipt/log:
 `build/iteration-451-check-linux-final.{json,log}`. Windows full check remains
 live at this checkpoint. These Node results do not accept the pending RPM step.
 
+The complete Windows check subsequently passes **997 / 63 skips / zero fail**,
+child exit zero, in 661 seconds. Log/receipt:
+`build/iteration-451-check-win32-final.{json,log}`. Both full source checks cover
+the `1a4fe88` Node/history/release-guard block; later changes concern the isolated
+RPM execution identity and CI scheduling, with their own narrow/hosted checks.
+Native code has not changed and no new native CTest result is claimed here.
+
+The corrected release workflow at `0d0342a` is run **40014337454**. Linux job
+**120622610412** completes successfully: production DEB/RPM/portable assembly,
+independent extraction, portable native lifecycle, systemd install/recovery/
+reinstall/remove and collection of its four file receipts/source companion.
+It uses the non-root runner build identity with the original sandbox restrictions.
+Its Windows job **120622610431** and final cross-job verification remain running
+at this checkpoint. The earlier Windows job **120615766847** already succeeds
+for the unchanged Windows build/acceptance path. No feature publication occurs.
+These are still prototype 0.2.4 builds without an earlier standalone version,
+so they do not accept the two-version 0.2.5 upgrade.
+
 The pipeline currently requires public version-matching npm inputs. Prepublication
 Windows upgrade verification still needs candidate-archive transport into CI;
 the local offline candidate assembler alone does not accept that missing gate.
