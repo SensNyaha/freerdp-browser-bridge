@@ -12,11 +12,21 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
   (void)inspect_pdu(b, true, 16384);
   const std::size_t maximum = 128 + (size ? data[0] : 0);
   const auto inspected = inspect_pdu(b, false, maximum);
+  auto normalized = b;
+  if (inspected) {
+    std::size_t declared = 0;
+    for (unsigned i = 0; i < 4; ++i)
+      declared |= std::size_t{b[4 + i]} << (8 * i);
+    normalized = b.first(8 + declared);
+  }
   const std::array<std::uint8_t, 8> refused{5, 0, 2, 0, 0, 0, 0, 0};
   ClipboardIngress owner(
       [&](auto complete) {
-        const auto expected =
-            inspected && inspected->quota_refused ? ::bridge::compat::span<const std::uint8_t>(refused) : b;
+        if (!inspected)
+          std::abort();
+        const auto expected = inspected->quota_refused
+                                  ? ::bridge::compat::span<const std::uint8_t>(refused)
+                                  : normalized;
         if (!std::equal(complete.begin(), complete.end(), expected.begin(), expected.end()))
           std::abort();
         return true;

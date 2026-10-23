@@ -62,3 +62,77 @@ queues. Actual Trusted Publishing, GitHub Release assets, public npm 0.2.4,
 registry-only consumers, old pending 0.2.3 stages and standalone remain separate
 open gates. Final project artifact cleanup and documentation consolidation
 follow the user's requested sequence after those earlier deliveries.
+
+## Subsequent hosted failures and exact reproducer
+
+Run `39917594525` finishes: both Ubuntu builds/full checks pass, while Windows
+fails because browser fixtures default to absent build/bundled rather than
+the actual build/foundation. CI now explicitly sets BRIDGE_TEST_BINARY_DIR
+for its full check. Sanitizer Node tests pass after the profile correction,
+then clipboard-ingress-fuzz aborts in its own comparison: the oracle expects
+the original XRDP trailer even though production ingress intentionally strips
+the validated zero DWORD before forwarding.
+
+The exact hosted 48-byte input is captured from its public base64 reproducer
+`AgAAACQAAAAAAAAAAAAAAAAAAwABAPsAAAAAAAAAAP////8AAAAAAAAAAAAAAAAA`.
+Using immutable v0.2.4 oracle source with GCC 8.3 gives exit 134; the corrected
+oracle gives exit zero (`iteration-440-fuzz-exact-replay-corrected.log`).
+The first diagnostic incorrectly attempted git show in the source-only Linux
+checkout; that attempt is retained and not counted as proof. The corrected
+replay extracts the authority source in the actual original Git repository.
+
+The oracle now demands valid inspection, compares exactly the normalized
+declared body and retains allocation/close bounds. Production ingress is
+unchanged. The captured input is added to the fuzz corpus and a native test
+verifies every nonempty split forwards exactly 44 bytes and frees allocations.
+Rebuilt GCC 8.3 foundation CTest passes 20/20. Fresh isolated MSVC foundation
+`build/native-clean-zR42jW` passes CTest 19/19, lifecycle 16/1; source hash
+`12ba1c5e13facbf96dd14b4e15567fc8e08f2573fad38f4e43725f2fcdb6b403`.
+Full Windows check against this fresh foundation passes 914/117 skips/zero
+failures (`iteration-440-check-win32-foundation-final.log`).
+
+Remote feature continuation `b67d472` starts actual runs `39920657907` and
+`39920657917`. GCC 8.3 passes; both Ubuntu compiler jobs pass; sanitizer fuzz
+and Windows completion remain to be recorded at this checkpoint. Main and all
+accepted tags/archives are unchanged. Do not merge on an incomplete run.
+
+## Actual npm trust, core Release and first OIDC publication
+
+The owner explicitly confirms readiness for official npm login. Login succeeds
+as sensnyaha; npm trust listing requires one additional official browser 2FA.
+Within the documented skip-window, nine existing packages receive exact
+GitHub/file bindings with direct createPackage permission and are read-back
+verified. Receipt: `iteration-440-npm-trust-verification.json`. No long-lived
+publish token, bypass flag or per-package manual publish queue is introduced.
+
+Core GitHub Release ID 421573323, tag v0.2.4, is actually published through the
+guarded bootstrap state machine using GitHub REST with the existing system
+credential only in memory/HTTPS headers. Six immutable archives and the
+manifest have matching server SHA-256. Its initially hidden draft is found
+through authenticated release listing and resumed, not recreated. New tests
+cover this real API behavior and duplicate draft refusal.
+
+Actual npm run `39920657127` validates both windows-2025 and ubuntu-24.04, then
+publishes runtime-win32-x64 through OIDC. The original short registry poll ends
+before public visibility; a later independent unauthenticated registry read
+confirms exact accepted SHA-512. Packument records publication at
+2026-10-23T07:56:47.933Z. Thus one real automatic OIDC publication is established,
+not merely a configured trust. It does not prove completion of all packages.
+
+After that exact public read and terminal failure status, failed-job rerun
+skips the matching Windows runtime and accepts the Linux upload; it again
+stops at short visibility timeout. Remaining packages and Linux public read
+remain unverified here. Future publisher code waits up to five minutes using
+reads only and never repeats a write in one run; its template allows the full
+bounded sequence. A delayed-read regression proves one upload followed by
+17 metadata reads, not a second publish. The existing immutable tag's older
+poll code is not silently changed. All 18 delivery tests pass Windows/Linux;
+logs `iteration-440-delivery-tests-{win32,linux}-final.log`.
+
+The user separately authorizes exactly one initial Express approve. Only its
+accepted archive is staged as new package bootstrap, stage ID
+df36c3b9-2b42-4849-9736-956495651a31, exact integrity verified. No approve occurs
+before public core/HTTP dependencies; no old 0.2.3 stage is approved. Receipt:
+`iteration-440-express-stage.json`. Express trust/approve/public consumers,
+remaining OIDC publications, standalone, final cleanup and documentation
+consolidation remain open.
