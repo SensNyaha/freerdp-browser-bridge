@@ -23,14 +23,16 @@ Plugin владеет сессиями, одноразовыми attach tokens �
 
 ## Установка и native runtime
 
-Установите точную опубликованную версию:
+Текущий согласованный набор **0.2.4** полностью опубликован. Чистые
+Windows/Linux consumers проходят strict TypeScript, HTTP/WS, assets и native
+TLS/lifecycle. [Публикация](ITERATION_441.md). Установка:
 
 ```sh
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.1
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.4
 # Выберите один native runtime той же версии для ОС сервера приложения:
-npm install @freerdp-bridge/runtime-linux-x64-gnu@0.2.1
+npm install @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
 # Windows x64 вместо Linux runtime:
-# npm install @freerdp-bridge/runtime-win32-x64@0.2.1
+# npm install @freerdp-bridge/runtime-win32-x64@0.2.4
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -204,7 +206,9 @@ app.register(rdpBridgePlugin, {
   ...options,
   prefix: '/rdp',
   upgradeMode: 'manual',
-  onReady(handle) { bridge = handle; },
+  onReady(handle) {
+    bridge = handle;
+  },
 });
 app.server.on('upgrade', (request, socket, head) => {
   if (bridge?.handleUpgrade(request, socket, head)) return;

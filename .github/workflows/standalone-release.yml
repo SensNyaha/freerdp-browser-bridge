@@ -1,0 +1,197 @@
+name: Standalone release
+on:
+  push:
+    branches: [main, master, feature/standalone-installers-0.2.5, release/0.2.5]
+    paths:
+      - apps/**
+      - packages/**
+      - native/**
+      - packaging/standalone/**
+      - scripts/standalone/**
+      - scripts/build-standalone-*
+      - scripts/fetch-standalone-input.mjs
+      - scripts/github-delivery/**
+      - tests/packaging/standalone-*
+      - tests/unit/standalone-*
+      - tests/unit/github-delivery-*
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/standalone-release.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Append verified installers to the existing core release (main/master only)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: standalone-release-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      skip: ${{ steps.plan.outputs.skip }}
+      version: ${{ steps.plan.outputs.version }}
+      seed-ref: ${{ steps.plan.outputs.seed-ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - id: plan
+        run: node scripts/standalone/release-plan.mjs
+        env:
+          STANDALONE_PUBLISH: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || inputs.publish }}
+  build:
+    needs: plan
+    if: needs.plan.outputs.skip != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - name: Pinned JavaScript build tools
+        run: npm install --global npm@11.19.0 pnpm@10.11.0 --ignore-scripts --no-audit --no-fund --logs-max=0
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm build
+      - name: Release and lifecycle guards
+        run: node --test tests/unit/standalone-release-artifacts.test.mjs tests/unit/standalone-release-publish.test.mjs tests/unit/standalone-production-lock.test.mjs tests/unit/standalone-msi.test.mjs
+      - name: Private sudo protocol without lab access
+        run: python tests/packaging/standalone-lab-protocol.py
+      - name: Checkout immutable previous-version source
+        if: needs.plan.outputs.seed-ref != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.seed-ref }}
+          path: build/upgrade-source
+          persist-credentials: false
+      - name: Build previous-version private service from reused package cache
+        if: needs.plan.outputs.seed-ref != ''
+        run: |
+          pnpm --dir build/upgrade-source install --offline --frozen-lockfile --ignore-scripts
+          pnpm --dir build/upgrade-source build
+      - name: Windows supervisor
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./scripts/build-standalone-host.ps1
+      - name: Previous-version Windows supervisor
+        if: runner.os == 'Windows' && needs.plan.outputs.seed-ref != ''
+        shell: powershell
+        run: ./build/upgrade-source/scripts/build-standalone-host.ps1
+      - name: Linux package inspectors
+        if: runner.os == 'Linux'
+        run: sudo apt-get -o APT::Update::Error-Mode=any update && sudo apt-get install -y rpm rpm2cpio cpio
+      - name: Optional hash-pinned prepublication candidate inputs
+        id: candidates
+        run: node scripts/standalone/candidate-release.mjs
+      - name: Production namespace, portable formats, RPM and previous-version seed
+        id: build
+        run: node scripts/standalone/release-build.mjs
+        env:
+          STANDALONE_CANDIDATE_ARCHIVES: ${{ steps.candidates.outputs.directory }}
+      - name: Initialize the Windows OpenSSL test tool
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: "& 'C:\\Program Files\\Git\\usr\\bin\\openssl.exe' version"
+      - name: Windows private runtime and supervisor process tree
+        if: runner.os == 'Windows'
+        run: node --test tests/packaging/standalone-windows.test.mjs
+        env:
+          BRIDGE_STANDALONE_TEST_ROOT: ${{ steps.build.outputs.payload }}
+      - name: Relocated portable archive inventory, native lifecycle and joined shutdown
+        run: node --test tests/packaging/standalone-portable.test.mjs
+        env:
+          BRIDGE_PORTABLE_TEST_ROOT: ${{ steps.build.outputs.portable-root }}
+      - name: DEB independent extraction and protected metadata
+        if: runner.os == 'Linux'
+        run: node --test tests/packaging/standalone-deb.test.mjs
+        env:
+          BRIDGE_DEB_TEST_ROOT: ${{ steps.build.outputs.installer-root }}
+      - name: RPM independent header and complete extracted inventory
+        if: runner.os == 'Linux'
+        run: node --test tests/packaging/standalone-rpm.test.mjs
+        env:
+          BRIDGE_RPM_TEST_ROOT: ${{ steps.build.outputs.rpm-root }}
+      - name: Windows installed identity, upgrade, old-worker retirement, crash recovery and uninstall
+        if: runner.os == 'Windows'
+        run: node tests/packaging/standalone-installed.mjs
+      - name: systemd installed identity, upgrade, old-worker retirement, crash recovery and uninstall
+        if: runner.os == 'Linux'
+        run: sudo --preserve-env=GITHUB_ACTIONS "$(command -v node)" tests/packaging/standalone-installed.mjs
+      - name: Collect only verified release files and receipts
+        id: files
+        run: node scripts/standalone/release-collect.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: standalone-release-${{ github.sha }}-${{ runner.os }}
+          path: ${{ steps.files.outputs.directory }}/*
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: standalone-debug-${{ github.sha }}-${{ runner.os }}
+          path: |
+            build/standalone-ci.json
+            build/standalone-installed.json
+            build/standalone-*.log
+          if-no-files-found: warn
+          retention-days: 7
+  verify:
+    needs: [plan, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: standalone-release-${{ github.sha }}-*
+          path: build/standalone-publish
+          merge-multiple: true
+          digest-mismatch: error
+      - run: node scripts/standalone/release-verify.mjs build/standalone-publish
+  publish:
+    needs: [plan, verify]
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || inputs.publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: standalone-release-${{ github.sha }}-*
+          path: build/standalone-publish
+          merge-multiple: true
+          digest-mismatch: error
+      - run: node scripts/standalone/release-publish.mjs build/standalone-publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

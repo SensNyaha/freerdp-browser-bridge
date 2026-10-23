@@ -8,6 +8,7 @@
     { "path": "packages/fastify" },
     { "path": "packages/nestjs" },
     { "path": "packages/http" },
-    { "path": "packages/express" }
+    { "path": "packages/express" },
+    { "path": "apps/standalone" }
   ]
 }

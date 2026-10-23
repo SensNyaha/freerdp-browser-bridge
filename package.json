@@ -1,6 +1,6 @@
 {
   "name": "freerdp-node-bridge-workspace",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "engines": {

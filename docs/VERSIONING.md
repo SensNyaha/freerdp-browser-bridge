@@ -1,6 +1,20 @@
 # Product versions and release branches
 
-The latest stable release is **0.2.3**, identified by annotated immutable
+The latest accepted local release is **0.2.5**, standalone web service and
+portable/MSI/DEB/RPM distribution with aligned JS/native packages. Local/native,
+exact consumers, eight actual RDP profiles and all named installer-upgrade
+checks pass. Public npm and main/master installer delivery remain separately
+verified gates; [local release acceptance](ITERATION_455.md).
+
+Prior stable release is **0.2.4**, identified by annotated
+immutable `v0.2.4`: Express 5 root middleware with same-port HTTP/HTTPS/WS and
+aligned JS/native packages. Full checks, ten exact archives, external consumers
+and eight versioned Astra/RED OS Express profiles pass. All ten npm archives and
+five GitHub Releases are public, with successful hosted workflows and four fresh
+registry-only consumers on Windows/Linux. [Release acceptance](ITERATION_438.md),
+[publication](ITERATION_441.md).
+
+Prior stable **0.2.3** is identified by annotated immutable
 `v0.2.3`: node:http/node:https embedding with explicit HTTP/WS dispatch and
 matching JS/native packages. Final checks, exact consumers/reinstall and
 versioned Astra/RED OS desktop profiles pass. Registry publication is separate.
@@ -8,8 +22,10 @@ versioned Astra/RED OS desktop profiles pass. Registry publication is separate.
 
 Prior stable **0.2.2** is identified by annotated immutable
 `v0.2.2`: NestJS module with Express/FastifyAdapter and matching README-complete
-native/JS archives. Final checks and exact consumers pass; registry publication
-is separately pending. [Release acceptance](ITERATION_429.md).
+native/JS archives. Final checks and exact consumers pass; all eight archives
+are public at accepted integrity and fresh Windows/Linux registry-only
+consumers pass. [Release acceptance](ITERATION_429.md),
+[publication evidence](ITERATION_437.md).
 
 Prior stable **0.2.1** is identified by annotated immutable
 `v0.2.1`. It adds accepted same-port Fastify embedding and matching native npm
@@ -38,6 +54,14 @@ FreeRDP/other dependency pins and public/private wire schema versions are
 separate values. A product release never silently changes those contracts.
 
 ## Development and releases
+
+Superseding user direction, 2026-10-24: after the current standalone delivery,
+project cleanup and documentation consolidation, continue implementing TODO
+features. Each feature uses a new branch and merges only after stable required
+checks. Assign the next version according to scope/compatibility below and
+publish the accepted aligned npm packages and standalone distributions promptly.
+The earlier instruction to stop after cleanup is superseded. This does not
+relax native/real-profile/installer acceptance or immutable release protection.
 
 1. Develop each feature on its own branch. Record its tests and acceptance;
    merge only the completed, verified feature into shared `master`.
@@ -71,7 +95,7 @@ The user's subsequent adapter sequence fixes the next targets explicitly:
 `feature/node-http-0.2.3` and `feature/express-0.2.4`, respectively. Complete each adapter's required
 acceptance before merging and starting the next one. These are planned release
 numbers until their gates pass. Fastify 0.2.1, NestJS 0.2.2 and node:http 0.2.3
-now have accepted immutable tags; Express 0.2.4 remains next. The earlier request to stop after node:http is superseded by the explicit
+now have accepted immutable tags, as does Express 0.2.4. The earlier request to stop after node:http is superseded by the explicit
 Express addition. Other popular integrations require a concrete need and
 separate acceptance; other distribution formats remain future options. Unassigned formats after this reserved sequence follow the
 acceptance-order rule above.

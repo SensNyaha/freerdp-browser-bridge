@@ -452,6 +452,29 @@ test('GitHub delivery publisher skips identical bytes, refuses conflicting bytes
       (error) => error.code === 'DELIVERY_NPM_PUBLISH_UNCONFIRMED',
     );
     assert.equal(commands, 1);
+    commands = 0;
+    let readsAfterUpload = 0,
+      waited = 0;
+    const delayed = await publishAccepted({
+      ...options,
+      metadata: async (_name, version) =>
+        version === 'latest' || !commands
+          ? undefined
+          : ++readsAfterUpload > 16
+            ? publicVersion
+            : undefined,
+      run: () => {
+        commands++;
+        return { status: 0 };
+      },
+      pause: async (milliseconds) => {
+        waited += milliseconds;
+      },
+    });
+    assert.equal(commands, 1);
+    assert.equal(readsAfterUpload, 17);
+    assert.equal(waited, 80000);
+    assert.equal(delayed[0].publicExact, true);
   });
 });
 

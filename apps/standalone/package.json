@@ -1,0 +1,26 @@
+{
+  "name": "@freerdp-bridge/standalone",
+  "version": "0.2.5",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "files": [
+    "dist",
+    "web",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@freerdp-bridge/api": "workspace:*",
+    "@sinclair/typebox": "0.34.41",
+    "fastify": "5.12.5",
+    "jose": "6.2.13"
+  }
+}

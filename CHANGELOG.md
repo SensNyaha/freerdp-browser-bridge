@@ -2,7 +2,22 @@
 
 Product release versions follow [the version policy](docs/VERSIONING.md).
 
-## Unreleased
+## 0.2.5 — 2026-10-24
+
+Accepted local standalone web service release: bounded public config/JWT owner
+identity and approved RDP targets, private Node runtime, Windows supervisor,
+portable ZIP/TGZ and MSI/DEB/RPM service installers. Windows/Ubuntu/Astra/RED OS
+0.2.4→0.2.5 upgrade/lifecycle checks, eight actual desktop profiles and all four
+exact npm adapter consumers on both platforms pass. Full linked checks:
+Windows 1002/63 skips, Linux 977/90, zero failures; fresh native CTest36/37.
+Hosted source/sanitizer/fuzz and combined installer verification pass.
+
+Stable npm/GitHub/main installer publication and fresh registry-only consumers
+remain separate gates; the unstable candidate is not the stable release.
+[Local acceptance](docs/ITERATION_455.md), [service contract](docs/STANDALONE.md).
+The original full V1 TODO remains open. Following delivery, cleanup and docs
+consolidation, feature development continues in new tested/released branches
+under the user’s updated instruction.
 
 ## 0.2.4 — 2026-10-23
 
@@ -11,9 +26,13 @@ Full checks: Windows 951 pass / 61 skips, Linux 928 / 87, zero failures. Fresh
 CTest passes MSVC 36/36 and exact GCC 8.3 37/37. Ten exact README-complete
 archives pass bounded audit, SensNyaha repository binding and npm dry-run;
 all four external consumers/reinstall matrices and all eight versioned
-Astra/RED OS Express desktop profiles pass. Public npm/GitHub/OIDC execution
-remains pending; manual approvals are stopped by user direction.
-[Local release acceptance](docs/ITERATION_438.md).
+Astra/RED OS Express desktop profiles pass. All ten exact npm archives and five
+GitHub Releases are now public; hosted workflows and four fresh registry-only
+consumers pass Windows/Linux. Nine existing names publish via OIDC; Express
+uses its separately authorized initial approval and verified trust setup.
+The old 0.2.3 approval queue remains stopped.
+[Local release acceptance](docs/ITERATION_438.md),
+[publication acceptance](docs/ITERATION_441.md).
 
 - Implement Express 5 root middleware on the accepted HTTP core, retaining
   strict raw-body limits, selective upgrades and joined lifecycle. Add public

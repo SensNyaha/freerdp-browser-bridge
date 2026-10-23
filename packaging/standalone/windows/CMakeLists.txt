@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.25)
+project(bridge_service_host LANGUAGES CXX)
+if(NOT WIN32 OR NOT MSVC)
+  message(FATAL_ERROR "The Windows service host requires MSVC on Windows")
+endif()
+add_executable(bridge-service service-host.cpp)
+target_compile_features(bridge-service PRIVATE cxx_std_20)
+target_compile_definitions(bridge-service PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(bridge-service PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+set_property(TARGET bridge-service PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+target_link_libraries(bridge-service PRIVATE advapi32)
+
+# A test observer only; build-standalone-payload copies bridge-service.exe alone.
+add_executable(bridge-process-inventory process-inventory.cpp)
+target_compile_features(bridge-process-inventory PRIVATE cxx_std_20)
+target_compile_definitions(bridge-process-inventory PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(bridge-process-inventory PRIVATE /W4 /WX /permissive- /EHsc /utf-8)
+set_property(TARGET bridge-process-inventory PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

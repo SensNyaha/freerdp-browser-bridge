@@ -1,11 +1,21 @@
 # FreeRDP → Browser Bridge
 
-Latest accepted local stable: **0.2.4**, tag `v0.2.4` (Express root middleware,
-same-port HTTP/HTTPS/WS and aligned native runtimes). npm/GitHub publication
-remains separate. [Release evidence and limits](docs/ITERATION_438.md).
+Latest accepted local release: **0.2.5**, standalone web service with portable
+Windows/Linux distributions and MSI/DEB/RPM service installers. Full/native,
+exact consumers, eight real desktop profiles and Windows/Ubuntu/Astra/RED OS
+upgrade checks pass. [Local acceptance](docs/ITERATION_455.md). Stable 0.2.5
+npm/GitHub installer publication and registry-only verification remain separate.
+
+The latest complete public delivery is **0.2.4**, tag `v0.2.4` (Express root
+middleware, same-port HTTP/HTTPS/WS and aligned native runtimes). All ten npm packages and
+five GitHub Releases are public; four fresh Windows/Linux registry-only
+consumers pass. [Publication acceptance](docs/ITERATION_441.md),
+[release evidence and limits](docs/ITERATION_438.md).
 HTTP 0.2.3, NestJS 0.2.2, Fastify 0.2.1 and the immutable `v0.2.0`
 compiler/Astra/RED OS baseline is preserved.
 The original named practical MVP remains the immutable `v0.1.0` baseline.
+
+The separate test-candidate prerelease does not establish stable publication.
 
 Prepared: 2026-10-07  
 Target baseline: FreeRDP 3.32.1, Node.js 24 LTS, Linux x86_64 first
@@ -34,13 +44,18 @@ body-parser order and same-port upgrades for the 0.2.4 target.
 [Host identity/cookie boundaries](docs/HOST_AUTHENTICATION.md) apply to all adapters.
 [Framework selection and additional-adapter assessment](docs/FRAMEWORK_SELECTION.md)
 distinguish tested adapters from unverified integration possibilities.
+[Standalone service/installers](docs/STANDALONE.md) provide bounded JWT ownership,
+approved destinations and a private runtime; their current public-delivery gate
+is recorded in [0.2.5 acceptance](docs/ITERATION_455.md).
 All eight **0.2.2** npm packages are public at exact accepted integrity;
 fresh Windows/Linux registry-only NestJS consumers pass 15/15 each.
 [Publication evidence](docs/ITERATION_437.md). For 0.2.3, both runtimes are public
 and seven JS stages remain pending. The user stops manual approvals; future
 publishing uses the prepared [GitHub OIDC direction](docs/NPM_TRUSTED_PUBLISHING.md)
-under GitHub owner **SensNyaha**. Ten exact 0.2.4 archives pass local acceptance;
-hosted repository/publisher setup and public 0.2.4 remain pending.
+under GitHub owner **SensNyaha**. All ten exact 0.2.4 archives are public,
+five hosted publication workflows pass, and direct OIDC trust is configured.
+Express uses the separately authorized initial owner approval; its workflow
+then skips the matching public version. [Evidence](docs/ITERATION_441.md).
 All seven **0.2.1** packages are published on npm. Fresh Windows and Linux
 projects install the public dependency graph and pass strict TypeScript,
 same-port HTTP/WS and actual native TLS-refusal checks.

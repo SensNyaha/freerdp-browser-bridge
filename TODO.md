@@ -6,13 +6,24 @@ preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
-Latest accepted local stable is **0.2.4**, tag `v0.2.4`: Express 5 root middleware,
+Latest accepted local release is **0.2.5**, standalone web service and portable/
+MSI/DEB/RPM distribution. Full linked checks pass Windows 1002/63 and Linux
+977/90; fresh native CTest 36/37, all four exact consumers on both OSes, eight
+real desktop profiles and Windows/Ubuntu/Astra/RED OS upgrades pass. Source CI,
+sanitizers/fuzz and combined seven-file candidate verification pass. Stable
+npm/public registry-only and actual main/master installer delivery remain open;
+[acceptance](docs/ITERATION_455.md). No original full V1 feature is silently closed.
+
+Prior accepted local stable is **0.2.4**, tag `v0.2.4`: Express 5 root middleware,
 same-port HTTP/HTTPS/WS and aligned native runtimes. Full checks: Windows
 951 / 61 skips, Linux 928 / 87; fresh CTest 36/36 and 37/37. Ten exact archives
 pass audit/dry-run, four external consumers/reinstall matrices and eight
-versioned Astra/RED OS Express desktop profiles. npm/GitHub/OIDC setup remains
-separate and pending; no manual approval queue is restarted.
-[Release acceptance](docs/ITERATION_438.md).
+versioned Astra/RED OS Express desktop profiles. All ten exact npm archives and
+five GitHub Releases are public; hosted workflows and all four fresh Windows/Linux
+registry-only consumers pass. Nine names publish through OIDC; new Express uses
+the one separately authorized initial approve and has its trust read-back verified.
+The old 0.2.3 manual queue remains stopped.
+[Release acceptance](docs/ITERATION_438.md), [publication](docs/ITERATION_441.md).
 
 Prior stable is **0.2.3**, tag `v0.2.3`: node:http/node:https integration,
 explicit HTTP/WS dispatch and aligned native runtimes. Full checks: Windows
@@ -59,7 +70,7 @@ Updated user-selected adapter order, 2026-10-22:
 | 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; all seven npm packages published; exact public integrity and fresh Windows/Linux registry-only consumers pass; iteration 426 |
 | 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Accepted v0.2.2 and all eight npm archives public; exact registry integrity and Windows/Linux registry-only consumers strict TS + 15/15 pass; iterations 427–429 and 437 |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Accepted aligned v0.2.3 with full/native/exact-consumer/reinstall and eight real RDP profiles; both runtimes public, seven JS stages pending; manual approvals stopped, future direct OIDC requested; iterations 431–433 |
-| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Accepted local v0.2.4: full Windows 951/61, Linux 928/87; fresh CTest 36/36, 37/37; ten exact archives, all four consumers/reinstall and eight versioned real RDP profiles pass. Public npm/GitHub/OIDC remains pending; iterations 435–436 and 438 |
+| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Accepted local v0.2.4: full Windows 951/61, Linux 928/87; fresh CTest 36/36, 37/37; ten exact archives, all four consumers/reinstall and eight versioned real RDP profiles pass. All ten exact npm archives and five GitHub Releases public; hosted workflows and four fresh registry-only consumers pass on both OSes; iterations 435–436, 438 and 441 |
 
 The latest user decision adds Express 0.2.4 to the selected initial set. Other
 popular server integrations will be evaluated for concrete unmet requirements
@@ -76,11 +87,91 @@ for the target OS families. Subsequent clarification: prepare the local Git
 repositories and report their directories; the user will push/synchronize
 GitHub themselves.
 
-Additional user requirement, 2026-10-23: standalone installers also get a
-separate GitHub delivery repository with a Releases workflow that generates
-releases automatically on push to `master` or `main`. Prepare and verify the
-local repository/workflow; hosted execution and release publication require
-the user's subsequent push and must be reported separately from local checks.
+Subsequent explicit authorization, 2026-10-23: the user creates all five public
+SensNyaha repositories and asks the agent to push them. All five verified local
+main branches and annotated v0.2.4 tags are now pushed without force; remote
+commits and public npm workflow bytes match. GitHub Releases and npm trust/OIDC
+publication remain separate. [Delivery evidence](docs/ITERATION_439.md).
+
+Superseding user requirement, 2026-10-23: standalone installers belong in
+GitHub Releases of the existing **SensNyaha/freerdp-browser-bridge**, with a
+workflow generating releases automatically on push to `master` or `main`.
+This replaces the earlier separate-standalone-repository plan. Prepare and
+verify the installer/workflow in core; actual hosted installer builds and
+published releases remain distinct from local checks. Do not create a new
+standalone repository for the superseded plan.
+
+Standalone development starts in `feature/standalone-installers-0.2.5` after
+the completed public 0.2.4 delivery. The private bounded-config/JWT service
+passes complete Windows 976/63 skips and Linux 953/89 checks with actual linked
+native TLS refusal/cleanup. Manifests remain 0.2.4 until aligned release
+preparation. Portable packages, OS installers and auto-release remain pending;
+[contract](docs/STANDALONE.md), [service evidence](docs/ITERATION_442.md).
+The following browser/private-Node block passes complete Windows 978/63 skips
+and Linux 954/90 checks, actual Edge authenticated pagehide cleanup and the
+private-Node supervised CLI with a live native certificate prompt;
+[evidence](docs/ITERATION_443.md). Installed services and releases remain open.
+Windows supervisor compilation and 9/9 real private-Node/native process-tree,
+crash-recovery and foreign-data preservation cases pass; SCM/MSI is still pending.
+[Component evidence](docs/ITERATION_444.md).
+Development MSI/DEB artifacts build, independent archive/database checks pass,
+and the private Linux CLI passes as UID 1000. Full regression: Windows 981/63
+skips, Linux repeat 957/90, no failures. These are prototype 0.2.4 dependencies,
+not aligned 0.2.5 or installed SCM/systemd acceptance; [iteration 445](docs/ITERATION_445.md).
+The following pinned-assembly block passes the actual installed-service matrix
+on Windows Server 2025 and Ubuntu 24.04 at `4f3b886`: JWT/native TLS, non-root
+identity, crash recovery, same-version reinstall and uninstall. The common Linux
+stage also builds a real RPM whose header/cpio byte check passes. Astra/RED OS
+installed service, cross-version upgrade, real standalone RDP and final release
+remain separate; [iteration 446](docs/ITERATION_446.md).
+Full regression for this assembly/staging block passes Windows 985/63 skips
+and Linux 961/90, with zero failures; installed RPM/Astra/RED OS remain open.
+The next block proves relocated Windows ZIP/Linux TGZ with private Node/native
+TLS and joined shutdown, plus actual RED OS 7.3 RPM service identity, native
+TLS, crash recovery, running/stopped reinstall and retained rpmsave on uninstall;
+[iteration 447](docs/ITERATION_447.md). These remain prototype 0.2.4 artifacts;
+Astra 1.7.5 DEB service identity/native TLS/crash recovery/running reinstall
+and retained config on uninstall also pass. Full checks: Windows 988/63 skips,
+Linux 963/90, zero failures. The next block passes all eight real standalone
+desktop profiles (Windows portable and installed Astra/RED OS, H.264/JPEG),
+including resize, reattachment and empty-runtime cleanup; [iteration 448](docs/ITERATION_448.md).
+The preceding `992997c` also passes all three hosted workflows. Newer-version
+upgrade and aligned 0.2.5 release remain separate gates. The temporary approval-review usage
+failure is resolved through the normal review path, and the probe passes.
+The desktop block `de46cea` subsequently passes all three hosted workflows too.
+Prepublication candidate-cache and independent registry-only builds match every
+payload byte on Windows/Linux; full checks pass Windows 990/63, Linux 965/90,
+zero failures. This prepares acceptance before publication without changing
+production lock URLs; [iteration 449](docs/ITERATION_449.md). It does not accept
+aligned 0.2.5 artifacts, newer-version upgrade or automatic release delivery.
+
+Following **release/0.2.5** preparation now has actual new MSVC/GCC8.3 workers
+with fresh CTest 36/37, ten audited exact archives/official npm dry-runs and
+matching production locks. Complete source repeats pass Windows 1002/63 and
+Linux 977/90, zero fail. All four exact external adapter consumers pass on both
+platforms, all eight actual standalone H.264/JPEG desktop/resize/reattach/cleanup
+profiles pass, and actual Astra DEB/RED OS RPM 0.2.4→0.2.5 upgrades pass.
+The public test candidate is a separately named unstable prerelease; stable
+latest remains 0.2.4. Corrected Windows MSI upgrade/cross-job CI, stable 0.2.5
+tagging, npm/public-integrity consumers and actual main/master installer
+publication are still open. [Preparation](docs/ITERATION_453.md),
+[upgrade/runtime evidence and retained failures](docs/ITERATION_454.md).
+Corrected candidate pipeline **40022102839** now completes Windows MSI and
+Ubuntu DEB 0.2.4→0.2.5 upgrades plus combined seven-file verification; publication
+is skipped. This closes the prepublication installer upgrade gate, while stable
+tagging/npm/registry-only/main delivery remain pending.
+
+Clarified user scope, 2026-10-23: retain the standalone web server and OS
+installers; exclude a separate desktop GUI application. The browser reference
+interface, npm adapters and native runtime packages remain in scope. Standalone
+still publishes in core Releases, with automatic main/master delivery.
+
+Final user boundary, 2026-10-23: finish the standalone web service for VM portals,
+non-Node backends, internal-network access, training/test environments, operator
+portals and RDP integration checks. Deliver the agreed installers and automatic
+core releases, then clean project-owned artifacts and stop. Do not add further
+frameworks or product features. Shared viewing/recording, file management, VM
+provisioning and new USB/smartcard implementations are outside this delivery.
 
 Additional user direction, 2026-10-23: stop the rapid per-package npm approval
 queue and prepare direct npm Trusted Publishing through GitHub Actions/OIDC.
@@ -89,6 +180,28 @@ Final GitHub owner is **SensNyaha**, not the npm scope `freerdp-bridge`.
 0.2.3 has only both runtimes public, seven accepted stages remain pending.
 Do not restart manual approve automatically or claim OIDC configured before
 the user's repository push and real publisher/workflow validation.
+
+Additional user requirement, 2026-10-23: after plugin releases and standalone
+installers, remove project-owned logs, temporary builds, unused Docker images
+and similar artifacts that are unnecessary for further development. First
+retain the required deliverables, reproducible build inputs and concise
+acceptance/commit evidence. Do not prune unrelated Docker resources. Then
+consolidate scattered documentation into a few primary semantic blocks,
+preserving requirements and traceable evidence; update links and navigation.
+Cleanup and documentation consolidation remain pending until those earlier
+delivery gates are satisfied.
+
+Superseding user goal update, 2026-10-24: after completing the requested releases,
+project-owned cleanup and documentation consolidation, continue through this
+TODO plan and implement the next unaccepted features in its prescribed order.
+This replaces the earlier instruction to stop development after cleanup. It
+does not remove the current release/installer/cleanup gates or restore a desktop
+GUI. Complete and verify the current delivery before starting that next phase.
+For that continued work, the user explicitly requires new feature branches,
+merging into the shared branch only after stable checks, version increments
+according to importance/scope, and prompt coordinated npm plus standalone
+releases after acceptance. Preserve immutable prior releases and matching
+JS/native versions; [version policy](docs/VERSIONING.md).
 
 Additional user requirement, 2026-10-22: every npm package release includes its
 own explanatory root README: purpose, installation, dependencies/platforms,

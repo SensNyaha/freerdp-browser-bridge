@@ -13,13 +13,26 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { productVersion } from './product-version.mjs';
 import { checkNpmArchiveReadme } from './npm-readme.mjs';
+import { tarManifest } from './github-delivery/manifest.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
 const npmConsumer = args[0] === '--npm';
 if (npmConsumer) args.shift();
-const runtimeArchive =
-  args[0] === '--runtime-archive' && args.length === 2 ? args[1] : undefined;
+const exactArchives =
+  args[0] === '--archives' && args.length === 2 ? args[1] : undefined;
+const runtimeArchive = exactArchives
+  ? join(
+      exactArchives,
+      'freerdp-bridge-runtime-' +
+        (process.platform === 'win32' ? 'win32-x64' : 'linux-x64-gnu') +
+        '-' +
+        productVersion +
+        '.tgz',
+    )
+  : args[0] === '--runtime-archive' && args.length === 2
+    ? args[1]
+    : undefined;
 if (
   resolve('.') !== resolve(project) ||
   process.versions.node.split('.')[0] !== '24' ||
@@ -53,6 +66,16 @@ const pnpm = (args, cwd) =>
     : run('pnpm', args, cwd);
 const dependencies = {};
 const receipts = [];
+let publicationArchives;
+if (exactArchives) {
+  publicationArchives = await realpath(resolve(exactArchives));
+  const build = await realpath(resolve('build'));
+  if (
+    !publicationArchives.startsWith(build + sep) ||
+    !(await stat(publicationArchives)).isDirectory()
+  )
+    throw new Error('FASTIFY_PUBLICATION_ARCHIVES_INVALID');
+}
 for (const directory of [
   'packages/protocol',
   'packages/config',
@@ -65,14 +88,18 @@ for (const directory of [
   );
   if (manifest.version !== productVersion || manifest.license !== 'MIT')
     throw new Error('FASTIFY_PACKAGE_MANIFEST');
-  pnpm(['pack', '--pack-destination', archives], resolve(directory));
+  if (!publicationArchives)
+    pnpm(['pack', '--pack-destination', archives], resolve(directory));
   const archive = join(
-    archives,
+    publicationArchives ?? archives,
     manifest.name.replace('@', '').replace('/', '-') +
       '-' +
       productVersion +
       '.tgz',
   );
+  const packed = tarManifest(archive);
+  if (packed.name !== manifest.name || packed.version !== productVersion)
+    throw new Error('FASTIFY_PACKAGE_ARCHIVE_MISMATCH');
   dependencies[manifest.name] = 'file:' + archive.replaceAll('\\', '/');
   receipts.push({
     name: manifest.name,
@@ -161,24 +188,33 @@ await writeFile(
   }),
 );
 if (npmConsumer) {
-  if (process.platform === 'win32')
-    run(
-      process.execPath,
-      [
-        resolve('.tools/node-v24.21.0-win-x64/node_modules/npm/bin/npm-cli.js'),
-        'install',
-        '--ignore-scripts',
-        '--no-audit',
-        '--no-fund',
-      ],
-      fixture,
-    );
-  else
-    run(
-      'npm',
-      ['install', '--ignore-scripts', '--no-audit', '--no-fund'],
-      fixture,
-    );
+  const userConfig = join(root, 'empty-npmrc'),
+    globalConfig = join(root, 'empty-global-npmrc');
+  await writeFile(userConfig, '');
+  await writeFile(globalConfig, '');
+  const cli =
+    process.platform === 'win32'
+      ? resolve('.tools/node-v24.21.0-win-x64/node_modules/npm/bin/npm-cli.js')
+      : resolve(process.execPath, '../../lib/node_modules/npm/bin/npm-cli.js');
+  run(
+    process.execPath,
+    [
+      '--use-system-ca',
+      cli,
+      'install',
+      '--ignore-scripts',
+      '--no-audit',
+      '--no-fund',
+      '--logs-max=0',
+      '--userconfig=' + userConfig,
+      '--globalconfig=' + globalConfig,
+      '--registry=https://registry.npmjs.org/',
+      '--@freerdp-bridge:registry=https://registry.npmjs.org/',
+      '--fetch-timeout=30000',
+      '--fetch-retries=1',
+    ],
+    fixture,
+  );
 } else
   pnpm(
     ['install', '--ignore-workspace', '--offline', '--ignore-scripts'],
@@ -205,6 +241,7 @@ const report = {
   checkoutImports: false,
   strictTypeScript: true,
   nativeRuntimePackage: Boolean(runtimeArchive),
+  exactPublicationArchives: Boolean(publicationArchives),
   packageManager: npmConsumer ? 'npm' : 'pnpm',
   offlineInstall: !npmConsumer,
   fixture: relative(project, root).replaceAll('\\', '/'),

@@ -9,6 +9,7 @@ import {
 } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { nodeBuildOutputs } from './node-build-outputs.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
 if (
@@ -80,7 +81,16 @@ const run = (args) => {
 };
 run(['install', '--offline', '--frozen-lockfile', '--ignore-scripts']);
 run(['build']);
-for (const name of packages) await access(resolve(root, name, 'dist/index.js'));
+let compiledOutputs = 0;
+for (const name of packages) {
+  const manifest = JSON.parse(
+    await readFile(resolve(root, name, 'package.json'), 'utf8'),
+  );
+  for (const path of nodeBuildOutputs(manifest)) {
+    await access(resolve(root, name, path));
+    ++compiledOutputs;
+  }
+}
 const deployed = resolve(root, 'deployed');
 run([
   '--offline',
@@ -117,6 +127,7 @@ console.log(
   JSON.stringify({
     cleanWorkspace: true,
     packages: packages.length,
+    compiledOutputs,
     prebuiltOutput: false,
     lockfileUnchanged: true,
     offline: true,
