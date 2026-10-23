@@ -1,8 +1,10 @@
 # FreeRDP → Browser Bridge
 
 Latest accepted local stable: **0.2.4**, tag `v0.2.4` (Express root middleware,
-same-port HTTP/HTTPS/WS and aligned native runtimes). npm/GitHub publication
-remains separate. [Release evidence and limits](docs/ITERATION_438.md).
+same-port HTTP/HTTPS/WS and aligned native runtimes). All ten npm packages and
+five GitHub Releases are public; four fresh Windows/Linux registry-only
+consumers pass. [Publication acceptance](docs/ITERATION_441.md),
+[release evidence and limits](docs/ITERATION_438.md).
 HTTP 0.2.3, NestJS 0.2.2, Fastify 0.2.1 and the immutable `v0.2.0`
 compiler/Astra/RED OS baseline is preserved.
 The original named practical MVP remains the immutable `v0.1.0` baseline.
@@ -39,8 +41,10 @@ fresh Windows/Linux registry-only NestJS consumers pass 15/15 each.
 [Publication evidence](docs/ITERATION_437.md). For 0.2.3, both runtimes are public
 and seven JS stages remain pending. The user stops manual approvals; future
 publishing uses the prepared [GitHub OIDC direction](docs/NPM_TRUSTED_PUBLISHING.md)
-under GitHub owner **SensNyaha**. Ten exact 0.2.4 archives pass local acceptance;
-hosted repository/publisher setup and public 0.2.4 remain pending.
+under GitHub owner **SensNyaha**. All ten exact 0.2.4 archives are public,
+five hosted publication workflows pass, and direct OIDC trust is configured.
+Express uses the separately authorized initial owner approval; its workflow
+then skips the matching public version. [Evidence](docs/ITERATION_441.md).
 All seven **0.2.1** packages are published on npm. Fresh Windows and Linux
 projects install the public dependency graph and pass strict TypeScript,
 same-port HTTP/WS and actual native TLS-refusal checks.

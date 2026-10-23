@@ -30,6 +30,8 @@ jobs:
       - run: pnpm build:native
       - run: pnpm test:native
       - run: pnpm check
+        env:
+          BRIDGE_TEST_BINARY_DIR: build/foundation
   sanitizers:
     runs-on: ubuntu-24.04
     steps:

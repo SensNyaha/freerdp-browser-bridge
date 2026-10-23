@@ -129,6 +129,28 @@ TEST_CASE("XRDP monitor-ready zero trailer is bounded and normalized before forw
   REQUIRE(fragmented.stats().allocated == 0);
   REQUIRE(calls == ready.size());
 }
+TEST_CASE("Hosted fuzz short-format list removes only the validated XRDP zero trailer") {
+  // crash-59f84f3d714cbbeec6e2c2e4696d579b47d4893a, decoded from hosted libFuzzer.
+  const std::vector<std::uint8_t> record{
+      2, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 3, 0, 1, 0, 251, 0, 0, 0, 0, 0, 0, 0, 0, 255,
+      255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  REQUIRE(record.size() == 48);
+  REQUIRE(inspect_pdu(record, false, 130));
+  const auto expected = ::bridge::compat::span(record).first(44);
+  unsigned calls = 0;
+  for (std::size_t split = 1; split < record.size(); ++split) {
+    ClipboardIngress owner([&](auto complete) {
+      REQUIRE(std::equal(complete.begin(), complete.end(), expected.begin(), expected.end()));
+      ++calls;
+      return true;
+    }, 130);
+    REQUIRE(owner.receive({::bridge::compat::span(record).first(split), record.size(), true, false}, 1));
+    REQUIRE(owner.receive({::bridge::compat::span(record).subspan(split), record.size(), false, true}, 2));
+    REQUIRE(owner.stats().allocated == 0);
+  }
+  REQUIRE(calls == record.size() - 1);
+}
 TEST_CASE("XRDP zero trailers preserve declared control bounds and allocation-free quota drain") {
   for (auto original : {pdu(2, 0), pdu(3, 1), pdu(4, 0, {13, 0, 0, 0}),
                         pdu(5, 1, {65, 0}), pdu(7, 0, caps)}) {

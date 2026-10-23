@@ -10,9 +10,12 @@ Latest accepted local stable is **0.2.4**, tag `v0.2.4`: Express 5 root middlewa
 same-port HTTP/HTTPS/WS and aligned native runtimes. Full checks: Windows
 951 / 61 skips, Linux 928 / 87; fresh CTest 36/36 and 37/37. Ten exact archives
 pass audit/dry-run, four external consumers/reinstall matrices and eight
-versioned Astra/RED OS Express desktop profiles. npm/GitHub/OIDC setup remains
-separate and pending; no manual approval queue is restarted.
-[Release acceptance](docs/ITERATION_438.md).
+versioned Astra/RED OS Express desktop profiles. All ten exact npm archives and
+five GitHub Releases are public; hosted workflows and all four fresh Windows/Linux
+registry-only consumers pass. Nine names publish through OIDC; new Express uses
+the one separately authorized initial approve and has its trust read-back verified.
+The old 0.2.3 manual queue remains stopped.
+[Release acceptance](docs/ITERATION_438.md), [publication](docs/ITERATION_441.md).
 
 Prior stable is **0.2.3**, tag `v0.2.3`: node:http/node:https integration,
 explicit HTTP/WS dispatch and aligned native runtimes. Full checks: Windows
@@ -59,7 +62,7 @@ Updated user-selected adapter order, 2026-10-22:
 | 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; all seven npm packages published; exact public integrity and fresh Windows/Linux registry-only consumers pass; iteration 426 |
 | 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Accepted v0.2.2 and all eight npm archives public; exact registry integrity and Windows/Linux registry-only consumers strict TS + 15/15 pass; iterations 427–429 and 437 |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Accepted aligned v0.2.3 with full/native/exact-consumer/reinstall and eight real RDP profiles; both runtimes public, seven JS stages pending; manual approvals stopped, future direct OIDC requested; iterations 431–433 |
-| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Accepted local v0.2.4: full Windows 951/61, Linux 928/87; fresh CTest 36/36, 37/37; ten exact archives, all four consumers/reinstall and eight versioned real RDP profiles pass. Public npm/GitHub/OIDC remains pending; iterations 435–436 and 438 |
+| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Accepted local v0.2.4: full Windows 951/61, Linux 928/87; fresh CTest 36/36, 37/37; ten exact archives, all four consumers/reinstall and eight versioned real RDP profiles pass. All ten exact npm archives and five GitHub Releases public; hosted workflows and four fresh registry-only consumers pass on both OSes; iterations 435–436, 438 and 441 |
 
 The latest user decision adds Express 0.2.4 to the selected initial set. Other
 popular server integrations will be evaluated for concrete unmet requirements
@@ -76,11 +79,19 @@ for the target OS families. Subsequent clarification: prepare the local Git
 repositories and report their directories; the user will push/synchronize
 GitHub themselves.
 
-Additional user requirement, 2026-10-23: standalone installers also get a
-separate GitHub delivery repository with a Releases workflow that generates
-releases automatically on push to `master` or `main`. Prepare and verify the
-local repository/workflow; hosted execution and release publication require
-the user's subsequent push and must be reported separately from local checks.
+Subsequent explicit authorization, 2026-10-23: the user creates all five public
+SensNyaha repositories and asks the agent to push them. All five verified local
+main branches and annotated v0.2.4 tags are now pushed without force; remote
+commits and public npm workflow bytes match. GitHub Releases and npm trust/OIDC
+publication remain separate. [Delivery evidence](docs/ITERATION_439.md).
+
+Superseding user requirement, 2026-10-23: standalone installers belong in
+GitHub Releases of the existing **SensNyaha/freerdp-browser-bridge**, with a
+workflow generating releases automatically on push to `master` or `main`.
+This replaces the earlier separate-standalone-repository plan. Prepare and
+verify the installer/workflow in core; actual hosted installer builds and
+published releases remain distinct from local checks. Do not create a new
+standalone repository for the superseded plan.
 
 Additional user direction, 2026-10-23: stop the rapid per-package npm approval
 queue and prepare direct npm Trusted Publishing through GitHub Actions/OIDC.
@@ -89,6 +100,16 @@ Final GitHub owner is **SensNyaha**, not the npm scope `freerdp-bridge`.
 0.2.3 has only both runtimes public, seven accepted stages remain pending.
 Do not restart manual approve automatically or claim OIDC configured before
 the user's repository push and real publisher/workflow validation.
+
+Additional user requirement, 2026-10-23: after plugin releases and standalone
+installers, remove project-owned logs, temporary builds, unused Docker images
+and similar artifacts that are unnecessary for further development. First
+retain the required deliverables, reproducible build inputs and concise
+acceptance/commit evidence. Do not prune unrelated Docker resources. Then
+consolidate scattered documentation into a few primary semantic blocks,
+preserving requirements and traceable evidence; update links and navigation.
+Cleanup and documentation consolidation remain pending until those earlier
+delivery gates are satisfied.
 
 Additional user requirement, 2026-10-22: every npm package release includes its
 own explanatory root README: purpose, installation, dependencies/platforms,
