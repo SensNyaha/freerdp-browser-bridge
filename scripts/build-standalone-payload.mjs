@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, X509Certificate } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import {
   mkdir,
@@ -17,13 +17,29 @@ import {
   standalonePayloadInventory,
 } from './standalone/payload.mjs';
 import { standaloneProductionManifest } from './standalone/production-lock.mjs';
+import { verifiedStandaloneCandidateArchives } from './standalone/candidate-archives.mjs';
 
 const windows = process.platform === 'win32';
+const ordinaryArguments = windows ? 4 : 3;
+const options = new Map();
+const extra = process.argv.slice(ordinaryArguments);
+if (extra.length % 2) throw new Error('STANDALONE_PAYLOAD_USAGE');
+for (let index = 0; index < extra.length; index += 2) {
+  const option = extra[index];
+  if (
+    !['--candidate-archives', '--build-ca'].includes(option) ||
+    options.has(option) ||
+    !extra[index + 1]
+  )
+    throw new Error('STANDALONE_PAYLOAD_USAGE');
+  options.set(option, resolve(extra[index + 1]));
+}
+const candidateDirectory = options.get('--candidate-archives');
 if (
   !['win32', 'linux'].includes(process.platform) ||
   process.arch !== 'x64' ||
   process.versions.node !== '24.21.0' ||
-  process.argv.length !== (windows ? 4 : 3)
+  process.argv.length < ordinaryArguments
 )
   throw new Error('STANDALONE_PAYLOAD_USAGE');
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -38,11 +54,20 @@ const lock = await readStandalonePayloadFile(
   join(repository, 'packaging/standalone/locks', platform + '.json'),
   1048576,
 );
+const parsedLock = JSON.parse(lock.toString('utf8'));
 const manifest = standaloneProductionManifest(
-  JSON.parse(lock.toString('utf8')),
+  parsedLock,
   metadata.version,
   platform,
 );
+const candidates = candidateDirectory
+  ? await verifiedStandaloneCandidateArchives(
+      parsedLock,
+      metadata.version,
+      platform,
+      candidateDirectory,
+    )
+  : [];
 const archive = resolve(process.argv[2]);
 if (
   createHash('sha256')
@@ -78,10 +103,36 @@ const env = windows
       HOME: join(directory, 'npm-home'),
       TMPDIR: join(directory, 'npm-tmp'),
     };
-async function invoke(command, args, cwd, label, timeout = 180000) {
+const npmEnvironment = { ...env };
+let buildCaSha256;
+if (options.has('--build-ca')) {
+  const certificate = await readStandalonePayloadFile(
+    options.get('--build-ca'),
+    65536,
+  );
+  if (
+    !/^\s*-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----\s*$/.test(
+      certificate.toString('ascii'),
+    ) ||
+    !new X509Certificate(certificate).ca
+  )
+    throw new Error('STANDALONE_BUILD_CA_INVALID');
+  // Public build-only trust is scoped to npm children. It is never installed
+  // into the system trust store or copied to the payload/production settings.
+  npmEnvironment.NODE_EXTRA_CA_CERTS = options.get('--build-ca');
+  buildCaSha256 = createHash('sha256').update(certificate).digest('hex');
+}
+async function invoke(
+  command,
+  args,
+  cwd,
+  label,
+  timeout = 180000,
+  environment = env,
+) {
   const child = spawn(command, args, {
     cwd,
-    env,
+    env: environment,
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -155,6 +206,49 @@ const npm = windows
       dirname(dirname(process.execPath)),
       'lib/node_modules/npm/bin/npm-cli.js',
     );
+const npmConfiguration = [
+  '--ignore-scripts',
+  '--no-audit',
+  '--no-fund',
+  '--logs-max=0',
+  '--userconfig=' + join(directory, 'empty-npmrc'),
+  '--globalconfig=' + join(directory, 'empty-global-npmrc'),
+  '--cache=' + join(directory, 'npm-cache'),
+  '--registry=https://registry.npmjs.org/',
+  '--@freerdp-bridge:registry=https://registry.npmjs.org/',
+];
+if (candidateDirectory) {
+  const specifications = [
+    ...candidates.map((candidate) => candidate.archive),
+    ...new Set(
+      Object.entries(parsedLock.packages)
+        .filter(
+          ([path]) => path && !path.startsWith('node_modules/@freerdp-bridge/'),
+        )
+        .map(([, entry]) => entry.resolved),
+    ),
+  ];
+  // Each npm cache-add batch is bounded; npm itself limits open HTTPS sockets.
+  // The production lock and its official registry URLs remain unchanged.
+  for (let offset = 0; offset < specifications.length; offset += 8)
+    await invoke(
+      process.execPath,
+      [
+        '--use-system-ca',
+        npm,
+        'cache',
+        'add',
+        ...specifications.slice(offset, offset + 8),
+        ...npmConfiguration,
+        '--maxsockets=4',
+        '--loglevel=error',
+      ],
+      service,
+      'npm-cache-' + offset,
+      180000,
+      npmEnvironment,
+    );
+}
 await invoke(
   process.execPath,
   [
@@ -162,19 +256,13 @@ await invoke(
     npm,
     'ci',
     '--omit=dev',
-    '--ignore-scripts',
-    '--no-audit',
-    '--no-fund',
-    '--logs-max=0',
-    '--userconfig=' + join(directory, 'empty-npmrc'),
-    '--globalconfig=' + join(directory, 'empty-global-npmrc'),
-    '--cache=' + join(directory, 'npm-cache'),
-    '--registry=https://registry.npmjs.org/',
-    '--@freerdp-bridge:registry=https://registry.npmjs.org/',
+    ...npmConfiguration,
+    ...(candidateDirectory ? ['--offline'] : []),
   ],
   service,
   'npm-ci',
   300000,
+  npmEnvironment,
 );
 await copyFile(
   join(repository, 'packaging/standalone/bridge.example.json'),
@@ -200,6 +288,13 @@ const report = {
   payload: await realpath(payload),
   files: inventory.length,
   npmLockSha256: createHash('sha256').update(lock).digest('hex'),
+  candidateOnly: Boolean(candidateDirectory),
+  ...(buildCaSha256 ? { buildCaSha256 } : {}),
+  candidateArchives: candidates.map(({ name, version, integrity }) => ({
+    name,
+    version,
+    integrity,
+  })),
   installedOsAccepted: false,
 };
 await writeFile(

@@ -85,7 +85,11 @@ SHA-256 42821b27f1b2e843e36e1b23e6b9652ae8ddc19c4b6cbdae0d7267f34f89ea18
 
 All four Windows real-desktop profiles above use this rebuilt archive. Changed
 JavaScript passes ESLint and Prettier; the Python protocol suite passes 6/6.
-Hosted results for this new block remain pending until its commit is pushed.
+The block is committed as `de46cea5776be19971716117b1c37dbf46012464` and
+passes all three hosted workflows: GCC 8.3 **40005046461**, installed-service
+Windows/Ubuntu **40005046268**, and foundation **40005046289**. The pure Python
+protocol step passes there without lab access or credentials. Receipt:
+`build/iteration-448-hosted-runs.json`.
 
 Remaining delivery gates are aligned 0.2.5 native/JS and installer artifacts,
 newer-version upgrade, required final regression and actual main/master release

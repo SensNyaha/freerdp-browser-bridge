@@ -272,6 +272,20 @@ suite takes about 12 minutes on Windows and 4.5 minutes on Linux; platform jobs
 can run in parallel. Native dependency rebuilds and real RDP/device profiles
 have their own cost. A green unit suite alone does not accept those profiles.
 
+For release preparation, `build-standalone-payload.mjs` also accepts
+`--candidate-archives <directory>`. All five local core/runtime tarballs must
+match the production lock's SHA-512 and exact package metadata; npm ci then runs
+offline from an isolated seeded cache. The lock keeps official registry URLs.
+After publication, verify public integrity and a fresh registry-only payload;
+candidate mode alone does not prove publication. Actual Windows/Linux payloads
+match byte for byte in [iteration 449](ITERATION_449.md).
+
+If the developer's build network requires a local public CA, optional
+`--build-ca <public-CA-file>` scopes it to npm build children. It changes no
+system trust and packages no CA into the service. The input must be one regular,
+bounded public CA certificate. Do not disable TLS verification or supply a
+private key here.
+
 ## Required distribution acceptance
 
 Portable Windows ZIP/Linux TGZ, Windows service/MSI, Astra DEB and RED OS RPM

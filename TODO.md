@@ -130,6 +130,12 @@ including resize, reattachment and empty-runtime cleanup; [iteration 448](docs/I
 The preceding `992997c` also passes all three hosted workflows. Newer-version
 upgrade and aligned 0.2.5 release remain separate gates. The temporary approval-review usage
 failure is resolved through the normal review path, and the probe passes.
+The desktop block `de46cea` subsequently passes all three hosted workflows too.
+Prepublication candidate-cache and independent registry-only builds match every
+payload byte on Windows/Linux; full checks pass Windows 990/63, Linux 965/90,
+zero failures. This prepares acceptance before publication without changing
+production lock URLs; [iteration 449](docs/ITERATION_449.md). It does not accept
+aligned 0.2.5 artifacts, newer-version upgrade or automatic release delivery.
 
 Clarified user scope, 2026-10-23: retain the standalone web server and OS
 installers; exclude a separate desktop GUI application. The browser reference
