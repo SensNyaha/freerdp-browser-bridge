@@ -9,6 +9,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createStandaloneServer } from '../../apps/standalone/dist/server.js';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import { listenBrowserLoopback } from '../fixtures/browser-port.mjs';
+import { chromium } from 'playwright-core';
 
 const require = createRequire(
   new URL('../../apps/standalone/package.json', import.meta.url),
@@ -74,6 +76,37 @@ test('standalone service denies unauthenticated sessions and unapproved destinat
   });
   try {
     assert.equal((await server.inject('/rdp/healthz')).statusCode, 200);
+    const redirect = await server.inject('/');
+    assert.equal(redirect.statusCode, 302);
+    assert.equal(redirect.headers.location, '/viewer/');
+    const page = await server.inject('/viewer/');
+    assert.equal(page.statusCode, 200);
+    assert.equal(page.headers['cache-control'], 'no-store');
+    assert.equal(page.headers['referrer-policy'], 'no-referrer');
+    assert.ok(
+      page.headers['content-security-policy'].includes("script-src 'self'"),
+    );
+    assert.ok(page.body.includes('id="application-auth" method="post"'));
+    assert.ok(page.body.includes('src="./standalone.js"'));
+    assert.ok(!page.body.includes('src="./session-form.js"'));
+    assert.equal(
+      (await server.inject('/viewer/standalone.js')).statusCode,
+      200,
+    );
+    assert.equal(
+      (await server.inject('/viewer/session-form.js')).statusCode,
+      200,
+    );
+    for (const path of [
+      '/viewer/package.json',
+      '/viewer/%2e%2e/package.json',
+      '/viewer/%2fpackage.json',
+      '/unknown?token=synthetic-do-not-echo',
+    ]) {
+      const refused = await server.inject(path);
+      assert.equal(refused.statusCode, 404);
+      assert.equal(refused.body.includes('synthetic-do-not-echo'), false);
+    }
     const payload = { target: { host: '127.0.0.1', port: 9 }, auth: {} };
     assert.equal(
       (
@@ -169,4 +202,110 @@ test(
   'standalone / native foundation: JWT owner isolation, explicit unlinked refusal and joined cleanup',
   { skip: linked, timeout: 20000 },
   () => nativeFailure('RDP_NOT_IMPLEMENTED'),
+);
+
+test(
+  'standalone / Edge and linked native: in-memory JWT, authenticated create and pagehide owner cleanup',
+  { skip: process.platform !== 'win32' || !linked, timeout: 30000 },
+  async () => {
+    const endpoint = await createRdpTlsFixture();
+    const runtimeRoot = await mkdtemp(join(tmpdir(), 'bridge-standalone-web-'));
+    let server, browser;
+    try {
+      const port = await listenBrowserLoopback(async (port) => {
+        const settings = config(endpoint.port);
+        settings.allowedOrigins = ['http://127.0.0.1:' + port];
+        server = await createStandaloneServer(settings, {
+          workerPath,
+          runtimeRoot,
+        });
+        try {
+          await server.listen({ host: '127.0.0.1', port });
+        } catch (error) {
+          await server.close();
+          throw error;
+        }
+      });
+      browser = await chromium.launch({ channel: 'msedge', headless: true });
+      const page = await browser.newPage();
+      page.setDefaultTimeout(7000);
+      const identity = (await headers()).authorization;
+      const token = identity.slice(7);
+      let creates = 0,
+        deletes = 0,
+        wrongIdentity = 0,
+        credentialUrls = 0;
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.name));
+      page.on('request', (request) => {
+        if (
+          request.url().includes(token) ||
+          request.url().includes('synthetic-browser-password')
+        )
+          credentialUrls++;
+        if (request.method() === 'POST' || request.method() === 'DELETE') {
+          if (request.headers().authorization !== identity) wrongIdentity++;
+          if (request.method() === 'POST') creates++;
+          else deletes++;
+        }
+      });
+      await page.goto('http://127.0.0.1:' + port + '/viewer/');
+      await page.waitForFunction(
+        () =>
+          window.bridgeConnection &&
+          !document.querySelector('#connect-session').disabled,
+      );
+      await page.locator('[name=accessToken]').fill(token);
+      await page.locator('#application-auth button').click();
+      assert.equal(await page.locator('[name=accessToken]').inputValue(), '');
+      await page.locator('[name=host]').fill('127.0.0.1');
+      await page.locator('[name=port]').fill(String(endpoint.port));
+      await page.locator('[name=username]').fill('synthetic');
+      await page.locator('[name=password]').fill('synthetic-browser-password');
+      await page.locator('details:has([name=security]) > summary').click();
+      await page.locator('[name=security]').selectOption('tls');
+      const created = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          response.url().endsWith('/rdp/v1/sessions'),
+      );
+      await page.locator('#connect-session').click();
+      assert.equal((await created).status(), 202);
+      await page.waitForFunction(
+        () =>
+          window.bridgeConnection.state.connected &&
+          !window.bridgeConnection.state.pending,
+      );
+      const removed = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'DELETE' &&
+          response.url().includes('/rdp/v1/sessions/'),
+      );
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      assert.equal((await removed).status(), 200);
+      await page.waitForFunction(
+        () =>
+          !window.bridgeConnection.state.connected &&
+          !window.bridgeConnection.state.pending,
+      );
+      assert.equal(await page.locator('[name=password]').inputValue(), '');
+      assert.deepEqual(
+        await page.evaluate(() => [localStorage.length, sessionStorage.length]),
+        [0, 0],
+      );
+      assert.equal(creates, 1);
+      assert.equal(deletes, 1);
+      assert.equal(wrongIdentity, 0);
+      assert.equal(credentialUrls, 0);
+      assert.deepEqual(errors, []);
+      assert.equal(endpoint.applicationBytes, 0);
+      await server.close();
+      assert.deepEqual(await readdir(runtimeRoot), []);
+    } finally {
+      await browser?.close();
+      await server?.close();
+      await endpoint.close();
+      await rm(runtimeRoot, { recursive: true, force: true });
+    }
+  },
 );

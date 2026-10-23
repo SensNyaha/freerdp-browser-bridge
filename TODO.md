@@ -99,6 +99,22 @@ passes complete Windows 976/63 skips and Linux 953/89 checks with actual linked
 native TLS refusal/cleanup. Manifests remain 0.2.4 until aligned release
 preparation. Portable packages, OS installers and auto-release remain pending;
 [contract](docs/STANDALONE.md), [service evidence](docs/ITERATION_442.md).
+The following browser/private-Node block passes complete Windows 978/63 skips
+and Linux 954/90 checks, actual Edge authenticated pagehide cleanup and the
+private-Node supervised CLI with a live native certificate prompt;
+[evidence](docs/ITERATION_443.md). Installed services and releases remain open.
+
+Clarified user scope, 2026-10-23: retain the standalone web server and OS
+installers; exclude a separate desktop GUI application. The browser reference
+interface, npm adapters and native runtime packages remain in scope. Standalone
+still publishes in core Releases, with automatic main/master delivery.
+
+Final user boundary, 2026-10-23: finish the standalone web service for VM portals,
+non-Node backends, internal-network access, training/test environments, operator
+portals and RDP integration checks. Deliver the agreed installers and automatic
+core releases, then clean project-owned artifacts and stop. Do not add further
+frameworks or product features. Shared viewing/recording, file management, VM
+provisioning and new USB/smartcard implementations are outside this delivery.
 
 Additional user direction, 2026-10-23: stop the rapid per-package npm approval
 queue and prepare direct npm Trusted Publishing through GitHub Actions/OIDC.

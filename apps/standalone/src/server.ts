@@ -7,6 +7,7 @@ import {
 import { createStandaloneAuthenticator } from './auth.js';
 import { validateStandaloneConfig, type StandaloneConfig } from './config.js';
 import { standaloneTargetAllowed } from './policy.js';
+import { installStandaloneBrowser } from './browser.js';
 
 export async function createStandaloneServer(
   input: StandaloneConfig,
@@ -25,6 +26,9 @@ export async function createStandaloneServer(
   server.setErrorHandler((_error, _request, reply) =>
     reply.code(400).send({ code: 'STANDALONE_REQUEST_REFUSED' }),
   );
+  server.setNotFoundHandler((_request, reply) =>
+    reply.code(404).send({ code: 'STANDALONE_ROUTE_NOT_FOUND' }),
+  );
   server.addHook('preHandler', async (request, reply) => {
     if (
       request.method === 'POST' &&
@@ -34,6 +38,7 @@ export async function createStandaloneServer(
       return reply.code(403).send({ code: 'STANDALONE_TARGET_REFUSED' });
   });
   try {
+    await installStandaloneBrowser(server);
     await server.register(rdpBridgePlugin, {
       prefix: '/rdp',
       worker,

@@ -6,6 +6,21 @@ aligned release preparation. The currently public npm/GitHub plugin delivery
 is [0.2.4](ITERATION_441.md). Installers, their hosted workflow and clean-machine
 acceptance are not complete yet.
 
+User clarification, 2026-10-23: retain the standalone web server and installers;
+exclude a separate desktop GUI application. The service uses the browser
+interface. No desktop application shell is planned.
+
+Final delivery boundary, 2026-10-23: complete this web service and its installers,
+then clean the project and stop development. Intended consumers are VM portals,
+Java/Python/Go/.NET backends, internal-network gateways, training/test systems,
+operator portals and RDP integration checks. Applications authorize users and
+provision machines/accounts; bridge supplies the approved RDP connection and
+browser transport. Multiple applications may use the service with one configured
+issuer; that issuer must assign distinct subjects to distinct owners across
+those applications. The JWT subject is the owner key. Do not add
+shared viewing, recording, a file manager, VM provisioning or new USB/smartcard
+support to this delivery. Existing capability gates and accepted profiles apply.
+
 ## Service contract
 
 The standalone service uses the same API/native lifecycle as the adapters.
@@ -20,6 +35,11 @@ The new private `apps/standalone` entry point accepts only:
 ```text
 node dist/main.js --config <absolute-public-config-path> --runtime-root <absolute-private-runtime-directory>
 ```
+
+The launcher may append `--supervised`: a private stdin pipe carries exactly
+one shutdown byte `01`; EOF also stops the service. No commands or credentials
+are accepted on that pipe. The fixed `STANDALONE_READY` record is written only
+after the listener is ready. Linux CLI startup refuses UID 0.
 
 It resolves an installed, matching native package; the packaging step must
 provide that package. This source entry point alone is not an installer.
@@ -80,6 +100,24 @@ authenticated session-create body; the common core forwards them to the
 worker through private IPC. Never place application/RDP/attach credentials in
 argv, env, config, logs, metrics or saved profiles. Session/attach ownership
 and the [cookie boundary](HOST_AUTHENTICATION.md) remain unchanged.
+
+## Browser entry point
+
+`/` redirects to `/viewer/`. The standalone packages the reference browser and
+adds an application-token panel. Apply a short-lived JWT, then enter the approved
+RDP destination and credentials in the separate connection form. The token
+remains in page memory and is sent in Authorization headers to `/rdp`; the
+application-token input clears immediately. No local/session storage, URL token
+handoff or saved connection profiles are used. Closing the page requests owner
+session deletion; service-side expiry/shutdown limits still apply if a browser
+cannot complete network cleanup during exit.
+
+The built-in page disallows iframe embedding through CSP. A portal can open it
+as a page, or use its own browser integration with the bridge API. The portal's
+identity flow must supply the JWT without query strings or saved credentials.
+This initial page is a diagnostic connection interface, not a desktop GUI.
+Full checks and actual browser/private-Node lifecycle evidence:
+[iteration 443](ITERATION_443.md).
 
 ## Required distribution acceptance
 
