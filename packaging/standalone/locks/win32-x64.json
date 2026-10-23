@@ -1,16 +1,16 @@
 {
   "name": "@freerdp-bridge/standalone",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "@freerdp-bridge/standalone",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "license": "MIT",
       "dependencies": {
-        "@freerdp-bridge/api": "0.2.4",
-        "@freerdp-bridge/runtime-win32-x64": "0.2.4",
+        "@freerdp-bridge/api": "0.2.5",
+        "@freerdp-bridge/runtime-win32-x64": "0.2.5",
         "@sinclair/typebox": "0.34.41",
         "fastify": "5.12.5",
         "jose": "6.2.13"
@@ -147,14 +147,14 @@
       }
     },
     "node_modules/@freerdp-bridge/api": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/api/-/api-0.2.4.tgz",
-      "integrity": "sha512-9sJxUsPMzq8uFlclFIKKPZ4bKghxF7HhkpIsUWAqC9wjMYvtqptqCO7aURPUMbXUv0Y/jlQtqmYmkvCBkDIIMg==",
+      "version": "0.2.5",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/api/-/api-0.2.5.tgz",
+      "integrity": "sha512-HxzhLT0uOxeUVAjV3Mac/lr0u5/BABn0UbcaVclUzhRiDCd0j+Bw2cFI3bdZEAXiXlYpv6NlzKeetg7Hv6ewLQ==",
       "license": "MIT",
       "dependencies": {
-        "@freerdp-bridge/config": "0.2.4",
-        "@freerdp-bridge/node": "0.2.4",
-        "@freerdp-bridge/protocol": "0.2.4",
+        "@freerdp-bridge/config": "0.2.5",
+        "@freerdp-bridge/node": "0.2.5",
+        "@freerdp-bridge/protocol": "0.2.5",
         "@sinclair/typebox": "0.34.41",
         "fastify": "5.12.5",
         "pino": "10.4.0",
@@ -166,9 +166,9 @@
       }
     },
     "node_modules/@freerdp-bridge/config": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/config/-/config-0.2.4.tgz",
-      "integrity": "sha512-9NPScSz5KlyzC4CVLfEeRwQkPPyP8hhSpGMN4CyeBlm5z2eb9o4hmdrpbiGig/1WTDLI9qrN1u+PIsi/E/VcJw==",
+      "version": "0.2.5",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/config/-/config-0.2.5.tgz",
+      "integrity": "sha512-W41+thNcgD8xbRDWqQRqjSfOIejZw6gyE5JXEPgar5Gr9sSjaRP8HjjwFESkuGLTmyNPpd2Z02uZh3kKh6BsQQ==",
       "license": "MIT",
       "dependencies": {
         "@sinclair/typebox": "0.34.41"
@@ -178,34 +178,38 @@
       }
     },
     "node_modules/@freerdp-bridge/node": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/node/-/node-0.2.4.tgz",
-      "integrity": "sha512-6mqQOMdP/GCR/ILmQthYhFG7DAWHrZiwxI5NM7/zdvO4kmWpUkyplVUfKk1Ei5NcOxzpdAXfgOqOeqUQUNgJrA==",
+      "version": "0.2.5",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/node/-/node-0.2.5.tgz",
+      "integrity": "sha512-hnIOr0/drxZ1lOnkPcasBZyBpPNdRGFhPZx267TG1B2pyT8KRc4kCE3Kw8QzBGAW5XRboOFY6bKTO5XYaxAZyw==",
       "license": "MIT",
       "dependencies": {
-        "@freerdp-bridge/config": "0.2.4",
-        "@freerdp-bridge/protocol": "0.2.4"
+        "@freerdp-bridge/config": "0.2.5",
+        "@freerdp-bridge/protocol": "0.2.5"
       },
       "engines": {
         "node": ">=24 <25"
       }
     },
     "node_modules/@freerdp-bridge/protocol": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/protocol/-/protocol-0.2.4.tgz",
-      "integrity": "sha512-nGe0ud6zo/mmAUTTZGfV3Ol+lfvXHMsu4LsiEWqVO62W4HdBTFOdIYSxxMt0xz63ff0vjdUDoaW0C371C8Qq9Q==",
+      "version": "0.2.5",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/protocol/-/protocol-0.2.5.tgz",
+      "integrity": "sha512-IfBw+8Emo5i20RsubnLd4aUULBaeHdjsGzKyICu42Nu75SKRBJWh8SHcMHiMYge85fXqtiwAxrfs3dMvMQe6kw==",
       "license": "MIT",
       "engines": {
         "node": ">=24 <25"
       }
     },
     "node_modules/@freerdp-bridge/runtime-win32-x64": {
-      "version": "0.2.4",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/runtime-win32-x64/-/runtime-win32-x64-0.2.4.tgz",
-      "integrity": "sha512-YWeRDU6EKBxhGEcmlxsps7Ci8XmVpktdtkECTJzeRhWg2pl7xU+6Ivzp/OHzvbYEbEpE9e10q7VEcJpoVRvqSw==",
-      "cpu": ["x64"],
+      "version": "0.2.5",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/runtime-win32-x64/-/runtime-win32-x64-0.2.5.tgz",
+      "integrity": "sha512-/q/jFZNoALUAqDat3xMir3UelUMjZI7R0Uxr4IJtc8ZA2GJpZOCRj1iXmQ0gftdaSm1bafvpi8GMAbO2EbARxA==",
+      "cpu": [
+        "x64"
+      ],
       "license": "SEE LICENSE IN THIRD_PARTY_NOTICES.md",
-      "os": ["win32"],
+      "os": [
+        "win32"
+      ],
       "engines": {
         "node": ">=24 <25"
       }

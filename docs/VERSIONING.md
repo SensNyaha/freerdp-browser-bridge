@@ -49,6 +49,14 @@ separate values. A product release never silently changes those contracts.
 
 ## Development and releases
 
+Superseding user direction, 2026-10-24: after the current standalone delivery,
+project cleanup and documentation consolidation, continue implementing TODO
+features. Each feature uses a new branch and merges only after stable required
+checks. Assign the next version according to scope/compatibility below and
+publish the accepted aligned npm packages and standalone distributions promptly.
+The earlier instruction to stop after cleanup is superseded. This does not
+relax native/real-profile/installer acceptance or immutable release protection.
+
 1. Develop each feature on its own branch. Record its tests and acceptance;
    merge only the completed, verified feature into shared `master`.
 2. Keep release changes separate in `release/<version>`. Include only completed

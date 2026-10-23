@@ -167,6 +167,18 @@ preserving requirements and traceable evidence; update links and navigation.
 Cleanup and documentation consolidation remain pending until those earlier
 delivery gates are satisfied.
 
+Superseding user goal update, 2026-10-24: after completing the requested releases,
+project-owned cleanup and documentation consolidation, continue through this
+TODO plan and implement the next unaccepted features in its prescribed order.
+This replaces the earlier instruction to stop development after cleanup. It
+does not remove the current release/installer/cleanup gates or restore a desktop
+GUI. Complete and verify the current delivery before starting that next phase.
+For that continued work, the user explicitly requires new feature branches,
+merging into the shared branch only after stable checks, version increments
+according to importance/scope, and prompt coordinated npm plus standalone
+releases after acceptance. Preserve immutable prior releases and matching
+JS/native versions; [version policy](docs/VERSIONING.md).
+
 Additional user requirement, 2026-10-22: every npm package release includes its
 own explanatory root README: purpose, installation, dependencies/platforms,
 usage, limitations and licenses. This applies to shared JS packages and both
