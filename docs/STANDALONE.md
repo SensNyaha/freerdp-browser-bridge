@@ -244,8 +244,10 @@ The standalone workflow builds pinned public payloads and runs portable
 relocation/native shutdown plus actual installed-service checks on fresh
 Windows/Ubuntu runners. The same installed fixture has explicit owned-lab modes
 for Astra 1.7.5 and RED OS 7.3; both prototype service profiles pass. It refuses
-ordinary developer execution, a different OS, or pre-existing program/config
-and service in owned-lab mode. Tests cover identity/JWT, native TLS, crash
+ordinary developer execution, a different OS, or a pre-existing program/service
+in owned-lab mode. A repeated owned-lab run may reuse only the exact retained
+public default with root ownership, protected modes and no additional files;
+deployment configuration is refused. Tests cover identity/JWT, native TLS, crash
 recovery, running reinstall, retained public config and uninstall. The RED OS
 case also checks that reinstall preserves an administrator-stopped service.
 The repeatable `tests/packaging/standalone-rdp.mjs` driver additionally passes
@@ -256,6 +258,14 @@ owned-lab inputs; it is not part of a credential-free hosted job. Its Linux
 backend requires an already pinned SSH key and an exact package path/hash.
 The pure sudo-control tests run in hosted acceptance without SSH or credentials.
 Devices, newer-version upgrade and final aligned 0.2.5 remain separate gates.
+
+The installed fixture also supports a `previous` package record in its build
+receipt: an earlier `0.2.x` version, exact package path and SHA-256. This path
+is prepared for testing an upgrade with an old live native worker, preserved
+public config, new service PID and unavailable old session. It additionally
+checks the installed service/native version and private Node after replacement.
+Baseline Astra/RED OS runs pass with these checks; the actual two-version path
+is still pending aligned 0.2.5 artifacts, [iteration 450](ITERATION_450.md).
 
 DEB/MSI uninstall retain the public `bridge.json` configuration. RPM moves a
 modified config to `bridge.json.rpmsave`; administrators should review and restore

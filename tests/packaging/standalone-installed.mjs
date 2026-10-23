@@ -3,11 +3,12 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, access, readdir, lstat } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import { readStandalonePayloadFile } from '../../scripts/standalone/payload.mjs';
 
 const ownedRedOs =
   process.platform === 'linux' &&
@@ -42,6 +43,24 @@ if (ownedLinux) {
 const windows = process.platform === 'win32';
 const build = JSON.parse(await readFile('build/standalone-ci.json', 'utf8'));
 assert.equal(build.prototypeOnly, true);
+assert.match(build.version, /^0\.2\.[0-9]{1,6}$/);
+if (build.previous) {
+  assert.match(build.previous.version, /^0\.2\.[0-9]{1,6}$/);
+  assert.ok(
+    Number(build.previous.version.split('.')[2]) <
+      Number(build.version.split('.')[2]),
+  );
+  assert.match(build.previous.sha256, /^[a-f0-9]{64}$/);
+  const previous = await readStandalonePayloadFile(
+    build.previous.output,
+    536870912,
+  );
+  assert.equal(
+    createHash('sha256').update(previous).digest('hex'),
+    build.previous.sha256,
+  );
+}
+const firstBuild = build.previous ?? build;
 const configuration = windows
   ? join(process.env.ProgramData, 'FreeRDPBridge/config/bridge.json')
   : '/etc/freerdp-bridge/bridge.json';
@@ -62,6 +81,10 @@ const powershell =
   );
 assert.equal(
   build.output.endsWith(ownedRedOs ? '.rpm' : windows ? '.msi' : '.deb'),
+  true,
+);
+assert.equal(
+  firstBuild.output.endsWith(ownedRedOs ? '.rpm' : windows ? '.msi' : '.deb'),
   true,
 );
 const delay = () => new Promise((done) => setTimeout(done, 50));
@@ -116,10 +139,10 @@ async function service(action) {
     );
   else await invoke('systemctl', [action, 'freerdp-bridge.service']);
 }
-const installLinux = () =>
+const installLinux = (path = build.output) =>
   ownedRedOs
-    ? invoke('rpm', ['--upgrade', '--replacepkgs', build.output], 120000)
-    : invoke('dpkg', ['--install', build.output], 120000);
+    ? invoke('rpm', ['--upgrade', '--replacepkgs', path], 120000)
+    : invoke('dpkg', ['--install', path], 120000);
 const removeLinux = () =>
   ownedRedOs
     ? invoke('rpm', ['--erase', 'freerdp-bridge'], 120000)
@@ -163,11 +186,37 @@ async function waitReady(previousPid) {
     await delay();
   }
 }
-// Refuse to touch a pre-existing product/configuration, even on a CI runner.
+// CI requires a fresh product/config; owned labs may retain only the exact
+// public default left by a preceding uninstall, with the original protections.
 await assert.rejects(access(program), { code: 'ENOENT' });
-await assert.rejects(access(configuration), { code: 'ENOENT' });
 if (ownedLinux) {
-  await assert.rejects(access('/etc/freerdp-bridge'), { code: 'ENOENT' });
+  // A preceding successful owned-lab run retains only this public default.
+  // Refuse a deployment config, unknown files, permissive mode or links.
+  let existing;
+  try {
+    existing = await lstat('/etc/freerdp-bridge');
+  } catch (error) {
+    assert.equal(error.code, 'ENOENT');
+  }
+  if (existing) {
+    assert.ok(existing.isDirectory() && !existing.isSymbolicLink());
+    assert.equal(existing.uid, 0);
+    assert.equal(existing.mode & 0o777, 0o750);
+    assert.deepEqual(await readdir('/etc/freerdp-bridge'), [
+      ownedRedOs ? 'bridge.json.rpmsave' : 'bridge.json',
+    ]);
+    const retained = await lstat(retainedConfiguration);
+    assert.equal(retained.uid, 0);
+    assert.equal(retained.mode & 0o777, 0o640);
+    const bytes = await readStandalonePayloadFile(retainedConfiguration, 65536);
+    assert.deepEqual(JSON.parse(bytes.toString('utf8')), {
+      schemaVersion: 1,
+      listen: { host: '127.0.0.1', port: 8080 },
+      allowedOrigins: [],
+      targets: [],
+      limits: { maxSessions: 8, maxPerPrincipal: 2 },
+    });
+  }
   assert.equal(
     await invoke('systemctl', [
       'show',
@@ -177,7 +226,7 @@ if (ownedLinux) {
     ]),
     'not-found',
   );
-}
+} else await assert.rejects(access(configuration), { code: 'ENOENT' });
 if (windows)
   assert.equal(
     await ps(
@@ -199,7 +248,7 @@ try {
       'msiexec.exe',
       [
         '/i',
-        build.output,
+        firstBuild.output,
         '/qn',
         '/norestart',
         '/L*v',
@@ -207,7 +256,7 @@ try {
       ],
       120000,
     );
-  else await installLinux();
+  else await installLinux(firstBuild.output);
   installed = true;
   const require = createRequire(join(program, 'service/package.json'));
   const { SignJWT } = await import(pathToFileURL(require.resolve('jose')).href);
@@ -269,6 +318,18 @@ try {
     .sign(privateKey);
   const headers = { authorization: 'Bearer ' + token };
   const base = 'http://127.0.0.1:8080/rdp/v1/sessions';
+  const installedVersion = async (version) => {
+    const serviceManifest = JSON.parse(
+      await readFile(join(program, 'service/package.json'), 'utf8'),
+    );
+    assert.equal(serviceManifest.version, version);
+    const nativeBuild = await (
+      await fetch('http://127.0.0.1:8080/rdp/v1/build')
+    ).json();
+    assert.equal(nativeBuild.bridgeVersion, version);
+    assert.equal(nativeBuild.nodeVersion, 'v24.21.0');
+  };
+  await installedVersion(firstBuild.version);
   assert.equal(
     (
       await fetch(base, {
@@ -279,7 +340,7 @@ try {
     ).status,
     401,
   );
-  for (const policy of ['strict', 'prompt']) {
+  const nativeSession = async (policy) => {
     const created = await fetch(base, {
       method: 'POST',
       headers: { ...headers, 'content-type': 'application/json' },
@@ -305,6 +366,44 @@ try {
         throw new Error('STANDALONE_INSTALLED_NATIVE_DEADLINE');
       await delay();
     } while (true);
+    return { session, state };
+  };
+  if (build.previous) {
+    // Upgrade while an old worker awaits a certificate decision, proving the
+    // installer retires the old process tree and preserves public ownership.
+    const pending = await nativeSession('prompt');
+    const previousPid = current.pid;
+    if (windows)
+      await invoke(
+        'msiexec.exe',
+        [
+          '/i',
+          build.output,
+          '/qn',
+          '/norestart',
+          '/L*v',
+          resolve('build/standalone-upgrade.log'),
+        ],
+        120000,
+      );
+    else await installLinux();
+    current = await waitReady(previousPid);
+    assert.deepEqual(await readFile(configuration), configured);
+    assert.equal((await fetch(pending.session, { headers })).status, 404);
+    assert.deepEqual(
+      await readdir(runtime),
+      windows ? ['.bridge-service.lock'] : [],
+    );
+    await installedVersion(build.version);
+    if (windows) assert.equal(current.sid, 'S-1-5-19');
+    else
+      assert.equal(
+        current.uid,
+        Number(await invoke('id', ['-u', 'freerdp-bridge'])),
+      );
+  }
+  for (const policy of ['strict', 'prompt']) {
+    const { session, state } = await nativeSession(policy);
     if (policy === 'strict') {
       assert.equal(state.error.code, 'RDP_CERTIFICATE_REJECTED');
       assert.equal(
@@ -413,7 +512,13 @@ try {
           ? 'bridge.json.rpmsave'
           : 'bridge.json',
         realRdpDesktop: false,
-        upgradeToNewVersion: false,
+        upgradeToNewVersion: Boolean(build.previous),
+        ...(build.previous
+          ? {
+              previousVersion: build.previous.version,
+              previousPackageSha256: build.previous.sha256,
+            }
+          : {}),
       },
       null,
       2,
