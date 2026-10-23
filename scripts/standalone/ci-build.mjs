@@ -85,10 +85,16 @@ if (windows) {
   ]);
 } else
   artifact = await node('scripts/build-standalone-deb.mjs', [payload.payload]);
+const portable = await node('scripts/build-standalone-portable.mjs', [
+  payload.payload,
+]);
 const report = {
   ...artifact,
   platform,
   payload: payload.payload,
+  portableArchive: portable.output,
+  portableRoot: dirname(portable.output),
+  portableSha256: portable.sha256,
   prototypeOnly: true,
   installedOsAccepted: false,
 };
@@ -104,5 +110,13 @@ console.log(JSON.stringify(report));
 if (process.env.GITHUB_OUTPUT)
   await appendFile(
     process.env.GITHUB_OUTPUT,
-    'artifact=' + report.output + '\npayload=' + report.payload + '\n',
+    'artifact=' +
+      report.output +
+      '\npayload=' +
+      report.payload +
+      '\nportable=' +
+      report.portableArchive +
+      '\nportable-root=' +
+      report.portableRoot +
+      '\n',
   );

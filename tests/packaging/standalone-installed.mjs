@@ -1,4 +1,4 @@
-// Destructive only within a fresh, explicit GitHub-hosted acceptance job.
+// Destructive only in fresh CI or an explicitly selected owned Astra/RED OS lab.
 // Never run this against a developer's existing service installation.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -9,12 +9,36 @@ import { readFile, writeFile, access, readdir, lstat } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
 
+const ownedRedOs =
+  process.platform === 'linux' &&
+  process.argv.length === 3 &&
+  process.argv[2] === '--owned-lab-redos-7.3';
+const ownedAstra =
+  process.platform === 'linux' &&
+  process.argv.length === 3 &&
+  process.argv[2] === '--owned-lab-astra-1.7.5';
+const ownedLinux = ownedRedOs || ownedAstra;
 if (
-  process.env.GITHUB_ACTIONS !== 'true' ||
-  !['win32', 'linux'].includes(process.platform) ||
-  process.argv.length !== 2
+  !ownedLinux &&
+  (process.env.GITHUB_ACTIONS !== 'true' ||
+    !['win32', 'linux'].includes(process.platform) ||
+    process.argv.length !== 2)
 )
   throw new Error('STANDALONE_FRESH_CI_ONLY');
+if (ownedLinux) {
+  assert.equal(process.getuid(), 0);
+  const os = await readFile('/etc/os-release', 'utf8');
+  if (ownedRedOs) {
+    assert.match(os, /^ID=["']?redos["']?$/m);
+    assert.match(os, /^VERSION_ID=["']?7\.3["']?$/m);
+  } else {
+    assert.match(os, /^ID=["']?astra["']?$/m);
+    assert.equal(
+      (await readFile('/etc/astra_version', 'utf8')).trim(),
+      '1.7.5',
+    );
+  }
+}
 const windows = process.platform === 'win32';
 const build = JSON.parse(await readFile('build/standalone-ci.json', 'utf8'));
 assert.equal(build.prototypeOnly, true);
@@ -27,14 +51,19 @@ const runtime = windows
 const program = windows
   ? join(process.env.ProgramFiles, 'FreeRDP Bridge')
   : '/opt/freerdp-bridge';
+const retainedConfiguration = ownedRedOs
+  ? configuration + '.rpmsave'
+  : configuration;
 const powershell =
   windows &&
   join(
     process.env.SystemRoot,
     'System32/WindowsPowerShell/v1.0/powershell.exe',
   );
-const require = createRequire(resolve('apps/standalone/package.json'));
-const { SignJWT } = await import(pathToFileURL(require.resolve('jose')).href);
+assert.equal(
+  build.output.endsWith(ownedRedOs ? '.rpm' : windows ? '.msi' : '.deb'),
+  true,
+);
 const delay = () => new Promise((done) => setTimeout(done, 50));
 async function invoke(command, args, timeout = 30000) {
   const child = spawn(command, args, {
@@ -87,6 +116,14 @@ async function service(action) {
     );
   else await invoke('systemctl', [action, 'freerdp-bridge.service']);
 }
+const installLinux = () =>
+  ownedRedOs
+    ? invoke('rpm', ['--upgrade', '--replacepkgs', build.output], 120000)
+    : invoke('dpkg', ['--install', build.output], 120000);
+const removeLinux = () =>
+  ownedRedOs
+    ? invoke('rpm', ['--erase', 'freerdp-bridge'], 120000)
+    : invoke('dpkg', ['--remove', 'freerdp-bridge'], 120000);
 async function owner() {
   if (windows)
     return JSON.parse(
@@ -129,6 +166,18 @@ async function waitReady(previousPid) {
 // Refuse to touch a pre-existing product/configuration, even on a CI runner.
 await assert.rejects(access(program), { code: 'ENOENT' });
 await assert.rejects(access(configuration), { code: 'ENOENT' });
+if (ownedLinux) {
+  await assert.rejects(access('/etc/freerdp-bridge'), { code: 'ENOENT' });
+  assert.equal(
+    await invoke('systemctl', [
+      'show',
+      'freerdp-bridge.service',
+      '--property=LoadState',
+      '--value',
+    ]),
+    'not-found',
+  );
+}
 if (windows)
   assert.equal(
     await ps(
@@ -141,7 +190,9 @@ else {
   await access('/run/systemd/system');
 }
 let installed = false,
-  endpoint;
+  endpoint,
+  original,
+  changedConfiguration = false;
 try {
   if (windows)
     await invoke(
@@ -156,10 +207,12 @@ try {
       ],
       120000,
     );
-  else await invoke('dpkg', ['--install', build.output], 120000);
+  else await installLinux();
   installed = true;
+  const require = createRequire(join(program, 'service/package.json'));
+  const { SignJWT } = await import(pathToFileURL(require.resolve('jose')).href);
   await waitReady();
-  const original = await readFile(configuration);
+  original = await readFile(configuration);
   await service('stop');
   endpoint = await createRdpTlsFixture();
   const { publicKey, privateKey } = generateKeyPairSync('rsa', {
@@ -189,6 +242,7 @@ try {
   const configured = Buffer.from(JSON.stringify(settings));
   // Public keys/settings only. No private signing key, JWT or RDP credential file.
   await writeFile(configuration, configured);
+  changedConfiguration = true;
   await service('start');
   let current = await waitReady();
   if (windows) {
@@ -265,7 +319,7 @@ try {
         await invoke('systemctl', [
           'kill',
           '--signal=SIGKILL',
-          '--kill-whom=main',
+          '--kill-who=main',
           'freerdp-bridge.service',
         ]);
       current = await waitReady(previous);
@@ -275,9 +329,9 @@ try {
     }
   }
   assert.equal(endpoint.applicationBytes, 0);
-  await service('stop');
   assert.deepEqual(await readFile(configuration), configured);
-  // Reinstall the same package: no conffile loss or reset of admin public keys.
+  // Reinstall while running: replace/restart the service without losing config.
+  const beforeReinstall = current.pid;
   if (windows)
     await invoke(
       'msiexec.exe',
@@ -291,9 +345,26 @@ try {
       ],
       120000,
     );
-  else await invoke('dpkg', ['--install', build.output], 120000);
+  else await installLinux();
   assert.deepEqual(await readFile(configuration), configured);
-  await waitReady();
+  await waitReady(beforeReinstall);
+  if (ownedRedOs) {
+    // RPM try-restart deliberately preserves an administrator-stopped service.
+    await service('stop');
+    await installLinux();
+    assert.equal(
+      await invoke('systemctl', [
+        'show',
+        'freerdp-bridge.service',
+        '--property=ActiveState',
+        '--value',
+      ]),
+      'inactive',
+    );
+    assert.deepEqual(await readFile(configuration), configured);
+    await service('start');
+    await waitReady();
+  }
   await service('stop');
   if (windows)
     await invoke(
@@ -308,27 +379,39 @@ try {
       ],
       120000,
     );
-  else await invoke('dpkg', ['--remove', 'freerdp-bridge'], 120000);
+  else await removeLinux();
   installed = false;
   await assert.rejects(
     access(join(program, 'node', windows ? 'node.exe' : 'node')),
     { code: 'ENOENT' },
   );
-  assert.deepEqual(await readFile(configuration), configured);
+  assert.deepEqual(await readFile(retainedConfiguration), configured);
+  if (ownedRedOs) {
+    await assert.rejects(access(configuration), { code: 'ENOENT' });
+    assert.equal((await lstat(retainedConfiguration)).mode & 0o777, 0o640);
+  }
   // The clean runner retains only public config by design; restore the default.
-  await writeFile(configuration, original);
+  await writeFile(retainedConfiguration, original);
   await writeFile(
     'build/standalone-installed.json',
     JSON.stringify(
       {
         platform: process.platform,
         version: build.version,
+        acceptanceEnvironment: ownedRedOs
+          ? 'owned-redos-7.3'
+          : ownedAstra
+            ? 'owned-astra-1.7.5'
+            : 'github-hosted',
         nativeTls: true,
         nonRootService: true,
         crashRecovery: true,
         reinstallPreservesConfig: true,
         uninstall: true,
         retainedPublicConfig: true,
+        retainedConfigFilename: ownedRedOs
+          ? 'bridge.json.rpmsave'
+          : 'bridge.json',
         realRdpDesktop: false,
         upgradeToNewVersion: false,
       },
@@ -364,6 +447,10 @@ try {
         ['/x', build.output, '/qn', '/norestart'],
         120000,
       );
-    else await invoke('dpkg', ['--remove', 'freerdp-bridge'], 120000);
+    else await removeLinux();
+    // Only a fresh CI/explicit lab installation reaches this branch. Restore
+    // its original public default even when a later fixture assertion fails.
+    if (original && changedConfiguration)
+      await writeFile(retainedConfiguration, original);
   }
 }

@@ -54,6 +54,10 @@ jobs:
         run: node --test tests/packaging/standalone-windows.test.mjs
         env:
           BRIDGE_STANDALONE_TEST_ROOT: ${{ steps.installer.outputs.payload }}
+      - name: Relocated portable archive, private runtime and joined shutdown
+        run: node --test tests/packaging/standalone-portable.test.mjs
+        env:
+          BRIDGE_PORTABLE_TEST_ROOT: ${{ steps.installer.outputs.portable-root }}
       - name: Install, native lifecycle, crash recovery, reinstall and uninstall on Windows
         if: runner.os == 'Windows'
         run: node tests/packaging/standalone-installed.mjs
@@ -71,3 +75,4 @@ jobs:
             build/standalone-installed.json
             build/standalone-*.log
             ${{ steps.installer.outputs.artifact }}
+            ${{ steps.installer.outputs.portable }}

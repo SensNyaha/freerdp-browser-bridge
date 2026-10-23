@@ -118,6 +118,15 @@ installed service, cross-version upgrade, real standalone RDP and final release
 remain separate; [iteration 446](docs/ITERATION_446.md).
 Full regression for this assembly/staging block passes Windows 985/63 skips
 and Linux 961/90, with zero failures; installed RPM/Astra/RED OS remain open.
+The next block proves relocated Windows ZIP/Linux TGZ with private Node/native
+TLS and joined shutdown, plus actual RED OS 7.3 RPM service identity, native
+TLS, crash recovery, running/stopped reinstall and retained rpmsave on uninstall;
+[iteration 447](docs/ITERATION_447.md). These remain prototype 0.2.4 artifacts;
+Astra 1.7.5 DEB service identity/native TLS/crash recovery/running reinstall
+and retained config on uninstall also pass. Full checks: Windows 988/63 skips,
+Linux 963/90, zero failures. Newer-version upgrade, real standalone desktops and
+new hosted checks remain separate gates. The temporary approval-review usage
+failure is resolved through the normal review path, and the probe passes.
 
 Clarified user scope, 2026-10-23: retain the standalone web server and OS
 installers; exclude a separate desktop GUI application. The browser reference

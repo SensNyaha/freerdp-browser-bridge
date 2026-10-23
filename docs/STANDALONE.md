@@ -47,6 +47,70 @@ SIGINT/SIGTERM and Windows SIGBREAK join service/worker cleanup with a bounded
 shutdown deadline. The HTTP API is under `/rdp`. Native build/readiness remains
 separate from the ability to authenticate or reach an RDP desktop.
 
+## Integration in real applications
+
+| Deployment | Application responsibility | Bridge responsibility |
+| --- | --- | --- |
+| VM portal | Provision the VM, check this user's entitlement, obtain credentials through the approved interactive flow | Connect to an approved host and transport its desktop |
+| Java/Python/Go/.NET backend | Call HTTP with the owner's short-lived JWT; retain ownership/session mapping in the application | Enforce JWT subject ownership, session limits and native lifecycle |
+| Internal network | Route HTTPS/WSS ingress to loopback; constrain the bridge host's RDP egress | Connect from the bridge host, without requiring browser access to the RDP network |
+| Training/test environment | Allocate and later return machines/accounts; close the bridge session before recycling a machine | Run and retire each RDP worker independently |
+| Operator portal | Authorize the destination and choose its accepted device/media profile | Expose actual capability results, image, input and supported channels |
+| Integration runner | Observe application and desktop results, apply deadlines and delete created sessions | Provide bounded HTTP/native diagnostics and joined shutdown |
+
+Use a backend-mediated flow when different users have different machine rights:
+
+1. The portal verifies its own user and checks the chosen machine's entitlement.
+   The browser must not select a different upstream target or an arbitrary owner.
+2. The backend obtains a bridge JWT with a stable subject for that owner and
+   sends `POST /rdp/v1/sessions` over its protected service connection. The body
+   follows the common [session contract](SESSION_API.md); passwords remain in
+   memory and travel to the native worker through private IPC.
+3. A 202 response means accepted asynchronous creation. Poll the owner's
+   `GET /rdp/v1/sessions/:id`; it does not prove a connected or rendered desktop.
+4. Supply the created snapshot and separate control/media attach grants to the
+   application's viewer through its authenticated, no-store response. The
+   browser connects using the allowed external Origin and `freerdp-bridge-v1`.
+   Grants are single-use and channel scoped. Keep them in page memory.
+5. For reattachment, the backend verifies the same user's entitlement again
+   and requests `POST /rdp/v1/sessions/:id/attach-token` separately for each
+   required channel. The JSON body is `{ "channel": "control" }` or
+   `{ "channel": "media" }`. Refresh the application JWT when necessary.
+6. On logout, allocation expiry, VM recycling or an explicit disconnect, the
+   backend sends owner-authenticated `DELETE /rdp/v1/sessions/:id` and observes
+   its result. A lost browser/WebSocket alone does not delete the session.
+
+The built-in `/viewer/` is useful for direct diagnostic connections. For a
+portal that must keep a broad create JWT on its backend, use the application's
+own viewer/authenticated orchestration. The built-in page is not an entitlement
+broker and refuses iframe embedding. Its token panel currently refuses token
+replacement while a connection is active or pending; a long-running portal
+must refresh backend JWTs independently for later HTTP management requests.
+This limitation does not imply expiry of an already attached desktop transport.
+
+No language-specific SDK is required for the backend: HTTP status, bounded JSON
+and owner identity are the contract. Do not forward raw upstream failures or
+request objects to application logs. Handle 401 by refreshing the application's
+identity flow, 403 as a destination-policy refusal, 404 as unknown/foreign owner
+without disclosing which, and 429/503 as bounded admission/unavailability.
+Retrying a session-create POST is not idempotent: if its response was lost, do
+not assume that no worker was created. Retain application-side request/session
+coordination and treat that allocation as uncertain. Aggregate diagnostics do
+not recover a lost session ID, and this API has no idempotency-key lookup.
+
+Health can be checked without a token from the server host:
+
+```sh
+curl --fail --silent --show-error http://127.0.0.1:8080/rdp/healthz
+curl --fail --silent --show-error http://127.0.0.1:8080/rdp/readyz
+```
+
+Readiness, the reported native build and capabilities are separate from RDP
+desktop, browser-audio, clipboard and installed-OS acceptance. Test the actual
+deployment profile before routing users to it. Bridge installation does not
+provision VMs, create RDP users or guarantee attachment to a physical console
+session; that behavior belongs to the selected RDP server.
+
 ## Public configuration
 
 Start from [bridge.example.json](../packaging/standalone/bridge.example.json).
@@ -153,6 +217,53 @@ extracted-byte verification pass; installed RED OS/systemd remains separate.
 [Distribution license references](../packaging/standalone/THIRD_PARTY.md) point to
 the shipped Node, npm and native inventories rather than assigning one license
 to every bundled component.
+
+## Portable launchers in development
+
+`scripts/build-standalone-portable.mjs <payload-directory>` creates Windows ZIP
+or Linux TGZ with a versioned root and a complete regular-file inventory.
+The payload must already contain its matching private Node, service and native
+runtime; building is separate from installing. The archive includes usage,
+public default-deny configuration and component license inventories.
+
+After extraction, Windows uses `./start.ps1`; Linux uses `./start.sh` as an
+ordinary user. Optional configuration/runtime paths must be absolute. Launchers
+create a private runtime when absent and refuse foreign/permissive existing
+directories rather than changing their permissions. No system service is
+registered by these portable commands. Stop before replacing the extracted
+program; keep public configuration outside it when it must survive replacement.
+
+Actual relocated Windows ZIP and Linux TGZ/private-Node/native-TLS shutdown pass;
+Linux runs as UID 1000. Neither format is a released 0.2.5 artifact.
+[Iteration 447](ITERATION_447.md) records this boundary and retained failure
+evidence. MSI/DEB/RPM provide the separately tested OS-service lifecycle.
+
+## Automatic acceptance and retained configuration
+
+The standalone workflow builds pinned public payloads and runs portable
+relocation/native shutdown plus actual installed-service checks on fresh
+Windows/Ubuntu runners. The same installed fixture has explicit owned-lab modes
+for Astra 1.7.5 and RED OS 7.3; both prototype service profiles pass. It refuses
+ordinary developer execution, a different OS, or pre-existing program/config
+and service in owned-lab mode. Tests cover identity/JWT, native TLS, crash
+recovery, running reinstall, retained public config and uninstall. The RED OS
+case also checks that reinstall preserves an administrator-stopped service.
+Real desktops/devices and newer-version upgrade are separate acceptance gates.
+
+DEB/MSI uninstall retain the public `bridge.json` configuration. RPM moves a
+modified config to `bridge.json.rpmsave`; administrators should review and restore
+that public configuration when reinstalling. RPM running upgrades use try-restart:
+a running service restarts, while an intentionally stopped service stays stopped.
+The package retains its non-login service account. These behaviors are checked
+explicitly rather than assuming identical installer semantics across OSes.
+
+Ordinary `pnpm check` verifies workspace versions, package README presence, build,
+lint, formatting and source regression. It does not run every installer/RDP
+profile: packaging checks need their explicit artifact inputs and installed
+checks need fresh CI or the selected owned lab. In iteration 447 the full local
+suite takes about 12 minutes on Windows and 4.5 minutes on Linux; platform jobs
+can run in parallel. Native dependency rebuilds and real RDP/device profiles
+have their own cost. A green unit suite alone does not accept those profiles.
 
 ## Required distribution acceptance
 

@@ -4,6 +4,12 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Add bounded standalone JWT/config/browser service, private Node packaging,
+  Windows service supervisor, portable ZIP/TGZ and MSI/DEB/RPM builders. Prototype
+  portable lifecycle and installed Astra 1.7.5/RED OS 7.3 service checks pass;
+  prior hosted Windows/Ubuntu profiles pass. Aligned 0.2.5, newer-version upgrade,
+  real standalone desktops and automatic release publication remain pending.
+  [Service contract](docs/STANDALONE.md), [latest evidence](docs/ITERATION_447.md).
 - Prepare five separate source repositories, exact-archive OIDC workflows and a
   guarded draft-release bootstrap. All five main/v0.2.4 pushes are verified;
   all ten packages and five GitHub Releases are public, hosted workflows and
