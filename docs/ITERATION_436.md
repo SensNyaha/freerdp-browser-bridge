@@ -23,3 +23,41 @@ FreeRDP remains pinned to 3.32.1 commit
 `bf217a504e54cc719880c228e82353382cd7d4fa`. Mandatory RED OS 7.3/GCC 11 support
 and Astra 1.7.5/GCC 8.3 requirements remain; new compiler/foundation checks
 must not be confused with installed-OS desktop/device acceptance.
+
+## Later native and artifact preparation
+
+Fresh 0.2.4 clean linked builds pass: MSVC CTest 36/36 and Node lifecycle
+27 pass / 1 skip; exact GCC 8.3.0 CTest 37/37 and lifecycle 40/40. Both have
+identical native source hash
+`fa47e50649c1cecea7d4f5fdc68b469257a3776c499a6efe46f97aa28ac11274`.
+Windows fixture `build/native-clean-YQk1rT`; Linux
+`/work/build/native-clean-VAVyx5`. Logs
+`build/iteration-436-{windows,linux}-native.log`; parsed receipts
+`build/release-436-native-{win32,linux}.json`.
+SDK receipts/pin remain unchanged; no installed-OS compiler/device claim is
+inferred from these clean native results.
+
+The user's final GitHub owner is **SensNyaha**; npm scope stays freerdp-bridge.
+Repository metadata is assigned before final archive acceptance, following
+[the direct OIDC publication plan](NPM_TRUSTED_PUBLISHING.md). Earlier unaccepted
+native drafts using the initially supplied owner are superseded, retained
+locally and never published. Current candidates are Windows
+`build/npm-native-win32-4aYYSw` and Linux
+`/work/build/npm-native-linux-CckSNy`. They contain the same accepted native
+source/binaries, with corrected public repository metadata.
+
+All ten candidates in `build/release-436-archives/` pass bounded tar/metadata,
+license/root README/source-notice, known lab-secret sentinel and exact
+repository-URL checks. Official npm dry-run reports exact SHA-512 for all ten;
+it performs no stage/publish or interactive approval. Evidence:
+`build/release-436-artifact-audit.json`, `build/release-436-npm-dry-run.json`,
+`iteration-436-artifact-audit.log`, `iteration-436-npm-dry-run.log`.
+An initial local receipt-reading helper has an extra closing parenthesis and
+fails before parsing; it is corrected without changing native output/tests.
+One inline PowerShell audit command also fails to parse before executing;
+its JavaScript is moved to a helper file and the audit then passes.
+
+Full checks/exact external/reinstall/versioned RDP acceptance and release tag
+remain separate; this checkpoint alone does not complete 0.2.4. No new manual
+npm approval queue is started. Hosted repositories and actual OIDC trust setup
+await prepared local delivery repos and the user's push.

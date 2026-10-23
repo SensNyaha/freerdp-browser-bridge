@@ -27,5 +27,9 @@
   "dependencies": {
     "@freerdp-bridge/api": "workspace:*",
     "fastify": "5.12.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SensNyaha/freerdp-bridge-http.git"
   }
 }

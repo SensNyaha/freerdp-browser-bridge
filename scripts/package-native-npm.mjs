@@ -228,6 +228,10 @@ async function main() {
         name,
         version: productVersion,
         description: 'Native runtime for FreeRDP Browser Bridge',
+        repository: {
+          type: 'git',
+          url: 'git+https://github.com/SensNyaha/freerdp-browser-bridge.git',
+        },
         license: 'SEE LICENSE IN THIRD_PARTY_NOTICES.md',
         os: [process.platform],
         cpu: ['x64'],

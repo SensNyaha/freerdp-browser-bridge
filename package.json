@@ -39,5 +39,9 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.1"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SensNyaha/freerdp-browser-bridge.git"
+  }
 }

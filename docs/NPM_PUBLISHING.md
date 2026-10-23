@@ -1,5 +1,10 @@
 # Публикация проверенных npm-архивов
 
+Новая настройка пользователя: [автоматический direct publish через GitHub OIDC](NPM_TRUSTED_PUBLISHING.md),
+GitHub owner `SensNyaha`, npm scope `@freerdp-bridge`. Ручная очередь approve
+остановлена; не возобновлять её автоматически. Исторические сведения о
+staging ниже сохранены, но staging сам по себе не устраняет ручную 2FA.
+
 ## Почему публикуются общие JS-пакеты
 
 Потребитель устанавливает выбранный adapter и native runtime своей ОС.

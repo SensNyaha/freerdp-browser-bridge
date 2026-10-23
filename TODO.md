@@ -73,6 +73,14 @@ releases automatically on push to `master` or `main`. Prepare and verify the
 local repository/workflow; hosted execution and release publication require
 the user's subsequent push and must be reported separately from local checks.
 
+Additional user direction, 2026-10-23: stop the rapid per-package npm approval
+queue and prepare direct npm Trusted Publishing through GitHub Actions/OIDC.
+Final GitHub owner is **SensNyaha**, not the npm scope `freerdp-bridge`.
+0.2.2 is fully public and registry-only Windows/Linux NestJS consumers pass;
+0.2.3 has only both runtimes public, seven accepted stages remain pending.
+Do not restart manual approve automatically or claim OIDC configured before
+the user's repository push and real publisher/workflow validation.
+
 Additional user requirement, 2026-10-22: every npm package release includes its
 own explanatory root README: purpose, installation, dependencies/platforms,
 usage, limitations and licenses. This applies to shared JS packages and both
