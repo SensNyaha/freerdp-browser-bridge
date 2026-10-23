@@ -16,8 +16,11 @@ integrity; весь набор ещё не завершён. [Текущий che
 - `SensNyaha/freerdp-bridge-fastify`, `freerdp-bridge-nestjs`,
   `freerdp-bridge-http`, `freerdp-bridge-express`: исходники соответствующей
   библиотеки, отдельный build/test harness, полные guides и её принятый архив.
-- `SensNyaha/freerdp-bridge-standalone`: последующий standalone installer и
-  отдельный workflow GitHub Releases на push в `master`/`main`.
+- По последнему решению пользователя standalone installers публикуются в
+  **Releases существующего `SensNyaha/freerdp-browser-bridge`**. Workflow
+  генерирует их автоматически на push в `master`/`main`; прежний план
+  отдельного standalone repository отменён. Реализация/приёмка следуют после
+  plugin delivery.
 
 Native runtime не переносится внутрь Node/framework. Общие JS/native версии
 совпадают, runtime устанавливается явно, target/device acceptance остаётся

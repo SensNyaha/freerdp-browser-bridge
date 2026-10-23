@@ -25,7 +25,9 @@ build/github-delivery-0.2.4-<random>/
   release-assets/<repository>/v0.2.4/*.tgz
 ```
 
-Standalone gets its separate repo after the plugin delivery block. Native
+The user's later correction puts standalone installer releases in the existing
+SensNyaha/freerdp-browser-bridge, with automatic Releases on main/master push;
+the earlier separate standalone repository plan is superseded. Native
 tarballs remain outside Git. Each source repo carries a committed
 `.delivery/release.json` with schema 1, kind, version, exact SensNyaha repository,
 upstream tag/commit/acceptance, ordered package hashes and a complete bounded

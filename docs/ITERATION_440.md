@@ -136,3 +136,27 @@ before public core/HTTP dependencies; no old 0.2.3 stage is approved. Receipt:
 `iteration-440-express-stage.json`. Express trust/approve/public consumers,
 remaining OIDC publications, standalone, final cleanup and documentation
 consolidation remain open.
+
+## Verified forward merge and updated installer destination
+
+Remote feature `b67d472` passes both actual foundation run 39920657907 (all
+Ubuntu/MSVC jobs, sanitizer Node/CTest and all fuzz commands) and GCC 8.3 run
+39920657917. Only after those terminal green results, remote main is
+fast-forwarded from 16b29a7 to b67d472. The annotated v0.2.4 object remains
+4853049e16e61ccd7d0d0be6da766e10152cfb55 and still peels to original 16b29a7.
+No accepted tarball or historical tag is modified.
+
+Both native 0.2.4 npm runtime packages are subsequently independently public
+at exact accepted integrity. JS core publication is not yet complete. A later
+read-only GitHub API rate-limit failure is handled with the existing system
+owner identity, not by inferring a live run stopped or repeating an upload.
+Only the already terminal failed npm job is explicitly rerun after the public
+checks; its unchanged code first skips matching versions. Current run remains
+39920657127; fresh attempt/job status is inspected directly.
+
+The user changes the standalone destination: installers must now be published
+in Releases of **SensNyaha/freerdp-browser-bridge**, automatically on main/master
+push. The previous separate standalone repository plan is superseded in TODO
+and the current delivery docs; no such repository is created. Original scope
+still includes real OS installer acceptance, cleanup of project-owned unused
+artifacts and consolidation of documentation after earlier release gates.

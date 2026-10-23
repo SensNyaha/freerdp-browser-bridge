@@ -33,7 +33,11 @@ OIDC workflow публикует без этих локальных browser prom
 | `SensNyaha/freerdp-bridge-nestjs` | `@freerdp-bridge/nestjs` |
 | `SensNyaha/freerdp-bridge-http` | `@freerdp-bridge/http` |
 | `SensNyaha/freerdp-bridge-express` | `@freerdp-bridge/express` |
-| `SensNyaha/freerdp-bridge-standalone` | OS installers; отдельный GitHub Releases workflow |
+
+Standalone OS installers по последнему решению пользователя добавляются в
+Releases существующего `SensNyaha/freerdp-browser-bridge`, с автоматическим
+workflow на push в `master`/`main`. Отдельный standalone repository больше не
+планируется. Этот GitHub installer workflow не является npm Trusted Publisher.
 
 В текущем релизном checkout Git remote отсутствует. npm manifests 0.2.4 и
 генератор native package получают соответствующие `repository.url` до
