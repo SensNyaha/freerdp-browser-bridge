@@ -1,9 +1,14 @@
 import { adapters, fail } from './manifest.mjs';
+import { format } from 'prettier';
+import formatting from '../../.prettierrc.json' with { type: 'json' };
 
 // Resolved from the official GitHub action repositories on 2026-10-23.
 const checkout = '3d3c42e5aac5ba805825da76410c181273ba90b1'; // checkout v7.0.1
 const setupNode = '949feb2413d6458794dcd2491c4babbbce0c15c1'; // setup-node v7
 const expression = (text) => '${{ ' + text + ' }}';
+export async function formattedNpmWorkflow(kind) {
+  return format(npmWorkflow(kind), { ...formatting, parser: 'yaml' });
+}
 export function npmWorkflow(kind) {
   if (kind !== 'core' && !adapters.includes(kind))
     fail('DELIVERY_KIND_INVALID');

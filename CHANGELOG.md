@@ -4,6 +4,14 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Prepare five separate source repositories, exact-archive OIDC workflows and a
+  guarded draft-release bootstrap. All five main/v0.2.4 pushes are verified;
+  actual npm trust/publish remains pending. [Evidence](docs/ITERATION_439.md).
+- Correct generated workflow formatting and distinguish native foundation
+  refusal from linked strict TLS in Fastify tests. Local full/CTest checks
+  pass; real hosted forward-correction acceptance is tracked separately.
+  [Evidence](docs/ITERATION_440.md).
+
 ## 0.2.4 — 2026-10-23
 
 Accepted local Express release with root middleware and same-port HTTP/HTTPS/WS.

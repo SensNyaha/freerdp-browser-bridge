@@ -26,7 +26,7 @@ import {
   verifySources,
   fail,
 } from './github-delivery/manifest.mjs';
-import { npmWorkflow } from './github-delivery/templates.mjs';
+import { formattedNpmWorkflow } from './github-delivery/templates.mjs';
 import { adapterKit } from './github-delivery/adapter-kit.mjs';
 import { publicLock } from './github-delivery/lock.mjs';
 
@@ -340,7 +340,7 @@ try {
     );
     await write(
       '.github/workflows/npm-publish.yml',
-      await format(npmWorkflow(kind), { parser: 'yaml' }),
+      await formattedNpmWorkflow(kind),
     );
     await write(
       'DELIVERY.md',

@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { format } from 'prettier';
+import { format, resolveConfig } from 'prettier';
 import {
   publicLock,
   publicTarballUrl,
 } from '../../scripts/github-delivery/lock.mjs';
-import { npmWorkflow } from '../../scripts/github-delivery/templates.mjs';
+import {
+  npmWorkflow,
+  formattedNpmWorkflow,
+} from '../../scripts/github-delivery/templates.mjs';
 
 test('Delivery public lock keeps accepted integrity and replaces only private bootstrap resolutions', () => {
   const integrity = 'sha512-' + Buffer.alloc(64, 2).toString('base64');
@@ -95,8 +98,11 @@ test('Delivery public lock keeps accepted integrity and replaces only private bo
 
 test('Delivery workflow templates parse as YAML for every supported kind and refuse unknown delivery types', async () => {
   for (const kind of ['core', 'fastify', 'nestjs', 'http', 'express']) {
-    const source = npmWorkflow(kind);
-    const yaml = await format(source, { parser: 'yaml' });
+    const yaml = await formattedNpmWorkflow(kind);
+    const config = await resolveConfig(
+      new URL('../../.prettierrc.json', import.meta.url),
+    );
+    assert.equal(await format(yaml, { ...config, parser: 'yaml' }), yaml);
     assert.ok(yaml.length > 1000);
     assert.ok(yaml.includes('id-token: write'));
     assert.equal(yaml.includes('NODE_AUTH_TOKEN:'), false);
