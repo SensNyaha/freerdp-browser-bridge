@@ -3,8 +3,10 @@
 The latest accepted local stable release is **0.2.4**, identified by annotated
 immutable `v0.2.4`: Express 5 root middleware with same-port HTTP/HTTPS/WS and
 aligned JS/native packages. Full checks, ten exact archives, external consumers
-and eight versioned Astra/RED OS Express profiles pass. Public npm/GitHub/OIDC
-delivery remains separate and pending. [Release acceptance](ITERATION_438.md).
+and eight versioned Astra/RED OS Express profiles pass. All ten npm archives and
+five GitHub Releases are public, with successful hosted workflows and four fresh
+registry-only consumers on Windows/Linux. [Release acceptance](ITERATION_438.md),
+[publication](ITERATION_441.md).
 
 Prior stable **0.2.3** is identified by annotated immutable
 `v0.2.3`: node:http/node:https embedding with explicit HTTP/WS dispatch and

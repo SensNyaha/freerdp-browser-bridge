@@ -137,10 +137,14 @@ Do not start that stage/approve automatically after the user's stop. Future
 Express releases can use OIDC once bootstrap/trust are ready. Seven old 0.2.3
 JS stages also remain interactive and unchanged; OIDC does not approve them.
 
-## Remaining acceptance
+## Acceptance checkpoint before iteration 441
 
 The exporter and five generated repositories now pass Windows/Linux builds,
 strict declarations, integration tests, compiled-file equivalence and exact
 source/archive verification. Bootstrap/account setup, final full feature
 checks, actual hosted OIDC/public consumers and standalone have separate
-remaining gates. See iteration 439 for evidence, failures and actual scope.
+remaining gates at that earlier checkpoint. Iteration 441 supersedes plugin
+delivery status: all ten packages and five Releases are public, all hosted
+workflows and four registry-only consumers pass on both OSes, all ten trust
+bindings are verified. Standalone, old 0.2.3 pending stages and final cleanup/
+documentation consolidation remain separate. See iterations 439–441.

@@ -6,8 +6,10 @@
 пользователь создал пять GitHub repositories и явно поручил агенту отправить
 их. Все пять `main` и annotated `v0.2.4` теперь запушены и независимо сверены.
 Core GitHub Release уже опубликован с точными assets, девять существующих npm
-packages привязаны к OIDC. Первая runtime Windows 0.2.4 публична с accepted
-integrity; весь набор ещё не завершён. [Текущий checkpoint](ITERATION_440.md).
+packages публикуются через OIDC. Все десять npm архивов 0.2.4 публичны с accepted
+integrity; пять Releases/workflows и четыре fresh Windows/Linux consumers
+проходят. Express после разрешённого bootstrap также имеет read-back verified
+trust. [Публикация](ITERATION_441.md), [CI checkpoint](ITERATION_440.md).
 
 ## Структура delivery
 
@@ -54,8 +56,10 @@ Core публикуется первым; adapter releases ждут публич
 HTTP публикуется перед Express, который зависит от HTTP. При повторном запуске
 совпадающая публичная версия пропускается, другое содержимое отказывает.
 Ни unpublish, ни замена assets, ни перемещение старых tags не выполняются.
-GitHub CLI не установлен в текущем PATH; подготовка/локальная проверка не
-выдаётся за выполненную загрузку GitHub Releases.
+GitHub CLI не установлен в текущем PATH. Фактическая загрузка пяти Releases
+выполнена тем же проверенным bootstrap state machine через GitHub REST;
+системная Git credential передаётся только в памяти и HTTPS header. Ни token
+в argv/env/files, ни подмена локальной проверки внешней публикацией не нужны.
 
 ## Проверенная локальная поставка 0.2.4
 
@@ -71,6 +75,11 @@ GitHub CLI не установлен в текущем PATH; подготовк�
 | `freerdp-bridge-nestjs` | `242d119d0f7b4f21444b69cbbf867100f1cf42e0` |
 | `freerdp-bridge-http` | `29189ae17908a958308d983827cd7a57a04357ff` |
 | `freerdp-bridge-express` | `ee1bf047b4ea426297ccefd22939fb5207fc7b62` |
+
+Core main после успешных hosted foundation/sanitizer/fuzz checks продвинут
+до b67d472; принятый v0.2.4 остаётся на исходном 16b29a7. Для точной локальной
+проверки старого delivery manifest используйте checkout v0.2.4: инвентарь
+закреплён за этим snapshot и не описывает последующие изменения main.
 
 Все пять проходят Windows/Linux source builds и точные source/archive checks.
 У адаптеров дополнительно проходят строгие consumer declarations,

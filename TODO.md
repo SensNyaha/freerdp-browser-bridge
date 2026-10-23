@@ -10,9 +10,12 @@ Latest accepted local stable is **0.2.4**, tag `v0.2.4`: Express 5 root middlewa
 same-port HTTP/HTTPS/WS and aligned native runtimes. Full checks: Windows
 951 / 61 skips, Linux 928 / 87; fresh CTest 36/36 and 37/37. Ten exact archives
 pass audit/dry-run, four external consumers/reinstall matrices and eight
-versioned Astra/RED OS Express desktop profiles. npm/GitHub/OIDC setup remains
-separate and pending; no manual approval queue is restarted.
-[Release acceptance](docs/ITERATION_438.md).
+versioned Astra/RED OS Express desktop profiles. All ten exact npm archives and
+five GitHub Releases are public; hosted workflows and all four fresh Windows/Linux
+registry-only consumers pass. Nine names publish through OIDC; new Express uses
+the one separately authorized initial approve and has its trust read-back verified.
+The old 0.2.3 manual queue remains stopped.
+[Release acceptance](docs/ITERATION_438.md), [publication](docs/ITERATION_441.md).
 
 Prior stable is **0.2.3**, tag `v0.2.3`: node:http/node:https integration,
 explicit HTTP/WS dispatch and aligned native runtimes. Full checks: Windows
@@ -59,7 +62,7 @@ Updated user-selected adapter order, 2026-10-22:
 | 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; all seven npm packages published; exact public integrity and fresh Windows/Linux registry-only consumers pass; iteration 426 |
 | 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Accepted v0.2.2 and all eight npm archives public; exact registry integrity and Windows/Linux registry-only consumers strict TS + 15/15 pass; iterations 427–429 and 437 |
 | 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Accepted aligned v0.2.3 with full/native/exact-consumer/reinstall and eight real RDP profiles; both runtimes public, seven JS stages pending; manual approvals stopped, future direct OIDC requested; iterations 431–433 |
-| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Accepted local v0.2.4: full Windows 951/61, Linux 928/87; fresh CTest 36/36, 37/37; ten exact archives, all four consumers/reinstall and eight versioned real RDP profiles pass. Public npm/GitHub/OIDC remains pending; iterations 435–436 and 438 |
+| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Accepted local v0.2.4: full Windows 951/61, Linux 928/87; fresh CTest 36/36, 37/37; ten exact archives, all four consumers/reinstall and eight versioned real RDP profiles pass. All ten exact npm archives and five GitHub Releases public; hosted workflows and four fresh registry-only consumers pass on both OSes; iterations 435–436, 438 and 441 |
 
 The latest user decision adds Express 0.2.4 to the selected initial set. Other
 popular server integrations will be evaluated for concrete unmet requirements

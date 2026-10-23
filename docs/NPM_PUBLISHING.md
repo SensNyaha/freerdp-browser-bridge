@@ -9,7 +9,9 @@ staging ниже сохранены, но staging сам по себе не ус
 свежие Windows/Linux registry-only consumers проходят
 ([iteration 437](ITERATION_437.md)). **0.2.3** публичен только в части двух
 runtimes; семь JS stages остаются pending. **0.2.4** принят локально с десятью
-точными архивами ([iteration 438](ITERATION_438.md)), но не опубликован.
+точными архивами ([iteration 438](ITERATION_438.md)) и полностью опубликован:
+10/10 public integrity, пять GitHub Releases/workflows и четыре чистых
+Windows/Linux registry-only consumers проходят ([iteration 441](ITERATION_441.md)).
 Исторические pending checkpoints ниже не заменяют этот текущий статус.
 
 ## Почему публикуются общие JS-пакеты
