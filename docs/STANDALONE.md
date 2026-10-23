@@ -119,6 +119,11 @@ This initial page is a diagnostic connection interface, not a desktop GUI.
 Full checks and actual browser/private-Node lifecycle evidence:
 [iteration 443](ITERATION_443.md).
 
+The Windows C++ supervisor builds with `scripts/build-standalone-host.ps1`.
+It launches only the private bundle and joins its process tree through a Windows
+Job. Its console/control, crash recovery and preservation tests pass;
+[iteration 444](ITERATION_444.md). SCM identity/ACL and MSI acceptance remain open.
+
 ## Required distribution acceptance
 
 Portable Windows ZIP/Linux TGZ, Windows service/MSI, Astra DEB and RED OS RPM

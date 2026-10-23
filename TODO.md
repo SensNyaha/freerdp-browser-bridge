@@ -103,6 +103,9 @@ The following browser/private-Node block passes complete Windows 978/63 skips
 and Linux 954/90 checks, actual Edge authenticated pagehide cleanup and the
 private-Node supervised CLI with a live native certificate prompt;
 [evidence](docs/ITERATION_443.md). Installed services and releases remain open.
+Windows supervisor compilation and 9/9 real private-Node/native process-tree,
+crash-recovery and foreign-data preservation cases pass; SCM/MSI is still pending.
+[Component evidence](docs/ITERATION_444.md).
 
 Clarified user scope, 2026-10-23: retain the standalone web server and OS
 installers; exclude a separate desktop GUI application. The browser reference
