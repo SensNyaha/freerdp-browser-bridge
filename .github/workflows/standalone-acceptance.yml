@@ -16,7 +16,7 @@ permissions:
   contents: read
 concurrency:
   group: standalone-acceptance-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
 jobs:
   installed:
     strategy:

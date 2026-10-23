@@ -86,6 +86,9 @@ push, avoiding a wait behind an already failed Linux matrix while an unchanged
 Windows case repeats. Main/master publication retains non-cancelling serialization;
 its uploads must never be interrupted automatically. The first Windows baseline
 success remains independently recorded above.
+Foundation/GCC and development installed-service feature checks use the same
+per-ref replacement rule, so a corrective push does not retain several obsolete
+full matrices in the runner queue. Main/master checks remain non-cancelling.
 
 Full local Linux check for `1a4fe88` passes **972 / 90 skips / zero failures**,
 child exit zero, in 257 seconds. Receipt/log:
