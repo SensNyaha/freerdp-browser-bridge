@@ -4,6 +4,13 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Implement Express 5 root middleware on the accepted HTTP core, retaining
+  strict raw-body limits, selective upgrades and joined lifecycle. Add public
+  type/browser exports, independent consumer checks and real-project guides.
+  Feature checks pass Windows 951/61 and Linux 928/87, external/reinstall 11/11
+  on both and all eight actual Astra/RED OS desktop profiles. Aligned release
+  remains pending; manifests retain stable 0.2.3. [Evidence](docs/ITERATION_435.md).
+
 ## 0.2.3 — 2026-10-23
 
 Accepted node:http/node:https distribution with explicit same-port HTTP/WS
