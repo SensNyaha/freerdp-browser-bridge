@@ -97,6 +97,29 @@ test('Delivery bootstrap requires exact public dependencies before downstream re
   }));
 });
 
+test('core bootstrap preserves separately verified standalone assets while retaining exact core and unknown-asset refusal', () => {
+  const value = item();
+  value.manifest = {
+    kind: 'core',
+    version: '0.2.5',
+    upstream: { tag: 'v0.2.5' },
+  };
+  const published = { ...release(value, false), tag_name: 'v0.2.5' };
+  published.assets.push({
+    name: 'freerdp-bridge-0.2.5-win32-x64.msi',
+    size: 1,
+    state: 'uploaded',
+    digest: 'sha256:' + 'd'.repeat(64),
+  });
+  assert.deepEqual(releaseAssets(published, value), []);
+  const changed = structuredClone(published);
+  changed.assets[0].digest = 'sha256:changed';
+  assert.throws(() => releaseAssets(changed, value));
+  const unknown = structuredClone(published);
+  unknown.assets.at(-1).name = 'unverified-extra.exe';
+  assert.throws(() => releaseAssets(unknown, value));
+});
+
 function remoteFixture(value, initial) {
   const workflow = Buffer.from('accepted workflow\n');
   const state = {

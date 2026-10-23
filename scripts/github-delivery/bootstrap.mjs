@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdtemp } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fail, verifyArchives, verifySources } from './manifest.mjs';
 import { publicMetadata } from './publish.mjs';
+import { standaloneReleaseNames } from '../standalone/release-artifacts.mjs';
 
 const invoke = (args) => {
   const result = spawnSync('gh', args, {
@@ -51,18 +52,42 @@ function apiResult(args) {
 }
 
 export function releaseAssets(release, item, allowMissing = false) {
+  const version = item.manifest.version;
+  const standalone =
+    item.manifest.kind === 'core' &&
+    /^0\.2\.(?:[5-9]|[1-9][0-9]{1,5})$/.test(version ?? '')
+      ? new Set([
+          ...standaloneReleaseNames(version, 'win32-x64'),
+          ...standaloneReleaseNames(version, 'linux-x64-gnu'),
+          'standalone-manifest.json',
+          'freerdp-bridge-' + version + '-standalone-SHA256SUMS.txt',
+        ])
+      : new Set();
   if (
     !release ||
     release.tag_name !== item.manifest.upstream.tag ||
     release.prerelease ||
     typeof release.draft !== 'boolean' ||
     !Array.isArray(release.assets) ||
-    release.assets.length > item.files.length
+    release.assets.length > item.files.length + standalone.size
   )
     fail('DELIVERY_GH_RELEASE_INVALID');
   const remaining = new Map(item.files.map((file) => [file.name, file]));
   for (const asset of release.assets) {
     const expected = remaining.get(asset.name);
+    if (!expected && standalone.delete(asset.name)) {
+      // The standalone publisher independently verifies these bytes. This
+      // bootstrap checks only its exact core inputs and never edits extras.
+      if (
+        asset.state !== 'uploaded' ||
+        !Number.isSafeInteger(asset.size) ||
+        asset.size < 1 ||
+        asset.size > 536870912 ||
+        !/^sha256:[a-f0-9]{64}$/.test(asset.digest ?? '')
+      )
+        fail('DELIVERY_GH_ASSET_CHANGED');
+      continue;
+    }
     if (
       !expected ||
       asset.state !== 'uploaded' ||

@@ -3,9 +3,11 @@ import { writeFile, appendFile, readdir } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
 
 const windows = process.platform === 'win32';
+const production = process.argv[2] === '--production';
 if (
   !['win32', 'linux'].includes(process.platform) ||
-  process.versions.node !== '24.21.0'
+  process.versions.node !== '24.21.0' ||
+  (process.argv.length !== 2 && !(production && process.argv.length === 3))
 )
   throw new Error('STANDALONE_CI_BUILD_USAGE');
 const platform = windows ? 'win32-x64' : 'linux-x64-gnu';
@@ -81,7 +83,7 @@ if (windows) {
     payload.payload,
     resolve('.tools/standalone-wix/tools/net6.0/any/wix.exe'),
     resolve('.tools/standalone-wix-util/wixext4/WixToolset.Util.wixext.dll'),
-    '--development',
+    ...(production ? [] : ['--development']),
   ]);
 } else
   artifact = await node('scripts/build-standalone-deb.mjs', [payload.payload]);

@@ -298,6 +298,23 @@ private key here.
 
 ## Required distribution acceptance
 
+The prepared [standalone release workflow](../.github/workflows/standalone-release.yml)
+builds both platform sets, verifies portable and installed-service lifecycle,
+and appends installers/source companions to an existing core Release on pushes
+to main/master. First publish the accepted matching core npm archives through
+the separate OIDC workflow, then advance public main. All six core package
+integrities must match the committed standalone locks. Feature-branch validation
+never publishes. Actual pipeline execution/publication remains an acceptance
+gate; [iteration 451](ITERATION_451.md).
+
+After a complete installer release, further pushes with the same product version
+verify its manifest/server digests and skip rebuilding those immutable assets.
+Use a new aligned version for changed release bytes. A failed upload must resume
+the original publish job with its retained artifacts; a fresh build refuses a
+partial previous upload. No tag movement, clobber or automatic uncertain retry
+is performed. Hosted Windows/Ubuntu checks do not replace the named Astra/RED OS
+or actual RDP profiles.
+
 Portable Windows ZIP/Linux TGZ, Windows service/MSI, Astra DEB and RED OS RPM
 must each prove install, launch without system Node/FreeRDP, authenticated native
 lifecycle, shutdown/worker cleanup, upgrade/recovery and uninstall. Compiler
