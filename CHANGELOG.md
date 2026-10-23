@@ -4,6 +4,11 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Prepare aligned 0.2.5 manifests/native project and candidate README commands
+  on release/0.2.5. Native workers/archives, exact new installer locks and final
+  upgrade/regression/public delivery are still pending; this is not a stable
+  release claim. [Preparation evidence](docs/ITERATION_453.md).
+
 - Add bounded standalone JWT/config/browser service, private Node packaging,
   Windows service supervisor, portable ZIP/TGZ and MSI/DEB/RPM builders. Prototype
   portable lifecycle and installed Astra 1.7.5/RED OS 7.3 service checks pass;

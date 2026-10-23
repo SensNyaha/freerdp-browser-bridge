@@ -1,8 +1,8 @@
 # Standalone service
 
 Private assembly entry point for the next standalone distribution. This is
-not a separately published npm package. Development remains at product 0.2.4
-until the aligned 0.2.5 release is accepted.
+not a separately published npm package. Manifests are aligned to candidate
+0.2.5; native/upgrade/release acceptance remains pending.
 
 Node.js 24 runs the HTTP service; each session still has a separate native
 C++ worker. Configuration contains only public deployment settings and public

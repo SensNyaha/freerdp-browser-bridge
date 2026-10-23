@@ -9,6 +9,10 @@ HTTP 0.2.3, NestJS 0.2.2, Fastify 0.2.1 and the immutable `v0.2.0`
 compiler/Astra/RED OS baseline is preserved.
 The original named practical MVP remains the immutable `v0.1.0` baseline.
 
+Standalone **0.2.5** is in separate release preparation. Its aligned version
+metadata does not establish native/upgrade acceptance or public availability;
+[current gate](docs/ITERATION_453.md).
+
 Prepared: 2026-10-07  
 Target baseline: FreeRDP 3.32.1, Node.js 24 LTS, Linux x86_64 first
 
