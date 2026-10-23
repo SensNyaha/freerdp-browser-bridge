@@ -64,6 +64,14 @@ history block `9efbef4` passes real local Git ancestry/deletion/tag-refusal test
 The previous full counts 990/63 Windows and 965/90 Linux are not counts for these
 new tests. Full regression and this workflow's first actual build remain open.
 
+First actual run **40012365268** creates a successful plan, then Linux fails
+before its RPM build: Docker implicitly looks for `Dockerfile` while the owned
+recipe is named `RpmBuilder.Dockerfile`. Debug artifact **12526878130** confirms
+the missing Dockerfile, not a package/OS failure. The command now supplies the
+explicit recipe path. The old Windows job remains running independently; no
+publication occurs from this feature branch. The corrected Linux path still
+requires an actual follow-up run.
+
 The pipeline currently requires public version-matching npm inputs. Prepublication
 Windows upgrade verification still needs candidate-archive transport into CI;
 the local offline candidate assembler alone does not accept that missing gate.

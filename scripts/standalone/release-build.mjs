@@ -138,6 +138,8 @@ if (!windows) {
   const image = 'freerdp-bridge-release-rpm:' + process.env.GITHUB_SHA;
   await command('docker', [
     'build',
+    '--file',
+    'packaging/standalone/linux/RpmBuilder.Dockerfile',
     '--tag',
     image,
     'packaging/standalone/linux',
