@@ -46,3 +46,28 @@ CLI diagnostic suppression, token/local context refusal and registry bounds.
 Logs: `iteration-439-publisher-tests-{win32,linux}.log` and
 `iteration-439-publisher-lint.log`. Remaining export/workflow/hosted gates above
 are unchanged.
+
+## Subsequent asset/CLI and committed-source block
+
+`fetch.mjs` downloads only expected assets from the manifest's exact
+GitHub owner/repository/tag, bounds sizes while streaming, compares accepted
+hashes and refuses replacement of existing corrupt files. Failed new downloads
+are retired. `run.mjs` offers fetch/verify/publish; local verify is read-only
+and actual local publish refuses absent OIDC context before invoking npm.
+
+Review finds that the first source guard binds content hashes and tracked file
+set but does not independently anchor the manifest itself to committed HEAD.
+It now requires the committed manifest, matching parsed input, unchanged
+tracked source set and a clean tracked working tree. Tests commit their own
+isolated synthetic fixtures with signing/hooks disabled; no user repository
+or global Git configuration is modified. Manifest-only tampering/dirty trees
+are explicitly refused.
+
+Expanded matrix passes **8/8 Windows and 8/8 Linux**, plus lint/format.
+New coverage uses real downloaded-byte fixtures and the actual CLI in a
+sanitized local child context: size/hash refusal, cleanup/reuse, no corrupt
+file replacement, ignored asset placement, verify success and publish refusal.
+Logs: `iteration-439-committed-tests-win32.log`,
+`iteration-439-fetch-tests-linux.log`, `iteration-439-tools-lint.log`.
+No remote download, account setting or publication is credited from those
+synthetic fetch/runner cases. Export/workflow/hosted gates remain incomplete.

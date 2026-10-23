@@ -256,6 +256,23 @@ export async function verifyArchives(root, manifest) {
 }
 export async function verifySources(root, manifest) {
   parseManifest(manifest);
+  const committed = spawnSync('git', ['show', 'HEAD:.delivery/release.json'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 10000,
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  if (committed.error || committed.status !== 0)
+    fail('DELIVERY_COMMITTED_MANIFEST_REQUIRED');
+  let baseline;
+  try {
+    baseline = JSON.parse(committed.stdout);
+  } catch {
+    fail('DELIVERY_COMMITTED_MANIFEST_REQUIRED');
+  }
+  if (JSON.stringify(baseline) !== JSON.stringify(manifest))
+    fail('DELIVERY_MANIFEST_CHANGED');
   for (const item of manifest.sources) {
     const hash = await hashFile(root, item.path, 4 * 1024 * 1024);
     if (hash.bytes !== item.bytes || hash.sha256 !== item.sha256)
@@ -276,4 +293,23 @@ export async function verifySources(root, manifest) {
   ].sort();
   if (JSON.stringify(tracked) !== JSON.stringify(expected))
     fail('DELIVERY_SOURCE_SET_CHANGED');
+  const status = spawnSync(
+    'git',
+    [
+      '-c',
+      'core.fsmonitor=false',
+      'status',
+      '--porcelain',
+      '--untracked-files=no',
+    ],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 10000,
+      maxBuffer: 65536,
+    },
+  );
+  if (status.error || status.status !== 0 || status.stdout.trim())
+    fail('DELIVERY_GIT_DIRTY');
 }

@@ -7,9 +7,11 @@ import {
   readFile,
   rm,
   symlink,
+  copyFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
   safePath,
@@ -25,6 +27,10 @@ import {
   publishTag,
   publicMetadata,
 } from '../../scripts/github-delivery/publish.mjs';
+import {
+  assetDirectory,
+  fetchAssets,
+} from '../../scripts/github-delivery/fetch.mjs';
 
 const sample = () => ({
   schema: 1,
@@ -58,6 +64,25 @@ const run = (command, args, cwd) => {
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, 'Fixture tool failed');
 };
+const commitFixture = (root) =>
+  run(
+    'git',
+    [
+      '-c',
+      'commit.gpgsign=false',
+      '-c',
+      'core.hooksPath=.delivery-no-hooks',
+      '-c',
+      'user.name=Delivery fixture',
+      '-c',
+      'user.email=fixture@invalid.example',
+      'commit',
+      '--quiet',
+      '-m',
+      'Fixture acceptance',
+    ],
+    root,
+  );
 const withRoot = async (run) => {
   const root = await mkdtemp(join(tmpdir(), 'bridge-delivery-test-'));
   try {
@@ -207,7 +232,29 @@ test('GitHub delivery source inventory refuses drift and extra tracked files whi
       JSON.stringify(manifest),
     );
     run('git', ['add', '.'], root);
+    commitFixture(root);
     await verifySources(root, manifest);
+    const changed = { ...manifest, extra: 'uncommitted metadata' };
+    await writeFile(
+      join(root, '.delivery/release.json'),
+      JSON.stringify(changed),
+    );
+    await assert.rejects(
+      verifySources(root, changed),
+      (error) => error.code === 'DELIVERY_MANIFEST_CHANGED',
+    );
+    await writeFile(
+      join(root, '.delivery/release.json'),
+      JSON.stringify(manifest) + ' ',
+    );
+    await assert.rejects(
+      verifySources(root, manifest),
+      (error) => error.code === 'DELIVERY_GIT_DIRTY',
+    );
+    await writeFile(
+      join(root, '.delivery/release.json'),
+      JSON.stringify(manifest),
+    );
     await writeFile(join(root, 'extra.mjs'), 'unexpected');
     run('git', ['add', 'extra.mjs'], root);
     await assert.rejects(
@@ -335,6 +382,7 @@ test('GitHub delivery publisher skips identical bytes, refuses conflicting bytes
       JSON.stringify(manifest),
     );
     run('git', ['add', 'source.mjs', '.delivery/release.json'], root);
+    commitFixture(root);
     const environment = {
       GITHUB_ACTIONS: 'true',
       GITHUB_REPOSITORY: manifest.repository,
@@ -407,5 +455,124 @@ test('GitHub delivery publisher skips identical bytes, refuses conflicting bytes
       (error) => error.code === 'DELIVERY_NPM_PUBLISH_UNCONFIRMED',
     );
     assert.equal(commands, 1);
+  });
+});
+
+test('GitHub release downloads enforce exact bytes, keep assets outside Git and do not replace corrupt existing files', async () => {
+  await withRoot(async (root) => {
+    run('git', ['init', '--quiet'], root);
+    const content = join(root, 'content');
+    await mkdir(join(content, 'package'), { recursive: true });
+    const manifest = sample(),
+      item = manifest.packages[0];
+    await writeFile(
+      join(content, 'package/package.json'),
+      JSON.stringify({
+        name: item.name,
+        version: item.version,
+        repository: {
+          type: 'git',
+          url: 'git+https://github.com/' + manifest.repository + '.git',
+        },
+      }),
+    );
+    run(
+      'tar',
+      ['-czf', join(root, item.archive), '-C', content, 'package'],
+      root,
+    );
+    const hash = await hashFile(root, item.archive, 1024 * 1024);
+    Object.assign(item, {
+      bytes: hash.bytes,
+      sha256: hash.sha256,
+      integrity: hash.integrity,
+    });
+    await writeFile(join(root, 'source.mjs'), 'source');
+    const source = await hashFile(root, 'source.mjs', 1024);
+    manifest.sources = [
+      { path: 'source.mjs', bytes: source.bytes, sha256: source.sha256 },
+    ];
+    await mkdir(join(root, '.delivery'));
+    await writeFile(
+      join(root, '.delivery/release.json'),
+      JSON.stringify(manifest),
+    );
+    run('git', ['add', 'source.mjs', '.delivery/release.json'], root);
+    commitFixture(root);
+    const sourceBytes = await readFile(join(root, '.delivery/release.json'));
+    const archiveBytes = await readFile(join(root, item.archive));
+    let oversized = true,
+      calls = 0;
+    const fetcher = async (url, options) => {
+      calls++;
+      assert.ok(
+        url.startsWith(
+          'https://github.com/SensNyaha/freerdp-bridge-express/releases/download/v0.2.4/',
+        ),
+      );
+      assert.equal(options.headers, undefined);
+      return new Response(
+        url.endsWith('delivery-manifest.json')
+          ? sourceBytes
+          : oversized
+            ? Buffer.concat([archiveBytes, Buffer.from('extra')])
+            : archiveBytes,
+      );
+    };
+    await assert.rejects(
+      fetchAssets(root, manifest, fetcher),
+      (error) => error.code === 'DELIVERY_ASSET_SIZE_CHANGED',
+    );
+    const assets = await assetDirectory(root);
+    await assert.rejects(
+      readFile(join(assets, item.archive)),
+      (error) => error.code === 'ENOENT',
+    );
+    oversized = false;
+    await fetchAssets(root, manifest, fetcher);
+    const downloaded = calls;
+    await fetchAssets(root, manifest, fetcher);
+    assert.equal(calls, downloaded);
+    await verifySources(root, manifest);
+    await writeFile(join(assets, item.archive), Buffer.alloc(item.bytes, 0));
+    await assert.rejects(
+      fetchAssets(root, manifest, fetcher),
+      (error) => error.code === 'DELIVERY_EXISTING_ASSET_CHANGED',
+    );
+    assert.deepEqual(
+      await readFile(join(assets, item.archive)),
+      Buffer.alloc(item.bytes, 0),
+    );
+    await copyFile(join(root, item.archive), join(assets, item.archive));
+    const entry = fileURLToPath(
+      new URL('../../scripts/github-delivery/run.mjs', import.meta.url),
+    );
+    const environment = Object.fromEntries(
+      ['PATH', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG'].flatMap(
+        (name) =>
+          process.env[name] === undefined ? [] : [[name, process.env[name]]],
+      ),
+    );
+    const verified = spawnSync(process.execPath, [entry, 'verify'], {
+      cwd: root,
+      env: environment,
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 15000,
+    });
+    assert.equal(verified.status, 0);
+    assert.equal(JSON.parse(verified.stdout).published, false);
+    const refused = spawnSync(process.execPath, [entry, 'publish'], {
+      cwd: root,
+      env: environment,
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 15000,
+    });
+    assert.equal(refused.status, 1);
+    assert.equal(
+      JSON.parse(refused.stderr).code,
+      'DELIVERY_OIDC_CONTEXT_REQUIRED',
+    );
   });
 });
