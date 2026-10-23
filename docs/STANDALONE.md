@@ -312,6 +312,14 @@ alone do not prove that profile.
 
 ## Required distribution acceptance
 
+The actual candidate CI attempt shows that a read-only token cannot see a
+private draft. The final transport uses a separate **public prerelease** marked
+as an unstable installer candidate. The build job keeps contents-read and its
+candidate step receives no token. A stable release cannot serve as candidate
+input. Source/hash checks and candidate publication refusal still apply;
+[recorded correction](ITERATION_453.md). This supersedes the private-draft
+transport preparation described above.
+
 The prepared [standalone release workflow](../.github/workflows/standalone-release.yml)
 builds both platform sets, verifies portable and installed-service lifecycle,
 and appends installers/source companions to an existing core Release on pushes

@@ -74,14 +74,14 @@ export async function downloadCandidateAsset(
     size > 134217728 ||
     !/^sha256:[a-f0-9]{64}$/.test(digest ?? '') ||
     !/^sha512-[A-Za-z0-9+/]{86}==$/.test(integrity ?? '') ||
-    !token
+    (token !== undefined && typeof token !== 'string')
   )
     throw refuse();
   let response = await fetcher(
     'https://api.github.com' + prefix + '/releases/assets/' + id,
     {
       headers: {
-        authorization: 'Bearer ' + token,
+        ...(token ? { authorization: 'Bearer ' + token } : {}),
         accept: 'application/octet-stream',
         'X-GitHub-Api-Version': '2026-03-10',
       },
@@ -164,7 +164,8 @@ export async function fetchStandaloneCandidates({
     environment.GITHUB_ACTIONS !== 'true' ||
     environment.GITHUB_REPOSITORY !== 'SensNyaha/freerdp-browser-bridge' ||
     environment.STANDALONE_PUBLISH === 'true' ||
-    !token
+    environment.GITHUB_REF === 'refs/heads/main' ||
+    environment.GITHUB_REF === 'refs/heads/master'
   )
     throw refuse();
   const lock = JSON.parse(
@@ -206,9 +207,11 @@ export async function fetchStandaloneCandidates({
   const releases = await api(prefix + '/releases?per_page=100');
   if (!Array.isArray(releases) || releases.length > 100) throw refuse();
   const matching = releases.filter((value) => value.tag_name === pointer.tag);
+  if (matching.length === 0)
+    throw new Error('STANDALONE_CANDIDATE_DRAFT_NOT_VISIBLE');
   if (
     matching.length !== 1 ||
-    matching[0].draft !== true ||
+    matching[0].draft !== false ||
     matching[0].prerelease !== true ||
     !Array.isArray(matching[0].assets) ||
     matching[0].assets.length > 32 ||
@@ -312,7 +315,6 @@ if (
       repository,
       version: productVersion,
       platform,
-      token: process.env.GITHUB_TOKEN,
     });
     if (process.env.GITHUB_OUTPUT)
       await appendFile(

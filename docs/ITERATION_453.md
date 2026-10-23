@@ -68,3 +68,38 @@ inputs, every server digest verified; it remains private/unpublished. Receipt:
 `build/iteration-453-candidate-draft.json`. A temporary public pointer now enables
 actual prepublication download/upgrade CI; it contains no token or credentials.
 The draft is a build input, not a stable release acceptance or npm publication.
+
+## Retained first candidate/full-check failures
+
+Candidate workflow **40019499467** plans successfully; Linux job
+**120640246146** refuses candidate download. The helper's read-only contents
+token cannot see the private draft in the release list. GitHub's
+[List releases contract](https://docs.github.com/en/rest/releases/releases#list-releases)
+states that draft listings require push access. The build job now grants
+contents-write while injecting that token only into the bounded candidate
+download step; packaging/npm processes still receive no token and final
+candidate publication remains refused. A fixed missing-draft code distinguishes
+visibility from archive/hash failures. Corrected actual CI is still pending.
+
+First full Linux check reports **976 pass / 90 skip / one fail**, child exit 1:
+`session-startup-deadline` dereferences an unset fake start signal because a
+five-millisecond real deadline expires before invocation under scheduling load.
+The two tests of late completion/event now advance a mocked monotonic clock
+only inside backend start. They still assert timeout, no connected event,
+aborted signal, retired worker and zero active sessions. The separate real
+stalled-staging/close tests are retained. Focused startup/candidate tests pass
+10/10; no product timeout or acceptance assertion is weakened. The failed full
+log is retained before repeating the complete suite. Windows full check and
+four external consumer matrices continue independently.
+
+Automatic approval review rejects committing the proposed contents-write build
+job as an excessive permanent permission expansion. That commit/push does not
+execute. The correction retains contents-read and removes the candidate step's
+token entirely. Candidate inputs instead use a distinct **public prerelease**
+with the existing candidate-only tag, prominent unstable label and unchanged
+verified bytes. Its transport requires `draft: false`, `prerelease: true` and
+the annotated source/hash binding; stable releases and main/master candidate
+execution are refused. A unit case verifies anonymous download without any
+Authorization header. Publication to stable remains blocked by `candidateOnly`.
+This supersedes the private-draft transport proposal while preserving the
+failed private-draft evidence above; no system/GitHub permission is expanded.

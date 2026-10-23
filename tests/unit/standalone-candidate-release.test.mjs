@@ -33,7 +33,7 @@ async function retire(root) {
   assert.match(basename(root), /^bridge-candidate-release-[A-Za-z0-9]+$/);
   await rm(root, { recursive: true, force: true });
 }
-test('candidate transport binds a draft and annotated source tag, requires all five lock hashes and never forwards auth to storage', async () => {
+test('candidate transport binds a prerelease and annotated source tag, requires all five lock hashes and never forwards auth to storage', async () => {
   const root = await mkdtemp(join(tmpdir(), 'bridge-candidate-release-'));
   try {
     await mkdir(join(root, 'packaging/standalone/locks'), { recursive: true });
@@ -84,7 +84,7 @@ test('candidate transport binds a draft and annotated source tag, requires all f
     const release = {
       ...pointer(),
       tag_name: pointer().tag,
-      draft: true,
+      draft: false,
       prerelease: true,
       assets,
     };
@@ -147,15 +147,23 @@ test('candidate transport binds a draft and annotated source tag, requires all f
     await assert.rejects(
       fetchStandaloneCandidates({
         ...options,
+        api: async (path) => (path.includes('/releases?') ? [] : api(path)),
+      }),
+      /STANDALONE_CANDIDATE_DRAFT_NOT_VISIBLE/,
+    );
+    await assert.rejects(
+      fetchStandaloneCandidates({
+        ...options,
         environment: { ...options.environment, STANDALONE_PUBLISH: 'true' },
       }),
       /STANDALONE_CANDIDATE_RELEASE_INVALID/,
     );
-    release.draft = false;
+    release.prerelease = false;
     await assert.rejects(
       fetchStandaloneCandidates({
         ...options,
-        fetcher: () => assert.fail('Published candidates cannot be downloaded'),
+        fetcher: () =>
+          assert.fail('Stable releases cannot be candidate inputs'),
       }),
       /STANDALONE_CANDIDATE_RELEASE_INVALID/,
     );
@@ -169,6 +177,17 @@ test('candidate streams refuse excess bytes/hash drift/foreign redirects and rem
   try {
     const bytes = Buffer.from('abc'),
       asset = { id: 1, name: 'freerdp-bridge-api-0.2.5.tgz', ...hashes(bytes) };
+    await downloadCandidateAsset(
+      asset,
+      root,
+      undefined,
+      async (_url, options) => {
+        assert.equal(options.headers.authorization, undefined);
+        return new Response(bytes);
+      },
+    );
+    assert.deepEqual(await readFile(join(root, asset.name)), bytes);
+    await rm(join(root, asset.name));
     for (const body of ['abcd', 'bad']) {
       await assert.rejects(
         downloadCandidateAsset(

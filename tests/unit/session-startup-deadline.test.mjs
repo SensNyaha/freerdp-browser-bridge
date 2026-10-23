@@ -10,14 +10,18 @@ const config = () => ({
   auth: { username: 'fixture', password: 'synthetic-only' },
 });
 for (const event of [true, false])
-  test(`fake startup stalls beyond budget: ${event ? 'late connected event' : 'late completion without event'} cannot succeed`, async () => {
+  test(`fake startup stalls beyond budget: ${event ? 'late connected event' : 'late completion without event'} cannot succeed`, async (t) => {
+    let now = 0n;
+    t.mock.method(process.hrtime, 'bigint', () => now);
     const worker = new FakeSessionWorker();
     const seen = [];
     let signal;
     worker.start = async (_config, abort) => {
       signal = abort;
       worker.emit('state', 'connecting');
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
+      // Cross the budget only after invocation has started. A real 5 ms timer
+      // can expire during unrelated host scheduling before backend start.
+      now = 40_000_000n;
       if (event) worker.emit('state', 'connected');
     };
     const manager = new SessionManager({

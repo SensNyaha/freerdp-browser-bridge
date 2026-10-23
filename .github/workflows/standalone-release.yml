@@ -99,8 +99,6 @@ jobs:
       - name: Optional hash-pinned prepublication candidate inputs
         id: candidates
         run: node scripts/standalone/candidate-release.mjs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Production namespace, portable formats, RPM and previous-version seed
         id: build
         run: node scripts/standalone/release-build.mjs
