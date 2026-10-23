@@ -2,9 +2,10 @@
 
 Реализация готовится на `feature/github-delivery-oidc` после локального
 `v0.2.4` (`4b018fc`). GitHub owner — **SensNyaha**, npm scope —
-**@freerdp-bridge**. Пользователь самостоятельно пушит подготовленные локальные
-Git repositories. Hosted repositories, GitHub Releases и npm trust ещё не
-объявляются настроенными.
+**@freerdp-bridge**. После первоначального плана самостоятельного push
+пользователь создал пять GitHub repositories и явно поручил агенту отправить
+их. Все пять `main` и annotated `v0.2.4` теперь запушены и независимо сверены.
+GitHub Releases и npm trust пока не настроены; push не означает npm publish.
 
 ## Структура delivery
 
@@ -34,7 +35,8 @@ Native runtime не переносится внутрь Node/framework. Общи
    принятого tagged report, SHA-512, metadata, версий и repository binding.
 2. Проверить независимые library builds/declarations/tests. Создать локальные
    repositories и их annotated release tags. Assets остаются вне Git.
-3. Пользователь создаёт/push-ит соответствующие GitHub repositories и tags.
+3. Создать/push-ить соответствующие GitHub repositories и tags — выполнено
+   для пяти перечисленных поставок 0.2.4 по последующему поручению пользователя.
 4. Когда workflow существует на GitHub, настроить npm Trusted Publisher для
    каждого существующего package, разрешив **npm publish**, а не только stage.
 5. Загрузить exact assets в GitHub Releases одним bootstrap запуском с обычной
@@ -48,7 +50,100 @@ HTTP публикуется перед Express, который зависит о
 совпадающая публичная версия пропускается, другое содержимое отказывает.
 Ни unpublish, ни замена assets, ни перемещение старых tags не выполняются.
 GitHub CLI не установлен в текущем PATH; подготовка/локальная проверка не
-выдаётся за выполненный remote bootstrap.
+выдаётся за выполненную загрузку GitHub Releases.
+
+## Проверенная локальная поставка 0.2.4
+
+Текущий каталог от корня рабочего проекта:
+`build/github-delivery-0.2.4-rwdL2I/`. Его `delivery-bundle.json` содержит пять
+проверенных source commits, а `release-assets/` — десять точных принятых
+архивов и отдельные manifests. Предыдущие пробные экспорты не используются.
+
+| Каталог внутри `repositories/` | Локальный commit / annotated `v0.2.4` |
+| --- | --- |
+| `freerdp-browser-bridge` | `16b29a7b4c72db98d88cbc2f1ad38ffcafcfd29e` |
+| `freerdp-bridge-fastify` | `f9339f0ae1dbff2a3a72d716cb098b17e4d0a589` |
+| `freerdp-bridge-nestjs` | `242d119d0f7b4f21444b69cbbf867100f1cf42e0` |
+| `freerdp-bridge-http` | `29189ae17908a958308d983827cd7a57a04357ff` |
+| `freerdp-bridge-express` | `ee1bf047b4ea426297ccefd22939fb5207fc7b62` |
+
+Все пять проходят Windows/Linux source builds и точные source/archive checks.
+У адаптеров дополнительно проходят строгие consumer declarations,
+интеграционные fixtures и byte-for-byte сравнение каждого compiled dist файла
+с принятым архивом. Core smoke проверяет встроенный source workspace с exact
+native runtime, TLS refusal, HTTP/WS и lifecycle. Он не заменяет реальный
+RDP/device acceptance из исходного релиза. [Доказательства](ITERATION_439.md).
+
+Создайте соответствующие пустые **public** repositories под `SensNyaha`.
+В каждом локальном каталоге `origin` уже указывает на его GitHub URL. Например,
+из корня проекта для core:
+
+```sh
+git -C build/github-delivery-0.2.4-rwdL2I/repositories/freerdp-browser-bridge push --set-upstream origin main
+git -C build/github-delivery-0.2.4-rwdL2I/repositories/freerdp-browser-bridge push origin v0.2.4
+```
+
+Повторите для четырёх adapter-каталогов из таблицы. Не используйте force и не
+смешивайте эти начальные histories с существующим непустым repository. Перед
+созданием Release настройте [npm trust](NPM_TRUSTED_PUBLISHING.md), включая
+**Allow npm publish** для каждого публикуемого пакета.
+
+Этот первоначальный push уже выполнен агентом по прямому запросу пользователя.
+GitHub refs и public workflow bytes для всех пяти совпадают с таблицей;
+повторять команды не требуется. Не смешивайте исходную старую историю этого
+рабочего checkout с новыми delivery histories. Core запускает существующие
+foundation workflows на push; их фактический результат отслеживается отдельно
+от ещё не запущенного npm workflow.
+
+## Проверка и загрузка assets
+
+Команды выполняются из исходного рабочего проекта под Node.js 24. Оригинальный
+принятый tag в нём нужен скрипту для независимой сверки SHA-256 с tagged
+acceptance report. Публичные source repositories не содержат эту старую Git
+историю, credentials или native tarballs.
+
+По умолчанию команда только проверяет локальные данные и печатает план:
+
+```sh
+node scripts/bootstrap-github-deliveries.mjs --bundle build/github-delivery-0.2.4-rwdL2I --kind all
+```
+
+После push и настройки trust установите официальный [GitHub CLI](https://cli.github.com/)
+и выполните обычный `gh auth login --hostname github.com --web` под SensNyaha,
+если CLI ещё не авторизован. Не передавайте токен скрипту или в чат. Начните
+с core:
+
+```sh
+node scripts/bootstrap-github-deliveries.mjs --bundle build/github-delivery-0.2.4-rwdL2I --kind core --execute
+```
+
+`--execute` проверяет GitHub identity, public repository, pushed annotated tag
+и byte-identical workflow. Затем создаёт draft, загружает недостающие assets,
+сверяет размер и серверный `sha256:` digest каждого файла и только после этого
+публикует draft. [GitHub API описывает digest](https://docs.github.com/en/rest/releases/assets).
+Существующий совпадающий опубликованный release пропускается; несовпадающий
+файл, посторонний asset или неопределённый upload останавливает запуск.
+Clobber, изменение tags и повтор неопределённой записи в том же запуске не
+применяются. Неполный собственный draft можно продолжить следующим запуском.
+
+GitHub Actions работает асинхронно. Дождитесь успешного core workflow и точных
+шести public npm packages, затем выполните:
+
+```sh
+node scripts/bootstrap-github-deliveries.mjs --bundle build/github-delivery-0.2.4-rwdL2I --kind all --execute
+```
+
+Скрипт проверяет публичный integrity зависимостей перед downstream releases.
+Если HTTP ещё не опубликован в npm, Express не отправляется и возвращается
+`DELIVERY_PUBLIC_DEPENDENCIES_PENDING`. После успешного HTTP workflow повторите
+ту же команду: совпадающие GitHub Releases не загружаются заново. Для отдельной
+поставки вместо `all` допустимы `fastify`, `nestjs`, `http`, `express`.
+
+Это подготовленный управляемый bootstrap, а не уже выполненная remote
+операция. Его synthetic API/CLI tests не доказывают реальный upload, hosted
+workflow или OIDC. Итоговая публикация требует actual workflow run, exact npm
+integrity и свежих registry-only consumers. Новый Express bootstrap и старые
+0.2.3 stages остаются отдельными account gates ниже.
 
 Официальная [gh release create](https://cli.github.com/manual/gh_release_create)
 при передаче assets сначала создаёт draft, загружает файлы и затем публикует

@@ -71,3 +71,92 @@ Logs: `iteration-439-committed-tests-win32.log`,
 `iteration-439-fetch-tests-linux.log`, `iteration-439-tools-lint.log`.
 No remote download, account setting or publication is credited from those
 synthetic fetch/runner cases. Export/workflow/hosted gates remain incomplete.
+
+## Source export and independent repositories
+
+`export-github-deliveries.mjs`, adapter kit, public lock transformation,
+compiled-file comparison, native smoke and workflow templates implement the
+local export. The immutable authority is original annotated `v0.2.4`, commit
+`4b018fc406af148dbde8651282149d32b507a4f6`, and its tagged iteration 438 ten-file
+SHA-256 table, additionally checked against accepted SHA-512/audit/metadata.
+No accepted tarball is repacked and no remote/account operation runs on export.
+
+The final verified bundle is `build/github-delivery-0.2.4-rwdL2I/`. Its five
+source commits and push/bootstrap instructions are recorded in
+[GITHUB_DELIVERY.md](GITHUB_DELIVERY.md). All five contain a clean committed
+bounded manifest, original source, complete applicable guides, pinned workflow,
+guard tests, annotated local tag and SensNyaha origin. Exact assets remain in
+the sibling release-assets directory. Core Git executable modes are retained;
+raw-byte Git attributes preserve identical source contents on both systems.
+
+Windows export passes all five builds, guard tests (8/8 each), native TLS and
+lifecycle smoke, strict adapter declarations, accepted integration fixtures,
+and byte-for-byte compiled-file comparisons. Each private public-URL lock is
+verified by `npm ci --offline` after bootstrap from the accepted archives.
+Log: `build/iteration-439-export-win32-final.log`; detailed labels under the
+bundle's `logs/`.
+
+Linux independently clones source-only Git bundles, verifies tag/HEAD and exact
+inputs before/after builds, and passes the same five matrices. It uses a fresh
+cache populated only with accepted archives and 177 selected public cache
+entries, without account configuration. Verification is offline in the GCC
+8.3 container. Log: `build/iteration-439-deliveries-linux-main.log`; detailed
+logs under `/work/build/linux-delivery-439-sLln0n/logs/` in that container.
+These are source/native TLS/lifecycle results, not new actual RDP/device claims.
+
+The retained diagnostic attempts identify three preparation issues: nested
+pnpm required its executable on PATH; core's isolated fixture required Fastify
+and ws from API-owned dependencies; Git bundle clone required explicit main.
+Corrections preserve the original fixture assertions and archive bytes. Earlier
+failed exports/clones are retained pending the user's final cleanup stage.
+
+## Managed release bootstrap
+
+`bootstrap-github-deliveries.mjs` defaults to a local-only verified plan.
+`bundle.mjs` independently anchors all ten assets to the original tagged
+acceptance report, checks source/manifest copies, exact local annotated tags,
+commits, paths and origins. `bootstrap.mjs` prepares a draft only after exact
+pushed tag/workflow verification, uploads only missing assets and requires all
+server SHA-256 digests before publishing. It never clobbers assets, retries an
+uncertain write or treats an authentication failure as a missing release.
+The CLI checks exact public core/HTTP dependencies before downstream submission.
+
+Seven focused Windows tests pass: six synthetic remote/API state tests and one
+actual five-repository/ten-tar fixture with an independent synthetic authority
+tag. They cover drift, changed assets, public dependency pending/conflict,
+draft recovery, idempotence and uncertain writes. The actual local-only CLI
+plan passes against the final bundle (`iteration-439-bootstrap-dry-run.log`).
+No actual gh command, upload, npm setting, OIDC identity or npm write is credited
+from the synthetic tests. Hosted/public-registry gates remain open.
+
+The first bare full Windows check used the existing unlinked foundation worker:
+906 passes / 115 skips / one Fastify native TLS failure (`RDP_NOT_IMPLEMENTED`
+instead of certificate rejection). It is not accepted as the linked regression.
+The corrected full runs select the accepted 0.2.4 linked workers explicitly;
+their final results remain to be recorded below.
+
+## Full feature regression and pushed repositories
+
+Final linked full checks pass: **Windows 968 / 61 skips / zero failures**
+(`iteration-439-check-win32-linked.log`) and **Linux 945 / 87 skips / zero
+failures** (`iteration-439-check-linux-final.log`). They include all 17 new
+delivery tests; final focused Linux matrix is 17/17. Build/lint/format/version
+and npm README checks pass. Native code and accepted runtime bytes are unchanged.
+The first Linux full attempt exposed Git 2.20's lack of `git init -b`: fixture
+and exporter now initialize normally and set HEAD symbolically to main. The
+corrected focused and full Linux matrices pass; no assertion is weakened.
+Export implementation checkpoint: `d8a7b71`.
+
+The user subsequently creates the five public SensNyaha repositories and
+explicitly asks the agent to push all of them. All five main branches and
+annotated v0.2.4 tags are sent atomically per repository without force. Git
+Credential Manager's normal GitHub browser login succeeds; its retired local
+callback page displays ERR_CONNECTION_REFUSED afterwards, but actual git push
+succeeds and independently verified refs prove the writes completed.
+
+`iteration-439-remote-push-verification.json` and its log independently compare
+all remote main/tag objects and peeled commits to the local catalog, public
+repository/default-branch metadata and exact public npm workflow contents.
+All five match. Core push starts existing foundation CI; its actual run is
+tracked separately, not credited as npm validation. No npm workflow, release
+asset upload, trust setting or npm 0.2.4 publication has run yet.

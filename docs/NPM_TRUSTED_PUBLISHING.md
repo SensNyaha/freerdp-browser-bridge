@@ -21,7 +21,9 @@ OIDC workflow публикует без этих локальных browser prom
 
 Имена ниже — выбранные локальные delivery targets, не утверждение, что
 репозитории уже созданы или workflow выполнен на GitHub. Пользователь сам
-пушит подготовленные локальные репозитории. Используется workflow filename
+первоначально планировал пушить подготовленные локальные репозитории; по его
+последующему прямому поручению агент уже отправил все пять main/v0.2.4 и
+независимо сверил refs/workflow bytes. Используется workflow filename
 `npm-publish.yml`; он должен реально существовать под `.github/workflows/`.
 
 | GitHub repository | npm packages |
@@ -72,7 +74,8 @@ npm trust github @freerdp-bridge/fastify --repo SensNyaha/freerdp-bridge-fastify
 Остальные привязки можно создавать циклом, оставляя рекомендуемый интервал
 2 секунды. Не создавайте дубликаты и не удаляйте существующие trust configs
 автоматически. Сейчас команды настройки не выполнены: remote repositories и
-workflow ещё готовятся. Успешный dry-run не проверяет реальную OIDC identity.
+workflow уже запушены, фактические trust/hosted publish gates ещё остаются.
+Успешный dry-run не проверяет реальную OIDC identity.
 
 ## Уже загруженные версии
 

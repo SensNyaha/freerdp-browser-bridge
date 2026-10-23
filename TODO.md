@@ -76,6 +76,12 @@ for the target OS families. Subsequent clarification: prepare the local Git
 repositories and report their directories; the user will push/synchronize
 GitHub themselves.
 
+Subsequent explicit authorization, 2026-10-23: the user creates all five public
+SensNyaha repositories and asks the agent to push them. All five verified local
+main branches and annotated v0.2.4 tags are now pushed without force; remote
+commits and public npm workflow bytes match. GitHub Releases and npm trust/OIDC
+publication remain separate. [Delivery evidence](docs/ITERATION_439.md).
+
 Additional user requirement, 2026-10-23: standalone installers also get a
 separate GitHub delivery repository with a Releases workflow that generates
 releases automatically on push to `master` or `main`. Prepare and verify the
@@ -89,6 +95,16 @@ Final GitHub owner is **SensNyaha**, not the npm scope `freerdp-bridge`.
 0.2.3 has only both runtimes public, seven accepted stages remain pending.
 Do not restart manual approve automatically or claim OIDC configured before
 the user's repository push and real publisher/workflow validation.
+
+Additional user requirement, 2026-10-23: after plugin releases and standalone
+installers, remove project-owned logs, temporary builds, unused Docker images
+and similar artifacts that are unnecessary for further development. First
+retain the required deliverables, reproducible build inputs and concise
+acceptance/commit evidence. Do not prune unrelated Docker resources. Then
+consolidate scattered documentation into a few primary semantic blocks,
+preserving requirements and traceable evidence; update links and navigation.
+Cleanup and documentation consolidation remain pending until those earlier
+delivery gates are satisfied.
 
 Additional user requirement, 2026-10-22: every npm package release includes its
 own explanatory root README: purpose, installation, dependencies/platforms,
