@@ -113,6 +113,16 @@ for the unchanged Windows build/acceptance path. No feature publication occurs.
 These are still prototype 0.2.4 builds without an earlier standalone version,
 so they do not accept the two-version 0.2.5 upgrade.
 
+Run **40014337454** subsequently completes successfully. Windows job
+**120622610431** passes its full production-namespace/portable/installed baseline;
+cross-job verification **120625701943** downloads both artifact sets with the
+pinned v8 action, checks their complete byte hashes and accepts exactly seven
+program/source assets from one source commit. Publication job **120625831037**
+is skipped as required on the feature branch. Receipt:
+`build/iteration-451-release-final.json`; detailed jobs:
+`build/iteration-451-release-jobs.json`. This completes the actual 0.2.4 baseline
+pipeline, not public 0.2.5 delivery or its still-pending upgrade acceptance.
+
 The pipeline currently requires public version-matching npm inputs. Prepublication
 Windows upgrade verification still needs candidate-archive transport into CI;
 the local offline candidate assembler alone does not accept that missing gate.
