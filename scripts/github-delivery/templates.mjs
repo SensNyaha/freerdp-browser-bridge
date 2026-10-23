@@ -72,7 +72,7 @@ ${checks}
   publish:
     needs: validate
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     permissions:
       contents: read
       id-token: write

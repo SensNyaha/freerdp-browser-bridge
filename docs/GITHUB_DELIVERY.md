@@ -5,7 +5,9 @@
 **@freerdp-bridge**. После первоначального плана самостоятельного push
 пользователь создал пять GitHub repositories и явно поручил агенту отправить
 их. Все пять `main` и annotated `v0.2.4` теперь запушены и независимо сверены.
-GitHub Releases и npm trust пока не настроены; push не означает npm publish.
+Core GitHub Release уже опубликован с точными assets, девять существующих npm
+packages привязаны к OIDC. Первая runtime Windows 0.2.4 публична с accepted
+integrity; весь набор ещё не завершён. [Текущий checkpoint](ITERATION_440.md).
 
 ## Структура delivery
 
@@ -139,9 +141,16 @@ node scripts/bootstrap-github-deliveries.mjs --bundle build/github-delivery-0.2.
 ту же команду: совпадающие GitHub Releases не загружаются заново. Для отдельной
 поставки вместо `all` допустимы `fastify`, `nestjs`, `http`, `express`.
 
-Это подготовленный управляемый bootstrap, а не уже выполненная remote
-операция. Его synthetic API/CLI tests не доказывают реальный upload, hosted
-workflow или OIDC. Итоговая публикация требует actual workflow run, exact npm
+Первоначальный core bootstrap теперь выполнен через GitHub API с уже
+подтверждённым системным Git credential (CLI здесь отсутствует). Credentials
+используются только в памяти и HTTPS headers. Release `v0.2.4` содержит
+шесть архивов и manifest, все server SHA-256 сверены перед публикацией draft.
+Во время работы обнаружено, что by-tag API не показывает собственный draft;
+bootstrap теперь также ищет его в ограниченном списке releases и отказывает
+на duplicates. Существующий draft продолжен без повторного create/overwrite.
+
+Synthetic API/CLI tests сами не доказывают actual upload, hosted workflow или
+OIDC. Итоговая публикация всего набора требует actual workflow run, exact npm
 integrity и свежих registry-only consumers. Новый Express bootstrap и старые
 0.2.3 stages остаются отдельными account gates ниже.
 

@@ -155,7 +155,19 @@ export async function bootstrapRelease(
   )
     fail('DELIVERY_GH_WORKFLOW_CHANGED');
   await checkLocal();
-  let release = await read(prefix + '/releases/tags/' + tag);
+  const readRelease = async () => {
+    const tagged = await read(prefix + '/releases/tags/' + tag);
+    if (tagged) return tagged;
+    // GitHub's by-tag endpoint can omit an authenticated user's draft.
+    // Inspect a bounded release list before concluding that creation is needed.
+    const listed = await read(prefix + '/releases?per_page=100');
+    if (!Array.isArray(listed) || listed.length > 100)
+      fail('DELIVERY_GH_RELEASE_LIST_INVALID');
+    const matches = listed.filter((item) => item.tag_name === tag);
+    if (matches.length > 1) fail('DELIVERY_GH_RELEASE_DUPLICATE');
+    return matches[0];
+  };
+  let release = await readRelease();
   if (release && !release.draft) {
     releaseAssets(release, item);
     return {
@@ -180,7 +192,7 @@ export async function bootstrapRelease(
       '--notes-file',
       notes,
     ]);
-    release = await read(prefix + '/releases/tags/' + tag);
+    release = await readRelease();
   }
   if (!release?.draft) fail('DELIVERY_GH_DRAFT_REQUIRED');
   const missing = releaseAssets(release, item, true);
@@ -194,12 +206,12 @@ export async function bootstrapRelease(
       '--repo',
       remote,
     ]);
-    release = await read(prefix + '/releases/tags/' + tag);
+    release = await readRelease();
   }
   releaseAssets(release, item);
   await checkLocal();
   await command(['release', 'edit', tag, '--repo', remote, '--draft=false']);
-  release = await read(prefix + '/releases/tags/' + tag);
+  release = await readRelease();
   if (!release || release.draft) fail('DELIVERY_GH_PUBLICATION_UNCERTAIN');
   releaseAssets(release, item);
   return {
