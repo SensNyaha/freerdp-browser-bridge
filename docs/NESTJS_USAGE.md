@@ -5,17 +5,19 @@
 [Контракт](NESTJS_PLUGIN.md), [release-приёмка](ITERATION_429.md).
 Все восемь npm-пакетов 0.2.2 опубликованы; точный integrity и свежие Windows/Linux
 registry-only consumers проходят strict TS и 15/15 проверок на каждой ОС.
-[Публикация](ITERATION_437.md). Историческая 0.2.1 содержит только Fastify.
+[Публикация 0.2.2](ITERATION_437.md). Текущий согласованный набор **0.2.4**
+также полностью опубликован; обе ОС проходят strict TS и 15/15.
+[Публикация 0.2.4](ITERATION_441.md). Историческая 0.2.1 содержит только Fastify.
 
 ## Зависимости и размещение worker
 
 На хосте приложения нужны Node.js 24, NestJS 12.2, выбранный platform adapter,
 `reflect-metadata`, RxJS и native runtime той же product version, что и bridge.
-Для опубликованной версии 0.2.2:
+Для текущей опубликованной версии 0.2.4:
 
 ```sh
 # Linux x64 / glibc
-npm install @freerdp-bridge/nestjs@0.2.2 @freerdp-bridge/runtime-linux-x64-gnu@0.2.2
+npm install @freerdp-bridge/nestjs@0.2.4 @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
 # Windows x64: вместо Linux runtime выбирается runtime-win32-x64 той же версии
 ```
 
@@ -44,16 +46,20 @@ import { Module } from '@nestjs/common';
 import { RdpBridgeModule, resolveNativeRuntime } from '@freerdp-bridge/nestjs';
 
 @Module({
-  imports: [RdpBridgeModule.forRootAsync({
-    imports: [HostConfigModule, HostAuthModule],
-    inject: [HostConfigService, HostAuthService],
-    useFactory: async (config: HostConfigService, auth: HostAuthService) => ({
-      prefix: '/rdp',
-      worker: await resolveNativeRuntime({ runtimeRoot: config.privateRuntimeRoot }),
-      allowedOrigins: [config.publicOrigin],
-      authenticate: request => auth.verifyBridgeRequest(request),
+  imports: [
+    RdpBridgeModule.forRootAsync({
+      imports: [HostConfigModule, HostAuthModule],
+      inject: [HostConfigService, HostAuthService],
+      useFactory: async (config: HostConfigService, auth: HostAuthService) => ({
+        prefix: '/rdp',
+        worker: await resolveNativeRuntime({
+          runtimeRoot: config.privateRuntimeRoot,
+        }),
+        allowedOrigins: [config.publicOrigin],
+        authenticate: (request) => auth.verifyBridgeRequest(request),
+      }),
     }),
-  })],
+  ],
 })
 export class AppModule {}
 ```
@@ -141,7 +147,13 @@ app.getHttpServer().on('upgrade', (request, socket, head) => {
 в `controllers` вашего модуля. Пути `/desktop/*` и `/rdp/*` независимы:
 
 ```ts
-import { Controller, Get, Header, NotFoundException, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  NotFoundException,
+  Param,
+} from '@nestjs/common';
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { referenceBrowserDirectory } from '@freerdp-bridge/nestjs/browser';
@@ -162,7 +174,9 @@ export class DesktopController {
   @Get('index.html')
   @Header('Content-Type', 'text/html; charset=utf-8')
   @Header('Cache-Control', 'no-store')
-  index() { return asset('index.html'); }
+  index() {
+    return asset('index.html');
+  }
 
   @Get(':file')
   @Header('Content-Type', 'text/javascript; charset=utf-8')
@@ -198,7 +212,8 @@ await window.bridgeConnection.refresh();
 
 ```js
 window.bridgeViewer.attach(createdSession, {
-  basePath: '/rdp', codecs: ['h264', 'jpeg'],
+  basePath: '/rdp',
+  codecs: ['h264', 'jpeg'],
 });
 ```
 
@@ -227,17 +242,17 @@ Origin должен точно совпадать с `allowedOrigins`. Не до
 от произвольного клиента. Не включайте request-body/query/Authorization logging
 в proxy, раннем host middleware или Nest hooks. Cookies ядром не принимаются.
 
-| Симптом | Проверка |
-| --- | --- |
-| 401 | Callback проверяет identity приложения и возвращает владельца; одного наличия Authorization недостаточно |
-| 403 на attach | Origin, владелец, отдельный свежий token для каждого канала |
-| 413 | Session JSON превышает 64 KiB; host limit не расширяет bridge limit |
-| `BRIDGE_RAW_BODY_REQUIRED` | Custom Express parser стоит перед bridge; исключите bridge prefix из него |
-| `NEST_BRIDGE_OPTIONS_FAILED` | Host configuration/identity provider не смог подготовить options; исходная ошибка намеренно не раскрывается |
-| `NEST_BRIDGE_INSTALL_FAILED` | Проверьте trusted worker path, Node 24, version/pairing и доступ к private runtime directory |
-| `RDP_CERTIFICATE_REJECTED` | Проверьте серверный сертификат/имя и утверждённую trust policy; strict остаётся default |
-| HTML есть, viewer отсутствует | Проверьте текстовый HTML/JS, MIME, CSP и явный index.html; не возвращайте JSON-представление Buffer |
-| Host WS перестал работать | Catch-all dispatcher должен первым делегировать bridge в manual mode |
+| Симптом                       | Проверка                                                                                                    |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 401                           | Callback проверяет identity приложения и возвращает владельца; одного наличия Authorization недостаточно    |
+| 403 на attach                 | Origin, владелец, отдельный свежий token для каждого канала                                                 |
+| 413                           | Session JSON превышает 64 KiB; host limit не расширяет bridge limit                                         |
+| `BRIDGE_RAW_BODY_REQUIRED`    | Custom Express parser стоит перед bridge; исключите bridge prefix из него                                   |
+| `NEST_BRIDGE_OPTIONS_FAILED`  | Host configuration/identity provider не смог подготовить options; исходная ошибка намеренно не раскрывается |
+| `NEST_BRIDGE_INSTALL_FAILED`  | Проверьте trusted worker path, Node 24, version/pairing и доступ к private runtime directory                |
+| `RDP_CERTIFICATE_REJECTED`    | Проверьте серверный сертификат/имя и утверждённую trust policy; strict остаётся default                     |
+| HTML есть, viewer отсутствует | Проверьте текстовый HTML/JS, MIME, CSP и явный index.html; не возвращайте JSON-представление Buffer         |
+| Host WS перестал работать     | Catch-all dispatcher должен первым делегировать bridge в manual mode                                        |
 
 В production readiness проверяется через `/rdp/readyz`; агрегатные счётчики и
 лимиты — через authenticated diagnostics/metrics. После drain сначала дождитесь

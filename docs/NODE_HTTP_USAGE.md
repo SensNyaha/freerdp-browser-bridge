@@ -2,9 +2,10 @@
 
 Адаптер принят в **0.2.3**, после отдельных feature/release branches и всех
 versioned native/consumer/RDP checks. [Контракт](NODE_HTTP_PLUGIN.md),
-[release-приёмка](ITERATION_433.md). npm-публикация выполняется отдельно; до её
-подтверждения используйте точные локальные 0.2.3 tarballs. Версия `http@0.2.2`
-не выпускалась.
+[release-приёмка](ITERATION_433.md). Текущий согласованный набор **0.2.4**
+полностью опубликован в npm и GitHub; чистые Windows/Linux consumers проходят
+strict TypeScript и 10/10. [Публикация](ITERATION_441.md). Исторический 0.2.3
+ещё имеет pending JS stages; используйте опубликованный 0.2.4.
 
 ## Роли и установка
 
@@ -19,10 +20,10 @@ Node.js-приложение владеет HTTP(S) listener, TLS, identity, р�
 FreeRDP не загружается в процесс Node. Внутренний Fastify router является
 зависимостью bridge; переводить свой сервер на Fastify не требуется.
 
-После публикации 0.2.3 установка на Linux x64/glibc будет такой:
+Установка опубликованного 0.2.4 на Linux x64/glibc:
 
 ```sh
-npm install @freerdp-bridge/http@0.2.3 @freerdp-bridge/runtime-linux-x64-gnu@0.2.3
+npm install @freerdp-bridge/http@0.2.4 @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -50,7 +51,10 @@ TypeScript пример — `tests/fixtures/http-package-consumer.ts`.
 
 ```ts
 import { createServer } from 'node:http';
-import { createRdpBridgeHttp, resolveNativeRuntime } from '@freerdp-bridge/http';
+import {
+  createRdpBridgeHttp,
+  resolveNativeRuntime,
+} from '@freerdp-bridge/http';
 import { verifyApplicationIdentity } from './auth.js';
 
 const server = createServer((request, response) => {
@@ -65,12 +69,14 @@ const server = createServer((request, response) => {
 });
 const bridge = await createRdpBridgeHttp(server, {
   prefix: '/rdp',
-  worker: await resolveNativeRuntime({ runtimeRoot: '/private/run/rdp-bridge' }),
+  worker: await resolveNativeRuntime({
+    runtimeRoot: '/private/run/rdp-bridge',
+  }),
   allowedOrigins: ['https://app.example'],
   authenticate: verifyApplicationIdentity,
   sessions: { maxSessions: 16, maxPerPrincipal: 2 },
 });
-await new Promise<void>(resolve => server.listen(8080, '127.0.0.1', resolve));
+await new Promise<void>((resolve) => server.listen(8080, '127.0.0.1', resolve));
 ```
 
 Обработчик начинает получать запросы только после listen, когда `bridge` уже
@@ -125,14 +131,14 @@ server.on('upgrade', (request, socket, head) => {
 
 Публичные маршруты получают указанный префикс:
 
-| Метод и путь | Назначение |
-| --- | --- |
-| `GET /rdp/healthz`, `/rdp/readyz` | Liveness/readiness bridge |
-| `GET /rdp/v1/build`, `/rdp/v1/capabilities` | Фактический native build и capabilities |
-| `POST /rdp/v1/sessions` | Создание из validated session config |
-| `GET/DELETE /rdp/v1/sessions/:id` | Состояние/закрытие своей сессии |
-| `POST /rdp/v1/sessions/:id/attach-token` | Новые одноразовые control/media tokens |
-| `GET /rdp/v1/diagnostics`, `/rdp/metrics` | Authenticated bounded aggregate telemetry |
+| Метод и путь                                | Назначение                                |
+| ------------------------------------------- | ----------------------------------------- |
+| `GET /rdp/healthz`, `/rdp/readyz`           | Liveness/readiness bridge                 |
+| `GET /rdp/v1/build`, `/rdp/v1/capabilities` | Фактический native build и capabilities   |
+| `POST /rdp/v1/sessions`                     | Создание из validated session config      |
+| `GET/DELETE /rdp/v1/sessions/:id`           | Состояние/закрытие своей сессии           |
+| `POST /rdp/v1/sessions/:id/attach-token`    | Новые одноразовые control/media tokens    |
+| `GET /rdp/v1/diagnostics`, `/rdp/metrics`   | Authenticated bounded aggregate telemetry |
 
 JSON bridge ограничен 64 KiB, в том числе при chunked transfer. Строгая schema
 не преобразует строку port в число и не удаляет неизвестные поля молча. RDP
@@ -147,13 +153,17 @@ credentials поступают из UI в памяти по HTTPS и уходя�
 const response = await fetch('/rdp/v1/sessions', {
   method: 'POST',
   credentials: 'omit',
-  headers: { ...applicationAuthorizationHeaders(), 'content-type': 'application/json' },
+  headers: {
+    ...applicationAuthorizationHeaders(),
+    'content-type': 'application/json',
+  },
   body: JSON.stringify(sessionConfigFromUi),
 });
 if (response.status !== 202) throw new Error('Session creation refused');
 const createdSession = await response.json();
 window.bridgeViewer.attach(createdSession, {
-  basePath: '/rdp', codecs: ['h264', 'jpeg'],
+  basePath: '/rdp',
+  codecs: ['h264', 'jpeg'],
 });
 ```
 
@@ -175,7 +185,8 @@ browser modules. Затем настройте встроенную форму:
 
 ```js
 window.bridgeConnection.configure({
-  basePath: '/rdp', authorize: () => applicationAuthorizationHeaders(),
+  basePath: '/rdp',
+  authorize: () => applicationAuthorizationHeaders(),
 });
 await window.bridgeConnection.refresh();
 ```
@@ -196,16 +207,20 @@ Owned HTTP mount после close отвечает 503. Remount на уже сл
 ```ts
 let stopping: Promise<void> | undefined;
 function stop() {
-  return stopping ??= (async () => {
+  return (stopping ??= (async () => {
     await bridge.close();
     await closeApplicationWebSockets();
     await new Promise<void>((resolve, reject) => {
-      server.close(error => error ? reject(error) : resolve());
+      server.close((error) => (error ? reject(error) : resolve()));
     });
-  })();
+  })());
 }
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.once(signal, () => { void stop().catch(() => { process.exitCode = 1; }); });
+  process.once(signal, () => {
+    void stop().catch(() => {
+      process.exitCode = 1;
+    });
+  });
 }
 ```
 
