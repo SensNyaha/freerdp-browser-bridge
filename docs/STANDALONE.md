@@ -71,6 +71,13 @@ or network wildcard is inferred. Gateway/proxy overrides and a different
 introduce destinations outside that list. The adapters retain their existing
 host-orchestrated behavior. Network egress rules and trusted DNS remain the
 administrator's responsibility; the list is not an IP firewall or DNS pin.
+This initial list is global: a valid `rdp:connect` identity may request any listed
+destination. It is not a per-user or per-application machine entitlement map.
+For a VM portal with different user entitlements, keep session creation behind
+the portal backend: check the user's right to the selected machine there,
+create the session with that owner's subject, and pass only the scoped browser
+attach grant to its viewer. Do not give that browser a general bridge create JWT
+unless access to every approved destination is intended.
 Privileged host devices/paths and unfinished channels remain subject to the
 existing configuration policy and actual native capability gates.
 
@@ -123,6 +130,15 @@ The Windows C++ supervisor builds with `scripts/build-standalone-host.ps1`.
 It launches only the private bundle and joins its process tree through a Windows
 Job. Its console/control, crash recovery and preservation tests pass;
 [iteration 444](ITERATION_444.md). SCM identity/ACL and MSI acceptance remain open.
+
+Development MSI and DEB artifacts now build and pass independent database/
+archive-byte checks; the Linux private-Node CLI also passes from UID 1000.
+[Iteration 445](ITERATION_445.md) distinguishes those checks from installation.
+`scripts/build-standalone-msi.mjs` takes an immutable payload, WiX executable
+and Util extension path; `scripts/build-standalone-deb.mjs` takes the matching
+Linux payload. The Windows payload must include the pinned
+[WiX Util notice](../packaging/standalone/notices/README.md). Use a short build
+path for WiX native CAB tooling. Neither tool installs the produced package.
 
 ## Required distribution acceptance
 

@@ -300,7 +300,10 @@ void WINAPI service_main(DWORD, wchar_t**) noexcept {
     supervise();
     status(SERVICE_STOPPED);
   } catch (...) {
-    status(SERVICE_STOPPED, ERROR_PROCESS_ABORTED);
+    // SCM's default failure actions apply when a process exits without reporting
+    // SERVICE_STOPPED. supervise() has already unwound its Job/child guards.
+    // Do not rely on the problematic MSI failure-actions-on-error flag.
+    ExitProcess(ERROR_PROCESS_ABORTED);
   }
 }
 }  // namespace

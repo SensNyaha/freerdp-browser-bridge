@@ -1,0 +1,32 @@
+[Unit]
+Description=FreeRDP Bridge standalone web service
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=freerdp-bridge
+Group=freerdp-bridge
+WorkingDirectory=/opt/freerdp-bridge/service
+RuntimeDirectory=freerdp-bridge
+RuntimeDirectoryMode=0700
+UMask=0077
+ExecStart=/usr/bin/env -i PATH=/usr/bin:/bin HOME=/run/freerdp-bridge TMPDIR=/run/freerdp-bridge /opt/freerdp-bridge/node/node /opt/freerdp-bridge/service/dist/main.js --config /etc/freerdp-bridge/bridge.json --runtime-root /run/freerdp-bridge
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=15
+TimeoutStopSec=15
+KillMode=mixed
+LimitCORE=0
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/run/freerdp-bridge
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

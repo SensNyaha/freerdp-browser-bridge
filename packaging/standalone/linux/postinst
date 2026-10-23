@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  configure)
+    if ! getent group freerdp-bridge >/dev/null; then
+      groupadd --system freerdp-bridge
+    fi
+    if ! getent passwd freerdp-bridge >/dev/null; then
+      useradd --system --gid freerdp-bridge --home-dir /nonexistent --no-create-home --shell /bin/false freerdp-bridge
+    fi
+    test "$(id -u freerdp-bridge)" -ne 0
+    test "$(id -g freerdp-bridge)" -ne 0
+    test "$(id -gn freerdp-bridge)" = freerdp-bridge
+    getent passwd freerdp-bridge | awk -F: '$6 == "/nonexistent" && $7 == "/bin/false" { found = 1 } END { exit !found }'
+    test -d /etc/freerdp-bridge
+    test ! -L /etc/freerdp-bridge
+    test -f /etc/freerdp-bridge/bridge.json
+    test ! -L /etc/freerdp-bridge/bridge.json
+    chown root:freerdp-bridge /etc/freerdp-bridge /etc/freerdp-bridge/bridge.json
+    chmod 0750 /etc/freerdp-bridge
+    chmod 0640 /etc/freerdp-bridge/bridge.json
+    if [ -d /run/systemd/system ]; then
+      systemctl daemon-reload
+      deb-systemd-invoke restart freerdp-bridge.service
+    fi
+    deb-systemd-helper enable freerdp-bridge.service >/dev/null
+    ;;
+esac
+exit 0

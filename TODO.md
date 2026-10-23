@@ -106,6 +106,10 @@ private-Node supervised CLI with a live native certificate prompt;
 Windows supervisor compilation and 9/9 real private-Node/native process-tree,
 crash-recovery and foreign-data preservation cases pass; SCM/MSI is still pending.
 [Component evidence](docs/ITERATION_444.md).
+Development MSI/DEB artifacts build, independent archive/database checks pass,
+and the private Linux CLI passes as UID 1000. Full regression: Windows 981/63
+skips, Linux repeat 957/90, no failures. These are prototype 0.2.4 dependencies,
+not aligned 0.2.5 or installed SCM/systemd acceptance; [iteration 445](docs/ITERATION_445.md).
 
 Clarified user scope, 2026-10-23: retain the standalone web server and OS
 installers; exclude a separate desktop GUI application. The browser reference

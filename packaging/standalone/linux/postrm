@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  remove)
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+    ;;
+  purge)
+    deb-systemd-helper purge freerdp-bridge.service
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+    ;;
+esac
+# Keep the system account; removing/reusing its UID could change ownership of
+# administrator-managed files. dpkg owns conffile removal on explicit purge.
+exit 0
