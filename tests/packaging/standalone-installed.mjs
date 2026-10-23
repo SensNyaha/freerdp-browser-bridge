@@ -65,6 +65,7 @@ async function invoke(command, args, timeout = 30000) {
       'build/standalone-command-failure.log',
       JSON.stringify({ command, exitCode: code }) + '\n' + output,
     );
+    console.error(output);
     throw new Error('STANDALONE_INSTALLED_COMMAND_FAILED');
   }
   return output.trim();
@@ -348,6 +349,7 @@ try {
           '--property=ActiveState,SubState,Result,ExecMainCode,ExecMainStatus,MainPID',
         ]);
     await writeFile('build/standalone-service-status.log', status + '\n');
+    console.error(status);
   } catch {}
   throw error;
 } finally {

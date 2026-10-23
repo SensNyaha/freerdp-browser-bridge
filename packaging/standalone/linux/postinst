@@ -22,6 +22,10 @@ case "${1:-}" in
     deb-systemd-helper enable freerdp-bridge.service >/dev/null
     if [ -d /run/systemd/system ]; then
       systemctl daemon-reload
+      # An explicit administrator upgrade/reinstall may follow recent recovery
+      # starts. Keep automatic crash limits, but retire their old counter for
+      # this requested package activation.
+      if [ -n "${2:-}" ]; then systemctl reset-failed freerdp-bridge.service; fi
       deb-systemd-invoke restart freerdp-bridge.service
     fi
     ;;

@@ -45,6 +45,10 @@ jobs:
       - name: Build development installer from pinned public inputs
         id: installer
         run: node --use-system-ca scripts/standalone/ci-build.mjs
+      - name: Initialize the Windows OpenSSL test tool
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: "& 'C:\\Program Files\\Git\\usr\\bin\\openssl.exe' version"
       - name: Windows private runtime and supervisor
         if: runner.os == 'Windows'
         run: node --test tests/packaging/standalone-windows.test.mjs
