@@ -36,6 +36,9 @@ body-parser order and same-port upgrades for the 0.2.4 target.
 [Host identity/cookie boundaries](docs/HOST_AUTHENTICATION.md) apply to all adapters.
 [Framework selection and additional-adapter assessment](docs/FRAMEWORK_SELECTION.md)
 distinguish tested adapters from unverified integration possibilities.
+[Standalone service/installers](docs/STANDALONE.md) are the next distribution
+under development; the bounded JWT/config service passes full Windows/Linux
+checks, while installer/OS acceptance remains open.
 All eight **0.2.2** npm packages are public at exact accepted integrity;
 fresh Windows/Linux registry-only NestJS consumers pass 15/15 each.
 [Publication evidence](docs/ITERATION_437.md). For 0.2.3, both runtimes are public

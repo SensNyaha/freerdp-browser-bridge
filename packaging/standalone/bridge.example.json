@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "listen": { "host": "127.0.0.1", "port": 8080 },
+  "allowedOrigins": [],
+  "targets": [],
+  "limits": { "maxSessions": 8, "maxPerPrincipal": 2 }
+}

@@ -93,6 +93,13 @@ verify the installer/workflow in core; actual hosted installer builds and
 published releases remain distinct from local checks. Do not create a new
 standalone repository for the superseded plan.
 
+Standalone development starts in `feature/standalone-installers-0.2.5` after
+the completed public 0.2.4 delivery. The private bounded-config/JWT service
+passes complete Windows 976/63 skips and Linux 953/89 checks with actual linked
+native TLS refusal/cleanup. Manifests remain 0.2.4 until aligned release
+preparation. Portable packages, OS installers and auto-release remain pending;
+[contract](docs/STANDALONE.md), [service evidence](docs/ITERATION_442.md).
+
 Additional user direction, 2026-10-23: stop the rapid per-package npm approval
 queue and prepare direct npm Trusted Publishing through GitHub Actions/OIDC.
 Final GitHub owner is **SensNyaha**, not the npm scope `freerdp-bridge`.
