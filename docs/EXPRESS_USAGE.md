@@ -1,15 +1,14 @@
 # Встраивание bridge в настоящий Express-проект
 
-Адаптер принят локально в **0.2.4**, tag `v0.2.4`;
-[release-проверки](ITERATION_438.md) проходят. До публичной npm-публикации используйте
-локальные архивы из соответствующего release-каталога; наличие документации
-не означает доступность этой версии в публичном npm. Статус находится в
-[TODO](../TODO.md), интерфейс — в [EXPRESS_PLUGIN.md](EXPRESS_PLUGIN.md).
+Адаптер **0.2.4** опубликован в npm и GitHub. Все десять согласованных
+пакетов имеют принятый integrity; чистые Windows/Linux consumers проходят
+strict TypeScript и 11/11 проверок. [Публикация](ITERATION_441.md),
+[release-приёмка](ITERATION_438.md), [контракт](EXPRESS_PLUGIN.md).
 
 ## Установка и структура приложения
 
 Требуются Node.js 24, ESM, Express 5; проверяемый профиль — Express 5.3.0.
-После публикации установка в существующем проекте:
+Установка в существующем проекте:
 
 ```sh
 npm install express@5.3.0 @freerdp-bridge/express@0.2.4 @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
@@ -46,14 +45,19 @@ principal для всех запросов. Подробности обязат�
 ```ts
 import express from 'express';
 import { createServer } from 'node:http';
-import { createRdpBridgeExpress, resolveNativeRuntime } from '@freerdp-bridge/express';
+import {
+  createRdpBridgeExpress,
+  resolveNativeRuntime,
+} from '@freerdp-bridge/express';
 import { verifyApplicationIdentity } from './auth.js';
 
 const app = express();
 const server = createServer(app);
 const bridge = await createRdpBridgeExpress(server, {
   prefix: '/rdp',
-  worker: await resolveNativeRuntime({ runtimeRoot: '/private/run/rdp-bridge' }),
+  worker: await resolveNativeRuntime({
+    runtimeRoot: '/private/run/rdp-bridge',
+  }),
   authenticate: verifyApplicationIdentity,
   allowedOrigins: ['https://app.example'],
   sessions: { maxSessions: 16, maxPerPrincipal: 2 },
@@ -63,7 +67,7 @@ app.use(bridge.middleware);
 app.use(express.json({ limit: '1mb' }));
 app.get('/host/health', (_request, response) => response.json({ host: true }));
 app.post('/host/echo', (request, response) => response.json(request.body));
-await new Promise<void>(resolve => server.listen(8080, '127.0.0.1', resolve));
+await new Promise<void>((resolve) => server.listen(8080, '127.0.0.1', resolve));
 ```
 
 На Windows задайте абсолютный Windows `runtimeRoot` в частном writable
@@ -144,12 +148,15 @@ tokens. Они не являются ни bearer приложения, ни RDP 
 ```ts
 import { referenceBrowserDirectory } from '@freerdp-bridge/express/browser';
 
-app.use('/viewer', express.static(referenceBrowserDirectory, {
-  index: 'index.html',
-  dotfiles: 'deny',
-  fallthrough: false,
-  maxAge: 0,
-}));
+app.use(
+  '/viewer',
+  express.static(referenceBrowserDirectory, {
+    index: 'index.html',
+    dotfiles: 'deny',
+    fallthrough: false,
+    maxAge: 0,
+  }),
+);
 ```
 
 Разместите static route после bridge и перед общим 404. Это каталог только
@@ -172,12 +179,14 @@ base `/rdp` и bearer из памяти. Не делайте доступным 
 server.on('upgrade', (request, socket, head) => {
   if (bridge.handleUpgrade(request, socket, head)) return;
   if (request.url === '/notifications') {
-    notifications.handleUpgrade(request, socket, head, ws => {
+    notifications.handleUpgrade(request, socket, head, (ws) => {
       notifications.emit('connection', ws, request);
     });
     return;
   }
-  socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+  socket.end(
+    'HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n',
+  );
 });
 ```
 
