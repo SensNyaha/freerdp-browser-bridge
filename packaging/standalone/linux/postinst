@@ -19,11 +19,11 @@ case "${1:-}" in
     chown root:freerdp-bridge /etc/freerdp-bridge /etc/freerdp-bridge/bridge.json
     chmod 0750 /etc/freerdp-bridge
     chmod 0640 /etc/freerdp-bridge/bridge.json
+    deb-systemd-helper enable freerdp-bridge.service >/dev/null
     if [ -d /run/systemd/system ]; then
       systemctl daemon-reload
       deb-systemd-invoke restart freerdp-bridge.service
     fi
-    deb-systemd-helper enable freerdp-bridge.service >/dev/null
     ;;
 esac
 exit 0

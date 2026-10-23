@@ -328,6 +328,20 @@ try {
     ) + '\n',
   );
   console.log('STANDALONE_INSTALLED_SERVICE_PASS');
+} catch (error) {
+  try {
+    const status = windows
+      ? await ps(
+          'Get-CimInstance Win32_Service -Filter "Name=\u0027FreeRDPBridge\u0027" | Select-Object State,ProcessId,ExitCode,ServiceSpecificExitCode | ConvertTo-Json -Compress',
+        )
+      : await invoke('systemctl', [
+          'show',
+          'freerdp-bridge.service',
+          '--property=ActiveState,SubState,Result,ExecMainCode,ExecMainStatus,MainPID',
+        ]);
+    await writeFile('build/standalone-service-status.log', status + '\n');
+  } catch {}
+  throw error;
 } finally {
   await endpoint?.close();
   if (installed) {
