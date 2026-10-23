@@ -6,20 +6,29 @@ preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
-Latest stable is **0.2.3**, tag `v0.2.3`: node:http/node:https integration,
+Latest accepted local stable is **0.2.4**, tag `v0.2.4`: Express 5 root middleware,
+same-port HTTP/HTTPS/WS and aligned native runtimes. Full checks: Windows
+951 / 61 skips, Linux 928 / 87; fresh CTest 36/36 and 37/37. Ten exact archives
+pass audit/dry-run, four external consumers/reinstall matrices and eight
+versioned Astra/RED OS Express desktop profiles. npm/GitHub/OIDC setup remains
+separate and pending; no manual approval queue is restarted.
+[Release acceptance](docs/ITERATION_438.md).
+
+Prior stable is **0.2.3**, tag `v0.2.3`: node:http/node:https integration,
 explicit HTTP/WS dispatch and aligned native runtimes. Full checks: Windows
 941 / 61 skips, Linux 918 / 87; fresh CTest 36/36 and 37/37. Nine exact
 README-complete archives, external HTTP/NestJS/Fastify consumers with reinstall
 and eight versioned Astra/RED OS HTTP desktop profiles pass. Registry publication
-remains separate. [Release acceptance](docs/ITERATION_433.md).
+remains separate: both runtimes public, seven JS stages pending after the user
+stops manual approvals. [Release acceptance](docs/ITERATION_433.md).
 
 Prior stable **0.2.2**, tag `v0.2.2`: NestJS with Express and FastifyAdapter,
 same-port HTTP/WS and aligned native runtimes. Final full checks: Windows
 932 / 61 skips, Linux 909 / 87; clean CTest 36/36 and 37/37. Eight exact
 README-complete npm archives, both external adapter consumers and all eight
-versioned Astra/RED OS desktop profiles pass. npm publication remains separate
-and pending: 8/8 accepted archives are staged and downloaded with matching
-SHA-512, awaiting owner 2FA. [Release acceptance](docs/ITERATION_429.md).
+versioned Astra/RED OS desktop profiles pass. Separate npm publication
+is complete: all eight exact archives public, fresh Windows/Linux registry-only
+NestJS consumers pass strict TS and 15/15. [Publication acceptance](docs/ITERATION_437.md).
 
 Prior stable **0.2.1**, tag `v0.2.1`: same-port Fastify embedding, aligned
 native npm runtimes and installed-package Astra/RED OS desktop acceptance.
@@ -48,9 +57,9 @@ Updated user-selected adapter order, 2026-10-22:
 | Target release | Adapter | Separate feature branch | Status |
 | --- | --- | --- | --- |
 | 0.2.1 | Fastify on the existing application's HTTP/WS port | `feature/fastify-0.2.1` | Accepted `v0.2.1`; all seven npm packages published; exact public integrity and fresh Windows/Linux registry-only consumers pass; iteration 426 |
-| 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Accepted aligned v0.2.2: full checks 932/61 and 909/87, CTest 36/36 and 37/37, exact external consumers with reinstall and eight versioned Astra/RED OS desktop profiles; npm 8/8 staged/download-verified, owner 2FA pending; iterations 427–429 |
-| 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Accepted aligned v0.2.3: full Windows 941/61 and Linux 918/87, fresh CTest 36/36 and 37/37, nine exact archives and HTTP/NestJS/Fastify consumer/reinstall regressions, eight versioned Astra/RED OS desktop profiles; npm 9/9 staged/download-verified, owner 2FA pending; iterations 431–433 |
-| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Feature accepted in `3c13ff6`: full Windows 951/61 and Linux 928/87, external/reinstall strict TS and 11/11 on both, native repeats 36/36 and 37/37, eight installed-package Astra/RED OS desktop profiles. Separate aligned `release/0.2.4` preparation in progress; no stable/public 0.2.4 claim; iterations 435–436 |
+| 0.2.2 | NestJS module using the same bridge core | `feature/nestjs-0.2.2` | Accepted v0.2.2 and all eight npm archives public; exact registry integrity and Windows/Linux registry-only consumers strict TS + 15/15 pass; iterations 427–429 and 437 |
+| 0.2.3 | Built-in `node:http` integration | `feature/node-http-0.2.3` | Accepted aligned v0.2.3 with full/native/exact-consumer/reinstall and eight real RDP profiles; both runtimes public, seven JS stages pending; manual approvals stopped, future direct OIDC requested; iterations 431–433 |
+| 0.2.4 | Express middleware/router | `feature/express-0.2.4` | Accepted local v0.2.4: full Windows 951/61, Linux 928/87; fresh CTest 36/36, 37/37; ten exact archives, all four consumers/reinstall and eight versioned real RDP profiles pass. Public npm/GitHub/OIDC remains pending; iterations 435–436 and 438 |
 
 The latest user decision adds Express 0.2.4 to the selected initial set. Other
 popular server integrations will be evaluated for concrete unmet requirements

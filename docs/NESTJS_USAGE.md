@@ -3,17 +3,18 @@
 Модуль принят в **0.2.2**, после отдельных feature/release branches,
 внешних npm consumers и реальных Astra/RED OS проверок обоих host adapter.
 [Контракт](NESTJS_PLUGIN.md), [release-приёмка](ITERATION_429.md).
-Публикация npm пока выполняется отдельно; до её подтверждения используйте
-точные локальные 0.2.2 tarballs. Опубликованная 0.2.1 содержит только Fastify.
+Все восемь npm-пакетов 0.2.2 опубликованы; точный integrity и свежие Windows/Linux
+registry-only consumers проходят strict TS и 15/15 проверок на каждой ОС.
+[Публикация](ITERATION_437.md). Историческая 0.2.1 содержит только Fastify.
 
 ## Зависимости и размещение worker
 
 На хосте приложения нужны Node.js 24, NestJS 12.2, выбранный platform adapter,
 `reflect-metadata`, RxJS и native runtime той же product version, что и bridge.
-После подтверждения npm-публикации команды будут такими:
+Для опубликованной версии 0.2.2:
 
 ```sh
-# Linux x64 / glibc; выполните после публикации 0.2.2
+# Linux x64 / glibc
 npm install @freerdp-bridge/nestjs@0.2.2 @freerdp-bridge/runtime-linux-x64-gnu@0.2.2
 # Windows x64: вместо Linux runtime выбирается runtime-win32-x64 той же версии
 ```
@@ -24,7 +25,7 @@ npm install @freerdp-bridge/nestjs@0.2.2 @freerdp-bridge/runtime-linux-x64-gnu@0
 к которому подключаются, не требует этих npm-пакетов. Поддержка OS/CPU/libc и
 конкретные платформенные проверки описаны в [runtime guide](NATIVE_NPM_RUNTIME.md).
 
-До публикации устанавливайте полный согласованный набор локальных tarballs,
+Для неопубликованного source-снимка устанавливайте полный согласованный набор локальных tarballs,
 включая общие JS-пакеты; не смешивайте manifest одного development-снимка с
 native worker другого релиза. Один JS tarball не публикует его зависимости.
 
