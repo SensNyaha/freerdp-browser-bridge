@@ -44,6 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p build
           curl --fail --location --retry 2 --max-time 300 \
             --output build/node-v24.21.0.tar.xz \
             https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.xz
