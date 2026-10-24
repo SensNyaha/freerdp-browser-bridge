@@ -192,6 +192,10 @@ await copyFile(
   join(consumer, 'session-worker.mjs'),
 );
 await copyFile('tests/fixtures/rdp-tls.mjs', join(consumer, 'tls-fixture.mjs'));
+await copyFile(
+  'tests/fixtures/browser-port.mjs',
+  join(consumer, 'browser-port.mjs'),
+);
 let fixture = await readFile(
   'tests/integration/express-adapter.test.mjs',
   'utf8',
@@ -200,6 +204,7 @@ fixture = fixture
   .replace('../../packages/express/dist/index.js', '@freerdp-bridge/express')
   .replace('../fixtures/session-worker.mjs', './session-worker.mjs')
   .replace('../fixtures/rdp-tls.mjs', './tls-fixture.mjs')
+  .replace('../fixtures/browser-port.mjs', './browser-port.mjs')
   .replace(
     /new URL\(\s*'\.\.\/\.\.\/apps\/bridge-api\/package.json',\s*import.meta.url,?\s*\)/,
     "import.meta.resolve('@freerdp-bridge/api/fastify')",

@@ -1,0 +1,24 @@
+{
+    "schema":  1,
+    "removedContext":  "build/astra-407-docker-context",
+    "logicalBytesRemoved":  453440476,
+    "onlyDuplicateArchiveCopiesRemoved":  true,
+    "canonicalInputsPreserved":  [
+                                     {
+                                         "name":  "iteration-407-astra-runtime.tar",
+                                         "canonical":  "build/iteration-407-astra-runtime.tar",
+                                         "sha256":  "e196608f3e153692bdf62c8b0bd06fb088e64911a86b2bc00a41478951543fbf",
+                                         "bytes":  421550080
+                                     },
+                                     {
+                                         "name":  "node-v24.21.0-linux-x64.tar.xz",
+                                         "canonical":  ".tools/node-v24.21.0-linux-x64.tar.xz",
+                                         "sha256":  "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+                                         "bytes":  31890184
+                                     }
+                                 ],
+    "dockerfilePreserved":  "build/retained-evidence-460/astra-407-docker-context/Dockerfile",
+    "dockerfileSha256":  "9a08fff245209c53fa61afe4e52d8d16d1ebc9fa5590eb038785ca4a0e16822c",
+    "incomingLinks":  0,
+    "dockerImagesRemoved":  0
+}

@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFile } from 'node:child_process';
@@ -70,7 +71,7 @@ test(
       assert.ok(inventory.files.some((file) => /\/\.[^/]+\//.test(file.path)));
       endpoint = await createRdpTlsFixture();
       const reservation = createServer();
-      await new Promise((done) => reservation.listen(0, '127.0.0.1', done));
+      await listenBrowserHttp(reservation);
       const port = reservation.address().port;
       await new Promise((done) => reservation.close(done));
       const { publicKey, privateKey } = generateKeyPairSync('rsa', {

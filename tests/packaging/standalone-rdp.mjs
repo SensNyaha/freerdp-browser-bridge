@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
@@ -135,7 +136,7 @@ const image = async (width, height, previous = 0) => {
 };
 try {
   const reservation = createServer();
-  await new Promise((done) => reservation.listen(0, '127.0.0.1', done));
+  await listenBrowserHttp(reservation);
   const port = reservation.address().port;
   await new Promise((done) => reservation.close(done));
   origin = 'http://127.0.0.1:' + port;

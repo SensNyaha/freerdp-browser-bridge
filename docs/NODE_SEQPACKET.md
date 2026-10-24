@@ -10,7 +10,7 @@ handles; it does not close a replacement. Unwatched close stays synchronous.
 Async environment cleanup joins watched handles before disposing its context.
 Callback faults seal the pair and discard pending storage without forwarding
 exception contents. Poll handles are unreferenced, so they do not keep an empty
-environment alive. [Readiness evidence](ITERATION_197.md).
+environment alive. [Readiness evidence](history/iterations/151-200.md#iteration-197).
 
 Hosts must enable write interest only for a pending send and pause read interest
 when they cannot admit data. These level-triggered readiness calls add no
@@ -71,6 +71,6 @@ callbacks have their own scope. Per-environment exit is tested with a still-pinn
 maximum record; allocator/handle-scope failure and resource/soak acceptance remain.
 Errors expose only `IPC_ADAPTER_FAILURE`, without record/credential contents.
 
-Evidence: [iteration 196](ITERATION_196.md). This does not establish ready audio,
+Evidence: [iteration 196](history/iterations/151-200.md#iteration-196). This does not establish ready audio,
 connected Linux RDP, remote input release, public API primary selection or CI
 execution.

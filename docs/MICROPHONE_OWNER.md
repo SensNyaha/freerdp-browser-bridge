@@ -54,7 +54,7 @@ Iteration 128 covers graph-before-owner authority-loss ordering. A graph callbac
 after ordinary controller/grant loss cancels capture and joins cleanup without
 permanently marking startup failed. Current-authority graph faults, client faults
 and failed retirement remain terminal. Forced Edge ordering and pure authority /
-client/cleanup cases verify the distinction. [Evidence](ITERATION_128.md).
+client/cleanup cases verify the distinction. [Evidence](history/iterations/101-150.md#iteration-128).
 
 Iteration 127 selects this owner in the reference viewer with explicit PCM
 options, gesture controls and a shared detach/reattachment barrier.

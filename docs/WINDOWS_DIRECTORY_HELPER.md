@@ -46,4 +46,4 @@ is added. Tests query both parent and actual worker, reject invalid PID grammar,
 and exercise the installed utility after relocation with minimal PATH. The caller
 joins the current worker's lifetime; a PID alone is not a liveness/identity proof.
 Working-set snapshots are sampled residency, not private allocation, an absolute
-peak, CPU cost or total session memory. [Soak probe](ITERATION_174.md).
+peak, CPU cost or total session memory. [Soak probe](history/iterations/151-200.md#iteration-174).

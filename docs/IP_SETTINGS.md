@@ -71,13 +71,13 @@ filtering and `client/common/cmdline.c` public setting selection.
 
 ## Verification and authorized lab helper
 
-[Iteration 325](ITERATION_325.md) distinguishes portable wire / synthetic IPC,
+[Iteration 325](history/iterations/301-350.md#iteration-325) distinguishes portable wire / synthetic IPC,
 public SDK readback, actual Windows native loopback/TLS and actual Windows RDP.
 Loopback TLS endpoints do not implement a desktop. IPv6 tests use only ::1 and
 skip only when the local listener reports unavailable family/address support.
 No external IPv6 destination or DNS infrastructure is used.
 
-The named [localhost dual-family case](ITERATION_327.md) additionally observes
+The named [localhost dual-family case](history/iterations/301-350.md#iteration-327) additionally observes
 both available endpoints, current OS ordering, force precedence, refusal after
 closing the owned IPv6 listener and IPv4 fallback. Its TLS endpoints are not RDP
 desktops; broader DNS/platform/server acceptance remains separate.
@@ -107,4 +107,4 @@ This explicit mode requires both appearance and IP capabilities before reading
 credentials. It selects fixed prefer-6 / force-4 fields alongside the existing
 appearance overrides, checks exact API/native projection, 1080p JPEG canvas,
 heartbeat and form Disconnect. Default helper invocation retains its prior
-appearance-only behavior. [Exact scope](ITERATION_326.md).
+appearance-only behavior. [Exact scope](history/iterations/301-350.md#iteration-326).

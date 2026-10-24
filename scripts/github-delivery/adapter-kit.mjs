@@ -117,6 +117,10 @@ export async function adapterKit({
     'tests/tls-fixture.mjs',
     await read('tests/fixtures/rdp-tls.mjs'),
   );
+  await write(
+    'tests/browser-port.mjs',
+    await read('tests/fixtures/browser-port.mjs'),
+  );
   if (kind === 'fastify')
     await write(
       'tests/consumer.mjs',
@@ -132,6 +136,7 @@ export async function adapterKit({
       .replace('../../packages/' + kind + '/dist/index.js', name)
       .replace('../fixtures/session-worker.mjs', './session-worker.mjs')
       .replace('../fixtures/rdp-tls.mjs', './tls-fixture.mjs')
+      .replace('../fixtures/browser-port.mjs', './browser-port.mjs')
       .replace(
         /new URL\(\s*'\.\.\/\.\.\/apps\/bridge-api\/package.json',\s*import.meta.url,?\s*\)/,
         "import.meta.resolve('@freerdp-bridge/api/fastify')",

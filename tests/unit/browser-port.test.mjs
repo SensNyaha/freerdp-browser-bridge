@@ -9,6 +9,24 @@ import {
 
 const close = (server) => new Promise((resolve) => server.close(resolve));
 
+test('browser fixture port: actual Fetch rejects a blocked port while the selected HTTP listener remains reachable', async () => {
+  await assert.rejects(
+    fetch('http://127.0.0.1:2049/'),
+    (error) => error.cause?.message === 'bad port',
+  );
+  const server = createServer((_, response) => response.end('reachable'));
+  try {
+    const port = await listenBrowserHttp(server);
+    assert.ok(port >= 49152 && port <= 65535);
+    assert.equal(
+      await (await fetch('http://127.0.0.1:' + port)).text(),
+      'reachable',
+    );
+  } finally {
+    await close(server);
+  }
+});
+
 test('browser fixture port: occupied loopback retries preserve the existing server and clean listeners', async () => {
   const occupied = createServer((_, response) => response.end('occupied'));
   const next = createServer((_, response) => response.end('next'));

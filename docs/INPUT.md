@@ -8,14 +8,14 @@ A named Windows Notepad smoke now verifies committed Latin/Cyrillic/Japanese/
 supplementary text, a small physical-key/modifier/reset case and fixed left
 click through actual application/CLIPRDR readback. Full layout/OS-IME, multiline,
 button/wheel/touch and disconnect-held-input gates remain open.
-[Current evidence](ITERATION_303.md).
+[Current evidence](history/iterations/301-350.md#iteration-303).
 
 The current Release public-viewer / Notepad keyboard slice additionally passes
 exact Shift/number readback, Ctrl/Shift/Alt release after blur/reset and held
 right Ctrl through viewer detach/fresh-token reattachment of the same RDP
 session. Alt includes Escape to leave application menu mode. This does not
 accept all layouts, mouse/drag/wheel or hard transport-failure-held input.
-[Actual public input evidence](ITERATION_394.md).
+[Actual public input evidence](history/iterations/351-400.md#iteration-394).
 
 The user-opened offline pointer page additionally verifies actual public-viewer
 left/right/middle button pairs, captured drag and both wheel directions on both
@@ -24,7 +24,7 @@ middle-button release across detach/fresh-token reattachment. The page prevents
 default wheel scrolling: this accepts application event delivery, not content
 scrolling, arbitrary drop targets or physical hardware. Hard transport-loss-held
 input and broader platform profiles remain open.
-[Actual pointer evidence](ITERATION_396.md).
+[Actual pointer evidence](history/iterations/351-400.md#iteration-396).
 
 Agreed transport boundary (2026-10-21): after a hard TCP loss, immediate remote
 release cannot be guaranteed because the release records cannot be delivered.
@@ -40,7 +40,7 @@ A fresh reference controller sends an initial reset after the matching desktop
 has rendered, before forwarding user input. Reset releases tracked input and
 also sends standard left/middle/right button releases, covering remote button
 state inherited from a lost connection. Actual owned-XRDP/public-viewer
-recovery and the previous-worker negative control pass [399](ITERATION_399.md).
+recovery and the previous-worker negative control pass [399](history/iterations/351-400.md#iteration-399).
 Hard TCP loss itself cannot guarantee remote release; broader reconnect and
 keyboard/layout acceptance remain separate.
 
@@ -119,7 +119,7 @@ and input.key shapes are unchanged. Composing non-modifier events stay local;
 Unicode text uses its separate explicit commit path. Native tracking releases all
 held positions on reset. This does not select the server keyboard layout or prove
 Japanese/Korean/Brazilian hardware or remote IME behavior. Unsupported physical
-codes remain explicit; broader layout acceptance is retained. [Iteration 34](ITERATION_034.md).
+codes remain explicit; broader layout acceptance is retained. [Iteration 34](history/iterations/001-050.md#iteration-034).
 
 ## Bounded delivery and cleanup
 
@@ -173,7 +173,7 @@ ACK/error echoes the nonzero request ID. [Display contract](DISPLAY_CONTROL.md).
 
 Verification is separated: native state/record tests, fake-backend ownership and
 ordering tests, Edge DOM tests, and a real XRDP movement-only smoke test.
-See [iteration evidence](ITERATION_008.md). Actual remote keyboard, buttons,
+See [iteration evidence](history/iterations/001-050.md#iteration-008). Actual remote keyboard, buttons,
 wheel, keyboard layouts and no-stuck-keys acceptance remain pending.
 
 ## Browser modifier/focus reconciliation
@@ -213,7 +213,7 @@ regular input resumes only after actual/rendered display state agrees.
 
 No new WS/IPC input type or capability bit is added: the existing bounded
 `input.key`, `input.sync`, `input.reset` and HELLO basicInput are used.
-[Iteration 20](ITERATION_020.md) separates pure reconciliation, fake control/Edge
+[Iteration 20](history/iterations/001-050.md#iteration-020) separates pure reconciliation, fake control/Edge
 and native state fixtures from actual XRDP movement/reset-only regression.
 
 ## Committed Unicode text
@@ -262,7 +262,7 @@ separate for shortcuts. [W3C composition/input events](https://www.w3.org/TR/inp
 are the browser-side contract; actual OS IME and remote application acceptance
 remain separate from synthetic composition DOM tests.
 
-[Iteration 21](ITERATION_021.md) records native, pure, fake-IPC/control and Edge
+[Iteration 21](history/iterations/001-050.md#iteration-021) records native, pure, fake-IPC/control and Edge
 fixture evidence. Operational XRDP automation remains movement/reset only.
 
 ## Fractional wheel and trackpad accumulation
@@ -297,7 +297,7 @@ emitting. Rounding within 1e-9 notch removes floating-point threshold drift.
 No timer or delivery queue is introduced. Earlier coalesced motion is flushed
 before wheel processing, even below a notch threshold. Input rate/lease/resize
 limits still apply. Deterministic pure and Edge/fake-control evidence is in
-[Iteration 22](ITERATION_022.md); actual remote wheel/physical trackpad acceptance
+[Iteration 22](history/iterations/001-050.md#iteration-022); actual remote wheel/physical trackpad acceptance
 remains separate from the movement/reset-only operational XRDP regression.
 
 ## Native touch foundation
@@ -351,7 +351,7 @@ returns success for a contact before SC_READY. DVC ChannelConnected also precede
 that exchange. None of these is a valid negotiated-readiness gate.
 
 Consequently the foundation does not activate touch in Connection or infer support
-from the compiled channel inventory. [Iteration 23](ITERATION_023.md) records the
+from the compiled channel inventory. [Iteration 23](history/iterations/001-050.md#iteration-023) records the
 initial state/API foundation; the observable transport gate below is the next
 isolated component. Plugin/worker ownership, contact cleanup during suspension,
 bounded/versioned private IPC, current-control-lease delivery and browser contact
@@ -407,7 +407,7 @@ its potentially self-owning callback is destroyed only after that method returns
 Close is idempotent. Foreign-thread operations are rejected. No WS/private IPC or
 capability contract changes in this block.
 
-[Iteration 24](ITERATION_024.md) distinguishes fake public-interface tests and
+[Iteration 24](history/iterations/001-050.md#iteration-024) distinguishes fake public-interface tests and
 actual linked RDPEI addin tests with a fake DVC endpoint from remote RDP/device
 acceptance. Bounded header mutation tests are deterministic checks, not a
 libFuzzer/ASan campaign or a physical touch test.
@@ -458,7 +458,7 @@ cancellation into dirty local state before a periodic frame is written; success
 cannot confirm terminal-contact transport delivery. Contact cancel/reset/drain
 across suspend and resume, control leases, Connection activation, bounded IPC,
 browser capture and real touch acceptance remain open. No new worker channel or
-capability is enabled. [Iteration 25](ITERATION_025.md) distinguishes actual-addin/
+capability is enabled. [Iteration 25](history/iterations/001-050.md#iteration-025) distinguishes actual-addin/
 fake-DVC lifecycle tests from fake-interface errors and remote RDP/device evidence.
 
 ### Terminal contact ownership and drain
@@ -516,7 +516,7 @@ it does not establish remote release. Success is transport acceptance, not remot
 application acknowledgement. Current control-lease checks remain the caller's
 responsibility.
 
-[Iteration 26](ITERATION_026.md) records pure parser/re-enveloping and actual-addin/
+[Iteration 26](history/iterations/001-050.md#iteration-026) records pure parser/re-enveloping and actual-addin/
 fake-DVC contact tests. Worker/lease/reset/resize wiring, bounded IPC/browser
 capture, actual server/physical touch and timestamp-remoting compatibility remain
 open. No worker capability or channel is enabled by this isolated component.
@@ -553,7 +553,7 @@ active resources. Destruction with a still-bound scope violates its lifetime
 contract and terminates instead of leaving a global dangling callback.
 Closing an outer scope while a known child remains attached fails before addin
 retirement. A child waiting for transport completions remains attached until its
-own cleanup succeeds. [Composition evidence](ITERATION_048.md) uses actual linked
+own cleanup succeeds. [Composition evidence](history/iterations/001-050.md#iteration-048) uses actual linked
 RDPEI/RDPSND addins with simulated transports, without changing worker audio policy.
 
 Registration retirement publishes its completed result with release/acquire. Its
@@ -565,7 +565,7 @@ RDP thread without permitting general asynchronous channel execution.
 
 Worker integration is guarded by `CHANNEL_RDPEI_CLIENT`. `MultiTouchInput` remains
 explicitly false while IPC/control/browser dispatch is absent. No touch capability
-or remote input is newly enabled. [Iteration 27](ITERATION_027.md) separates public
+or remote input is newly enabled. [Iteration 27](history/iterations/001-050.md#iteration-027) separates public
 provider/actual-addin fake-host tests from worker regressions and actual XRDP
 connection evidence. Real server RDPEI host/reassembly/resource audits remain open.
 
@@ -577,7 +577,7 @@ The [16-byte versioned layout](IPC_FOUNDATION.md#touch-input-codec-foundation)
 validates before dispatch/allocation and preserves the external 31-bit contact ID.
 It carries one action and bounded absolute coordinates, without gesture queues,
 pressure, orientation, pen or arbitrary channel options. All legacy input records
-are unchanged. See [Iteration 28](ITERATION_028.md) for independent vectors and
+are unchanged. See [Iteration 28](history/iterations/001-050.md#iteration-028) for independent vectors and
 boundary/native-lifecycle evidence.
 
 This foundation does not grant a control lease, channel readiness or contact-state
@@ -589,7 +589,7 @@ Actual remote/physical touch remains open.
 
 ### Opt-in worker touch dispatch
 
-[Iteration 29](ITERATION_029.md) activates the preceding isolated components under
+[Iteration 29](history/iterations/001-050.md#iteration-029) activates the preceding isolated components under
 CHANNEL_RDPEI_CLIENT and input.touch=true. HELLO advertises an experimental private
 capability, distinct from negotiated readiness. Versioned IPC carries the observed
 display generation; the RDP thread alone validates and dispatches contacts through
@@ -610,7 +610,7 @@ same-plugin reopening and resource/reassembly audits remain open.
 
 ### Public touch controller and browser capture
 
-[Iteration 30](ITERATION_030.md) connects touch to the existing control lease and
+[Iteration 30](history/iterations/001-050.md#iteration-030) connects touch to the existing control lease and
 bounded serialized input path. Readiness/geometry/generation are checked both at
 admission and delivery, including queued commands. Lease loss discards stale
 commands and queues reset before a replacement controller. TOUCH_UPDATE is
@@ -631,7 +631,7 @@ The separate [upstream resource/transport audit](RDPEI_UPSTREAM_AUDIT.md) record
 remaining host reassembly allocations before this public gate and transport return
 semantics. Current bridge bounds do not close those actual-host acceptance gates.
 
-[Iteration 32](ITERATION_032.md) exposes penInput=false consistently through
+[Iteration 32](history/iterations/001-050.md#iteration-032) exposes penInput=false consistently through
 HELLO decoding, worker CLI and capability REST. The pinned addin defaults its
 public clientFeaturesMask to all bits; the owned registration now removes
 ENABLE_MULTIPEN_INJECTION before initialization. A server offering multi-pen gets

@@ -4,7 +4,7 @@ Current update — iteration 116: the manager now has preparatory typed PCM meth
 and control/media ownership barriers, tested with explicit fake backends. Native
 high-level selection and public socket/permission/capture remain gated.
 [Session ownership](MICROPHONE_SESSION.md). Restored actual XRDP private input
-profiles pass idle/waiting inventory, not ready capture: [iteration 115](ITERATION_115.md).
+profiles pass idle/waiting inventory, not ready capture: [iteration 115](history/iterations/101-150.md#iteration-115).
 
 Current update — iteration 111: private reset is negotiated through a versioned
 HELLO capability suffix and executed on the RDP owner. Sample sending pauses
@@ -60,4 +60,4 @@ The guarded Linux worker accepts both typed PCM and Opus input selection.
 Restored actual XRDP now passes all six input/output combinations on both primary
 and framed fallback IPC, with heartbeat/1080p capture/cleanup and no sample send.
 Input remains waiting at epoch 0; ready AUDIN and recording remain unverified.
-[Actual twelve-connection inventory](ITERATION_218.md).
+[Actual twelve-connection inventory](history/iterations/201-250.md#iteration-218).

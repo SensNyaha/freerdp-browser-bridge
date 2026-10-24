@@ -69,4 +69,4 @@ This document adds no companion implementation.
 The per-device [test matrix](../TEST_PLAN.md) remains the acceptance authority.
 No mapping here closes device integration, hotplug, resource/soak or isolation
 gates. The release Dockerfile, image, presets and dependency versions are
-unchanged. Documentation verification is recorded in [iteration 290](ITERATION_290.md).
+unchanged. Documentation verification is recorded in [iteration 290](history/iterations/251-300.md#iteration-290).

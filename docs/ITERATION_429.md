@@ -2,7 +2,7 @@
 
 2026-10-22. The implementation `a8afefb` is accepted and merged at `dd33501`;
 separate `release/0.2.2` begins with version checkpoint `aade8e3`.
-[Feature acceptance](ITERATION_427.md), [release preparation](ITERATION_428.md).
+[Feature acceptance](history/iterations/401-450.md#iteration-427), [release preparation](history/iterations/401-450.md#iteration-428).
 The annotated immutable `v0.2.2` identifies the final accepted release commit.
 Existing 0.1.0/0.2.0/0.2.1 tags and archive bytes are unchanged.
 

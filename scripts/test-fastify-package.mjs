@@ -17,7 +17,8 @@ import { tarManifest } from './github-delivery/manifest.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
-const npmConsumer = args[0] === '--npm';
+const registryOnly = args[0] === '--registry-only';
+const npmConsumer = registryOnly || args[0] === '--npm';
 if (npmConsumer) args.shift();
 const exactArchives =
   args[0] === '--archives' && args.length === 2 ? args[1] : undefined;
@@ -36,7 +37,8 @@ const runtimeArchive = exactArchives
 if (
   resolve('.') !== resolve(project) ||
   process.versions.node.split('.')[0] !== '24' ||
-  !(args.length === 0 || runtimeArchive)
+  !(args.length === 0 || runtimeArchive) ||
+  (registryOnly && runtimeArchive)
 )
   throw new Error('Run package integration from the project root with Node 24');
 await mkdir('build', { recursive: true });
@@ -76,38 +78,46 @@ if (exactArchives) {
   )
     throw new Error('FASTIFY_PUBLICATION_ARCHIVES_INVALID');
 }
-for (const directory of [
-  'packages/protocol',
-  'packages/config',
-  'packages/node-bridge',
-  'apps/bridge-api',
-  'packages/fastify',
-]) {
-  const manifest = JSON.parse(
-    await readFile(join(directory, 'package.json'), 'utf8'),
-  );
-  if (manifest.version !== productVersion || manifest.license !== 'MIT')
-    throw new Error('FASTIFY_PACKAGE_MANIFEST');
-  if (!publicationArchives)
-    pnpm(['pack', '--pack-destination', archives], resolve(directory));
-  const archive = join(
-    publicationArchives ?? archives,
-    manifest.name.replace('@', '').replace('/', '-') +
-      '-' +
-      productVersion +
-      '.tgz',
-  );
-  const packed = tarManifest(archive);
-  if (packed.name !== manifest.name || packed.version !== productVersion)
-    throw new Error('FASTIFY_PACKAGE_ARCHIVE_MISMATCH');
-  dependencies[manifest.name] = 'file:' + archive.replaceAll('\\', '/');
-  receipts.push({
-    name: manifest.name,
-    documentation: await checkNpmArchiveReadme(archive),
-    sha256: createHash('sha256')
-      .update(await readFile(archive))
-      .digest('hex'),
-  });
+if (!registryOnly)
+  for (const directory of [
+    'packages/protocol',
+    'packages/config',
+    'packages/node-bridge',
+    'apps/bridge-api',
+    'packages/fastify',
+  ]) {
+    const manifest = JSON.parse(
+      await readFile(join(directory, 'package.json'), 'utf8'),
+    );
+    if (manifest.version !== productVersion || manifest.license !== 'MIT')
+      throw new Error('FASTIFY_PACKAGE_MANIFEST');
+    if (!publicationArchives)
+      pnpm(['pack', '--pack-destination', archives], resolve(directory));
+    const archive = join(
+      publicationArchives ?? archives,
+      manifest.name.replace('@', '').replace('/', '-') +
+        '-' +
+        productVersion +
+        '.tgz',
+    );
+    const packed = tarManifest(archive);
+    if (packed.name !== manifest.name || packed.version !== productVersion)
+      throw new Error('FASTIFY_PACKAGE_ARCHIVE_MISMATCH');
+    dependencies[manifest.name] = 'file:' + archive.replaceAll('\\', '/');
+    receipts.push({
+      name: manifest.name,
+      documentation: await checkNpmArchiveReadme(archive),
+      sha256: createHash('sha256')
+        .update(await readFile(archive))
+        .digest('hex'),
+    });
+  }
+const runtimeName =
+  '@freerdp-bridge/runtime-' +
+  (process.platform === 'win32' ? 'win32-x64' : 'linux-x64-gnu');
+if (registryOnly) {
+  dependencies['@freerdp-bridge/fastify'] = productVersion;
+  dependencies[runtimeName] = productVersion;
 }
 if (runtimeArchive) {
   const archive = await realpath(resolve(runtimeArchive));
@@ -156,9 +166,11 @@ await writeFile(
       type: 'module',
       dependencies: { ...dependencies, fastify: '5.12.5', ws: '8.22.0' },
       devDependencies: { typescript: '5.9.3', '@types/node': '24.10.0' },
-      ...(npmConsumer
-        ? { overrides: dependencies }
-        : { pnpm: { overrides: dependencies } }),
+      ...(!registryOnly
+        ? npmConsumer
+          ? { overrides: dependencies }
+          : { pnpm: { overrides: dependencies } }
+        : {}),
     },
     null,
     2,
@@ -169,6 +181,10 @@ await copyFile(
   join(fixture, 'consumer.mjs'),
 );
 await copyFile('tests/fixtures/rdp-tls.mjs', join(fixture, 'tls-fixture.mjs'));
+await copyFile(
+  'tests/fixtures/browser-port.mjs',
+  join(fixture, 'browser-port.mjs'),
+);
 await copyFile(
   'tests/fixtures/fastify-package-consumer.ts',
   join(fixture, 'consumer.ts'),
@@ -225,22 +241,25 @@ run(
   [join(fixture, 'node_modules/typescript/bin/tsc'), '-p', fixture],
   fixture,
 );
-const worker = runtimeArchive
-  ? '--package-runtime'
-  : await realpath(
-      resolve(
-        process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
-        'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
-      ),
-    );
+const worker =
+  runtimeArchive || registryOnly
+    ? '--package-runtime'
+    : await realpath(
+        resolve(
+          process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/foundation',
+          'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
+        ),
+      );
 run(process.execPath, ['consumer.mjs', worker], fixture);
 const report = {
   packageConsumer: true,
   version: productVersion,
-  published: false,
+  published: registryOnly,
+  registryOnly,
+  developmentArtifacts: !registryOnly,
   checkoutImports: false,
   strictTypeScript: true,
-  nativeRuntimePackage: Boolean(runtimeArchive),
+  nativeRuntimePackage: Boolean(runtimeArchive) || registryOnly,
   exactPublicationArchives: Boolean(publicationArchives),
   packageManager: npmConsumer ? 'npm' : 'pnpm',
   offlineInstall: !npmConsumer,

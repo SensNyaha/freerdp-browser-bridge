@@ -346,7 +346,7 @@ open. [Viewer contract](docs/MICROPHONE_VIEWER.md).
 Iteration 128 enables native high-level PCM selection only with pcmInput and
 microphoneReset HELLO capabilities. No public/private wire shape changes; actual
 XRDP source replay is waiting epoch 0 without capture. Opus input and actual
-recording acceptance remain open. [Evidence](docs/ITERATION_128.md).
+recording acceptance remain open. [Evidence](docs/history/iterations/101-150.md#iteration-128).
 
 Iteration 131 prepares RWB1 MIC_OPUS_PACKET type 10/stream 4, 42..1,315 bytes,
 with epoch, measured encoder lookahead and one bounded stereo 20 ms packet.
@@ -423,7 +423,7 @@ Windows bundled workers activate opt-in PCM on private IPC with typed Node
 source/config/packet listeners, public session/media negotiation and explicit
 reference harness gesture activation. Actual audible RDP remains unverified;
 Opus is open. [Private activation](docs/IPC_FOUNDATION.md#private-pcm-worker-activation-iteration-66),
-[public viewer](docs/ITERATION_071.md).
+[public viewer](docs/history/iterations/051-100.md#iteration-071).
 Private source status schema 1 is now prepared as RWI1 AUDIO_STATE kind 35 with
 40 bytes. Its public preparatory counterpart is RWB1 AUDIO_STATE type 0x09,
 stream 3, DISCONTINUITY 0x0002, exact 40-byte payload. Payload repeats the worker
@@ -471,7 +471,7 @@ is replaced with discontinuity when behind. Stop/reset discards unsent samples;
 an already admitted record keeps its credit until ACK. Ordered status reaches the
 same Worklet before fresh config/samples. Both receiver ACK and blocked local
 socket admission have a two-second deadline. Local queue bounds do not establish
-end-to-end latency or audible RDP acceptance. [Evidence](docs/ITERATION_069.md).
+end-to-end latency or audible RDP acceptance. [Evidence](docs/history/iterations/051-100.md#iteration-069).
 
 ## 5. Attach semantics
 

@@ -87,8 +87,8 @@ Digest/audit evidence: `release-436-artifact-audit.json`,
 `release-436-npm-dry-run.json`, `iteration-436-artifact-audit.log`,
 `iteration-436-npm-dry-run.log`. Accepted bytes must not be repacked or replaced
 for later publication. Original setup/parser failures and preceding feature
-evidence remain in [iteration 436](ITERATION_436.md) and
-[iteration 435](ITERATION_435.md); no assertion, timeout or certificate policy
+evidence remain in [iteration 436](history/iterations/401-450.md#iteration-436) and
+[iteration 435](history/iterations/401-450.md#iteration-435); no assertion, timeout or certificate policy
 is relaxed.
 
 Original full V1 scope is preserved. [Framework selection](FRAMEWORK_SELECTION.md)

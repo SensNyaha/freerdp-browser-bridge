@@ -22,7 +22,7 @@ Registry versions/integrities are unchanged. See the [pnpm deployment contract](
 `node scripts/test-node-clean-build.mjs` separately verifies a fresh source-only
 workspace, frozen offline install, build and production deployment/import with
 an unchanged lockfile. It requires the build packages in pnpm's cache and leaves
-its generated fixture under build. [Evidence](ITERATION_213.md).
+its generated fixture under build. [Evidence](history/iterations/201-250.md#iteration-213).
 
 Context preparation copies only two bounded project-local archives, Dockerfile
 and a separate probe into a whitelist context. Two explicit alternate archive
@@ -89,17 +89,17 @@ docker run --rm --network none --init --read-only --cap-drop ALL \
 
 It checks actual HTTP readiness/build, default auth refusal, synthetic host /
 native connection failure, primary IPC, SIGTERM and empty runtime without lab
-credentials, outside network or physical capture. [Evidence](ITERATION_211.md).
+credentials, outside network or physical capture. [Evidence](history/iterations/201-250.md#iteration-211).
 
 ## Current verified image refresh
 
 The local runtime image was refreshed after the logger correction in c1cc41a.
 The new production Node archive, schema-validated application/native companion,
 final-image SPDX and restricted runtime receipt are recorded together in
-[Iteration 217](ITERATION_217.md). Earlier image receipts remain historical
+[Iteration 217](history/iterations/201-250.md#iteration-217). Earlier image receipts remain historical
 evidence; they do not contain that later logger correction.
 
 The subsequent image :223 also contains the AUDIN diagnostics and embedded
 vcpkg provenance. Its exact archive/image identities, schema-validated final
 SPDX, independent restricted execution and current known-password audits are
-recorded in [Iteration 223](ITERATION_223.md).
+recorded in [Iteration 223](history/iterations/201-250.md#iteration-223).

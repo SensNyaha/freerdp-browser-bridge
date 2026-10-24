@@ -5,7 +5,7 @@ actual XRDP to Windows Edge decoder/Worklet admission and observed native reset 
 new-epoch reattachment recovery with the accepted 200 ms profile. Earlier
 Windows-only/activation boundaries below are historical. Intermittent failure,
 human audible quality, measured latency, microphone and broader stage/platform /
-soak acceptance remain open. [Evidence](ITERATION_208.md).
+soak acceptance remain open. [Evidence](history/iterations/201-250.md#iteration-208).
 
 Iteration 94 (2026-10-11) implements SPECIFICATION §2.6 / MEDIA_PIPELINE §6.
 Public session config may choose `media.audioOutput: 'opus'`; off remains the

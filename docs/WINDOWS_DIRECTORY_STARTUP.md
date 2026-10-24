@@ -49,4 +49,4 @@ are not separated by these ACLs. Linux transport/isolation acceptance is separat
 
 Actual Windows helper/worker lifecycle tests are distinguished from synthetic
 receipt/fault seams. The latter cannot establish hostile-host or cross-account
-acceptance. [Verification](ITERATION_172.md).
+acceptance. [Verification](history/iterations/151-200.md#iteration-172).

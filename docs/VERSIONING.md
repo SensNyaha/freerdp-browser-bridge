@@ -3,8 +3,12 @@
 The latest accepted local release is **0.2.5**, standalone web service and
 portable/MSI/DEB/RPM distribution with aligned JS/native packages. Local/native,
 exact consumers, eight actual RDP profiles and all named installer-upgrade
-checks pass. Public npm and main/master installer delivery remain separately
-verified gates; [local release acceptance](ITERATION_455.md).
+checks pass. All ten npm packages, five OIDC workflows and four fresh registry-only
+consumers on Windows/Linux pass; [public npm delivery](ITERATION_456.md).
+Final main-push installer delivery, downloaded file integrity and actual final
+DEB/RPM version upgrades on Astra/RED OS pass;
+[public distribution acceptance](ITERATION_457.md);
+[local release acceptance](ITERATION_455.md).
 
 Prior stable release is **0.2.4**, identified by annotated
 immutable `v0.2.4`: Express 5 root middleware with same-port HTTP/HTTPS/WS and
@@ -12,26 +16,29 @@ aligned JS/native packages. Full checks, ten exact archives, external consumers
 and eight versioned Astra/RED OS Express profiles pass. All ten npm archives and
 five GitHub Releases are public, with successful hosted workflows and four fresh
 registry-only consumers on Windows/Linux. [Release acceptance](ITERATION_438.md),
-[publication](ITERATION_441.md).
+[publication](history/iterations/401-450.md#iteration-441).
 
 Prior stable **0.2.3** is identified by annotated immutable
 `v0.2.3`: node:http/node:https embedding with explicit HTTP/WS dispatch and
 matching JS/native packages. Final checks, exact consumers/reinstall and
 versioned Astra/RED OS desktop profiles pass. Registry publication is separate.
-[Release acceptance](ITERATION_433.md).
+[Release acceptance](ITERATION_433.md). User decision, 2026-10-24: keep this
+version archived, with its seven missing JS npm packages intentionally
+unpublished; complete public 0.2.4/0.2.5 suffice. Preserve its immutable tag and
+accepted archive bytes; do not resume manual approvals. [Decision](ITERATION_458.md).
 
 Prior stable **0.2.2** is identified by annotated immutable
 `v0.2.2`: NestJS module with Express/FastifyAdapter and matching README-complete
 native/JS archives. Final checks and exact consumers pass; all eight archives
 are public at accepted integrity and fresh Windows/Linux registry-only
 consumers pass. [Release acceptance](ITERATION_429.md),
-[publication evidence](ITERATION_437.md).
+[publication evidence](history/iterations/401-450.md#iteration-437).
 
 Prior stable **0.2.1** is identified by annotated immutable
 `v0.2.1`. It adds accepted same-port Fastify embedding and matching native npm
 packages; [release checks and limits](ITERATION_424.md). All seven exact npm
 archives are published at 0.2.1 and pass fresh Windows/Linux registry consumers;
-[publication evidence](ITERATION_426.md).
+[publication evidence](history/iterations/401-450.md#iteration-426).
 The prior immutable `v0.2.0` adds the accepted GCC 8.3 port and named real
 Astra/RED OS desktop profiles; [its checks](ITERATION_418.md). The original practical
 MVP remains **0.1.0**, by the user's 2026-10-21 decision, with immutable

@@ -35,7 +35,8 @@ test(
     let adapter,
       closed = false,
       factories = 0,
-      errors = 0;
+      errors = 0,
+      promptSessionId;
     class ObservedAdapter extends NativeSessionWorker {
       async close() {
         await super.close();
@@ -59,6 +60,8 @@ test(
     });
     manager.on('event', (event) => {
       if (event.type === 'session.error') ++errors;
+      if (event.type === 'certificate.prompt')
+        promptSessionId = event.session.sessionId;
     });
     const owner = { id: 'synthetic-tls-resource-owner' };
     const config = {
@@ -76,7 +79,9 @@ test(
       });
       assert.equal(factories, 1);
       await eventually(
-        () => manager.get(sessionId, owner).state === 'awaiting-user',
+        () =>
+          manager.get(sessionId, owner).state === 'awaiting-user' &&
+          promptSessionId === sessionId,
         5000,
       );
       const pid = adapter.pid;

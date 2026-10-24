@@ -17,6 +17,7 @@ import {
 import { createRdpBridgeExpress } from '../../packages/express/dist/index.js';
 import { fakeFactory, eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 
 const { WebSocket, WebSocketServer } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
@@ -141,7 +142,7 @@ async function withHost(mode, run, native = false) {
     });
     assert.equal(server.listening, false);
     assert.equal(server.maxConnections, 777);
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await listenBrowserHttp(server);
     const base = 'http://127.0.0.1:' + server.address().port;
     const request = (path, method = 'GET', payload, headers = {}) =>
       fetch(base + path, {
@@ -470,7 +471,7 @@ test(
       });
       app.use(express.json());
       app.use(bridge.middleware);
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       const response = await fetch(
         'http://127.0.0.1:' + server.address().port + '/rdp/v1/sessions',
         {
@@ -532,7 +533,7 @@ test(
             originalUrl: request.originalUrl,
           }),
         );
-        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+        await listenBrowserHttp(server);
         const base = 'http://127.0.0.1:' + server.address().port;
         const response = await fetch(
           base + '/rdp/healthz?token=PRIVATE-MOUNT-CANARY',
@@ -595,7 +596,7 @@ test(
           createRdpBridgeExpress(server, options(prefix)),
           (error) => error.code === 'BRIDGE_PREFIX_CONFLICT',
         );
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       await handles[0].close();
       await handles[0].close();
       assert.equal(server.listenerCount('upgrade'), 1);
@@ -689,7 +690,7 @@ test(
     const server = createServer();
     const runtimeRoot = await mkdtemp(join(tmpdir(), 'http-rdp-startup-'));
     try {
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       const initializing = createRdpBridgeExpress(server, {
         prefix: '/rdp',
         worker: { workerPath, runtimeRoot },
@@ -772,7 +773,7 @@ test(
             ? { id: 'owner' }
             : undefined,
       });
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       const port = server.address().port;
       const request = (path, payload) =>
         new Promise((resolve, reject) => {

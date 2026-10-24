@@ -2,6 +2,16 @@
 
 Product release versions follow [the version policy](docs/VERSIONING.md).
 
+## Unreleased
+
+- Make UBSan errors fatal in sanitizer builds and add Linux runtime negative
+  controls for UB, heap overflow and leaks. The optional IPC-addon profile also
+  tests those faults inside an instrumented Node process; its acceptance is in progress.
+- Use browser-compatible loopback ports consistently in adapter, external npm
+  consumer and standalone tests. This removes intermittent Fetch `bad port`
+  failures on hosts with low ephemeral port ranges; generated GitHub adapter
+  tests include the shared helper and retain independent package imports.
+
 ## 0.2.5 — 2026-10-24
 
 Accepted local standalone web service release: bounded public config/JWT owner
@@ -32,7 +42,7 @@ consumers pass Windows/Linux. Nine existing names publish via OIDC; Express
 uses its separately authorized initial approval and verified trust setup.
 The old 0.2.3 approval queue remains stopped.
 [Local release acceptance](docs/ITERATION_438.md),
-[publication acceptance](docs/ITERATION_441.md).
+[publication acceptance](docs/history/iterations/401-450.md#iteration-441).
 
 - Implement Express 5 root middleware on the accepted HTTP core, retaining
   strict raw-body limits, selective upgrades and joined lifecycle. Add public
@@ -40,7 +50,7 @@ The old 0.2.3 approval queue remains stopped.
   Feature checks pass Windows 951/61 and Linux 928/87, external/reinstall 11/11
   on both and all eight actual Astra/RED OS desktop profiles. Separate aligned
   release checks also pass; public publication remains separate.
-  [Feature evidence](docs/ITERATION_435.md).
+  [Feature evidence](docs/history/iterations/401-450.md#iteration-435).
 
 ## 0.2.3 — 2026-10-23
 
@@ -56,7 +66,7 @@ remains separate. [Release acceptance](docs/ITERATION_433.md).
   and joined host-owned lifecycle. Windows/Linux external consumers and full
   checks, HTTPS/WSS and eight installed-package Astra/RED OS desktop profiles
   pass. Aligned release checks pass; registry publication remains separate;
-  [feature evidence](docs/ITERATION_431.md).
+  [feature evidence](docs/history/iterations/401-450.md#iteration-431).
 
 ## 0.2.2 — 2026-10-22
 
@@ -69,14 +79,14 @@ publication is pending. [Release acceptance](docs/ITERATION_429.md).
 
 Subsequent publication is complete: all eight exact archives are public and
 fresh registry-only Windows/Linux NestJS consumers pass strict TypeScript and
-15/15 each. [Publication acceptance](docs/ITERATION_437.md).
+15/15 each. [Publication acceptance](docs/history/iterations/401-450.md#iteration-437).
 
 - Add NestJS module on its separate feature branch: DI
   configuration, shared-port Express/FastifyAdapter routing and existing native
   session/media core. Windows/Linux external npm consumers, strict declarations,
   HTTPS/WSS, lifecycle/admission and real installed-package Astra/RED OS desktop
   profiles pass for both adapters. Aligned release checks pass; publication remains separate;
-  [feature acceptance](docs/ITERATION_427.md).
+  [feature acceptance](docs/history/iterations/401-450.md#iteration-427).
 
 - Add explanatory root README files to every publishable JS package and both
   native runtime templates. Check discovered packages during `pnpm check` and
@@ -95,13 +105,13 @@ Astra/RED OS installed-package desktop profiles pass.
 All seven exact accepted archives are now published to npm as 0.2.1. Public
 integrity checks and fresh registry-only Windows/Linux consumers pass, including
 strict declarations, host HTTP/WS coexistence and actual native TLS rejection.
-[Publication evidence and package links](docs/ITERATION_426.md).
+[Publication evidence and package links](docs/history/iterations/401-450.md#iteration-426).
 
 - Fastify 0.2.1 embedding with encapsulated prefixed HTTP/WS,
   host-owned upgrade dispatch, bounded optional session diagnostics and packaged
   reference browser assets. External npm/pnpm consumers and actual Astra/RED OS H.264/JPEG,
   resize/restoration and reattachment pass with installed native npm packages.
-  [Implementation/evidence](docs/ITERATION_419.md), [usage](docs/FASTIFY_USAGE.md).
+  [Implementation/evidence](docs/history/iterations/401-450.md#iteration-419), [usage](docs/FASTIFY_USAGE.md).
 - Matching native runtime packages include ready worker/IPC components,
   private FreeRDP dependencies, notices and pinned LGPL corresponding sources
   with their exact build recipes/patches. Installation requires no compiler
@@ -128,18 +138,18 @@ on its own feature branch under the explicit [0.2.x delivery policy](docs/VERSIO
 - Actual Astra and RED OS public Edge H.264/JPEG desktop, resize/restoration,
   viewer reattachment and cleanup. A bounded legacy XRDP format proposal is
   validated before pinned RDPSND ignores it; microphone policy remains gated.
-  [Current evidence and retained failures](docs/ITERATION_417.md).
+  [Current evidence and retained failures](docs/history/iterations/401-450.md#iteration-417).
 - Exact GCC 8.3 container foundation CI recipe, locally verified with CTest
   20/20; hosted execution remains separate. Strict installed Linux runtime
-  closure and relocation pass. [Build/package evidence](docs/ITERATION_411.md),
-  [CI scope](docs/ITERATION_413.md).
+  closure and relocation pass. [Build/package evidence](docs/history/iterations/401-450.md#iteration-411),
+  [CI scope](docs/history/iterations/401-450.md#iteration-413).
 
 - Named owned XRDP 0.10.1 / prepared Tk / headed Edge Unicode Clipboard API
   roundtrip acceptance, including emoji/multiline text, repeated Copy and new
   RDP connections, permission refusal, revoke and joined cleanup. Adds an
   independent fixed Unicode-capable lab profile and a fixture Copy ownership
   notification; production code, native artifacts and dependency pins are
-  unchanged. Full check: 900 passed / 61 skipped. [Evidence](docs/ITERATION_404.md).
+  unchanged. Full check: 900 passed / 61 skipped. [Evidence](docs/history/iterations/401-450.md#iteration-404).
   Old XRDP 0.9.x surrogate conversion and wider Stage 7 gates remain open.
 
 ## 0.1.0 — 2026-10-21
@@ -159,9 +169,9 @@ MVP boundary and adds a version consistency gate.
 - Active owned-XRDP 30-minute observation, named CPU/RSS failure/cleanup cases
   and short two-account coexistence. Windows/Linux linked regression passes.
 
-Evidence: [joint Windows](docs/ITERATION_403.md),
-[active XRDP/current Release](docs/ITERATION_401.md),
-[Windows/Linux regression](docs/ITERATION_402.md).
+Evidence: [joint Windows](docs/history/iterations/401-450.md#iteration-403),
+[active XRDP/current Release](docs/history/iterations/401-450.md#iteration-401),
+[Windows/Linux regression](docs/history/iterations/401-450.md#iteration-402).
 Run: [MVP runbook](docs/MVP_RUNBOOK.md).
 
 Known limits include nonzero audio epoch/underflow counters, an earlier

@@ -53,7 +53,7 @@ Malformed or over-64-KiB serialized log records become a fixed rejection record.
 This bounds destination output, not Pino's preceding formatting allocation.
 Messages supplied explicitly by trusted application code must still be constant
 and must never interpolate credentials; key-based redaction cannot identify
-secrets embedded in arbitrary free text. [Regression evidence](docs/ITERATION_216.md).
+secrets embedded in arbitrary free text. [Regression evidence](docs/history/iterations/201-250.md#iteration-216).
 
 For authorized local development, `node scripts/audit-local-artifact-secrets.mjs`
 checks the current Linux release inputs and SPDX artifacts for the ignored lab
@@ -63,10 +63,10 @@ reports contain only fixed artifact paths, hashes, scanned byte counts and pass
 state. This is an exact known-value regression, not an unknown-secret detector.
 Its lab-file read requires the existing local-development exception; the helper
 is not a production credential store or a CI credential provisioning mechanism.
-[Bounds and actual scope](docs/ITERATION_217.md).
+[Bounds and actual scope](docs/history/iterations/201-250.md#iteration-217).
 On Windows, the explicit `--windows` profile scans the native and companion
 SBOM ZIPs with the same in-memory known-password policy and bounds; it writes
-a separate scalar receipt. [Windows evidence](docs/ITERATION_221.md).
+a separate scalar receipt. [Windows evidence](docs/history/iterations/201-250.md#iteration-221).
 
 ## 4. Certificate validation
 

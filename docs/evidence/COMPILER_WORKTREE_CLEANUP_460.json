@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "removedWorktrees": 1,
+  "logicalBytesRemoved": 3115554671,
+  "symlinksUnlinkedWithoutTraversal": 389,
+  "preservedReceipts": 7,
+  "removed": [
+    {
+      "name": "worktree-redos73-gcc11",
+      "head": "b5d56a3f316276883cf70a97c7d8063b59a01abf",
+      "branch": null,
+      "bytes": 3115554671,
+      "files": 16707,
+      "preservedReceipts": 7,
+      "commitsRetainedInRefs": true
+    }
+  ],
+  "protectedNodePnpmAndAcceptedWorkerUnchanged": true,
+  "canonicalSourceAndDependencyInputsPreserved": true,
+  "originalLocalSdkPreserved": false,
+  "sdkJunctionDependencyMissedBeforeRemoval": true,
+  "sdkRecovery": "SDK_RECOVERY_460.json",
+  "sdkRecoveryVerified": true
+}

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "scope": "old-root-build-logs-only",
+  "removedFiles": 3319,
+  "logicalBytesRemoved": 186415728,
+  "preservedAcceptanceLogs": [
+    "iteration-456-check-win32-final.log",
+    "iteration-459-cleanup-ctest.log",
+    "iteration-459-cleanup-node-worker.log",
+    "iteration-454-check-linux-final.log",
+    "iteration-454-check-win32-final.log"
+  ],
+  "preservedLogHashesUnchanged": true,
+  "recentOrChangingFilesExcluded": true,
+  "contentsPrintedOrCopied": false,
+  "sourceFilesDeleted": 0
+}

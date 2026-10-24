@@ -16,6 +16,7 @@ import {
 import { createRdpBridgeHttp } from '../../packages/http/dist/index.js';
 import { fakeFactory, eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 
 const { WebSocket, WebSocketServer } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
@@ -158,7 +159,7 @@ async function withHost(mode, run, native = false) {
     });
     assert.equal(server.listening, false);
     assert.equal(server.maxConnections, 777);
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await listenBrowserHttp(server);
     const base = 'http://127.0.0.1:' + server.address().port;
     const request = (path, method = 'GET', payload, headers = {}) =>
       fetch(base + path, {
@@ -486,7 +487,7 @@ test(
         authenticate: () => ({ id: 'owner' }),
         sessions: factory,
       });
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       for (const value of [false, true]) {
         parsed = value;
         const response = await fetch(
@@ -539,7 +540,7 @@ test(
           createRdpBridgeHttp(server, options(prefix)),
           (error) => error.code === 'BRIDGE_PREFIX_CONFLICT',
         );
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       await handles[0].close();
       await handles[0].close();
       assert.equal(server.listenerCount('upgrade'), 1);
@@ -633,7 +634,7 @@ test(
     const server = createServer();
     const runtimeRoot = await mkdtemp(join(tmpdir(), 'http-rdp-startup-'));
     try {
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       const initializing = createRdpBridgeHttp(server, {
         prefix: '/rdp',
         worker: { workerPath, runtimeRoot },
@@ -715,7 +716,7 @@ test(
             ? { id: 'owner' }
             : undefined,
       });
-      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+      await listenBrowserHttp(server);
       const port = server.address().port;
       const request = (path, payload) =>
         new Promise((resolve, reject) => {

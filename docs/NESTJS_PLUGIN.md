@@ -97,7 +97,7 @@ pass through both Express and FastifyAdapter with H.264 and JPEG: nonuniform
 1920x1080 rendering, 1280x720 resize, restoration, fresh-token reattachment,
 same-port host HTTP, bounded diagnostics and joined cleanup. Native runtime is
 the unchanged accepted 0.2.1 package; this is development adapter acceptance,
-not an aligned 0.2.2 release. [Evidence and retained setup failures](ITERATION_427.md).
+not an aligned 0.2.2 release. [Evidence and retained setup failures](history/iterations/401-450.md#iteration-427).
 
 Feature acceptance does not imply new devices, sound quality, platform families
 or complete V1. Subsequent aligned native/JS 0.2.2 archives and all eight

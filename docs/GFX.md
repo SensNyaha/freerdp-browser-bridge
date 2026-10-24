@@ -125,5 +125,5 @@ are unchanged, so a same-size graphics reset begins a fresh AVC IDR chain.
 The [Display Control foundation](DISPLAY_CONTROL.md) observes dimensions only
 after GDI success; browser layout requests and actual server resize remain open.
 
-Evidence: [iteration 14](ITERATION_014.md), [iteration 15](ITERATION_015.md),
-[resize foundation](ITERATION_017.md).
+Evidence: [iteration 14](history/iterations/001-050.md#iteration-014), [iteration 15](history/iterations/001-050.md#iteration-015),
+[resize foundation](history/iterations/001-050.md#iteration-017).

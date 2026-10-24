@@ -144,5 +144,5 @@ Connection publishes one terminal outcome after display callback unbind and owne
 input/addin retirement. Cleanup failure promotes the selected outcome to protocol
 failure before publication; it cannot produce closed followed by failed.
 Ownership still retires on the RDP thread before context destruction. See
-[Iteration 33](ITERATION_033.md) for lifecycle regression evidence and fault-injection
+[Iteration 33](history/iterations/001-050.md#iteration-033) for lifecycle regression evidence and fault-injection
 limits. This changes ordering/cleanup reporting, not the RWI1 wire layout.

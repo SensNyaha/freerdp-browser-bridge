@@ -31,7 +31,7 @@ percentage/rate calculation, CPU watchdog or browser-facing capability.
 The trusted caller must own and revalidate process identity across samples;
 a PID alone cannot protect against reuse. Actual connected CPU/resource acceptance
 remains open. Existing RSS policy measures a different resource.
-[Implementation and evidence](ITERATION_300.md).
+[Implementation and evidence](history/iterations/251-300.md#iteration-300).
 
 ## Native Linux command
 
@@ -59,7 +59,7 @@ The actual clock frequency comes from `sysconf(_SC_CLK_TCK)`; 100 Hz is not
 assumed. Checked integer conversion combines user/kernel ticks before flooring
 to microseconds, preserves fractional carry and refuses uint64 sum or exact
 JSON integer overflow. Child-process utime/stime fields are not included.
-[Build, actual query and scoped acceptance](ITERATION_308.md).
+[Build, actual query and scoped acceptance](history/iterations/301-350.md#iteration-308).
 
 ## Typed Node reader
 
@@ -92,9 +92,9 @@ utilization budget, background enforcement or public config. A separate opt-in
 
 This requires the new platform helper/command. Existing bundled Release artifacts
 have not been rebuilt to add them; missing/older helpers report unavailable.
-Windows reader evidence uses MSVC Debug [iteration 304](ITERATION_304.md);
+Windows reader evidence uses MSVC Debug [iteration 304](history/iterations/301-350.md#iteration-304);
 Linux GCC 13 Debug, focused GCC 12 helper and installed-query evidence is
-[iteration 308](ITERATION_308.md). No production package adoption is claimed.
+[iteration 308](history/iterations/301-350.md#iteration-308). No production package adoption is claimed.
 
 ## Shared helper admission and Windows paired policy queries
 
@@ -119,7 +119,7 @@ invocation sample but contribute no completed-task maximum yet. These fixed
 scalars retain no PID, arguments, outputs, error details or sample history.
 They are independent maxima and cannot be summed/subtracted into a per-query
 timeline. They do not identify an OS/driver cause or change enforcement.
-[Collection and observed capacity profile](ITERATION_375.md).
+[Collection and observed capacity profile](history/iterations/351-400.md#iteration-375).
 
 Admitted owners now take successive invocation turns: after the preceding
 task returns its promise, the next invocation crosses a `setImmediate`
@@ -137,7 +137,7 @@ starts no helper, releases its turn/permit and preserves following work.
 existing boundaries. Two-second helper execution and three-second worker
 query deadlines stay unchanged. This improves event-loop opportunities;
 it does not establish a hard OS close bound or adequate capacity headroom.
-[Controlled and actual Windows observations](ITERATION_376.md).
+[Controlled and actual Windows observations](history/iterations/351-400.md#iteration-376).
 
 The Windows helper also accepts `--process-resources <pid>`. This additive
 private command queries working set and cumulative CPU through one limited
@@ -154,7 +154,7 @@ query with at most two participant signals. Either cancellation aborts the
 helper; all listeners retire before completion. CPU observation uses the actual
 shared monotonic bracket, including admission. Results are never reused after
 completion. Existing public scalar reader signatures are unchanged.
-[Implementation, failed controls and scoped capacity evidence](ITERATION_310.md).
+[Implementation, failed controls and scoped capacity evidence](history/iterations/301-350.md#iteration-310).
 Release helper adoption remains pending.
 
 New Windows source builds additionally advertise a bounded sixteen-PID resource
@@ -165,4 +165,4 @@ CPU brackets and joined per-member cancellation. Missing support retains the
 scalar path; standalone readers are unchanged. Each physical launch still
 crosses the invocation owner. Numeric batch counters distinguish launches from
 logical samples. [Owner contract](PROCESS_RESOURCE_BATCH.md),
-[prepared native component](ITERATION_377.md), [adoption](ITERATION_378.md).
+[prepared native component](history/iterations/351-400.md#iteration-377), [adoption](history/iterations/351-400.md#iteration-378).
