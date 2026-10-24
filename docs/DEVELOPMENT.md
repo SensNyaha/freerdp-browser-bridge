@@ -49,8 +49,9 @@ The tracked `tests/fixtures/node-sanitizer/Dockerfile` builds a separate
 Node 24.21.0 runtime using upstream `--enable-asan`, GCC 12 and two compile jobs.
 Its source archive is bound to the official SHA-256
 `a6f54defb6fd7c84f41dba13d61e78e9b4e0961712cf61f29715c05f5ced94fc`.
-Prepare a minimal context containing that public archive, the Dockerfile and
-the fixture's `dockerignore` as `.dockerignore`; do not use the workspace root
+Prepare a minimal context containing that public archive, the Dockerfile,
+`build-node.sh`, the three `link_probe` files and the fixture's `dockerignore`
+as `.dockerignore`; do not use the workspace root
 as the context. Build the local test image with:
 
 ```sh
@@ -174,12 +175,35 @@ explicit environment. A separate actual-process case proves the default entry
 still rejects inherited loader settings. Linux passes **10/10** in both default
 and injected `NODE_PATH`/`NODE_OPTIONS` environments; Windows passes **9 / one
 Linux-only skip** in both environments. The verifier guard is unchanged.
-The hosted rerun with this fixture correction is pending; the independent
-[Node ASan job](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40082326139)
-continues its first cold tool build.
+The corrected hosted source snapshot `f9fe0b8` passes the complete
+[Windows/MSVC, GCC 12/default GCC and sanitizer/fuzz workflow](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40084691784)
+and the separate [exact GCC 8.3 workflow](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40084693291).
+This verifies the source/foundation profiles, not installed distro or linked RDP
+acceptance. Receipts are under `build/current-validation/github-sanitizer-final-status.json`.
 The source and exact-GCC workflows also accept independent `workflow_dispatch`
 runs. This lets fixture corrections receive the full compiler/test matrix while
 the separate first Node tool build continues; normal push/PR triggers remain.
+
+The first [Node ASan CI build](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40082326139)
+failed while linking V8 `mksnapshot`: ASan references to `kBuildIdString` and
+related constants pointed into discarded COMDAT sections. The complete log is
+retained as `build/current-validation/github-node-asan-cold.log`; no addon loaded.
+The local first Docker build was separately cancelled when the environment
+stopped at 14:11, before producing a runtime. Neither result is addon acceptance.
+
+The two-translation-unit `link_probe` fixture reproduces that link failure on
+both GCC 12.4 and 13.3. Disabling only top-level reordering with
+`-fno-toplevel-reorder` passes linking and normal execution on both compilers;
+an intentional global buffer overflow still exits 1 with the ASan diagnostic.
+The option's [GCC contract](https://gcc.gnu.org/onlinedocs/gcc-12.5.0/gcc/Optimize-Options.html#index-fno-toplevel-reorder)
+preserves source order; no sanitizer instrumentation or leak checking is disabled.
+The shared `build-node.sh` now applies that option only to the test Node build,
+checks the link/global-overflow probe before configuration, and binds source
+objects to script/probe/compiler/package/install inputs. Docker keeps the source
+and objects in a dedicated BuildKit cache mount for resuming after interruption;
+an incompatible stamp refuses instead of reusing foreign objects. CI uses the
+same builder and a new installed-runtime cache key. The full corrected Node and
+actual addon results remain pending; the probe alone does not establish them.
 
 Product version remains 0.2.5 during development. After the complete feature's
 acceptance, choose the next version using [version policy](VERSIONING.md),

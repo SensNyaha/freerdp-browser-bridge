@@ -5,13 +5,9 @@ RUN apt-get -o APT::Update::Error-Mode=any update \
     && rm -rf /var/lib/apt/lists/*
 FROM compiler AS node-build
 COPY node-v24.21.0.tar.xz /input/node-v24.21.0.tar.xz
-RUN echo 'a6f54defb6fd7c84f41dba13d61e78e9b4e0961712cf61f29715c05f5ced94fc  /input/node-v24.21.0.tar.xz' | sha256sum --check \
-    && mkdir /src \
-    && tar -xJf /input/node-v24.21.0.tar.xz -C /src \
-    && cd /src/node-v24.21.0 \
-    && CC=gcc-12 CXX=g++-12 ./configure --enable-asan --prefix=/opt/node-sanitizer \
-    && make -j2 \
-    && make install
+COPY build-node.sh link_probe.hpp link_probe_first.cpp link_probe_main.cpp /input/fixture/
+RUN --mount=type=cache,id=bridge-node-asan-24.21.0-ordered-v1,target=/src \
+    sh /input/fixture/build-node.sh /input/node-v24.21.0.tar.xz /src/node-v24.21.0 /opt/node-sanitizer
 FROM compiler AS runtime
 COPY --from=node-build /opt/node-sanitizer /opt/node-sanitizer
 ENV PATH=/opt/node-sanitizer/bin:/usr/bin:/bin

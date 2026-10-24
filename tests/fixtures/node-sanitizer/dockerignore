@@ -1,3 +1,7 @@
 *
 !Dockerfile
 !node-v24.21.0.tar.xz
+!build-node.sh
+!link_probe.hpp
+!link_probe_first.cpp
+!link_probe_main.cpp

@@ -37,25 +37,20 @@ jobs:
         id: node-asan
         with:
           path: build/node-sanitizer-runtime
-          key: node-asan-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.fingerprint }}-${{ hashFiles('tests/fixtures/node-sanitizer/Dockerfile', '.github/workflows/node-ipc-sanitizers.yml') }}
+          key: node-asan-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.fingerprint }}-${{ hashFiles('tests/fixtures/node-sanitizer/**') }}
       - name: Build pinned Node with ASan on a cold cache
         if: steps.node-asan.outputs.cache-hit != 'true'
         timeout-minutes: 285
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/node-sanitizer-source
           curl --fail --location --retry 2 --max-time 300 \
             --output build/node-v24.21.0.tar.xz \
             https://nodejs.org/dist/v24.21.0/node-v24.21.0.tar.xz
-          echo 'a6f54defb6fd7c84f41dba13d61e78e9b4e0961712cf61f29715c05f5ced94fc  build/node-v24.21.0.tar.xz' | sha256sum --check
-          tar --extract --xz --file build/node-v24.21.0.tar.xz \
-            --directory build/node-sanitizer-source --strip-components=1
-          cd build/node-sanitizer-source
-          CC=gcc-12 CXX=g++-12 ./configure --enable-asan \
-            --prefix="$GITHUB_WORKSPACE/build/node-sanitizer-runtime"
-          make -j2
-          make install
+          sh tests/fixtures/node-sanitizer/build-node.sh \
+            "$GITHUB_WORKSPACE/build/node-v24.21.0.tar.xz" \
+            "$GITHUB_WORKSPACE/build/node-sanitizer-source" \
+            "$GITHUB_WORKSPACE/build/node-sanitizer-runtime"
       - name: Verify the standalone Node baseline on every run
         run: >-
           node scripts/node-sanitizer-baseline.mjs

@@ -1065,6 +1065,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 
 ## Stage 0 — repository and reproducible build
 
+- [x] DONE for the current hosted source/foundation matrix — Exported development
+  source `f9fe0b8` passes Windows/MSVC, Ubuntu GCC 12/default GCC and the separate
+  exact GCC 8.3 jobs, including native CTest, full Node checks and the existing
+  sanitizer/fuzz job. This closes only these hosted source profiles; the Node
+  addon sanitizer, private dependency/upstream and installed distro gates remain
+  open. [Current evidence and retained initial failure](docs/DEVELOPMENT.md#current-work-after-cleanup).
+
 - [x] DONE for current local GCC 12 foundation/Node source regression — Fresh
   complete tracked snapshot of `6415d9c`, frozen offline Node 24.21.0/pnpm
   installation and new GCC 12.4 Debug foundation pass CTest 18/18, framed
