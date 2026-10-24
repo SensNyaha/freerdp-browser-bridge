@@ -15,6 +15,34 @@ const environment = {
   SystemRoot: process.env.SystemRoot,
 };
 
+// Exercise the requested refusal in its own environment: pnpm/CI loader
+// settings in this test runner must not select a different refusal first.
+async function expectBaselineRefusal(
+  node,
+  directory,
+  message,
+  env = environment,
+) {
+  const module = new URL(
+    '../../scripts/node-sanitizer-baseline.mjs',
+    import.meta.url,
+  ).href;
+  const result = await runSanitizerControl(
+    process.execPath,
+    `import(${JSON.stringify(module)}).then(async ({ verifyNodeSanitizerBaseline }) => {
+      await require('node:assert/strict').rejects(
+        verifyNodeSanitizerBaseline(${JSON.stringify(node)}, ${JSON.stringify(directory)}),
+        { message: ${JSON.stringify(message)} });
+    }).catch(() => { process.exitCode = 1; });`,
+    { env },
+  );
+  assert.equal(
+    result.passed,
+    true,
+    'Expected baseline refusal was not observed',
+  );
+}
+
 test('sanitizer controls reject inherited suppressions, loader overrides and Node injections', () => {
   for (const name of [
     'ASAN_OPTIONS',
@@ -92,11 +120,10 @@ test(
       join(tmpdir(), 'bridge-sanitizer-baseline-'),
     );
     try {
-      await assert.rejects(
-        verifyNodeSanitizerBaseline(process.execPath, directory),
-        {
-          message: 'SANITIZER_NODE_BASELINE_FAILED',
-        },
+      await expectBaselineRefusal(
+        process.execPath,
+        directory,
+        'SANITIZER_NODE_BASELINE_FAILED',
       );
       const receipt = JSON.parse(
         await readFile(join(directory, 'node-sanitizer-baseline.json'), 'utf8'),
@@ -129,6 +156,29 @@ test('missing runtime invalidates an existing successful baseline instead of pre
   }
 });
 
+test('actual baseline entry refuses inherited loader overrides before running identity controls', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'bridge-sanitizer-baseline-'));
+  try {
+    await expectBaselineRefusal(
+      process.execPath,
+      directory,
+      'SANITIZER_CONTROL_ENVIRONMENT_OVERRIDE',
+      { ...environment, NODE_PATH: '/synthetic-ci-loader' },
+    );
+    assert.deepEqual(
+      JSON.parse(
+        await readFile(join(directory, 'node-sanitizer-baseline.json'), 'utf8'),
+      ),
+      {
+        schema: 1,
+        passed: false,
+      },
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test(
   'an executable that exits successfully without running the Node identity control is refused',
   {
@@ -139,14 +189,10 @@ test(
       join(tmpdir(), 'bridge-sanitizer-baseline-'),
     );
     try {
-      await assert.rejects(
-        verifyNodeSanitizerBaseline(
-          existsSync('/bin/true') ? '/bin/true' : '/usr/bin/true',
-          directory,
-        ),
-        {
-          message: 'SANITIZER_NODE_BASELINE_FAILED',
-        },
+      await expectBaselineRefusal(
+        existsSync('/bin/true') ? '/bin/true' : '/usr/bin/true',
+        directory,
+        'SANITIZER_NODE_BASELINE_FAILED',
       );
       const receipt = JSON.parse(
         await readFile(join(directory, 'node-sanitizer-baseline.json'), 'utf8'),

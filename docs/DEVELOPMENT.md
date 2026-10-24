@@ -162,6 +162,25 @@ cache-hit behavior have not yet been run. All six shell blocks also pass Linux
 `bash -n`; the local static-check receipt is under
 `build/current-validation/node-addon/ci-workflow-static.json`.
 
+The exported development branch is now on GitHub at source snapshot `be941c0`.
+Its [exact GCC 8.3 workflow](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40082326158)
+passes. The default-GCC source job compiles and passes native CTest, but its
+Node check records **887 passed / 191 skipped / two failed**: ambient loader
+settings selected the environment refusal before two identity-refusal tests.
+The matrix then cancels the other compiler jobs. This is retained CI failure
+evidence, not a completed compiler matrix.
+The identity-refusal fixtures now run in bounded child processes with an
+explicit environment. A separate actual-process case proves the default entry
+still rejects inherited loader settings. Linux passes **10/10** in both default
+and injected `NODE_PATH`/`NODE_OPTIONS` environments; Windows passes **9 / one
+Linux-only skip** in both environments. The verifier guard is unchanged.
+The hosted rerun with this fixture correction is pending; the independent
+[Node ASan job](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40082326139)
+continues its first cold tool build.
+The source and exact-GCC workflows also accept independent `workflow_dispatch`
+runs. This lets fixture corrections receive the full compiler/test matrix while
+the separate first Node tool build continues; normal push/PR triggers remain.
+
 Product version remains 0.2.5 during development. After the complete feature's
 acceptance, choose the next version using [version policy](VERSIONING.md),
 merge into local `master`, and prepare matching npm plus standalone releases.

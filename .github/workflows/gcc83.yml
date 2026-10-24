@@ -1,5 +1,5 @@
 name: GCC 8.3 foundation
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 concurrency:
   group: gcc83-foundation-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
