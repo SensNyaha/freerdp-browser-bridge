@@ -102,6 +102,15 @@ Full Linux linked checks pass **1031/93 skips/0 failures**; original Windows
 foundation CTest is **21/21**, linked Linux CTest **39/39**. Final hosted proof and
 current Windows full-suite success remain required before merge.
 
+The corrected Linux CI cases pass both compiler profiles. The next Windows CI
+reaches setup but inherits PowerShell 7 module lookup paths into the explicitly
+selected Windows PowerShell process, so `Set-Acl` cannot load its matching module.
+The fixture now selects only that process's standard `$PSHOME/Modules`; the host
+environment is unchanged. OS-principal checks run as named CI steps before the
+long browser suite, and matrix failures no longer cancel the other profiles.
+Local Windows full checks now pass **995/127 skips/0 failures**. Actual Windows
+LocalService acceptance is still pending; its first setup failure is retained.
+
 ## Preparation checkpoints
 
 Release preparation now targets **0.3.0** on `release/0.3.0`, from the feature

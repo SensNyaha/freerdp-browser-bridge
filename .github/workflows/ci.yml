@@ -6,6 +6,7 @@ concurrency:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-24.04
@@ -32,13 +33,19 @@ jobs:
       - run: cmake --preset foundation -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
       - run: pnpm build:native
       - run: pnpm test:native
-      - run: pnpm check
+      - run: pnpm build
+      - name: Actual LocalService preserves owner and sibling lifecycles
+        if: runner.os == 'Windows'
+        run: node --test tests/integration/cross-principal-isolation.test.mjs
         env:
           BRIDGE_TEST_BINARY_DIR: build/foundation
-          BRIDGE_CROSS_PRINCIPAL_TEST: ${{ runner.os == 'Windows' && '1' || '0' }}
+          BRIDGE_CROSS_PRINCIPAL_TEST: '1'
       - name: Actual distinct Linux UIDs preserve owner and sibling lifecycles
         if: runner.os == 'Linux'
         run: sudo env BRIDGE_CROSS_PRINCIPAL_TEST=1 BRIDGE_TEST_BINARY_DIR="$GITHUB_WORKSPACE/build/foundation" "$(command -v node)" --test tests/integration/cross-principal-isolation.test.mjs
+      - run: pnpm check
+        env:
+          BRIDGE_TEST_BINARY_DIR: build/foundation
   sanitizers:
     runs-on: ubuntu-24.04
     steps:

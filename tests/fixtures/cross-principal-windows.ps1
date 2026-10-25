@@ -5,6 +5,8 @@ param(
   [string]$Component
 )
 $ErrorActionPreference = 'Stop'
+# A pwsh-hosted runner can otherwise hand Windows PowerShell incompatible PS7 modules.
+$env:PSModulePath = Join-Path $PSHOME 'Modules'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:BRIDGE_CROSS_PRINCIPAL_TEST -ne '1') { throw 'ISOLATION_FRESH_CI_ONLY' }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'ISOLATION_SETUP_PRIVILEGE_REQUIRED' }
