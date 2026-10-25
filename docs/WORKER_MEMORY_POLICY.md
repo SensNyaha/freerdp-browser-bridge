@@ -45,39 +45,39 @@ helper launches across workers, with individual cancellation and joined
 retirement as specified by the [batch owner](PROCESS_RESOURCE_BATCH.md).
 Shared helper admission and the unchanged overall query deadline are
 documented in the [CPU policy](WORKER_CPU_POLICY.md). The named unconnected
-40-worker fixture is recorded in [iteration 310](ITERATION_310.md).
+40-worker fixture is recorded in [iteration 310](history/iterations/301-350.md#iteration-310).
 
 Actual unconnected workers verify the one-byte breach and healthy 1 GiB cap
 on Windows/Linux. Synthetic probes separately test faults, deadlines and
-retirement. [Verification and exact scope](ITERATION_296.md).
+retirement. [Verification and exact scope](history/iterations/251-300.md#iteration-296).
 
 The opt-in `test-xrdp-lab.mjs memory` helper additionally observes actual RSS
 through the same policy on a connected Windows 1080p lab worker, with heartbeat,
 JPEG capture and empty-runtime close. It retains only count/peak scalars, no
-sample history. [Short connected smoke](ITERATION_298.md) is separate from
+sample history. [Short connected smoke](history/iterations/251-300.md#iteration-298) is separate from
 cap-breach fault injection, Linux connected acceptance or total-session/soak budgets.
 
-The [resource-policy crash control](ITERATION_311.md) composes actual native
+The [resource-policy crash control](history/iterations/301-350.md#iteration-311) composes actual native
 exit with one synthetic query-retirement barrier. Registry slots/runtime remain
 owned until completion, while siblings continue CPU/RSS sampling and heartbeat.
 It adds unconnected lifecycle evidence; actual OS-stalled retirement and
 connected resource faults remain open.
 
-The newer [paired CPU/RSS Windows RDP smoke](ITERATION_314.md) additionally
+The newer [paired CPU/RSS Windows RDP smoke](history/iterations/301-350.md#iteration-314) additionally
 uses explicit source-receipt-selected Release and matched Debug workers with
 the unchanged 256 MiB sampled RSS policy. Eight connected samples per resource,
 1080p JPEG, heartbeat and joined PID/runtime retirement pass. Reported peaks
 exclude between-sample/Node/session-total acceptance and are not cap-breach or
 sustained-resource evidence. [Test contract](RDP_RESOURCE_SMOKE.md).
 
-The [explicit connected RSS-limit control](ITERATION_316.md) additionally
+The [explicit connected RSS-limit control](history/iterations/301-350.md#iteration-316) additionally
 requires actual connection, heartbeat and 1080p JPEG before any sample. The first
 ordinary connected RSS sample exceeds a one-byte fixture cap and produces exact
 WORKER_MEMORY_LIMIT, followed by joined PID/runtime retirement. No memory load
 or remote application action is used. Public registry/sibling isolation,
 production budgets, hard OS failures and sustained acceptance remain open.
 
-The [public connected Windows control](ITERATION_319.md) also composes the
+The [public connected Windows control](history/iterations/301-350.md#iteration-319) also composes the
 ordinary API, real control/media sockets, 1080p JPEG and one first connected
 RSS breach. The fixed error, both channel closes, failed snapshot, token
 revocation and joined retirement pass. Its one-byte fixture cap establishes

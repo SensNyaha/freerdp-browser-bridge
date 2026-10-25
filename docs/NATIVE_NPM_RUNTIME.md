@@ -3,10 +3,15 @@
 Native runtime принят вместе с Fastify **0.2.1**: все product manifests и
 нативные бинарники согласованы на 0.2.1. [Финальная приёмка](ITERATION_424.md).
 Все семь пакетов опубликованы; integrity и новые registry-only проекты на
-Windows/Linux проверены в [426](ITERATION_426.md).
+Windows/Linux проверены в [426](history/iterations/401-450.md#iteration-426).
 Более ранние development-комплекты 0.2.0, их проверки и ограничения сохраняются
-в [итерации 420](ITERATION_420.md) и [итерации 421](ITERATION_421.md);
+в [итерации 420](history/iterations/401-450.md#iteration-420) и [итерации 421](history/iterations/401-450.md#iteration-421);
 они не переименовываются в релизные архивы 0.2.1.
+
+Текущий согласованный npm-набор — **0.2.5**: десять точных архивов публичны,
+все четыре adapter проходят свежие Windows/Linux registry-only consumers.
+[Публикация](ITERATION_456.md). Ниже обычная установка использует этот набор;
+первоначальная приёмка 0.2.1 выше сохранена как история.
 
 ## Установка в приложении
 
@@ -24,10 +29,10 @@ CMake, compiler, system FreeRDP или сетевой `postinstall`. Node.js и 
 
 ```sh
 # Linux x64 / glibc
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.1 @freerdp-bridge/runtime-linux-x64-gnu@0.2.1
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.5 @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
 
 # Windows x64
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.1 @freerdp-bridge/runtime-win32-x64@0.2.1
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.5 @freerdp-bridge/runtime-win32-x64@0.2.5
 ```
 
 Для ещё неопубликованного development-снимка установите соответствующие локальные

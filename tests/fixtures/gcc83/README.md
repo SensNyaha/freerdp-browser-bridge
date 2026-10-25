@@ -29,5 +29,5 @@ docker run --rm --init --platform linux/amd64 --network none --cpus 2 --memory 4
 
 This is a foundation compiler regression, not linked FreeRDP, real RDP,
 installed Astra/RED OS or audible-output acceptance. Those named checks retain
-their separate [source-chain](../../../docs/ITERATION_411.md) and
-[actual Linux RDP](../../../docs/ITERATION_412.md) evidence.
+their separate [source-chain](../../../docs/history/iterations/401-450.md#iteration-411) and
+[actual Linux RDP](../../../docs/history/iterations/401-450.md#iteration-412) evidence.

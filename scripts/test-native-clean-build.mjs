@@ -333,6 +333,8 @@ if (
     'clipboard-ingress-tests',
     'clipboard-wire-tests',
     'ipc-tests',
+    'runtime-ownership-tests',
+    'runtime-recovery-tests',
     ...(windows
       ? ['pipe-output-tests', 'private-directory-tests']
       : ['linux-stream-tests', 'linux-seqpacket-worker-tests']),
@@ -371,6 +373,28 @@ const cli = spawnSync(
 );
 if (cli.status !== 0) throw new Error('Clean native CLI unavailable');
 const build = JSON.parse(cli.stdout);
+const workerName = 'rdp-worker' + (windows ? '.exe' : '');
+const recoveryName = 'rdp-runtime-recovery' + (windows ? '.exe' : '');
+const cohort = JSON.parse(
+  await readFile(resolve(binary, 'rdp-worker.runtime.json'), 'utf8'),
+);
+if (
+  Object.keys(cohort).sort().join(',') !==
+    'directorySchema,helper,helperSha256,v,worker,workerSha256' ||
+  cohort.v !== 1 ||
+  cohort.directorySchema !== 1 ||
+  cohort.worker !== workerName ||
+  cohort.helper !== recoveryName ||
+  cohort.workerSha256 !==
+    createHash('sha256')
+      .update(await readFile(resolve(binary, workerName)))
+      .digest('hex') ||
+  cohort.helperSha256 !==
+    createHash('sha256')
+      .update(await readFile(resolve(binary, recoveryName)))
+      .digest('hex')
+)
+  throw new Error('Clean native runtime cohort mismatch');
 if (
   build.freeRdpVersion !== (linked ? '3.32.1' : null) ||
   build.targetFreeRdpVersion !== '3.32.1' ||
@@ -412,6 +436,22 @@ run(
       'tests/integration/clipboard-codec.test.mjs',
     ),
     resolve(nodeDirectories.project, 'tests/integration/worker.test.mjs'),
+    resolve(
+      nodeDirectories.project,
+      'tests/integration/runtime-ownership-worker.test.mjs',
+    ),
+    resolve(
+      nodeDirectories.project,
+      'tests/integration/runtime-recovery-worker.test.mjs',
+    ),
+    resolve(
+      nodeDirectories.project,
+      'tests/integration/runtime-recovery-sdk.test.mjs',
+    ),
+    resolve(
+      nodeDirectories.project,
+      'tests/integration/runtime-recovery-cancellation.test.mjs',
+    ),
     ...(windows
       ? [
           resolve(
@@ -477,6 +517,10 @@ if (linked) {
     throw new Error('Build feature input changed');
 }
 const artifacts = await nativeCleanArtifactHashes(binary, linked);
+artifacts[recoveryName] = cohort.helperSha256;
+artifacts['rdp-worker.runtime.json'] = createHash('sha256')
+  .update(await readFile(resolve(binary, 'rdp-worker.runtime.json')))
+  .digest('hex');
 const receipt = {
   cleanNativeSource: true,
   buildProfile,

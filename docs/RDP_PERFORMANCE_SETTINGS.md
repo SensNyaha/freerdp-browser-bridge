@@ -48,9 +48,9 @@ privileged settings, persistence, devices or secret class is added.
 
 The [manual WEB form](WEB_CONNECTION_EXAMPLE.md) exposes each boolean as
 profile inheritance / enabled / disabled, guarded by the actual capability.
-Its [Edge/HTTP verification](ITERATION_322.md) is separate from the native SDK
+Its [Edge/HTTP verification](history/iterations/301-350.md#iteration-322) is separate from the native SDK
 and actual Windows connection evidence below. The named
-[actual Windows JPEG/form smoke](ITERATION_323.md) also passes; neither accepts
+[actual Windows JPEG/form smoke](history/iterations/301-350.md#iteration-323) also passes; neither accepts
 remote visual-effect interpretation.
 
 ## Versioned private projection
@@ -111,7 +111,7 @@ Disconnect. Port conflict fails without replacing a listener. No desktop image
 or credentials are printed/saved. See iteration 323 for the retained initial
 blank-frame failure, bounded wait correction and successful repeat.
 
-[Current evidence](ITERATION_321.md) separates portable wire/synthetic IPC,
+[Current evidence](history/iterations/301-350.md#iteration-321) separates portable wire/synthetic IPC,
 actual public SDK projection and Windows RDP smoke. Server visual interpretation,
 other producer/server profiles, complete performance/resource budgets, CI and
 sustained/interactive acceptance remain open.

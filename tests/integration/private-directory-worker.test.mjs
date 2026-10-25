@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   mkdtemp,
   mkdir,
@@ -162,7 +163,14 @@ test(
           return result;
         }
         spawnWorker(directory, env) {
-          assert.match(directory, /worker-[0-9a-f]{32}$/);
+          assert.match(
+            directory,
+            /worker-(?:[0-9a-f]{32}|[0-9a-f]{32}-1-[0-9a-f]{32})$/,
+          );
+          assert.equal(
+            readFileSync(join(directory, '.rdp-worker-owned'), 'utf8'),
+            'runtime-v1',
+          );
           return super.spawnWorker(directory, env);
         }
       }
@@ -170,10 +178,16 @@ test(
       try {
         await worker.start();
         assert.equal(worker.spawns, 1);
-        assert.equal(
-          await readFile(join(worker.directory, '.rdp-worker-owned'), 'utf8'),
-          'runtime-v1',
-        );
+        if (/worker-[0-9a-f]{32}-1-[0-9a-f]{32}$/.test(worker.directory))
+          await assert.rejects(
+            readFile(join(worker.directory, '.rdp-worker-owned'), 'utf8'),
+            (error) => error.code === 'EBUSY',
+          );
+        else
+          assert.equal(
+            await readFile(join(worker.directory, '.rdp-worker-owned'), 'utf8'),
+            'runtime-v1',
+          );
       } finally {
         await worker.close();
       }

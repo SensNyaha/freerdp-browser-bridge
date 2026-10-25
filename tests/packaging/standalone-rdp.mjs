@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
@@ -9,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
+import { isReleaseVersion } from '../../scripts/github-delivery/manifest.mjs';
 
 const [directory, labName, codec, ...extra] = process.argv.slice(2);
 const linux = directory === '--installed-linux';
@@ -25,7 +27,7 @@ if (linux) {
   }
   if (
     !/^[a-f0-9]{64}$/.test(options.get('--sha256') ?? '') ||
-    !/^0\.2\.[0-9]+$/.test(options.get('--version') ?? '') ||
+    !isReleaseVersion(options.get('--version')) ||
     !/^\/home\/[A-Za-z0-9_.-]+\/freerdp-bridge-tests\/[A-Za-z0-9_.-]+\//.test(
       options.get('--package') ?? '',
     )
@@ -50,7 +52,7 @@ const manifest = linux
   : JSON.parse(await readFile(join(root, 'service/package.json'), 'utf8'));
 assert.equal(manifest.name, '@freerdp-bridge/standalone');
 assert.equal(manifest.private, true);
-assert.match(manifest.version, /^0\.2\.[0-9]+$/);
+assert.ok(isReleaseVersion(manifest.version));
 const lab = JSON.parse(
   await readFile(
     '.local-tests/' +
@@ -135,7 +137,7 @@ const image = async (width, height, previous = 0) => {
 };
 try {
   const reservation = createServer();
-  await new Promise((done) => reservation.listen(0, '127.0.0.1', done));
+  await listenBrowserHttp(reservation);
   const port = reservation.address().port;
   await new Promise((done) => reservation.close(done));
   origin = 'http://127.0.0.1:' + port;

@@ -41,7 +41,7 @@ six seeds and Linux CI step are prepared; execution remains unverified locally.
 Production public callback/lifetime placement, raw SVC flags/normalization,
 cumulative DVC/channel budgets, nested GFX/control/codec allocation, actual hostile /
 lost transport, Linux/sanitizers/fuzz and soak gates remain open.
-[Header policy](DVC_ALLOCATION_BOUNDS.md), [evidence](ITERATION_147.md).
+[Header policy](DVC_ALLOCATION_BOUNDS.md), [evidence](history/iterations/101-150.md#iteration-147).
 
 Iteration 148 adds a [public receive adapter](DVC_RECEIVE_GUARD.md) with raw flag,
 other-SVC and reentrant lifetime fixtures. Production worker placement remains

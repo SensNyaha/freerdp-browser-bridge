@@ -41,7 +41,7 @@ Iteration 128 enables explicit native PCM selection only with both private PCM
 and microphone-reset capabilities. The lab helper exposes manual input and
 optional PCM/Opus output modes. Actual XRDP/Edge H.264 plus microphone replay
 passes without capture; waiting epoch 0 is not negotiated recording acceptance.
-[Evidence](ITERATION_128.md).
+[Evidence](history/iterations/101-150.md#iteration-128).
 
 Iteration 144 enables explicit `bridgeViewer.attach(created, { microphone:
 'opus' })` for a matching selected Opus session, using the iteration-143 client.
@@ -64,4 +64,4 @@ stop/restart/detach, source loss, denial and unresolved permission, plus unsuppo
 provider, late query after detach, timeout and ten replacements during one pending
 query. All permission/streams are synthetic and RDP admission is fake. Actual
 codec/context/track retirement passes; no physical or remote recording acceptance
-is implied. [Evidence](ITERATION_144.md), [client](MICROPHONE_MEDIA_CLIENT.md).
+is implied. [Evidence](history/iterations/101-150.md#iteration-144), [client](MICROPHONE_MEDIA_CLIENT.md).

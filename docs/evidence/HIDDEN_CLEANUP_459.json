@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "removedLabGeneratedFiles": 45,
+  "logicalBytesRemoved": 8725703,
+  "preservedLabFiles": 17,
+  "preservedPrivateFilesUnchanged": true,
+  "runtimeDirectoriesRemoved": 36,
+  "staleRuntimeMarkersRemoved": 1,
+  "runtimeRootPreservedAndEmpty": true,
+  "workerProcessesAbsentBeforeCleanup": true,
+  "secretContentsLogged": false
+}

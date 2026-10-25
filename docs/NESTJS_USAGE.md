@@ -5,19 +5,19 @@
 [Контракт](NESTJS_PLUGIN.md), [release-приёмка](ITERATION_429.md).
 Все восемь npm-пакетов 0.2.2 опубликованы; точный integrity и свежие Windows/Linux
 registry-only consumers проходят strict TS и 15/15 проверок на каждой ОС.
-[Публикация 0.2.2](ITERATION_437.md). Текущий согласованный набор **0.2.4**
+[Публикация 0.2.2](history/iterations/401-450.md#iteration-437). Текущий согласованный набор **0.2.5**
 также полностью опубликован; обе ОС проходят strict TS и 15/15.
-[Публикация 0.2.4](ITERATION_441.md). Историческая 0.2.1 содержит только Fastify.
+[Публикация 0.2.5](ITERATION_456.md). Историческая 0.2.1 содержит только Fastify.
 
 ## Зависимости и размещение worker
 
 На хосте приложения нужны Node.js 24, NestJS 12.2, выбранный platform adapter,
 `reflect-metadata`, RxJS и native runtime той же product version, что и bridge.
-Для текущей опубликованной версии 0.2.4:
+Для текущей опубликованной версии 0.2.5:
 
 ```sh
 # Linux x64 / glibc
-npm install @freerdp-bridge/nestjs@0.2.4 @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
+npm install @freerdp-bridge/nestjs@0.2.5 @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
 # Windows x64: вместо Linux runtime выбирается runtime-win32-x64 той же версии
 ```
 
@@ -262,7 +262,7 @@ joined cleanup и не завершайте Node через немедленны
 отказ сертификата, чужой identity, host HTTP/WS, reattach и исчезновение workers.
 
 Framework/fake-media/native-TLS проверки, external npm tarball consumers и
-actual Astra/RED OS desktop учитываются отдельно; [приёмка](ITERATION_427.md).
+actual Astra/RED OS desktop учитываются отдельно; [приёмка](history/iterations/401-450.md#iteration-427).
 Versioned 0.2.2 release gates проходят в [429](ITERATION_429.md); npm publication
 остаётся отдельным следующим блоком. Полная
 V1-программа и незавершённые device/installers requirements сохраняются.

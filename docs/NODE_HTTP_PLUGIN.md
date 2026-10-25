@@ -106,7 +106,7 @@ Actual installed-package Astra Linux 1.7.5 and RED OS 7.3 desktop profiles pass
 through automatic and manual upgrades with H.264 and JPEG: nonuniform output,
 confirmed resize/restoration, fresh-token reattach, host HTTP/diagnostics and
 joined cleanup. These use the accepted local native 0.2.2 archive, not a newly
-published runtime. [Evidence and retained failures](ITERATION_431.md).
+published runtime. [Evidence and retained failures](history/iterations/401-450.md#iteration-431).
 
 Subsequent aligned 0.2.3 native builds, nine exact archives, consumer/reinstall
 regressions and all eight versioned HTTP RDP profiles pass; [evidence](ITERATION_433.md).

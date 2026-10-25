@@ -35,6 +35,6 @@ Six real FIFO/socketpair cases verify fragmented byte preservation, graceful /
 repeated close, descriptor flags, producer progress under a stalled peer,
 whole-record/drain deadlines, broken peers, signal-mask preservation, invalid
 descriptor/type/timeout/owner refusal and twenty lifetimes without leaked FDs.
-[Foundation evidence](ITERATION_191.md), [worker activation](ITERATION_192.md). Actual connected-worker
+[Foundation evidence](history/iterations/151-200.md#iteration-191), [worker activation](history/iterations/151-200.md#iteration-192). Actual connected-worker
 failure/cleanup, primary seqpacket, real media/transport and broader platform /
 resource/soak gates remain open.

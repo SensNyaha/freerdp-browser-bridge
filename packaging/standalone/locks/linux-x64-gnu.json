@@ -1,16 +1,16 @@
 {
   "name": "@freerdp-bridge/standalone",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "@freerdp-bridge/standalone",
-      "version": "0.2.5",
+      "version": "0.3.0",
       "license": "MIT",
       "dependencies": {
-        "@freerdp-bridge/api": "0.2.5",
-        "@freerdp-bridge/runtime-linux-x64-gnu": "0.2.5",
+        "@freerdp-bridge/api": "0.3.0",
+        "@freerdp-bridge/runtime-linux-x64-gnu": "0.3.0",
         "@sinclair/typebox": "0.34.41",
         "fastify": "5.12.5",
         "jose": "6.2.13"
@@ -147,14 +147,14 @@
       }
     },
     "node_modules/@freerdp-bridge/api": {
-      "version": "0.2.5",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/api/-/api-0.2.5.tgz",
-      "integrity": "sha512-HxzhLT0uOxeUVAjV3Mac/lr0u5/BABn0UbcaVclUzhRiDCd0j+Bw2cFI3bdZEAXiXlYpv6NlzKeetg7Hv6ewLQ==",
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/api/-/api-0.3.0.tgz",
+      "integrity": "sha512-6o0ZAQXYi2GYPLG9Tl2/ziMpm+DS2ik76iCJZpyLaeQldJ+Wbtq+3o3ofME37/RQRJjSRk5r3J/JYyB6seliNg==",
       "license": "MIT",
       "dependencies": {
-        "@freerdp-bridge/config": "0.2.5",
-        "@freerdp-bridge/node": "0.2.5",
-        "@freerdp-bridge/protocol": "0.2.5",
+        "@freerdp-bridge/config": "0.3.0",
+        "@freerdp-bridge/node": "0.3.0",
+        "@freerdp-bridge/protocol": "0.3.0",
         "@sinclair/typebox": "0.34.41",
         "fastify": "5.12.5",
         "pino": "10.4.0",
@@ -166,9 +166,9 @@
       }
     },
     "node_modules/@freerdp-bridge/config": {
-      "version": "0.2.5",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/config/-/config-0.2.5.tgz",
-      "integrity": "sha512-W41+thNcgD8xbRDWqQRqjSfOIejZw6gyE5JXEPgar5Gr9sSjaRP8HjjwFESkuGLTmyNPpd2Z02uZh3kKh6BsQQ==",
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/config/-/config-0.3.0.tgz",
+      "integrity": "sha512-YFurEd3UkJ37hK1nmoxKUS9ItRBG6oiusBFxT4uavkLLaxLTTsPxKRXevq1Rs/RDiDZjxs7rqBIaGG/oxEP7Gg==",
       "license": "MIT",
       "dependencies": {
         "@sinclair/typebox": "0.34.41"
@@ -178,31 +178,31 @@
       }
     },
     "node_modules/@freerdp-bridge/node": {
-      "version": "0.2.5",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/node/-/node-0.2.5.tgz",
-      "integrity": "sha512-hnIOr0/drxZ1lOnkPcasBZyBpPNdRGFhPZx267TG1B2pyT8KRc4kCE3Kw8QzBGAW5XRboOFY6bKTO5XYaxAZyw==",
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/node/-/node-0.3.0.tgz",
+      "integrity": "sha512-lPPysKc6bF/fqrR0eA9i0rfxbzqfPlHW1g/2AOQw0LMcFtNO058NINXUHGPOjc5MFWdvbt/Imw+/36bLhsgCdQ==",
       "license": "MIT",
       "dependencies": {
-        "@freerdp-bridge/config": "0.2.5",
-        "@freerdp-bridge/protocol": "0.2.5"
+        "@freerdp-bridge/config": "0.3.0",
+        "@freerdp-bridge/protocol": "0.3.0"
       },
       "engines": {
         "node": ">=24 <25"
       }
     },
     "node_modules/@freerdp-bridge/protocol": {
-      "version": "0.2.5",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/protocol/-/protocol-0.2.5.tgz",
-      "integrity": "sha512-IfBw+8Emo5i20RsubnLd4aUULBaeHdjsGzKyICu42Nu75SKRBJWh8SHcMHiMYge85fXqtiwAxrfs3dMvMQe6kw==",
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/protocol/-/protocol-0.3.0.tgz",
+      "integrity": "sha512-qf9PbKcJxsWPDsBHYLzYhAO+4zVZrjhv5d4Avvj4lJAKDyN1KO17bcSpGOyJgL6FYlF1f8dJcj+5G8r2NqGy5w==",
       "license": "MIT",
       "engines": {
         "node": ">=24 <25"
       }
     },
     "node_modules/@freerdp-bridge/runtime-linux-x64-gnu": {
-      "version": "0.2.5",
-      "resolved": "https://registry.npmjs.org/@freerdp-bridge/runtime-linux-x64-gnu/-/runtime-linux-x64-gnu-0.2.5.tgz",
-      "integrity": "sha512-dy+G1zLJzSNtdxpU1SA39G68J3tb9Yd1ledUSNrfqe9jhV0Omgg1JRtCCpSFexiV5f6wyUAA+wWnKDf1TrqIvw==",
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@freerdp-bridge/runtime-linux-x64-gnu/-/runtime-linux-x64-gnu-0.3.0.tgz",
+      "integrity": "sha512-Zdd3nLCtx6GyGqkLwAR+9i7l6VesjzUK8L2uq32FqVNpRP5lWq93rgPeWlGFUpMAQrZo4TNyYOikHQlj6nckDA==",
       "cpu": [
         "x64"
       ],
@@ -216,6 +216,7 @@
       "bin": {
         "freerdp-bridge-process-query": "runtime/bin/rdp-process-query",
         "freerdp-bridge-runtime-check": "runtime/bin/rdp-runtime-check",
+        "freerdp-bridge-runtime-recovery": "runtime/bin/rdp-runtime-recovery",
         "freerdp-bridge-worker": "runtime/bin/rdp-worker"
       },
       "engines": {

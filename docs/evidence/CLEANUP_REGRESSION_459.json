@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "nativeCtest": {
+    "passed": 36,
+    "failed": 0
+  },
+  "nativeWorkerLifecycle": {
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0
+  },
+  "currentNativeFixture": "build/native-clean-ROjNo4",
+  "sdk": "build/freerdp-source-clean-YyYMr3",
+  "actualRdpDesktop": false,
+  "logs": [
+    {
+      "kind": "ctest",
+      "log": "D:\\Users\\mikhail.makarov\\Desktop\\Сортированные файлы\\Личные озабоченности\\freerdp-browser-bridge\\build\\iteration-459-cleanup-ctest.log",
+      "exitCode": 0
+    },
+    {
+      "kind": "node-worker",
+      "log": "D:\\Users\\mikhail.makarov\\Desktop\\Сортированные файлы\\Личные озабоченности\\freerdp-browser-bridge\\build\\iteration-459-cleanup-node-worker.log",
+      "exitCode": 0
+    }
+  ]
+}

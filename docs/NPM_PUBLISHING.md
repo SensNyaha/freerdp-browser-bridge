@@ -5,13 +5,20 @@ GitHub owner `SensNyaha`, npm scope `@freerdp-bridge`. Ручная очеред
 остановлена; не возобновлять её автоматически. Исторические сведения о
 staging ниже сохранены, но staging сам по себе не устраняет ручную 2FA.
 
-Текущая приёмка: **0.2.2 полностью опубликован**, точные публичные bytes и
+Текущая приёмка: **0.2.5 полностью опубликован в npm** — десять exact accepted
+архивов, пять успешных OIDC workflows и все четыре fresh registry-only consumers
+на Windows/Linux; [проверки](ITERATION_456.md). Финальные standalone установщики
+также опубликованы и проверены; [отдельная приёмка](ITERATION_457.md).
+**0.2.2 полностью опубликован**, точные публичные bytes и
 свежие Windows/Linux registry-only consumers проходят
-([iteration 437](ITERATION_437.md)). **0.2.3** публичен только в части двух
-runtimes; семь JS stages остаются pending. **0.2.4** принят локально с десятью
+([iteration 437](history/iterations/401-450.md#iteration-437)). **0.2.3** публичен только в части двух
+runtimes. По прямому решению пользователя от 2026-10-24 **0.2.3 остаётся
+архивной**: семь JS-пакетов не допубликовываются, ручная очередь не возобновляется;
+полных 0.2.4/0.2.5 достаточно. Тег, исходники и принятые архивы сохраняются.
+[Решение](ITERATION_458.md). **0.2.4** принят локально с десятью
 точными архивами ([iteration 438](ITERATION_438.md)) и полностью опубликован:
 10/10 public integrity, пять GitHub Releases/workflows и четыре чистых
-Windows/Linux registry-only consumers проходят ([iteration 441](ITERATION_441.md)).
+Windows/Linux registry-only consumers проходят ([iteration 441](history/iterations/401-450.md#iteration-441)).
 Исторические pending checkpoints ниже не заменяют этот текущий статус.
 
 ## Почему публикуются общие JS-пакеты
@@ -131,9 +138,9 @@ Fastify 0.2.1 принят в локальном `v0.2.1`. Последующе�
 `dist.integrity` каждого совпадает с принятым архивом.
 Свежие registry-only consumers на Windows и Linux проходят strict TypeScript,
 same-port HTTP/WS, fake binary media, настоящий native TLS-отказ и joined cleanup.
-[Полная приёмка публикации и ссылки на пакеты](ITERATION_426.md).
+[Полная приёмка публикации и ссылки на пакеты](history/iterations/401-450.md#iteration-426).
 История предыдущих 2FA отказов — в [отчёте 424](ITERATION_424.md),
-проверки README и предыдущее состояние частичной публикации — в [425](ITERATION_425.md).
+проверки README и предыдущее состояние частичной публикации — в [425](history/iterations/401-450.md#iteration-425).
 
 По [документации npm](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/)
 создание/публикация пакетов требует интерактивной 2FA либо granular access
@@ -192,8 +199,8 @@ README при этом должно быть актуально для конк�
 | 6 | `freerdp-bridge-api-0.2.1.tgz` |
 | 7 | `freerdp-bridge-fastify-0.2.1.tgz` |
 
-SHA-256 native-архивов записаны в [423](ITERATION_423.md), пяти неизменённых
-JS-архивов — в [422](ITERATION_422.md). Локальный
+SHA-256 native-архивов записаны в [423](history/iterations/401-450.md#iteration-423), пяти неизменённых
+JS-архивов — в [422](history/iterations/401-450.md#iteration-422). Локальный
 `build/release-423-artifact-audit.json` дополнительно содержит SHA-512 каждого
 архива, а `build/release-423-npm-dry-run.json` подтверждает соответствие npm
 integrity. Нельзя заменять уже опубликованную версию другими байтами.

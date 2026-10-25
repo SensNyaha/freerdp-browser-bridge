@@ -14,6 +14,7 @@ import {
 import { referenceBrowserDirectory } from '@freerdp-bridge/fastify/browser';
 import { MAX_JPEG_BYTES } from '@freerdp-bridge/protocol';
 import { createRdpTlsFixture } from './tls-fixture.mjs';
+import { listenBrowserLoopback } from './browser-port.mjs';
 
 const root = await mkdtemp(join(tmpdir(), 'rdp-external-fastify-'));
 const packageRuntime = process.argv[2] === '--package-runtime';
@@ -91,7 +92,9 @@ try {
     await readFile(join(referenceBrowserDirectory, 'index.html'), 'utf8'),
     /desktop/,
   );
-  await app.listen({ host: '127.0.0.1', port: 0 });
+  await listenBrowserLoopback((port) =>
+    app.listen({ host: '127.0.0.1', port }),
+  );
   const port = app.server.address().port;
   assert.equal((await fetch(`http://127.0.0.1:${port}/host`)).status, 200);
   const response = await fetch(`http://127.0.0.1:${port}/rdp/v1/sessions`, {

@@ -53,7 +53,7 @@ Iteration 125 verifies this client with permission/graph/Worklet over actual
 Edge WebSockets and fake RDP worker API admission. Held completion during
 controller loss stops the local track/context before fake worker reset, then
 observes fresh source epoch. This is browser/socket composition, not private
-RWI1 or actual AUDIN acceptance. [Evidence](ITERATION_125.md).
+RWI1 or actual AUDIN acceptance. [Evidence](history/iterations/101-150.md#iteration-125).
 
 Iteration 126 replaces fixture startup orchestration with the production
 [startup/permission/graph owner](MICROPHONE_OWNER.md), including an Edge
@@ -83,4 +83,4 @@ Streams and permission results are synthetic, RDP admission is fake, and no
 physical getUserMedia runs. Actual Edge encoders, graph/context and tracks retire;
 permission denial creates no encoder. Viewer Opus selection, actual ready
 AUDIN/device/recording/LAN/platform/resource/failure injection and soak remain
-open. [Evidence](ITERATION_143.md), [sender](MICROPHONE_OPUS_SENDER.md).
+open. [Evidence](history/iterations/101-150.md#iteration-143), [sender](MICROPHONE_OPUS_SENDER.md).

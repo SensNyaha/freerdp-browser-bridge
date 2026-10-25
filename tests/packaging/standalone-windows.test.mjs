@@ -79,7 +79,30 @@ for (const mode of ['stop-byte', 'parent-eof', 'invalid-control', 'host-crash'])
       const endpoint = await createRdpTlsFixture();
       const scratch = await mkdtemp(join(tmpdir(), 'bridge-packaged-service-'));
       const runtimeRoot = join(scratch, 'runtime');
-      await mkdir(runtimeRoot);
+      const nativeBin = join(
+        root,
+        'service/node_modules/@freerdp-bridge/runtime-win32-x64/runtime/bin',
+      );
+      const privateRoot = JSON.parse(
+        execFileSync(
+          join(nativeBin, 'rdp-runtime-directory.exe'),
+          ['--create-private-directory', runtimeRoot],
+          {
+            windowsHide: true,
+            timeout: 5000,
+            maxBuffer: 4096,
+            encoding: 'utf8',
+          },
+        ),
+      );
+      assert.deepEqual(privateRoot, { v: 1, created: true, error: 0 });
+      let recoveryCapable = false;
+      try {
+        await access(join(nativeBin, 'rdp-worker.runtime.json'));
+        recoveryCapable = true;
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
       let child, exited, timer;
       let owned = [];
       let output = '',
@@ -246,8 +269,9 @@ for (const mode of ['stop-byte', 'parent-eof', 'invalid-control', 'host-crash'])
         assert.equal(output.includes('synthetic-packaged-memory-only'), false);
         if (mode === 'invalid-control' || mode === 'host-crash') {
           // The original parent cannot run JS cleanup after forced termination.
-          // A subsequent host acquires the released OS lock and reclaims only
-          // recognized empty scratch directories before starting a new Node.
+          // A subsequent host acquires the released OS lock. Legacy recovery
+          // stays in the host; schema-1 cleanup is performed by verified SDK
+          // recovery before the new Node reports listener readiness.
           output = '';
           child = spawn(
             join(root, 'bridge-service.exe'),
@@ -287,6 +311,24 @@ for (const mode of ['stop-byte', 'parent-eof', 'invalid-control', 'host-crash'])
           assert.deepEqual(await readdir(runtimeRoot), [
             '.bridge-service.lock',
           ]);
+          if (recoveryCapable) {
+            const line = output
+              .split(/\r?\n/)
+              .find((value) =>
+                value.includes('"code":"STANDALONE_RUNTIME_RECOVERY"'),
+              );
+            assert.ok(line);
+            const report = JSON.parse(line.slice(line.indexOf('{')));
+            assert.deepEqual(report, {
+              code: 'STANDALONE_RUNTIME_RECOVERY',
+              supported: true,
+              complete: true,
+              scanned: 2,
+              removed: 1,
+              active: 0,
+              retained: 1,
+            });
+          }
           child.stdin.end(Buffer.from([1]));
           assert.equal(await exited, 0);
           assert.deepEqual(await readdir(runtimeRoot), []);

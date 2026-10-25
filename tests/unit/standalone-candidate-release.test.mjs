@@ -33,6 +33,44 @@ async function retire(root) {
   assert.match(basename(root), /^bridge-candidate-release-[A-Za-z0-9]+$/);
   await rm(root, { recursive: true, force: true });
 }
+test('candidate archive transport accepts exact 0.3.0 names and refuses noncanonical minor/patch forms before fetch', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'bridge-candidate-release-'));
+  try {
+    const bytes = Buffer.from('synthetic-0.3.0-archive');
+    const entry = {
+      id: 1,
+      name: 'freerdp-bridge-node-0.3.0.tgz',
+      ...hashes(bytes),
+    };
+    await downloadCandidateAsset(
+      entry,
+      root,
+      undefined,
+      async () =>
+        new Response(bytes, {
+          status: 200,
+          headers: { 'content-length': String(bytes.length) },
+        }),
+    );
+    assert.deepEqual(await readFile(join(root, entry.name)), bytes);
+    for (const name of [
+      'freerdp-bridge-node-0.03.0.tgz',
+      'freerdp-bridge-node-0.3.00.tgz',
+      'freerdp-bridge-node-0.3.0-beta.tgz',
+      '../freerdp-bridge-node-0.3.0.tgz',
+    ])
+      await assert.rejects(
+        downloadCandidateAsset({ ...entry, name }, root, undefined, () =>
+          assert.fail('Invalid name must not reach fetch'),
+        ),
+        /STANDALONE_CANDIDATE_RELEASE_INVALID/,
+      );
+    assert.deepEqual(await readdir(root), [entry.name]);
+  } finally {
+    await retire(root);
+  }
+});
+
 test('candidate transport binds a prerelease and annotated source tag, requires all five lock hashes and never forwards auth to storage', async () => {
   const root = await mkdtemp(join(tmpdir(), 'bridge-candidate-release-'));
   try {
@@ -61,6 +99,14 @@ test('candidate transport binds a prerelease and annotated source tag, requires 
         const bytes = Buffer.from('synthetic archive transport ' + suffix),
           entry = hashes(bytes);
         value.version = '0.2.5';
+        for (const field of [
+          'dependencies',
+          'optionalDependencies',
+          'peerDependencies',
+        ])
+          for (const name of Object.keys(value[field] ?? {}))
+            if (name.startsWith('@freerdp-bridge/'))
+              value[field][name] = '0.2.5';
         value.integrity = entry.integrity;
         value.resolved =
           'https://registry.npmjs.org/@freerdp-bridge/' +

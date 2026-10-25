@@ -2,7 +2,7 @@
 
 2026-10-23. Implementation `6a5c432` is accepted through its separate feature
 branch and merged before `release/0.2.3`; alignment checkpoint is `5a9cf52`.
-[Feature evidence](ITERATION_431.md), [release preparation](ITERATION_432.md).
+[Feature evidence](history/iterations/401-450.md#iteration-431), [release preparation](history/iterations/401-450.md#iteration-432).
 The annotated immutable `v0.2.3` identifies the final accepted release commit.
 Prior tags/archive bytes remain unchanged. Registry publication is separate.
 

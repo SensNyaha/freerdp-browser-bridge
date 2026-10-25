@@ -13,7 +13,7 @@ previous Opus encoder/decoder pointer in the pinned implementation, including
 resets to PCM sample rates supported by Opus. Normal context destruction then
 releases only the latest allocation. The linked AUDIN sanitizer suite and an
 independent public new/reset/free reproducer detect the lost allocations.
-[Retained failure](ITERATION_268.md).
+[Retained failure](history/iterations/251-300.md#iteration-268).
 
 `native/freerdp-dsp-override.cmake` reads at most 128 KiB from the regular DSP
 source file, normalizes CRLF to LF and requires source SHA-256
@@ -68,6 +68,6 @@ Run Windows native wrappers sequentially. The compiler minimum remains GCC 12;
 RDP/device, complete upstream/addon sanitizer and release/SBOM review gates are
 not implied by this ownership correction.
 
-[Verified build and sanitizer evidence](ITERATION_269.md). The artifact-only
+[Verified build and sanitizer evidence](history/iterations/251-300.md#iteration-269). The artifact-only
 SPDX generator also records the correction and exact packaged recipe/metadata
-hashes; see [SBOM contract](SBOM.md) and [artifact evidence](ITERATION_270.md).
+hashes; see [SBOM contract](SBOM.md) and [artifact evidence](history/iterations/251-300.md#iteration-270).

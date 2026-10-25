@@ -9,7 +9,7 @@ The adapter delegates bounded routing and lifecycle to `@freerdp-bridge/http`.
 ## Installation
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.2.5 @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
+npm install express@5.3.0 @freerdp-bridge/express@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
 ```
 
 For an unpublished source snapshot, use complete local tarballs instead; a

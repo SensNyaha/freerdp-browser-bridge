@@ -13,6 +13,7 @@ import {
   localFile,
   hashFile,
   fail,
+  isReleaseVersion,
 } from './manifest.mjs';
 
 export function gitText(root, args) {
@@ -49,7 +50,7 @@ export async function loadBundle(
     catalog.schema !== 1 ||
     catalog.completed !== true ||
     catalog.remotePublished !== false ||
-    !/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(catalog.version ?? '') ||
+    !isReleaseVersion(catalog.version) ||
     !/^[a-f0-9]{40}$/.test(catalog.upstream ?? '') ||
     !Array.isArray(catalog.repositories) ||
     catalog.repositories.length !== 5

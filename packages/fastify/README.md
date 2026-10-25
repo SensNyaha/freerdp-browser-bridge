@@ -12,10 +12,10 @@ Install the adapter and the matching native runtime version for your server:
 
 ```sh
 # Linux x64 / glibc
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.5 @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
 
 # Windows x64
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.5 @freerdp-bridge/runtime-win32-x64@0.2.5
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.3.0 @freerdp-bridge/runtime-win32-x64@0.3.0
 ```
 
 For an unreleased source checkout, use locally built tarballs instead;

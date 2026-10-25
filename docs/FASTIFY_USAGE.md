@@ -4,7 +4,7 @@
 отдельные `feature/fastify-0.2.1` и `release/0.2.1`. Стабильная 0.2.0 не
 содержит этого plugin. JS/native-артефакты имеют согласованную версию 0.2.1;
 [release-проверки](ITERATION_424.md) и
-[подтверждённая публикация всего набора в npm](ITERATION_426.md). Пользователь
+[подтверждённая публикация всего набора в npm](history/iterations/401-450.md#iteration-426). Пользователь
 создал npm-организацию `freerdp-bridge` и подтвердил имена `@freerdp-bridge/*`.
 
 ## Что запускается в приложении
@@ -23,16 +23,16 @@ Plugin владеет сессиями, одноразовыми attach tokens �
 
 ## Установка и native runtime
 
-Текущий согласованный набор **0.2.4** полностью опубликован. Чистые
+Текущий согласованный набор **0.2.5** полностью опубликован в npm. Чистые
 Windows/Linux consumers проходят strict TypeScript, HTTP/WS, assets и native
-TLS/lifecycle. [Публикация](ITERATION_441.md). Установка:
+TLS/lifecycle. [Публикация](ITERATION_456.md). Установка:
 
 ```sh
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.4
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.5
 # Выберите один native runtime той же версии для ОС сервера приложения:
-npm install @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
+npm install @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
 # Windows x64 вместо Linux runtime:
-# npm install @freerdp-bridge/runtime-win32-x64@0.2.4
+# npm install @freerdp-bridge/runtime-win32-x64@0.2.5
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -72,6 +72,18 @@ tarball не делает остальные пакеты доступными �
 и настоящий native TLS-отказ. Флаг `--npm` проверяет именно npm; без флага
 используется pnpm с предварительно наполненным offline-кешем.
 
+После публикации текущей product version проверяйте обычную установку из npm:
+
+```sh
+node scripts/test-fastify-package.mjs --registry-only
+```
+
+Этот режим создаёт чистый npm-проект с двумя прямыми bridge dependencies:
+Fastify adapter и runtime своей ОС. Общие пакеты устанавливаются транзитивно;
+локальные архивы и overrides не используются. Проверяются те же строгие типы,
+HTTP/WS, assets, native TLS-отказ и завершение worker. Режим требует уже
+опубликованного согласованного набора версии из корневого `package.json`.
+
 При использовании самостоятельно подготовленного native комплекта передайте
 `worker: { workerPath, runtimeRoot }`. Для установленного npm runtime используйте
 `worker: await resolveNativeRuntime({ runtimeRoot })`: resolver найдёт worker
@@ -84,7 +96,7 @@ Native npm-комплекты и resolver приняты и опубликова
 устанавливается явно рядом с adapter, затем `resolveNativeRuntime` выбирает
 и проверяет установленный комплект. Version-stamped архивы 0.2.1 собраны;
 финальная release-приёмка пройдена. Публичная доступность и обычная установка
-из npm на Windows/Linux подтверждены в [отчёте о публикации](ITERATION_426.md).
+из npm на Windows/Linux подтверждены в [отчёте о публикации](history/iterations/401-450.md#iteration-426).
 Рабочий runtime root должен быть частным и доступным учётной записи сервиса;
 не помещайте его внутрь публичной static-директории.
 
@@ -257,5 +269,5 @@ product; не выбирайте старый worker как fallback. При 401
 при 403 — Origin и ownership, при 413 — размер body, при 503 — состояние
 mount/worker и лимиты. Не печатайте исходный запрос для диагностики отказа.
 
-Текущие результаты и незакрытые gates: [итерация 419](ITERATION_419.md).
+Текущие результаты и незакрытые gates: [итерация 419](history/iterations/401-450.md#iteration-419).
 Типизация Fastify: [официальное руководство](https://fastify.dev/docs/latest/Reference/TypeScript/).

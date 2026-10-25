@@ -67,6 +67,9 @@ for (const platform of ['win32-x64', 'linux-x64-gnu'])
         (value) => {
           value.cpu = ['other'];
         },
+        (value) => {
+          value.bin = { unexpected: 'runtime/bin/other' };
+        },
       ]) {
         const changed = structuredClone(api);
         change(changed);

@@ -1,0 +1,12 @@
+# Installation may replace ELF RPATHs and change executable bytes. Bind the
+# final installed cohort, including DESTDIR staging and CPack's install tree.
+set(runtime_install_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin")
+execute_process(COMMAND "@CMAKE_COMMAND@"
+  "-DRUNTIME_WORKER=${runtime_install_root}/rdp-worker@CMAKE_EXECUTABLE_SUFFIX@"
+  "-DRUNTIME_HELPER=${runtime_install_root}/rdp-runtime-recovery@CMAKE_EXECUTABLE_SUFFIX@"
+  "-DRUNTIME_MANIFEST=${runtime_install_root}/rdp-worker.runtime.json"
+  -P "@CMAKE_SOURCE_DIR@/native/runtime/write_manifest.cmake"
+  RESULT_VARIABLE runtime_install_result)
+if(NOT runtime_install_result EQUAL 0)
+  message(FATAL_ERROR "Installed runtime cohort pairing failed")
+endif()

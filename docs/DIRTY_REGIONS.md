@@ -57,14 +57,14 @@ reference bitmap. Linked integration uses actual public FreeRDP DC/region
 allocation and invalidation with fixture window/primary metadata, including the
 origin-pixel case; it is not full `gdi_init` or an RDP server integration test.
 Actual XRDP video regression remains a separate test. Evidence is recorded in
-[iteration 13](ITERATION_013.md).
+[iteration 13](history/iterations/001-050.md#iteration-013).
 
 The linked resize fixture additionally creates public GDI objects and runs real
 `gdi_resize` allocation through the shared server-dimension guard. Its EndPaint
 flush and subsequent full-desktop resize both advance revision. New AVC config /
 IDR decodes in an existing and fresh decoder, and resized JPEG really decodes;
 invalid server extents preserve the original buffer/state. This is not full
-`gdi_init` or remote Display Control acceptance. See [iteration 17](ITERATION_017.md).
+`gdi_init` or remote Display Control acceptance. See [iteration 17](history/iterations/001-050.md#iteration-017).
 
 Modern GFX frame-end output is now checked through public FreeRDP callback
 fixtures. Actual negotiated GFX, confirmed dynamic resize, partial/tile transport,

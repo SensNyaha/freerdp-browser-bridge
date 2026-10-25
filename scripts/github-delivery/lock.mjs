@@ -1,11 +1,8 @@
-import { fail, repositoryFor } from './manifest.mjs';
+import { fail, repositoryFor, isReleaseVersion } from './manifest.mjs';
 
 export function publicTarballUrl(name, version) {
   const suffix = name.replace('@freerdp-bridge/', '');
-  if (
-    name !== '@freerdp-bridge/' + suffix ||
-    !/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(version)
-  )
+  if (name !== '@freerdp-bridge/' + suffix || !isReleaseVersion(version))
     fail('DELIVERY_LOCK_PACKAGE_INVALID');
   repositoryFor(suffix);
   // Canonical URLs verified against public 0.2.2 registry metadata. The

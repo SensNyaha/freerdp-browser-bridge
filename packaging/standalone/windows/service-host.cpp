@@ -1,4 +1,6 @@
 #include <windows.h>
+#include "startup-record.hpp"
+#include "ownership.hpp"
 
 #include <array>
 #include <filesystem>
@@ -161,6 +163,10 @@ handle acquire_runtime() {
     require(++count <= 1024);
     const auto name = entry.path().filename().wstring();
     if (name == L".bridge-service.lock") continue;
+    // Schema-1 sessions have independent Node/worker lifetime ownership. Only
+    // the verified SDK recovery path may reclaim them; the legacy service scan
+    // must not reject or remove them before Node can inspect their OS locks.
+    if (bridge::runtime::runtime_identity(std::wstring_view(name))) continue;
     require(name.size() == 39 && name.substr(0, 7) == L"worker-");
     require(name.find_first_not_of(L"0123456789abcdef", 7) == std::wstring::npos);
     const auto flags = GetFileAttributesW(entry.path().c_str());
@@ -237,6 +243,7 @@ void supervise() {
   input_read.reset(); output_write.reset(); discard.reset(); thread.reset();
   const auto started = GetTickCount64();
   bool ready = false;
+  std::optional<bool> recovery_ready;
   std::string startup_output;
   const std::array<HANDLE, 2> waiting{stop_event, process.get()};
   for (;;) {
@@ -248,17 +255,30 @@ void supervise() {
       if (!ready) {
         require(startup_output.size() + count <= 4096);
         startup_output.append(bytes.data(), count);
-        const auto end = startup_output.find('\n');
-        if (end != std::string::npos) {
+        for (auto end = startup_output.find('\n'); !ready && end != std::string::npos;
+             end = startup_output.find('\n')) {
           const auto line = startup_output.substr(0, end + 1);
-          require(line == "{\"code\":\"STANDALONE_READY\"}\n" || line == "{\"code\":\"STANDALONE_READY\"}\r\n");
+          startup_output.erase(0, end + 1);
+          const auto record = bridge::standalone::parse_startup_record(line);
+          require(record.has_value());
+          if (*record != bridge::standalone::StartupRecord::ready) {
+            require(!recovery_ready.has_value());
+            recovery_ready = *record == bridge::standalone::StartupRecord::recovery_complete;
+            if (console_mode) {
+              DWORD written{};
+              require(WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), line.data(),
+                                static_cast<DWORD>(line.size()), &written, nullptr) && written == line.size());
+            }
+            continue;
+          }
+          require(!recovery_ready || *recovery_ready);
           ready = true;
           startup_output.clear();
           status(SERVICE_RUNNING);
           if (console_mode) {
-            constexpr char record[] = "{\"code\":\"STANDALONE_READY\"}\n";
+            constexpr char ready_record[] = "{\"code\":\"STANDALONE_READY\"}\n";
             DWORD written{};
-            require(WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), record, sizeof(record) - 1, &written, nullptr) && written == sizeof(record) - 1);
+            require(WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), ready_record, sizeof(ready_record) - 1, &written, nullptr) && written == sizeof(ready_record) - 1);
           }
         }
       }

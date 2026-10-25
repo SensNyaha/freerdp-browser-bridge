@@ -18,6 +18,19 @@ const all = [...shared, ...adapters];
 export const fail = (code) => {
   throw Object.assign(new Error(code), { code });
 };
+// Canonical, bounded versions for the current pre-1.0 product line. Accepting
+// a new minor does not bypass source/archive/platform acceptance or old tags.
+export const isReleaseVersion = (value) =>
+  typeof value === 'string' &&
+  value.length <= 15 &&
+  /^0\.(?:0|[1-9][0-9]{0,5})\.(?:0|[1-9][0-9]{0,5})$/.test(value);
+export function compareReleaseVersions(left, right) {
+  if (!isReleaseVersion(left) || !isReleaseVersion(right))
+    fail('DELIVERY_VERSION_INVALID');
+  const a = left.split('.').map(Number),
+    b = right.split('.').map(Number);
+  return Math.sign(a[1] - b[1] || a[2] - b[2]);
+}
 export const repositoryFor = (suffix) => {
   if (!all.includes(suffix)) fail('DELIVERY_PACKAGE_UNKNOWN');
   return (
@@ -159,7 +172,7 @@ export function parseManifest(value) {
   if (
     !value ||
     value.schema !== 1 ||
-    !/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(value.version ?? '') ||
+    !isReleaseVersion(value.version) ||
     !['core', ...adapters].includes(value.kind) ||
     value.repository !==
       (value.kind === 'core'

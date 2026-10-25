@@ -1,0 +1,53 @@
+{
+    "schema":  1,
+    "scope":  "seven-obsolete-transport-and-prototype-tars",
+    "removedArchives":  7,
+    "logicalBytesRemoved":  1103503360,
+    "noNpmArchivesInside":  true,
+    "acceptedReleaseArchivesExcluded":  true,
+    "sourceScriptAndTestReferences":  0,
+    "removed":  [
+                    {
+                        "name":  "standalone-prototype-445-linux.tar",
+                        "bytes":  337653760,
+                        "sha256":  "9bb00c0b1c6740e30d55c3bd0f1f02906502f409822bc36ad00f2d84781592b2",
+                        "entries":  4871
+                    },
+                    {
+                        "name":  "iteration-267-public-node.tar",
+                        "bytes":  242411520,
+                        "sha256":  "c6f64ae9ae68c3c55948ba26d7df808a962d6789c2dc540a6d4e63b4021a1591",
+                        "entries":  8540
+                    },
+                    {
+                        "name":  "iteration-268-public-sdk.tar",
+                        "bytes":  82565120,
+                        "sha256":  "454060c1a9bb65315160701c44ec4d9e90e16ab1b8c4bc1efa7eab2301a96cfc",
+                        "entries":  1112
+                    },
+                    {
+                        "name":  "iteration-409-pnpm-store.tar",
+                        "bytes":  88453120,
+                        "sha256":  "1a891322d5478fc0c5f9f37c3cadd23a08b0a4331b0337c2b86d5642a2a3f135",
+                        "entries":  6070
+                    },
+                    {
+                        "name":  "420-native-consumer.tar",
+                        "bytes":  115486720,
+                        "sha256":  "ab61ce1338be7d43919bf28c700d53a7733e0e39fd417ab85c1e1b698a434fd9",
+                        "entries":  5413
+                    },
+                    {
+                        "name":  "422-native-consumer.tar",
+                        "bytes":  115486720,
+                        "sha256":  "88d5027b00a3e386825d7dd5b2e7b60c4d474ec6569bd0c00c10dfc0d0f24c25",
+                        "entries":  5414
+                    },
+                    {
+                        "name":  "423-native-consumer.tar",
+                        "bytes":  121446400,
+                        "sha256":  "63ddc948eacee01a44d5314b5488685bbec27d506e1d520dfcacc729daeb0303",
+                        "entries":  5900
+                    }
+                ]
+}

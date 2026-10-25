@@ -6,7 +6,10 @@ import { promisify } from 'node:util';
 import { resolve, join, relative, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
-import { WorkerProcess } from '../../packages/node-bridge/dist/index.js';
+import {
+  WorkerProcess,
+  recoverRuntimeSessions,
+} from '../../packages/node-bridge/dist/index.js';
 import { verifyLinuxRuntime } from '../../scripts/linux-runtime.mjs';
 
 const source = resolve(process.env.BRIDGE_NATIVE_STAGE ?? 'build/native-stage');
@@ -132,6 +135,22 @@ test('native bundle relocates with its own ZLIB and FreeRDP, without dependency 
     assert.equal(JSON.parse(cli.stdout).capabilities.jpegCapture, true);
     assert.equal(JSON.parse(cli.stdout).capabilities.h264Capture, true);
     assert.equal(JSON.parse(cli.stdout).capabilities.basicInput, true);
+    const absentRoot = join(temporary, 'absent-recovery-root');
+    assert.deepEqual(
+      await recoverRuntimeSessions({
+        workerPath: join(relocated, 'bin', 'rdp-worker' + suffix),
+        runtimeRoot: absentRoot,
+      }),
+      {
+        supported: true,
+        complete: true,
+        scanned: 0,
+        removed: 0,
+        active: 0,
+        retained: 0,
+      },
+    );
+    await assert.rejects(readdir(absentRoot), { code: 'ENOENT' });
     assert.ok(features.codecProviders.includes('libjpeg-turbo'));
     assert.ok(features.codecProviders.includes('openh264'));
     assert.ok(features.codecProviders.includes('libopus'));

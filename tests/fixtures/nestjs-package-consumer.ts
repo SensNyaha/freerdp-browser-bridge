@@ -5,6 +5,9 @@ import {
   RdpBridgeModule,
   RdpBridgeService,
   resolveNativeRuntime,
+  recoverRuntimeSessions,
+  type RuntimeRecoveryOptions,
+  type RuntimeRecoveryReport,
   type RdpBridgeModuleOptions,
 } from '@freerdp-bridge/nestjs';
 import { referenceBrowserDirectory } from '@freerdp-bridge/nestjs/browser';
@@ -71,3 +74,11 @@ async function host() {
 }
 const browser: string = referenceBrowserDirectory;
 void [sync, invalid, host, browser];
+
+async function recoverBeforeListen(options: RuntimeRecoveryOptions) {
+  const report: RuntimeRecoveryReport = await recoverRuntimeSessions(options);
+  if (!report.supported || !report.complete)
+    throw new Error('RDP_RUNTIME_RECOVERY_INCOMPLETE');
+  return report;
+}
+void recoverBeforeListen;

@@ -3,16 +3,23 @@
 Standalone **0.2.5** has passed local release acceptance on its feature/release
 branches: aligned native/JS archives, exact external consumers, portable and
 Windows/Ubuntu/Astra/RED OS installed upgrades, plus eight real desktop profiles.
-[Acceptance and scope](ITERATION_455.md). Stable npm and automatic main/master
-installer publication/read-back remain separate gates. The complete public
-plugin baseline is still [0.2.4](ITERATION_441.md) until those new gates pass.
+[Acceptance and scope](ITERATION_455.md). All ten exact npm packages and four
+fresh Windows/Linux registry-only consumers pass. Automatic main-push MSI/DEB/
+RPM/portable publication, final downloads and actual public DEB/RPM upgrades on
+Astra/RED OS pass; [public delivery](ITERATION_457.md).
+[Download 0.2.5](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.2.5).
+For ready-made distributions, start with the concise
+[installation and operations guide](STANDALONE_INSTALL.md).
 
 User clarification, 2026-10-23: retain the standalone web server and installers;
 exclude a separate desktop GUI application. The service uses the browser
 interface. No desktop application shell is planned.
 
-Final delivery boundary, 2026-10-23: complete this web service and its installers,
-then clean the project and stop development. Intended consumers are VM portals,
+Initial delivery boundary, 2026-10-23: complete this web service and its installers,
+then clean the project; the original request to stop afterwards is superseded
+by the 2026-10-24 direction to continue TODO features after cleanup/documentation
+consolidation, on separate accepted branches with coordinated releases.
+[Version and branch policy](VERSIONING.md). Intended consumers are VM portals,
 Java/Python/Go/.NET backends, internal-network gateways, training/test systems,
 operator portals and RDP integration checks. Applications authorize users and
 provision machines/accounts; bridge supplies the approved RDP connection and
@@ -44,6 +51,11 @@ after the listener is ready. Linux CLI startup refuses UID 0.
 
 It resolves an installed, matching native package; the packaging step must
 provide that package. This source entry point alone is not an installer.
+The next source version also runs bounded runtime recovery before opening HTTP,
+prints a content-free `STANDALONE_RUNTIME_RECOVERY` counter record and refuses
+readiness if the native cohort is unavailable or scanning is incomplete.
+This addition is under validation, not a capability of the published 0.2.5
+archives. [Recovery/retention contract](RUNTIME_RECOVERY.md).
 SIGINT/SIGTERM and Windows SIGBREAK join service/worker cleanup with a bounded
 shutdown deadline. The HTTP API is under `/rdp`. Native build/readiness remains
 separate from the ability to authenticate or reach an RDP desktop.
@@ -189,23 +201,23 @@ as a page, or use its own browser integration with the bridge API. The portal's
 identity flow must supply the JWT without query strings or saved credentials.
 This initial page is a diagnostic connection interface, not a desktop GUI.
 Full checks and actual browser/private-Node lifecycle evidence:
-[iteration 443](ITERATION_443.md).
+[iteration 443](history/iterations/401-450.md#iteration-443).
 
 The Windows C++ supervisor builds with `scripts/build-standalone-host.ps1`.
 It launches only the private bundle and joins its process tree through a Windows
 Job. Its console/control, crash recovery and preservation tests pass;
-[iteration 444](ITERATION_444.md). SCM identity/ACL and MSI acceptance remain open.
+[iteration 444](history/iterations/401-450.md#iteration-444). SCM identity/ACL and MSI acceptance remain open.
 
 Development MSI and DEB artifacts now build and pass independent database/
 archive-byte checks; the Linux private-Node CLI also passes from UID 1000.
-[Iteration 445](ITERATION_445.md) distinguishes those checks from installation.
+[Iteration 445](history/iterations/401-450.md#iteration-445) distinguishes those checks from installation.
 `scripts/build-standalone-msi.mjs` takes an immutable payload, WiX executable
 and Util extension path; `scripts/build-standalone-deb.mjs` takes the matching
 Linux payload. The Windows payload must include the pinned
 [WiX Util notice](../packaging/standalone/notices/README.md). Use a short build
 path for WiX native CAB tooling. Neither tool installs the produced package.
 
-The [pinned-assembly/hosted gate](ITERATION_446.md) uses clean Windows and Linux CI
+The [pinned-assembly/hosted gate](history/iterations/401-450.md#iteration-446) uses clean Windows and Linux CI
 machines for actual service installation and removal. Named Windows Server 2025
 and Ubuntu 24.04 jobs pass identity/native TLS/crash recovery/reinstall/uninstall;
 the evidence records their exact commits and remaining matrix/profile gates.
@@ -236,7 +248,7 @@ program; keep public configuration outside it when it must survive replacement.
 
 Actual relocated Windows ZIP and Linux TGZ/private-Node/native-TLS shutdown pass;
 Linux runs as UID 1000. Neither format is a released 0.2.5 artifact.
-[Iteration 447](ITERATION_447.md) records this boundary and retained failure
+[Iteration 447](history/iterations/401-450.md#iteration-447) records this boundary and retained failure
 evidence. MSI/DEB/RPM provide the separately tested OS-service lifecycle.
 
 ## Automatic acceptance and retained configuration
@@ -254,7 +266,7 @@ case also checks that reinstall preserves an administrator-stopped service.
 The repeatable `tests/packaging/standalone-rdp.mjs` driver additionally passes
 eight actual desktop profiles through Windows portable and installed Astra/RED OS
 services with H.264/JPEG, resize, reattachment and joined cleanup;
-[iteration 448](ITERATION_448.md). It runs from Windows with Edge and the explicit
+[iteration 448](history/iterations/401-450.md#iteration-448). It runs from Windows with Edge and the explicit
 owned-lab inputs; it is not part of a credential-free hosted job. Its Linux
 backend requires an already pinned SSH key and an exact package path/hash.
 The pure sudo-control tests run in hosted acceptance without SSH or credentials.
@@ -266,7 +278,7 @@ is prepared for testing an upgrade with an old live native worker, preserved
 public config, new service PID and unavailable old session. It additionally
 checks the installed service/native version and private Node after replacement.
 Baseline Astra/RED OS runs pass with these checks; the actual two-version path
-is still pending aligned 0.2.5 artifacts, [iteration 450](ITERATION_450.md).
+is still pending aligned 0.2.5 artifacts, [iteration 450](history/iterations/401-450.md#iteration-450).
 
 DEB/MSI uninstall retain the public `bridge.json` configuration. RPM moves a
 modified config to `bridge.json.rpmsave`; administrators should review and restore
@@ -289,7 +301,7 @@ match the production lock's SHA-512 and exact package metadata; npm ci then runs
 offline from an isolated seeded cache. The lock keeps official registry URLs.
 After publication, verify public integrity and a fresh registry-only payload;
 candidate mode alone does not prove publication. Actual Windows/Linux payloads
-match byte for byte in [iteration 449](ITERATION_449.md).
+match byte for byte in [iteration 449](history/iterations/401-450.md#iteration-449).
 
 If the developer's build network requires a local public CA, optional
 `--build-ca <public-CA-file>` scopes it to npm build children. It changes no
@@ -303,7 +315,7 @@ archives from an explicitly named draft prerelease. The temporary public
 source commit, never credentials. The annotated source tag, unchanged application
 inputs, archive sizes/SHA-256 and production-lock SHA-512 are checked before
 assembly. A separate download step receives the repository token; npm and
-packagers do not. See [iteration 452](ITERATION_452.md).
+packagers do not. See [iteration 452](history/iterations/451-500.md#iteration-452).
 
 These receipts/manifests are marked `candidateOnly`; neither the main/master
 plan nor the final publisher accepts them for publication. Remove the pointer
@@ -318,7 +330,7 @@ private draft. The final transport uses a separate **public prerelease** marked
 as an unstable installer candidate. The build job keeps contents-read and its
 candidate step receives no token. A stable release cannot serve as candidate
 input. Source/hash checks and candidate publication refusal still apply;
-[recorded correction](ITERATION_453.md). This supersedes the private-draft
+[recorded correction](history/iterations/451-500.md#iteration-453). This supersedes the private-draft
 transport preparation described above.
 
 The prepared [standalone release workflow](../.github/workflows/standalone-release.yml)
@@ -328,7 +340,7 @@ to main/master. First publish the accepted matching core npm archives through
 the separate OIDC workflow, then advance public main. All six core package
 integrities must match the committed standalone locks. Feature-branch validation
 never publishes. Actual pipeline execution/publication remains an acceptance
-gate; [iteration 451](ITERATION_451.md).
+gate; [iteration 451](history/iterations/451-500.md#iteration-451).
 
 After a complete installer release, further pushes with the same product version
 verify its manifest/server digests and skip rebuilding those immutable assets.

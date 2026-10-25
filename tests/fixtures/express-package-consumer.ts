@@ -3,6 +3,9 @@ import express, { type RequestHandler } from 'express';
 import {
   createRdpBridgeExpress,
   resolveNativeRuntime,
+  recoverRuntimeSessions,
+  type RuntimeRecoveryOptions,
+  type RuntimeRecoveryReport,
   type RdpBridgeExpressOptions,
   type RdpBridgeExpressHandle,
 } from '@freerdp-bridge/express';
@@ -45,3 +48,11 @@ async function host() {
 }
 const browser: string = referenceBrowserDirectory;
 void [host, browser];
+
+async function recoverBeforeListen(options: RuntimeRecoveryOptions) {
+  const report: RuntimeRecoveryReport = await recoverRuntimeSessions(options);
+  if (!report.supported || !report.complete)
+    throw new Error('RDP_RUNTIME_RECOVERY_INCOMPLETE');
+  return report;
+}
+void recoverBeforeListen;

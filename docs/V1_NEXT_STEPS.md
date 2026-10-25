@@ -9,7 +9,7 @@ and accepted ADRs. Do not expand the current MVP delivery further.
    desktop/input/audio/Clipboard regressions. Investigate a recurrent Get refusal
    using its fixed status/revision evidence; do not hide it with retries. Finish
    remaining XRDP producer/server profiles after the named owned XRDP 0.10.1
-   Clipboard roundtrip [acceptance](ITERATION_404.md), along with
+   Clipboard roundtrip [acceptance](history/iterations/401-450.md#iteration-404), along with
    direction/quota/isolation/resource matrices and additional Clipboard formats.
    Implement RDPDR managed drives /
    `thinclientDrives` with policy, bounded CRUD and actual remote application

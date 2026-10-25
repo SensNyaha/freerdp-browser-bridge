@@ -18,7 +18,7 @@ dynamic plugin requests use this DVC registry. The actual XRDP audio-off profile
 can load the pinned `sys:fake` fallback through RDPDR/network feature dependencies.
 This fixes an Open refusal without changing backend/capture policy. Earlier
 synthetic other-ABI coverage used flags 0 and missed this case.
-[Source audit and restored regression](ITERATION_163.md).
+[Source audit and restored regression](history/iterations/151-200.md#iteration-163).
 
 The worker now owns a channel registry and plugin registry before its context
 member, preserving wrappers through context destruction. The receive guard's

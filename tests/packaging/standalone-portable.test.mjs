@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFile } from 'node:child_process';
@@ -10,11 +11,12 @@ import {
   rm,
   chmod,
   lstat,
+  mkdir,
 } from 'node:fs/promises';
 import { join, resolve, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
-import { generateKeyPairSync, createHash } from 'node:crypto';
+import { generateKeyPairSync, createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import {
@@ -70,7 +72,7 @@ test(
       assert.ok(inventory.files.some((file) => /\/\.[^/]+\//.test(file.path)));
       endpoint = await createRdpTlsFixture();
       const reservation = createServer();
-      await new Promise((done) => reservation.listen(0, '127.0.0.1', done));
+      await listenBrowserHttp(reservation);
       const port = reservation.address().port;
       await new Promise((done) => reservation.close(done));
       const { publicKey, privateKey } = generateKeyPairSync('rsa', {
@@ -100,6 +102,48 @@ test(
       const configuration = join(scratch, 'public-config.json');
       const runtime = join(scratch, 'private-runtime');
       await writeFile(configuration, JSON.stringify(config));
+      const nativeBin = join(
+        root,
+        'service/node_modules/@freerdp-bridge/runtime-' +
+          (windows ? 'win32-x64' : 'linux-x64-gnu'),
+        'runtime/bin',
+      );
+      const packagedVersion = JSON.parse(
+        await readFile(join(root, 'service/package.json'), 'utf8'),
+      ).version;
+      const [major, minor] = packagedVersion.split('.').map(Number);
+      let recoveryCapable = false;
+      try {
+        await lstat(join(nativeBin, 'rdp-worker.runtime.json'));
+        recoveryCapable = true;
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+      if (major > 0 || minor >= 3) assert.equal(recoveryCapable, true);
+      if (recoveryCapable) {
+        const orphan = join(
+          runtime,
+          `worker-${randomBytes(16).toString('hex')}-1-${randomBytes(16).toString('hex')}`,
+        );
+        for (const directory of [runtime, orphan]) {
+          if (windows) {
+            const created = await run(
+              join(nativeBin, 'rdp-runtime-directory.exe'),
+              ['--create-private-directory', directory],
+              { windowsHide: true, timeout: 5000, maxBuffer: 4096 },
+            );
+            assert.deepEqual(JSON.parse(created.stdout), {
+              v: 1,
+              created: true,
+              error: 0,
+            });
+          } else await mkdir(directory, { mode: 0o700 });
+        }
+        await writeFile(join(orphan, '.rdp-worker-owned'), 'runtime-v1', {
+          flag: 'wx',
+          mode: 0o600,
+        });
+      }
       const command = windows
         ? join(
             process.env.SystemRoot,
@@ -150,6 +194,35 @@ test(
         await delay();
       }
       const base = 'http://127.0.0.1:' + port;
+      if (recoveryCapable) {
+        const line = output
+          .split(/\r?\n/)
+          .find((value) =>
+            value.includes('"code":"STANDALONE_RUNTIME_RECOVERY"'),
+          );
+        assert.ok(
+          line,
+          'Packaged startup must report recovery before readiness',
+        );
+        const recovery = JSON.parse(line.slice(line.indexOf('{')));
+        assert.deepEqual(recovery, {
+          code: 'STANDALONE_RUNTIME_RECOVERY',
+          supported: true,
+          complete: true,
+          scanned: windows ? 2 : 1,
+          removed: 1,
+          active: 0,
+          retained: windows ? 1 : 0,
+        });
+        assert.ok(
+          output.indexOf('STANDALONE_RUNTIME_RECOVERY') <
+            output.indexOf('STANDALONE_READY'),
+        );
+        assert.deepEqual(
+          await readdir(runtime),
+          windows ? ['.bridge-service.lock'] : [],
+        );
+      }
       assert.equal((await fetch(base + '/rdp/healthz')).status, 200);
       assert.equal(
         (

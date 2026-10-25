@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "status": "verified",
+  "incident": {
+    "removedRootSdkWasJunctionIntoDeletedWorktree": true,
+    "preflightGap": "Git-pin equality was checked without realpath independence or an incoming-link audit.",
+    "originalAcceptedArtifactsLost": false,
+    "productionSourcesLost": false,
+    "originalLocalSdkBytesLost": true
+  },
+  "historicalSdkReceipt": {
+    "path": "build/retained-evidence-460/worktree-redos73-gcc11/build--freerdp-source-clean-YyYMr3--receipt.json",
+    "sha256": "d6babaca7fa51c0456ba0a996515429e779d98bfb538da92068976c3a4439096",
+    "immutable": true
+  },
+  "recoveredSdk": {
+    "path": "build/freerdp-source-clean-czdbUM",
+    "physicalDirectory": true,
+    "receiptSha256": "04ede9215cff01657025ad965213106a80d1aba62223f01d9eca8f0b666d51be",
+    "commit": "bf217a504e54cc719880c228e82353382cd7d4fa",
+    "buildType": "Release",
+    "sourceOverrides": {
+      "schema": 1,
+      "id": "dsp-opus-reset-ownership-v1",
+      "sourceCommit": "bf217a504e54cc719880c228e82353382cd7d4fa",
+      "sourceSha256": "40715894dc14e2869c64bbf3ebfcf209fe12483890ffb709133d7034f32ad10f",
+      "recipeSha256": "6e0d1b10ae4e85effeaf4f2e91b15a140028d4bc7c6f46fb6f4ab5c6923847dd",
+      "outputSha256": "f1da137622368914628be9ef79888186bb6a9a1dc7e5fa77771535c061dae35a"
+    },
+    "reusedDependencyPrefix": ".deps/installed/x64-windows-bundled",
+    "dependenciesRebuilt": false,
+    "probePassed": 1
+  },
+  "recoveredNative": {
+    "path": "build/native-clean-7MLpLU",
+    "sourceHash": "ef00d6a207dd2ee3b36cc2b4bc7e84159ffe962f05f472570bf81d777d9df085",
+    "sourceAndFeatureInventoryMatchAccepted025": true,
+    "artifactHashes": {
+      "rdp-worker.exe": "46bc4a0171c7a12388b1db6af93ec7967362f15a1962fc581e9aff64cc65465c",
+      "rdp-runtime-directory.exe": "ae731401be9fbd8eaa89fbdfa7e8f0de9fe4bef205114d846e8a34b3e307bcd6"
+    },
+    "ctest": {
+      "pass": 36,
+      "fail": 0
+    },
+    "nodeNative": {
+      "pass": 27,
+      "fail": 0,
+      "skipped": 1
+    },
+    "skippedProfile": "unix-seqpacket-rws1 on Windows"
+  },
+  "fullCheck": {
+    "command": "pnpm check",
+    "exitCode": 0,
+    "nativeFixture": "build/native-clean-7MLpLU",
+    "pass": 1004,
+    "fail": 0,
+    "skipped": 63
+  },
+  "publicArtifactGuards": {
+    "acceptedNpmArchives": 19,
+    "finalInstallerFiles": 8,
+    "acceptedWorkerAndThreeFreeRdpDllsUnchanged": true
+  },
+  "correctivePreflight": {
+    "retainedInputRealpathsChecked": true,
+    "incomingLinkAudit": {
+      "directories": 68165,
+      "links": 7042,
+      "incoming": 0
+    },
+    "recipeReceiptsAndCMakeReferencesReviewed": true
+  },
+  "actualRdpOrDeviceAcceptance": false,
+  "replacementReleasePublished": false,
+  "postCleanupCtest": {
+    "pass": 36,
+    "fail": 0
+  },
+  "documentationCheck": {
+    "preservedReports": 444,
+    "archiveVolumes": 10,
+    "localLinksChecked": 2242,
+    "mappedAnchorsChecked": 1183,
+    "brokenLinks": 0,
+    "originalTextAndHashesVerified": true
+  },
+  "postTestRuntime": {
+    "emptyFixtureDirectoriesRemoved": 4,
+    "runtimeRootEmpty": true,
+    "aclChanged": false
+  }
+}

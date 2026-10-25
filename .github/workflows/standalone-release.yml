@@ -1,7 +1,7 @@
 name: Standalone release
 on:
   push:
-    branches: [main, master, feature/standalone-installers-0.2.5, release/0.2.5]
+    branches: [main, master, feature/standalone-installers-0.2.5, 'release/**']
     paths:
       - apps/**
       - packages/**

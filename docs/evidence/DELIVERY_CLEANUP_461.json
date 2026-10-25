@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "removedDeliveryCopies": 4,
+  "removedLinkedCiWorktrees": 1,
+  "logicalBytesRemoved": 1772713034,
+  "removedFiles": 111514,
+  "symlinksUnlinkedWithoutTraversal": 3641,
+  "resumedWithWorkspaceOwnerPermissions": true,
+  "aclModified": false,
+  "preservedGitBundles": 12,
+  "preservedGitBundleBytes": 11897094,
+  "independentRestoreAndFsck": true,
+  "archiveCopiesMatchedCanonical024": 32,
+  "canonical024ArchiveCount": 10,
+  "incomingLinkAudit": {
+    "directories": 61384,
+    "links": 6534,
+    "incoming": 0
+  },
+  "currentToolsSdkWorkersAnd025BundleUnchanged": true,
+  "public024CoreCommit": "16b29a7b4c72db98d88cbc2f1ad38ffcafcfd29e",
+  "removed": [
+    {
+      "name": "github-delivery-0.2.4-75Ah7K",
+      "bytes": 547335054,
+      "files": 36219
+    },
+    {
+      "name": "github-delivery-0.2.4-Km1pHM",
+      "bytes": 297538412,
+      "files": 13150
+    },
+    {
+      "name": "github-delivery-0.2.4-MhUPTO",
+      "bytes": 278973059,
+      "files": 12849
+    },
+    {
+      "name": "github-delivery-0.2.4-rwdL2I",
+      "bytes": 547513486,
+      "files": 36269
+    },
+    {
+      "name": "github-core-ci-440",
+      "bytes": 101353023,
+      "files": 13027
+    }
+  ],
+  "preservedGit": [
+    {
+      "delivery": "github-delivery-0.2.4-75Ah7K",
+      "repository": "freerdp-bridge-express",
+      "head": "f5fce4ee2a2f375e62b7afd7cbb25e65f14650a8",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-75Ah7K--freerdp-bridge-express.bundle",
+      "sha256": "ea20ca1f136c083992358b60ad78ba3b1c8e4f79037eed4b98758bfdd4f810a2",
+      "bytes": 85272
+    },
+    {
+      "delivery": "github-delivery-0.2.4-75Ah7K",
+      "repository": "freerdp-bridge-fastify",
+      "head": "dcd8dbf4aad14c0f47424bc2f63b6267ea5e9c0b",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-75Ah7K--freerdp-bridge-fastify.bundle",
+      "sha256": "e5041d571514d594b844e096a6ebddc56875cd5cff3655ba3af8dd570271aa86",
+      "bytes": 72671
+    },
+    {
+      "delivery": "github-delivery-0.2.4-75Ah7K",
+      "repository": "freerdp-bridge-http",
+      "head": "2a3effbbd5532ac5c6eb151ab753217aca33f0be",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-75Ah7K--freerdp-bridge-http.bundle",
+      "sha256": "02fe9cad6b80b2689b321e7b3237f96a8144861aec553c62ef88248956df4661",
+      "bytes": 79059
+    },
+    {
+      "delivery": "github-delivery-0.2.4-75Ah7K",
+      "repository": "freerdp-bridge-nestjs",
+      "head": "7c75bfe87a138b30a422c1dd0d95f45f2b2a84fe",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-75Ah7K--freerdp-bridge-nestjs.bundle",
+      "sha256": "d9d86c4c2cc58eb365b6986d541c41cec3f14fa7567534487f0a2f54f6235f49",
+      "bytes": 92155
+    },
+    {
+      "delivery": "github-delivery-0.2.4-75Ah7K",
+      "repository": "freerdp-browser-bridge",
+      "head": "863d94e922fb9d1c70db22654dbdacefc1c30cce",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-75Ah7K--freerdp-browser-bridge.bundle",
+      "sha256": "2f6ccc1071160d7b9f9f98d90c06a09d252f51ddc101ca816ea90c71332c099a",
+      "bytes": 2809143
+    },
+    {
+      "delivery": "github-delivery-0.2.4-Km1pHM",
+      "repository": "freerdp-browser-bridge",
+      "head": "d2c936a8d4421b13d211283d3d0809d8c410060b",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-Km1pHM--freerdp-browser-bridge.bundle",
+      "sha256": "799090239746a1b71332e7449bddfb15475bddef1d4bde05606787c9ad40531e",
+      "bytes": 2808603
+    },
+    {
+      "delivery": "github-delivery-0.2.4-MhUPTO",
+      "repository": "freerdp-browser-bridge",
+      "head": "df8346f7a10b5195993d5581e702592a75b0dec6",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-MhUPTO--freerdp-browser-bridge.bundle",
+      "sha256": "c7befb2e328ba581aa64cab81f85a1bae084365cfd9cbf0c7705286c925788e2",
+      "bytes": 2808602
+    },
+    {
+      "delivery": "github-delivery-0.2.4-rwdL2I",
+      "repository": "freerdp-bridge-express",
+      "head": "ee1bf047b4ea426297ccefd22939fb5207fc7b62",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-rwdL2I--freerdp-bridge-express.bundle",
+      "sha256": "65ae130eaf03443ecce9ab84ac7853ed0acf7866d01f722cb0ad105fdb80297d",
+      "bytes": 85360
+    },
+    {
+      "delivery": "github-delivery-0.2.4-rwdL2I",
+      "repository": "freerdp-bridge-fastify",
+      "head": "f9339f0ae1dbff2a3a72d716cb098b17e4d0a589",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-rwdL2I--freerdp-bridge-fastify.bundle",
+      "sha256": "fdc6d2aefb6fcb4c55525ee010814a5acad80af7feda441770c1467b77d36d71",
+      "bytes": 72762
+    },
+    {
+      "delivery": "github-delivery-0.2.4-rwdL2I",
+      "repository": "freerdp-bridge-http",
+      "head": "29189ae17908a958308d983827cd7a57a04357ff",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-rwdL2I--freerdp-bridge-http.bundle",
+      "sha256": "ed03de596260a83614709dd36b817d0b91c819bf5898cea5d8813b473ea2e8fd",
+      "bytes": 79139
+    },
+    {
+      "delivery": "github-delivery-0.2.4-rwdL2I",
+      "repository": "freerdp-bridge-nestjs",
+      "head": "242d119d0f7b4f21444b69cbbf867100f1cf42e0",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-rwdL2I--freerdp-bridge-nestjs.bundle",
+      "sha256": "165f082e63339fb9395d7ded40efca60fdb3bb13844d21b700ab7cdd91ce3794",
+      "bytes": 92290
+    },
+    {
+      "delivery": "github-delivery-0.2.4-rwdL2I",
+      "repository": "freerdp-browser-bridge",
+      "head": "16b29a7b4c72db98d88cbc2f1ad38ffcafcfd29e",
+      "bundle": "build\\retained-evidence-461\\deliveries-mRFXG7\\github-delivery-0.2.4-rwdL2I--freerdp-browser-bridge.bundle",
+      "sha256": "f29279e5591a6e354d9bf41aff223dd654c4ce17c53860d45831b3877e4d3fac",
+      "bytes": 2812038
+    }
+  ]
+}

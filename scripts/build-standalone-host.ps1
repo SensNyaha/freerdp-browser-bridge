@@ -14,7 +14,7 @@ try {
   $visualStudioPath = & $vswherePath -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
   if (!$visualStudioPath) { throw 'Visual Studio x64 C++ build tools are absent' }
   $nativeGitDirectory = Split-Path -Parent (Get-Command git.exe -CommandType Application -ErrorAction Stop).Source
-  & cmd.exe /d /c ('call "' + $driveName + '\scripts\msvc-env.cmd" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && cmake -S "' + $driveName + '\packaging\standalone\windows" -B "' + $driveName + '\build\standalone-host" -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build "' + $driveName + '\build\standalone-host"')
+  & cmd.exe /d /c ('call "' + $driveName + '\scripts\msvc-env.cmd" "' + $visualStudioPath + '" "' + $nativeGitDirectory + '" && cmake -S "' + $driveName + '\packaging\standalone\windows" -B "' + $driveName + '\build\standalone-host" -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build "' + $driveName + '\build\standalone-host" && ctest --test-dir "' + $driveName + '\build\standalone-host" --output-on-failure --no-tests=error')
   $nativeExitCode = $LASTEXITCODE
 } finally {
   & subst.exe $driveName /d

@@ -16,6 +16,7 @@ import { standaloneProductionManifest } from './production-lock.mjs';
 import { verifiedStandaloneCandidateArchives } from './candidate-archives.mjs';
 import { standaloneGithubApi } from './release-api.mjs';
 import { productVersion } from '../product-version.mjs';
+import { isReleaseVersion } from '../github-delivery/manifest.mjs';
 
 const prefix = '/repos/SensNyaha/freerdp-browser-bridge';
 const refuse = () => new Error('STANDALONE_CANDIDATE_RELEASE_INVALID');
@@ -25,7 +26,7 @@ export function standaloneCandidatePointer(value, version) {
     Object.keys(value).sort().join(',') !== 'schema,sourceCommit,tag,version' ||
     value.schema !== 1 ||
     value.version !== version ||
-    !/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(version ?? '') ||
+    !isReleaseVersion(version) ||
     !/^[a-f0-9]{40}$/.test(value.sourceCommit ?? '') ||
     value.tag !==
       'standalone-candidate-' + version + '-' + value.sourceCommit.slice(0, 12)
@@ -65,10 +66,16 @@ export async function downloadCandidateAsset(
   token,
   fetcher = fetch,
 ) {
+  const archiveVersion =
+    typeof name === 'string'
+      ? /^freerdp-bridge-[a-z0-9-]+-(0\.[0-9]{1,6}\.[0-9]{1,6})\.tgz$/.exec(
+          name,
+        )?.[1]
+      : undefined;
   if (
     !Number.isSafeInteger(id) ||
     id < 1 ||
-    !/^freerdp-bridge-[a-z0-9-]+-0\.2\.[0-9]+\.tgz$/.test(name ?? '') ||
+    !isReleaseVersion(archiveVersion) ||
     !Number.isSafeInteger(size) ||
     size < 1 ||
     size > 134217728 ||

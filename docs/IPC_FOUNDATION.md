@@ -30,7 +30,7 @@ typed Node selection and HELLO extension bit 8. Iteration 233 adds capability bi
 remains disabled. A dedicated latest state and one correlated
 result slot preserve the control FIFO; the carrier accepts a maximum 16 MiB
 text record while every other class retains its existing limit.
-[Contract](CLIPBOARD_IPC.md), [evidence](ITERATION_228.md).
+[Contract](CLIPBOARD_IPC.md), [evidence](history/iterations/201-250.md#iteration-228).
 
 Current Linux primary — iteration 200: matching private worker/addon metadata
 selects automatic RWS1 SOCK_SEQPACKET; legacy builds without that manifest retain
@@ -40,19 +40,19 @@ Historical statements below describing an unimplemented Linux primary are
 superseded in this Release IPC scope. Connected RDP/audio/resource and broader
 platform/sanitizer acceptance remain separate.
 [Carrier](LINUX_SEQPACKET.md), [Node selector](NODE_SEQPACKET_SUPERVISOR.md),
-[current evidence](ITERATION_200.md).
+[current evidence](history/iterations/151-200.md#iteration-200).
 
 Linux primary carrier preparation — iteration 193: fixed-state RWS1 chunk
 validation bounds packet sizes and checks the inner header before body exposure.
 Portable/fuzz gates pass; real sockets and worker/Node selection remain open.
-[Contract](LINUX_SEQPACKET.md), [evidence](ITERATION_193.md).
+[Contract](LINUX_SEQPACKET.md), [evidence](history/iterations/151-200.md#iteration-193).
 
 Current Linux output — iteration 192: the inherited FIFO/Unix stream fallback
 now selects bounded priority lanes and a nonblocking writer with whole-record /
 drain deadlines. RWI1 fields and advertised capabilities remain unchanged.
 Actual lifecycle/paused-parent flood, sanitizers and private runtime relocation
 pass; primary SOCK_SEQPACKET and connected-media/release gates remain open.
-[Contract](LINUX_STREAM_OUTPUT.md), [evidence](ITERATION_192.md).
+[Contract](LINUX_STREAM_OUTPUT.md), [evidence](history/iterations/151-200.md#iteration-192).
 
 Current Opus input preparation — iteration 134: RWI1 kind 44 and CONFIGURE
 schema 8 add bounded input framing and exclusive PCM/Opus flags. Current
@@ -443,7 +443,7 @@ At most 69 records / 9,248,283 wire bytes are retained, excluding C++ allocator 
 container overhead. Stats expose current records/bytes, byte high water and audio/
 cursor replacements/audio reset discards. A future writer additionally owns one
 in-flight record. Pipe deadlines/cancellation, drain/failure policy and activation
-are not supplied by this pure component. [Evidence](ITERATION_054.md).
+are not supplied by this pure component. [Evidence](history/iterations/051-100.md#iteration-054).
 
 Current iteration 228 extends that historical inventory with two dedicated
 clipboard slots: latest typed scalar state and one nonreplaceable correlated
@@ -453,7 +453,7 @@ clipboard result, cursor shape/metadata, video. At most **71 records /
 up to 16,777,264 wire bytes. This is bounded output storage, not a total-RSS or
 latency acceptance claim. The source generation, policy and item maximum remain
 immutable in a queue lifetime; source revisions cannot go backward. No priority
-can preempt bytes already being written. [Current clipboard evidence](ITERATION_228.md).
+can preempt bytes already being written. [Current clipboard evidence](history/iterations/201-250.md#iteration-228).
 
 ## Producer/writer ownership foundation (Iteration 55)
 
@@ -483,7 +483,7 @@ allocator/container overhead. There is no second full-record serialization
 buffer here. The external owner must supply the writer thread, wakeups, bounded/
 cancellable I/O and shutdown deadlines, and outlive all callback invocations.
 At iteration 55 the worker retained its previous stdout writer; Windows selection
-is now implemented in iteration 58. [Foundation evidence](ITERATION_055.md).
+is now implemented in iteration 58. [Foundation evidence](history/iterations/051-100.md#iteration-055).
 
 ## Windows pipe writer preparation (Iteration 57)
 
@@ -513,7 +513,7 @@ also explains driver support/races. A failed cancellation deadline cannot justif
 freeing live spans or detaching owner threads. Destruction therefore fails the
 owned process if threads could not join; Node crash cleanup remains necessary.
 This does not prove abnormal OS-driver or simultaneous-hard-kill reclamation.
-[Driver evidence](ITERATION_057.md). Linux driver acceptance remains open.
+[Driver evidence](history/iterations/051-100.md#iteration-057). Linux driver acceptance remains open.
 
 ## Windows worker priority output (Iteration 58)
 
@@ -531,7 +531,7 @@ through OS completion. Node heartbeat/request deadlines and forced termination
 remain the outer supervision boundary. Linux retains the prior framed stdio writer;
 priority/SEQPACKET integration remains open there. Actual Windows lifecycle,
 adversarial parent flood and XRDP H.264/JPEG reset/resize/replay checks pass.
-[Activation evidence](ITERATION_058.md). Wire kinds/version and advertised audio
+[Activation evidence](history/iterations/051-100.md#iteration-058). Wire kinds/version and advertised audio
 capabilities do not change; audio is still disabled.
 
 ## PCM source status preparation (Iteration 60)
@@ -542,13 +542,13 @@ refusal rules are specified in [AUDIO_PCM.md](AUDIO_PCM.md#pcm-source-status-cod
 Status has request ID 0 and typed validation in the control FIFO, preceding queued
 media. No worker emitter, HELLO capability, configuration selector or public event
 is enabled yet. Incoming status is not a worker command; current worker refuses it.
-RWB1 audio config/sample layouts remain unchanged. [Evidence](ITERATION_060.md).
+RWB1 audio config/sample layouts remain unchanged. [Evidence](history/iterations/051-100.md#iteration-060).
 
 The native publisher's optional source-status owner now prepares this event before
 config/PCM and can report Close without samples. It reserves the next epoch until
 fresh capture, advances accepted revisions and preserves consumer discard credit
 before status; packetizer skips also clear older unsent audio before their new
-epoch. No worker selects this owner mode yet. [Evidence](ITERATION_062.md),
+epoch. No worker selects this owner mode yet. [Evidence](history/iterations/051-100.md#iteration-062),
 [ownership contract](AUDIO_PCM.md#source-status-and-epoch-ownership).
 
 ## Preparatory Opus payloads (Iteration 75)

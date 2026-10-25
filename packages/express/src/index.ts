@@ -6,6 +6,8 @@ export {
 export {
   resolveNativeRuntime,
   NativeRuntimeError,
+  recoverRuntimeSessions,
+  RuntimeRecoveryError,
   NativeSessionWorker,
   WorkerProcess,
   SessionManager,
@@ -18,5 +20,7 @@ export type {
   Principal,
   SessionCreate,
   NativeRuntimeOptions,
+  RuntimeRecoveryOptions,
+  RuntimeRecoveryReport,
   BridgeHandle,
 } from '@freerdp-bridge/http';

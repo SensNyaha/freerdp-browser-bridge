@@ -1,5 +1,8 @@
 import { isAbsolute } from 'node:path';
-import { resolveNativeRuntime } from '@freerdp-bridge/api/fastify';
+import {
+  resolveNativeRuntime,
+  recoverRuntimeSessions,
+} from '@freerdp-bridge/api/fastify';
 import { readStandaloneConfig } from './config.js';
 import { createStandaloneServer } from './server.js';
 import { bindStandaloneSupervisor } from './supervisor.js';
@@ -20,6 +23,12 @@ async function main() {
     throw new Error('STANDALONE_USAGE');
   const config = await readStandaloneConfig(process.argv[3]!);
   const worker = await resolveNativeRuntime({ runtimeRoot: process.argv[5]! });
+  const recovery = await recoverRuntimeSessions(worker);
+  console.log(
+    JSON.stringify({ code: 'STANDALONE_RUNTIME_RECOVERY', ...recovery }),
+  );
+  if (!recovery.supported || !recovery.complete)
+    throw new Error('STANDALONE_RUNTIME_RECOVERY_INCOMPLETE');
   const server = await createStandaloneServer(config, worker);
   let closing = false;
   const stop = () => {

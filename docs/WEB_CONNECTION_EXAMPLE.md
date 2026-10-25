@@ -48,7 +48,7 @@ handoff buffer, PCM/Opus microphone and opt-in text clipboard directions/item
 quota. [Explicit clipboard controls and scope](CLIPBOARD_BROWSER.md).
 The clipboard quota field is disabled while off; turning text selection on
 enables the bounded quota input. Current Windows/XRDP JPEG/H.264 default-off
-viewer regression is recorded in [Iteration 239](ITERATION_239.md).
+viewer regression is recorded in [Iteration 239](history/iterations/201-250.md#iteration-239).
 Actual capabilities disable unavailable
 choices; submission checks them again. Browser codec presence is checked;
 existing viewer negotiation performs detailed decoder/provider checks. Microphone
@@ -60,7 +60,7 @@ system order sends explicit false. Force selection wins over preference. The
 `ipSettings` capability independently gates these fields, with an unavailable
 message for old workers and a second check at submission. No host network
 configuration or DNS cache is changed. [IP semantics](IP_SETTINGS.md),
-[form/actual Windows verification](ITERATION_326.md).
+[form/actual Windows verification](history/iterations/301-350.md#iteration-326).
 
 The six appearance controls (wallpaper, font smoothing, desktop composition,
 full-window dragging, menu animations and themes) each offer profile inheritance,
@@ -73,8 +73,8 @@ not persisted. [Profile and native projection](RDP_PERFORMANCE_SETTINGS.md).
 The existing `custom` profile is available as “Свои параметры”: with all six
 controls inherited, it selects no appearance preset; individual enabled/disabled
 choices remain explicit overrides. Encoder defaults/FPS limits still apply.
-[Form verification](ITERATION_322.md) uses Edge and a synthetic HTTP endpoint.
-The named [Windows JPEG/form smoke](ITERATION_323.md) additionally passes actual
+[Form verification](history/iterations/301-350.md#iteration-322) uses Edge and a synthetic HTTP endpoint.
+The named [Windows JPEG/form smoke](history/iterations/301-350.md#iteration-323) additionally passes actual
 creation, prompted certificate, explicit appearance projection, nonblank 1080p,
 heartbeat and disconnect. Server visual effects, other profiles and broader
 appearance acceptance remain open.
@@ -117,5 +117,5 @@ shutdown; generic hosts still supervise abrupt browser/API lifecycle loss.
 Programmatic `window.bridgeViewer.attach` remains available; this owner tracks
 only sessions created by its manual form.
 
-[Verification](ITERATION_204.md) distinguishes pure schema/ownership, actual
+[Verification](history/iterations/201-250.md#iteration-204) distinguishes pure schema/ownership, actual
 Edge/synthetic HTTP, actual Linux/XRDP and empty Windows launcher smoke.

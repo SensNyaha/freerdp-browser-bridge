@@ -1,12 +1,17 @@
-import { hashFile, readJson } from '../github-delivery/manifest.mjs';
+import {
+  hashFile,
+  readJson,
+  isReleaseVersion,
+} from '../github-delivery/manifest.mjs';
 import { isDeepStrictEqual } from 'node:util';
+import { standaloneUpgradeSeed } from './upgrade-seed.mjs';
 
 const invalid = () => {
   throw new Error('STANDALONE_RELEASE_MANIFEST_INVALID');
 };
 export function standaloneReleaseNames(version, platform) {
   if (
-    !/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(version ?? '') ||
+    !isReleaseVersion(version) ||
     !['win32-x64', 'linux-x64-gnu'].includes(platform)
   )
     invalid();
@@ -69,7 +74,12 @@ export function standaloneReleaseManifest(receipts) {
       });
     }
     const accepted = receipt.acceptance;
-    const patch = Number(version.split('.')[2]);
+    let upgradeFrom;
+    try {
+      upgradeFrom = standaloneUpgradeSeed(version)?.version ?? null;
+    } catch {
+      invalid();
+    }
     if (
       !accepted ||
       Object.keys(accepted).sort().join(',') !==
@@ -79,7 +89,7 @@ export function standaloneReleaseManifest(receipts) {
       accepted.realRdpDesktop !== false ||
       accepted.os !==
         (receipt.platform === 'win32-x64' ? 'windows-2025' : 'ubuntu-24.04') ||
-      accepted.upgradeFrom !== (patch >= 5 ? '0.2.' + (patch - 1) : null)
+      accepted.upgradeFrom !== upgradeFrom
     )
       invalid();
     acceptance.push({ platform: receipt.platform, ...accepted });

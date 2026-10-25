@@ -3,21 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { standaloneReleasePreflight } from './release-preflight.mjs';
 import { readStandaloneCandidatePointer } from './candidate-release.mjs';
-
-export function standaloneUpgradeSeed(version) {
-  if (!/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(version ?? ''))
-    throw new Error('STANDALONE_RELEASE_VERSION_INVALID');
-  const patch = Number(version.split('.')[2]);
-  return patch >= 5
-    ? {
-        version: '0.2.' + (patch - 1),
-        ref:
-          patch === 5
-            ? 'de46cea5776be19971716117b1c37dbf46012464'
-            : 'v0.2.' + (patch - 1),
-      }
-    : undefined;
-}
+import { standaloneUpgradeSeed } from './upgrade-seed.mjs';
+export { standaloneUpgradeSeed } from './upgrade-seed.mjs';
 if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)

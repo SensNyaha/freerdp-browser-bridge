@@ -53,4 +53,4 @@ smoothness acceptance is inferred from these short captures.
 The named small-text Windows smoke does not accept all keyboard layouts/IME,
 line endings, buttons/wheel/touch, physical hardware, disconnect-held input,
 browser/host clipboard, full quotas, drives or broader platform/soak gates.
-[Actual evidence](ITERATION_303.md).
+[Actual evidence](history/iterations/301-350.md#iteration-303).

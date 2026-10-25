@@ -5,6 +5,7 @@
 #include "connection_config.hpp"
 #include "microphone.hpp"
 #include "microphone_opus.hpp"
+#include "ownership.hpp"
 #include "protocol.hpp"
 #include <algorithm>
 #include <csignal>
@@ -41,10 +42,16 @@ std::mutex output_mutex;
 #endif
 class RuntimeGuard {
   std::filesystem::path path_;
+  std::unique_ptr<bridge::runtime::RuntimeLease> lease_;
 
 public:
   RuntimeGuard() {
     const auto path = std::filesystem::current_path();
+    if (bridge::runtime::runtime_identity(path.filename().native())) {
+      lease_ = std::make_unique<bridge::runtime::RuntimeLease>(path);
+      path_ = path;
+      return;
+    }
     std::ifstream marker(path / ".rdp-worker-owned", std::ios::binary);
     std::array<char, 11> bytes{};
     marker.read(bytes.data(), static_cast<std::streamsize>(bytes.size()));
@@ -54,6 +61,7 @@ public:
   ~RuntimeGuard() {
     if (path_.empty())
       return;
+    lease_.reset();
     std::error_code ec;
     std::filesystem::current_path(path_.parent_path(), ec);
     std::filesystem::remove(path_ / ".rdp-worker-owned", ec);

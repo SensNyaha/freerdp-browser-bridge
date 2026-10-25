@@ -1,5 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { owner, adapters, repositoryFor, fail } from './manifest.mjs';
+import {
+  owner,
+  adapters,
+  repositoryFor,
+  fail,
+  isReleaseVersion,
+} from './manifest.mjs';
 
 /** Import a new accepted tree as a child of the existing public main. No push. */
 export function continueDeliveryHistory(
@@ -26,10 +32,7 @@ export function continueDeliveryHistory(
     owner + '/freerdp-browser-bridge',
     ...adapters.map(repositoryFor),
   ]);
-  if (
-    !allowed.has(repository) ||
-    !/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(version ?? '')
-  )
+  if (!allowed.has(repository) || !isReleaseVersion(version))
     fail('DELIVERY_HISTORY_TARGET_INVALID');
   run(['init', '--quiet']);
   run(['symbolic-ref', 'HEAD', 'refs/heads/main']);

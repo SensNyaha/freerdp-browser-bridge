@@ -14,7 +14,7 @@ nothing was published. The native runtime is not embedded in these tarballs.
 The packages include compiled JS, declarations, source maps and package metadata.
 External npm dependencies are additional: config currently depends on
 `@sinclair/typebox` 0.34.41. The complete production Node service archive measured
-in [Iteration 223](ITERATION_223.md) is 3,369,644 bytes; it includes a broader
+in [Iteration 223](history/iterations/201-250.md#iteration-223) is 3,369,644 bytes; it includes a broader
 service/dependency payload and is not the library's npm tarball.
 
 The historical native runtime archives measured in the same cohort are

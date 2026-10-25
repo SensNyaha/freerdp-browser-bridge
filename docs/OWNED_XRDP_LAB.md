@@ -52,7 +52,7 @@ application and contains no user data, network client or clipboard-data reader.
 Wheel counters advance only when the canvas view actually moves. The movable
 tile records displacement only after its drop. The owned `--owned-pointer-test`
 viewer mode verifies these actions through bounded X11 PRIMARY scalar readback,
-separate from CLIPRDR. Exact passing scope is in [398](ITERATION_398.md).
+separate from CLIPRDR. Exact passing scope is in [398](history/iterations/351-400.md#iteration-398).
 The optional `--owned-held-loss-test` observes fixed Ctrl/button state around
 controlled RDP loss. A lost TCP cannot deliver release; fresh-connection clearing
 requires its own passing check. Both modes refuse the external default lab.
@@ -64,7 +64,7 @@ This bounded control checks actual native coexistence, heartbeat/captures and
 survival of the first owner after the second retires. It is not browser/audio load.
 
 The bounded server-to-browser CLIPRDR source/read path now passes
-[400](ITERATION_400.md). To repeat only its fixed prepared Tk receipt read
+[400](history/iterations/351-400.md#iteration-400). To repeat only its fixed prepared Tk receipt read
 with a linked receipt containing that correction:
 
 ```powershell
@@ -114,7 +114,7 @@ immediately before its ordinary Copy binding when fixture text is selected,
 so XFixes bridges receive a fresh owner notification. No polling/readback loop
 is added to Bridge. F2 hides the Text document and retains its fixed pointer
 receipt behavior. The read-only `--owned-clipboard-read` mode now checks two
-successive Copy/Get operations. [Measured controls/results](ITERATION_404.md).
+successive Copy/Get operations. [Measured controls/results](history/iterations/401-450.md#iteration-404).
 
 The two real Unicode roundtrips and a fresh read-only connection pass on the
 new peer; full feature-branch `pnpm check` passes 900 / 61 skips / 961 total

@@ -60,7 +60,7 @@ Owned close failure is separately `PROCESS_SAMPLE_CLOSE_FAILED`. The sampler nev
 forwards AbortSignal.reason as a message or cause. Callers retain their normal
 worker-state checks after awaiting a sample. OS/kernel-stall and complete
 kernel-failure acceptance remains separate. Cancellation evidence
-is recorded in [iteration 295](ITERATION_295.md).
+is recorded in [iteration 295](history/iterations/251-300.md#iteration-295).
 
 ## Existing lab tools and acceptance
 
@@ -75,16 +75,16 @@ Actual tests sample an owned unconnected native worker repeatedly, preserve
 heartbeat and join its normal cleanup. Existing Linux current-process/FD and
 lab scalar/budget tests remain separate controls. These checks do not accept
 memory/CPU watchdog enforcement, connected RDP resource budgets or a soak.
-Stage 10's complete watchdog requirement remains open. [Evidence](ITERATION_294.md).
+Stage 10's complete watchdog requirement remains open. [Evidence](history/iterations/251-300.md#iteration-294).
 The optional host policy now composes this sampler with owned worker failure
 and joined cleanup; see [sampled RSS policy](WORKER_MEMORY_POLICY.md) and
-[iteration 296](ITERATION_296.md).
+[iteration 296](history/iterations/251-300.md#iteration-296).
 
 Windows helper admission now shares the bounded CPU-query owner. Equal-interval
 Windows CPU/RSS worker policies additionally use one combined query; separate
 public scalar readers retain their signatures. Linux direct proc RSS reads do
 not acquire a helper permit. See [limits and private receipt](PROCESS_CPU.md#shared-helper-admission-and-windows-paired-policy-queries)
-and [configured-capacity verification](ITERATION_310.md). Helper execution and
+and [configured-capacity verification](history/iterations/301-350.md#iteration-310). Helper execution and
 the worker's overall query deadlines are unchanged.
 
 New Windows worker support additionally enables the internal

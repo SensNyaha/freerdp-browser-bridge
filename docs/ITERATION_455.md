@@ -78,7 +78,7 @@ not prove those gates. Historical 0.2.3 pending JS publication is still separate
 the user's stopped manual approval queue must not be restarted automatically.
 
 Failure history and detailed receipts remain in
-[iteration 453](ITERATION_453.md) and [iteration 454](ITERATION_454.md). Full
+[iteration 453](history/iterations/451-500.md#iteration-453) and [iteration 454](history/iterations/451-500.md#iteration-454). Full
 logs/receipts are `build/iteration-454-check-{win32,linux}-final.*`; archive audit
 and official dry-run are `build/release-453-{artifact-audit,npm-dry-run}.json`.
 Named service/upgrade evidence is `build/iteration-454-{astra,redos}-installed.*`;

@@ -92,7 +92,7 @@ Performance changes are accepted based on these metrics, not intuition.
 
 ## 9. Windows scene-latency correction evidence
 
-[Iteration 9](docs/ITERATION_009.md) records before/after native encoder measurements,
+[Iteration 9](docs/history/iterations/001-050.md#iteration-009) records before/after native encoder measurements,
 live XRDP browser observations, bounded RDP batching and the Windows OpenH264 SIMD
 dispatch correction. The controlled synthetic encode p95 improved from 192.802 to
 26.326 ms; live initial-update encode p95 from 474.918 to 84.861 ms. These samples
@@ -104,11 +104,11 @@ controlled interactive scene replay remain open.
 Protected `/metrics` now aggregates bounded histograms for changed capture requests,
 unchanged polls, local WS writes and valid render-credit round trips. Frame/byte
 counters and credit occupancy distinguish producer work from consumer stalls.
-See [metric semantics](docs/SESSION_API.md) and [iteration evidence](docs/ITERATION_011.md).
+See [metric semantics](docs/SESSION_API.md) and [iteration evidence](docs/history/iterations/001-050.md#iteration-011).
 Timing uses one Node monotonic clock; worker media timestamps are preserved.
 Local forwarding samples require every configuration/image record to finish
 successfully; partial write failures cannot contribute a successful sample.
-[Regression evidence](docs/ITERATION_366.md).
+[Regression evidence](docs/history/iterations/351-400.md#iteration-366).
 The stages overlap and cannot be summed into an end-to-end bridge latency number.
 Framebuffer dirty-to-send age, independent queue delays, controlled scene replay,
 CPU/RSS and the existing full performance/soak gates remain pending.
@@ -131,7 +131,7 @@ records total, conversion and compression p95 at 1/2/4 threads. Four-thread
 total encode p95 is 33.730–39.882 ms across three runs, inside this section's
 40 ms number for the encoder stage alone. The measurement omits callback,
 queue, IPC/Node forwarding and browser decode/render, so it does not satisfy
-the framebuffer-to-browser latency target. [Exact runs and artifact hashes](docs/ITERATION_331.md).
+the framebuffer-to-browser latency target. [Exact runs and artifact hashes](docs/history/iterations/301-350.md#iteration-331).
 
 ## 13. Audio publication scheduling control
 
@@ -142,7 +142,7 @@ skips zero in the identical model. This is a deterministic scheduling comparison
 not a measurement of the host OS timer, connected CPU/RSS or end-to-end latency.
 The ordinary/compatibility buffers and late-discard policy remain unchanged.
 Actual native stalls and uninterrupted audio acceptance remain open.
-[Implementation and verification](docs/ITERATION_371.md).
+[Implementation and verification](docs/history/iterations/351-400.md#iteration-371).
 
 The bounded audio preview now collects one existing native video pipeline
 snapshot before joined close. It reports encode mean/recent-128-frame p95 /
@@ -151,7 +151,7 @@ unavailable evidence. These independent aggregate observations can reveal
 expensive encode/read work; they do not correlate individual audio skips or
 measure event waits, audio codec time, total CPU or end-to-end latency.
 No new connected measurement is claimed by this local collection change.
-[Collector scope](docs/ITERATION_374.md).
+[Collector scope](docs/history/iterations/351-400.md#iteration-374).
 
 ## 14. Host query launch and admission observations
 
@@ -168,7 +168,7 @@ All 969 paired samples preserve the active owners; three IPC timeouts occur
 during retirement. The preceding active resource-unavailable failures remain
 retained. This instrumentation does not establish a throughput correction,
 connected performance, OS cause or adequate resource/soak headroom.
-[Exact profile](docs/ITERATION_375.md).
+[Exact profile](docs/history/iterations/351-400.md#iteration-375).
 
 A controlled sixteen-task Node regression now proves an observer can run
 between successive invocations, while sixteen incomplete tasks can remain
@@ -180,7 +180,7 @@ reported worker failures and joined empty owners. Maximum query time is still
 2,949 ms against the existing 3,000 ms bound, so robust headroom is unproven.
 The run ends after sample-count conditions rather than fixed duration; its
 313 paired queries versus earlier runs are not a throughput comparison.
-[Scheduling control and limits](docs/ITERATION_376.md).
+[Scheduling control and limits](docs/history/iterations/351-400.md#iteration-376).
 
 The next unchanged scalar-policy full run still has two active deadlines
 above three seconds, even though per-invocation yielding improves event-loop
@@ -200,4 +200,4 @@ sample totals must not be compared as throughput with earlier runs. Shared
 16/128 admission, one-second polls, two-second helper timeout and three-second
 policy deadline remain unchanged. This accepts the named local unconnected
 control only; connected/OS-failure/sustained capacity and Release adoption
-remain separate. [Ownership and evidence](docs/ITERATION_378.md).
+remain separate. [Ownership and evidence](docs/history/iterations/351-400.md#iteration-378).

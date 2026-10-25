@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "removedDeliveriesAndCiAbsent": 5,
+  "preservedGitBundlesVerified": 12,
+  "helperHistoryArchiveEntriesVerified": 701,
+  "acceptedAndArchivedNpmArchivesVerified": 29,
+  "finalInstallerFilesVerified": 8,
+  "physicalSdkDependencyAndCatchInputsPresent": true,
+  "originalAndRecoveredNativeHashesUnchanged": true,
+  "postCleanupNativeCtest": {
+    "pass": 36,
+    "fail": 0
+  },
+  "focusedDeliveryAndNpmReadmeTests": {
+    "pass": 24,
+    "fail": 0,
+    "skip": 0
+  },
+  "sourceProductCodeChanged": false,
+  "actualRdpDeviceAcceptance": false,
+  "documentationCheck": {
+    "preservedReports": 444,
+    "archiveVolumes": 10,
+    "localLinks": 2245,
+    "mappedAnchors": 1183,
+    "brokenLinks": 0,
+    "originalTextAndHashesVerified": true
+  }
+}
