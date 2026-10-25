@@ -41,9 +41,13 @@ inside `/tmp`, rather than configuring `/tmp` itself.
 
 The host must supply trusted ancestor directories. This admission check does
 not claim protection against a privileged host or a malicious process running
-as the service UID, and it does not implement recovery after both supervisor
-and worker are killed. Broader isolation and abnormal cleanup remain required
-under Stage 1.
+as the service UID. Published 0.3.0 adds bounded schema-1 recovery after both
+supervisor and worker are killed, using independent Node ownership endpoints,
+native marker locks and a verified worker/helper cohort. Recovery removes only
+known orphan metadata and empty owned directories; live, uncertain, legacy and
+unknown content is retained. [Recovery contract](docs/RUNTIME_RECOVERY.md).
+Broader multi-user/service isolation and future drive/spool retention remain
+open under Stage 1.
 
 ## 3. Secrets
 

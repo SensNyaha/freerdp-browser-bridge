@@ -13,6 +13,14 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
+Next work is `feature/stage1-cross-principal-isolation`: actual distinct
+Linux UIDs and Windows LocalService must be denied access to private live,
+sibling and orphan session directories while their owner remains operational.
+Linux GCC 8.3 passes, including a readable-orphan negative control; hosted
+Windows and full regression remain pending. This continues the remaining
+Stage 1 isolation gate after the completed 0.3.0 delivery.
+[Current scope](RUNTIME_RECOVERY.md#cross-principal-acceptance-in-progress).
+
 The Stage 1 runtime recovery feature is completed and publicly released as
 **0.3.0**, before starting HTML clipboard. Its feature/release branches and both
 delivery repairs are merged into shared `master`. All ten exact npm packages,

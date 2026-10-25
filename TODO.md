@@ -9,6 +9,12 @@ Full current-source checks pass Windows 1050/70 skips and Linux 1030/92;
 native CTest remains 38/39. Eight actual desktop profiles pass separately.
 Broader multi-user isolation and the original full Stage 1 remain open.
 [Delivery and evidence](docs/RUNTIME_RECOVERY.md#030-public-delivery).
+Next work is `feature/stage1-cross-principal-isolation`: actual distinct OS
+principals must fail to read/write/claim/recover live, sibling and orphan private
+session directories while their owner remains usable. Exact GCC 8.3 Linux
+passes with a readable-orphan counterexample; actual Windows and full regression
+are pending. No broader Stage 1 checkbox is changed by this initial result.
+[Acceptance scope](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance-in-progress).
 The following preparation checkpoints retain their original scope/status.
 
 Completed preparation history: `feature/stage1-runtime-isolation` implemented the next

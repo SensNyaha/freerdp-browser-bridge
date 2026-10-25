@@ -57,6 +57,37 @@ upgrades and eight actual desktop profiles pass. [Exact release acceptance and
 frozen archives](#030-local-release-acceptance). Merge/tag and publication are
 complete. The original full Stage 1 is still open.
 
+## Cross-principal acceptance in progress
+
+`feature/stage1-cross-principal-isolation` adds an actual OS-principal boundary
+check for the remaining Stage 1 isolation gate. It does not change production
+admission or claim a new RDP capability. Two real Node/native workers and one
+schema-1 orphan share a readable runtime root; a different unprivileged OS
+principal must be able to list that root but must be denied session-directory
+listing, marker read/write, child creation, marker ownership and recovery.
+Both live workers must answer heartbeats after each foreign attempt. The
+legitimate owner then removes only the orphan and joins both workers' cleanup.
+
+Exact GCC 8.3 Linux passes this scenario under owner UID/GID 42420 and foreign
+UID/GID 42421, including an intentionally readable orphan counterexample that
+must fail the privacy probe. A separate private HOME is required for linked
+FreeRDP's settings initialization; its first missing-HOME failure is retained.
+The first fixture close also incorrectly treated its own stdin destruction as
+failure; breaking the command loop preserves all cleanup/exit assertions.
+Evidence is `cross-principal-linux-{first,preflight,home,counterexample}.log`
+under `build/current-validation`. This is native lifecycle, not connected RDP.
+
+Windows uses a one-shot scheduled task under actual
+[`NT AUTHORITY\\LocalService`](https://learn.microsoft.com/en-us/windows/win32/services/localservice-account),
+without user passwords or new local accounts. The probe verifies its actual
+TokenUser SID. A fresh CI-only directory grants LocalService read/execute on the
+public probe/root and write access only to bounded nonsecret receipts; session
+directories retain the production owner/System boundary. Tasks have finite
+execution limits and only the newly registered task is retired. The probe is
+test-only and is never installed in npm or standalone payloads. Actual hosted
+Windows proof, full regression and feature acceptance remain pending. Existing
+same-user DACL checks do not count as this second-principal evidence.
+
 ## Preparation checkpoints
 
 Release preparation now targets **0.3.0** on `release/0.3.0`, from the feature

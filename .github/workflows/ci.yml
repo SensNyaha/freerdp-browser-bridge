@@ -35,6 +35,10 @@ jobs:
       - run: pnpm check
         env:
           BRIDGE_TEST_BINARY_DIR: build/foundation
+          BRIDGE_CROSS_PRINCIPAL_TEST: ${{ runner.os == 'Windows' && '1' || '0' }}
+      - name: Actual distinct Linux UIDs preserve owner and sibling lifecycles
+        if: runner.os == 'Linux'
+        run: sudo env BRIDGE_CROSS_PRINCIPAL_TEST=1 BRIDGE_TEST_BINARY_DIR="$GITHUB_WORKSPACE/build/foundation" "$(command -v node)" --test tests/integration/cross-principal-isolation.test.mjs
   sanitizers:
     runs-on: ubuntu-24.04
     steps:
