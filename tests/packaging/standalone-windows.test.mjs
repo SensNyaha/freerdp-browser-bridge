@@ -69,6 +69,51 @@ function alive(pid) {
   }
 }
 
+test(
+  'Windows installed startup diagnostic uses the private payload and returns only a fixed phase',
+  { skip: process.platform !== 'win32' || !bundle, timeout: 20000 },
+  async () => {
+    const root = resolve(bundle);
+    const scratch = await mkdtemp(
+      join(tmpdir(), 'bridge-standalone-recovery-'),
+    );
+    try {
+      const config = JSON.parse(
+        await readFile(join(root, 'bridge.example.json'), 'utf8'),
+      );
+      await listenBrowserLoopback(async (port) => {
+        config.listen.port = port;
+      });
+      const configuration = join(scratch, 'public-config.json');
+      await writeFile(configuration, JSON.stringify(config));
+      const probe = spawnSync(
+        join(root, 'node/node.exe'),
+        [
+          resolve('tests/fixtures/standalone-startup-diagnostic.mjs'),
+          root,
+          configuration,
+          join(scratch, 'missing-runtime'),
+        ],
+        {
+          cwd: root,
+          windowsHide: true,
+          encoding: 'utf8',
+          timeout: 12000,
+          maxBuffer: 8192,
+        },
+      );
+      assert.equal(probe.status, 0);
+      assert.deepEqual(JSON.parse(probe.stdout.trim().split(/\r?\n/).at(-1)), {
+        v: 1,
+        phase: 'complete',
+        failed: false,
+      });
+    } finally {
+      await retireScratch(scratch);
+    }
+  },
+);
+
 for (const mode of ['stop-byte', 'parent-eof', 'invalid-control', 'host-crash'])
   test(
     `Windows standalone supervisor / private Node and live native worker: ${mode} reclaims process tree`,
@@ -174,8 +219,56 @@ for (const mode of ['stop-byte', 'parent-eof', 'invalid-control', 'host-crash'])
         timer = setTimeout(() => child.kill(), 30000);
         const readyDeadline = Date.now() + 12000;
         while (!output.includes('STANDALONE_READY')) {
-          if (child.exitCode !== null || Date.now() > readyDeadline)
-            throw new Error('PACKAGED_SERVICE_NOT_READY');
+          if (child.exitCode !== null || Date.now() > readyDeadline) {
+            const probe = spawnSync(
+              join(root, 'node/node.exe'),
+              [
+                resolve('tests/fixtures/standalone-startup-diagnostic.mjs'),
+                root,
+                configPath,
+                runtimeRoot,
+              ],
+              {
+                cwd: root,
+                windowsHide: true,
+                encoding: 'utf8',
+                timeout: 10000,
+                maxBuffer: 8192,
+                env: {
+                  SystemRoot: process.env.SystemRoot,
+                  WINDIR: process.env.WINDIR,
+                  PATH: join(process.env.SystemRoot, 'System32'),
+                  TEMP: runtimeRoot,
+                  TMP: runtimeRoot,
+                },
+              },
+            );
+            let diagnostic = 'unavailable';
+            try {
+              const value = JSON.parse(
+                probe.stdout.trim().split(/\r?\n/).at(-1),
+              );
+              if (
+                value.v === 1 &&
+                typeof value.failed === 'boolean' &&
+                [
+                  'import',
+                  'config',
+                  'resolve',
+                  'recovery',
+                  'create',
+                  'listen',
+                  'close',
+                  'complete',
+                ].includes(value.phase)
+              )
+                diagnostic =
+                  value.phase + (value.failed ? '-failed' : '-passed');
+            } catch {
+              /* Ignore arbitrary child output. */
+            }
+            throw new Error('PACKAGED_SERVICE_NOT_READY: ' + diagnostic);
+          }
           await delay();
         }
         const now = Math.floor(Date.now() / 1000);

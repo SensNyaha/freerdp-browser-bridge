@@ -53,6 +53,15 @@ bool private_runtime_owner(HANDLE handle, bool protected_directory, bool root) {
   DWORD used = 0;
   const bool read = GetTokenInformation(token, TokenUser, storage.data(),
                                         static_cast<DWORD>(storage.size()), &used) != FALSE;
+  alignas(TOKEN_OWNER) std::array<BYTE, sizeof(TOKEN_OWNER) + SECURITY_MAX_SID_SIZE + 16>
+      owner_storage{};
+  // An elevated Windows token can use Builtin Administrators as the default
+  // owner of newly created files. Admit that exact token-selected marker owner
+  // only; protected session directories still require the individual user SID.
+  const bool read_owner =
+      !protected_directory && !root &&
+      GetTokenInformation(token, TokenOwner, owner_storage.data(),
+                           static_cast<DWORD>(owner_storage.size()), &used) != FALSE;
   if (!CloseHandle(token))
     std::terminate();
   if (!read)
@@ -77,10 +86,17 @@ bool private_runtime_owner(HANDLE handle, bool protected_directory, bool root) {
     return false;
   alignas(DWORD) std::array<BYTE, SECURITY_MAX_SID_SIZE> administrators{};
   DWORD administrators_size = static_cast<DWORD>(administrators.size());
-  if (root && !CreateWellKnownSid(WinBuiltinAdministratorsSid, nullptr, administrators.data(),
-                                  &administrators_size))
+  if ((root || !protected_directory) &&
+      !CreateWellKnownSid(WinBuiltinAdministratorsSid, nullptr, administrators.data(),
+                          &administrators_size))
     return false;
+  const auto default_owner =
+      read_owner ? reinterpret_cast<const TOKEN_OWNER *>(owner_storage.data())->Owner : nullptr;
+  const bool default_administrator_marker =
+      !protected_directory && !root && default_owner && IsValidSid(default_owner) &&
+      EqualSid(default_owner, administrators.data()) && EqualSid(owner, administrators.data());
   if (!EqualSid(owner, user) &&
+      !default_administrator_marker &&
       (!root || (!EqualSid(owner, system.data()) && !EqualSid(owner, administrators.data()))))
     return false;
   constexpr DWORD write_access = FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA |

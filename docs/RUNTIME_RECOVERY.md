@@ -1,7 +1,8 @@
 # Runtime recovery
 
 Release preparation now targets **0.3.0** on `release/0.3.0`, from the feature
-implementation at `51283d1`. The public stable version remains 0.2.5. Fresh
+implementation at `51283d1`, with candidate corrections under validation. The
+public stable version remains 0.2.5. Fresh
 0.3.0 native CTest passes Windows **38/38** and exact GCC 8.3 Linux **39/39**;
 workspace checks pass Windows **1044/70 skips** and Linux **1024/92 skips**,
 zero failures. Exact archived packages pass all four external npm consumers
@@ -27,6 +28,17 @@ and `recovery-release-windows-portable-owner.log` under
 unpublished Linux archive separately from the corrected hash. These are local
 candidate results: installed upgrades, actual desktop profiles, final merge and
 publication remain open. They do not close the original full Stage 1 gate.
+
+Hosted Windows foundation CTest in run `40182867601` then exposed a Windows
+ownership distinction absent from the local token: an elevated process can
+create a marker whose default owner is Builtin Administrators. The correction
+under validation admits that marker owner only when it exactly matches the
+process token's default Administrators owner. Marker ACLs must still grant only
+the individual service user and LocalSystem; session-directory ownership must
+still match the individual user. Arbitrary groups and group-owned session
+directories remain refused. No ACL or owner is repaired. The existing trusted
+administrator host boundary is unchanged. Hosted elevated acceptance and rebuilt
+candidate archives remain pending; the first candidate is not accepted.
 
 Status: in development on `feature/stage1-runtime-isolation`. Linux root
 admission is implemented. The internal parent ownership endpoint is implemented

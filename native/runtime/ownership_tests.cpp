@@ -5,6 +5,7 @@
 #include <string>
 #ifdef _WIN32
 #include "private_directory.hpp"
+#include <aclapi.h>
 #else
 #include <sys/stat.h>
 #include <unistd.h>
@@ -98,6 +99,31 @@ TEST_CASE("Runtime marker refuses hard links without changing either link") {
   CHECK_NOTHROW(RuntimeLease{directory.path});
 }
 #ifdef _WIN32
+TEST_CASE("Elevated default marker ownership does not authorize a group-owned session directory") {
+  HANDLE token = nullptr;
+  REQUIRE(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token));
+  alignas(TOKEN_OWNER) std::array<BYTE, sizeof(TOKEN_OWNER) + SECURITY_MAX_SID_SIZE + 16> storage{};
+  DWORD used = 0;
+  const bool read = GetTokenInformation(token, TokenOwner, storage.data(),
+                                        static_cast<DWORD>(storage.size()), &used) != FALSE;
+  REQUIRE(CloseHandle(token));
+  REQUIRE(read);
+  const auto owner = reinterpret_cast<const TOKEN_OWNER *>(storage.data())->Owner;
+  REQUIRE(IsValidSid(owner));
+  alignas(DWORD) std::array<BYTE, SECURITY_MAX_SID_SIZE> administrators{};
+  DWORD size = static_cast<DWORD>(administrators.size());
+  REQUIRE(CreateWellKnownSid(WinBuiltinAdministratorsSid, nullptr, administrators.data(), &size));
+  if (!EqualSid(owner, administrators.data()))
+    SKIP("Requires an actual elevated token whose default file owner is Administrators");
+  Directory directory;
+  CHECK_NOTHROW(RuntimeLease{directory.path});
+  auto path = directory.path.native();
+  REQUIRE(SetNamedSecurityInfoW(path.data(), SE_FILE_OBJECT,
+                                 OWNER_SECURITY_INFORMATION, owner, nullptr, nullptr,
+                                 nullptr) == ERROR_SUCCESS);
+  CHECK_THROWS_AS(RuntimeLease{directory.path}, RuntimeOwnershipError);
+  CHECK(std::filesystem::file_size(directory.path / ".rdp-worker-owned") == 10);
+}
 TEST_CASE("Runtime lease refuses an inherited unprotected Windows directory ACL") {
   Directory directory;
   REQUIRE(std::filesystem::remove(directory.path / ".rdp-worker-owned"));
