@@ -30,7 +30,8 @@ asset upload is introduced. A verified retained run can resume partial uploads;
 a fresh build still refuses them. Pointer/schema/fork/workflow/source/job drift
 and the actual CLI partial-plan path have explicit tests.
 
-This delivery repair is on `fix/standalone-minor-publication`; focused release
+This delivery repair was merged from `fix/standalone-minor-publication`
+(`275a7ea`); focused release
 tests pass **17/17** and workflow lint passes. Full current-source `pnpm check`
 passes Windows **1050/70 skips/0 failures** and Linux **1030/92 skips/0 failures**,
 recorded in `recovery-release-resume-{windows,linux}-check.log` under
@@ -576,6 +577,8 @@ no product code or test condition was changed to bypass those failures.
 `51283d1`, release `1b92332` and delivery repairs `e071e11`/`275a7ea` are merged
 into shared `master`. Immutable private `v0.3.0` targets `4ce88b3`; its exported
 public product tag targets `9e8b229`. No accepted archive or tag was replaced.
+Public `main` includes the accepted candidate history through merge `c00ab44`;
+the `release/0.3.0` ref is retained as a merged historical reference.
 
 All ten npm versions are public at the exact accepted SHA-512 integrity.
 The five GitHub Releases and OIDC workflows succeed:
@@ -615,9 +618,11 @@ remain open. No HTML clipboard implementation is included.
 Additional publisher-main source CI first exposed an unchanged Linux stream
 lifecycle fixture: a nonblocking codec-selection attempt returned the supported
 `busy` result while the test immediately required `accepted`. The first failed
-log is retained in public evidence. Its failed/cancelled jobs are repeated once
-on the same source; no assertion, deadline or product binary is changed. The
-immutable product-tag source CI had already passed all its jobs.
+log is retained in public evidence. One repeat of its failed/cancelled jobs
+passes Windows and both Linux compiler profiles on the same source; sanitizers
+and fuzz also pass. No assertion, deadline or product binary was changed. The
+immutable product-tag source CI had already passed all its jobs. The final
+documentation merge changes no product, native, test or workflow input.
 
 ## 0.3.0 local release acceptance
 

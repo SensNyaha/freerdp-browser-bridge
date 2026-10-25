@@ -557,47 +557,29 @@
       {
         "id": 40192059536,
         "name": "foundation",
-        "conclusion": null,
+        "conclusion": "success",
         "commit": "0939d695f25a3ee83241b5c1197fb5ac31251c23",
         "jobs": [
           {
-            "status": "in_progress",
-            "steps": [
-              {
-                "name": "Run pnpm build:native",
-                "status": "in_progress",
-                "conclusion": null
-              }
-            ],
+            "status": "completed",
+            "steps": [],
             "name": "build (windows-latest, cl)",
             "id": 121167781945,
-            "conclusion": null
+            "conclusion": "success"
           },
           {
-            "status": "in_progress",
-            "steps": [
-              {
-                "name": "Run pnpm check",
-                "status": "in_progress",
-                "conclusion": null
-              }
-            ],
+            "status": "completed",
+            "steps": [],
             "name": "build (ubuntu-24.04, g++)",
             "id": 121167782194,
-            "conclusion": null
+            "conclusion": "success"
           },
           {
-            "status": "in_progress",
-            "steps": [
-              {
-                "name": "Run pnpm check",
-                "status": "in_progress",
-                "conclusion": null
-              }
-            ],
+            "status": "completed",
+            "steps": [],
             "name": "build (ubuntu-24.04, g++-12)",
             "id": 121167782222,
-            "conclusion": null
+            "conclusion": "success"
           },
           {
             "status": "completed",
@@ -607,7 +589,7 @@
             "conclusion": "success"
           }
         ],
-        "status": "in_progress",
+        "status": "completed",
         "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40192059536"
       }
     ]
@@ -648,5 +630,20 @@
     "fullOriginalStage1": false,
     "expandedNodeAddonSanitizerMatrix": false,
     "publicInstalledLabTestsAreRealRdpDesktop": false
+  },
+  "candidateHistory": {
+    "commit": "21a36f1cd70286ea2998bf355ef22cebeb4a22be",
+    "mergedIntoPublicMain": "c00ab4413920adc4dcf13597fbdfbf995c5efb94",
+    "retainedMergedBranch": "release/0.3.0",
+    "productTreeCompared": [
+      "apps",
+      "packages",
+      "native",
+      "CMakeLists.txt",
+      "package.json",
+      "pnpm-lock.yaml",
+      "packaging/standalone/locks"
+    ],
+    "productTreeDiff": []
   }
 }
