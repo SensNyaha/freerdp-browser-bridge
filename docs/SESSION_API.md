@@ -14,8 +14,8 @@ server reasons map to `RDP_SERVER_TIMEOUT` (504), `RDP_SERVER_LOGOFF` (502),
 Each error exposes only its stable code, status, fixed message and retryability.
 Numeric FreeRDP diagnostics are not included. These selected mappings have unit
 coverage; full remote reason/server-profile acceptance remains open. [Connection contract](CONNECTION_CORE.md),
-[server reason evidence](ITERATION_338.md), [NLA-required evidence](ITERATION_345.md),
-[public error evidence](ITERATION_335.md).
+[server reason evidence](history/iterations/301-350.md#iteration-338), [NLA-required evidence](history/iterations/301-350.md#iteration-345),
+[public error evidence](history/iterations/301-350.md#iteration-335).
 
 An optional trusted-host [worker RSS policy](WORKER_MEMORY_POLICY.md) adds fixed
 native-backend failures `WORKER_MEMORY_LIMIT` (503, not retryable) and
@@ -32,7 +32,7 @@ Debug foundation and separately built current Release helpers. Existing
 production artifacts/defaults are unchanged. Broader CPU/connected acceptance
 remains separate.
 
-The [native resource composition test](ITERATION_317.md) additionally verifies
+The [native resource composition test](history/iterations/301-350.md#iteration-317) additionally verifies
 an actual linked worker's OS RSS breach at a synthetic TLS certificate wait.
 The native adapter preserves the exact memory failure; the manager retires
 tokens and releases capacity after joined adapter close. The local TLS peer
@@ -41,7 +41,7 @@ also passes the named connected native-adapter/manager memory-failure, lease
 and joined cleanup slice. Broader public resource profiles and connected sibling
 isolation remain separate gates; the named public RSS slice is recorded below.
 
-The [public native/TLS regression](ITERATION_318.md) also verifies actual
+The [public native/TLS regression](history/iterations/301-350.md#iteration-318) also verifies actual
 HTTP/control/media sockets while the synthetic certificate prompt is pending.
 An OS RSS breach emits one fixed control error and closes both channels with
 1000 / `session terminal`. GET retains HTTP 200 with the failed snapshot;
@@ -50,7 +50,7 @@ Native close/PID/runtime cleanup and known-value diagnostic redaction pass.
 This peer does not implement a desktop; the separate connected public RSS
 control follows below. Other resource/soak gates remain open.
 
-The [connected Windows public RSS control](ITERATION_319.md) additionally
+The [connected Windows public RSS control](history/iterations/301-350.md#iteration-319) additionally
 receives actual 1080p JPEG over media WS before sampling and observes the same
 fixed error, terminal control/media closure, failed GET snapshot and token
 retirement after an actual connected RSS breach. It uses a Node ACK receiver,
@@ -58,7 +58,7 @@ not browser rendering. This accepts the named connected memory-error transport
 slice; the separate CPU failure control follows below. Connected siblings and
 complete resource/soak acceptance remain open.
 
-The [connected public CPU control](ITERATION_320.md) separately passes actual
+The [connected public CPU control](history/iterations/301-350.md#iteration-320) separately passes actual
 Windows counter growth and bounded local IPC load after the first connected
 baseline/public JPEG. Exactly one WORKER_CPU_LIMIT reaches control, both
 channels close, GET retains the fixed failed snapshot and attach authority
@@ -112,19 +112,19 @@ non-promise termination return, or elapsed time alone is not retirement proof.
 The retention sweep preserves these owned entries, bounded by admission limits;
 `statistics().active` counts owned reservations rather than connected desktops.
 This supersedes the historical deadline-release fallback in
-[iteration 56](ITERATION_056.md). [Current controls](ITERATION_384.md).
+[iteration 56](history/iterations/051-100.md#iteration-056). [Current controls](history/iterations/351-400.md#iteration-384).
 Trusted-host `startupTimeoutMs`, `shutdownTimeoutMs` and `terminationTimeoutMs`
 accept integer milliseconds from 1 through 2,147,483,647. The constructor refuses
 larger values before starting the sweep timer or creating a worker: Node would
 otherwise shorten an overflowing delay to one millisecond. Default budgets are
-unchanged. [Admission and runtime control](ITERATION_382.md).
+unchanged. [Admission and runtime control](history/iterations/351-400.md#iteration-382).
 While the backend `start()` promise is pending, startup also owns a monotonic
 absolute deadline. It is checked before backend invocation, before accepting
 worker state callbacks and after completion, so a delayed timer callback cannot
 admit late startup success. Expiry reports the existing `WORKER_START_TIMEOUT`
 and uses normal abort/cleanup. Completion retires this startup-only deadline;
 later connection progress keeps its separate existing lifecycle/transport rules.
-[Stall, boundary and native lifecycle controls](ITERATION_383.md).
+[Stall, boundary and native lifecycle controls](history/iterations/351-400.md#iteration-383).
 HTTP bodies are limited to 64 KiB; control records to 4 KiB, output
 backlog to 64 KiB and all messages to 256 per second, with at most 32 non-input
 commands per second. Socket/upgrade counts are bounded. Experimental connected
@@ -135,13 +135,13 @@ with **40 global / 20 per-principal** limits and `framed-pipes` workers. It
 verifies pre-factory overflow refusal, ten-slot replacement, heartbeat and joined
 cleanup without CONFIGURE/SECRET/CONNECT or an RDP-connected state. This is
 separate from the Linux packet addon's fixed 32-pair capacity and production
-RDP/backend/resource acceptance. [Evidence](ITERATION_291.md).
+RDP/backend/resource acceptance. [Evidence](history/iterations/251-300.md#iteration-291).
 
 A separate three-session native framed fixture force-terminates one owned C++
 worker, observes its structured `WORKER_FAILED` state and joined slot/runtime
 release, then starts a replacement while the two siblings keep heartbeat.
 This remains unconnected lifecycle evidence through the test-only adapter,
-separate from connected RDP/resource/soak acceptance. [Evidence](ITERATION_292.md).
+separate from connected RDP/resource/soak acceptance. [Evidence](history/iterations/251-300.md#iteration-292).
 
 Control currently emits state/error events and supports session.detach.
 Native-backend control attachments now support certificate.prompt and certificate.response;
@@ -200,7 +200,7 @@ microphone only after both pcmInput/microphoneReset HELLO capabilities. Missing
 capabilities refuse before configuration/credentials; Opus input refuses before
 startup. Actual XRDP/API/Edge metadata replay is waiting at epoch 0 with no device
 permission or PCM. Ready AUDIN/remote acceptance remains open.
-[Evidence](ITERATION_128.md).
+[Evidence](history/iterations/101-150.md#iteration-128).
 
 Each session owns a fresh trusted backend instance. Starting receives a cloned,
 validated configuration and abort signal. Secrets are dereferenced after startup
@@ -213,7 +213,7 @@ worker child-close/runtime-directory cleanup. Startup checks cancellation after
 filesystem awaits and HELLO, so termination before spawning cannot create a late
 child. This does not establish simultaneous hard-kill/orphan reclamation, arbitrary
 filesystem failure handling or forced cleanup beyond its deadline.
-[Termination ownership evidence](ITERATION_056.md).
+[Termination ownership evidence](history/iterations/051-100.md#iteration-056).
 
 Pino omits URLs, bodies and headers and recursively redacts secret keys.
 Public failures have fixed messages and do not forward backend diagnostics.
@@ -277,7 +277,7 @@ progress continues, and a new lease can recover. Resubscription on that failed l
 returns MEDIA_FAILED. No exception is propagated into the native parser callback.
 Control, stale, terminal or closing leases return ATTACH_INVALID. No packet queue,
 new timer/thread, public metrics, audible or browser acceptance is added.
-[Fixture evidence](ITERATION_067.md).
+[Fixture evidence](history/iterations/051-100.md#iteration-067).
 
 ## PCM media negotiation
 
@@ -288,8 +288,8 @@ on close/fault and preserves RDP/control when only the consumer fails. No audio
 records are sent to legacy viewers. The socket uses ordered binary stream 3, with
 source stop/reset preceding fresh config/samples. Native PCM creation and the
 reference harness gesture/Worklet admission path are implemented; audible RDP
-acceptance remains open. [Socket evidence](ITERATION_069.md) uses a fake backend;
-[public viewer evidence](ITERATION_071.md) distinguishes synthetic and actual tests.
+acceptance remains open. [Socket evidence](history/iterations/051-100.md#iteration-069) uses a fake backend;
+[public viewer evidence](history/iterations/051-100.md#iteration-071) distinguishes synthetic and actual tests.
 
 ## PCM media metrics
 
@@ -323,7 +323,7 @@ The intervals overlap and must not be summed. Client ACKs indicate admission,
 not audible completion or proof of actual Worklet behavior by an arbitrary client.
 No identity, target, credential, revision/epoch/PTS or sample payload is a label.
 Native/browser jitter and underflow metrics and measured LAN audio acceptance
-remain open. [Evidence](ITERATION_072.md).
+remain open. [Evidence](history/iterations/051-100.md#iteration-072).
 
 ### Microphone transport metrics (iteration 145)
 

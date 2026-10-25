@@ -31,11 +31,19 @@ libraries. Consumers need no GCC, CMake or system FreeRDP. Node.js is not bundle
 This probe starts and joins a native worker without an RDP connection:
 
 ```js
-import { resolveNativeRuntime, probeWorkerBuild } from '@freerdp-bridge/node';
+import {
+  resolveNativeRuntime,
+  recoverRuntimeSessions,
+  probeWorkerBuild,
+} from '@freerdp-bridge/node';
 
 const worker = await resolveNativeRuntime({
   runtimeRoot: '/private/run/rdp-bridge',
 });
+const recovery = await recoverRuntimeSessions({ ...worker, timeoutMs: 10000 });
+if (!recovery.supported || !recovery.complete) {
+  throw new Error('RDP_RUNTIME_RECOVERY_INCOMPLETE');
+}
 const build = await probeWorkerBuild(worker);
 console.log(build.bridgeVersion);
 ```
@@ -46,6 +54,15 @@ Do not strip returned Windows namespace prefixes. A custom `packageDirectory`
 must reference the complete installed runtime and come from trusted host config.
 
 ## Limitations
+
+Version 0.3.0 adds explicit `recoverRuntimeSessions` before application listener
+startup. It preserves active sessions, legacy/unknown contents and uncertain
+ownership; it never recursively clears a runtime root or kills session processes.
+Ready native packages must include the matching worker/helper cohort. During
+release preparation use complete verified local archives; a source version alone
+does not establish registry availability. Published 0.2.5 lacks this API. See the
+[runtime recovery guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.3.0/docs/RUNTIME_RECOVERY.md)
+for startup, bounded cancellation, permissions and retention.
 
 This lower-level library has no HTTP listener or default authentication. Use
 the session/adapter lifecycle for verified identity, policy, bounded queues,

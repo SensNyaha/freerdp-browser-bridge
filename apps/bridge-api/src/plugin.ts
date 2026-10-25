@@ -17,12 +17,16 @@ export {
   SessionError,
   resolveNativeRuntime,
   NativeRuntimeError,
+  recoverRuntimeSessions,
+  RuntimeRecoveryError,
 } from '@freerdp-bridge/node';
 export type {
   WorkerOptions,
   SessionCreate,
   Principal,
   NativeRuntimeOptions,
+  RuntimeRecoveryOptions,
+  RuntimeRecoveryReport,
 } from '@freerdp-bridge/node';
 export { createSecureLogger } from './logging.js';
 export type BridgeHandle = Awaited<ReturnType<typeof registerSessionRoutes>>;

@@ -6,7 +6,7 @@ advertise the output-only extension; microphone remains Windows-only. Native /
 local TLS and packaging pass, but actual Linux XRDP still lacks source samples
 despite Formats, with one protocol failure under investigation. Historical
 Windows-only statements below are superseded only for the implemented slice.
-[Current evidence](ITERATION_205.md).
+[Current evidence](history/iterations/201-250.md#iteration-205).
 
 Iteration 80 (2026-10-11) implements SPECIFICATION §2.6 and MEDIA_PIPELINE §6
 within the existing serialized `AudioSession` lifecycle. A final optional native

@@ -4,7 +4,7 @@ Current activation: Windows bundled workers select the guarded static PCM path
 through opt-in private/public settings and typed listeners. Public media socket
 negotiation and the reference harness gesture/Worklet admission route are implemented;
 actual audible RDP acceptance is open. Historical foundation sections below describe
-their original scope. [Private worker](ITERATION_066.md), [public viewer](ITERATION_071.md).
+their original scope. [Private worker](history/iterations/051-100.md#iteration-066), [public viewer](history/iterations/051-100.md#iteration-071).
 
 Implements the first isolated part of SPECIFICATION §2.6, ARCHITECTURE §5 and
 Stage 6. The worker does not yet register an audio backend or advertise playback.
@@ -43,7 +43,7 @@ future pipeline. There is no thread synchronization or host audio-device access.
 
 Portable tests cover independent sample vectors, signed extremes, packet
 fragmentation, a ten-second rational clock, bounds, rejection atomicity and reset.
-See [iteration 36](ITERATION_036.md). These tests do not prove RDPSND negotiation,
+See [iteration 36](history/iterations/001-050.md#iteration-036). These tests do not prove RDPSND negotiation,
 remote audible output, browser playback, microphone support or LAN queue latency.
 
 ## Node PCM record-credit preparation
@@ -65,7 +65,7 @@ Wrong/duplicate/expired ACK, uncertain write and source protocol errors retire t
 owner. Deadline policy is 20..2,000 ms. Close clears owned samples and credit.
 No socket/timer or public selection is installed yet. Local snapshots expose
 bounded storage and saturating counters; no public audio metrics are added.
-[Pure evidence](ITERATION_068.md).
+[Pure evidence](history/iterations/051-100.md#iteration-068).
 
 ## Browser record-credit admission
 
@@ -81,7 +81,7 @@ deadlines close the port and exclusive AudioContext. Context loss/explicit close
 does not acknowledge abandoned records. Default coalescing mode is unchanged.
 The outer media consumer must send `audio.ack` from this callback and negotiate
 the matching socket extension; the isolated factory does not select a socket.
-[Pure and actual Edge evidence](ITERATION_070.md).
+[Pure and actual Edge evidence](history/iterations/051-100.md#iteration-070).
 
 ## Bounded PCM handoff queue
 
@@ -108,7 +108,7 @@ are retained, with saturating 64-bit counters to avoid rollover.
 
 Local snapshots expose accepted/consumed/silence frames, discarded packets/frames,
 reset discards, invalid calls, underflow count, queued frames and high water. No
-public session metrics are yet published. [Iteration 37](ITERATION_037.md) verifies
+public session metrics are yet published. [Iteration 37](history/iterations/001-050.md#iteration-037) verifies
 ring wrap, atomic overflow, silence, reset, randomized FIFO equivalence and copying
 the normalizer's borrowed output before reuse.
 
@@ -145,7 +145,7 @@ remains. This adds no packet queue, catch-up burst, timer or thread and preserve
 the existing late-discard policy. A controlled coarse-wait model reproduces
 cumulative loss with the former relative 20 ms wait and avoids it with anchored
 waits; actual OS/graphics/callback stalls and audible quality remain separate
-acceptance. [Implementation and scoped evidence](ITERATION_371.md).
+acceptance. [Implementation and scoped evidence](history/iterations/351-400.md#iteration-371).
 
 Queue `discard` removes up to a bounded frame request, preserves the remaining
 FIFO including wrap, and counts `playback_skipped_frames` separately from consumed,
@@ -153,7 +153,7 @@ overflow-dropped and reset-discarded frames. Packet snapshots count output packe
 missed intervals, discontinuities and invalid clocks. These counters remain native;
 no public metrics or audio wire path is activated by this block.
 
-[Iteration 49](ITERATION_049.md) checks independent PCM/timestamp vectors, silence,
+[Iteration 49](history/iterations/001-050.md#iteration-049) checks independent PCM/timestamp vectors, silence,
 missed intervals, wrap, monotonic/overflow rejection, reset and a virtual-minute
 drift test, plus actual linked RDPSND with simulated SVC feeding the packetizer.
 Audible browser/server audio, microphone and <150 ms LAN acceptance remain open.
@@ -208,7 +208,7 @@ the source stream remains continuous. Future sending must drop old unsent epochs
 and preserve WebSocket order; browser config/attachment resets must clear scheduled
 old PCM. No implemented delivery/ACK/backpressure ownership is claimed yet.
 
-[Iteration 50](ITERATION_050.md) checks independent identical native/TypeScript
+[Iteration 50](history/iterations/001-050.md#iteration-050) checks independent identical native/TypeScript
 vectors, all truncations, parser allocation limits, signed sample byte order,
 silence accounting, epoch mismatch, RWB1 sequences and owned output copies.
 The fuzz dispatcher/corpus includes these classes; local Clang/sanitizer/fuzzer
@@ -248,7 +248,7 @@ The isolated [source owner](#source-status-and-epoch-ownership) now reserves mat
 epochs and clears unsent native data before status while preserving already taken
 record order. Worker selection and Node/browser flush even without fresh PCM
 remain next steps.
-[Iteration 60](ITERATION_060.md) records codec, parser and queue evidence.
+[Iteration 60](history/iterations/051-100.md#iteration-060) records codec, parser and queue evidence.
 
 ## Isolated browser PCM queue and AudioWorklet
 
@@ -282,7 +282,7 @@ A future live owner must verify the [requested context rate](https://developer.m
 and use explicit user activation. Other device/browser rates remain unsupported
 in this isolated baseline, rather than silently interpreting 48 kHz as 44.1 kHz.
 
-[Iteration 51](ITERATION_051.md) checks pure FIFO/samples/reset/refusal and actual
+[Iteration 51](history/iterations/051-100.md#iteration-051) checks pure FIFO/samples/reset/refusal and actual
 Edge OfflineAudioContext output plus live AudioWorklet port acknowledgments.
 Fixtures keep one command in flight. This block is not attached to the production
 viewer or server: a bounded production MessagePort owner, RWB1 browser parser,
@@ -315,7 +315,7 @@ close the port, disconnect the node and close the context. Cleanup is idempotent
 late ACKs cannot revive the sender. External callers must not reuse the transferred
 context. The factory is not called by today's reference viewer or public API.
 
-[Iteration 52](ITERATION_052.md) covers parser limits, a 100-packet burst with one
+[Iteration 52](history/iterations/051-100.md#iteration-052) covers parser limits, a 100-packet burst with one
 posted command/one latest packet, config ordering, stale ACK/PTS/sequence refusal,
 deadlines, fixed statistics and cleanup faults. Actual Edge exercises TypeScript
 RWB1 bytes through the owner and real AudioWorklet, checks bounded credits/epoch
@@ -349,14 +349,14 @@ Lifetime counters report captures/sends, accepted configs, replacement/reset
 discards, blocked calls and invalid clocks; spans remain borrowed only for the
 callback duration.
 
-[Iteration 53](ITERATION_053.md) covers credit, config ordering, exact IPC samples,
+[Iteration 53](history/iterations/051-100.md#iteration-053) covers credit, config ordering, exact IPC samples,
 source reset before fresh PCM, owner/clock/callback/exhaustion faults and actual
 linked RDPSND with simulated SVC Close/restart. Remaining activation work includes
 worker configuration/capability/
 scheduling/shutdown and Node/browser integration. Actual audible RDP/microphone,
 larger source bursts, earlier core allocations and latency acceptance remain open.
 Windows workers now have bounded priority output ownership in
-[iteration 58](ITERATION_058.md); the publisher is not wired to it yet.
+[iteration 58](history/iterations/051-100.md#iteration-058); the publisher is not wired to it yet.
 
 ### Source-to-consumer discard barrier
 
@@ -374,12 +374,12 @@ exceptions fail with fixed state. Stats add `reset_pending`/`consumer_resets`.
 pipe/browser flush. No callback can retract an in-flight record. Fatal callback
 or exhaustion still requires outer connection/output retirement. Browser buffer
 reset when a source stops without fresh PCM remains an activation prerequisite.
-[Iteration 59](ITERATION_059.md) combines this barrier with actual linked RDPSND /
+[Iteration 59](history/iterations/051-100.md#iteration-059) combines this barrier with actual linked RDPSND /
 simulated SVC and the bounded output queue. Worker selection remains disabled.
 
 ### Source status and epoch ownership
 
-[Iteration 62](ITERATION_062.md) extends the same serialized publisher with an
+[Iteration 62](history/iterations/051-100.md#iteration-062) extends the same serialized publisher with an
 optional previous status revision. Omission preserves the packet-only foundation
 mode; supplying zero enables the immutable enabled-PCM status profile. No worker
 selects this mode yet. It adds one fixed 40-byte status buffer (total publisher
@@ -413,7 +413,7 @@ worker selection and audible remote acceptance remain open.
 
 ### Ordered public source status codec
 
-[Iteration 63](ITERATION_063.md) prepares RWB1 AUDIO_STATE type **0x09** on audio
+[Iteration 63](history/iterations/051-100.md#iteration-063) prepares RWB1 AUDIO_STATE type **0x09** on audio
 stream 3. Type 0x05 remains cursor shape. The header is the existing 28-byte v1
 layout, flags exactly DISCONTINUITY 0x0002, payload exactly the 40-byte private
 source status schema; total 68 bytes. Header and payload worker timestamps must
@@ -432,7 +432,7 @@ selection/listeners/replay and actual audio remain open.
 
 ### Browser source status ownership
 
-[Iteration 64](ITERATION_064.md) adds immutable `sourceStatus: true` to the isolated
+[Iteration 64](history/iterations/051-100.md#iteration-064) adds immutable `sourceStatus: true` to the isolated
 PCM sender/factory. Default false preserves packet-only fixtures and refuses
 status. This is preparation for media negotiation, not an active harness feature.
 Opt-in requires initial status before config/samples, increasing source revisions,
@@ -470,7 +470,7 @@ The historical foundation below was activated for PCM in later iterations.
 selection with the same owner/retirement contract. The production worker still
 uses default PCM; Opus private/public selection remains open.
 
-[Iteration 65](ITERATION_065.md) adds isolated `AudioSession`: one RDP-thread sink,
+[Iteration 65](history/iterations/051-100.md#iteration-065) adds isolated `AudioSession`: one RDP-thread sink,
 static gate, scoped provider and status-aware publisher, with no additional sample
 queue. Construct after context creation, before addin loading; fixed backend/PCM
 policy and nested scope rules still apply. Output/discard targets and context must
@@ -544,14 +544,14 @@ Free retires on the owner, or becomes an idempotent no-op after retirement on an
 thread. Concurrent destruction/callbacks are forbidden. A premature foreign Free
 cannot retire live owner resources.
 
-[Iteration 38](ITERATION_038.md) exercises callbacks through public API pointers.
+[Iteration 38](history/iterations/001-050.md#iteration-038) exercises callbacks through public API pointers.
 These are native ABI/lifecycle fixtures, not actual RDPSND channel, server or
 browser integration. Worker registration, IPC scheduling and end-to-end audio
 remain open.
 
 ## Source availability snapshots
 
-[Iteration 61](ITERATION_061.md) adds owner-thread `SinkStats.availability` without
+[Iteration 61](history/iterations/051-100.md#iteration-061) adds owner-thread `SinkStats.availability` without
 changing device ownership. Initial/successfully opened sources are `waiting`;
 only accepted, nonempty normalized samples mark `ready`. Queue underflow silence
 does not establish or change source availability. A failed Open preserves the
@@ -596,7 +596,7 @@ an unknown replacement disables dispatch and is preserved during teardown.
 Out-of-order close fails before retiring any sink/gate resources. Outstanding audio
 completions keep the inner scope attached and prevent outer retirement.
 
-[Iteration 48](ITERATION_048.md) verifies both RDPEI/RDPSND binding orders with the
+[Iteration 48](history/iterations/001-050.md#iteration-048) verifies both RDPEI/RDPSND binding orders with the
 actual linked addins and simulated public transports. This is provider composition,
 not remote touch or audible audio acceptance; worker audio remains disabled.
 
@@ -609,7 +609,7 @@ layout is inspected. The scope closes by retiring sink resources before restorin
 the previous loader. A foreign replacement is preserved and reported as a broken
 scope contract. Sink/context lifetimes must cover the host's final callbacks.
 
-[Iteration 39](ITERATION_039.md) uses the actual pinned static RDPSND entry with a
+[Iteration 39](history/iterations/001-050.md#iteration-039) uses the actual pinned static RDPSND entry with a
 fake public SVC transport. It negotiates PCM, dispatches Wave2 through upstream to
 the sink, checks exact PCM and wave confirmations, and exercises teardown. This is
 actual linked channel integration with simulated transport, not actual remote RDP
@@ -655,7 +655,7 @@ decoded sample widths, check negotiated format-index membership or reset the sin
 on Close. Invalid records poison validation until reset. No per-record allocation,
 codec decode, IPC or timestamp scheduling occurs here.
 
-[Iteration 40](ITERATION_040.md) places these primitives ahead of the actual
+[Iteration 40](history/iterations/001-050.md#iteration-040) places these primitives ahead of the actual
 linked RDPSND plugin in the fake SVC host. Normal fragmented Wave2 and legacy Wave
 dispatch pass; giant advertised record/count values are refused without calling
 upstream. This proves the primitives and test-host placement. A production public
@@ -716,7 +716,7 @@ an atomic no-op and may arrive on the context-free thread. Premature wrapper
 destruction is a lifecycle violation and terminates rather than leaving callbacks
 pointing into freed memory.
 
-[Iteration 41](ITERATION_041.md) tests actual linked RDPSND through this public
+[Iteration 41](history/iterations/001-050.md#iteration-041) tests actual linked RDPSND through this public
 adapter: fragmented PCM, Close/recovery, pre-parser limits/flags, transition
 boundaries, bounded deferred confirmations, unknown tokens, reentrancy and delayed
 Terminated. Production entry selection/worker loop integration, close-fault handling,
@@ -724,7 +724,7 @@ earlier RDP/core allocation audit, compressed format policy, packet-clock gaps a
 actual remote/browser audio remain open. The adapter is static-only; dynamic RDPSND
 requires a separate public DVC boundary and is not activated.
 
-[Iteration 45](ITERATION_045.md) adds actual linked channel/fake-SVC close-status,
+[Iteration 45](history/iterations/001-050.md#iteration-045) adds actual linked channel/fake-SVC close-status,
 exception, repeated failure, duplicate event, completion-drain and owner recovery
 fixtures. Real transport failure/cancellation behavior and a worker's bounded
 shutdown deadline remain unverified and must precede activation.
@@ -754,7 +754,7 @@ drain, retry restores the previous loader. Gate/context/sink must outlive this
 scope and all final host callbacks. Backend-only scopes without a gate retain their
 previous ABI fixture behavior and do not claim guarded ingress.
 
-[Iteration 42](ITERATION_042.md) exercises the general loader, actual pinned static
+[Iteration 42](history/iterations/001-050.md#iteration-042) exercises the general loader, actual pinned static
 channel, wrapper and PCM sink together with a fake SVC host, including a supplied
 `sys:fake` argument replaced by the fixed browser selection. No Node/worker runtime
 links this provider yet; AudioPlayback and audioOutput capability remain disabled.
@@ -795,7 +795,7 @@ The fixed layout follows the Microsoft
 and [client Formats](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpea/d58d4d57-cb36-453a-866f-86beacc6d79b)
 definitions.
 
-[Iteration 43](ITERATION_043.md) checks independent offer vectors, output rejection
+[Iteration 43](history/iterations/001-050.md#iteration-043) checks independent offer vectors, output rejection
 atomicity, mixed PCM24/PCM16, client-index dispatch and zero-common-format behavior
 through the actual linked guarded RDPSND path with fake SVC transport. No remote or
 browser playback acceptance is inferred. Earlier RDP/core allocations, close
@@ -819,7 +819,7 @@ transcendental operation or allocation. Full gain preserves all S16 samples;
 independent stereo controls also apply after mono normalization. GetVolume retains
 the exact packed code. Already queued samples retain their previous gain.
 
-[Iteration 44](ITERATION_044.md) covers exhaustive identity and monotonicity,
+[Iteration 44](history/iterations/001-050.md#iteration-044) covers exhaustive identity and monotonicity,
 independent golden attenuation vectors, equal dB steps, mute and actual linked
 RDPSND Volume PDU dispatch using fake SVC transport. It does not demonstrate
 audible remote/browser volume or activate worker audio.
@@ -837,7 +837,7 @@ retains the newest samples for large callbacks and counts discarded old frames;
 ordinary callbacks preserve packet-atomic overflow rejection. No growing storage
 or additional publication is introduced inside Play. A 186 ms server burst still
 exceeds the default 120 ms ring; the opt-in 200 ms ring can retain it. Packet acceptance is not smooth
-audio or measured latency acceptance. [Actual XRDP correction](ITERATION_175.md).
+audio or measured latency acceptance. [Actual XRDP correction](history/iterations/151-200.md#iteration-175).
 
 The first packet requests a sink reset. Subsequent packets reset interpolation and
 queued PCM on a format/rate/clock-type change, a missing/repeated block, backward
@@ -866,7 +866,7 @@ gate separately counts admitted Formats and Close records. Owner-thread copied
 AudioSession snapshots and one bounded retirement summary expose them to local
 tests; no RWI1/RWB1 field, public metric, raw data or growing history is added.
 
-[Iteration 46](ITERATION_046.md) checks pure clocks and actual linked RDPSND with
+[Iteration 46](history/iterations/001-050.md#iteration-046) checks pure clocks and actual linked RDPSND with
 fake SVC. Server format-table replacement is explicitly refused by the baseline
 policy below, preventing upstream reuse of an incompatible already-open index.
 Native overrun heuristics, callback CPU budgets,
@@ -893,7 +893,7 @@ Switching `wFormatNo` among entries in the original table remains supported. The
 gate detects the source change and upstream opens the selected descriptor; the
 normalizer starts a fresh phase and old PCM is discarded. Microsoft's
 [format-list contract](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpea/7df64d93-7594-4035-978d-229f2b15f1bc)
-defines client indices into the exchanged list. [Iteration 47](ITERATION_047.md)
+defines client indices into the exchanged list. [Iteration 47](history/iterations/001-050.md#iteration-047)
 checks 48 kHz stereo PCM16 to 8 kHz mono PCM8/PCM16 conversion through actual linked
 RDPSND/fake SVC, plus replacement rejection before and after Open. Queue and source
 packet budgets are unchanged. This is not actual remote/browser audible acceptance.

@@ -63,6 +63,7 @@ export async function verifiedStandaloneCandidateArchives(
       'os',
       'cpu',
       'libc',
+      'bin',
     ]) {
       if (!isDeepStrictEqual(metadata[field], entry[field])) throw invalid();
     }

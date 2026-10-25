@@ -2,10 +2,12 @@
 
 Адаптер принят в **0.2.3**, после отдельных feature/release branches и всех
 versioned native/consumer/RDP checks. [Контракт](NODE_HTTP_PLUGIN.md),
-[release-приёмка](ITERATION_433.md). Текущий согласованный набор **0.2.4**
+[release-приёмка](ITERATION_433.md). Текущий согласованный набор **0.2.5**
 полностью опубликован в npm и GitHub; чистые Windows/Linux consumers проходят
-strict TypeScript и 10/10. [Публикация](ITERATION_441.md). Исторический 0.2.3
-ещё имеет pending JS stages; используйте опубликованный 0.2.4.
+strict TypeScript и 10/10. [Публикация](ITERATION_456.md). Исторический 0.2.3
+оставлен архивным по решению пользователя от 2026-10-24: его семь отсутствующих
+JS-пакетов не допубликовываются. Используйте опубликованный 0.2.5;
+[решение](ITERATION_458.md).
 
 ## Роли и установка
 
@@ -20,10 +22,10 @@ Node.js-приложение владеет HTTP(S) listener, TLS, identity, р�
 FreeRDP не загружается в процесс Node. Внутренний Fastify router является
 зависимостью bridge; переводить свой сервер на Fastify не требуется.
 
-Установка опубликованного 0.2.4 на Linux x64/glibc:
+Установка опубликованного 0.2.5 на Linux x64/glibc:
 
 ```sh
-npm install @freerdp-bridge/http@0.2.4 @freerdp-bridge/runtime-linux-x64-gnu@0.2.4
+npm install @freerdp-bridge/http@0.2.5 @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -246,4 +248,4 @@ worker/runtime entries. Внешний tarball helper —
 локальный native пакет до его публикации. Только registry-only consumer после
 публичного integrity подтверждает доступность полного npm-графа. Текущие
 remaining gates описаны в [контракте](NODE_HTTP_PLUGIN.md).
-Feature-проверки и оставшиеся release/npm условия — [итерация 431](ITERATION_431.md).
+Feature-проверки и оставшиеся release/npm условия — [итерация 431](history/iterations/401-450.md#iteration-431).

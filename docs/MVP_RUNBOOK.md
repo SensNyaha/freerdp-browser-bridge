@@ -1,7 +1,7 @@
 # Running the tested MVP
 
 Acceptance and remaining limitations: [MVP acceptance](MVP_ACCEPTANCE.md).
-The named joint Windows gate passes [403](ITERATION_403.md); this does not accept
+The named joint Windows gate passes [403](history/iterations/401-450.md#iteration-403); this does not accept
 the broader V1 platform/device matrix.
 
 ## Existing Windows checkout
@@ -15,7 +15,7 @@ Release outputs and settings:
 ```
 
 Adding `--smoke` verifies empty form startup and cleanup without an RDP session;
-that exact receipt selection passes [403](ITERATION_403.md).
+that exact receipt selection passes [403](history/iterations/401-450.md#iteration-403).
 
 The helper verifies the receipt and worker/helper hashes, opens Edge and hosts
 the local API on `127.0.0.1:47997`. It does not read lab credentials. Enter the
@@ -52,10 +52,10 @@ when the next controller has rendered the current desktop.
 
 The tested small Unicode Clipboard chains include Windows Notepad and the
 named owned XRDP 0.10.1 / prepared Tk profile, including repeated Copy/Get
-and browser OS Clipboard API [404](ITERATION_404.md). Wider XRDP versions,
+and browser OS Clipboard API [404](history/iterations/401-450.md#iteration-404). Wider XRDP versions,
 producers and applications retain separate acceptance; older 0.9.x surrogate
 conversion is not repaired by the fixture. The GCC 8.3 Linux producer also
-passes its bounded prepared-Tk CLIPRDR profile [412](ITERATION_412.md).
+passes its bounded prepared-Tk CLIPRDR profile [412](history/iterations/401-450.md#iteration-412).
 Numeric audio discontinuities remain measured even in the accepted audible
 profile. Drives, USB, printing, smartcard, serial/parallel and other Clipboard
 formats are explicit unavailable choices;

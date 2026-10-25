@@ -53,14 +53,14 @@ The pinned Linux WinPR profile requires private Kerberos and ICU for its default
 authentication/Unicode implementations. These are Linux-only manifest entries;
 `build-freerdp.mjs` selects the local `krb5-config` and requires local ICU paths.
 Linux builder prerequisites include Bison for the Kerberos source grammar.
-[Historical dependency checkpoint](docs/ITERATION_186.md).
+[Historical dependency checkpoint](docs/history/iterations/151-200.md#iteration-186).
 Linux now also builds private CUPS 2.4.20, libfuse 3.18.3 and numactl 2.0.19;
 linked Release CTest and the current codec/lifecycle relocation probe pass.
 Pinned private eudev 3.2.14 now resolves libusb's udev dependency. Before Linux
 CPack, every shipped ELF executable/library passes bounded canonical dependency
 and origin-relative loader-path checks. Canonical relocated codec/lifecycle and
 libudev-context checks pass. This is separate from clean-machine/device acceptance.
-[Build evidence](docs/ITERATION_187.md), [closure evidence](docs/ITERATION_189.md).
+[Build evidence](docs/history/iterations/151-200.md#iteration-187), [closure evidence](docs/history/iterations/151-200.md#iteration-189).
 
 Expose compile-time feature report in build logs and `/v1/build`.
 
@@ -97,7 +97,7 @@ groups and retained capability/device gates are covered by the
 Actual Linux foundation verification passes under UID 1000, read-only root,
 bounded runtime tmpfs, dropped capabilities and the default Docker seccomp
 profile with init. Without init, an exited orphan worker remained a zombie;
-this is a failed cleanup condition. [Evidence and retained deployment gates](docs/ITERATION_185.md).
+this is a failed cleanup condition. [Evidence and retained deployment gates](docs/history/iterations/151-200.md#iteration-185).
 The local verification image contains build/test tools and no linked FreeRDP;
 it does not satisfy the multi-stage production service-image requirement above.
 
@@ -105,7 +105,7 @@ An independent native-only TGZ check now passes in a pinned Node 24 Bookworm
 image without SDK/system FreeRDP/libudev, under UID 1000 and the restricted
 runtime flags above. The probe checks canonical private modules, codecs and real
 worker lifecycle/cleanup. This verifies the archive, not the complete API/service
-deployment image. [Evidence and reproducible checks](docs/ITERATION_190.md).
+deployment image. [Evidence and reproducible checks](docs/history/iterations/151-200.md#iteration-190).
 
 The current local cached-source dependency → FreeRDP → source-only project
 chain also produces a new archive with an explicit pinned-source license and
@@ -114,12 +114,12 @@ and Windows install/ZIP/relocation pass. The same Linux archive passes an
 independent pinned Ubuntu 24.04 native runtime check. These are artifact runtime
 checks; Ubuntu source compilation, complete fresh checkout/distro/CI and full
 service/device acceptance remain separate.
-[Packaging](docs/ITERATION_258.md), [Ubuntu runtime](docs/ITERATION_259.md).
+[Packaging](docs/history/iterations/251-300.md#iteration-258), [Ubuntu runtime](docs/history/iterations/251-300.md#iteration-259).
 
 The corrected DSP SDK's new native archive also passes both independent
 Bookworm and Ubuntu runtime checks with the same restrictions, private module /
 codec checks, IPC pairing and joined cleanup. Its artifact hash and separate
-verifier image identities are retained in [iteration 271](docs/ITERATION_271.md).
+verifier image identities are retained in [iteration 271](docs/history/iterations/251-300.md#iteration-271).
 The historical release/service image cohort is unchanged.
 
 ## 4. Reverse proxy
@@ -178,7 +178,7 @@ The final Linux image also has a digest-bound Syft inventory for Debian and the
 Node distribution. Windows native ZIP inventory includes packaged CRT file
 versions and hashes. Windows application/Node packaging and complete embedded
 dependency/licensing review remain open.
-[Generation and scope](docs/SBOM.md), [evidence](docs/ITERATION_214.md).
+[Generation and scope](docs/SBOM.md), [evidence](docs/history/iterations/201-250.md#iteration-214).
 
 The private bundle also includes pinned libopus 1.6.1 and its BSD copyright.
 Its 20 ms encoder now supports explicit public Opus output with gesture-gated
@@ -220,4 +220,4 @@ The Windows CMake build probes the installed MSVC `/showIncludes` language using
 UTF-8 decoding for Ninja dependency tracking. This works with the Russian-only
 compiler installation and does not require an English language pack. The first
 build using the correction recompiles old objects so header/ABI changes cannot
-retain stale callers. See [Iteration 9](docs/ITERATION_009.md) for evidence.
+retain stale callers. See [Iteration 9](docs/history/iterations/001-050.md#iteration-009) for evidence.

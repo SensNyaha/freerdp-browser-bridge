@@ -1,0 +1,15 @@
+{
+  "sourceCommit": "0d4d547d74397879466fabf7257082c382ee4771",
+  "preservedReports": 444,
+  "archiveVolumes": 10,
+  "updatedReferenceFiles": 89,
+  "localLinksChecked": 2235,
+  "mappedAnchorsChecked": 1183,
+  "newBrokenLinks": 0,
+  "preexistingMissingTargets": 0,
+  "originalReportTextAndHashesVerified": true,
+  "deliveryGuardTests": {
+    "passed": 21,
+    "failed": 0
+  }
+}

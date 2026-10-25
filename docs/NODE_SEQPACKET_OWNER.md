@@ -45,4 +45,4 @@ the parent's existing credential-buffer wipe policy; destroy handles unsent data
 
 Evidence distinguishes pure fake-adapter tests from actual Node/addon/kernel /
 linked-worker lifecycle. No actual connected Linux RDP/audio/device or primary
-WorkerProcess selection is claimed. [Iteration 198](ITERATION_198.md).
+WorkerProcess selection is claimed. [Iteration 198](history/iterations/151-200.md#iteration-198).

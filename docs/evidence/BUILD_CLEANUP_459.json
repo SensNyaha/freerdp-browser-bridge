@@ -1,0 +1,451 @@
+{
+  "schema": 1,
+  "scope": "generated-obsolete-build-directories",
+  "completed": true,
+  "removedDirectories": 72,
+  "logicalBytesRemoved": 9409040412,
+  "removedFiles": 233091,
+  "preservedEvidence": 188,
+  "removed": [
+    {
+      "name": "native-clean-e6Bv2v",
+      "bytes": 1488175592,
+      "files": 1397,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "native-clean-ttnvvL",
+      "bytes": 845328689,
+      "files": 1021,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-msi-445-A54yf0",
+      "bytes": 330912949,
+      "files": 8211,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "standalone-payload-ccelo6",
+      "bytes": 243589898,
+      "files": 6228,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-payload-7J6qtt",
+      "bytes": 243589646,
+      "files": 6228,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-payload-JBEfHZ",
+      "bytes": 243580462,
+      "files": 6220,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-payload-nYm6Hy",
+      "bytes": 243579065,
+      "files": 6219,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-msi-ocw5RM",
+      "bytes": 203819770,
+      "files": 4111,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "native-clean-3Dl7Xl",
+      "bytes": 181571074,
+      "files": 810,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-portable-pRJvd0",
+      "bytes": 173756974,
+      "files": 4098,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-portable-ty8gqm",
+      "bytes": 173756817,
+      "files": 4098,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-portable-ePGJ8y",
+      "bytes": 173756482,
+      "files": 4098,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-portable-0jblBK",
+      "bytes": 173756452,
+      "files": 4098,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-portable-4jTZgM",
+      "bytes": 173755889,
+      "files": 4098,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-portable-cSBV1s",
+      "bytes": 173755889,
+      "files": 4098,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "native-clean-eBVFpe",
+      "bytes": 138348038,
+      "files": 675,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "standalone-msi-445-JXstCd",
+      "bytes": 127879757,
+      "files": 4102,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "standalone-msi-445-QI8Uys",
+      "bytes": 127480694,
+      "files": 4101,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "native-clean-vFT2JK",
+      "bytes": 124800181,
+      "files": 1039,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-YQk1rT",
+      "bytes": 124796622,
+      "files": 1039,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-mukr3W",
+      "bytes": 124792411,
+      "files": 1038,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-BVIjOf",
+      "bytes": 124792327,
+      "files": 1039,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-7QO67D",
+      "bytes": 124792109,
+      "files": 1039,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-9il5P0",
+      "bytes": 124791956,
+      "files": 1039,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-RKqCuA",
+      "bytes": 121861349,
+      "files": 1016,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-QEICxl",
+      "bytes": 121618498,
+      "files": 1016,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-kBo4DL",
+      "bytes": 121618438,
+      "files": 1016,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-Jaufw3",
+      "bytes": 121612176,
+      "files": 1016,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-n4yhyC",
+      "bytes": 121519248,
+      "files": 1016,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-7dEHpn",
+      "bytes": 120494821,
+      "files": 1010,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-fNRgNe",
+      "bytes": 119839538,
+      "files": 1005,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-xPANWQ",
+      "bytes": 119183975,
+      "files": 1000,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-fwZpsJ",
+      "bytes": 118352100,
+      "files": 981,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-UYk7Zc",
+      "bytes": 118309768,
+      "files": 978,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-sFV4vM",
+      "bytes": 118273771,
+      "files": 977,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-M3p9M3",
+      "bytes": 118242515,
+      "files": 976,
+      "preservedEvidence": 4
+    },
+    {
+      "name": "native-clean-QUFLm4",
+      "bytes": 118222692,
+      "files": 975,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "standalone-msi-JPyAIh",
+      "bytes": 74579344,
+      "files": 7,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "standalone-msi-LWKCmr",
+      "bytes": 74579127,
+      "files": 7,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "native-clean-6Qxo8l",
+      "bytes": 72718596,
+      "files": 803,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "nestjs-consumer-eJqdDT",
+      "bytes": 70709386,
+      "files": 8852,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "nestjs-consumer-0m7Kkh",
+      "bytes": 70701141,
+      "files": 8851,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "nestjs-consumer-aLVpCj",
+      "bytes": 70700460,
+      "files": 8851,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "nestjs-consumer-jm6bQo",
+      "bytes": 70443630,
+      "files": 8848,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "nestjs-consumer-4usA4N",
+      "bytes": 70443468,
+      "files": 8847,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "nestjs-consumer-1aL3lY",
+      "bytes": 70442941,
+      "files": 8848,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "nestjs-consumer-loo85J",
+      "bytes": 70442941,
+      "files": 8848,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "express-consumer-NlW03P",
+      "bytes": 60136488,
+      "files": 4904,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "express-consumer-JWPoWp",
+      "bytes": 59866989,
+      "files": 4898,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "express-consumer-a1UKDI",
+      "bytes": 59866827,
+      "files": 4897,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "http-consumer-KUkEaj",
+      "bytes": 57744067,
+      "files": 4271,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "http-consumer-ZK8zOg",
+      "bytes": 57717233,
+      "files": 4270,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-aoIqxj",
+      "bytes": 57673914,
+      "files": 4266,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "http-consumer-KDxH6R",
+      "bytes": 57452192,
+      "files": 4266,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "http-consumer-UQBMyg",
+      "bytes": 57452030,
+      "files": 4265,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "http-consumer-86yL2J",
+      "bytes": 57451505,
+      "files": 4266,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-1MPuIi",
+      "bytes": 57411867,
+      "files": 4263,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-K7jMEw",
+      "bytes": 57411810,
+      "files": 4263,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-Fkycpv",
+      "bytes": 57208851,
+      "files": 4253,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-bQER7F",
+      "bytes": 57204618,
+      "files": 4253,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-W4dfeb",
+      "bytes": 56266929,
+      "files": 3599,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "fastify-consumer-aF6ESc",
+      "bytes": 41302120,
+      "files": 4186,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-guDalH",
+      "bytes": 41301199,
+      "files": 4185,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "fastify-consumer-e6O36a",
+      "bytes": 15041065,
+      "files": 3926,
+      "preservedEvidence": 3
+    },
+    {
+      "name": "fastify-consumer-NZh0OX",
+      "bytes": 15040124,
+      "files": 3925,
+      "preservedEvidence": 2
+    },
+    {
+      "name": "http-consumer-QyeiGN",
+      "bytes": 304874,
+      "files": 11,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "nestjs-consumer-hOsCjd",
+      "bytes": 302216,
+      "files": 11,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "express-consumer-HcjGg5",
+      "bytes": 270588,
+      "files": 6,
+      "preservedEvidence": 0
+    },
+    {
+      "name": "http-consumer-Jofbyu",
+      "bytes": 265818,
+      "files": 5,
+      "preservedEvidence": 0
+    },
+    {
+      "name": "fastify-consumer-CpEqab",
+      "bytes": 262198,
+      "files": 8,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "fastify-consumer-nsbSjz",
+      "bytes": 15224,
+      "files": 5,
+      "preservedEvidence": 1
+    },
+    {
+      "name": "standalone-payload-fhHCfr",
+      "bytes": 0,
+      "files": 1,
+      "preservedEvidence": 0
+    }
+  ],
+  "postDeleteVerification": {
+    "allTargetsAbsent": true,
+    "retainedEvidenceVerified": 188,
+    "currentNativeArtifactsUnchanged": true,
+    "acceptedNpmArchivesVerified": 19,
+    "finalInstallerFilesVerified": 8,
+    "canonicalRegistryConsumerAndPayloadDirectoriesPresent": true
+  }
+}

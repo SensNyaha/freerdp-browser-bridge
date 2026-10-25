@@ -7,6 +7,8 @@ export {
   createSecureLogger,
   resolveNativeRuntime,
   NativeRuntimeError,
+  recoverRuntimeSessions,
+  RuntimeRecoveryError,
 } from '@freerdp-bridge/api/fastify';
 export type {
   RdpBridgePluginOptions,
@@ -15,4 +17,6 @@ export type {
   SessionCreate,
   Principal,
   NativeRuntimeOptions,
+  RuntimeRecoveryOptions,
+  RuntimeRecoveryReport,
 } from '@freerdp-bridge/api/fastify';

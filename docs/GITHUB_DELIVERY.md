@@ -1,5 +1,12 @@
 # Отдельные GitHub repositories и публикация принятых архивов
 
+Текущий принятый набор — **0.2.5**: все пять main/tag/Release refs сверены,
+десять npm-пакетов опубликованы через OIDC, четыре fresh Windows/Linux consumers
+проходят. Установщики автоматически добавлены в core Release по push в main;
+их финальные хеши и установка/обновление на Astra/RED OS проверены.
+[Публичная приёмка](ITERATION_457.md). Ниже сохранена история первоначального
+развёртывания 0.2.4; она не заменяет текущий статус.
+
 Реализация готовится на `feature/github-delivery-oidc` после локального
 `v0.2.4` (`4b018fc`). GitHub owner — **SensNyaha**, npm scope —
 **@freerdp-bridge**. После первоначального плана самостоятельного push
@@ -9,7 +16,7 @@ Core GitHub Release уже опубликован с точными assets, де
 packages публикуются через OIDC. Все десять npm архивов 0.2.4 публичны с accepted
 integrity; пять Releases/workflows и четыре fresh Windows/Linux consumers
 проходят. Express после разрешённого bootstrap также имеет read-back verified
-trust. [Публикация](ITERATION_441.md), [CI checkpoint](ITERATION_440.md).
+trust. [Публикация](history/iterations/401-450.md#iteration-441), [CI checkpoint](history/iterations/401-450.md#iteration-440).
 
 ## Структура delivery
 
@@ -86,7 +93,7 @@ Core main после успешных hosted foundation/sanitizer/fuzz checks п
 интеграционные fixtures и byte-for-byte сравнение каждого compiled dist файла
 с принятым архивом. Core smoke проверяет встроенный source workspace с exact
 native runtime, TLS refusal, HTTP/WS и lifecycle. Он не заменяет реальный
-RDP/device acceptance из исходного релиза. [Доказательства](ITERATION_439.md).
+RDP/device acceptance из исходного релиза. [Доказательства](history/iterations/401-450.md#iteration-439).
 
 Создайте соответствующие пустые **public** repositories под `SensNyaha`.
 В каждом локальном каталоге `origin` уже указывает на его GitHub URL. Например,

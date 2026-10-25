@@ -18,7 +18,7 @@ numbers before accumulation, refuses extra/unknown fields and keeps uint64 value
 as decimal strings. Other stderr text is discarded without retention. A zero
 channel count means no accepted AUDIN handoff was observed at this gate; it does
 not by itself assign blame to server configuration or establish recording.
-[Native/fake-DVC and restored XRDP evidence](ITERATION_219.md).
+[Native/fake-DVC and restored XRDP evidence](history/iterations/201-250.md#iteration-219).
 
 Current update — iteration 209: guarded Linux builds with CHANNEL_AUDIN_CLIENT
 now select the same virtual PCM/Opus source, bounded handoff, RDP-thread cadence
@@ -26,13 +26,13 @@ and finite retirement as Windows. HELLO/CLI expose pcmInput, opusInput and
 microphoneReset consistently; existing typed Node/public selection uses these
 capabilities. No host audio device/server or browser permission is acquired by
 worker activation. Native TLS/refusal and simulated AUDIN transport evidence are
-separate from ready remote/physical capture acceptance. [Evidence](ITERATION_209.md).
+separate from ready remote/physical capture acceptance. [Evidence](history/iterations/201-250.md#iteration-209).
 
 Current update — iteration 128: public NativeSessionWorker selection now
 requires pcmInput and microphoneReset before configuring PCM input. Opus input
 stays unsupported. The reference viewer has an explicit gesture path; actual
 XRDP metadata replay succeeds in waiting epoch 0 without capture. Historical
-gating statements below retain their original scope. [Evidence](ITERATION_128.md).
+gating statements below retain their original scope. [Evidence](history/iterations/101-150.md#iteration-128).
 
 Current update — iteration 109: guarded Windows/AUDIN HELLO/CLI advertises
 `pcmInput`; private WorkerProcess can select PCM input and send bounded packets.

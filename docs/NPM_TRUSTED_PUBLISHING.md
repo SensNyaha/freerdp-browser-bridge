@@ -5,14 +5,13 @@
 **`@freerdp-bridge`**. Это разные пространства имён. Очередь интерактивных
 approve остановлена по просьбе пользователя; автоматически её не возобновлять.
 
-Текущий результат: все десять пакетов 0.2.4 публичны с точным integrity;
-девять существующих имён фактически опубликованы через OIDC. Express прошёл
-единственный отдельно разрешённый bootstrap approve; его trust создан и
-прочитан обратно, workflow проверяет и пропускает совпадающую версию. Все пять
-workflows и четыре чистых Windows/Linux consumers проходят.
-[Приёмка](ITERATION_441.md). Для следующей новой Express версии проверьте
-срок неиспользованного trust перед публикацией; первый реальный OIDC write
-Express этим bootstrap не доказан.
+Текущий результат: все десять пакетов **0.2.5** публичны с точным accepted
+integrity; все пять OIDC workflows и четыре чистых Windows/Linux consumers
+проходят. Express впервые выполняет реальный OIDC write без браузерного 2FA.
+[Приёмка npm](ITERATION_456.md). В 0.2.4 девять имён уже публиковались через
+OIDC, а Express проходил единственный отдельно разрешённый bootstrap approve;
+его прежний workflow только пропускал совпадающую версию.
+[Историческая приёмка](history/iterations/401-450.md#iteration-441).
 
 ## Выбранный механизм
 
@@ -92,7 +91,7 @@ npm trust github @freerdp-bridge/fastify --repo SensNyaha/freerdp-bridge-fastify
 проверяет все девять привязок. Пяти минутный skip-window позволяет выполнить
 это без новой очереди per-package browser approvals. Express создаётся
 отдельно как новое имя и ещё не имеет этой привязки.
-[Фактический checkpoint](ITERATION_440.md). Dry-run сам по себе не является
+[Фактический checkpoint](history/iterations/401-450.md#iteration-440). Dry-run сам по себе не является
 проверкой реальной OIDC identity.
 
 ## Исторические checkpoints до завершения iteration 441

@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "removedWorktrees": 7,
+  "logicalBytesRemoved": 1072148445,
+  "symlinksUnlinkedWithoutTraversal": 779,
+  "preservedReceipts": 17,
+  "currentToolchainAndWorkerUnchanged": true,
+  "compilerWorktreePreserved": true,
+  "removed": [
+    {
+      "name": "npm-publication-430",
+      "head": "6eb8ab7d9bc6bb3fe5f4536c6389b70da8b67143",
+      "branch": "refs/heads/feature/npm-publication-0.2.2",
+      "bytes": 245326482,
+      "files": 10333,
+      "preservedReceipts": 5,
+      "commitsRetainedInRefs": true
+    },
+    {
+      "name": "npm-publication-434",
+      "head": "a17966eae41d043537f45ff35e6fd4a5ba59abc8",
+      "branch": "refs/heads/feature/npm-publication-0.2.3",
+      "bytes": 174991936,
+      "files": 1497,
+      "preservedReceipts": 3,
+      "commitsRetainedInRefs": true
+    },
+    {
+      "name": "npm-publication-441",
+      "head": "645db0f1b3ac213667965e233c24203f6fda7762",
+      "branch": "refs/heads/feature/npm-publication-0.2.4",
+      "bytes": 380866027,
+      "files": 36895,
+      "preservedReceipts": 4,
+      "commitsRetainedInRefs": true
+    },
+    {
+      "name": "publish-fastify-0.2.1",
+      "head": "4d183d586cba2a3e694ab0157eabad08b6f87f95",
+      "branch": null,
+      "bytes": 91024703,
+      "files": 1444,
+      "preservedReceipts": 4,
+      "commitsRetainedInRefs": true
+    },
+    {
+      "name": "worktree-cliprdr-padding",
+      "head": "365a98edb62bff14d89ebae040ad14c5c6220b62",
+      "branch": "refs/heads/codex/xrdp-cliprdr-padding-20261021",
+      "bytes": 86366295,
+      "files": 8167,
+      "preservedReceipts": 1,
+      "commitsRetainedInRefs": true
+    },
+    {
+      "name": "worktree-redos-xrdp",
+      "head": "b5d56a3f316276883cf70a97c7d8063b59a01abf",
+      "branch": null,
+      "bytes": 7098836,
+      "files": 1391,
+      "preservedReceipts": 0,
+      "commitsRetainedInRefs": true
+    },
+    {
+      "name": "worktree-release-0.1.0",
+      "head": "4e3ec09dd1b86e05e21a547f7c97ec9456bc73eb",
+      "branch": null,
+      "bytes": 86474166,
+      "files": 8187,
+      "preservedReceipts": 0,
+      "commitsRetainedInRefs": true
+    }
+  ]
+}

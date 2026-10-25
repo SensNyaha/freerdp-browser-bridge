@@ -2,6 +2,9 @@ import { createServer } from 'node:http';
 import {
   createRdpBridgeHttp,
   resolveNativeRuntime,
+  recoverRuntimeSessions,
+  type RuntimeRecoveryOptions,
+  type RuntimeRecoveryReport,
   type RdpBridgeHttpOptions,
   type RdpBridgeHttpHandle,
 } from '@freerdp-bridge/http';
@@ -44,3 +47,11 @@ async function host() {
 }
 const browser: string = referenceBrowserDirectory;
 void [host, browser];
+
+async function recoverBeforeListen(options: RuntimeRecoveryOptions) {
+  const report: RuntimeRecoveryReport = await recoverRuntimeSessions(options);
+  if (!report.supported || !report.complete)
+    throw new Error('RDP_RUNTIME_RECOVERY_INCOMPLETE');
+  return report;
+}
+void recoverBeforeListen;

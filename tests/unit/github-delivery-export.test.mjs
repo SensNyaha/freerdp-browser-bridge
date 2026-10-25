@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { posix, resolve } from 'node:path';
+import { adapterKit } from '../../scripts/github-delivery/adapter-kit.mjs';
 import { format, resolveConfig } from 'prettier';
 import {
   publicLock,
@@ -9,6 +12,46 @@ import {
   npmWorkflow,
   formattedNpmWorkflow,
 } from '../../scripts/github-delivery/templates.mjs';
+
+test('generated adapter tests carry their browser-compatible port helper without checkout imports', async () => {
+  const expectedHelper = await readFile('tests/fixtures/browser-port.mjs');
+  for (const kind of ['fastify', 'nestjs', 'http', 'express']) {
+    const files = new Map();
+    const archive = new Map(
+      await Promise.all(
+        ['package.json', 'README.md', 'LICENSE'].map(async (name) => [
+          'package/' + name,
+          await readFile('packages/' + kind + '/' + name),
+        ]),
+      ),
+    );
+    await adapterKit({
+      kind,
+      version: JSON.parse(archive.get('package/package.json')).version,
+      core: resolve('.'),
+      read: (path) => readFile(path),
+      write: async (path, bytes) => {
+        files.set(path, Buffer.from(bytes));
+      },
+      archiveFile: (path) => archive.get(path),
+    });
+    assert.deepEqual(files.get('tests/browser-port.mjs'), expectedHelper);
+    assert.ok(files.has('docs/RUNTIME_RECOVERY.md'));
+    const fixture = files
+      .get(
+        kind === 'fastify' ? 'tests/consumer.mjs' : 'tests/consumer.test.mjs',
+      )
+      .toString('utf8');
+    assert.ok(fixture.includes("from './browser-port.mjs'"));
+    for (const match of fixture.matchAll(/from ['"](\.[^'"]+)['"]/g)) {
+      assert.equal(match[1].startsWith('../'), false);
+      assert.ok(
+        files.has(posix.join('tests', match[1])),
+        'generated local fixture dependency must be present',
+      );
+    }
+  }
+});
 
 test('Delivery public lock keeps accepted integrity and replaces only private bootstrap resolutions', () => {
   const integrity = 'sha512-' + Buffer.alloc(64, 2).toString('base64');

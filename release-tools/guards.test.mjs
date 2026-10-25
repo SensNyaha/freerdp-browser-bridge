@@ -89,6 +89,23 @@ const withRoot = async (run) => {
   }
 };
 
+test('GitHub delivery admits aligned 0.3.0 metadata and still refuses old-tag or mixed-archive binding', () => {
+  const value = sample();
+  value.version = value.packages[0].version = '0.3.0';
+  value.upstream.tag = 'v0.3.0';
+  value.packages[0].archive = 'freerdp-bridge-express-0.3.0.tgz';
+  assert.equal(parseManifest(value).version, '0.3.0');
+  for (const mutate of [
+    (entry) => (entry.upstream.tag = 'v0.2.5'),
+    (entry) => (entry.packages[0].version = '0.2.5'),
+    (entry) => (entry.packages[0].archive = 'freerdp-bridge-express-0.2.5.tgz'),
+  ]) {
+    const changed = structuredClone(value);
+    mutate(changed);
+    assert.throws(() => parseManifest(changed));
+  }
+});
+
 test('GitHub delivery rejects changed publisher binding, versions, package set and allocation bounds', () => {
   assert.equal(
     parseManifest(sample()).repository,

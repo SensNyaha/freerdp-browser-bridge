@@ -4,6 +4,9 @@ import {
   type BridgeHandle,
   type RdpBridgePluginOptions,
   resolveNativeRuntime,
+  recoverRuntimeSessions,
+  type RuntimeRecoveryOptions,
+  type RuntimeRecoveryReport,
 } from '@freerdp-bridge/fastify';
 import { referenceBrowserDirectory } from '@freerdp-bridge/fastify/browser';
 
@@ -39,3 +42,11 @@ const invalid: RdpBridgePluginOptions = {
   upgradeMode: 'catch-all',
 };
 void invalid;
+
+async function recoverBeforeListen(options: RuntimeRecoveryOptions) {
+  const report: RuntimeRecoveryReport = await recoverRuntimeSessions(options);
+  if (!report.supported || !report.complete)
+    throw new Error('RDP_RUNTIME_RECOVERY_INCOMPLETE');
+  return report;
+}
+void recoverBeforeListen;

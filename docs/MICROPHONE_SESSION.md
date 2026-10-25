@@ -13,7 +13,7 @@ after HELLO confirms PCM dispatch and microphoneReset. The reference viewer
 selects its complete gesture/permission/grant/graph path. Actual restored XRDP
 passes native/API/Edge H.264 and metadata replay, but the source is waiting at
 epoch 0; no capture was requested or PCM sent. Ready AUDIN/device/remote/LAN
-acceptance remains open. [Evidence](ITERATION_128.md).
+acceptance remains open. [Evidence](history/iterations/101-150.md#iteration-128).
 
 Current update — iteration 119: optional media.hello selection now calls these
 typed methods through a bounded WebSocket adapter, with actual loopback/fake-RDP

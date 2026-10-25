@@ -3,20 +3,20 @@
 The additional owned XRDP 0.10.1 profile now passes actual headed Edge Clipboard
 API ↔ CLIPRDR ↔ prepared Tk Unicode/emoji/multiline roundtrips across two fresh
 RDP connections, permission refusal, revoke and PID/runtime cleanup
-[404](ITERATION_404.md). Two further server-origin Copy/Get operations pass
+[404](history/iterations/401-450.md#iteration-404). Two further server-origin Copy/Get operations pass
 before a native client write. The fixture's explicit Copy hook supplies the
 XFixes notification omitted by stock Tk repeated copies. This does not fix the
 old XRDP 0.9.21.1 surrogate conversion defect or accept RDP Unicode key input,
 other formats or the full Stage 7 matrix. Full feature-branch regression passes
 900 / 61 skips / 961 total; native/production code remains unchanged.
 
-Current actual evidence: [Iteration 392](ITERATION_392.md) verifies a named
+Current actual evidence: [Iteration 392](history/iterations/351-400.md#iteration-392) verifies a named
 headed Edge / public API / Windows Notepad small-text chain in both directions,
 including real local Clipboard API and Cyrillic/Japanese/emoji/multiline
 readback, actual permission refusal, no-format revoke, cleared viewer fields
 and joined PID/runtime cleanup in one passing invocation. Own-document clear
 keystrokes follow verified readback; an empty application is not separately
-read back. Earlier failed runs remain in [385](ITERATION_385.md) and [392](ITERATION_392.md).
+read back. Earlier failed runs remain in [385](history/iterations/351-400.md#iteration-385) and [392](history/iterations/351-400.md#iteration-392).
 This does not accept the complete Stage 7
 direction/quota/isolation/resource or other-format matrix. Earlier fixture-only
 statements below retain their historical scope.
@@ -31,7 +31,7 @@ and required follow-up work. Stage 7 remains in progress.
 The quota input is disabled while off, so an empty draft quota cannot block an
 ordinary clipboard-disabled connection. Current actual XRDP JPEG/H.264 desktop
 regression verifies the disabled panel and zero native/browser clipboard events
-with mocked-refusal OS APIs. [Scope/evidence](ITERATION_239.md).
+with mocked-refusal OS APIs. [Scope/evidence](history/iterations/201-250.md#iteration-239).
 
 The viewer shares the existing authenticated control socket and its sequence
 with input. It sets binaryType to arraybuffer and routes only clipboard messages
@@ -104,7 +104,7 @@ input, explicit local actions, denial, expiry, clear/detach late results, empty
 copy, native-revoke replacement cleanup and one JPEG frame.
 
 These fixtures access no real OS clipboard or remote clipboard. A separately
-authorized [Windows/XRDP/Edge probe](ITERATION_240.md) now passes fixed Unicode
+authorized [Windows/XRDP/Edge probe](history/iterations/201-250.md#iteration-240) now passes fixed Unicode
 offer ACK, no-format revoke ACK while ready, fresh-token replay and cleanup,
 with zero remote reads or host Clipboard API requests. Actual application data
 consumption/readback, browser permission/device behavior, latency/network,

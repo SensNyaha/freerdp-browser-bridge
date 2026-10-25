@@ -142,7 +142,7 @@ negotiation, config and the one credited unit. Cursor shapes remain independent.
 
 ## Evidence and remaining acceptance
 
-[Iteration 17](ITERATION_017.md) distinguishes linked native public callback /
+[Iteration 17](history/iterations/001-050.md#iteration-017) distinguishes linked native public callback /
 GDI realloc / codec tests from actual XRDP browser regressions. The fixtures
 replace Display Control's transport write, so they do not establish DVC wire
 parsing, remote negotiation or a server accepting a layout request. GDI resize
@@ -152,11 +152,11 @@ and still needs the retained resource audit.
 
 The actual authorized XRDP lab negotiated Display Control, accepted 1920×1080 →
 1280×720 → 1920×1080, and produced new AVC IDRs and a resized JPEG through private
-IPC. [Iteration 18](ITERATION_018.md) records this separately from fake IPC and
+IPC. [Iteration 18](history/iterations/001-050.md#iteration-018) records this separately from fake IPC and
 linked native fixtures. This does not establish browser rendering across resize,
 Windows-server acceptance, full DVC parser/resource limits or soak stability.
 
 The public lease/browser implementation and actual XRDP resize evidence are recorded
-in [Iteration 19](ITERATION_019.md). Windows-server resize, full DVC resource audit
+in [Iteration 19](history/iterations/001-050.md#iteration-019). Windows-server resize, full DVC resource audit
 and the 30-minute desktop gate remain open. Automatic viewport policy is optional
 follow-up; broader scale/layout support is outside current scope under ADR-011.

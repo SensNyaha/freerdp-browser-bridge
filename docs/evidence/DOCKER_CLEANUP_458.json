@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "removed": [
+    {
+      "name": "freerdp-bridge-rpm-453",
+      "id": "a6157406c59b80534c43afc63447c471f4431a7013f232738d7bf37f97335254",
+      "image": "sha256:1a3737d7b8d882e926ae6434c0d6bc94cea122b2fab078d85a359e29fdfc9ea8",
+      "writableBytes": 943562752,
+      "mounts": 0,
+      "idleOnly": true
+    },
+    {
+      "name": "freerdp-bridge-payload-449",
+      "id": "26531b241272354481ae492ba8b875dfe7ec931cbe312555c19f78943b140235",
+      "image": "sha256:1a0bcc0c30351efce55d76fd419dc74aa4d449204e4d66cf86a0ee9bb95a9d61",
+      "writableBytes": 3988418560,
+      "mounts": 0,
+      "idleOnly": true
+    }
+  ],
+  "retainedContainersVerified": [
+    {
+      "name": "freerdp-bridge-gcc83-407",
+      "id": "b97e6fcca451f28ae5d8a2743680b1ce94bd1d7a92a555cd47078825bfa4dfc4",
+      "stateUnchanged": true
+    },
+    {
+      "name": "freerdp-bridge-linux-viewer-418",
+      "id": "437aa91a6a732e0b4225018a489bba28f56e83e1e03dfed2d93faa7a949e9b5d",
+      "stateUnchanged": true
+    },
+    {
+      "name": "tasks-local-app-1",
+      "id": "225e10f6ab55acb2c0ab6351632d55415ccad31631711aa889e2c50798473b07",
+      "stateUnchanged": true
+    },
+    {
+      "name": "metube",
+      "id": "01b204525a68043f1d208493ed403ec6b803d8536f162b59bbfc4223981e4256",
+      "stateUnchanged": true
+    },
+    {
+      "name": "stirling-pdf",
+      "id": "2a0edc4c841dca45e8758869db9969a57a44f4970b0fd55c6ca5caa775f5bfb1",
+      "stateUnchanged": true
+    }
+  ],
+  "preservedEvidence": [
+    {
+      "name": "container-payload/candidate-build.json",
+      "bytes": 1394,
+      "sha256": "4c0d328926038b3a47c36577f89b604d0d5e0baa4cf89da8b0d5b0364a4d70a5"
+    },
+    {
+      "name": "container-payload/candidate-payload.json",
+      "bytes": 836976,
+      "sha256": "2edff7650e0b739294da3d1df7877f19829c8bf682acc033e3aac37e4ab1229d"
+    },
+    {
+      "name": "container-payload/registry-build.json",
+      "bytes": 401,
+      "sha256": "ca016ad44034421bc1905392901f6104fc166ed66e57574475523f4e9f1a8457"
+    },
+    {
+      "name": "container-payload/registry-payload.json",
+      "bytes": 835983,
+      "sha256": "064a4a26a5ac3c9b16b71c4bf559a4c7721cfce3a2e352092566e3d7a1570d2f"
+    },
+    {
+      "name": "container-rpm/build.json",
+      "bytes": 274,
+      "sha256": "bf617301cb2016fde13aac1986f88d2a5f6e31bb53553b1fee82d8dac5374a8e"
+    },
+    {
+      "name": "container-rpm/payload.json",
+      "bytes": 915565,
+      "sha256": "1de0fb3ce112a9524a08a84fbd0490eff2a4eb3f573fe174aeb93444aecee12b"
+    }
+  ],
+  "imagesRemoved": 0,
+  "volumesRemoved": 0,
+  "globalPrune": false
+}

@@ -53,7 +53,7 @@ unverified. A reproducible UI initial-ACK readiness gap is now corrected and the
 probe records known scalar admission/failure metadata. The corrected actual
 Windows/XRDP/Edge repeat passes one accepted write, one accepted no-format revoke,
 ready-source barrier, fresh-token replay and empty runtime, with zero remote
-reads or host API requests. See [Iteration 240](ITERATION_240.md) for exact scope
+reads or host API requests. See [Iteration 240](history/iterations/201-250.md#iteration-240) for exact scope
 and retained failure evidence. Further controlled runs are covered by the user's
 subsequent repeated-test authorization. Neither an offer ACK nor a revoke ACK
 establishes actual application text consumption, reverse readback, physical OS
@@ -74,4 +74,4 @@ before Docker and transmits it only through private stdin. Both actual Linux
 carriers pass one set ACK, one no-format revoke ACK, ready source, heartbeat and
 joined cleanup; neither invokes a clipboard read. This is private Node/native
 evidence, not Linux browser or application-consumption acceptance.
-[Exact results](ITERATION_241.md).
+[Exact results](history/iterations/201-250.md#iteration-241).

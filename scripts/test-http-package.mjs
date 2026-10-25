@@ -187,11 +187,16 @@ await copyFile(
   join(consumer, 'session-worker.mjs'),
 );
 await copyFile('tests/fixtures/rdp-tls.mjs', join(consumer, 'tls-fixture.mjs'));
+await copyFile(
+  'tests/fixtures/browser-port.mjs',
+  join(consumer, 'browser-port.mjs'),
+);
 let fixture = await readFile('tests/integration/http-adapter.test.mjs', 'utf8');
 fixture = fixture
   .replace('../../packages/http/dist/index.js', '@freerdp-bridge/http')
   .replace('../fixtures/session-worker.mjs', './session-worker.mjs')
   .replace('../fixtures/rdp-tls.mjs', './tls-fixture.mjs')
+  .replace('../fixtures/browser-port.mjs', './browser-port.mjs')
   .replace(
     /new URL\(\s*'\.\.\/\.\.\/apps\/bridge-api\/package.json',\s*import.meta.url,?\s*\)/,
     "import.meta.resolve('@freerdp-bridge/api/fastify')",
@@ -281,6 +286,11 @@ run(
   consumer,
 );
 run(process.execPath, ['--test', 'consumer.test.mjs'], consumer);
+await copyFile(
+  'tests/fixtures/package-runtime-recovery.mjs',
+  join(consumer, 'runtime-recovery.mjs'),
+);
+run(process.execPath, ['runtime-recovery.mjs', 'http'], consumer);
 const report = {
   productVersion,
   targetAdapterVersion: '0.2.3',

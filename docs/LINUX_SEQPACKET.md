@@ -5,13 +5,13 @@ time. The first received datagram establishes the whole-record deadline; later
 chunks never extend it. A real socket regression fails before/passes after, and
 actual primary XRDP PCM/Opus source/reset now pass on successful lab runs.
 One RDP protocol failure remains unexplained; browser/resource/soak acceptance
-is separate. [Evidence](ITERATION_207.md).
+is separate. [Evidence](history/iterations/201-250.md#iteration-207).
 
 Actual connected Linux/XRDP graphics, strict certificate rejection, approved
 session-only trust, heartbeat and confirmed resize/restoration now pass through
 this carrier. This is private Node/native evidence, separate from browser,
 device/audio, sustained resource and full stage acceptance.
-[Connected evidence](ITERATION_201.md).
+[Connected evidence](history/iterations/201-250.md#iteration-201).
 
 Current activation — iteration 200: Node prefers this carrier automatically on
 Linux for a verified private worker/addon pair, or uses framed legacy fallback
@@ -19,7 +19,7 @@ when pairing metadata is absent. Explicit host overrides remain supported.
 The historical codec/endpoint-only limitations below are superseded by the
 current Node/native Release lifecycle gate; remote RDP/resource and broader
 acceptance are not inferred. [Current selector](NODE_SEQPACKET_SUPERVISOR.md),
-[evidence](ITERATION_200.md).
+[evidence](history/iterations/151-200.md#iteration-200).
 
 Iteration 195 selects this carrier in Linux worker only with the exact private
 argument `--ipc-seqpacket-fd=3`, an already connected inherited AF_UNIX packet
@@ -28,7 +28,7 @@ remain framed pipes. The priority output owner retains its fixed queues, 1 s
 write deadline and finite drain/cancellation. The receive owner observes idle
 output failures and parent loss before processing further input. Actual process
 tests pass; Node integration and connected RDP acceptance remain open.
-[Worker evidence](ITERATION_195.md).
+[Worker evidence](history/iterations/151-200.md#iteration-195).
 
 Iteration 194 adds the tested `LinuxSeqpacketEndpoint` kernel-socket adapter.
 It duplicates only connected Unix packet sockets, preserves descriptor flags,
@@ -38,7 +38,7 @@ the original partial-record deadline; writes have one finite whole-record
 deadline and optional cancellation checked within 20 ms while blocked. Both
 timeouts are 20..5,000 ms, default 1,000 ms. Each instance belongs to one thread;
 the caller retains its original descriptor. Socket creation/inheritance, worker
-and Node selection remain open. [Actual socket evidence](ITERATION_194.md).
+and Node selection remain open. [Actual socket evidence](history/iterations/151-200.md#iteration-194).
 
 Iteration 193 implements the portable RWS1 carrier codec beneath the unchanged
 RWI1 envelope (PROTOCOL section 6). Neither codec nor endpoint is selected by current workers or Node:

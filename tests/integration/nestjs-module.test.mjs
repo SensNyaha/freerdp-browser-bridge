@@ -20,6 +20,7 @@ import {
 } from '../../packages/nestjs/dist/index.js';
 import { fakeFactory, eventually } from '../fixtures/session-worker.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import { listenBrowserLoopback } from '../fixtures/browser-port.mjs';
 
 const { WebSocket, WebSocketServer } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
@@ -177,7 +178,7 @@ async function withNest(type, mode, run, native = false) {
   server.on('upgrade', dispatch);
   app.setGlobalPrefix('app');
   try {
-    await app.listen(0, '127.0.0.1');
+    await listenBrowserLoopback((port) => app.listen(port, '127.0.0.1'));
     const base = 'http://127.0.0.1:' + server.address().port;
     const request = (path, method = 'GET', payload, headers = {}) =>
       fetch(base + path, {
@@ -494,7 +495,7 @@ for (const type of ['express', 'fastify']) {
             : new ExpressAdapter(),
           { httpsOptions, logger: false, abortOnError: false },
         );
-        await app.listen(0, '127.0.0.1');
+        await listenBrowserLoopback((port) => app.listen(port, '127.0.0.1'));
         const port = app.getHttpServer().address().port;
         const request = (path, payload) =>
           new Promise((resolve, reject) => {
@@ -674,7 +675,7 @@ test(
       abortOnError: false,
     });
     try {
-      await app.listen(0, '127.0.0.1');
+      await listenBrowserLoopback((port) => app.listen(port, '127.0.0.1'));
       const base = 'http://127.0.0.1:' + app.getHttpServer().address().port;
       for (const body of [config, { ...config, extra: 'x'.repeat(70000) }]) {
         const response = await fetch(base + '/rdp/v1/sessions', {
@@ -794,7 +795,7 @@ test(
       );
       assert.match(rejection, /^HTTP\/1\.1 503 /);
       await bridge.close();
-      await app.listen(0, '127.0.0.1');
+      await listenBrowserLoopback((port) => app.listen(port, '127.0.0.1'));
       const base = 'http://127.0.0.1:' + app.getHttpServer().address().port;
       assert.equal((await fetch(base + '/host')).status, 200);
       assert.equal((await fetch(base + '/rdp/healthz')).status, 503);

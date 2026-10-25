@@ -1,0 +1,595 @@
+{
+  "schema": 1,
+  "version": "0.3.0",
+  "localReleaseAccepted": true,
+  "published": false,
+  "implementationCommits": ["51283d1", "df95d74", "ee78be3", "915ac0c"],
+  "nativeSourceHash": "03bba62ebab1f96812652d7d79bf717572f37d42c2e097b2df9a01bdc41c3005",
+  "native": {
+    "windows": {
+      "compiler": {
+        "id": "MSVC",
+        "version": "19.44.35228.0",
+        "path": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe"
+      },
+      "ctest": 38,
+      "artifacts": {
+        "rdp-worker.exe": "4869673d78dc3dbd4e4956492f3c0597378ea57d83623867e3da7477247ef5ae",
+        "rdp-runtime-directory.exe": "775d9ae316846db61fedfa11fdd06893a70a335cf5a6de34a430b06d444f1db0",
+        "rdp-runtime-recovery.exe": "28c8e0415cb005d06a174636b5b4d6f5c36458634326c595a79d0df4045e9ea6",
+        "rdp-worker.runtime.json": "d29c854179ce113dca6e10dbe4e3f34584bf66d3b968123e5e0e34dc4b73c081"
+      }
+    },
+    "linux": {
+      "compiler": "8.3.0",
+      "ctest": 39,
+      "artifacts": {
+        "rdp-worker": "bda9d7cbb58b1636e388be53b2535e610cc7256ba740d5f353c661f438beb5b0",
+        "rdp-runtime-recovery": "1a830a8c47f4da951d78d640238e22e922c8ab539910f02a3b011b82465af4f7",
+        "rdp-worker.runtime.json": "83acc32cea2cfcdf4c3320c0dbbcf41a43a05747143af828800a2892f9520ebc",
+        "rdp-ipc.node": "3b81b3384ad29f02140b19b746885202965efba2647ce8c0aa77543474a63703",
+        "rdp-worker.ipc.json": "15557ded87ff80ee22193d4e5070a3c4cf714c4fc00b209e467098392ad933bf"
+      }
+    }
+  },
+  "checks": [
+    {
+      "path": "build/current-validation/recovery-release-windows-owner-check.log",
+      "sha256": "a5bdbf6202712f9979d5c2f7915c7ddb92b9ab34c9277283a4b07fc233604edc",
+      "passed": 1044,
+      "skipped": 70,
+      "failed": 0
+    },
+    {
+      "path": "build/current-validation/recovery-release-linux-owner-check.log",
+      "sha256": "177c82b4d74ca9751e445a1182d3b84c7f6047d5f2941ec245dd7fe408cfc9c2",
+      "passed": 1024,
+      "skipped": 92,
+      "failed": 0
+    }
+  ],
+  "consumers": [
+    {
+      "platform": "windows",
+      "adapter": "fastify",
+      "log": "build/current-validation/recovery-release-owner-consumer-fastify-windows.log",
+      "sha256": "b9de5d55e5f8c5087f28eccf40aaed9aaf944149023cc95e6658662838688eac",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    },
+    {
+      "platform": "windows",
+      "adapter": "nestjs",
+      "log": "build/current-validation/recovery-release-owner-consumer-nestjs-windows.log",
+      "sha256": "65deba2c206f28289fb3fd0ddd55749a946c6b4886036b3ca8cd9a9bb5c1f578",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    },
+    {
+      "platform": "windows",
+      "adapter": "http",
+      "log": "build/current-validation/recovery-release-owner-consumer-http-windows.log",
+      "sha256": "11b5afd098339be9c61fbdd85c8d2bcd55b8c4c26587afbbab0545bf6113547a",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    },
+    {
+      "platform": "windows",
+      "adapter": "express",
+      "log": "build/current-validation/recovery-release-owner-consumer-express-windows.log",
+      "sha256": "b1929c91b6dbf5e27cbe4a84062274982468ac17c7ef16241ac43f0badf4b72d",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    },
+    {
+      "platform": "linux",
+      "adapter": "fastify",
+      "log": "build/current-validation/recovery-release-linux-evidence/fixed-consumer-fastify.log",
+      "sha256": "289d21ac8989c72ac818c5f55bf9ebfeff846988cb826a5379bb15eb0400b257",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    },
+    {
+      "platform": "linux",
+      "adapter": "nestjs",
+      "log": "build/current-validation/recovery-release-linux-evidence/fixed-consumer-nestjs.log",
+      "sha256": "70a457cfd0752bae32dcd68898dd4bb32076a5063fa0ce883bff14516b6284d0",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    },
+    {
+      "platform": "linux",
+      "adapter": "http",
+      "log": "build/current-validation/recovery-release-linux-evidence/fixed-consumer-http.log",
+      "sha256": "b8daf2256c377ef8cf75a928419f1ce9e91bb94987c1908af97069d4b1729b4e",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    },
+    {
+      "platform": "linux",
+      "adapter": "express",
+      "log": "build/current-validation/recovery-release-linux-evidence/fixed-consumer-express.log",
+      "sha256": "9095efdbc702821db560c501ca34e77871fb14c23635b7dc9fe71079b77417c0",
+      "actualOrphanRecovery": true,
+      "strictTypeScript": true
+    }
+  ],
+  "desktopProfiles": [
+    {
+      "version": "0.3.0",
+      "serverPlatform": "win32-x64",
+      "lab": "astra",
+      "codec": "h264",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 4,
+          "keyframes": 7
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 5,
+          "keyframes": 9
+        }
+      ],
+      "cleanup": true,
+      "nativeTransport": "framed-pipes",
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "84d2360ed4aa9e1fff1b2f3fb0b7e7d06a2d661f959d186ff4dd72f33aefe57b"
+    },
+    {
+      "version": "0.3.0",
+      "serverPlatform": "win32-x64",
+      "lab": "astra",
+      "codec": "jpeg",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 3,
+          "keyframes": 0
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 5,
+          "keyframes": 0
+        }
+      ],
+      "cleanup": true,
+      "nativeTransport": "framed-pipes",
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "176c49dff6b7ed16f654b02924fc122043087c3f6ff61341aa8c302fe3b8112c"
+    },
+    {
+      "version": "0.3.0",
+      "serverPlatform": "win32-x64",
+      "lab": "redos",
+      "codec": "h264",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 4,
+          "keyframes": 7
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 6,
+          "keyframes": 10
+        }
+      ],
+      "cleanup": true,
+      "issuerClockSkewSeconds": -1,
+      "nativeTransport": "framed-pipes",
+      "createStatus": 202,
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "8d6cac40807eb9a0d3b7a4ca3b63d422f97a7f0c32a234754e5ad4adff62e610"
+    },
+    {
+      "version": "0.3.0",
+      "serverPlatform": "win32-x64",
+      "lab": "redos",
+      "codec": "jpeg",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 3,
+          "keyframes": 0
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 5,
+          "keyframes": 0
+        }
+      ],
+      "cleanup": true,
+      "nativeTransport": "framed-pipes",
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "9092c0c154cead285762fec72b795a008b5194120fbf6804df85bf997bdc3a4a"
+    },
+    {
+      "version": "0.3.0",
+      "serverPlatform": "linux-x64-gnu",
+      "lab": "astra",
+      "codec": "h264",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 3,
+          "keyframes": 5
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 5,
+          "keyframes": 8
+        }
+      ],
+      "cleanup": true,
+      "issuerClockSkewSeconds": -222,
+      "nativeTransport": "unix-seqpacket-rws1",
+      "createStatus": 202,
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "47058b332658ad864a67709dd4c59e8df35367176406e0888d87646bf232d0bc"
+    },
+    {
+      "version": "0.3.0",
+      "serverPlatform": "linux-x64-gnu",
+      "lab": "astra",
+      "codec": "jpeg",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 4,
+          "keyframes": 0
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 6,
+          "keyframes": 0
+        }
+      ],
+      "cleanup": true,
+      "issuerClockSkewSeconds": -222,
+      "nativeTransport": "unix-seqpacket-rws1",
+      "createStatus": 202,
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "d76f0b5bcfbf752afbbb1095e7bae6e779f1d8b3d076d2948911539f9680146b"
+    },
+    {
+      "version": "0.3.0",
+      "serverPlatform": "linux-x64-gnu",
+      "lab": "redos",
+      "codec": "h264",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 4,
+          "keyframes": 8
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 6,
+          "keyframes": 12
+        }
+      ],
+      "cleanup": true,
+      "issuerClockSkewSeconds": -1,
+      "nativeTransport": "unix-seqpacket-rws1",
+      "createStatus": 202,
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "bdd935f51c1a5b5b05de7bf84b3ba430d3cb28f6da1c625f1454b3a1fef050ec"
+    },
+    {
+      "version": "0.3.0",
+      "serverPlatform": "linux-x64-gnu",
+      "lab": "redos",
+      "codec": "jpeg",
+      "realRdpDesktop": true,
+      "resized": [
+        {
+          "width": 1280,
+          "height": 720,
+          "configurations": 3,
+          "keyframes": 0
+        },
+        {
+          "width": 1920,
+          "height": 1080,
+          "configurations": 4,
+          "keyframes": 0
+        }
+      ],
+      "cleanup": true,
+      "nativeTransport": "unix-seqpacket-rws1",
+      "reattached": true,
+      "browserErrors": 0,
+      "evidenceSha256": "9e80de9def43b888895cfc112dfa2d4bf3e64d1fe91034e3bf0fd09b9866f322"
+    }
+  ],
+  "installedLabs": [
+    {
+      "platform": "linux",
+      "version": "0.3.0",
+      "acceptanceEnvironment": "owned-astra-1.7.5",
+      "nativeTls": true,
+      "nonRootService": true,
+      "crashRecovery": true,
+      "reinstallPreservesConfig": true,
+      "uninstall": true,
+      "retainedPublicConfig": true,
+      "retainedConfigFilename": "bridge.json",
+      "realRdpDesktop": false,
+      "upgradeToNewVersion": true,
+      "previousVersion": "0.2.5",
+      "previousPackageSha256": "ab1cfca521f3391877ae991f14cf426854d6256de69cbb3158baaa5475be79f8"
+    },
+    {
+      "platform": "linux",
+      "version": "0.3.0",
+      "acceptanceEnvironment": "owned-redos-7.3",
+      "nativeTls": true,
+      "nonRootService": true,
+      "crashRecovery": true,
+      "reinstallPreservesConfig": true,
+      "uninstall": true,
+      "retainedPublicConfig": true,
+      "retainedConfigFilename": "bridge.json.rpmsave",
+      "realRdpDesktop": false,
+      "upgradeToNewVersion": true,
+      "previousVersion": "0.2.5",
+      "previousPackageSha256": "bcd63d08b9f11f0e87c4345e72b0bcaf7d194102b4c4dc993fb55a7a0342ed17"
+    }
+  ],
+  "ci": [
+    {
+      "id": 40185826643,
+      "name": "GCC 8.3 foundation",
+      "commit": "21a36f1cd70286ea2998bf355ef22cebeb4a22be",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40185826643"
+    },
+    {
+      "id": 40185826696,
+      "name": "Standalone release",
+      "commit": "21a36f1cd70286ea2998bf355ef22cebeb4a22be",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40185826696"
+    },
+    {
+      "id": 40185826828,
+      "name": "foundation",
+      "commit": "21a36f1cd70286ea2998bf355ef22cebeb4a22be",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40185826828"
+    }
+  ],
+  "candidateDistribution": {
+    "schema": 1,
+    "version": "0.3.0",
+    "sourceCommit": "21a36f1cd70286ea2998bf355ef22cebeb4a22be",
+    "candidateOnly": true,
+    "files": [
+      {
+        "name": "freerdp-bridge_0.3.0_amd64.deb",
+        "bytes": 121969922,
+        "sha256": "58bf51c2a2ce5b3e1b91a9473c9d0c168a46cb1284a623896b3f342ee807798a",
+        "integrity": "sha512-G44QLsAZE5pKzoOI371MiGReradbAFdvcKnhnELz38HvpIIpsmwHH9pvAosvqTeFQ8PnPp4tGrmtJacjkuXzgg=="
+      },
+      {
+        "name": "freerdp-bridge-0.3.0-1.x86_64.rpm",
+        "bytes": 122545104,
+        "sha256": "26f3786f3fca0869aaf1498c8aeb98d564fd765ecf0b4f2da8ddfba161963e53",
+        "integrity": "sha512-Zde58LlF5yKq/Dfx6iSamdN6KgvtMjNy9LJ05+sZZ8ZYC3VoBwT0RG8BU0DzTosIgyoMMUvFIqWTjeagSa9A2g=="
+      },
+      {
+        "name": "freerdp-bridge-0.3.0-corresponding-source-linux-x64-gnu.tar.gz",
+        "bytes": 4009855,
+        "sha256": "c46411b52e3a571a2942b0b35389ab2a6b65d5e0a8c14f7d3aed8353a3159b42",
+        "integrity": "sha512-p645ag+1INHVAeI9vz7iJTOQGszMnIBZhwBwOIib09uGzZxEdYE918ZA1oQyNnksus9IxlchbLpAAlqV5k9QWA=="
+      },
+      {
+        "name": "freerdp-bridge-0.3.0-corresponding-source-win32-x64.tar.gz",
+        "bytes": 440158,
+        "sha256": "d8885a7cc81f17ba317a1e46e0d9ef56f9609c533123722db96388b4992252da",
+        "integrity": "sha512-xPX4a3zX37i3M0XQZJcGGDVJvHbv28z3coD6Gf2GAZU4x1R0XRvCbJJq1FADGIxcClGWw3h49gr2d77RixbuTw=="
+      },
+      {
+        "name": "freerdp-bridge-0.3.0-linux-x64-gnu.tar.gz",
+        "bytes": 122321633,
+        "sha256": "a8711cb04081f354985a027358b9c0894682333594c11fc83507a0b337161f4e",
+        "integrity": "sha512-px/qLWp2LnJ1KPnYoFdidCLMc6D04zY8fKmQ+yXqZxLW2Hz2w4CAumMPv4JTXZ3GVEFiLcyomGyvKHiXq06+Qw=="
+      },
+      {
+        "name": "freerdp-bridge-0.3.0-win32-x64.msi",
+        "bytes": 36690203,
+        "sha256": "8cf49611705e647cf585a036bead71a5fcbdba918c1e557d6123e2b4f24a42b6",
+        "integrity": "sha512-SKY8Sr2AR/kluHCcIJCF+ubyA2EEyGEMeVT4plJeAT0BP3mPt5oOG2oJgu7stEbBPfq3b2dIsBtFcIwcD9ngRw=="
+      },
+      {
+        "name": "freerdp-bridge-0.3.0-win32-x64.zip",
+        "bytes": 47683319,
+        "sha256": "cd25da2cbaf4572cdd29b3b9ed02da183e6d6324f73f551baa15189c8eb6ef2f",
+        "integrity": "sha512-10s92/ugLeGMkkWMWfwZ5xLoI5pCjeg2QlYwOffwpKhFebI6AJTbIW4VFfSHC9fMr/ilACMRC+SK0SwE5oLH0g=="
+      }
+    ],
+    "acceptance": [
+      {
+        "platform": "linux-x64-gnu",
+        "portable": true,
+        "installed": true,
+        "realRdpDesktop": false,
+        "os": "ubuntu-24.04",
+        "upgradeFrom": "0.2.5"
+      },
+      {
+        "platform": "win32-x64",
+        "portable": true,
+        "installed": true,
+        "realRdpDesktop": false,
+        "os": "windows-2025",
+        "upgradeFrom": "0.2.5"
+      }
+    ]
+  },
+  "archives": [
+    {
+      "name": "@freerdp-bridge/api",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-api-0.3.0.tgz",
+      "bytes": 99613,
+      "sha256": "57102f36cdb09b23a82e4f8fa0d077722cb3333c928d1fc60bbb92bc55c31b77",
+      "integrity": "sha512-6o0ZAQXYi2GYPLG9Tl2/ziMpm+DS2ik76iCJZpyLaeQldJ+Wbtq+3o3ofME37/RQRJjSRk5r3J/JYyB6seliNg==",
+      "readme": {
+        "name": "@freerdp-bridge/api",
+        "readmeBytes": 2914
+      }
+    },
+    {
+      "name": "@freerdp-bridge/config",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-config-0.3.0.tgz",
+      "bytes": 9342,
+      "sha256": "7c7c801a91464feb4264159c3fc1945e52060330950fe45ba88642e0b5ac8407",
+      "integrity": "sha512-YFurEd3UkJ37hK1nmoxKUS9ItRBG6oiusBFxT4uavkLLaxLTTsPxKRXevq1Rs/RDiDZjxs7rqBIaGG/oxEP7Gg==",
+      "readme": {
+        "name": "@freerdp-bridge/config",
+        "readmeBytes": 1752
+      }
+    },
+    {
+      "name": "@freerdp-bridge/express",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-express-0.3.0.tgz",
+      "bytes": 5025,
+      "sha256": "c4f2bfeebce5eedc027560b07251b0374017c226f4de450e40d2bd1a69e2b5df",
+      "integrity": "sha512-XNzCymLGn67/jtsqGuDM3J6A/FvVJy7GAdYC8T09z2Mz5W5udnZitIxLV55gD+vhFdOBCZTw7ffMvpxK/Rildw==",
+      "readme": {
+        "name": "@freerdp-bridge/express",
+        "readmeBytes": 4437
+      }
+    },
+    {
+      "name": "@freerdp-bridge/fastify",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-fastify-0.3.0.tgz",
+      "bytes": 3621,
+      "sha256": "eedfdc61b71122739d0213bcbf76636de1e7f354643df188448a2c1b8d5b6f56",
+      "integrity": "sha512-3MzQLZO7yz51qn/jr8xdA7cBCYBrY7qbdQWIjiQUqbsW11SIJ1H7GwLFc4fuIYIqRTKjd5dtY6plkZ8RM5F0dA==",
+      "readme": {
+        "name": "@freerdp-bridge/fastify",
+        "readmeBytes": 4112
+      }
+    },
+    {
+      "name": "@freerdp-bridge/http",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-http-0.3.0.tgz",
+      "bytes": 7564,
+      "sha256": "bae549c5534c77713f9ed792590b384ff1ac9d73a2f04f4eb88b40818d88f4b0",
+      "integrity": "sha512-Ywxf0xdybuUYVZpuoYr1bQ4VG15p5SgJtG+OKDLHPVK9R0RK+aQXLo0nJZ/qToNxnbKStf8pHNEIjcfEj7vDDw==",
+      "readme": {
+        "name": "@freerdp-bridge/http",
+        "readmeBytes": 3564
+      }
+    },
+    {
+      "name": "@freerdp-bridge/nestjs",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-nestjs-0.3.0.tgz",
+      "bytes": 8326,
+      "sha256": "ebf70d13b06d7a694de4023c82bda824e50567c5c6970b1c09c386007a650e8d",
+      "integrity": "sha512-KkDyS0mB2moNv6sKrFqkz1TapJG3Q8lrnzi6oz/Sy4m+cUtstePgNrD64uW8pE+oxcOCfUSmRhKtIp8P9WGREA==",
+      "readme": {
+        "name": "@freerdp-bridge/nestjs",
+        "readmeBytes": 3814
+      }
+    },
+    {
+      "name": "@freerdp-bridge/node",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-node-0.3.0.tgz",
+      "bytes": 120825,
+      "sha256": "8344113de7c9fd2ae792581c51134dab3fac68f5f6dea4f7d8783389108d1fa2",
+      "integrity": "sha512-lPPysKc6bF/fqrR0eA9i0rfxbzqfPlHW1g/2AOQw0LMcFtNO058NINXUHGPOjc5MFWdvbt/Imw+/36bLhsgCdQ==",
+      "readme": {
+        "name": "@freerdp-bridge/node",
+        "readmeBytes": 3138
+      }
+    },
+    {
+      "name": "@freerdp-bridge/protocol",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-protocol-0.3.0.tgz",
+      "bytes": 38903,
+      "sha256": "52e2df5d6da9c03bf8cd8df128349b338fc5f446d79c965999d30872ce7ff730",
+      "integrity": "sha512-qf9PbKcJxsWPDsBHYLzYhAO+4zVZrjhv5d4Avvj4lJAKDyN1KO17bcSpGOyJgL6FYlF1f8dJcj+5G8r2NqGy5w==",
+      "readme": {
+        "name": "@freerdp-bridge/protocol",
+        "readmeBytes": 1747
+      }
+    },
+    {
+      "name": "@freerdp-bridge/runtime-linux-x64-gnu",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-runtime-linux-x64-gnu-0.3.0.tgz",
+      "bytes": 76515246,
+      "sha256": "1ac6478f5d2954452bfc7cf9af2f54447dffb4a2762c012399b7f9c243390d87",
+      "integrity": "sha512-Zdd3nLCtx6GyGqkLwAR+9i7l6VesjzUK8L2uq32FqVNpRP5lWq93rgPeWlGFUpMAQrZo4TNyYOikHQlj6nckDA==",
+      "readme": {
+        "name": "@freerdp-bridge/runtime-linux-x64-gnu",
+        "readmeBytes": 2811
+      }
+    },
+    {
+      "name": "@freerdp-bridge/runtime-win32-x64",
+      "version": "0.3.0",
+      "archive": "freerdp-bridge-runtime-win32-x64-0.3.0.tgz",
+      "bytes": 6924657,
+      "sha256": "e6853af5a8804b595ece3008970588e58f8be8c4b3d85cd21924384a8abfb53f",
+      "integrity": "sha512-qisAEHc1cUI5BKiUqq344AfBO1pfeRUB8Bk8vCZ3e0S+JnIA0Un/opRuTAK1j9qMEa7mlr7ktPGAzddIgDBrIQ==",
+      "readme": {
+        "name": "@freerdp-bridge/runtime-win32-x64",
+        "readmeBytes": 2559
+      }
+    }
+  ],
+  "remaining": [
+    "merge and immutable annotated stable tag",
+    "exact npm OIDC publication and fresh registry-only consumers",
+    "registry-only standalone main-push publication and public final file acceptance"
+  ],
+  "notAccepted": [
+    "full original Stage 1/V1",
+    "extended Node/addon sanitizer matrix",
+    "new channel/device or broader OS/security profiles"
+  ]
+}

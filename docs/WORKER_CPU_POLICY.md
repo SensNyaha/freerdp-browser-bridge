@@ -14,7 +14,7 @@ bundled Release profiles lack the new helper/command and are unchanged.
 An additional isolated MSVC Release source consumer also passes actual
 CPU/RSS/native-capacity controls with the current helper. This new output is
 separate from the existing bundled artifacts and production packaging.
-[Source-consumer verification](ITERATION_313.md).
+[Source-consumer verification](history/iterations/301-350.md#iteration-313).
 Enabling this policy with
 an older/missing helper fails as unavailable rather than silently disabling
 enforcement. Linux uses bounded proc-stat extraction and the system clock tick
@@ -74,10 +74,10 @@ These synthetic breaches do not establish actual overload behavior or connected
 RDP CPU budgets. Wider Linux/platform profiles, connected application overload,
 startup/Node/total-session CPU,
 connected policies, production helper packaging and sustained/platform/soak
-acceptance remain open. [Windows verification](ITERATION_306.md),
-[Linux extension and installation](ITERATION_308.md).
+acceptance remain open. [Windows verification](history/iterations/301-350.md#iteration-306),
+[Linux extension and installation](history/iterations/301-350.md#iteration-308).
 
-The named [actual native heartbeat-load control](ITERATION_309.md) additionally
+The named [actual native heartbeat-load control](history/iterations/301-350.md#iteration-309) additionally
 verifies a 1% policy breach using ordinary platform counters on Windows/Linux:
 the loaded C++ worker retires, its runtime is empty and a sibling stays healthy.
 The fixed 16-flight request driver is a bounded unconnected test load. It does
@@ -90,10 +90,10 @@ admission deadline. Waiting cancellation removes the caller before launch;
 permits remain held through joined helper close. The existing three-second
 worker query deadline includes admission and execution. Helper execution still
 has its two-second timeout. This bounds launch contention without extending
-the worker's watchdog deadline. [Configured-capacity evidence](ITERATION_310.md)
+the worker's watchdog deadline. [Configured-capacity evidence](history/iterations/301-350.md#iteration-310)
 distinguishes retained failed controls from the accepted unconnected slice.
 
-The [native crash/retirement control](ITERATION_311.md) additionally verifies
+The [native crash/retirement control](history/iterations/301-350.md#iteration-311) additionally verifies
 registry capacity and private runtime remain owned through an artificially
 held query completion after the target PID exits. Siblings continue actual
 queries/heartbeat and one replacement starts after retirement. This is a
@@ -105,16 +105,16 @@ healthy simultaneous CPU/RSS policies on actual 1080p RDP with the isolated
 Release and matched Debug consumers. Query counts, cumulative growth and joined
 cleanup pass for the named short control. This is separate from connected
 cap-breach enforcement, exact utilization, total-session and sustained budgets.
-[Observed values](ITERATION_314.md).
+[Observed values](history/iterations/301-350.md#iteration-314).
 
-The [explicit connected CPU-limit control](ITERATION_315.md) additionally
+The [explicit connected CPU-limit control](history/iterations/301-350.md#iteration-315) additionally
 observes a 1% breach from actual platform counters while the authorized Windows
 RDP session is connected. A connected first baseline precedes bounded local
 IPC load; exact WORKER_CPU_LIMIT and joined PID/runtime retirement pass. It is
 separate from registry/public error propagation, connected sibling isolation,
 production budgets and sustained/OS-failure acceptance.
 
-The [public connected Windows control](ITERATION_320.md) additionally verifies
+The [public connected Windows control](history/iterations/301-350.md#iteration-320) additionally verifies
 the ordinary native adapter/manager/API chain: first connected CPU baseline
 after public JPEG, real counter growth under bounded valid IPC load, one exact
 WORKER_CPU_LIMIT control error, terminal control/media channels, failed HTTP

@@ -1,3 +1,4 @@
+import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
@@ -9,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
+import { isReleaseVersion } from '../../scripts/github-delivery/manifest.mjs';
 
 const [directory, labName, codec, ...extra] = process.argv.slice(2);
 const linux = directory === '--installed-linux';
@@ -25,7 +27,7 @@ if (linux) {
   }
   if (
     !/^[a-f0-9]{64}$/.test(options.get('--sha256') ?? '') ||
-    !/^0\.2\.[0-9]+$/.test(options.get('--version') ?? '') ||
+    !isReleaseVersion(options.get('--version')) ||
     !/^\/home\/[A-Za-z0-9_.-]+\/freerdp-bridge-tests\/[A-Za-z0-9_.-]+\//.test(
       options.get('--package') ?? '',
     )
@@ -50,7 +52,7 @@ const manifest = linux
   : JSON.parse(await readFile(join(root, 'service/package.json'), 'utf8'));
 assert.equal(manifest.name, '@freerdp-bridge/standalone');
 assert.equal(manifest.private, true);
-assert.match(manifest.version, /^0\.2\.[0-9]+$/);
+assert.ok(isReleaseVersion(manifest.version));
 const lab = JSON.parse(
   await readFile(
     '.local-tests/' +
@@ -135,7 +137,7 @@ const image = async (width, height, previous = 0) => {
 };
 try {
   const reservation = createServer();
-  await new Promise((done) => reservation.listen(0, '127.0.0.1', done));
+  await listenBrowserHttp(reservation);
   const port = reservation.address().port;
   await new Promise((done) => reservation.close(done));
   origin = 'http://127.0.0.1:' + port;
@@ -164,17 +166,6 @@ try {
     },
   };
   await writeFile(configuration, JSON.stringify(settings));
-  const now = Math.floor(Date.now() / 1000);
-  token = await new SignJWT({
-    sub: 'synthetic-lab-owner',
-    scope: 'rdp:connect',
-    iss: settings.auth.issuer,
-    aud: 'bridge',
-    iat: now,
-    exp: now + 300,
-  })
-    .setProtectedHeader({ alg: 'RS256', kid: 'synthetic-lab', typ: 'at+jwt' })
-    .sign(privateKey);
   phase = 'server-start';
   child = linux
     ? spawn(
@@ -239,6 +230,32 @@ try {
       throw Error('STANDALONE_RDP_NOT_READY');
     await delay(25);
   }
+  // This fixture is its own issuer. Align its short-lived in-memory token with
+  // the owned service clock over the already pinned lab tunnel; never relax
+  // production JWT validation or alter the lab's system clock.
+  phase = 'issuer-clock';
+  const health = await fetch(origin + '/rdp/healthz', {
+    signal: AbortSignal.timeout(10000),
+  });
+  assert.equal(health.status, 200);
+  const date = health.headers.get('date');
+  assert.ok(typeof date === 'string' && date.length <= 64);
+  const serverTime = Date.parse(date);
+  assert.ok(Number.isFinite(serverTime));
+  const skew = Math.round((serverTime - Date.now()) / 1000);
+  assert.ok(Math.abs(skew) <= 900);
+  report.issuerClockSkewSeconds = skew;
+  const now = Math.floor(serverTime / 1000);
+  token = await new SignJWT({
+    sub: 'synthetic-lab-owner',
+    scope: 'rdp:connect',
+    iss: settings.auth.issuer,
+    aud: 'bridge',
+    iat: now,
+    exp: now + 300,
+  })
+    .setProtectedHeader({ alg: 'RS256', kid: 'synthetic-lab', typ: 'at+jwt' })
+    .sign(privateKey);
   const build = await request('/v1/build');
   assert.equal(build.bridgeVersion, manifest.version);
   assert.equal(build.freeRdpVersion, '3.32.1');
@@ -282,13 +299,16 @@ try {
     await readFile(resolve('.local-tests', credentialName), 'utf8'),
   );
   try {
+    phase = 'form-target';
     await page.locator('[name=host]').fill(lab.host);
     await page.locator('[name=port]').fill(String(lab.port ?? 3389));
+    phase = 'form-credentials';
     await page.locator('[name=username]').fill(credentials.username);
     await page.locator('[name=password]').fill(credentials.password);
   } finally {
     delete credentials.password;
   }
+  phase = 'form-profile';
   await page.locator('[name=certificatePolicy]').selectOption('prompt');
   await page.locator('[name=video]').selectOption(codec);
   await page.locator('[name=audio]').selectOption('off');
@@ -300,10 +320,15 @@ try {
       response.request().method() === 'POST',
     { timeout: 20000 },
   );
+  phase = 'form-submit';
   await page.click('#connect-session');
   const response = await createdResponse;
+  report.createStatus = response.status();
+  const created = await response.json();
+  if (/^[A-Z][A-Z0-9_]{1,63}$/.test(created?.error?.code ?? ''))
+    report.createError = created.error.code;
   assert.equal(response.status(), 202);
-  sessionId = (await response.json()).sessionId;
+  sessionId = created.sessionId;
   assert.match(sessionId, /^[a-f0-9]{32}$/);
   assert.equal(await page.locator('[name=password]').inputValue(), '');
   phase = 'certificate';
@@ -386,8 +411,14 @@ try {
   assert.equal((await request('/v1/diagnostics')).activeSessions, 0);
   if (!linux)
     assert.deepEqual(await readdir(runtime), ['.bridge-service.lock']);
-} catch {
+} catch (error) {
   report.failedPhase = phase;
+  if (
+    ['Error', 'AssertionError', 'TimeoutError', 'TypeError'].includes(
+      error?.name,
+    )
+  )
+    report.errorKind = error.name;
   report.backendFailures = output.split('\n').flatMap((line) => {
     try {
       const value = JSON.parse(line);

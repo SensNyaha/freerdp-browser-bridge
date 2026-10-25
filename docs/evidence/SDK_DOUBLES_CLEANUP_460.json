@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "removedDirectories": 7,
+  "logicalBytesRemoved": 1600024644,
+  "removedFiles": 32563,
+  "symlinksUnlinkedWithoutTraversal": 508,
+  "preservedReceipts": 13,
+  "incomingLinkAudit": {
+    "directories": 68165,
+    "links": 7042,
+    "incoming": 0
+  },
+  "preservedPhysicalInputs": [
+    ".tools",
+    ".deps",
+    "build/freerdp-source-clean-czdbUM",
+    "build/native-clean-7MLpLU",
+    "build/native-clean-ROjNo4",
+    "build/freerdp-source-clean-iVDioP",
+    "build/dependencies-source-clean-MypULr",
+    "build/bundled/_deps/catch2-src"
+  ],
+  "protectedToolchainWorkerAndSdkHashesUnchanged": true,
+  "removed": [
+    {
+      "name": "freerdp-source-clean-Foc03E",
+      "bytes": 280255590,
+      "files": 3996
+    },
+    {
+      "name": "freerdp-source-clean-I1dYMx",
+      "bytes": 280253950,
+      "files": 3993
+    },
+    {
+      "name": "freerdp-source-clean-MpfPs4",
+      "bytes": 280484160,
+      "files": 3996
+    },
+    {
+      "name": "freerdp-source-clean-pf2yqW",
+      "bytes": 280542367,
+      "files": 4000
+    },
+    {
+      "name": "freerdp-source-clean-y3CBxK",
+      "bytes": 127155312,
+      "files": 3415
+    },
+    {
+      "name": "cliprdr-padding-native",
+      "bytes": 119793184,
+      "files": 658
+    },
+    {
+      "name": "source-checkout-PBeAQy",
+      "bytes": 231540081,
+      "files": 12505
+    }
+  ]
+}

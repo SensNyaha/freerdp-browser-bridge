@@ -71,4 +71,4 @@ The authorized XRDP helper accepts `--quality-test` after its codec mode. It use
 the low-bandwidth profile with 5 FPS, 750/1000 kbit/s, verifies browser rendering,
 then makes three sequential native captures after browser detach to test pacing
 independently of Node. It does not send remote keys/buttons/wheel.
-Evidence is recorded in [iteration 16](ITERATION_016.md).
+Evidence is recorded in [iteration 16](history/iterations/001-050.md#iteration-016).

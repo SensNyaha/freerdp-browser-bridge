@@ -47,8 +47,8 @@ RED OS/GCC 11 control is retained, not claimed as a new remote compiler run.
 Linux also passes upgrade/rollback between the previous **development**
 0.2.0 tarball set and 0.2.1; that does not create stable 0.2.0 Fastify support.
 The native clean receipts and their exact worker/helper hashes are recorded
-in [422](ITERATION_422.md). Final package hashes and source companions are
-recorded in [423](ITERATION_423.md). The new source/notices packaging preserves
+in [422](history/iterations/401-450.md#iteration-422). Final package hashes and source companions are
+recorded in [423](history/iterations/401-450.md#iteration-423). The new source/notices packaging preserves
 both runtime manifest byte streams and every native runtime file hash.
 
 Final full regression logs are
@@ -154,4 +154,4 @@ version is not republished. [New publication contract](NPM_PUBLISHING.md).
 The user's later explicit instruction requests completing the original accepted
 0.2.1 set first. All seven unchanged tarballs are now public with matching
 integrity, and fresh registry-only Windows/Linux consumers pass. This supersedes
-the partial-publication checkpoint above; [final publication evidence](ITERATION_426.md).
+the partial-publication checkpoint above; [final publication evidence](history/iterations/401-450.md#iteration-426).

@@ -45,7 +45,7 @@ The pinned RDPEI client starts clientFeaturesMask=UINT32_MAX and intersects it w
 the server's multi-pen feature when writing CS_READY. The bridge now clears only
 ENABLE_MULTIPEN_INJECTION through the public RdpeiClientContext field before
 Initialize. Actual-addin/fake-DVC tests prove both owned/provider paths retain touch
-readiness while refusing multi-pen. [Iteration 32](ITERATION_032.md).
+readiness while refusing multi-pen. [Iteration 32](history/iterations/001-050.md#iteration-032).
 
 No dependency source or pin was modified by this audit. Linux/sanitizers, malformed
 actual-host reassembly, concurrent resource accounting and soak remain unverified.

@@ -64,14 +64,14 @@ after retirement the wrapper callback is an atomic no-op.
 
 ## Evidence and remaining acceptance
 
-[Iteration 65](ITERATION_065.md) tests actual pinned public core channel registration,
+[Iteration 65](history/iterations/051-100.md#iteration-065) tests actual pinned public core channel registration,
 public pending-message processing, retirement and public disconnect/context-free
 on a later thread. It does not connect a socket or exchange actual core audio
 fragments. Actual linked RDPSND with fake SVC covers cancelled confirmations,
 close faults, missing-completion deadlines and publication failure recovery.
 Real transport shutdown/cancellation, pre-authentication/core resource limits,
 audible remote/browser integration remain open. Private Windows worker selection
-and pre-GDI refusal/cancellation are added in [iteration 66](ITERATION_066.md).
+and pre-GDI refusal/cancellation are added in [iteration 66](history/iterations/051-100.md#iteration-066).
 
 The same pinned `core/utils.c::utils_reload_channels` disconnects/closes/frees the
 old manager, allocates/registers a new manager and invokes public `LoadChannels`

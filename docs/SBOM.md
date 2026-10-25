@@ -17,7 +17,7 @@ not redistributable installer versions or verified publisher signatures.
 CRT license conclusions remain NOASSERTION pending licensing review. Windows
 OS/Node distribution/application packaging, installers and a precise native
 dependency graph remain outside this native-only report.
-[Actual Windows and Linux regression evidence](ITERATION_221.md).
+[Actual Windows and Linux regression evidence](history/iterations/201-250.md#iteration-221).
 The optional local lab audit `node scripts/audit-local-artifact-secrets.mjs
 --windows` checks both Windows ZIPs against the authorized ignored password,
 without putting its value in reports, argv or environment. It is separate from
@@ -44,7 +44,7 @@ these embedded documents must be rebuilt; no silent SDK fallback is performed.
 `node scripts/test-sbom-artifacts.mjs` repeats generation in a separate tree with
 only the exact archives, scripts/schema and pinned source metadata, without
 .deps or native staging. JavaScript validator dependencies come from the parent
-frozen installation. [Artifact-only verification](ITERATION_222.md).
+frozen installation. [Artifact-only verification](history/iterations/201-250.md#iteration-222).
 
 Current corrected SDK artifacts also retain
 `share/freerdp-bridge/freerdp-overrides.json` and the DSP build-copy recipe.
@@ -64,7 +64,7 @@ that override metadata is absent and modification status is not established.
 This preserves historical inventory without asserting an unmodified binary.
 New linked builds separately require correction metadata at configure time.
 This is provenance, not a binary signature or licensing conclusion.
-[Correction contract](FREERDP_OVERRIDES.md), [new artifact evidence](ITERATION_270.md).
+[Correction contract](FREERDP_OVERRIDES.md), [new artifact evidence](history/iterations/251-300.md#iteration-270).
 
 The root uses [SPDX 2.3 JSON](https://github.com/spdx/spdx-spec/tree/v2.3/schemas).
 It is validated offline against the unmodified, hash-pinned official schema and
@@ -104,7 +104,7 @@ The report covers application/native artifacts. Base-image OS packages, the
 Node.js distribution and its embedded third-party code, Windows runtime/CRT
 metadata, vulnerability analysis and a full licensing review remain separate
 release work. This report is not a complete container-image SBOM or a signature.
-[Current actual generation and test evidence](ITERATION_214.md).
+[Current actual generation and test evidence](history/iterations/201-250.md#iteration-214).
 
 ## Final Linux runtime image
 
@@ -151,4 +151,4 @@ npm/yarn packages and Node binary. The separate application/native companion
 retains build provenance for private FreeRDP/vcpkg libraries that binary scanning
 does not fully identify. The documents are complementary, not merged assertions
 of a complete embedded Node/native graph, license clearance, signature or
-vulnerability result. [Actual evidence](ITERATION_215.md).
+vulnerability result. [Actual evidence](history/iterations/201-250.md#iteration-215).

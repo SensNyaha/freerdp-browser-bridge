@@ -1,7 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { readFile, writeFile, mkdtemp } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fail, verifyArchives, verifySources } from './manifest.mjs';
+import {
+  fail,
+  verifyArchives,
+  verifySources,
+  isReleaseVersion,
+  compareReleaseVersions,
+} from './manifest.mjs';
 import { publicMetadata } from './publish.mjs';
 import { standaloneReleaseNames } from '../standalone/release-artifacts.mjs';
 
@@ -55,7 +61,8 @@ export function releaseAssets(release, item, allowMissing = false) {
   const version = item.manifest.version;
   const standalone =
     item.manifest.kind === 'core' &&
-    /^0\.2\.(?:[5-9]|[1-9][0-9]{1,5})$/.test(version ?? '')
+    isReleaseVersion(version) &&
+    compareReleaseVersions(version, '0.2.5') >= 0
       ? new Set([
           ...standaloneReleaseNames(version, 'win32-x64'),
           ...standaloneReleaseNames(version, 'linux-x64-gnu'),

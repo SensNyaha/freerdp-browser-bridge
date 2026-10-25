@@ -40,7 +40,7 @@ fresh 1920×1080 JPEG, heartbeat and cleanup. Its new public H.264 attempt
 connects and renders frames but fails the nonuniform-image predicate; it is
 not a second full desktop acceptance. The complete RED OS H.264/JPEG desktop
 acceptance remains the same C++ implementation before the version stamp
-[417](ITERATION_417.md). No new application input, audible Windows profile,
+[417](history/iterations/401-450.md#iteration-417). No new application input, audible Windows profile,
 installed-Astra security profile or long soak is claimed.
 
 ## Offline packaging and SBOM

@@ -47,7 +47,7 @@ and production callback ownership remain open. GFX's nested ZGFX and metadata /
 codec allocations require their own placement/audit; inspecting compressed DVC
 alone does not cover them. Fixed dictionary/scratch memory, upstream queues,
 actual hostile/lost transport, Linux/sanitizers/libFuzzer and soak remain open.
-[Audit](RDPEI_UPSTREAM_AUDIT.md), [evidence](ITERATION_146.md).
+[Audit](RDPEI_UPSTREAM_AUDIT.md), [evidence](history/iterations/101-150.md#iteration-146).
 
 Iteration 147 composes these headers with a bounded outer SVC message owner:
 validated total before allocation, exact/non-renewing abandonment deadline and

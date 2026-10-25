@@ -4,13 +4,13 @@ import {
   standaloneReleaseNames,
   standaloneReleaseManifest,
 } from '../../scripts/standalone/release-artifacts.mjs';
-const receipts = () =>
+const receipts = (version = '0.2.5', upgradeFrom = '0.2.4') =>
   ['win32-x64', 'linux-x64-gnu'].map((platform) => ({
     schema: 1,
-    version: '0.2.5',
+    version,
     sourceCommit: 'a'.repeat(40),
     platform,
-    files: standaloneReleaseNames('0.2.5', platform).map((name) => ({
+    files: standaloneReleaseNames(version, platform).map((name) => ({
       name,
       bytes: 1,
       sha256: 'b'.repeat(64),
@@ -21,9 +21,24 @@ const receipts = () =>
       installed: true,
       realRdpDesktop: false,
       os: platform === 'win32-x64' ? 'windows-2025' : 'ubuntu-24.04',
-      upgradeFrom: '0.2.4',
+      upgradeFrom,
     },
   }));
+
+test('standalone 0.3.0 requires accepted 0.2.5 upgrade evidence for both platform receipts', () => {
+  const input = receipts('0.3.0', '0.2.5');
+  const manifest = standaloneReleaseManifest(input);
+  assert.equal(manifest.version, '0.3.0');
+  assert.equal(manifest.files.length, 7);
+  for (const previous of ['0.2.4', '0.3.0', '0.2.-1', null]) {
+    const changed = structuredClone(input);
+    changed[1].acceptance.upgradeFrom = previous;
+    assert.throws(
+      () => standaloneReleaseManifest(changed),
+      /STANDALONE_RELEASE_MANIFEST_INVALID/,
+    );
+  }
+});
 test('standalone release requires both exact platform sets, source identity and accepted two-version upgrade without claiming real RDP', () => {
   const input = receipts(),
     before = structuredClone(input);

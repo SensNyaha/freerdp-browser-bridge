@@ -15,6 +15,14 @@ export * from './process-resident.js';
 export * from './process-cpu.js';
 export { resolveNativeRuntime, NativeRuntimeError } from './native-runtime.js';
 export type { NativeRuntimeOptions } from './native-runtime.js';
+export { recoverRuntimeSessions } from './runtime-recovery.js';
+export { RuntimeRecoveryError } from './runtime-cohort.js';
+export type {
+  RuntimeRecoveryOptions,
+  RuntimeRecoveryReport,
+} from './runtime-recovery.js';
+import { RuntimeOwner, RuntimeOwnerError } from './runtime-owner.js';
+import { selectRuntimeCohort, RuntimeRecoveryError } from './runtime-cohort.js';
 import { EventEmitter } from 'node:events';
 import type { Writable } from 'node:stream';
 import { SeqpacketOwner, loadPacketAddon } from './seqpacket-owner.js';
@@ -31,7 +39,14 @@ import {
 } from './process-resources.js';
 export type { PcmSourceEvent } from './pcm-source.js';
 export type { OpusSourceEvent } from './opus-source.js';
-import { mkdir, mkdtemp, rm, writeFile, realpath } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  rm,
+  writeFile,
+  realpath,
+  lstat,
+} from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import {
   Kind,
@@ -212,6 +227,9 @@ type CombinedQuery = {
 export class WorkerProcess extends EventEmitter {
   private child: ChildProcessWithoutNullStreams | undefined;
   private directory: string | undefined;
+  private runtimeOwner: RuntimeOwner | undefined;
+  private releaseRuntimeOwnerListener: (() => void) | undefined;
+  private readonly runtimePreparation = new AbortController();
   private pending = new Map<bigint, Pending>();
   private sequence = 0n;
   private heartbeat: NodeJS.Timeout | undefined;
@@ -377,6 +395,7 @@ export class WorkerProcess extends EventEmitter {
     this.emit('state', state);
   }
   private fail(code: string): void {
+    this.runtimePreparation.abort();
     if (this.status === 'closed' || this.status === 'failed') return;
     this.setState('failed');
     if (this.heartbeat) clearInterval(this.heartbeat);
@@ -752,13 +771,36 @@ export class WorkerProcess extends EventEmitter {
   private async prepareRuntimeDirectory(): Promise<void> {
     await mkdir(this.options.runtimeRoot, { recursive: true, mode: 0o700 });
     this.requireStarting();
+    if (process.platform === 'linux') {
+      const root = await lstat(this.options.runtimeRoot);
+      this.requireStarting();
+      // Per-session mode 0700 cannot stop another user replacing entries in a
+      // writable parent. Refuse existing unsafe roots; never repair their ACLs.
+      if (
+        !root.isDirectory() ||
+        root.uid !== process.getuid?.() ||
+        (root.mode & 0o022) !== 0
+      )
+        throw new WorkerError('RUNTIME_DIRECTORY_REFUSED');
+    }
     if (process.platform !== 'win32') {
+      if (this.runtimeOwner) {
+        const candidate = join(
+          this.options.runtimeRoot,
+          `worker-${this.runtimeOwner.id}-1-${randomBytes(16).toString('hex')}`,
+        );
+        await mkdir(candidate, { mode: 0o700 });
+        this.directory = candidate;
+        return;
+      }
       this.directory = await mkdtemp(join(this.options.runtimeRoot, 'worker-'));
       return;
     }
     const candidate = join(
       this.options.runtimeRoot,
-      'worker-' + randomBytes(16).toString('hex'),
+      this.runtimeOwner
+        ? `worker-${this.runtimeOwner.id}-1-${randomBytes(16).toString('hex')}`
+        : 'worker-' + randomBytes(16).toString('hex'),
     );
     const result = await this.createWindowsRuntimeDirectory(candidate);
     const receipt = directoryReceipt(result);
@@ -779,6 +821,26 @@ export class WorkerProcess extends EventEmitter {
     });
     try {
       this.setState('starting');
+      try {
+        const cohort = await selectRuntimeCohort(this.options.workerPath, {
+          due: performance.now() + this.options.startupTimeoutMs,
+          signal: this.runtimePreparation.signal,
+        });
+        this.requireStarting();
+        if (cohort) {
+          this.runtimeOwner = await RuntimeOwner.open();
+          this.requireStarting();
+          this.releaseRuntimeOwnerListener = this.runtimeOwner.onLost(() =>
+            this.fail('RUNTIME_OWNER_UNAVAILABLE'),
+          );
+        }
+      } catch (error) {
+        this.requireStarting();
+        throw error instanceof RuntimeRecoveryError ||
+          error instanceof RuntimeOwnerError
+          ? new WorkerError(error.code)
+          : error;
+      }
       await this.prepareRuntimeDirectory();
       this.requireStarting();
       if (!this.directory) throw new WorkerError('RUNTIME_DIRECTORY_UNCERTAIN');
@@ -1818,6 +1880,12 @@ export class WorkerProcess extends EventEmitter {
         retryDelay: 100,
       });
       this.directory = undefined;
+    }
+    this.releaseRuntimeOwnerListener?.();
+    this.releaseRuntimeOwnerListener = undefined;
+    if (this.runtimeOwner) {
+      await this.runtimeOwner.close();
+      this.runtimeOwner = undefined;
     }
     if (this.residentRetirementFailed || this.cpuRetirementFailed)
       throw new WorkerError('WORKER_RESOURCE_CLOSE_FAILED');

@@ -34,7 +34,7 @@ Training accepts the four fixed body bytes plus opaque padding within the same
 received record. `wPackSize` is echoed by the pinned channel, not used as an
 allocation claim. A real XRDP 1,028-byte Training record previously failed the
 four-byte-only check; fragmented portable and actual linked channel fixtures now
-cover padding and the exact confirmation. [Iteration 175](ITERATION_175.md).
+cover padding and the exact confirmation. [Iteration 175](history/iterations/151-200.md#iteration-175).
 
 XRDP's optional legacy `SNDC_REC_NEGOTIATE` (type 39) version-5 control proposal
 uses a 16-byte fixed header with a WAVEFORMATEX table at offset 16. Admission

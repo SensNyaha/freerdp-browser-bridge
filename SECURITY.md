@@ -30,6 +30,21 @@ Linux production recommendation:
 
 Do not run the whole container `--privileged` merely to support USB.
 
+Linux worker startup requires the configured `runtimeRoot` itself to be a real
+directory owned by the service UID, without group/other write permission. A
+symlink, foreign owner or writable shared root is refused with
+`RUNTIME_DIRECTORY_REFUSED` before creating a session directory or starting a
+worker. Existing ownership/permissions are never repaired automatically. A new
+root is created with mode 0700; an existing safe 0750 root remains 0750 and its
+session directories remain private. Use a dedicated service-owned directory
+inside `/tmp`, rather than configuring `/tmp` itself.
+
+The host must supply trusted ancestor directories. This admission check does
+not claim protection against a privileged host or a malicious process running
+as the service UID, and it does not implement recovery after both supervisor
+and worker are killed. Broader isolation and abnormal cleanup remain required
+under Stage 1.
+
 ## 3. Secrets
 
 Secrets include passwords, gateway credentials, access tokens, pass-the-hash values, smartcard PINs and future companion credentials.
@@ -53,7 +68,7 @@ Malformed or over-64-KiB serialized log records become a fixed rejection record.
 This bounds destination output, not Pino's preceding formatting allocation.
 Messages supplied explicitly by trusted application code must still be constant
 and must never interpolate credentials; key-based redaction cannot identify
-secrets embedded in arbitrary free text. [Regression evidence](docs/ITERATION_216.md).
+secrets embedded in arbitrary free text. [Regression evidence](docs/history/iterations/201-250.md#iteration-216).
 
 For authorized local development, `node scripts/audit-local-artifact-secrets.mjs`
 checks the current Linux release inputs and SPDX artifacts for the ignored lab
@@ -63,10 +78,10 @@ reports contain only fixed artifact paths, hashes, scanned byte counts and pass
 state. This is an exact known-value regression, not an unknown-secret detector.
 Its lab-file read requires the existing local-development exception; the helper
 is not a production credential store or a CI credential provisioning mechanism.
-[Bounds and actual scope](docs/ITERATION_217.md).
+[Bounds and actual scope](docs/history/iterations/201-250.md#iteration-217).
 On Windows, the explicit `--windows` profile scans the native and companion
 SBOM ZIPs with the same in-memory known-password policy and bounds; it writes
-a separate scalar receipt. [Windows evidence](docs/ITERATION_221.md).
+a separate scalar receipt. [Windows evidence](docs/history/iterations/201-250.md#iteration-221).
 
 ## 4. Certificate validation
 

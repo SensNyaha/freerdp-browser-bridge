@@ -66,7 +66,7 @@ print('PRIVILEGED_READY',flush=True)
 raw=sys.stdin.buffer.readline(65537);assert 0<len(raw)<=65536
 data=json.loads(raw)
 astra=data['lab']=='astra';version=data['version']
-assert re.fullmatch(r'0\.2\.[0-9]{1,6}',version)
+assert re.fullmatch(r'0\.(?:0|[1-9][0-9]{0,5})\.(?:0|[1-9][0-9]{0,5})',version)
 context=Path(__file__).resolve().parent
 package=Path(data['package'])
 assert os.path.commonpath([str(package.resolve()),str(context.parent)])==str(context.parent)
@@ -150,7 +150,7 @@ def main():
     lab, package, digest, version, port_text = sys.argv[1:]
     assert lab in ('astra', 'redos')
     assert re.fullmatch(r'[a-f0-9]{64}', digest)
-    assert re.fullmatch(r'0\.2\.[0-9]{1,6}', version)
+    assert re.fullmatch(r'0\.(?:0|[1-9][0-9]{0,5})\.(?:0|[1-9][0-9]{0,5})', version)
     assert 1024 <= int(port_text) <= 65535
     assert package.startswith('/home/') and '..' not in package.split('/')
     repository = Path(__file__).resolve().parents[2]

@@ -85,7 +85,7 @@ Controlled actual child timeout, partial/all-member cancellation and missing
 executable tests now also pass with an existing hanging native fixture. They
 use real child execution/close and preserve an unrelated real-helper path;
 they do not simulate failures inside Windows process-query APIs.
-[Fault-control scope and evidence](ITERATION_379.md).
+[Fault-control scope and evidence](history/iterations/351-400.md#iteration-379).
 
 New Windows workers advertise HELLO extension bit 128 and CLI
 `processResourceBatch: true`. Only that support enables automatic batching in
@@ -100,7 +100,7 @@ group counts, active logical items, physical launch attempts, dispatched items
 and maximum batch count. Attempts count executor calls, not proof of successful
 process startup. They are distinct from logical watchdog queries; final zero
 owners prove joined retirement for the tested cases. No PID/path/sample history
-is retained. [Integration evidence](ITERATION_378.md).
+is retained. [Integration evidence](history/iterations/351-400.md#iteration-378).
 
 For the explicit prepared-helper test profile, use a newly built output:
 
@@ -114,11 +114,11 @@ The opt-in selects tests, not production behavior. Other/older native profiles
 skip these new command cases; opting in requires them to pass and never treats
 an unknown command as success. Portable parser CTest and codec unit tests do
 not depend on this flag. The selected set covers the command, real owner and
-controlled query-child faults. [Command evidence](ITERATION_377.md),
-[owner adoption](ITERATION_378.md), [fault controls](ITERATION_379.md).
+controlled query-child faults. [Command evidence](history/iterations/351-400.md#iteration-377),
+[owner adoption](history/iterations/351-400.md#iteration-378), [fault controls](history/iterations/351-400.md#iteration-379).
 
 A separate Windows source-only foundation Debug output also verifies the
 host capability with null FreeRDP / `connectCore=false`, resource controls,
 CTest 17/17 and full Node 809 / 102 skips. Capability reporting leaves policies
 off by default. Linked-only SDK browser codec checks remain explicitly outside
-that profile. [Foundation evidence](ITERATION_380.md).
+that profile. [Foundation evidence](history/iterations/351-400.md#iteration-380).

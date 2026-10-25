@@ -92,13 +92,13 @@ position is hidden until a fresh local position; out-of-desktop server coordinat
 cannot show an overlay outside the framebuffer. Shape identity/sequence remains
 independent and does not reset with video. The Edge fixture checks stationary local
 pointer mapping through a same-CSS-size canvas resize and restoration; see
-[iteration 19](ITERATION_019.md).
+[iteration 19](history/iterations/001-050.md#iteration-019).
 
 ## Acceptance limits
 
 Native state/parser and linked public conversion tests are separate from fake
 HTTP/WebSocket and Edge DOM tests. The authorized actual XRDP helper verifies
 custom shape delivery after motion and replay after browser reattachment,
-without sending buttons, wheel or keys. See [iteration 12](ITERATION_012.md).
+without sending buttons, wheel or keys. See [iteration 12](history/iterations/001-050.md#iteration-012).
 Linux, Windows RDP server, exact monochrome inversion, actual large/palette
 cursor negotiation, and the complete 30-minute desktop/resize gate remain open.

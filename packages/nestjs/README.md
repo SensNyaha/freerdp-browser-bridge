@@ -11,11 +11,14 @@ profiles. All bridge packages and the native runtime use one product version.
 
 ## Installation
 
-Install the published release on Linux x64/glibc:
+Install the matching release on Linux x64/glibc:
 
 ```sh
-npm install @freerdp-bridge/nestjs@0.2.5 @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
+npm install @freerdp-bridge/nestjs@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
 ```
+
+During release preparation use complete verified local archives; a source
+version alone does not establish registry availability.
 
 On Windows x64 select `@freerdp-bridge/runtime-win32-x64` instead. All bridge
 packages and the runtime must share the same product version. The runtime is

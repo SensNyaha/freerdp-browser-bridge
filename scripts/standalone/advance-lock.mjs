@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { standaloneProductionManifest } from './production-lock.mjs';
 import { readStandalonePayloadFile } from './payload.mjs';
-import { tarManifest } from '../github-delivery/manifest.mjs';
+import { tarManifest, isReleaseVersion } from '../github-delivery/manifest.mjs';
 
 const fields = [
   'dependencies',
@@ -15,6 +15,7 @@ const fields = [
   'cpu',
   'libc',
   'license',
+  'bin',
 ];
 const refuse = () =>
   new Error('STANDALONE_LOCK_ADVANCE_REQUIRES_GRAPH_RESOLUTION');
@@ -22,7 +23,7 @@ const refuse = () =>
 export function advanceStandaloneLock(lock, version, platform, archives) {
   standaloneProductionManifest(lock, lock.version, platform);
   if (
-    !/^0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(version ?? '') ||
+    !isReleaseVersion(version) ||
     !Array.isArray(archives) ||
     archives.length !== 5
   )

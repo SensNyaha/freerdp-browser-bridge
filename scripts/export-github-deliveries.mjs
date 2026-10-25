@@ -22,6 +22,7 @@ import {
   readJson,
   tarManifest,
   parseManifest,
+  isReleaseVersion,
   verifyArchives,
   verifySources,
   fail,
@@ -53,7 +54,11 @@ try {
     options.set(args[index], args[index + 1]);
   }
   const tag = options.get('--tag');
-  if (!/^v0\.2\.(?:0|[1-9][0-9]{0,5})$/.test(tag))
+  if (
+    typeof tag !== 'string' ||
+    !tag.startsWith('v') ||
+    !isReleaseVersion(tag.slice(1))
+  )
     fail('DELIVERY_EXPORT_TAG_INVALID');
   const version = tag.slice(1),
     acceptance = safePath(options.get('--acceptance'));

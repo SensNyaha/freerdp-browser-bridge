@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "scope": "old-root-build-helpers-and-receipts-before-450",
+  "rootFilesArchived": 701,
+  "sourceBytes": 2407549,
+  "archive": "build/retained-evidence-461/helpers-before-450.zip",
+  "archiveBytes": 905833,
+  "archiveSha256": "dbdb32072fc41690acd0ac115406ede2aabd3c53bc2298bf8ad6e1cd704dd962",
+  "allUncompressedEntryHashesVerified": true,
+  "manifestEntry": "manifest.json",
+  "originalRootFilesRemovedAfterVerification": true,
+  "retainedRootTextFiles": 435,
+  "sourceReferenceScan": {
+    "trackedSourceFiles": 923,
+    "literalExecutableReferenceClosure": true,
+    "metadataReferencesAreHistoricalEvidence": true,
+    "compilerRecipeFamiliesKept": [
+      407,
+      410,
+      411
+    ],
+    "current450AndLaterKept": true
+  },
+  "knownLabSecretByteScan": {
+    "passwordFilesReadOnlyInMemory": 5,
+    "candidateMatchesRetained": 0,
+    "matchedContentsLogged": false,
+    "archivedFilesWithMatches": 0
+  },
+  "productSourcesModified": false
+}

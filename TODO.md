@@ -1,17 +1,55 @@
 # TODO — implementation plan
 
+The Stage 1 schema-1 runtime recovery feature is locally accepted as **0.3.0**.
+Full linked checks pass Windows 1044/70 skips and Linux 1024/92, native CTest
+38/39, all exact npm consumers, both portable formats, Windows/Ubuntu/Astra/RED OS
+0.2.5-to-0.3.0 upgrades and eight actual desktop profiles. Source CI and installer
+CI pass. The exact ten archives are frozen; merge/tag and real publication are
+next. Broader multi-user isolation and the original full Stage 1 remain open.
+[Current acceptance](docs/RUNTIME_RECOVERY.md#030-local-release-acceptance).
+The following preparation checkpoints retain their original scope/status.
+
+Current functional work: `feature/stage1-runtime-isolation` implements the next
+open worker/isolation item from shared `master`. Initial Linux runtime-root
+admission has actual before/after evidence. Schema-1 native ownership locks now
+pass Windows linked CTest 37/37, Linux sanitizer foundation CTest 21/21 and two
+actual managed-worker crash/replacement tests per OS. The native recovery helper passes linked MSVC CTest 38/38,
+GCC12 sanitizer and exact GCC8.3 foundation 22/22 each, crash/recovery scenarios
+and full Windows check 1020/69 skips/0 failures. The SDK activation/recovery
+revision now passes Windows check 1036/70 skips/0 failures and Linux sanitizer
+foundation CTest 22/22 plus SDK/process checks 27/27. Windows standalone now passes
+supervisor checks 9/9, portable ZIP 1/1, host CTest 1/1 and full check 1036/70 skips.
+Linux portable now passes 1/1, current GCC 8.3 linked CTest 39/39 and SDK/recovery
+27/27; Windows fresh CTest 38/38 and both installed-bundle relocations pass.
+Installed upgrades, merge/publication and full Stage 1
+acceptance remain open. User priority: finish
+this recovery feature before HTML clipboard; its empty branch was removed.
+The final helper-owner correction preserves a four-child limit until actual
+close, including after timeout. Full checks now pass Windows 1037/70 skips and
+Linux 1017/92 skips, zero failures. Capability release preparation targets 0.3.0;
+the public stable version remains 0.2.5 until delivery is verified.
+The extended Node/addon
+sanitizer matrix continues separately in
+`feature/stage0-sanitizer-matrix`; its unmet gates are preserved. The original
+Stage 0 build/version gate already has the accepted 0.2.5 release profiles.
+[Current scope](docs/DEVELOPMENT.md#current-functional-work).
+
 The named [practical MVP](docs/MVP_ACCEPTANCE.md) is released as **0.1.0**,
 tag `v0.1.0`. Current development follows this remaining full V1 plan while
 preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
-Latest accepted local release is **0.2.5**, standalone web service and portable/
+Latest accepted public release is **0.2.5**, standalone web service and portable/
 MSI/DEB/RPM distribution. Full linked checks pass Windows 1002/63 and Linux
 977/90; fresh native CTest 36/37, all four exact consumers on both OSes, eight
 real desktop profiles and Windows/Ubuntu/Astra/RED OS upgrades pass. Source CI,
 sanitizers/fuzz and combined seven-file candidate verification pass. Stable
-npm/public registry-only and actual main/master installer delivery remain open;
+npm publication and all four registry-only Windows/Linux consumers now pass;
+all five OIDC workflows succeed, including the first actual Express write.
+Actual main-push installer delivery, all final downloaded hashes and final public
+DEB/RPM upgrades on Astra/RED OS pass; [delivery](docs/ITERATION_457.md);
+[npm publication](docs/ITERATION_456.md);
 [acceptance](docs/ITERATION_455.md). No original full V1 feature is silently closed.
 
 Prior accepted local stable is **0.2.4**, tag `v0.2.4`: Express 5 root middleware,
@@ -23,15 +61,18 @@ five GitHub Releases are public; hosted workflows and all four fresh Windows/Lin
 registry-only consumers pass. Nine names publish through OIDC; new Express uses
 the one separately authorized initial approve and has its trust read-back verified.
 The old 0.2.3 manual queue remains stopped.
-[Release acceptance](docs/ITERATION_438.md), [publication](docs/ITERATION_441.md).
+[Release acceptance](docs/ITERATION_438.md), [publication](docs/history/iterations/401-450.md#iteration-441).
 
 Prior stable is **0.2.3**, tag `v0.2.3`: node:http/node:https integration,
 explicit HTTP/WS dispatch and aligned native runtimes. Full checks: Windows
 941 / 61 skips, Linux 918 / 87; fresh CTest 36/36 and 37/37. Nine exact
 README-complete archives, external HTTP/NestJS/Fastify consumers with reinstall
 and eight versioned Astra/RED OS HTTP desktop profiles pass. Registry publication
-remains separate: both runtimes public, seven JS stages pending after the user
-stops manual approvals. [Release acceptance](docs/ITERATION_433.md).
+is intentionally partial: both runtimes public, seven JS versions unpublished.
+Explicit user decision, 2026-10-24: retain 0.2.3 as an archived accepted release;
+do not publish its missing JS packages. Complete public 0.2.4/0.2.5 suffice.
+Preserve its tag/source/accepted archive bytes; manual approvals stay stopped.
+[Release acceptance](docs/ITERATION_433.md), [archive decision](docs/ITERATION_458.md).
 
 Prior stable **0.2.2**, tag `v0.2.2`: NestJS with Express and FastifyAdapter,
 same-port HTTP/WS and aligned native runtimes. Final full checks: Windows
@@ -39,14 +80,14 @@ same-port HTTP/WS and aligned native runtimes. Final full checks: Windows
 README-complete npm archives, both external adapter consumers and all eight
 versioned Astra/RED OS desktop profiles pass. Separate npm publication
 is complete: all eight exact archives public, fresh Windows/Linux registry-only
-NestJS consumers pass strict TS and 15/15. [Publication acceptance](docs/ITERATION_437.md).
+NestJS consumers pass strict TS and 15/15. [Publication acceptance](docs/history/iterations/401-450.md#iteration-437).
 
 Prior stable **0.2.1**, tag `v0.2.1`: same-port Fastify embedding, aligned
 native npm runtimes and installed-package Astra/RED OS desktop acceptance.
 Final checks: Windows 915 / 61 skips, Linux 892 / 87; native CTest 36/36 and
 37/37. [Release evidence](docs/ITERATION_424.md). All seven npm packages are
 published at 0.2.1 with exact accepted integrity; fresh registry-only Windows
-and Linux consumers pass. [Publication evidence](docs/ITERATION_426.md).
+and Linux consumers pass. [Publication evidence](docs/history/iterations/401-450.md#iteration-426).
 
 Prior stable **0.2.0**, tag `v0.2.0`, retains the accepted GCC 8.3 port and
 named Astra Linux 1.7.5 / RED OS 7.3 real desktop profiles. Final full checks:
@@ -91,7 +132,7 @@ Subsequent explicit authorization, 2026-10-23: the user creates all five public
 SensNyaha repositories and asks the agent to push them. All five verified local
 main branches and annotated v0.2.4 tags are now pushed without force; remote
 commits and public npm workflow bytes match. GitHub Releases and npm trust/OIDC
-publication remain separate. [Delivery evidence](docs/ITERATION_439.md).
+publication remain separate. [Delivery evidence](docs/history/iterations/401-450.md#iteration-439).
 
 Superseding user requirement, 2026-10-23: standalone installers belong in
 GitHub Releases of the existing **SensNyaha/freerdp-browser-bridge**, with a
@@ -106,35 +147,35 @@ the completed public 0.2.4 delivery. The private bounded-config/JWT service
 passes complete Windows 976/63 skips and Linux 953/89 checks with actual linked
 native TLS refusal/cleanup. Manifests remain 0.2.4 until aligned release
 preparation. Portable packages, OS installers and auto-release remain pending;
-[contract](docs/STANDALONE.md), [service evidence](docs/ITERATION_442.md).
+[contract](docs/STANDALONE.md), [service evidence](docs/history/iterations/401-450.md#iteration-442).
 The following browser/private-Node block passes complete Windows 978/63 skips
 and Linux 954/90 checks, actual Edge authenticated pagehide cleanup and the
 private-Node supervised CLI with a live native certificate prompt;
-[evidence](docs/ITERATION_443.md). Installed services and releases remain open.
+[evidence](docs/history/iterations/401-450.md#iteration-443). Installed services and releases remain open.
 Windows supervisor compilation and 9/9 real private-Node/native process-tree,
 crash-recovery and foreign-data preservation cases pass; SCM/MSI is still pending.
-[Component evidence](docs/ITERATION_444.md).
+[Component evidence](docs/history/iterations/401-450.md#iteration-444).
 Development MSI/DEB artifacts build, independent archive/database checks pass,
 and the private Linux CLI passes as UID 1000. Full regression: Windows 981/63
 skips, Linux repeat 957/90, no failures. These are prototype 0.2.4 dependencies,
-not aligned 0.2.5 or installed SCM/systemd acceptance; [iteration 445](docs/ITERATION_445.md).
+not aligned 0.2.5 or installed SCM/systemd acceptance; [iteration 445](docs/history/iterations/401-450.md#iteration-445).
 The following pinned-assembly block passes the actual installed-service matrix
 on Windows Server 2025 and Ubuntu 24.04 at `4f3b886`: JWT/native TLS, non-root
 identity, crash recovery, same-version reinstall and uninstall. The common Linux
 stage also builds a real RPM whose header/cpio byte check passes. Astra/RED OS
 installed service, cross-version upgrade, real standalone RDP and final release
-remain separate; [iteration 446](docs/ITERATION_446.md).
+remain separate; [iteration 446](docs/history/iterations/401-450.md#iteration-446).
 Full regression for this assembly/staging block passes Windows 985/63 skips
 and Linux 961/90, with zero failures; installed RPM/Astra/RED OS remain open.
 The next block proves relocated Windows ZIP/Linux TGZ with private Node/native
 TLS and joined shutdown, plus actual RED OS 7.3 RPM service identity, native
 TLS, crash recovery, running/stopped reinstall and retained rpmsave on uninstall;
-[iteration 447](docs/ITERATION_447.md). These remain prototype 0.2.4 artifacts;
+[iteration 447](docs/history/iterations/401-450.md#iteration-447). These remain prototype 0.2.4 artifacts;
 Astra 1.7.5 DEB service identity/native TLS/crash recovery/running reinstall
 and retained config on uninstall also pass. Full checks: Windows 988/63 skips,
 Linux 963/90, zero failures. The next block passes all eight real standalone
 desktop profiles (Windows portable and installed Astra/RED OS, H.264/JPEG),
-including resize, reattachment and empty-runtime cleanup; [iteration 448](docs/ITERATION_448.md).
+including resize, reattachment and empty-runtime cleanup; [iteration 448](docs/history/iterations/401-450.md#iteration-448).
 The preceding `992997c` also passes all three hosted workflows. Newer-version
 upgrade and aligned 0.2.5 release remain separate gates. The temporary approval-review usage
 failure is resolved through the normal review path, and the probe passes.
@@ -142,7 +183,7 @@ The desktop block `de46cea` subsequently passes all three hosted workflows too.
 Prepublication candidate-cache and independent registry-only builds match every
 payload byte on Windows/Linux; full checks pass Windows 990/63, Linux 965/90,
 zero failures. This prepares acceptance before publication without changing
-production lock URLs; [iteration 449](docs/ITERATION_449.md). It does not accept
+production lock URLs; [iteration 449](docs/history/iterations/401-450.md#iteration-449). It does not accept
 aligned 0.2.5 artifacts, newer-version upgrade or automatic release delivery.
 
 Following **release/0.2.5** preparation now has actual new MSVC/GCC8.3 workers
@@ -154,8 +195,8 @@ profiles pass, and actual Astra DEB/RED OS RPM 0.2.4→0.2.5 upgrades pass.
 The public test candidate is a separately named unstable prerelease; stable
 latest remains 0.2.4. Corrected Windows MSI upgrade/cross-job CI, stable 0.2.5
 tagging, npm/public-integrity consumers and actual main/master installer
-publication are still open. [Preparation](docs/ITERATION_453.md),
-[upgrade/runtime evidence and retained failures](docs/ITERATION_454.md).
+publication are still open. [Preparation](docs/history/iterations/451-500.md#iteration-453),
+[upgrade/runtime evidence and retained failures](docs/history/iterations/451-500.md#iteration-454).
 Corrected candidate pipeline **40022102839** now completes Windows MSI and
 Ubuntu DEB 0.2.4→0.2.5 upgrades plus combined seven-file verification; publication
 is skipped. This closes the prepublication installer upgrade gate, while stable
@@ -191,7 +232,28 @@ preserving requirements and traceable evidence; update links and navigation.
 Cleanup and documentation consolidation remain pending until those earlier
 delivery gates are satisfied.
 
-Superseding user goal update, 2026-10-24: after completing the requested releases,
+Cleanup checkpoint, 2026-10-24: the 0.2.5 delivery gates are accepted. Hidden
+lab/runtime directories, obsolete native/consumer outputs, archived worktrees
+and old logs have been reduced. 444 historical iteration reports now occupy ten
+volumes with source hashes and checked links; nine key reports remain separate.
+A missed incoming SDK junction was removed with the last compiler worktree;
+the local SDK has since been rebuilt from the pinned source and verified with
+a fresh linked worker. Accepted release bytes were preserved. See the single
+[maintenance guide](docs/PROJECT_MAINTENANCE.md) for evidence, current physical
+SDK paths and transport/context/staging cleanup. Four obsolete
+delivery copies and their linked CI worktree have since been replaced by 12
+independently restored/fsck-verified Git bundles; 701 old root helpers/receipts
+are retained in one ZIP with every uncompressed SHA-256 checked. Current inputs
+and 29 accepted/archived npm archives remain intact. This checkpoint does not
+advance feature acceptance. The latest block removed another 99 obsolete
+generated build directories and five trial installer archives, then 523 old root
+helpers/logs/intermediate archives and an obsolete source snapshot. Only 12 root
+build metadata files remain; required compiler inputs and current validation
+are grouped in dedicated directories. Disk free space increased by 5.51 GB.
+CTest remains 36/36 and all 29 retained npm archives and
+eight final installer/checksum files retain their accepted hashes.
+
+Earlier user goal update, 2026-10-24 (superseded by the cleanup-only goal below): after completing the requested releases,
 project-owned cleanup and documentation consolidation, continue through this
 TODO plan and implement the next unaccepted features in its prescribed order.
 This replaces the earlier instruction to stop development after cleanup. It
@@ -203,6 +265,12 @@ according to importance/scope, and prompt coordinated npm plus standalone
 releases after acceptance. Preserve immutable prior releases and matching
 JS/native versions; [version policy](docs/VERSIONING.md).
 
+Latest user goal update, 2026-10-24: remove project-owned logs, temporary builds,
+unused Docker images and other artifacts unnecessary for further development;
+consolidate documentation into its important semantic blocks. This supersedes
+the earlier instruction to continue feature implementation after cleanup.
+Do not start new features or releases as part of this maintenance goal.
+
 Additional user requirement, 2026-10-22: every npm package release includes its
 own explanatory root README: purpose, installation, dependencies/platforms,
 usage, limitations and licenses. This applies to shared JS packages and both
@@ -212,12 +280,12 @@ accepted tags/tarballs remain immutable; new README content ships in new
 release artifacts. Next-adapter version targets remain unchanged. Accepted in
 `4153070`: all seven generated package archives contain their README, Windows
 full check passes 918 / 61 skips / 0 fail, and README tests pass 3/3 on Windows
-and Linux. [Evidence and partial npm publication](docs/ITERATION_425.md).
+and Linux. [Evidence and partial npm publication](docs/history/iterations/401-450.md#iteration-425).
 Subsequent explicit instruction: finish publishing the already accepted 0.2.1
 set first, preserving its original archives. New README content follows in
 the next release; no version/tag/accepted bytes are replaced.
 That publication is now complete: 7/7 public exact-integrity versions and both
-fresh registry-only consumers pass; [evidence](docs/ITERATION_426.md).
+fresh registry-only consumers pass; [evidence](docs/history/iterations/401-450.md#iteration-426).
 
 The user selects **MIT** for project-owned code; third-party
 native dependency licenses/notices retain their own terms. The user has created
@@ -228,7 +296,7 @@ including strict TypeScript and actual native TLS rejection. The earlier
 unreleased checkpoint passes 912 / 61 skips on Windows and 889 / 87 on Linux;
 the final aligned 0.2.1 release evidence supersedes it for the named profiles.
 Installed-package browser H.264/JPEG, resize/restoration, reattach and cleanup
-now pass on the current Astra/RED OS addresses; [acceptance](docs/ITERATION_421.md). [Runtime evidence](docs/ITERATION_420.md),
+now pass on the current Astra/RED OS addresses; [acceptance](docs/history/iterations/401-450.md#iteration-421). [Runtime evidence](docs/history/iterations/401-450.md#iteration-420),
 [real-project runtime usage](docs/NATIVE_NPM_RUNTIME.md).
 
 Legend: `[ ]` TODO, `[~]` IN PROGRESS, `[!]` BLOCKED, `[x]` DONE (accepted). Do not mark complete solely because code compiles.
@@ -239,7 +307,7 @@ full checks (877 / 87 skips and 900 / 61 skips), private package relocation,
 and actual RED OS 7.3 plus Astra Linux 1.7.5 public Edge H.264/JPEG desktop,
 resize/restoration, reattachment and cleanup. Earlier intermittent connection,
 locked-desktop and resize observations remain recorded without a cause claim.
-[Current acceptance](docs/ITERATION_417.md). This supersedes the open RED OS
+[Current acceptance](docs/history/iterations/401-450.md#iteration-417). This supersedes the open RED OS
 desktop checkpoint below; 0.2.0 release preparation remains separate.
 
 DONE applies to the named component and its explicit platform/test scope. A
@@ -247,7 +315,7 @@ verified component can be DONE while the containing stage remains IN PROGRESS.
 An entire stage becomes DONE only when its requirements and **Gate** pass;
 fixture/SDK integration does not substitute for actual RDP/device acceptance.
 Iteration reports are evidence/history, not newly added unfinished stages.
-Status clarification and preserved history: [iteration 173](docs/ITERATION_173.md).
+Status clarification and preserved history: [iteration 173](docs/history/iterations/151-200.md#iteration-173).
 
 Current stage acceptance:
 
@@ -293,14 +361,14 @@ lifecycle tests in a separate unpacked runtime fixture using the Docker host
 kernel. Full Windows foundation `pnpm check` passes 849 / 112 skips / 961 total.
 This is not installed-Astra acceptance. Compiler-foundation checkpoint:
 `f9758b5` on `feature/astra17-gcc83`; no shared-branch merge.
-[Evidence and remaining gates](docs/ITERATION_407.md).
+[Evidence and remaining gates](docs/history/iterations/401-450.md#iteration-407).
 
 The supplied Astra ISO also boots its actual 6.1.50-1-generic kernel in a separate
 diskless/networkless QEMU guest with checked runtime libraries. Foundation CTest
 20/20, Node IPC-only addon 14/14 and explicit guest acceptance/clean poweroff
 pass with unchanged deadlines. This is kernel/initramfs evidence; installed OS,
 security profiles, other kernels and linked product/RDP acceptance remain open.
-[Guest evidence](docs/ITERATION_408.md).
+[Guest evidence](docs/history/iterations/401-450.md#iteration-408).
 
 The subsequent exact GCC 8.3.0 source chain completes all ten required private
 dependency roots and pinned FreeRDP/WinPR, with strict origins/foreign-prefix
@@ -309,7 +377,7 @@ Node IPC/lifecycle/protocol-fixture checks 40/40 with source/artifact receipts.
 Full linked `pnpm check` passes 877 / 87 skips / 964 total, zero failures.
 Linked Astra closure, installed-OS/security profiles, actual RED OS product,
 Windows linked regression and actual RDP gates remain open; no shared merge or
-0.2.0 tag is accepted here. [Linked source build](docs/ITERATION_409.md).
+0.2.0 tag is accepted here. [Linked source build](docs/history/iterations/401-450.md#iteration-409).
 
 The same GCC 8.3 linked worker/addon subsequently pass in the checked Astra
 ISO-library container: CTest 37/37, codec/private-origin probes and actual Node
@@ -320,7 +388,7 @@ native source bytes and passes CTest 36/36, focused process/protocol checks
 Actual RED OS GCC 11 compiles all linked targets, but CTest passes 25/37 with
 12 loader/worker failures from the reused CUPS library's absent `libcrypt.so.1`.
 RED OS linked runtime and real desktop acceptance remain open.
-[Runtime/control evidence](docs/ITERATION_410.md).
+[Runtime/control evidence](docs/history/iterations/401-450.md#iteration-410).
 
 The CUPS client link and numactl byte-atomic configure corrections subsequently
 retain all exported APIs and remove unused private-runtime dependencies.
@@ -330,7 +398,7 @@ focused Node 40/40, full `pnpm check` 877 / 87 skips / 964, strict package closu
 34 ELF files / 333 resolutions and relocation 1/1. The exact final package
 passes an unprivileged artifact-only probe on actual RED OS without SDK/build
 paths. Real desktop regression remains separate; no 0.2.0 tag is accepted here.
-[Portable source/package evidence](docs/ITERATION_411.md).
+[Portable source/package evidence](docs/history/iterations/401-450.md#iteration-411).
 
 The final exact GCC 8.3 package also passes an unprivileged cold Astra-library
 container probe. Actual owned XRDP desktop, resize/restoration, both IPC
@@ -340,24 +408,24 @@ roundtrips with repeated fresh Copy/Get pass their bounded profiles. Earlier
 display/clipboard failures are retained without an unsupported cause claim.
 The user defers Windows-host access for 60 minutes; its new-worker joint
 regression remains unrun. No new audible, OS Clipboard API, installed-Astra or
-0.2.0 acceptance is claimed. [Evidence](docs/ITERATION_412.md).
+0.2.0 acceptance is claimed. [Evidence](docs/history/iterations/401-450.md#iteration-412).
 
 An exact GCC 8.3 foundation CI recipe now retains the pinned compiler/tool
 inputs and runs build/CTest without network or host runtime mounts. Its actual
 local container passes CTest 20/20 and the full linked Linux `pnpm check`
 passes 877 / 87 skips / 964 total, zero failures. The GitHub-hosted workflow
-has not run from these local commits. [Evidence](docs/ITERATION_413.md).
+has not run from these local commits. [Evidence](docs/history/iterations/401-450.md#iteration-413).
 
 The user now explicitly requires real RDP connections to both Astra 1.7.5 and
 RED OS 7.3 before 0.2.0. The separately confirmed real Astra node passes native
 activation/heartbeat and public Edge H.264/JPEG desktop, resize/restoration,
 reattachment and cleanup. Its 1.7.5 version is user-reported from astra_version;
 no security-profile or application/audio acceptance is inferred.
-[Astra evidence](docs/ITERATION_415.md). Actual RED OS XRDP 0.10.6.1 activates
+[Astra evidence](docs/history/iterations/401-450.md#iteration-415). Actual RED OS XRDP 0.10.6.1 activates
 but fails on an RDPSND receive callback before application input. Scalar-only
 diagnostics narrow the failure; a verified diagnosis is not a repair.
 The required RED OS RDP gate and 0.2.0 release remain open.
-[RED OS evidence and active root worktree](docs/ITERATION_416.md).
+[RED OS evidence and active root worktree](docs/history/iterations/401-450.md#iteration-416).
 
 The separate XRDP Clipboard feature passes real headed Edge Clipboard API ↔
 CLIPRDR ↔ owned XRDP 0.10.1/Tk Unicode/emoji/multiline transfer in both
@@ -366,7 +434,7 @@ permission refusal, revoke and joined PID/runtime cleanup. A prepared Tk Copy
 hook supplies fresh ownership notifications; old XRDP 0.9.x surrogate handling
 is not repaired. Full feature-branch `pnpm check` passes 900 / 61 skips /
 961 total, with unchanged production/native inputs. Wider Stage 7 remains open.
-[Evidence](docs/ITERATION_404.md).
+[Evidence](docs/history/iterations/401-450.md#iteration-404).
 
 The named practical MVP joint Windows gate now passes: actual public Edge /
 Release H.264 1080p, Opus/200 ms, both Clipboard API/Notepad directions and
@@ -375,7 +443,7 @@ by resize, viewer/audio replay, actual permission refusal, revoke and joined
 PID/runtime cleanup. The user reports steady sound without regular audible
 interruptions. Numeric discontinuities and the prior unexplained Get stop are
 retained; this does not claim they were fixed or accept broader V1 profiles.
-[Evidence](docs/ITERATION_403.md), [runbook](docs/MVP_RUNBOOK.md),
+[Evidence](docs/history/iterations/401-450.md#iteration-403), [runbook](docs/MVP_RUNBOOK.md),
 [separate full V1 plan](docs/V1_NEXT_STEPS.md).
 
 Linux regression of both current production corrections passes linked Release
@@ -386,20 +454,20 @@ both real Clipboard API/Notepad directions with live audio, then stops at an
 epoch/config waiting observation; its full soak remains unaccepted. No new
 audible-quality claim is made. The pending joint helper additionally passes
 Windows `pnpm check` 891 / 61 skips / 952 total; actual repeat remains open.
-[Evidence and next experiment](docs/ITERATION_402.md).
+[Evidence and next experiment](docs/history/iterations/401-450.md#iteration-402).
 
 The combined current Release input/CLIPRDR worker passes CTest 34/34 and an
 actual active owned-XRDP/public Edge H.264 1080p soak: 30 minutes / 61 samples,
 5,781 frames, peak worker RSS 152,342,528 bytes, bounded queues and no observed
 critical failure. Resize/restoration, cursor/display replay, reattachment,
 joined PID/runtime cleanup pass. Audio/clipboard are off in this gate; joint
-Windows and wider V1 acceptance remain separate. [Evidence](docs/ITERATION_401.md).
+Windows and wider V1 acceptance remain separate. [Evidence](docs/history/iterations/401-450.md#iteration-401).
 
 Bounded XRDP CLIPRDR zero-trailer compatibility now preserves declared quotas,
 original deadlines and the absolute wire cap. Linked CTest 34/34 and isolated
 Node 885 / 61 skips pass. Actual owned XRDP readiness and one fixed Tk/public
 Get read pass; the subsequent fresh-connection re-offer receives no new offer
-and remains open. [Evidence](docs/ITERATION_400.md).
+and remains open. [Evidence](docs/history/iterations/351-400.md#iteration-400).
 
 Fresh-controller inherited pointer recovery now passes actual owned XRDP/public
 Edge readback: after hard loss leaves Ctrl/left button held, one post-render
@@ -407,7 +475,7 @@ reset clears the standard buttons even with empty local pressed ownership.
 The previous-worker negative control fails as expected. Current linked Release
 CTest 34/34 and full Windows 898 / 51 skips pass. This does not claim release
 delivery across broken TCP or full reconnect/soak acceptance.
-[Evidence](docs/ITERATION_399.md).
+[Evidence](docs/history/iterations/351-400.md#iteration-399).
 
 The owned Linux application now confirms actual movable-object drop, both-axis
 content scrolling, three buttons and blur/detach release through fixed X11
@@ -417,7 +485,7 @@ retirement/cleanup. The initial active soak stops at 26.14 minutes without a
 completion receipt and is not accepted. A hard-loss input control exposes a
 preserved remote button; the user accepts release on the next connection and
 the corrective control reset remains under verification.
-[Evidence](docs/ITERATION_398.md).
+[Evidence](docs/history/iterations/351-400.md#iteration-398).
 
 An explicitly user-requested owned Linux/XRDP container now passes current
 Release/public Edge JPEG and H.264 1080p, cursor, resize/restoration and viewer
@@ -425,7 +493,7 @@ replay. Actual connected public CPU/RSS failure scenarios pass exact terminal
 errors, token retirement and joined query/PID/runtime cleanup. Strict default
 certificate refusal passes. The Linux CLIPRDR ready/readback attempts remain
 unaccepted; the active 30-minute observation is still running. This does not
-close full platform/device/resource gates. [Evidence](docs/ITERATION_397.md),
+close full platform/device/resource gates. [Evidence](docs/history/iterations/351-400.md#iteration-397),
 [owned stand](docs/OWNED_XRDP_LAB.md).
 
 The user-prepared Windows pointer page now passes actual public-viewer
@@ -434,7 +502,7 @@ left-button blur release and held middle-button detach/reattach release.
 Four bounded CLIPRDR receipts confirm balanced down/up and no held buttons;
 no local Clipboard API or native offer is used. This accepts application event
 delivery, not content scrolling, arbitrary drop targets or physical hardware.
-The initial wrong-application attempt is retained. [Evidence](docs/ITERATION_396.md).
+The initial wrong-application attempt is retained. [Evidence](docs/history/iterations/351-400.md#iteration-396).
 
 Current tracked-source Linux GCC 12 linked Release + IPC-only addon now passes
 native CTest 35/35, focused process/synthetic-TLS 7/7 and full Node 863 / 81
@@ -442,7 +510,7 @@ skips / 944, zero failures. Exact reused SDK/dependency archives and real privat
 module origins are verified; initial missing test-CLI failures remain retained.
 Source/native inputs are unchanged, PID/runtime retirement and container removal
 pass. Actual XRDP/browser/device and full build matrices remain separate.
-[Evidence](docs/ITERATION_395.md).
+[Evidence](docs/history/iterations/351-400.md#iteration-395).
 
 The user accepts the current Release Windows Opus/200 ms three-minute scenario
 as excellent sound. Actual rendered samples cover 179.54 seconds; late intervals
@@ -450,21 +518,21 @@ as excellent sound. Actual rendered samples cover 179.54 seconds; late intervals
 scheduled consumer reset. This accepts the named audible MVP scenario, not
 zero-loss/reset-free playback, other profiles or complete Stage 6. Joined
 PID/runtime cleanup and unchanged protected inputs pass.
-[Evidence and Debug comparison boundaries](docs/ITERATION_393.md).
+[Evidence and Debug comparison boundaries](docs/history/iterations/351-400.md#iteration-393).
 
 The complete headed Edge / current Release / Windows Notepad small-text smoke
 now passes both Unicode directions, actual Clipboard API denial, no-format
 revoke, viewer field clearing and joined PID/runtime cleanup in one invocation.
 The prior failed copy-offer run is retained. Own-document clear keystrokes
 follow verified readback; empty application content is not separately read back.
-Wider Stage 7 matrices remain open. [Evidence](docs/ITERATION_392.md).
+Wider Stage 7 matrices remain open. [Evidence](docs/history/iterations/351-400.md#iteration-392).
 
 A separate current-source Windows Release consumer now passes native CTest
 34/34, process/TLS/lifecycle 27 / one skip and full Node 890 / 51 skips.
 Its native source hash matches the current Debug consumer. Existing encoder
 benchmarks show substantial Debug conversion overhead; this is not proof of
 every audio stall or new Release audio acceptance. Original Release outputs,
-configuration and pins stay unchanged. [Evidence](docs/ITERATION_391.md).
+configuration and pins stay unchanged. [Evidence](docs/history/iterations/351-400.md#iteration-391).
 
 The user accepts the named Windows Opus/200 ms three-minute observation as
 steady normal sound. The timer starts at the first decoded packet; rendered
@@ -472,7 +540,7 @@ samples cover 178.65 seconds. Forty configurations, 64 late publication
 intervals and 12 Worklet underflows remain measured scheduling gaps, despite
 the positive listening assessment. Joined PID/runtime cleanup passes; full
 Windows Node passes 890 / 51 skips. Release and pins are unchanged.
-[Current audio evidence](docs/ITERATION_390.md).
+[Current audio evidence](docs/history/iterations/351-400.md#iteration-390).
 
 The user accepts the corrected Debug worker's actual short Opus/200 ms tone as
 steady with almost no interruptions. The observed 23.52 seconds have one browser
@@ -480,7 +548,7 @@ epoch/configuration, zero late publication intervals and zero Worklet underflow;
 full three-minute continuity is not yet demonstrated. Earlier source-launch /
 console-input failures are retained. The new manual-source mode leaves fixed
 text in the local draft and requires separate user Send/paste/execute actions.
-[Exact audio scope](docs/ITERATION_387.md), [MVP acceptance](docs/MVP_ACCEPTANCE.md).
+[Exact audio scope](docs/history/iterations/351-400.md#iteration-387), [MVP acceptance](docs/MVP_ACCEPTANCE.md).
 
 New Windows Debug workers advertise bounded host resource batching; trusted
 CPU/RSS policies coalesce admitted requests across workers through the existing
@@ -491,28 +559,28 @@ runs, with zero worker failures and maximum active query 550 / 664 ms against
 the existing 3,000 ms bound. Native CTest passes 34/34; full Node passes
 854 / 51 skips / 905 total, zero failures. Release, pins, connected/OS-failure /
 sustained resource and broader stages remain unchanged/open.
-[Owner and exact evidence](docs/ITERATION_378.md).
+[Owner and exact evidence](docs/history/iterations/351-400.md#iteration-378).
 
 Controlled actual hanging-child timeout, partial/all-member cancellation and
 missing-executable checks additionally pass 3/3, preserving an unrelated real
 helper path and joined empty owners. Full Node passes 857 / 51 skips / 908,
 zero failures, with unchanged production/native sources. Actual Windows query
 API failures and wider connected/OS/load gates stay open.
-[Fault-control evidence](docs/ITERATION_379.md).
+[Fault-control evidence](docs/history/iterations/351-400.md#iteration-379).
 
 A new Windows source-only foundation Debug output now verifies the host-batch
 capability without FreeRDP: native CTest 17/17, resource integration 12/12 and
 full Node 809 / 102 skips / 911 total pass. Three SDK browser tests now select
 their prerequisite from actual native linkage rather than output-directory
 names; all four codec/viewer cases still pass on linked Debug. Original failed
-runs remain recorded. [Foundation evidence](docs/ITERATION_380.md).
+runs remain recorded. [Foundation evidence](docs/history/iterations/351-400.md#iteration-380).
 
 New clean-foundation receipts now also bind actual worker/query-helper SHA-256
 outputs through the existing bounded hashing routine. Windows source-only
 Debug CTest 17/17, lifecycle 16 / one skip and full Node 813 / 102 skips pass;
 linked artifact inventories remain unchanged. Linux inventory is portable-test
 coverage only because the local Docker daemon is unavailable. Broader build
-and platform gates stay open. [Receipt evidence](docs/ITERATION_381.md).
+and platform gates stay open. [Receipt evidence](docs/history/iterations/351-400.md#iteration-381).
 
 ## Implementation status — 2026-10-20
 
@@ -521,31 +589,31 @@ actual format/Training/Wave negotiation, packet decoding and Worklet rendering,
 and the user confirms hearing the fixed remote tone. They also report short
 Morse-like interruptions. Frequent source epochs/configurations, buffering
 silence and underflows remain; Stage 6 stays IN PROGRESS.
-[Audible slice and exact counters](docs/ITERATION_367.md).
+[Audible slice and exact counters](docs/history/iterations/351-400.md#iteration-367).
 Local helpers now preserve numeric native loss/cause receipts and separately
 count browser-consumer reset calls/results, preparing the authorized repeat.
 No specific cause or quality correction is accepted yet.
-[Native collection](docs/ITERATION_368.md),
-[consumer accounting](docs/ITERATION_369.md).
+[Native collection](docs/history/iterations/351-400.md#iteration-368),
+[consumer accounting](docs/history/iterations/351-400.md#iteration-369).
 The separately authorized repeat reports zero Node consumer reset requests
 and 581 skipped native publication intervals / 572 publisher resets. The user
 reports much better sound with a few small interruptions. Native scheduling,
 callback and graphics stalls remain to be distinguished; no production fix or
-uninterrupted-quality pass is claimed. [Repeat evidence](docs/ITERATION_370.md).
+uninterrupted-quality pass is claimed. [Repeat evidence](docs/history/iterations/351-400.md#iteration-370).
 
 The separately authorized corrected Debug preview renders 528 H.264 1080p
 frames but receives no RDPSND Formats or audio packets. Fixed-tone input was
 dispatched; source execution is unverified. Joined cleanup passes. This run
 does not accept the scheduling correction's actual playback or quality;
 negotiation/source and remaining Stage 6 gates stay open.
-[Debug observation](docs/ITERATION_373.md).
+[Debug observation](docs/history/iterations/351-400.md#iteration-373).
 
 Bounded listening previews now additionally collect one native video pipeline
 snapshot using the existing capability/deadline API. Only eight validated
 numeric fields are projected; unavailable evidence remains `null`. This local
 instrumentation prepares encode/read-cost observations without accepting an
 audio stall cause, connected timing, CPU or quality gate.
-[Collector evidence](docs/ITERATION_374.md).
+[Collector evidence](docs/history/iterations/351-400.md#iteration-374).
 The full check passes 818 / 51 skips but retains one failing unchanged
 40-worker resource-capacity case; a focused repeat also fails after active
 resource queries exceed their unchanged three-second bound. This local
@@ -557,16 +625,16 @@ full-suite result. Exact diagnostics remain in the same report.
 The user restored access and confirms the target is the Windows RDP lab;
 they have cleared the initial desktop wizard. Legacy `test-xrdp-*` names do
 not identify the current server OS. [Current scope](docs/LAB_STATUS.md),
-[clarification](docs/ITERATION_301.md). Windows actual strict
+[clarification](docs/history/iterations/301-350.md#iteration-301). Windows actual strict
 certificate refusal / approved session-only connection, native and Edge
 H.264/JPEG resize/restoration/replay, controlled connection loss and joined
 cleanup pass. CLIPRDR and RDPEI inventories are ready. PCM/Opus output still
 receives no formats/packets; PCM/Opus AUDIN remains waiting epoch 0 with no
 channel/Open negotiation. Audio/recording, application/device and wider gates
-remain open; access alone does not accept them. [Current lab evidence](docs/ITERATION_297.md); `9dce875`.
+remain open; access alone does not accept them. [Current lab evidence](docs/history/iterations/251-300.md#iteration-297); `9dce875`.
 The desktop-ready Windows repeat also receives no RDPSND Formats/packets or
 AUDIN Open for PCM/Opus, with heartbeat/frame/cleanup intact; audio and recording
-remain unaccepted. [Repeat evidence](docs/ITERATION_302.md).
+remain unaccepted. [Repeat evidence](docs/history/iterations/301-350.md#iteration-302).
 
 The user-prepared Windows Notepad now passes fixed Latin/Cyrillic/Japanese/
 supplementary Unicode application readback, actual CLIPRDR paste-and-copy
@@ -574,7 +642,7 @@ roundtrip, a small physical-key/modifier/reset case, fixed left-button sequence,
 empty-offer/revoke ACK and unsaved-window/native cleanup. Full Node passes
 Windows 657 / 90 skips and Linux 602 / 148 skips. This is a named private small-text
 slice, not complete layout/IME/button/browser/host-clipboard/device acceptance.
-[Application evidence](docs/ITERATION_303.md).
+[Application evidence](docs/history/iterations/301-350.md#iteration-303).
 
 The Windows lab now also supplies actual PCM/Opus Formats, Training/Waves and
 private packet delivery during a fixed system-sound attempt; PCM samples include
@@ -582,14 +650,14 @@ nonzero data. Both preserve heartbeat and joined empty-runtime close. Substantia
 epoch/config churn remains; browser/audible quality, reset, latency and resource
 acceptance stay open. PCM/Opus AUDIN still waits at epoch 0 without Open.
 Future host application/source launches should be requested from the user.
-[Source observation and exact scope](docs/ITERATION_305.md).
+[Source observation and exact scope](docs/history/iterations/301-350.md#iteration-305).
 
 With a source started by the user, the current Windows lab / Edge PCM and
 Opus/200 ms also pass actual Worklet rendering, fresh-token audio recovery and
 private ready resets with fresh config/data. Opus replay includes one scheduled
 native reset. Frequent epoch/config churn, silence/underflows and skipped
 intervals remain observed quality gaps; their cause is unverified.
-[Current browser/recovery evidence](docs/ITERATION_307.md).
+[Current browser/recovery evidence](docs/history/iterations/301-350.md#iteration-307).
 
 The pinned OpenH264 sanitizer run exposed a shift by 32 in `BsFlush()`. The
 isolated build-copy correction matches upstream commit 40555ec6 byte for byte;
@@ -601,7 +669,7 @@ skips; Windows Release passes CTest 30/30 and Node 669 / 49 skips. The first
 recovered Linux Node failure is retained with its test-tool prerequisite fix.
 The RDP node was unavailable during this correction; that historical access
 block is superseded by the restored-lab results above. Actual complete RDP/device
-acceptance remains open. [Correction evidence](docs/ITERATION_275.md).
+acceptance remains open. [Correction evidence](docs/history/iterations/251-300.md#iteration-275).
 
 OpenH264's own upstream ASan/UBSan common (17), decoder (50) and processing (10)
 cases pass. A test-only initialization correction removes an uninitialized
@@ -609,7 +677,7 @@ cases pass. A test-only initialization correction removes an uninitialized
 then pass. Original UB and 30-second timeout logs are retained. The API category
 times out at its original 300-second bound and remains open; no complete
 five-category upstream pass is claimed. Release/application code stays unchanged.
-[Upstream evidence and test patch](docs/ITERATION_276.md); `9a8a8ab`.
+[Upstream evidence and test patch](docs/history/iterations/251-300.md#iteration-276); `9a8a8ab`.
 
 The same GCC 12.4 sanitizer runtime now also uses rebuilt pinned ZLIB 1.3.2.
 Upstream CTest 14/14, actual module/codec origins, linked CTest 31/31 and full
@@ -617,14 +685,14 @@ Node 633 / 84 skips pass with unchanged worker/Release artifacts. Ordinary
 CTest/CMake tools and the instrumented native children have separate loader
 ownership; initial tool startup/projection failures are retained. Other private
 dependencies/addon, full upstream/platform/CI and actual RDP/device/resource
-gates remain open. [ZLIB profile evidence](docs/ITERATION_277.md).
+gates remain open. [ZLIB profile evidence](docs/history/iterations/251-300.md#iteration-277).
 
 An independent static ZLIB ASan/UBSan output also passes all 19 compile-command
 checks, focused static examples/infcover 4/4 and full upstream CTest 16/16,
 including nested consumers. The original coverage assertions and source remain
 unchanged; matching gcov 12 is used. This adds local static test coverage while
 other private dependencies/addon and wider gates remain open.
-[Static ZLIB evidence](docs/ITERATION_278.md).
+[Static ZLIB evidence](docs/history/iterations/251-300.md#iteration-278).
 
 Pinned libspng 0.7.4 now also passes a separate GCC 12.4 ASan/UBSan shared build
 and bounded local PNG regression: eight exact RGBA8 roundtrip combinations,
@@ -632,7 +700,7 @@ size/truncation refusals and 2,424 upstream read-harness inputs from 202 PNGs.
 Unknown harness input is refused by hash; actual private libspng/ZLIB loader
 paths are verified. Full comparator/fuzz/platform and remaining dependency/addon
 acceptance stay open. Linked CTest 31/31 and full Node 633 / 84 skips pass with
-the new library profile and unchanged worker/Release. [PNG evidence](docs/ITERATION_279.md).
+the new library profile and unchanged worker/Release. [PNG evidence](docs/history/iterations/251-300.md#iteration-279).
 
 The independent pinned libjpeg-turbo 3.2.0 Debug profile now passes upstream
 ASan/UBSan CTest 332/332, including API/buffer/PNG and golden codec-output cases.
@@ -642,22 +710,22 @@ differences. Release is unchanged. An additional focused C-fallback API control
 passes. Actual new JPEG/SPNG/ZLIB
 origins, linked native CTest 31/31 and full Node 633 / 84 skips also pass without
 new sanitizer diagnostics; the existing worker hash remains unchanged.
-[JPEG evidence](docs/ITERATION_280.md).
+[JPEG evidence](docs/history/iterations/251-300.md#iteration-280).
 
 Pinned OpenSSL 3.6.5 also passes a separate GCC 12.4 C-only static ASan/UBSan
 profile: all 1,163 library C commands, focused ASN.1 2/2 recipes and selected
 ASN.1/X.509/BIO/buffer 10 recipes / 15 top-level tests. Exact patch/source audit
 passes; missing-wrapper and backup-audit failures are retained. This is separate
 from shared bridge runtime and full OpenSSL/TLS/platform acceptance; Release
-and current bridge loader are unchanged. [Evidence](docs/ITERATION_281.md).
+and current bridge loader are unchanged. [Evidence](docs/history/iterations/251-300.md#iteration-281).
 Additional local X.509/verify/store/CSR recipes pass 4 / 220 top-level tests
 under the same static instrumentation, with unchanged source/library/CLI
 hashes and bounded retained-result diagnostic scans. This is separate from
-the bridge's real certificate/transport gate. [Evidence](docs/ITERATION_282.md).
+the bridge's real certificate/transport gate. [Evidence](docs/history/iterations/251-300.md#iteration-282).
 Local SSL context/config and memory-BIO buffer recipes additionally pass 3/3
 top-level tests, including all 13 available buffer variants, with unchanged
 library/app/source hashes. No socket/TLSProxy or shared bridge acceptance is
-claimed. [Evidence](docs/ITERATION_283.md).
+claimed. [Evidence](docs/history/iterations/251-300.md#iteration-283).
 
 A separate experimental OpenSSL shared C-only/no-module ASan/UBSan profile now
 passes 4 upstream recipes / 211 top-level tests, exact module/source audit,
@@ -666,7 +734,7 @@ Pinned Configure permits this without RPATH; the upstream-recommended static
 baseline remains separately verified. Worker/Release hashes and dependency
 versions are unchanged. Full production features/modules/assembly, remaining
 dependencies/addon/platform/CI and RDP gates remain open.
-[Evidence](docs/ITERATION_284.md).
+[Evidence](docs/history/iterations/251-300.md#iteration-284).
 
 ## Implementation status — 2026-10-16
 
@@ -679,9 +747,9 @@ skips. New Linux/Windows native
 packages install and relocate; the Linux archive passes separate restricted
 Bookworm and Ubuntu 24.04 runtime checks. Complete fresh OS/toolchain/distro
 builds, CI, linked/upstream sanitizers, full service/release/installers and actual
-RDP/device/resource gates remain open. [Linux chain](docs/ITERATION_254.md),
-[Windows chain](docs/ITERATION_257.md), [packaging](docs/ITERATION_258.md),
-[Ubuntu runtime](docs/ITERATION_259.md).
+RDP/device/resource gates remain open. [Linux chain](docs/history/iterations/251-300.md#iteration-254),
+[Windows chain](docs/history/iterations/251-300.md#iteration-257), [packaging](docs/history/iterations/251-300.md#iteration-258),
+[Ubuntu runtime](docs/history/iterations/251-300.md#iteration-259).
 
 A complete tracked-source Linux project export now also passes new offline Node
 installation/build/full regression, linked CTest 30/30, install/ELF closure,
@@ -690,8 +758,8 @@ Its native SDK/dependency/tool inputs remain external and verified. A complete
 Windows export also passes offline install, linked CTest 30/30, full Node
 663 / 49 skips, relocation and production deploy/import after correcting the
 Node physical-path context. New OS/distro, CI and linked/upstream sanitizer
-gates remain separate. [Linux evidence](docs/ITERATION_260.md),
-[Windows evidence](docs/ITERATION_265.md).
+gates remain separate. [Linux evidence](docs/history/iterations/251-300.md#iteration-260),
+[Windows evidence](docs/history/iterations/251-300.md#iteration-265).
 
 GNU builds now explicitly require GCC 12 and a matching C++20 standard library.
 A new actual GCC 12.2 linked consumer passes CTest 31/31, process/TLS 40/40 and
@@ -700,15 +768,15 @@ The local Ubuntu standard PIE ASan/UBSan foundation passes 16/16 with GCC 12.4
 and 15/15 with GCC 13. Eleven Clang 18 PIE sanitizer fuzz smokes also pass.
 The GNU minimum remains 12; explicit compiler/budget CI profiles are prepared,
 not run. [Compiler support](docs/COMPILER_SUPPORT.md),
-[policy/build](docs/ITERATION_263.md), [GCC 12 PIE/fuzz](docs/ITERATION_264.md),
-[earlier PIE environment](docs/ITERATION_262.md).
+[policy/build](docs/history/iterations/251-300.md#iteration-263), [GCC 12 PIE/fuzz](docs/history/iterations/251-300.md#iteration-264),
+[earlier PIE environment](docs/history/iterations/251-300.md#iteration-262).
 
 A new complete tracked-source Ubuntu GCC 12 export also passes standard PIE
 ASan/UBSan CTest 16/16 and full Node 569 / 146 profile/platform skips, including
 100 actual sanitizer-worker lifecycles and parent-death cleanup. The parent Node
 runs without preload and the addon is OFF. Separate Node-only preload controls
 still fail LSan; addon sanitizer acceptance remains open.
-[Evidence](docs/ITERATION_267.md).
+[Evidence](docs/history/iterations/251-300.md#iteration-267).
 
 The linked GCC 12 bridge sanitizer failure exposed lost Opus state in pinned
 FreeRDP DSP reset. A hash-checked build-copy correction now retires the preceding
@@ -717,8 +785,8 @@ New SDK/consumer builds pass Windows CTest 30/30 and Node 666 / 49 skips, Linux
 Release CTest 31/31 and Node 659 / 59 skips, and Ubuntu GCC 12 standard PIE linked
 bridge ASan/UBSan CTest 31/31 and Node 633 / 84 skips. The public leak reproducer
 now exits cleanly. Addon/upstream instrumentation, connected audio and wider
-resource/platform/CI gates remain open. [Retained failure](docs/ITERATION_268.md),
-[correction and scoped acceptance](docs/ITERATION_269.md),
+resource/platform/CI gates remain open. [Retained failure](docs/history/iterations/251-300.md#iteration-268),
+[correction and scoped acceptance](docs/history/iterations/251-300.md#iteration-269),
 [SDK rebuild contract](docs/FREERDP_OVERRIDES.md).
 
 New Windows/Linux native archives also pass artifact-only SPDX generation:
@@ -726,14 +794,14 @@ the approved DSP correction and exact packaged recipe/metadata hashes are
 recorded without consulting an installed SDK. Historical inventory explicitly
 reports absent override metadata. Full Node passes Windows 669 / 49 skips and
 Linux 662 / 59 skips, zero failures. Full release/license/vulnerability review
-remains open. [Artifact provenance evidence](docs/ITERATION_270.md).
+remains open. [Artifact provenance evidence](docs/history/iterations/251-300.md#iteration-270).
 
 The same corrected Linux native archive passes independent pinned Bookworm and
 Ubuntu 24.04 runtime smoke checks: UID1000/read-only/no-network, private module /
 codec origins, actual IPC pairing, heartbeat/shutdown and empty runtime. SDK,
 workspace and lab files are absent. This adds current artifact evidence while
 fresh distro source builds, service/installer/CI and RDP/device/load gates stay
-open. [Independent runtime evidence](docs/ITERATION_271.md).
+open. [Independent runtime evidence](docs/history/iterations/251-300.md#iteration-271).
 
 A separate Ubuntu GCC 12.4 SDK now also instruments FreeRDP/WinPR themselves
 with ASan/UBSan. All 390 compile commands carry instrumentation; linked bridge
@@ -741,19 +809,19 @@ verbose CTest passes 31/31, codec/module probe passes and full Node passes
 633 / 84 profile/platform skips, zero failures. Standard PIE/default sanitizer
 settings and ordinary parent Node remain; addon OFF. Private codec/crypto
 instrumentation, the upstream test/fuzz suite and wider distro/CI/RDP/device /
-resource gates remain open. [Instrumented SDK evidence](docs/ITERATION_272.md).
+resource gates remain open. [Instrumented SDK evidence](docs/history/iterations/251-300.md#iteration-272).
 
 Bundled Linux CI now explicitly selects GCC/G++ 12 for dependencies, SDK and
 worker instead of the runner default, with a separate compiler-profile cache
 key. Actual local environment-selection/C++20 probing passes; GitHub execution
-remains unrun. [Prepared workflow evidence](docs/ITERATION_273.md).
+remains unrun. [Prepared workflow evidence](docs/history/iterations/251-300.md#iteration-273).
 
 The local GCC 12.4 instrumented SDK profile additionally uses rebuilt ASan/UBSan
 Opus 1.6.1. Shared-library origin, bridge CTest 31/31 and full Node 633 / 84 skips
 pass. Four own Opus cases pass initially; the 100-million-iteration extensions
 case first times out, then passes unchanged with the same seed and a finite
 longer deadline. Other dependency/addon/platform/fuzz/CI and connected audio /
-resource gates remain open. [Evidence](docs/ITERATION_274.md).
+resource gates remain open. [Evidence](docs/history/iterations/251-300.md#iteration-274).
 
 ## Implementation status — 2026-10-15
 
@@ -762,36 +830,36 @@ read-only/no-network HTTP, default authorization refusal and synthetic host /
 native lifecycle/cleanup. Production Node deployment retains pinned versions
 and excludes source/devDependencies. The final runtime image is built; fresh
 source/distro/CI, installers and actual RDP/device/load gates remain open.
-[Iteration 211](docs/ITERATION_211.md), [current runtime/SBOM](docs/ITERATION_223.md),
+[Iteration 211](docs/history/iterations/201-250.md#iteration-211), [current runtime/SBOM](docs/history/iterations/201-250.md#iteration-223),
 [deployment](docs/CONTAINER_RUNTIME.md).
 
 Current Linux native archive again passes the independent non-root/read-only /
 no-network runtime smoke. A bounded private-stdin microphone inventory helper
 is available without physical capture or sample submission. The earlier host
-TCP timeout/RDP_CONNECT_TIMEOUT is retained in [Iteration 210](docs/ITERATION_210.md).
+TCP timeout/RDP_CONNECT_TIMEOUT is retained in [Iteration 210](docs/history/iterations/201-250.md#iteration-210).
 Restored XRDP now passes twelve actual input/output/carrier combinations with
 heartbeat, 1080p JPEG and empty-runtime cleanup. Input remains waiting at epoch
-0, so ready AUDIN/recording remains open. [Current evidence](docs/ITERATION_218.md).
+0, so ready AUDIN/recording remains open. [Current evidence](docs/history/iterations/201-250.md#iteration-218).
 
 Guarded Linux virtual PCM/Opus microphone selection now follows the existing
 typed HELLO/CLI/Node/public capability contract. Twelve actual process/TLS cases
 cover both IPC carriers and all input/output combinations; focused microphone
 tests pass 46/46. This verifies activation/refusal/cleanup without physical
 capture; ready AUDIN/recording/LAN acceptance remains open.
-[Iteration 209](docs/ITERATION_209.md).
+[Iteration 209](docs/history/iterations/201-250.md#iteration-209).
 
 Actual Linux producer / Windows Edge now passes PCM/Opus packet decode and
 AudioWorklet sample rendering with the 200 ms native profile, video resize /
 restoration and fresh-token replay. Opus replay observes one actual scheduled
 native reset and source epoch 8→10. First Opus admission attempt failed; repeats
 pass. This is the named E2E smoke, not human audible/latency/quality/soak or all
-audio-stage acceptance. [Iteration 208](docs/ITERATION_208.md).
+audio-stage acceptance. [Iteration 208](docs/history/iterations/201-250.md#iteration-208).
 
 Linux primary idle/assembly deadline separation now has a failing-before /
 passing-after socket regression, repeated idle heartbeats and Release/sanitizer
 checks. Actual primary XRDP receives PCM/Opus with ready reset/fresh config/data;
 one Opus protocol failure remains unexplained. Browser/audio quality, latency and
-resource/soak acceptance remain open. [Iteration 207](docs/ITERATION_207.md).
+resource/soak acceptance remain open. [Iteration 207](docs/history/iterations/201-250.md#iteration-207).
 
 Guarded Linux amd64 PCM/Opus output, native reset and 120/200 ms selection are
 activated through the primary and framed priority writers. Eight native/TLS
@@ -799,27 +867,27 @@ profile cases and full Node/native/relocation/independent archive checks pass.
 Actual XRDP receives Formats but Linux has no samples yet, including one
 RDP_PROTOCOL_ERROR; the Windows control receives active Opus. Linux source /
 browser/audio acceptance remains open pending negotiation diagnosis.
-[Iteration 205](docs/ITERATION_205.md).
+[Iteration 205](docs/history/iterations/201-250.md#iteration-205).
 
 Actual Linux producer/API/primary IPC now renders XRDP in Windows Edge through
 both H.264/WebCodecs and JPEG/canvas. Nonblank 1080p, public confirmed resize /
 restoration with fresh configs/IDRs and fresh-token reattachment replay pass;
 joined server/worker cleanup leaves an empty runtime. This adds the named browser
 smoke, not a Linux-browser/platform/audio or sustained resource gate.
-[Iteration 202](docs/ITERATION_202.md).
+[Iteration 202](docs/history/iterations/201-250.md#iteration-202).
 
 Controlled actual Linux/XRDP loss now passes after real media and resize in both
 primary and explicit framed IPC: exact RDP_DISCONNECTED, continued heartbeat and
 empty-runtime/relay cleanup. This accepts the named private connected loss case;
 remote held-input/device release, browser failure state, reconnect and sustained
-resource acceptance remain open. [Iteration 203](docs/ITERATION_203.md).
+resource acceptance remain open. [Iteration 203](docs/history/iterations/201-250.md#iteration-203).
 
 Actual Linux amd64/XRDP now passes strict certificate rejection and the previously
 approved session-only fingerprint over automatically selected primary IPC.
 1920×1080 JPEG/H.264 IDR, confirmed 1280×720 resize/restoration with fresh IDRs,
 heartbeat and empty-runtime cleanup pass. This is private Node/native RDP
 integration; browser, audio/devices and sustained resource/soak acceptance remain
-open. [Iteration 201](docs/ITERATION_201.md). Earlier Linux build-only statements
+open. [Iteration 201](docs/history/iterations/201-250.md#iteration-201). Earlier Linux build-only statements
 below describe their historical evidence and are superseded only for this slice.
 
 Current IPC evidence: Linux automatically selects paired private RWS1
@@ -827,7 +895,7 @@ SOCK_SEQPACKET and keeps explicit/legacy framed fallback. Actual Node/native
 100-worker lifecycles, parent/worker death, cancellation, independent deadlines,
 private settings/secret, descriptor joins and installed/independent archive checks
 pass. Full Node: Windows 537 passed / 25 platform skips; Linux 487 passed / 75
-platform skips, 562 cases, zero failures. [Iteration 200](docs/ITERATION_200.md).
+platform skips, 562 cases, zero failures. [Iteration 200](docs/history/iterations/151-200.md#iteration-200).
 This completes the named Release transport component, not all Stage 1:
 configured-capacity admission, addon sanitizer baseline, broader isolation /
 abnormal cleanup and connected-RDP/resource gates remain explicitly open.
@@ -838,12 +906,12 @@ libFuzzer smoke targets and Node check (439 passed / 83 skipped / zero failures)
 One hundred sequential workers and parent-death cleanup pass on Linux framed
 pipes. Windows Node check passes 522/522. The local sanitizer placement workaround,
 retained failed PIE runs and platform boundaries are recorded in
-[iteration 184](docs/ITERATION_184.md); no linked Linux RDP/device acceptance is claimed.
+[iteration 184](docs/history/iterations/151-200.md#iteration-184); no linked Linux RDP/device acceptance is claimed.
 Linked Linux Release FreeRDP/worker now passes CTest 20/20 and full Node check
 (453 passed / 75 skipped / zero failures, 528 total). Private eudev/libusb and
 complete staged ELF closure pass; canonical relocation passes 1/1. Windows Node
-check passes 528/528. [Current closure evidence](docs/ITERATION_189.md),
-[build evidence](docs/ITERATION_187.md). No actual Linux RDP/device
+check passes 528/528. [Current closure evidence](docs/history/iterations/151-200.md#iteration-189),
+[build evidence](docs/history/iterations/151-200.md#iteration-187). No actual Linux RDP/device
 acceptance or clean-machine portability is claimed.
 The experimental Stage 3 core has connected to the authorized XRDP lab. Stage 4
 now renders real 1080p XRDP through H.264/WebCodecs and the JPEG fallback in Edge.
@@ -861,20 +929,20 @@ changes and large-burst discard remain quality gaps. Private ready-source reset
 passes for both codecs on this lab. The user hears Opus but reports interruptions;
 uninterrupted audio, broader recovery, microphone and
 latency/resource/platform acceptance remain open.
-[Actual source evidence](docs/ITERATION_175.md).
+[Actual source evidence](docs/history/iterations/151-200.md#iteration-175).
 The user accepts current Opus output quality for local development: the explicit
 200 ms profile sounds smoother, with remaining interruptions. A slow tunnel is
 the user's hypothesis, not a measured cause. Native 120/200 ms selection, actual
 PCM/Opus reception and ready reset pass; uninterrupted quality, measured latency
 and the remaining audio gates are not waived. [ADR-012](docs/adr/ADR-012-audio-compatibility-buffer.md),
-[current evidence](docs/ITERATION_179.md).
+[current evidence](docs/history/iterations/151-200.md#iteration-179).
 
 Microphone foundations now include private Windows worker dispatch/reset,
 bounded Node ingress and exclusive control/media session ownership. Restored
 XRDP private off/PCM/Opus output combinations pass waiting-source inventory;
 ready input, native selection/permission/capture and remote microphone acceptance
 remain open. [Current session ownership](docs/MICROPHONE_SESSION.md),
-[actual XRDP inventory](docs/ITERATION_115.md).
+[actual XRDP inventory](docs/history/iterations/101-150.md#iteration-115).
 Explicit PCM microphone media routing is verified over actual loopback sockets
 with fake RDP backends; this is separate from capture/RDP acceptance.
 An isolated browser PCM sender now enforces local permission tokens, one issued
@@ -886,7 +954,7 @@ native selection are implemented and verified with synthetic browser/socket
 fixtures. Iteration 144 supersedes historical unactivated/PCM-only descriptions
 below; actual authorized XRDP selection still reports waiting epoch 0 with no
 capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
-[Current viewer](docs/ITERATION_144.md).
+[Current viewer](docs/history/iterations/101-150.md#iteration-144).
 
 - **DONE:** strict pnpm workspace, CMake/Ninja C++20 worker, bounded RWI1 framing, HELLO,
   heartbeat/watchdog, graceful/forced shutdown, crash isolation and private-directory cleanup.
@@ -897,73 +965,73 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   [native tests](native/ipc/tests.cpp). Latest bundled Windows `pnpm check`:
   **528/528**. Bounded browser fixture ports resolve the random 2049 refusal;
   focused Edge/socket 6/6 and full repeat pass. Earlier failures are preserved in
-  [iteration 186](docs/ITERATION_186.md) and [iteration 188](docs/ITERATION_188.md).
+  [iteration 186](docs/history/iterations/151-200.md#iteration-186) and [iteration 188](docs/history/iterations/151-200.md#iteration-188).
   Recorded native assertion baseline: 72 IPC/input/state/audio-codec/output/capture cases / 61,347 assertions, 2 AVC cases / 19 assertions,
   2 cursor conversion cases / 11 assertions, 2 JPEG cases / 26 assertions and
   5 H.264 cases / 224 assertions. Dirty state adds 4 cases / 696 assertions;
   public GDI integration adds 5 cases / 9,199 assertions; GFX public callback fixtures
   add 7 cases / 27,160 assertions (combined GDI/GFX: 12 / 36,359), including
   actual incoming AVC420 decoder callbacks and malformed-command guards.
-  [Cursor block evidence](docs/ITERATION_012.md), [dirty tracking evidence](docs/ITERATION_013.md),
-  [GFX binding evidence](docs/ITERATION_014.md), [incoming AVC420 evidence](docs/ITERATION_015.md).
+  [Cursor block evidence](docs/history/iterations/001-050.md#iteration-012), [dirty tracking evidence](docs/history/iterations/001-050.md#iteration-013),
+  [GFX binding evidence](docs/history/iterations/001-050.md#iteration-014), [incoming AVC420 evidence](docs/history/iterations/001-050.md#iteration-015).
   GFX implementation commit: `90285bb`.
   Incoming AVC420 and incremental build corrections: `d5b1a0a`.
-  [Quality/FPS profile evidence](docs/ITERATION_016.md): actual XRDP H.264/reset
+  [Quality/FPS profile evidence](docs/history/iterations/001-050.md#iteration-016): actual XRDP H.264/reset
   and JPEG report a configured 5 FPS cap; direct native capture intervals stay
   above 200 ms independently of Node pacing. Broader performance/soak gates remain open.
   Quality/FPS implementation commit: `bd8659b`.
-  [Native Display Control foundation](docs/ITERATION_017.md): 8 cases / 280 assertions
+  [Native Display Control foundation](docs/history/iterations/001-050.md#iteration-017): 8 cases / 280 assertions
   cover caps, layout bounds, pending/observed state, timeout and teardown. Actual public
   GDI realloc and resized AVC/JPEG decoding pass; public browser requests remain
   open. Windows foundation helper correction: `d295264`.
   Native Display Control/resize implementation commit: `4cc44d2`.
-  [Private Display Control IPC evidence](docs/ITERATION_018.md): opt-in/capability,
+  [Private Display Control IPC evidence](docs/history/iterations/001-050.md#iteration-018): opt-in/capability,
   bounded request/result correlation, observed display generations and Node supervision pass.
   Actual XRDP negotiated caps, accepted 1920×1080 → 1280×720 → 1920×1080 and delivered
   fresh AVC IDRs plus resized JPEG. Public browser resize/lease/media ownership remains open.
   Private Display Control IPC implementation commit: `098ddab`.
-  [Public Display Control/browser evidence](docs/ITERATION_019.md): current control-lease
+  [Public Display Control/browser evidence](docs/history/iterations/001-050.md#iteration-019): current control-lease
   resize, typed results, actual display replay, input pause, media epoch/ACK preservation,
   same-size reset and stale unsent-frame rejection pass native/fake/Edge checks.
   Actual XRDP browser resize/restoration passes in H.264 and JPEG; Windows-server,
   resource limits and soak acceptance remain open. Broader display layouts are
   excluded from current scope by ADR-011.
   Public Display Control/browser implementation commit: `78fbb67`.
-  [Modifier/focus synchronization evidence](docs/ITERATION_020.md): eight new pure /
+  [Modifier/focus synchronization evidence](docs/history/iterations/001-050.md#iteration-020): eight new pure /
   Edge-fake cases verify bounded modifier recovery, observed physical sides,
   lock ordering, composition and reset during a resize pause. Native tracking
   preserves both modifier sides across synchronize calls. Actual remote keyboard /
   layouts remain unverified; no broader input acceptance is claimed.
   Modifier/focus synchronization implementation commit: `236f1a1`.
-  [Committed Unicode/IME fallback evidence](docs/ITERATION_021.md): bounded UTF-16BE,
+  [Committed Unicode/IME fallback evidence](docs/history/iterations/001-050.md#iteration-021): bounded UTF-16BE,
   server capability refusal, old-peer gating, ordered Unicode down/up and release
   retry, text-rate budget and Edge preedit/explicit submission pass fixtures.
   Actual remote text/OS IME and direct canvas IME remain open.
   Committed Unicode/IME fallback implementation commit: `60e3ee4`.
-  [Fractional wheel evidence](docs/ITERATION_022.md): bounded per-axis DOM
+  [Fractional wheel evidence](docs/history/iterations/001-050.md#iteration-022): bounded per-axis DOM
   pixel/line/page accumulation, gesture context/idle/reset handling and Edge
   ordering pass. Real wheel/trackpad sensitivity acceptance remains open.
   Fractional wheel implementation commit: `c5d9ec3`.
-  [Native touch foundation evidence](docs/ITERATION_023.md): ten-contact bounded
+  [Native touch foundation evidence](docs/history/iterations/001-050.md#iteration-023): ten-contact bounded
   state, correct terminal coordinate ordering, API failure/cleanup ownership and
   public RDPEI projection pass 10 state cases / 13,114 assertions and 9 RDPEI cases /
   370 assertions. Five RDPEI cases use the actual linked addin with fake DVC
   transport; they are not remote touch acceptance. Worker suspension/contact
   cleanup, IPC/control, browser capture and real touch integration remain open.
   Native touch foundation implementation commit: `69e1717`.
-- [Observable RDPEI transport evidence](docs/ITERATION_024.md): public-DVC
+- [Observable RDPEI transport evidence](docs/history/iterations/001-050.md#iteration-024): public-DVC
   SC_READY/CS_READY completion and periodic-frame suspension gate pass native
   tests. RDPEI suite now has 23 cases / 9,789 assertions, including ten actual-addin
   cases with fake transport. Transport resume is separate from contact/lease
   readiness; plugin/worker activation and end-to-end touch remain open.
   RDPEI transport gate implementation commit: `fb8643f`.
-- [Public RDPEI ownership evidence](docs/ITERATION_025.md): pinned static addin
+- [Public RDPEI ownership evidence](docs/history/iterations/001-050.md#iteration-025): pinned static addin
   registration, wrapped listener/gate, partial creation cleanup and lifecycle
   tests pass. RDPEI now has 34 cases / 10,127 assertions, including fourteen
   actual-addin/fake-DVC cases. Connection/contact drain, private IPC/browser and
   actual remote/physical touch remain open; no touch capability is advertised.
   Public RDPEI registration implementation commit: `af8b99e`.
-- [Terminal contact drain evidence](docs/ITERATION_026.md): ten native/external
+- [Terminal contact drain evidence](docs/history/iterations/001-050.md#iteration-026): ten native/external
   contact pairs remain owned until terminal transport writes. Suspended native
   UP records survive periodic consumption, then drain before input readiness;
   resume-before-pump, reset, write/deadline failure and bounded parser cases pass.
@@ -971,7 +1039,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   transport cases. Timestamp-remoting/v1.0 compatibility and worker/IPC/browser
   activation remain open.
   Terminal contact drain implementation commit: `d38afe1`.
-- [Scoped RDPEI provider/lifetime evidence](docs/ITERATION_027.md): Connection binds
+- [Scoped RDPEI provider/lifetime evidence](docs/history/iterations/001-050.md#iteration-027): Connection binds
   a public provider on the RDP thread after context creation, retires delegated
   resources before joining, and preserves the wrapper for later host termination.
   Other channels retain their previous provider. Touch loading/capability stays
@@ -979,7 +1047,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   RDPEI: 62 cases / 12,612 assertions; bundled CTest 10/10, foundation 4/4,
   Node 124/124 and actual XRDP H.264 reset/resize/restoration pass.
   Scoped RDPEI provider/lifetime implementation commit: `1072e58`.
-- [Bounded touch IPC codec evidence](docs/ITERATION_028.md): separate fixed
+- [Bounded touch IPC codec evidence](docs/history/iterations/001-050.md#iteration-028): separate fixed
   versioned 16-byte record validates in native/TypeScript before body allocation.
   Portable touch is 14 cases / 14,182 assertions; current workers explicitly refuse
   dispatch and advertise no touch capability. Worker/control/browser wiring and
@@ -992,7 +1060,7 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   `316cdc0` Node supervisor/API/integration. Original blueprint is preserved in `3065f2d`.
 - **Recent input commits:** private touch dispatch `6a34e2f`, public controller/browser `06b2527`, actual
   readiness/replay `1f73a98`, honest pen placeholder `26688c5`, terminal cleanup
-  ordering `ff5fcdf`. [Current touch evidence](docs/ITERATION_031.md).
+  ordering `ff5fcdf`. [Current touch evidence](docs/history/iterations/001-050.md#iteration-031).
 - **DONE on Windows:** exact FreeRDP/WinPR 3.32.1, local ZLIB 1.3.2, OpenSSL 3.6.5 and libusb
   1.0.30 build and link. Private native ZIP contains runtime DLLs, release CRT, licenses and
   dependency metadata. Relocation test checks actual loaded ZLIB/FreeRDP paths and static
@@ -1002,22 +1070,22 @@ capture. Ready AUDIN/device/recording/LAN/platform acceptance remains open.
   including the private Opus runtime and excluding Node.js and future hardware
   providers/installers. Measured archive: 6,266,183 bytes; installed files:
   15,621,256 bytes. Earlier footprints remain in their historical reports.
-  [Iteration 5](docs/ITERATION_005.md), [iteration 6](docs/ITERATION_006.md).
+  [Iteration 5](docs/history/iterations/001-050.md#iteration-005), [iteration 6](docs/history/iterations/001-050.md#iteration-006).
   Implementation commits: `7757d44`, `b1c779d`; local lab helper: `55e22cc`.
 - **Retained acceptance:** Windows RDP access is restored; current endpoint and
   application evidence are summarized in [lab status](docs/LAB_STATUS.md), with
-  a current verification limitation in [iteration 332](docs/ITERATION_332.md).
+  a current verification limitation in [iteration 332](docs/history/iterations/301-350.md#iteration-332).
   Historical XRDP results retain their original server scope and include strict
   certificate rejection, approved session-only trust, activation, heartbeat
-  and cleanup. [Iteration 4](docs/ITERATION_004.md) records the historical
+  and cleanup. [Iteration 4](docs/history/iterations/001-050.md#iteration-004) records the historical
   absent-Linux scope; primary Linux IPC is implemented and verified in
-  [iteration 200](docs/ITERATION_200.md). Actual Linux RDP/device, broader
+  [iteration 200](docs/history/iterations/151-200.md#iteration-200). Actual Linux RDP/device, broader
   platform/resource gates and CI execution remain open; local sanitizer/fuzz
   execution does not establish CI or linked Linux integration acceptance.
-  [Documentation correction](docs/ITERATION_336.md).
+  [Documentation correction](docs/history/iterations/301-350.md#iteration-336).
 
 Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration report:
-[contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/ITERATION_001.md), [iteration 2](docs/ITERATION_002.md).
+[contract audit](docs/CONTRACT_AUDIT.md), [iteration 1](docs/history/iterations/001-050.md#iteration-001), [iteration 2](docs/history/iterations/001-050.md#iteration-002).
 
 ## Stage 0 — repository and reproducible build
 
@@ -1029,7 +1097,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   remains. The final Docker receipt-copy error is retained; its stdout receipt
   is recovered with explicit provenance and corrected export passes a separate
   control. Temporary containers are removed. This is not current linked Linux
-  FreeRDP/RDP or wider Stage 0 acceptance. [Evidence](docs/ITERATION_389.md).
+  FreeRDP/RDP or wider Stage 0 acceptance. [Evidence](docs/history/iterations/351-400.md#iteration-389).
 
 - [x] DONE for Windows clean-foundation output hashes — New source-only
   receipts bind worker/helper bytes after source/profile/native/lifecycle
@@ -1038,7 +1106,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   MSVC Debug CTest 17/17, lifecycle 16 / one skip and full Node 813 / 102 skips
   pass. Historical receipts and linked inventories are preserved. Actual Linux
   writer/distro/CI, deterministic outputs and wider gates remain open.
-  [Evidence](docs/ITERATION_381.md).
+  [Evidence](docs/history/iterations/351-400.md#iteration-381).
 
 - [x] DONE for current Windows foundation host-resource profile — New offline
   source-only MSVC Debug output has identical native source bytes to linked
@@ -1047,9 +1115,9 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   12/12 and full Node 809 / 102 skips pass. SDK codec tests use actual linkage,
   with linked 4/4 controls; prelaunch staging expiry/cancellation passes too.
   Release, pins, other-platform/CI/connected/load and wider gates stay open.
-  [Evidence](docs/ITERATION_380.md).
+  [Evidence](docs/history/iterations/351-400.md#iteration-380).
 
-- [x] DONE for current full workspace regression — With Node 24.21.0 correctly first in the child-process PATH, `pnpm check` passes build, lint, format and Node **748 passed / 101 skipped / 0 failed**. Bundled native CTest passes **29/29** through the project's temporary `R:` workspace alias; no CMake reconfiguration or Release change was made. [Evidence](docs/ITERATION_347.md).
+- [x] DONE for current full workspace regression — With Node 24.21.0 correctly first in the child-process PATH, `pnpm check` passes build, lint, format and Node **748 passed / 101 skipped / 0 failed**. Bundled native CTest passes **29/29** through the project's temporary `R:` workspace alias; no CMake reconfiguration or Release change was made. [Evidence](docs/history/iterations/301-350.md#iteration-347).
 
 - [x] DONE for manual WEB harness source-worker selection — The Windows
   reference harness optionally selects a linked source build by verified
@@ -1059,7 +1127,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   pass without creating an RDP session. A first full run retained an
   intermittent resource-capacity deadline failure; the standalone control and
   full repeat pass, so broader resource/load acceptance stays open.
-  [Evidence](docs/ITERATION_330.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-330).
 
 - [x] DONE for symmetric Windows SDK/consumer CRT admission and current isolated
   Release consumer — Release rejects a Debug SDK before preparing output;
@@ -1071,7 +1139,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   17/17 / Node 644 / 151 skips pass. Codec/module origins and copied DLL bytes
   match; seven pre-existing Release/pin inputs retain their hashes. Connected
   RDP/resource, production packaging and wider stage gates remain open.
-  [Evidence](docs/ITERATION_313.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-313).
 
 - [x] DONE for local Windows isolated linked Debug SDK/consumer — Additive
   source-only Debug profiles pair FreeRDP/WinPR and worker with matching dynamic
@@ -1084,7 +1152,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   are verified; seven pre-existing Release/pin inputs retain their hashes.
   Existing Release modes/configuration and dependency versions are unchanged.
   Private dependency Debug/sanitizer, Debug CRT packaging, new Linux linked SDK,
-  RDP/device/CI and full stage gates remain open. [Evidence](docs/ITERATION_312.md).
+  RDP/device/CI and full stage gates remain open. [Evidence](docs/history/iterations/301-350.md#iteration-312).
 
 - [x] DONE for clean-native compiler provenance — New receipts bind the actual
   CMake version, compiler ID/version/path, Ninja generator
@@ -1093,7 +1161,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   skips and new MSVC Debug CTest 15/15, lifecycle 16 / 1 skip pass; full Windows
   Node 632 / 90 skips also passes. Both native receipts bind identical source
   bytes. Release settings, pins and GNU minimum 12 are unchanged; broader gates
-  remain open. [Evidence](docs/ITERATION_289.md); `911bb21`.
+  remain open. [Evidence](docs/history/iterations/251-300.md#iteration-289); `911bb21`.
 
 - [x] DONE for current local Clang 18 Debug source export — Complete tracked
   archive of `3534484`, frozen offline Node installation and fresh native-only
@@ -1102,7 +1170,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   remain byte-identical; no old objects, SDK or lab files are copied. Prepared
   compiler/Catch2/public caches are reused. GNU minimum 12, Release, dependency
   pins and wider distro/CI/RDP/device gates remain unchanged.
-  [Evidence](docs/ITERATION_288.md); `ffa0959`.
+  [Evidence](docs/history/iterations/251-300.md#iteration-288); `ffa0959`.
 
 - [x] DONE for incremental libusb test-copy preparation — CMake tracks the
   test-only patch as a configure dependency. A private-copy build regression
@@ -1110,7 +1178,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   with GCC 12 and Clang 18; full standalone CTest 4/4 each and repeated focused
   CTest 1/1 each pass. Original sources, Release and dependency pins stay
   unchanged. This closes one reproducibility detail, not the Stage 0 gate.
-  [Evidence](docs/ITERATION_287.md); `3534484`.
+  [Evidence](docs/history/iterations/251-300.md#iteration-287); `3534484`.
 
 - [x] DONE for isolated libusb descriptor cleanup regression — A retained
   40-byte LSan leak reproduces with GCC 12 before correction. Exact test-only
@@ -1118,7 +1186,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   two 100,000-run ASan/UBSan/libFuzzer smokes without new errors. Original
   sources and Release remain unchanged; production libusb still has the known
   cleanup gap. Shared-backend/eudev, production adoption and wider gates stay
-  open. [Evidence](docs/ITERATION_286.md); `5427e70`.
+  open. [Evidence](docs/history/iterations/251-300.md#iteration-286); `5427e70`.
 
 - [x] DONE for bounded local GCC 12 libusb descriptor seed replay — Separate
   pinned 1.0.30 device-free parser fixture passes 105 BOS value checks and 150
@@ -1127,7 +1195,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   633 / 84 skips pass. The next Clang fuzz attempt exposes a retained 40-byte
   cleanup leak beyond this corpus; the isolated correction above supersedes
   only this test slice. Full parser/backend/eudev/platform/CI/device acceptance
-  remains open. Release is unchanged. [Evidence](docs/ITERATION_285.md).
+  remains open. Release is unchanged. [Evidence](docs/history/iterations/251-300.md#iteration-285).
 
 - [x] DONE for local experimental OpenSSL shared sanitizer runtime slice —
   Separate pinned 3.6.5 C-only/no-module Debug ASan/UBSan profile, without RPATH,
@@ -1136,7 +1204,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   CTest 31/31 and full Node 633 / 84 skips pass with unchanged worker/Release.
   The recommended static baseline stays separate; full production OpenSSL
   features/modules/assembly, remaining dependencies/addon/platform/CI and RDP
-  gates remain open. [Evidence](docs/ITERATION_284.md).
+  gates remain open. [Evidence](docs/history/iterations/251-300.md#iteration-284).
 
 - [x] DONE for selected local GCC 12 OpenSSL static sanitizer cases — Pinned
   3.6.5 follows upstream no-shared/PEDANTIC sanitizer recommendations in a
@@ -1144,11 +1212,11 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   15 top-level tests pass without sanitizer diagnostics; exact source/backup
   audit passes. Four additional X.509 recipes / 220 top-level tests pass with
   unchanged hashes and no sanitizer diagnostics. Prior failed harness/audit
-  runs are retained. [Certificate evidence](docs/ITERATION_282.md). Three local
+  runs are retained. [Certificate evidence](docs/history/iterations/251-300.md#iteration-282). Three local
   SSL context/config/memory-BIO recipes and all 13 available buffer variants also
-  pass. [Memory SSL evidence](docs/ITERATION_283.md). Full production shared
+  pass. [Memory SSL evidence](docs/history/iterations/251-300.md#iteration-283). Full production shared
   OpenSSL selection, full algorithms/TLS/upstream/fuzz/platform/CI and remaining
-  dependency/addon acceptance stay open. [Evidence](docs/ITERATION_281.md).
+  dependency/addon acceptance stay open. [Evidence](docs/history/iterations/251-300.md#iteration-281).
 
 - [x] DONE for local GCC 12 shared JPEG upstream sanitizer profile — Independent
   pinned libjpeg-turbo 3.2.0 Debug build, instrumented private libspng/ZLIB,
@@ -1158,7 +1226,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   actual module origins, linked CTest 31/31 and full Node 633 / 84 skips pass.
   Release is unchanged.
   Assembly instrumentation, longer fuzz, remaining dependencies/addon/platform/CI
-  and RDP/resource gates remain open. [Evidence](docs/ITERATION_280.md).
+  and RDP/resource gates remain open. [Evidence](docs/history/iterations/251-300.md#iteration-280).
 
 - [x] DONE for local GCC 12 libspng PNG sanitizer slice — Separate pinned 0.7.4
   shared build and both fixture translation units carry ASan/UBSan. Eight
@@ -1168,7 +1236,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   Linked CTest 31/31 and full Node 633 / 84 skips pass; Release is unchanged.
   Full libpng comparison, write/long fuzz, remaining
   dependencies/addon/platform/CI and RDP gates stay open.
-  [Evidence](docs/ITERATION_279.md).
+  [Evidence](docs/history/iterations/251-300.md#iteration-279).
 
 - [x] DONE for local GCC 12 static ZLIB sanitizer cases — All 19 compile commands,
   including upstream infcover, carry ASan/UBSan with nonrecovering UB checks.
@@ -1176,7 +1244,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   gcov 12, unchanged source/assertions and no new sanitizer diagnostic.
   The prior shared runtime/Release remains unchanged. Broader dependency/addon,
   upstream/fuzz/platform/CI and RDP gates remain open.
-  [Evidence](docs/ITERATION_278.md).
+  [Evidence](docs/history/iterations/251-300.md#iteration-278).
 
 - [x] DONE for local GCC 12 instrumented ZLIB runtime profile — Pinned 1.3.2
   source/port correction, all 18 compile commands, actual ASan/UBSan NEEDED entries,
@@ -1184,7 +1252,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   native executables plus compiler-policy CMake pass 31/31; full Node passes
   633 / 84 profile/platform skips with ordinary parent Node and addon OFF.
   Release is unchanged. Remaining dependency/addon/static/upstream/fuzz/platform/
-  CI and actual RDP gates stay open. [Evidence](docs/ITERATION_277.md).
+  CI and actual RDP gates stay open. [Evidence](docs/history/iterations/251-300.md#iteration-277).
 
 - [x] DONE for local OpenH264 BsFlush correction/instrumented runtime — Exact upstream
   build-copy guard skips the undefined shift in the valid empty state. GCC 12.4
@@ -1193,14 +1261,14 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   six codec suites, full native CTest 31/31 and Node 633 / 84 skips pass with
   instrumented FreeRDP/WinPR/Opus. Release remains unchanged. Assembly, remaining
   private dependencies/addon, platform/upstream/CI and actual RDP gates stay open.
-  [Evidence](docs/ITERATION_275.md).
+  [Evidence](docs/history/iterations/251-300.md#iteration-275).
 
 - [x] DONE for local GCC 12 instrumented SDK / bridge fixture profile — Separate
   pinned FreeRDP/WinPR + approved DSP correction compiles with ASan/UBSan;
   actual SDK runtime dependencies, bridge PIE, verbose CTest 31/31, codec probe
   and full Node 633 / 84 skips pass under the restricted Ubuntu fixture.
   Private dependency/addon instrumentation, upstream tests/fuzz and actual
-  RDP/device/platform/CI gates remain separate. [Evidence](docs/ITERATION_272.md).
+  RDP/device/platform/CI gates remain separate. [Evidence](docs/history/iterations/251-300.md#iteration-272).
 
 - [x] DONE for pinned DSP reset ownership / local linked bridge sanitizer slice —
   Exact-source build-copy correction releases previous Opus state; bounded source
@@ -1209,7 +1277,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   Ubuntu GCC 12 default PIE ASan/UBSan covers bridge-owned linked code against
   uninstrumented private FreeRDP/codecs; addon OFF. Upstream/addon sanitizers,
   actual RDP/audio/device and broader resource/CI gates remain separate.
-  [Evidence](docs/ITERATION_269.md), [build contract](docs/FREERDP_OVERRIDES.md).
+  [Evidence](docs/history/iterations/251-300.md#iteration-269), [build contract](docs/FREERDP_OVERRIDES.md).
 
 - [x] DONE for Windows native-driver Node path ownership — Physical Node project,
   test and binary paths preserve ESM error identity across SUBST/pnpm junctions;
@@ -1217,7 +1285,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   CTest 30/30 and process/TLS/identity 27 / 1 skip. Full Windows 664 / 49 skips
   and Linux GNU 12.2 657 / 59 skips pass. This is a local driver correction;
   actual CI and broader platform/resource acceptance remain open.
-  [Evidence](docs/ITERATION_266.md).
+  [Evidence](docs/history/iterations/251-300.md#iteration-266).
 
 - [x] DONE for complete tracked-source Windows project export — New archive
   fixture has no prior build/dist/node_modules/.deps/lab files; frozen offline
@@ -1226,7 +1294,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   source-built SDK/dependency receipts stay unchanged. Prepared tools/Catch2 and
   public caches are reused; fresh OS/distro/CI and linked/upstream sanitizer
   acceptance remain open. Alias-induced duplicate ESM identity and the passing
-  physical-path correction are retained. [Evidence](docs/ITERATION_265.md).
+  physical-path correction are retained. [Evidence](docs/history/iterations/251-300.md#iteration-265).
 
 - [x] DONE for local GNU 12 compiler baseline — Explicit GNU >=12 admission and
   actual C++20 library probe, policy boundary CTest, new GNU 12.2 linked source
@@ -1234,7 +1302,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   probe/foundation 15/15 pass. The user's GCC 12 fallback retains C++20; GCC 8
   requires a separate compatibility port and is unsupported. Explicit GCC 12 CI
   entry is prepared, not executed. [Support](docs/COMPILER_SUPPORT.md),
-  [evidence](docs/ITERATION_263.md).
+  [evidence](docs/history/iterations/251-300.md#iteration-263).
 
 - [x] DONE for local Ubuntu standard PIE sanitizer foundation — GCC 12.4 / GCC 13
   ASan/UBSan CTest 16/16 and 15/15, honest worker CLI and actual PIE ELF identity pass under
@@ -1244,7 +1312,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   targets pass bounded 20-second / 512 MiB smokes; the local external symbolizer
   remains unavailable. The GCC 12 minimum and addon/upstream/exhaustive-fuzz/CI
   boundaries remain; prior Bookworm failures are retained.
-  [GCC 12 and fuzz](docs/ITERATION_264.md), [earlier profile](docs/ITERATION_262.md).
+  [GCC 12 and fuzz](docs/history/iterations/251-300.md#iteration-264), [earlier profile](docs/history/iterations/251-300.md#iteration-262).
 
 - [x] DONE for complete tracked-source Linux project export — New git archive
   fixture begins without build/dist/node_modules/.deps/lab files, performs frozen
@@ -1253,7 +1321,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   external source-built SDK/dependency receipts remain unchanged. Prepared build
   tools/Catch2/public caches are reused; new OS/toolchain/distro, Windows export,
   network checkout/download, CI and sanitizer acceptance remain separate.
-  [Evidence](docs/ITERATION_260.md).
+  [Evidence](docs/history/iterations/251-300.md#iteration-260).
 
 - [x] DONE for current source-built native packages — New Linux TGZ and Windows
   ZIP install the exact pinned-source license and generated feature report.
@@ -1262,7 +1330,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   cleanup smokes pass. This is native artifact runtime evidence; Ubuntu source
   compilation, complete fresh checkout/distro/CI, full service images/installers
   and actual RDP/device acceptance remain open.
-  [Packaging](docs/ITERATION_258.md), [Ubuntu runtime](docs/ITERATION_259.md).
+  [Packaging](docs/history/iterations/251-300.md#iteration-258), [Ubuntu runtime](docs/history/iterations/251-300.md#iteration-259).
 
 - [x] DONE for local Windows cached-source native chain — Fourteen dependency
   packages, a new pinned SDK and a new source-only worker consume unchanged bound
@@ -1271,8 +1339,8 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   Prepared tools/Catch2/source archives are
   reused. The first MSBuild access failure is retained; the authorized repeat
   passes without disabling FileTracker. Complete clean-machine/checkout/CI and
-  remaining acceptance gates stay open. [Dependencies](docs/ITERATION_255.md),
-  [SDK](docs/ITERATION_256.md), [consumer](docs/ITERATION_257.md).
+  remaining acceptance gates stay open. [Dependencies](docs/history/iterations/251-300.md#iteration-255),
+  [SDK](docs/history/iterations/251-300.md#iteration-256), [consumer](docs/history/iterations/251-300.md#iteration-257).
 
 - [x] DONE for local Linux cached-source native chain — New source-built private
   dependencies and FreeRDP feed a new source-only worker/addon with both bound
@@ -1280,7 +1348,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   project 30/30, process/TLS 40/40, codec/context probe and full Node 656 passed /
   58 skips / 714 pass. Build tools/Catch2/source archives remain prepared inputs;
   Complete fresh checkout/distro/CI and remaining acceptance
-  gates stay open. [Evidence](docs/ITERATION_254.md).
+  gates stay open. [Evidence](docs/history/iterations/251-300.md#iteration-254).
 
 - [x] DONE for local Linux isolated private dependency source rebuild — All 20
   planned packages compile/install with new work/package/installed trees,
@@ -1289,7 +1357,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   Compiler/vcpkg tools and cached source archives are reused; complete fresh
   checkout/distro/CI and remaining acceptance gates stay open. The corresponding
   Windows source rebuild is now verified in iteration 255.
-  [Evidence and input hashes](docs/ITERATION_252.md).
+  [Evidence and input hashes](docs/history/iterations/251-300.md#iteration-252).
 
 - [x] DONE for local Windows/Linux fresh project consumer of the rebuilt SDK — Another
   source-only Release worker/addon tree resolves all three CMake packages from
@@ -1299,8 +1367,8 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   Mixed/incomplete/oversized receipts refuse before build output. Private
   dependencies/toolchain/Catch2 are reused; complete fresh
   dependency/distro/CI and remaining sanitizer/runtime gates stay open.
-  [Linux evidence and hashes](docs/ITERATION_248.md),
-  [Windows evidence and hashes](docs/ITERATION_250.md).
+  [Linux evidence and hashes](docs/history/iterations/201-250.md#iteration-248),
+  [Windows evidence and hashes](docs/history/iterations/201-250.md#iteration-250).
 
 - [x] DONE for local Windows/Linux isolated FreeRDP source rebuild — A new no-hardlink
   clone of the exact clean pinned checkout compiles and installs into a new SDK
@@ -1308,8 +1376,8 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   foreign-prefix refusal and consumer CTest 1/1 pass. Existing private dependency /
   toolchain inputs are reused; full fresh
   dependency/distro/CI and remaining sanitizer/runtime gates remain open.
-  [Linux evidence and hashes](docs/ITERATION_247.md),
-  [Windows evidence and hashes](docs/ITERATION_249.md).
+  [Linux evidence and hashes](docs/history/iterations/201-250.md#iteration-247),
+  [Windows evidence and hashes](docs/history/iterations/201-250.md#iteration-249).
 
 - [x] DONE for isolated Windows/Linux linked project-native source build — New Release
   build reuses the clean pinned SDK and external Catch2/toolchain, with no copied
@@ -1317,7 +1385,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   lifecycle 26 passed / one absent-primary skip and 40/40 pass. Source/feature /
   artifact hashes are retained. Upstream dependency/FreeRDP rebuilds, distro/CI
   and remaining sanitizer/runtime gates stay open.
-  [Windows evidence](docs/ITERATION_246.md), [Linux evidence](docs/ITERATION_245.md).
+  [Windows evidence](docs/history/iterations/201-250.md#iteration-246), [Linux evidence](docs/history/iterations/201-250.md#iteration-245).
 
 - [x] DONE for isolated Windows/Linux project-native foundation source build — New
   source-only fixture has no copied binary/cache/SDK/Node dependencies or lab
@@ -1325,33 +1393,33 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   one absent-primary skip on each pass, with the same unchanged source hash.
   Local Catch2 source is reused; upstream dependencies/FreeRDP, linked fresh
   project build, distro/CI and remaining sanitizer gates stay open.
-  [Windows/Linux evidence](docs/ITERATION_244.md), [initial Linux](docs/ITERATION_243.md).
+  [Windows/Linux evidence](docs/history/iterations/201-250.md#iteration-244), [initial Linux](docs/history/iterations/201-250.md#iteration-243).
 
 - [x] DONE for current local foundation regression — Refreshed Windows/Linux
   foundation CTest passes 14/14 and 15/15; framed clipboard/worker lifecycle passes
   15 with one platform/absent-primary skip on each. Shared test waits now honor
   finite requested deadlines and browser port retry failures preserve their cause.
   Existing local trees/dependencies are used; fresh-checkout/distro/CI and actual
-  remote/device gates remain open. [Evidence](docs/ITERATION_242.md).
+  remote/device gates remain open. [Evidence](docs/history/iterations/201-250.md#iteration-242).
 
 - [x] DONE for clean Linux Node workspace — New source-only fixture has no dist /
   node_modules; frozen offline installation, all four TypeScript builds and fresh
   production deployment/import pass with unchanged lockfile. Native fresh-checkout
-  and distro matrix remain open. [Evidence](docs/ITERATION_213.md).
+  and distro matrix remain open. [Evidence](docs/history/iterations/201-250.md#iteration-213).
 
 - [x] DONE for independent Linux native archive smoke — Pinned Node 24 Bookworm
   verifier uses only TGZ/probe, with no SDK/system FreeRDP/libudev, UID 1000,
   read-only root, no network and bounded tmpfs. Six private loaded modules,
   codec/libudev context roundtrips, exact HELLO/heartbeat/shutdown and worker
   directory cleanup pass. Full Node service image, distro/fresh-build/installer
-  gates remain separate. [Evidence](docs/ITERATION_190.md). ELF closure: `8a51dc3`.
+  gates remain separate. [Evidence](docs/history/iterations/151-200.md#iteration-190). ELF closure: `8a51dc3`.
 
 - [x] DONE for current Linux native ELF profile — Private eudev 3.2.14 keeps
   libusb udev enabled. Pre-CPack bounded canonical dependency/origin-path checks
   pass 33 ELF files / 268 edges, plus codec/libudev-context/lifecycle relocation
   1/1. Four portable ownership/parser cases pass. Independent clean-runtime,
   fresh-checkout/CI and actual device/platform gates remain separate.
-  [Evidence](docs/ITERATION_189.md). Prior linked build: `a825c18`;
+  [Evidence](docs/history/iterations/151-200.md#iteration-189). Prior linked build: `a825c18`;
   IPC exact allocation: `4152919`; browser port correction: `194562d`.
 
 - [x] DONE for local Linux dependency compilation — Pinned private ZLIB/OpenSSL/
@@ -1360,20 +1428,32 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   FreeRDP/worker Release build and CTest 20/20 pass; private discovery, metadata,
   licenses and codec relocation are verified. eudev closure now passes in
   iteration 189; fresh-build and actual remote/device gates remain open.
-  [Build evidence](docs/ITERATION_187.md),
-  [previous reboot checkpoint](docs/ITERATION_186.md).
+  [Build evidence](docs/history/iterations/151-200.md#iteration-187),
+  [previous reboot checkpoint](docs/history/iterations/151-200.md#iteration-186).
 - [x] DONE — Create pnpm monorepo layout from `STACK.md` (core packages/apps/native; future component directories are created with their implementations). `9517003`.
 - [x] DONE — Add TypeScript strict config, lint/format, CI skeleton. `pnpm check`; `9517003`.
 - [x] DONE — Add CMake/Ninja native workspace. MSVC x64 build + CTest; `9517003`, `1672590`.
-- [x] DONE on Windows — Pin FreeRDP **3.32.1** source/build and record commit/checksum. Source commit verified as `bf217a504e54cc719880c228e82353382cd7d4fa`; libraries built locally, linked CLI reports 3.32.1, archive SHA-256 generated. [Lock metadata](native/dependencies.json), [verification](docs/ITERATION_002.md). Linux build/fresh-checkout gate remains open.
-- [x] DONE for Windows/local Linux build inventory — Required client channels and filtered feature reports agree with actual public static-addin enumeration after relocation: Windows 20, Linux 22. Serial/parallel are compiled on Linux and explicitly OFF on Windows where pinned upstream lacks those clients. Runtime/device support is separately capability gated and remains Stage 8 work. [Relocation and current artifact evidence](docs/ITERATION_222.md).
+- [x] DONE on Windows — Pin FreeRDP **3.32.1** source/build and record commit/checksum. Source commit verified as `bf217a504e54cc719880c228e82353382cd7d4fa`; libraries built locally, linked CLI reports 3.32.1, archive SHA-256 generated. [Lock metadata](native/dependencies.json), [verification](docs/history/iterations/001-050.md#iteration-002). Linux build/fresh-checkout gate remains open.
+- [x] DONE for Windows/local Linux build inventory — Required client channels and filtered feature reports agree with actual public static-addin enumeration after relocation: Windows 20, Linux 22. Serial/parallel are compiled on Linux and explicitly OFF on Windows where pinned upstream lacks those clients. Runtime/device support is separately capability gated and remains Stage 8 work. [Relocation and current artifact evidence](docs/history/iterations/201-250.md#iteration-222).
 - [x] DONE — Add `rdp-worker --version --capabilities`. Native CLI and handshake reports agree; absent library reported as null, RDP false. [Integration test](tests/integration/worker.test.mjs); `1672590`, `316cdc0`.
 - [x] DONE — Add Node `/v1/build` backed by real worker/build information. Fastify injection + native handshake/CLI comparison; `316cdc0`.
-- [x] DONE for portable local Linux verification — Add debug ASan/UBSan job and execute native foundation: CTest 8/8 in the documented non-PIE Docker environment. [Workflow](.github/workflows/ci.yml) remains prepared; actual CI and standard PIE environment acceptance are open. [Evidence](docs/ITERATION_184.md).
+- [x] DONE for portable local Linux verification — Add debug ASan/UBSan job and execute native foundation: CTest 8/8 in the documented non-PIE Docker environment. [Workflow](.github/workflows/ci.yml) remains prepared; actual CI and standard PIE environment acceptance are open. [Evidence](docs/history/iterations/151-200.md#iteration-184).
 
 **Gate:** clean build from fresh checkout/container; exact FreeRDP version visible; no UI required.
 
 ## Stage 1 — native worker process and IPC
+
+- [x] DONE for verified schema-1 metadata-only runtime recovery — Independent
+  Node ownership endpoints and native marker locks preserve live/uncertain
+  owners. Bounded recovery removes only known orphan metadata and empty owned
+  directories after simultaneous hard kill, including startup prefixes. SDK
+  exports and standalone pre-listen recovery are accepted in local 0.3.0:
+  native/full checks, all installed npm consumers, portable/service upgrades on
+  Windows/Ubuntu/Astra/RED OS and eight real desktop profiles pass. Core changes
+  `51283d1`, packaging `df95d74`, elevated Windows correction `ee78be3`.
+  [Frozen archives and evidence](docs/RUNTIME_RECOVERY.md#030-local-release-acceptance).
+  Release merge/publication is next; broader multi-user/isolation and future
+  drive/spool retention requirements are not closed by this slice.
 
 - [x] DONE for observed absolute backend startup deadline — One monotonic
   budget now covers invocation staging, pending startup state callbacks and
@@ -1382,7 +1462,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   Four failing-before controls are retained; corrected focus passes 26/26,
   composed native lifecycle 2/2, CTest 17/17 and full Windows Node 827 / 102
   skips pass. Kernel preemption, cleanup deadlines, actual RDP and broader
-  platform gates remain open. [Evidence](docs/ITERATION_383.md).
+  platform gates remain open. [Evidence](docs/history/iterations/351-400.md#iteration-383).
 
 - [x] DONE for host supervisor timer-range admission — Startup, graceful-close
   and forced-termination budgets refuse integer delays beyond Node's supported
@@ -1391,7 +1471,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   actual Node overflow behavior are retained; corrected manager focus passes
   19/19, current native CTest 17/17 and full Windows Node 818 / 102 skips pass.
   Delayed callbacks, actual forced-deadline expiry and uncertain OS retirement
-  remain open. [Evidence](docs/ITERATION_382.md).
+  remain open. [Evidence](docs/history/iterations/351-400.md#iteration-382).
 
 - [x] DONE for native lifecycle fixture startup cancellation — The test-only
   registry adapter now terminates a still-starting WorkerProcess before joined
@@ -1399,7 +1479,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   control observes an unwanted child PID; corrected Windows/Linux composed
   lifecycle suites pass 3/3 with no child spawn after synchronous startup abort.
   Production startup/Release code is unchanged; broader startup/OS/isolation
-  gates remain open. [Evidence](docs/ITERATION_293.md); `876ecea`.
+  gates remain open. [Evidence](docs/history/iterations/251-300.md#iteration-293); `876ecea`.
 
 - [x] DONE for unconnected native registry crash isolation — Three actual
   framed worker processes use the explicit lifecycle-only registry adapter.
@@ -1408,7 +1488,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   focused suites pass; the 40-worker capacity test still passes after fixture
   extraction. Connected RDP, simultaneous parent/worker kill, forced-deadline,
   broader resource/isolation and soak gates remain open.
-  [Evidence](docs/ITERATION_292.md); `7574f63`.
+  [Evidence](docs/history/iterations/251-300.md#iteration-292); `7574f63`.
 
 - [x] DONE for configured framed native lifecycle capacity — An explicit
   test-only registry adapter composes 40 actual native workers, global limit
@@ -1417,7 +1497,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   returns to baseline. Windows/Linux focused cases, CTest 15/15 and 16/16 and
   full Node 633 / 90 skips and 579 / 147 skips pass. No RDP connection is made.
   Fixed primary-carrier capacity 32, arbitrary larger policies, connected
-  soak/resource and isolation gates remain open. [Evidence](docs/ITERATION_291.md); `fa55758`.
+  soak/resource and isolation gates remain open. [Evidence](docs/history/iterations/251-300.md#iteration-291); `fa55758`.
 
 - [x] DONE for local Ubuntu GCC 12 standard PIE sanitized-worker lifecycle — New
   tracked-source fixture, frozen offline Node install, ASan/UBSan CTest 16/16 and
@@ -1425,13 +1505,13 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   parent-death and bounded-output cleanup run with default sanitizer settings in
   the separate worker. Parent Node is not preloaded; addon/FreeRDP are OFF.
   Node-only preload LSan controls still fail, so addon/linked/upstream/CI and
-  connected-RDP/resource gates remain open. [Evidence](docs/ITERATION_267.md).
+  connected-RDP/resource gates remain open. [Evidence](docs/history/iterations/251-300.md#iteration-267).
 
 - [x] DONE for Linux default IPC capacity — 32 concurrent actual native workers,
   automatic/manual heartbeat, refused pre-spawn 33rd owner, sixteen-slot
   replacement and joined process/FD/runtime cleanup pass. This is unconnected
   lifecycle evidence, separate from larger configured limits and 30+ connected
-  RDP soak. [Evidence](docs/ITERATION_212.md).
+  RDP soak. [Evidence](docs/history/iterations/201-250.md#iteration-212).
 
 - [x] DONE for Linux worker bounded stream lifecycle slice — Foundation/linked
   stdout now uses fixed priority lanes and finite nonblocking writer ownership.
@@ -1439,23 +1519,23 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   linked CTest 21/21, local non-PIE ASan/UBSan foundation 9/9, full Node 453 pass /
   75 skip and independent restricted TGZ pass. Primary seqpacket, actual connected
   media/release and broader resource/soak remain open. Driver: `9b4618f`.
-  [Evidence](docs/ITERATION_192.md).
+  [Evidence](docs/history/iterations/151-200.md#iteration-192).
 
 - [x] DONE for isolated Linux stream writer — Fixed dispatcher lanes, eventfd /
   one-thread nonblocking FIFO/Unix-stream writes, whole-record/drain deadlines,
   flags/SIGPIPE ownership and FD cleanup pass six real descriptor cases / 174
   assertions in Release and local ASan/UBSan. Linked CTest 21/21 passes. Worker
   selection/connected faults, primary seqpacket and broader gates remain open.
-  [Contract](docs/LINUX_STREAM_OUTPUT.md), [evidence](docs/ITERATION_191.md).
+  [Contract](docs/LINUX_STREAM_OUTPUT.md), [evidence](docs/history/iterations/151-200.md#iteration-191).
 
 - [x] DONE — Implement worker process entrypoint with no RDP connection yet. Real C++ executable, not a fake RDP client; `1672590`.
 - [x] DONE — Implement versioned `RWI1` IPC envelope. [Native](native/ipc/tests.cpp) and [Node](tests/unit/protocol.test.mjs) boundary/golden/fragmentation tests; `1672590`.
-- [x] DONE for Linux amd64 Release IPC lifecycle — Primary `SOCK_SEQPACKET`/RWS1, automatic verified-bundle selection and framed legacy/explicit fallback. Actual 100-worker Node/native runs, parent/worker death, startup cancellation, pre-secret identity/refusal, independent record deadlines, bounded queue/output and joined cleanup pass. Installed RPATH pairing, relocation and independent archive smoke pass. This is transport acceptance; larger configured-capacity admission, addon sanitizer, connected RDP/resource and broader platform gates remain separately tracked. [Contract](docs/LINUX_SEQPACKET.md), [owner](docs/ITERATION_198.md), [explicit activation](docs/ITERATION_199.md), [default/packaging](docs/ITERATION_200.md).
+- [x] DONE for Linux amd64 Release IPC lifecycle — Primary `SOCK_SEQPACKET`/RWS1, automatic verified-bundle selection and framed legacy/explicit fallback. Actual 100-worker Node/native runs, parent/worker death, startup cancellation, pre-secret identity/refusal, independent record deadlines, bounded queue/output and joined cleanup pass. Installed RPATH pairing, relocation and independent archive smoke pass. This is transport acceptance; larger configured-capacity admission, addon sanitizer, connected RDP/resource and broader platform gates remain separately tracked. [Contract](docs/LINUX_SEQPACKET.md), [owner](docs/history/iterations/151-200.md#iteration-198), [explicit activation](docs/history/iterations/151-200.md#iteration-199), [default/packaging](docs/history/iterations/151-200.md#iteration-200).
 - [x] DONE — HELLO/HELLO_ACK capability negotiation. Real worker capability/CLI checks; incompatible version/required-feature native tests; `1672590`, `316cdc0`.
 - [x] DONE — Heartbeat and graceful shutdown. Real-worker and adversarial fake-worker deadline/watchdog tests; `316cdc0`.
 - [x] DONE — Length limits and parser unit tests. Header checked before body allocation; malformed/truncated inputs fail without input disclosure. `1672590`.
-- [x] DONE for bounded local Linux smoke — libFuzzer IPC target and seeded run: 2,074,807 executions in 21 seconds with ASan/UBSan and zero failure. Six other portable parser targets also pass. Extended/upstream fuzzing and actual CI remain open. [Target](native/ipc/fuzz.cpp), [evidence](docs/ITERATION_184.md).
-- [~] IN PROGRESS — Parent-death handling and private runtime directory cleanup. Windows and actual Linux framed-pipe parent-death/cleanup and 100 sequential worker tests pass. Windows private ACL creation/startup is implemented; broader multi-user isolation and simultaneous hard-kill cleanup remain open. [Linux evidence](docs/ITERATION_184.md).
+- [x] DONE for bounded local Linux smoke — libFuzzer IPC target and seeded run: 2,074,807 executions in 21 seconds with ASan/UBSan and zero failure. Six other portable parser targets also pass. Extended/upstream fuzzing and actual CI remain open. [Target](native/ipc/fuzz.cpp), [evidence](docs/history/iterations/151-200.md#iteration-184).
+- [~] IN PROGRESS — Parent-death handling and private runtime directory cleanup. Windows and actual Linux framed-pipe parent-death/cleanup and 100 sequential worker tests pass. Windows private ACL creation/startup is implemented. Verified schema-1 ownership now adds bounded orphan recovery after simultaneous Node/worker hard kill, live-owner/worker protection, finite scans and joined cancellation on both OSes. Windows supervisor and Windows/Linux portable checks pass; broader multi-user/service isolation, new-version installed upgrades and release acceptance remain open. [Current recovery evidence](docs/RUNTIME_RECOVERY.md#acceptance), [earlier Linux evidence](docs/history/iterations/151-200.md#iteration-184).
 
 **Gate:** Node test supervisor can spawn 100 sequential workers, exchange heartbeats, kill/restart without leaked processes/files.
 
@@ -1474,7 +1554,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 **Accepted on Windows:** eight manager and eight API tests; full pnpm check passes 32/32.
 The CLI denies protected routes until hosting authentication is configured; without
 a native backend creation returns 501. [Contract](docs/SESSION_API.md),
-[evidence](docs/ITERATION_003.md). Linux and actual RDP acceptance remain open.
+[evidence](docs/history/iterations/001-050.md#iteration-003). Linux and actual RDP acceptance remain open.
 
 ## Stage 3 — FreeRDP connect core
 
@@ -1489,31 +1569,31 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
   restore the original display and join cleanup. These named endpoint/profile
   results do not accept other Windows server profiles, interactive input,
   application, audio or device behavior. [Current lab scope](docs/LAB_STATUS.md),
-  [strict refusal](docs/ITERATION_344.md), [activation](docs/ITERATION_346.md),
-  [native resize](docs/ITERATION_350.md), [Edge H.264](docs/ITERATION_352.md),
-  [Edge JPEG](docs/ITERATION_353.md).
-- [x] DONE for selected remote disconnect reasons — Pinned FreeRDP ERRINFO idle/logon timeout and logoff codes map to fixed `RDP_SERVER_TIMEOUT` / `RDP_SERVER_LOGOFF` failures. Unknown codes and all non-disconnect errors preserve their existing classification; no private wire change. Other remote reasons and actual server-profile coverage remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_332.md).
-- [x] DONE for selected connection authentication failures — Pinned FreeRDP CONNECT credential/account refusal codes map to the existing fixed `RDP_AUTHENTICATION_FAILED`; transport/TLS and unknown codes remain `RDP_CONNECT_FAILED`. No IPC change or diagnostic numeric disclosure. Other auth methods/server profiles remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_333.md).
-- [x] DONE for selected server ERRINFO refusals — Server-denied and insufficient-privilege reasons map to fixed `RDP_SERVER_REJECTED`; fresh-credentials-required maps to authentication failure. Unknown reasons stay generic. Broader server error history remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_334.md).
-- [x] DONE for public RDP failure envelope — Selected terminal reason codes retain fixed HTTP status, message and retryability with no numeric FreeRDP diagnostic leakage. [API contract](docs/SESSION_API.md), [evidence](docs/ITERATION_335.md).
-- [x] DONE for native state-to-public failure handoff — Adapter-level event composition confirms selected FreeRDP reasons reach the established fixed failures while transport/protocol classes remain intact. [Evidence](docs/ITERATION_337.md).
-- [x] DONE for selected server operational failures — Pinned out-of-memory, driver and Windows session-component ERRINFO values map to fixed `RDP_SERVER_FAILURE`; unknown reasons remain generic. Actual Windows server-reason emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_338.md).
-- [x] DONE for pinned licensing ERRINFO classification — All eleven FreeRDP licensing disconnect values map to fixed `RDP_LICENSE_FAILURE`; unknown and non-disconnect values retain their existing classes. Unit, manager and HTTP snapshot coverage passes. Actual server emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_355.md).
-- [x] DONE for Connection Broker VM boot timeout classification — The pinned `ERRINFO_CB_SESSION_ONLINE_VM_BOOT_TIMEOUT` is exposed as the existing fixed `RDP_SERVER_TIMEOUT`, with unknown broker reasons unchanged. Native-adapter, manager and HTTP-category regression coverage passes. Actual server emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_356.md).
-- [x] DONE for missing Connection Broker destination classification — The pinned `ERRINFO_CB_DESTINATION_NOT_FOUND` maps to the fixed `RDP_SERVER_REJECTED`; other broker destination/pool errors stay generic. Native-adapter and public error propagation regressions pass. Actual broker emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_358.md).
-- [x] DONE for Connection Broker cancellation classification — The pinned `ERRINFO_CB_CONNECTION_CANCELLED` maps to the existing fixed `RDP_CONNECT_CANCELLED`; other broker processing failures remain generic. Adapter, manager and HTTP contract coverage passes. Actual broker emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_360.md).
-- [x] DONE for selected Connection Broker ERRINFO classification — Destination loading/redirection, VM wake/boot/DNS, pool and session-monitor failures map to fixed `RDP_SERVER_FAILURE`; invalid routing settings map to rejection. Unknown broker codes remain generic. Actual broker emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_361.md).
-- [x] DONE for replaced RDP session reason — Pinned `ERRINFO_DISCONNECTED_BY_OTHER_CONNECTION` maps to fixed `RDP_SESSION_REPLACED`; other disconnect reasons retain their own whitelist or generic class. Actual server emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_339.md).
-- [x] DONE for session-manager remote failure snapshot — Recognized remote terminal codes preserve their fixed code/message/retryability in the failed session snapshot; unknown worker errors keep the existing fallback. This fake-backend layer does not claim RDP emission. [Evidence](docs/ITERATION_340.md).
-- [x] DONE for server-disconnect manager propagation — The fake backend now verifies `RDP_SERVER_DISCONNECT` survives manager failure handling into the public failed snapshot alongside the replaced-session case. No actual server ERRINFO emission is claimed. [Evidence](docs/ITERATION_342.md).
-- [x] DONE for server-disconnect HTTP snapshot — An actual local Fastify test server with fake backend returns the failed session through GET with exact `RDP_SERVER_DISCONNECT` code, fixed message and retryability. This does not claim remote RDP emission. [Evidence](docs/ITERATION_343.md).
-- [x] DONE for server-initiated disconnect reasons — Pinned generic and user-initiated RPC disconnect ERRINFO codes map to fixed `RDP_SERVER_DISCONNECT`; logoff and replacement reasons stay distinct. Actual server emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_341.md).
-- [x] DONE for pinned NLA-required connect failure — FreeRDP 3.32.1 `ERRCONNECT_HYBRID_REQUIRED_BY_SERVER` maps to fixed non-retryable `RDP_SECURITY_MODE_REQUIRED`, distinct from credentials and generic transport/TLS failures. Actual server emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/ITERATION_345.md).
-- [x] DONE for NLA-required error propagation — Fake-manager and Fastify HTTP regressions preserve `RDP_SECURITY_MODE_REQUIRED`, its fixed message and non-retryable status in failed session snapshots; the retryable server-disconnect control also remains covered. This does not claim real-server emission. [Evidence](docs/ITERATION_348.md).
-- [x] DONE for replaced-session HTTP propagation — The fake-backend HTTP snapshot preserves exact `RDP_SESSION_REPLACED` message and retryability alongside the disconnect and security-mode cases; real-server reason emission remains separate. [Evidence](docs/ITERATION_349.md).
-- [x] DONE for selected remote failure HTTP propagation — The fake-backend Fastify snapshot now also preserves the fixed timeout, logoff, refusal and server-failure code/message/retryability. The actual integration test passes 10/10; this verifies public error propagation, not server emission or broader profiles. [Evidence](docs/ITERATION_354.md).
-- [x] DONE for connection failure HTTP snapshots — The fake-backend Fastify test also checks fixed connection, authentication, certificate, timeout, cancellation and protocol failures through GET snapshots, including exact messages and retryability. This is API propagation coverage, not real-server emission. [Evidence](docs/ITERATION_357.md).
-- [x] DONE for renewed Windows endpoint activation — After explicit one-session approval of the new exact certificate fingerprint, the native helper connects, captures a 1024×768 JPEG, exchanges heartbeat and joins cleanup with an empty runtime directory. This does not accept the broader graphics/input/audio/application/device gates. [Evidence](docs/ITERATION_346.md).
+  [strict refusal](docs/history/iterations/301-350.md#iteration-344), [activation](docs/history/iterations/301-350.md#iteration-346),
+  [native resize](docs/history/iterations/301-350.md#iteration-350), [Edge H.264](docs/history/iterations/351-400.md#iteration-352),
+  [Edge JPEG](docs/history/iterations/351-400.md#iteration-353).
+- [x] DONE for selected remote disconnect reasons — Pinned FreeRDP ERRINFO idle/logon timeout and logoff codes map to fixed `RDP_SERVER_TIMEOUT` / `RDP_SERVER_LOGOFF` failures. Unknown codes and all non-disconnect errors preserve their existing classification; no private wire change. Other remote reasons and actual server-profile coverage remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/301-350.md#iteration-332).
+- [x] DONE for selected connection authentication failures — Pinned FreeRDP CONNECT credential/account refusal codes map to the existing fixed `RDP_AUTHENTICATION_FAILED`; transport/TLS and unknown codes remain `RDP_CONNECT_FAILED`. No IPC change or diagnostic numeric disclosure. Other auth methods/server profiles remain open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/301-350.md#iteration-333).
+- [x] DONE for selected server ERRINFO refusals — Server-denied and insufficient-privilege reasons map to fixed `RDP_SERVER_REJECTED`; fresh-credentials-required maps to authentication failure. Unknown reasons stay generic. Broader server error history remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/301-350.md#iteration-334).
+- [x] DONE for public RDP failure envelope — Selected terminal reason codes retain fixed HTTP status, message and retryability with no numeric FreeRDP diagnostic leakage. [API contract](docs/SESSION_API.md), [evidence](docs/history/iterations/301-350.md#iteration-335).
+- [x] DONE for native state-to-public failure handoff — Adapter-level event composition confirms selected FreeRDP reasons reach the established fixed failures while transport/protocol classes remain intact. [Evidence](docs/history/iterations/301-350.md#iteration-337).
+- [x] DONE for selected server operational failures — Pinned out-of-memory, driver and Windows session-component ERRINFO values map to fixed `RDP_SERVER_FAILURE`; unknown reasons remain generic. Actual Windows server-reason emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/301-350.md#iteration-338).
+- [x] DONE for pinned licensing ERRINFO classification — All eleven FreeRDP licensing disconnect values map to fixed `RDP_LICENSE_FAILURE`; unknown and non-disconnect values retain their existing classes. Unit, manager and HTTP snapshot coverage passes. Actual server emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/351-400.md#iteration-355).
+- [x] DONE for Connection Broker VM boot timeout classification — The pinned `ERRINFO_CB_SESSION_ONLINE_VM_BOOT_TIMEOUT` is exposed as the existing fixed `RDP_SERVER_TIMEOUT`, with unknown broker reasons unchanged. Native-adapter, manager and HTTP-category regression coverage passes. Actual server emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/351-400.md#iteration-356).
+- [x] DONE for missing Connection Broker destination classification — The pinned `ERRINFO_CB_DESTINATION_NOT_FOUND` maps to the fixed `RDP_SERVER_REJECTED`; other broker destination/pool errors stay generic. Native-adapter and public error propagation regressions pass. Actual broker emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/351-400.md#iteration-358).
+- [x] DONE for Connection Broker cancellation classification — The pinned `ERRINFO_CB_CONNECTION_CANCELLED` maps to the existing fixed `RDP_CONNECT_CANCELLED`; other broker processing failures remain generic. Adapter, manager and HTTP contract coverage passes. Actual broker emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/351-400.md#iteration-360).
+- [x] DONE for selected Connection Broker ERRINFO classification — Destination loading/redirection, VM wake/boot/DNS, pool and session-monitor failures map to fixed `RDP_SERVER_FAILURE`; invalid routing settings map to rejection. Unknown broker codes remain generic. Actual broker emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/351-400.md#iteration-361).
+- [x] DONE for replaced RDP session reason — Pinned `ERRINFO_DISCONNECTED_BY_OTHER_CONNECTION` maps to fixed `RDP_SESSION_REPLACED`; other disconnect reasons retain their own whitelist or generic class. Actual server emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/301-350.md#iteration-339).
+- [x] DONE for session-manager remote failure snapshot — Recognized remote terminal codes preserve their fixed code/message/retryability in the failed session snapshot; unknown worker errors keep the existing fallback. This fake-backend layer does not claim RDP emission. [Evidence](docs/history/iterations/301-350.md#iteration-340).
+- [x] DONE for server-disconnect manager propagation — The fake backend now verifies `RDP_SERVER_DISCONNECT` survives manager failure handling into the public failed snapshot alongside the replaced-session case. No actual server ERRINFO emission is claimed. [Evidence](docs/history/iterations/301-350.md#iteration-342).
+- [x] DONE for server-disconnect HTTP snapshot — An actual local Fastify test server with fake backend returns the failed session through GET with exact `RDP_SERVER_DISCONNECT` code, fixed message and retryability. This does not claim remote RDP emission. [Evidence](docs/history/iterations/301-350.md#iteration-343).
+- [x] DONE for server-initiated disconnect reasons — Pinned generic and user-initiated RPC disconnect ERRINFO codes map to fixed `RDP_SERVER_DISCONNECT`; logoff and replacement reasons stay distinct. Actual server emission remains open. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/301-350.md#iteration-341).
+- [x] DONE for pinned NLA-required connect failure — FreeRDP 3.32.1 `ERRCONNECT_HYBRID_REQUIRED_BY_SERVER` maps to fixed non-retryable `RDP_SECURITY_MODE_REQUIRED`, distinct from credentials and generic transport/TLS failures. Actual server emission remains unverified. [Contract](docs/CONNECTION_CORE.md), [evidence](docs/history/iterations/301-350.md#iteration-345).
+- [x] DONE for NLA-required error propagation — Fake-manager and Fastify HTTP regressions preserve `RDP_SECURITY_MODE_REQUIRED`, its fixed message and non-retryable status in failed session snapshots; the retryable server-disconnect control also remains covered. This does not claim real-server emission. [Evidence](docs/history/iterations/301-350.md#iteration-348).
+- [x] DONE for replaced-session HTTP propagation — The fake-backend HTTP snapshot preserves exact `RDP_SESSION_REPLACED` message and retryability alongside the disconnect and security-mode cases; real-server reason emission remains separate. [Evidence](docs/history/iterations/301-350.md#iteration-349).
+- [x] DONE for selected remote failure HTTP propagation — The fake-backend Fastify snapshot now also preserves the fixed timeout, logoff, refusal and server-failure code/message/retryability. The actual integration test passes 10/10; this verifies public error propagation, not server emission or broader profiles. [Evidence](docs/history/iterations/351-400.md#iteration-354).
+- [x] DONE for connection failure HTTP snapshots — The fake-backend Fastify test also checks fixed connection, authentication, certificate, timeout, cancellation and protocol failures through GET snapshots, including exact messages and retryability. This is API propagation coverage, not real-server emission. [Evidence](docs/history/iterations/351-400.md#iteration-357).
+- [x] DONE for renewed Windows endpoint activation — After explicit one-session approval of the new exact certificate fingerprint, the native helper connects, captures a 1024×768 JPEG, exchanges heartbeat and joins cleanup with an empty runtime directory. This does not accept the broader graphics/input/audio/application/device gates. [Evidence](docs/history/iterations/301-350.md#iteration-346).
 - [~] IN PROGRESS — Stable connect/auth/certificate/timeout/disconnect failures are implemented; remaining remote ERRINFO reasons and broader Windows server/application profiles need actual integration acceptance.
 - [~] IN PROGRESS — Graceful disconnect and cancellation verified; reconnect remains unsupported.
 - [x] DONE for current connection slice — Password is delivered through a separate private IPC class after HELLO, with transport copies overwritten. No per-session secrets enter argv/env; unsupported hash/PIN modes are rejected.
@@ -1524,7 +1604,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
   desktop, controlled loss of only the test connection, `RDP_DISCONNECTED`, failed
   public session, closed viewer and empty runtime after joined cleanup. Broader
   error categories, reconnect and remote input/device release remain open.
-  [Evidence](docs/ITERATION_183.md).
+  [Evidence](docs/history/iterations/151-200.md#iteration-183).
 
 ## Stage 4 — graphics, cursor and browser video
 
@@ -1534,7 +1614,7 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
   explicit 256 MiB fixture cap, confirmed resize/restoration and fresh-token
   display/cursor replay. Joined cleanup leaves no worker or runtime entries.
   Audio/Clipboard are off; moving/interactive/audio and total-session resource
-  gates remain open. [Evidence](docs/ITERATION_388.md).
+  gates remain open. [Evidence](docs/history/iterations/351-400.md#iteration-388).
 
 - [x] DONE for supported-settings/manual WEB connection example (2026-10-14):
   manual RDP host/port, username/domain/password, supported connection/display /
@@ -1547,40 +1627,40 @@ a native backend creation returns 501. [Contract](docs/SESSION_API.md),
   the form, session-only certificate click, resize/replay and cleanup pass;
   empty Windows launcher smoke passes. This accepts the named UI example, not
   the pending backend functions. [Contract/run](docs/WEB_CONNECTION_EXAMPLE.md),
-  [evidence](docs/ITERATION_204.md).
+  [evidence](docs/history/iterations/201-250.md#iteration-204).
 
 Current actual soak attempt stopped with `RDP_PROTOCOL_ERROR` after its last
 successful sample at 22 minutes 9 seconds. Memory/queue samples were within
 bounds. A full repeat now passes; the first failure's cause remains unverified.
-[Failure evidence and diagnostics](docs/ITERATION_180.md),
-[completed 30-minute repeat](docs/ITERATION_182.md).
+[Failure evidence and diagnostics](docs/history/iterations/151-200.md#iteration-180),
+[completed 30-minute repeat](docs/history/iterations/151-200.md#iteration-182).
 
 - [x] DONE on Windows/XRDP — Named single-viewer H.264 1080p 30-minute observation,
   sampled bounded queues/worker memory, resize/restoration, cursor/attachment replay
   and empty-runtime cleanup. This does not close broader interactive, Windows-server,
-  resource or intermittent-failure acceptance. [Evidence](docs/ITERATION_182.md).
+  resource or intermittent-failure acceptance. [Evidence](docs/history/iterations/151-200.md#iteration-182).
 
 - [x] DONE for local Linux producer/Windows Edge — Actual H.264 1080p XRDP
   observation lasts 30 minutes with 61 bounded queue/RSS/credit samples,
   5,163 frames, worker RSS below 256 MiB, confirmed resize/restoration,
   fresh-token replay and clean shutdown. This does not close broader interactive,
   audio/device, total per-session memory, latency, Windows-server or load gates.
-  [Evidence](docs/ITERATION_220.md).
+  [Evidence](docs/history/iterations/201-250.md#iteration-220).
 
-- [x] DONE on Windows and local Linux amd64/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native codec tests and real 1080p Edge rendering verified; [Windows evidence](docs/ITERATION_005.md), [Linux producer evidence](docs/ITERATION_202.md). Broader server/platform/resource acceptance remains open.
-- [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/ITERATION_014.md), [AVC420 evidence](docs/ITERATION_015.md).
-- [~] IN PROGRESS — Native Display Control binds negotiated caps and one bounded layout; private IPC/Node and public control leases expose opt-in, typed results, server-observed generations and deadlines. Actual XRDP browser resize/restoration, display replay, fresh AVC IDRs/JPEG configs, nonfatal input pause and transmitted media ACK preservation pass. The named private native Windows RDP resize/restoration passes with fresh AVC IDRs and JPEG, and public Edge/H.264/JPEG resize/restoration passes with display/cursor replay and reattachment; local fake IPC/media regressions pass 10/10 and 26/26. Broader Windows server profiles, DVC resource audit and soak acceptance remain open. The single-primary layout at 100% scale satisfies ADR-011; automatic viewport policy is optional follow-up and wider layouts are outside current scope. [Contract](docs/DISPLAY_CONTROL.md), [native evidence](docs/ITERATION_017.md), [IPC/XRDP evidence](docs/ITERATION_018.md), [public/browser evidence](docs/ITERATION_019.md), [Windows private-worker evidence](docs/ITERATION_350.md), [local regression](docs/ITERATION_351.md), [H.264 evidence](docs/ITERATION_352.md), [JPEG evidence](docs/ITERATION_353.md).
-- [~] IN PROGRESS — Rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI/GFX callback tests pass; actual XRDP regression is recorded in [iteration 13](docs/ITERATION_013.md) and [iteration 14](docs/ITERATION_014.md). Partial-region encoding and actual negotiated GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
-- [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/ITERATION_012.md). Exact mono inversion and broader server/platform cases remain retained gaps.
-- [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture with render credit. Configurable FPS caps and quality/bitrate profiles reach native encoders; effective ceilings remain 20 JPEG / 30 AVC FPS. Native/fake and actual XRDP cap checks pass. Provider selection and adaptive congestion remain pending. [Contract](docs/VIDEO_QUALITY.md), [evidence](docs/ITERATION_016.md).
-- [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/ITERATION_006.md). Linux/hardware selection pending.
-- [x] DONE on Windows/XRDP — AVCC config/access-unit packetization, IPC/RWB1 bounds and actual browser decode verified; [evidence](docs/ITERATION_007.md).
-- [x] DONE on Windows and local Linux amd64/XRDP — Encoded JPEG/AVC worker→Node RWI1 and browser RWB1 forwarding, without raw frames in JS. Linux primary IPC/public API/Windows Edge smoke passes [iteration 202](docs/ITERATION_202.md); sustained resource/platform gates remain open.
+- [x] DONE on Windows and local Linux amd64/XRDP — Initialize headless FreeRDP GDI/framebuffer. Native codec tests and real 1080p Edge rendering verified; [Windows evidence](docs/history/iterations/001-050.md#iteration-005), [Linux producer evidence](docs/history/iterations/201-250.md#iteration-202). Broader server/platform/resource acceptance remains open.
+- [~] IN PROGRESS — Classic BeginPaint/EndPaint/DesktopResize and synchronous public GFX binding wired. Native GFX frame-end/inter-frame pixels, AVC420 IDR/predictive decode, reset, bounded surface/cache/command guards and teardown fixtures pass; actual XRDP browser regression passes. Actual negotiated GFX, AVC444/other compressed codecs, true scaled-output mapping, decoder resource limits and dynamic server resize remain open. [Contract](docs/GFX.md), [binding evidence](docs/history/iterations/001-050.md#iteration-014), [AVC420 evidence](docs/history/iterations/001-050.md#iteration-015).
+- [~] IN PROGRESS — Native Display Control binds negotiated caps and one bounded layout; private IPC/Node and public control leases expose opt-in, typed results, server-observed generations and deadlines. Actual XRDP browser resize/restoration, display replay, fresh AVC IDRs/JPEG configs, nonfatal input pause and transmitted media ACK preservation pass. The named private native Windows RDP resize/restoration passes with fresh AVC IDRs and JPEG, and public Edge/H.264/JPEG resize/restoration passes with display/cursor replay and reattachment; local fake IPC/media regressions pass 10/10 and 26/26. Broader Windows server profiles, DVC resource audit and soak acceptance remain open. The single-primary layout at 100% scale satisfies ADR-011; automatic viewport policy is optional follow-up and wider layouts are outside current scope. [Contract](docs/DISPLAY_CONTROL.md), [native evidence](docs/history/iterations/001-050.md#iteration-017), [IPC/XRDP evidence](docs/history/iterations/001-050.md#iteration-018), [public/browser evidence](docs/history/iterations/001-050.md#iteration-019), [Windows private-worker evidence](docs/history/iterations/301-350.md#iteration-350), [local regression](docs/history/iterations/351-400.md#iteration-351), [H.264 evidence](docs/history/iterations/351-400.md#iteration-352), [JPEG evidence](docs/history/iterations/351-400.md#iteration-353).
+- [~] IN PROGRESS — Rectangle accumulation uses a fixed 64-region set, conservative union/collapse, clipped revision changes and snapshot consumption after successful encode/send. Native coverage and public GDI/GFX callback tests pass; actual XRDP regression is recorded in [iteration 13](docs/history/iterations/001-050.md#iteration-013) and [iteration 14](docs/history/iterations/001-050.md#iteration-014). Partial-region encoding and actual negotiated GFX tracking remain pending; AVC/JPEG continue encoding full frames per ARCHITECTURE §4. [Contract](docs/DIRTY_REGIONS.md).
+- [x] DONE on Windows/XRDP — Public pointer callbacks extract bounded RGBA shape, hotspot, position and visibility; native conversion/state/parser tests and actual XRDP shape delivery/replay pass. [Contract](docs/CURSOR.md), [evidence](docs/history/iterations/001-050.md#iteration-012). Exact mono inversion and broader server/platform cases remain retained gaps.
+- [~] IN PROGRESS — JPEG/AVC latest-state scheduling shares one pending capture with render credit. Configurable FPS caps and quality/bitrate profiles reach native encoders; effective ceilings remain 20 JPEG / 30 AVC FPS. Native/fake and actual XRDP cap checks pass. Provider selection and adaptive congestion remain pending. [Contract](docs/VIDEO_QUALITY.md), [evidence](docs/history/iterations/001-050.md#iteration-016).
+- [x] DONE on Windows — H.264 encoder interface and private OpenH264 software provider; real encode/decode, forced IDR, GOP and resize tests pass. [Contract](docs/MEDIA_H264.md), [evidence](docs/history/iterations/001-050.md#iteration-006). Linux/hardware selection pending.
+- [x] DONE on Windows/XRDP — AVCC config/access-unit packetization, IPC/RWB1 bounds and actual browser decode verified; [evidence](docs/history/iterations/001-050.md#iteration-007).
+- [x] DONE on Windows and local Linux amd64/XRDP — Encoded JPEG/AVC worker→Node RWI1 and browser RWB1 forwarding, without raw frames in JS. Linux primary IPC/public API/Windows Edge smoke passes [iteration 202](docs/history/iterations/201-250.md#iteration-202); sustained resource/platform gates remain open.
 - [x] DONE in Edge/Windows — Reference harness checks WebCodecs support, renders actual 1080p AVC/JPEG and closes VideoFrames/ImageBitmaps. Other browsers/platforms remain unverified.
-- [x] DONE in Edge/Windows — Independent binary shape stream and transparent overlay; local movement, CSS-scaled hotspot, hide/default and disposal tested. Actual XRDP shape and browser reattachment replay pass. [Evidence](docs/ITERATION_012.md). Full desktop soak remains open.
+- [x] DONE in Edge/Windows — Independent binary shape stream and transparent overlay; local movement, CSS-scaled hotspot, hide/default and disposal tested. Actual XRDP shape and browser reattachment replay pass. [Evidence](docs/history/iterations/001-050.md#iteration-012). Full desktop soak remains open.
 - [x] DONE on Windows/XRDP — Native JPEG fallback and browser canvas path, private libjpeg-turbo, bounded allocation and relocation verified. [Contract](docs/MEDIA_JPEG.md).
 - [~] IN PROGRESS — Single-frame credit, ACK deadline, stale lease/ACK/reset rejection, static/latest revision and dimension config verified. Actual WebCodecs decoder-error recovery forces config/IDR; adaptive bitrate/drop policy remains pending.
-- [~] IN PROGRESS — Bounded native encode/read counters, browser decode/draw timings and a deterministic 1080p encoder benchmark implemented. Protected Node capture/write/render-credit histograms, queued frame/byte counters and credit occupancy now distinguish consumer stalls from capture time. Forward timing requires all configuration/image writes to succeed, with partial-failure regression coverage. Full dirty-to-send/queue-delay and performance gates remain open. [Encoder evidence](docs/ITERATION_009.md); `06233ce`, build tracking `be42b9d`. [Node timing evidence](docs/ITERATION_011.md), [write-group correction](docs/ITERATION_366.md).
+- [~] IN PROGRESS — Bounded native encode/read counters, browser decode/draw timings and a deterministic 1080p encoder benchmark implemented. Protected Node capture/write/render-credit histograms, queued frame/byte counters and credit occupancy now distinguish consumer stalls from capture time. Forward timing requires all configuration/image writes to succeed, with partial-failure regression coverage. Full dirty-to-send/queue-delay and performance gates remain open. [Encoder evidence](docs/history/iterations/001-050.md#iteration-009); `06233ce`, build tracking `be42b9d`. [Node timing evidence](docs/history/iterations/001-050.md#iteration-011), [write-group correction](docs/history/iterations/351-400.md#iteration-366).
 
 **Gate:** stable 1080p interactive Windows/XRDP desktop for 30 min, resize safe, cursor smooth, no unbounded queue growth.
 
@@ -1592,7 +1672,7 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
   across viewer detach/fresh-token reattachment. Fixed scalar readbacks and
   joined cleanup pass. Content scrolling, arbitrary drop targets, physical
   hardware and hard transport-loss-held input remain open.
-  [Evidence](docs/ITERATION_396.md).
+  [Evidence](docs/history/iterations/351-400.md#iteration-396).
 
 - [x] DONE for named current Windows public-viewer keyboard/release smoke —
   Actual Notepad readback confirms Shift/number entry, Ctrl/Shift/Alt blur/reset
@@ -1600,36 +1680,36 @@ bounds. A full repeat now passes; the first failure's cause remains unverified.
   native session. Alt includes Escape to leave menu mode. Unicode Clipboard,
   permission refusal and joined viewer/native/runtime cleanup also pass.
   Wider layouts/shortcuts, mouse/drag/wheel, hard transport loss and full input
-  gates remain open. [Evidence and retained first failure](docs/ITERATION_394.md).
+  gates remain open. [Evidence and retained first failure](docs/history/iterations/351-400.md#iteration-394).
 
 - [x] DONE for named Windows Notepad input/readback smoke — Committed
   Latin/Cyrillic/Japanese/emoji text, physical Shift/number keys, held-left-Ctrl
   reset, extended right-Ctrl copy and fixed left-button/application sequence
   pass exact remote Unicode readback and unsaved-window/native cleanup.
   This does not accept full layouts/IME, wheel/other buttons/touch, physical
-  hardware or disconnect-held input. [Evidence](docs/ITERATION_303.md).
+  hardware or disconnect-held input. [Evidence](docs/history/iterations/301-350.md#iteration-303).
 
-Current integration evidence: [private/native touch](docs/ITERATION_029.md),
-[public lease/browser](docs/ITERATION_030.md), [actual XRDP readiness/replay](docs/ITERATION_031.md),
-[pen placeholder](docs/ITERATION_032.md), [terminal cleanup](docs/ITERATION_033.md),
-[international keyboard positions](docs/ITERATION_034.md). The historical foundation
+Current integration evidence: [private/native touch](docs/history/iterations/001-050.md#iteration-029),
+[public lease/browser](docs/history/iterations/001-050.md#iteration-030), [actual XRDP readiness/replay](docs/history/iterations/001-050.md#iteration-031),
+[pen placeholder](docs/history/iterations/001-050.md#iteration-032), [terminal cleanup](docs/history/iterations/001-050.md#iteration-033),
+[international keyboard positions](docs/history/iterations/001-050.md#iteration-034). The historical foundation
 records above do not describe today's activation state. Actual touch/application
 and other remote acceptance gates remain open.
 
 Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
 [Launch commands](docs/DEVELOPMENT.md#manual-windowsxrdp-viewer).
 
-- [~] IN PROGRESS — Physical set-1 mapping, extended left/right/numpad and eight international physical positions implemented; native/Node/Edge fixtures pass. Symbols are not used for mapping, composition stays local and reset releases held positions. Remote keyboard-layout/IME/hardware gate remains pending. [Contract](docs/INPUT.md), [initial evidence](docs/ITERATION_008.md), [international positions](docs/ITERATION_034.md).
-- [~] IN PROGRESS — Browser modifiers reconcile before focused input; observed left/right sides survive canvas focus/resize pauses, missed releases are repaired, and Caps/Num/Scroll Lock synchronize after physical lock edges. Bounded pure/native and Edge/fake-control fixtures pass; actual remote layouts, AltGraph portability and no-stuck-key acceptance remain open. [Contract](docs/INPUT.md), [evidence](docs/ITERATION_020.md).
-- [~] IN PROGRESS — Explicit committed Unicode/IME textarea, bounded UTF-16BE private IPC and FreeRDP Unicode events implemented; native, pure, fake IPC/control and Edge composition fixtures pass. Server Unicode negotiation is required; no automatic retry of partial/uncertain delivery. The named Windows Notepad text/supplementary readback case now passes [iteration 303](docs/ITERATION_303.md); OS IME, line endings, broader application/platform profiles and direct canvas IME remain unverified. [Contract](docs/INPUT.md#committed-unicode-text), [initial evidence](docs/ITERATION_021.md).
-- [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK and the named Windows left-button/application readback sequence pass; other remote button/platform and physical-device acceptance remain open. [Windows evidence](docs/ITERATION_303.md).
-- [~] IN PROGRESS — Both wheel axes and bounded fractional DOM pixel/line/page accumulation implemented; pure/Edge/control fixtures pass. Gesture context, focus/reset/resize pauses and idle gaps discard stale fractions; no new timer/queue or wire change. Actual remote wheel sensitivity and physical trackpad acceptance remain open. [Contract](docs/INPUT.md#fractional-wheel-and-trackpad-accumulation), [evidence](docs/ITERATION_022.md).
+- [~] IN PROGRESS — Physical set-1 mapping, extended left/right/numpad and eight international physical positions implemented; native/Node/Edge fixtures pass. Symbols are not used for mapping, composition stays local and reset releases held positions. Remote keyboard-layout/IME/hardware gate remains pending. [Contract](docs/INPUT.md), [initial evidence](docs/history/iterations/001-050.md#iteration-008), [international positions](docs/history/iterations/001-050.md#iteration-034).
+- [~] IN PROGRESS — Browser modifiers reconcile before focused input; observed left/right sides survive canvas focus/resize pauses, missed releases are repaired, and Caps/Num/Scroll Lock synchronize after physical lock edges. Bounded pure/native and Edge/fake-control fixtures pass; actual remote layouts, AltGraph portability and no-stuck-key acceptance remain open. [Contract](docs/INPUT.md), [evidence](docs/history/iterations/001-050.md#iteration-020).
+- [~] IN PROGRESS — Explicit committed Unicode/IME textarea, bounded UTF-16BE private IPC and FreeRDP Unicode events implemented; native, pure, fake IPC/control and Edge composition fixtures pass. Server Unicode negotiation is required; no automatic retry of partial/uncertain delivery. The named Windows Notepad text/supplementary readback case now passes [iteration 303](docs/history/iterations/301-350.md#iteration-303); OS IME, line endings, broader application/platform profiles and direct canvas IME remain unverified. [Contract](docs/INPUT.md#committed-unicode-text), [initial evidence](docs/history/iterations/001-050.md#iteration-021).
+- [~] IN PROGRESS — Absolute coordinates and five buttons implemented; Edge captured-drag and native tracking tests pass. Real XRDP motion ACK and the named Windows left-button/application readback sequence pass; other remote button/platform and physical-device acceptance remain open. [Windows evidence](docs/history/iterations/301-350.md#iteration-303).
+- [~] IN PROGRESS — Both wheel axes and bounded fractional DOM pixel/line/page accumulation implemented; pure/Edge/control fixtures pass. Gesture context, focus/reset/resize pauses and idle gaps discard stale fractions; no new timer/queue or wire change. Actual remote wheel sensitivity and physical trackpad acceptance remain open. [Contract](docs/INPUT.md#fractional-wheel-and-trackpad-accumulation), [evidence](docs/history/iterations/001-050.md#iteration-022).
 - [x] DONE in Edge/fake fixture — Only adjacent pointer moves are coalesced; transitions flush preceding motion. Independent remote cursor display now passes XRDP/Edge; measured latency and desktop soak gates remain open.
 - [~] IN PROGRESS — Native pressed-state reset and retry, blur/disposal, transport loss and stale lease cancellation verified. Graceful close resets input; actual remote no-stuck-key gate pending.
-- [~] IN PROGRESS — Native state, public RDPEI projection/registration and observable handshake gate implemented. Terminal IDs remain owned through transport writes; suspended native UP records drain before readiness in the RDPEI 1.0.1+/disabled-timestamp profile. Scoped public provider/retirement now follows Connection's RDP-thread lifecycle. Pure/public-call and actual-addin/fake-DVC tests pass. Contact dispatch/reset/resize/control wiring, timestamp-remoting/v1.0 compatibility, bounded IPC, browser capture and actual remote/physical touch remain open. Same-plugin DVC reopening is unimplemented. No touch capability is advertised. [Contract](docs/INPUT.md#terminal-contact-ownership-and-drain), [state](docs/ITERATION_023.md), [transport](docs/ITERATION_024.md), [registration](docs/ITERATION_025.md), [drain](docs/ITERATION_026.md), [provider/lifetime](docs/ITERATION_027.md).
-- [~] IN PROGRESS — Opt-in worker/private Node touch dispatch, generation/readiness checks, fixed mixed FIFO and reset/resize drain are implemented. Native, codec and fake-worker tests pass; actual XRDP reports RDPEI ready with ten contacts, without sending touch. This supersedes the historical no-capability statement above. Public control/browser wiring, physical/remote acceptance and compatibility/resource audits remain open. [Evidence](docs/ITERATION_029.md), [contract](docs/IPC_FOUNDATION.md#generation-bound-touch-dispatch-iteration-29).
-- [~] IN PROGRESS — Public touch control lease, queued readiness/generation checks, metadata replay and bounded browser Pointer Events capture are implemented. Node/control and Edge emulated two-contact fixtures pass; physical and remote application acceptance remain open. [Evidence](docs/ITERATION_030.md). Private dispatch implementation: `6a34e2f`.
-- [x] DONE (unsupported placeholder) — `penInput=false` in HELLO decoding, native CLI and capability REST; owned RDPEI does not negotiate multi-pen, and browser pen Pointer Events produce no mouse/touch fallback. Native/public-context, actual-addin/fake-DVC and Edge fixtures pass. This is not pen support; optional future implementation/device acceptance remains. [Evidence](docs/ITERATION_032.md).
+- [~] IN PROGRESS — Native state, public RDPEI projection/registration and observable handshake gate implemented. Terminal IDs remain owned through transport writes; suspended native UP records drain before readiness in the RDPEI 1.0.1+/disabled-timestamp profile. Scoped public provider/retirement now follows Connection's RDP-thread lifecycle. Pure/public-call and actual-addin/fake-DVC tests pass. Contact dispatch/reset/resize/control wiring, timestamp-remoting/v1.0 compatibility, bounded IPC, browser capture and actual remote/physical touch remain open. Same-plugin DVC reopening is unimplemented. No touch capability is advertised. [Contract](docs/INPUT.md#terminal-contact-ownership-and-drain), [state](docs/history/iterations/001-050.md#iteration-023), [transport](docs/history/iterations/001-050.md#iteration-024), [registration](docs/history/iterations/001-050.md#iteration-025), [drain](docs/history/iterations/001-050.md#iteration-026), [provider/lifetime](docs/history/iterations/001-050.md#iteration-027).
+- [~] IN PROGRESS — Opt-in worker/private Node touch dispatch, generation/readiness checks, fixed mixed FIFO and reset/resize drain are implemented. Native, codec and fake-worker tests pass; actual XRDP reports RDPEI ready with ten contacts, without sending touch. This supersedes the historical no-capability statement above. Public control/browser wiring, physical/remote acceptance and compatibility/resource audits remain open. [Evidence](docs/history/iterations/001-050.md#iteration-029), [contract](docs/IPC_FOUNDATION.md#generation-bound-touch-dispatch-iteration-29).
+- [~] IN PROGRESS — Public touch control lease, queued readiness/generation checks, metadata replay and bounded browser Pointer Events capture are implemented. Node/control and Edge emulated two-contact fixtures pass; physical and remote application acceptance remain open. [Evidence](docs/history/iterations/001-050.md#iteration-030). Private dispatch implementation: `6a34e2f`.
+- [x] DONE (unsupported placeholder) — `penInput=false` in HELLO decoding, native CLI and capability REST; owned RDPEI does not negotiate multi-pen, and browser pen Pointer Events produce no mouse/touch fallback. Native/public-context, actual-addin/fake-DVC and Edge fixtures pass. This is not pen support; optional future implementation/device acceptance remains. [Evidence](docs/history/iterations/001-050.md#iteration-032).
 
 **Gate:** keyboard-layout test set, mouse/wheel, touch smoke; no stuck keys after disconnect.
 
@@ -1641,7 +1721,7 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   Twelve configurations, eleven late intervals, four Worklet underflows and
   one scheduled consumer reset remain measured limitations. Other profiles,
   latency/recording/platform and reset-free continuity stay open.
-  [Evidence](docs/ITERATION_393.md).
+  [Evidence](docs/history/iterations/351-400.md#iteration-393).
 
 - [x] DONE for named Windows Opus/200 ms three-minute listening observation —
   User reports steady normal sound; the bounded observation starts at the first
@@ -1649,34 +1729,34 @@ Manual local Edge viewing: `test-xrdp-viewer.mjs ... h264 --manual`.
   cleanup passes. This does not accept reset-free scheduling: 40 configurations,
   64 late intervals and 12 Worklet underflows remain. Other profiles, measured
   latency, recovery, recording and broader platform gates stay open.
-  [Evidence](docs/ITERATION_390.md).
+  [Evidence](docs/history/iterations/351-400.md#iteration-390).
 
 - [x] DONE for the named short corrected-worker Windows Opus/200 ms listening
   slice — User reports steady sound with almost no breaks and accepts it.
   Actual counters cover 23.52 rendered seconds, one epoch/configuration, no
   publication skips or Worklet underflow; joined runtime cleanup passes.
   This does not close full multi-minute, other format/profile/platform, latency
-  or recording acceptance. [Evidence](docs/ITERATION_387.md).
+  or recording acceptance. [Evidence](docs/history/iterations/351-400.md#iteration-387).
 
 Current repeat: the newly approved Windows Opus/200 ms browser session renders
 1080p H.264 but remains audio-waiting with zero configurations/packets/played
 frames. Recovery preconditions fail and joined cleanup passes. A verified
 active source is needed before playback or quality conclusions; the earlier
 accepted smoke below retains its historical scope.
-[Retained observation](docs/ITERATION_362.md). The explicitly approved repeat
+[Retained observation](docs/history/iterations/351-400.md#iteration-362). The explicitly approved repeat
 with a user-started continuous tone also stays waiting and fails before detach;
 the source endpoint/session and current negotiation cause remain unverified.
-[Tone repeat](docs/ITERATION_363.md).
+[Tone repeat](docs/history/iterations/351-400.md#iteration-363).
 The local helpers now collect fragmented native negotiation counters through
 joined cleanup; recovery-source failures identify the source-ready phase before
 snapshot/detach. This improves diagnosis without accepting audio playback or
-identifying the current cause. [Helper evidence](docs/ITERATION_364.md).
+identifying the current cause. [Helper evidence](docs/history/iterations/351-400.md#iteration-364).
 The user confirms the tone was started through `mstsc`. The bounded visible
 listening preview now reports one fresh scalar Worklet observation and final
 native negotiation counters, preparing a source restart inside the active
 Bridge viewer. The subsequent explicitly authorized fixed-source preview below
 now verifies a short audible output slice; the earlier idle-source results remain.
-[Preview evidence](docs/ITERATION_365.md).
+[Preview evidence](docs/history/iterations/351-400.md#iteration-365).
 
 - [x] DONE for named Windows lab / Edge audible Opus tone preview — The user
   authorizes a fixed in-memory 45-second tone launched through the active Bridge
@@ -1685,20 +1765,20 @@ now verifies a short audible output slice; the earlier idle-source results remai
   packets, 2,014,016 Worklet played frames, 1080p H.264 and joined empty-runtime
   cleanup pass. Frequent epochs/configurations, buffering silence and underflows
   remain; continuous quality, recovery, microphone, LAN latency and sustained
-  resource/platform acceptance stay open. [Evidence](docs/ITERATION_367.md).
+  resource/platform acceptance stay open. [Evidence](docs/history/iterations/351-400.md#iteration-367).
   Both browser/private lab helpers now preserve the existing native lifetime
   loss/reset and clock/format/Close cause receipts across arbitrary stderr
   chunks, with exact uint64/refusal checks. These diagnostics prepare further
   continuity work; they do not identify the previous run's cause or accept
-  uninterrupted quality. [Collector evidence](docs/ITERATION_368.md).
+  uninterrupted quality. [Collector evidence](docs/history/iterations/351-400.md#iteration-368).
   The browser footer also counts Node consumer reset calls/results without
   altering retries or queue policy. This keeps native lifetime resets separate
-  from requested consumer recovery. [Counter evidence](docs/ITERATION_369.md).
+  from requested consumer recovery. [Counter evidence](docs/history/iterations/351-400.md#iteration-369).
   The authorized same-profile repeat now observes zero Node reset requests,
   581 native skipped publication intervals and 572 publisher resets. The user
   reports much better sound with a few short interruptions; publication timing
   remains the next work item, without a complete cause or quality pass.
-  [Repeat](docs/ITERATION_370.md).
+  [Repeat](docs/history/iterations/351-400.md#iteration-370).
 
 - [x] DONE for named current Windows lab / Edge PCM/Opus recovery smoke —
   User-started source, actual H.264 1080p, Opus decode/Worklet played frames,
@@ -1707,7 +1787,7 @@ now verifies a short audible output slice; the earlier idle-source results remai
   and joined empty-runtime close pass. Frequent churn, buffering silence,
   underflows and publication gaps remain; audible continuity, LAN latency,
   recording and sustained/resource/platform acceptance stay open.
-  [Evidence](docs/ITERATION_307.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-307).
 
 - [x] DONE for Linux amd64 producer / Windows Edge PCM/Opus output smoke —
   Real XRDP packets, Opus decode, Worklet played samples, 200 ms profile, video
@@ -1715,7 +1795,7 @@ now verifies a short audible output slice; the earlier idle-source results remai
   pass. Native source/TLS/IPC, private relocation and cleanup are verified.
   Human audible quality, latency, intermittent protocol-failure diagnosis,
   prolonged resource/soak and remaining platform/microphone gates stay open.
-  [Evidence](docs/ITERATION_208.md), [deadline fix](docs/ITERATION_207.md).
+  [Evidence](docs/history/iterations/201-250.md#iteration-208), [deadline fix](docs/history/iterations/201-250.md#iteration-207).
 
 **Overall: IN PROGRESS.** Windows PCM/Opus output and input paths are implemented;
 fixtures exercise their composition. Actual XRDP output now supplies real PCM/Opus
@@ -1732,21 +1812,21 @@ broader format profiles and end-to-end acceptance are separate open work.
 
 | Component | Status and accepted scope | Evidence |
 | --- | --- | --- |
-| PCM normalization/resampling | DONE — bounded native PCM8/PCM16 mono/stereo 8..48 kHz to S16LE 48 kHz stereo, portable fixtures | [36](docs/ITERATION_036.md), [47](docs/ITERATION_047.md) |
-| Volume mapping | DONE — independent stereo perceptual gains, mute/full identity, exhaustive and linked fake-SVC fixtures | [44](docs/ITERATION_044.md) |
-| Native PCM queue and packetization | DONE — fixed 120 ms ring and 20 ms publication, underflow/overflow/reset fixtures | [37](docs/ITERATION_037.md), [49](docs/ITERATION_049.md), [62](docs/ITERATION_062.md) |
-| Native output buffer selection | DONE on Windows — immutable 120/200 ms profiles, bounded queue/configuration, legacy refusal, actual XRDP PCM/Opus selection and reset; not total latency acceptance | [179](docs/ITERATION_179.md), [ADR-012](docs/adr/ADR-012-audio-compatibility-buffer.md) |
-| Ready output attachment recovery | DONE on Windows/XRDP — actual PCM/Opus 200 ms browser detach/reattach, fresh Worklet samples and scheduled Opus native reset; not general reconnect or loss/latency acceptance | [181](docs/ITERATION_181.md) |
-| Private Opus output codec | DONE on Windows — pinned SDK encode/decode/reset/bounds and DLL relocation | [73](docs/ITERATION_073.md), [75](docs/ITERATION_075.md) |
-| PCM/Opus record codecs | DONE — bounded native/Node/browser wire vectors and malformed-record fixtures | [50](docs/ITERATION_050.md), [75](docs/ITERATION_075.md), [76](docs/ITERATION_076.md) |
-| Browser PCM playback owner | DONE in Edge synthetic fixtures — queue, Worklet admission ACK, gesture and cleanup | [70](docs/ITERATION_070.md), [71](docs/ITERATION_071.md) |
-| Browser Opus decoder owner | DONE in Edge pinned-SDK synthetic fixtures — decode/priming, admission and cleanup | [77](docs/ITERATION_077.md) |
-| Output record delivery/credit | DONE in fake-backend/actual loopback-WS fixtures — independent bounded PCM/Opus credit and recovery ownership | [69](docs/ITERATION_069.md), [93](docs/ITERATION_093.md), [94](docs/ITERATION_094.md) |
-| Native microphone PCM source | DONE — fixed newest-data queue, silence/underflow, epoch and wipe-on-stop portable fixtures | [95](docs/ITERATION_095.md) |
-| Private Opus input codec/compensation | DONE on Windows synthetic SDK composition — strict 20 ms decode, pre-skip and bounded reblocking | [129](docs/ITERATION_129.md), [132](docs/ITERATION_132.md) |
-| Browser microphone capture/permission owners | DONE in synthetic Edge fixtures — packetizer, Worklet, denied/late permission and cleanup; no physical capture | [121](docs/ITERATION_121.md), [122](docs/ITERATION_122.md), [126](docs/ITERATION_126.md) |
-| Explicit PCM/Opus microphone viewer | DONE in synthetic Edge/WS/fake-RDP fixtures — matching selection, gesture, stop/restart, source/controller loss | [143](docs/ITERATION_143.md), [144](docs/ITERATION_144.md) |
-| Protected transport telemetry | DONE — fixed-label output/input counters, credit and timing tested with fake RDP/real sockets | [72](docs/ITERATION_072.md), [145](docs/ITERATION_145.md) |
+| PCM normalization/resampling | DONE — bounded native PCM8/PCM16 mono/stereo 8..48 kHz to S16LE 48 kHz stereo, portable fixtures | [36](docs/history/iterations/001-050.md#iteration-036), [47](docs/history/iterations/001-050.md#iteration-047) |
+| Volume mapping | DONE — independent stereo perceptual gains, mute/full identity, exhaustive and linked fake-SVC fixtures | [44](docs/history/iterations/001-050.md#iteration-044) |
+| Native PCM queue and packetization | DONE — fixed 120 ms ring and 20 ms publication, underflow/overflow/reset fixtures | [37](docs/history/iterations/001-050.md#iteration-037), [49](docs/history/iterations/001-050.md#iteration-049), [62](docs/history/iterations/051-100.md#iteration-062) |
+| Native output buffer selection | DONE on Windows — immutable 120/200 ms profiles, bounded queue/configuration, legacy refusal, actual XRDP PCM/Opus selection and reset; not total latency acceptance | [179](docs/history/iterations/151-200.md#iteration-179), [ADR-012](docs/adr/ADR-012-audio-compatibility-buffer.md) |
+| Ready output attachment recovery | DONE on Windows/XRDP — actual PCM/Opus 200 ms browser detach/reattach, fresh Worklet samples and scheduled Opus native reset; not general reconnect or loss/latency acceptance | [181](docs/history/iterations/151-200.md#iteration-181) |
+| Private Opus output codec | DONE on Windows — pinned SDK encode/decode/reset/bounds and DLL relocation | [73](docs/history/iterations/051-100.md#iteration-073), [75](docs/history/iterations/051-100.md#iteration-075) |
+| PCM/Opus record codecs | DONE — bounded native/Node/browser wire vectors and malformed-record fixtures | [50](docs/history/iterations/001-050.md#iteration-050), [75](docs/history/iterations/051-100.md#iteration-075), [76](docs/history/iterations/051-100.md#iteration-076) |
+| Browser PCM playback owner | DONE in Edge synthetic fixtures — queue, Worklet admission ACK, gesture and cleanup | [70](docs/history/iterations/051-100.md#iteration-070), [71](docs/history/iterations/051-100.md#iteration-071) |
+| Browser Opus decoder owner | DONE in Edge pinned-SDK synthetic fixtures — decode/priming, admission and cleanup | [77](docs/history/iterations/051-100.md#iteration-077) |
+| Output record delivery/credit | DONE in fake-backend/actual loopback-WS fixtures — independent bounded PCM/Opus credit and recovery ownership | [69](docs/history/iterations/051-100.md#iteration-069), [93](docs/history/iterations/051-100.md#iteration-093), [94](docs/history/iterations/051-100.md#iteration-094) |
+| Native microphone PCM source | DONE — fixed newest-data queue, silence/underflow, epoch and wipe-on-stop portable fixtures | [95](docs/history/iterations/051-100.md#iteration-095) |
+| Private Opus input codec/compensation | DONE on Windows synthetic SDK composition — strict 20 ms decode, pre-skip and bounded reblocking | [129](docs/history/iterations/101-150.md#iteration-129), [132](docs/history/iterations/101-150.md#iteration-132) |
+| Browser microphone capture/permission owners | DONE in synthetic Edge fixtures — packetizer, Worklet, denied/late permission and cleanup; no physical capture | [121](docs/history/iterations/101-150.md#iteration-121), [122](docs/history/iterations/101-150.md#iteration-122), [126](docs/history/iterations/101-150.md#iteration-126) |
+| Explicit PCM/Opus microphone viewer | DONE in synthetic Edge/WS/fake-RDP fixtures — matching selection, gesture, stop/restart, source/controller loss | [143](docs/history/iterations/101-150.md#iteration-143), [144](docs/history/iterations/101-150.md#iteration-144) |
+| Protected transport telemetry | DONE — fixed-label output/input counters, credit and timing tested with fake RDP/real sockets | [72](docs/history/iterations/051-100.md#iteration-072), [145](docs/history/iterations/101-150.md#iteration-145) |
 
 ### Remaining implementation and acceptance
 
@@ -1756,17 +1836,17 @@ broader format profiles and end-to-end acceptance are separate open work.
   the user accepts current 200 ms quality for development. Uninterrupted playback,
   burst quality and broader transport/platform recovery remain open. Private
   ready-source reset and public PCM/Opus 200 ms attachment recovery pass on this lab.
-  [181](docs/ITERATION_181.md).
-  [175](docs/ITERATION_175.md), [94](docs/ITERATION_094.md),
-  [167](docs/ITERATION_167.md), [168](docs/ITERATION_168.md).
+  [181](docs/history/iterations/151-200.md#iteration-181).
+  [175](docs/history/iterations/151-200.md#iteration-175), [94](docs/history/iterations/051-100.md#iteration-094),
+  [167](docs/history/iterations/151-200.md#iteration-167), [168](docs/history/iterations/151-200.md#iteration-168).
 - [~] Custom `audin-browser` source, browser microphone capture and packet
   transport: selected Windows/Linux PCM/Opus AUDIN/worker/Node/viewer path is implemented.
   Actual XRDP input remains waiting epoch 0; negotiated ready input, physical
   permission/device capture and remote application recording remain unverified.
   Twelve real Linux carrier/codec combinations pass; bounded negotiation counters
   now distinguish accepted DVC/validated formats/Open from waiting state.
-  [144](docs/ITERATION_144.md), [169](docs/ITERATION_169.md),
-  [218](docs/ITERATION_218.md), [219](docs/ITERATION_219.md).
+  [144](docs/history/iterations/101-150.md#iteration-144), [169](docs/history/iterations/151-200.md#iteration-169),
+  [218](docs/history/iterations/201-250.md#iteration-218), [219](docs/history/iterations/201-250.md#iteration-219).
 - [~] PCM normalization/resampling and Opus compatibility beyond the accepted
   fixed profiles: larger callbacks split within fixed storage and identical
   selected tables can repeat. Wider/higher-rate formats, changed server tables,
@@ -1774,17 +1854,17 @@ broader format profiles and end-to-end acceptance are separate open work.
   Existing explicit profile refusals do not remove these retained requirements.
 - [~] Audio queue/jitter/backpressure metrics: transport metrics exist; native/
   browser underflow, jitter, encode and host-queue export and measured LAN queue/
-  latency acceptance remain open. [145](docs/ITERATION_145.md).
+  latency acceptance remain open. [145](docs/history/iterations/101-150.md#iteration-145).
 - [~] Underflow/silence behavior that does not block the RDP loop: bounded native/
   Worklet/capture fixtures pass. Native PCM/Opus event waits now follow the active
   packet deadline with bounded overdue retries and ordinary polling under output
   blockage; portable virtual-minute and Windows linked ownership/lifecycle controls
   pass. Connected new-worker scheduling, callback CPU/wakeup budgets and real
-  transport/audio-quality acceptance remain open. [Deadline correction](docs/ITERATION_371.md).
+  transport/audio-quality acceptance remain open. [Deadline correction](docs/history/iterations/351-400.md#iteration-371).
   The Windows lab viewer can explicitly select the corrected isolated Debug
   worker by its bound native receipt, preserving the bundled default and
   validating worker/helper bytes before lab configuration. Actual new-worker
-  audio remains pending its own session. [Helper checks](docs/ITERATION_372.md).
+  audio remains pending its own session. [Helper checks](docs/history/iterations/351-400.md#iteration-372).
 - [~] Audio reconnect/discontinuity reset: epoch, Close/reset, reattachment and
   ownership barriers pass fixtures; actual XRDP private reset and ready-source
   browser attachment recovery pass for the named profiles. Broader recovery and
@@ -1817,7 +1897,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   check: 900 / 61 skips / 961 total. The fixture clears its old CLIPBOARD owner
   before ordinary Copy. Old XRDP 0.9.x conversion, wider Linux producer/server
   profiles, direction/quota/isolation/formats and drives remain separate.
-  [Evidence](docs/ITERATION_404.md).
+  [Evidence](docs/history/iterations/401-450.md#iteration-404).
 
 - [x] DONE for named headed Edge/Windows Notepad Unicode clipboard slice —
   Real Browser Clipboard API, public API/control, CLIPRDR and application
@@ -1828,8 +1908,8 @@ profile's target, microphone, recovery, resource or platform acceptance.
   in one invocation. Own-document clear keystrokes follow verified readback;
   empty application content is not separately read back. The actual wider
   direction / quota / isolation matrix and full Stage 7 remain open.
-  [Current complete run](docs/ITERATION_392.md),
-  [earlier evidence and retained failures](docs/ITERATION_385.md).
+  [Current complete run](docs/history/iterations/351-400.md#iteration-392),
+  [earlier evidence and retained failures](docs/history/iterations/351-400.md#iteration-385).
 
 - [x] DONE for named Windows Notepad Unicode roundtrip — Explicit private
   Node/native bidirectional CLIPRDR selection with 1,024-byte cap passes actual
@@ -1837,13 +1917,13 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Empty-offer/no-format revoke ACK and joined cleanup pass; no host Clipboard
   API, remote file save or remote clipboard logging occurs. Browser/host OS,
   full quota/direction/resource matrix, other formats and drives remain open.
-  [Contract](docs/WINDOWS_APPLICATION_SMOKE.md), [evidence](docs/ITERATION_303.md).
+  [Contract](docs/WINDOWS_APPLICATION_SMOKE.md), [evidence](docs/history/iterations/301-350.md#iteration-303).
 
 - [x] DONE for isolated native conversion — Allocation-free bounded UTF-8/CF_UNICODETEXT
   conversion, CRLF normalization and atomic refusal pass Windows/Linux native,
   local ASan/UBSan and seeded Clang fuzz checks. This is not channel/browser or
   actual remote acceptance. [Contract](docs/CLIPBOARD_TEXT.md),
-  [evidence](docs/ITERATION_224.md).
+  [evidence](docs/history/iterations/201-250.md#iteration-224).
 - [~] IN PROGRESS — CLIPRDR Unicode text both directions: explicit raw schema-10
   selection now maps guarded CLIPRDR
   directions/size limits, serialized command dispatch and RDP-thread retirement.
@@ -1853,8 +1933,8 @@ profile's target, microphone, recovery, resource or platform acceptance.
   IPC and actual native TLS checks pass. Explicit reference browser text selection
   and local actions pass Edge/fake-RDP/mocked-Clipboard-API fixtures; actual remote /
   OS clipboard and total-resource acceptance remain open.
-  [Browser evidence](docs/ITERATION_238.md), [Native evidence](docs/ITERATION_231.md),
-  [typed API and actual XRDP offer/empty-text ACK evidence](docs/ITERATION_232.md).
+  [Browser evidence](docs/history/iterations/201-250.md#iteration-238), [Native evidence](docs/history/iterations/201-250.md#iteration-231),
+  [typed API and actual XRDP offer/empty-text ACK evidence](docs/history/iterations/201-250.md#iteration-232).
   Native offer revocation now has a separate content-free schema-2 command and
   checked public send/ACK path; unlike empty text, it removes all offered formats.
   Prepared manager control grants now drain prior work and require native revoke
@@ -1862,9 +1942,9 @@ profile's target, microphone, recovery, resource or platform acceptance.
   pass. The native adapter now accepts matching numeric item reservations and
   both clipboard HELLO capabilities; legacy refusal precedes settings/secrets.
   Actual remote/browser/OS transfer/revoke acceptance remains open.
-  [Native adapter evidence](docs/ITERATION_237.md),
+  [Native adapter evidence](docs/history/iterations/201-250.md#iteration-237),
   [Controller contract](docs/CLIPBOARD_SESSION.md),
-  [evidence](docs/ITERATION_234.md).
+  [evidence](docs/history/iterations/201-250.md#iteration-234).
   Explicit nonsecret factory/IPC reservations and independent prepared RWC1
   byte chunks now cover the full 16 MiB item without larger control messages;
   Server control reassembly/credit now passes both-way 16 MiB virtual-clock and
@@ -1877,50 +1957,50 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Actual Windows/XRDP JPEG/H.264 viewer regression keeps clipboard off, checks
   zero native/browser requests, nonblank 1080p, cursor/attachment replay and
   empty runtime. This is not enabled clipboard acceptance.
-  [Off-path evidence](docs/ITERATION_239.md).
+  [Off-path evidence](docs/history/iterations/201-250.md#iteration-239).
   Per-operation browser admission now waits for initial native ACK/owned-offer
   drain, with failing-before/passing-after Edge evidence. Actual Windows/XRDP/Edge
   now passes one Unicode offer ACK, no-format revoke ACK while ready, fresh-token
   replay and joined cleanup, with zero remote reads or host Clipboard API requests.
   The first failed invocation is retained; application consumption/readback and
-  OS clipboard acceptance remain open. [Probe/readiness evidence](docs/ITERATION_240.md).
+  OS clipboard acceptance remain open. [Probe/readiness evidence](docs/history/iterations/201-250.md#iteration-240).
   Actual Linux primary and framed IPC now pass the same fixed Unicode offer /
   no-format revoke ACK, ready-source barrier, heartbeat and empty-runtime cleanup,
   with zero reads. This is private Node/native evidence, separate from browser /
-  application/OS acceptance. [Linux carrier evidence](docs/ITERATION_241.md).
-  [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/ITERATION_236.md).
+  application/OS acceptance. [Linux carrier evidence](docs/history/iterations/201-250.md#iteration-241).
+  [Control contract](docs/CLIPBOARD_CONTROL.md), [evidence](docs/history/iterations/201-250.md#iteration-236).
   [Chunk/reservation contract](docs/CLIPBOARD_CHUNKS.md),
-  [evidence](docs/ITERATION_235.md).
-  [Revocation evidence](docs/ITERATION_233.md).
+  [evidence](docs/history/iterations/201-250.md#iteration-235).
+  [Revocation evidence](docs/history/iterations/201-250.md#iteration-233).
 - [x] DONE for clipboard private transport — Versioned RWI1 class/correlation
   bounds, dedicated latest-state/one-result output and full 16 MiB command delivery
   pass actual Windows/Linux process/carrier tests, native/Node regression and
   local sanitizer/fuzz checks. Unselected workers explicitly return unavailable;
   typed private selection is implemented above. Public session/browser selection and
   actual remote acceptance remain open.
-  [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/ITERATION_228.md).
+  [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/history/iterations/201-250.md#iteration-228).
 - [x] DONE for prepared private clipboard payloads — Independent bounded native /
   TypeScript scalar-state and Unicode command/result codecs pass golden, malformed,
   ownership and exact-size tests, local sanitizer/fuzz and full Node regression.
   Public session/browser selection and actual remote acceptance remain open.
-  [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/ITERATION_227.md).
+  [Contract](docs/CLIPBOARD_IPC.md), [evidence](docs/history/iterations/201-250.md#iteration-227).
 - [x] DONE for native public text owner — Independent direction policies,
   Unicode advertisement/ACK/data callbacks, one outstanding remote request and
   stale-response/timeout/retirement ownership pass actual pinned CLIPRDR with
   simulated SVC on Windows/Linux. Public session/browser activation and actual
   remote acceptance remain open. [Contract](docs/CLIPBOARD_TEXT_SESSION.md),
-  [channel evidence](docs/ITERATION_226.md). Serialized IPC/RDP handoff now retains
+  [channel evidence](docs/history/iterations/201-250.md#iteration-226). Serialized IPC/RDP handoff now retains
   one command/result with admitted authority, peer completion and finite dispatch /
   publication deadlines; linked fixtures also verify RDP-thread cleanup before
-  root-thread destruction. [Handoff evidence](docs/ITERATION_230.md).
+  root-thread destruction. [Handoff evidence](docs/history/iterations/201-250.md#iteration-230).
 - [x] DONE for prepared CLIPRDR ingress — Header admission before fragmented-body
   allocation, bounded tables/names and public receive routing pass Windows/Linux
   native and actual pinned-channel/fake-SVC checks plus seeded sanitizer fuzz.
   Public session/browser selection and actual clipboard acceptance remain open.
   Valid over-policy data is drained without body allocation and completes only
   the read as refused; the full wire maximum fits classic SVC fragmentation.
-  [Contract](docs/CLIPBOARD_INGRESS.md), [initial evidence](docs/ITERATION_225.md),
-  [quota/fragment evidence](docs/ITERATION_229.md).
+  [Contract](docs/CLIPBOARD_INGRESS.md), [initial evidence](docs/history/iterations/201-250.md#iteration-225),
+  [quota/fragment evidence](docs/history/iterations/201-250.md#iteration-229).
 - [~] IN PROGRESS — Explicit text directions/item caps pass native, Node, server
   and Edge fixtures, including full 16 MiB composition. Actual remote direction /
   quota, other required formats and total-resource acceptance remain open.
@@ -1962,7 +2042,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   785 / 51 skips and Linux 676 / 163 skips pass. The first capacity failure and
   repeat timeout diagnostics remain separately open resource limitations; no
   deadlines are relaxed. Broader DNS, IPv6 RDP/server and linked Linux gates
-  remain open. [Evidence](docs/ITERATION_327.md).
+  remain open. [Evidence](docs/history/iterations/301-350.md#iteration-327).
 
 - [x] DONE for named IP-family WEB controls — Independent capability gates
   default/system/IPv6-first preference and default/IPv4-only/IPv6-only choices;
@@ -1972,7 +2052,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Disconnect pass with joined PID/runtime cleanup. Full Node Windows 783 / 51
   skips and Linux 675 / 162 skips pass; native artifacts remain unchanged.
   Broader dual-stack DNS, IPv6 RDP/server and linked Linux gates stay open.
-  [Evidence](docs/ITERATION_326.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-326).
 
 - [x] DONE for named Windows IP-family backend projection — Existing preference
   and force-4/6/null fields use explicit capability and canonical schema 12;
@@ -1983,7 +2063,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   17/17, full Node Windows 780 / 51 skips and Linux 674 / 160 skips pass.
   Linked Linux, dual-stack DNS selection/fallback and actual IPv6
   RDP/server acceptance remain open. [Contract](docs/IP_SETTINGS.md),
-  [evidence](docs/ITERATION_325.md).
+  [evidence](docs/history/iterations/301-350.md#iteration-325).
 
 - [x] DONE for manual custom quality profile — The WEB form exposes the existing
   custom profile without injecting appearance booleans when inherited. All four
@@ -1992,7 +2072,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   behavior. Focus passes 8/8; full Node Windows 766 / 51 skips and Linux
   666 / 154 skips pass. Native code/artifacts remain unchanged; broader actual
   profile/server effects and resource gates stay open.
-  [Evidence](docs/ITERATION_324.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-324).
 
 - [x] DONE for named Windows JPEG appearance-form smoke — Manual form passes
   six explicit booleans through the real API/native adapter, exact approved
@@ -2001,7 +2081,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   is retained; waiting for nonblank output within the original deadline passes.
   Windows/Linux CLI guards 2/2 each and lint/format pass; production/native
   artifacts remain unchanged from iteration 322. Server visual/policy effects,
-  other profiles and wider acceptance stay open. [Evidence](docs/ITERATION_323.md).
+  other profiles and wider acceptance stay open. [Evidence](docs/history/iterations/301-350.md#iteration-323).
 
 - [x] DONE for manual WEB appearance controls — Six inherited/enabled/disabled
   selects preserve omitted fields and explicit false. Actual capability gates
@@ -2010,7 +2090,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Windows 765 / 51 skips and Linux 665 / 154 skips, unchanged native CTest 32/32
   and 17/17. The named actual Windows form chain is separately verified above;
   server visual/policy and broader integration remain open.
-  [Evidence](docs/ITERATION_322.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-322).
 
 - [x] DONE for named Windows quality/performance projection — Existing six
   appearance booleans and selected presets use capability-gated schema 11,
@@ -2023,7 +2103,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   source inputs across builds. Server visual/policy effects, Linux linked/
   wider profiles and budgets remain open. Manual UI controls are separately
   verified in their own named scope, including the Windows JPEG/form smoke above.
-  [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
+  [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/history/iterations/301-350.md#iteration-321).
 
 - [ ] RDP Gateway with same/separate credentials.
 - [ ] Proxy support.
@@ -2033,7 +2113,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   The named localhost dual-family case passes; linked Linux, broader DNS
   preference/fallback history and actual IPv6 RDP/server profiles remain open.
 - [ ] Timeouts/reconnect policy and auto-reconnect cookie where supported.
-- [~] IN PROGRESS — Opt-in single-primary DisplayControl at 100% scale satisfies ADR-011 and works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. The named private native Windows RDP resize and public Edge H.264/JPEG browser resize/restoration also pass; broader Windows-server settings, DVC resource audit and soak acceptance remain open. [XRDP evidence](docs/ITERATION_019.md), [Windows private-worker evidence](docs/ITERATION_350.md), [Windows H.264 browser evidence](docs/ITERATION_352.md), [Windows JPEG browser evidence](docs/ITERATION_353.md).
+- [~] IN PROGRESS — Opt-in single-primary DisplayControl at 100% scale satisfies ADR-011 and works through native/private IPC, public control leases and actual XRDP browser H.264/JPEG resize/restoration. The named private native Windows RDP resize and public Edge H.264/JPEG browser resize/restoration also pass; broader Windows-server settings, DVC resource audit and soak acceptance remain open. [XRDP evidence](docs/history/iterations/001-050.md#iteration-019), [Windows private-worker evidence](docs/history/iterations/301-350.md#iteration-350), [Windows H.264 browser evidence](docs/history/iterations/351-400.md#iteration-352), [Windows JPEG browser evidence](docs/history/iterations/351-400.md#iteration-353).
 - OUT OF CURRENT SCOPE — Multimonitor policy: explicitly excluded by the user, ADR-011; not an unimplemented release requirement.
 - [~] IN PROGRESS — Selected quality profiles and six explicit appearance
   booleans now map through capability-gated schema 11 to checked public FreeRDP
@@ -2043,7 +2123,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   wider profiles and broader browser-to-RDP appearance acceptance remain open;
   the manual controls and named Windows JPEG/form chain pass their separate
   gates above.
-  [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/ITERATION_321.md).
+  [Contract](docs/RDP_PERFORMANCE_SETTINGS.md), [evidence](docs/history/iterations/301-350.md#iteration-321).
 - OUT OF CURRENT SCOPE — Additional RDP smart sizing/scales/orientation profiles: existing orientation 0 and scale 100% are sufficient under ADR-011. Browser CSS sizing/coordinate mapping remains supported independently.
 - [ ] RemoteApp/RAIL capability and launch parameters.
 - [ ] Custom VC/DVC admin allowlists.
@@ -2063,12 +2143,12 @@ profile's target, microphone, recovery, resource or platform acceptance.
   and full runs, with zero worker failures and joined empty owners. New source
   CTest 34/34 and full Node 854 / 51 skips pass. Shared OS-failure/connected /
   sustained gates, other-platform batching and Release adoption remain open.
-  [Contract](docs/PROCESS_RESOURCE_BATCH.md), [evidence](docs/ITERATION_378.md).
+  [Contract](docs/PROCESS_RESOURCE_BATCH.md), [evidence](docs/history/iterations/351-400.md#iteration-378).
   Controlled actual child timeout, partial/all-member cancellation and missing
   executable integration now also passes; full Node is 857 / 51 skips / 908,
   zero failures, on the same unchanged native output. This is simulated helper
   process failure, not actual Windows query API failure acceptance.
-  [Additional evidence](docs/ITERATION_379.md).
+  [Additional evidence](docs/history/iterations/351-400.md#iteration-379).
 
 - [x] DONE for phase-aware capacity diagnostics — Lifecycle-only fixtures retain
   startup/active/retiring failure categories, fixed maximum query timings and
@@ -2078,7 +2158,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   A new run classifies five IPC timeouts as retiring; later focus has none but
   still observes active queries beyond nominal three seconds. No production
   policy or timeout is changed; original spike, absolute-deadline behavior,
-  connected/OS/load/soak gates remain open. [Evidence](docs/ITERATION_328.md).
+  connected/OS/load/soak gates remain open. [Evidence](docs/history/iterations/301-350.md#iteration-328).
 
 - [x] DONE for named connected Windows public CPU failure — Actual public
   1080p JPEG precedes the first global/connected CPU baseline; bounded valid
@@ -2089,7 +2169,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   also passes again. Full Node Windows 756 / 51 skips and Linux 657 / 153 skips,
   CTest 31/31 and 17/17 pass. Linux is common foundation evidence; browser
   terminal display, connected siblings, complete budgets, hard OS/CI/deployment
-  and soak gates remain open. [Evidence](docs/ITERATION_320.md).
+  and soak gates remain open. [Evidence](docs/history/iterations/301-350.md#iteration-320).
 
 - [x] DONE for named connected Windows public RSS failure — Actual source-
   receipt-selected Release worker produces 1080p JPEG over media WS before the
@@ -2100,7 +2180,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   755 / 51 skips and Linux 656 / 153 skips, CTest 31/31 and 17/17 pass.
   Linux is common/foundation evidence only; the helper is Windows-only. Browser
   rendering/terminal display, CPU failure, connected siblings, complete budgets,
-  hard OS failures and soak remain open. [Evidence](docs/ITERATION_319.md).
+  hard OS failures and soak remain open. [Evidence](docs/history/iterations/301-350.md#iteration-319).
 
 - [x] DONE for native RSS failure over public HTTP/WS at certificate wait —
   Actual linked Windows worker/OS sampling with a local synthetic TLS peer
@@ -2111,7 +2191,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   754 / 51 skips and Linux 655 / 153 skips pass; Linux foundation explicitly
   skips linked integration. This does not accept a connected desktop/public
   failure, connected siblings, CPU composition or sustained budgets.
-  [Evidence](docs/ITERATION_318.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-318).
 
 - [x] DONE for named native-adapter/registry RSS failure composition — Actual
   Windows RDP with an isolated Release worker passes connected 1080p JPEG,
@@ -2123,7 +2203,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   17/17 pass; final helper-only wait correction passes actual RDP and focused
   6/6 each. Failed lab/fixture runs are retained. Public HTTP/WS delivery,
   connected siblings, CPU composition, hard OS/total-budget and soak gates remain
-  open. [Evidence and exact chronology](docs/ITERATION_317.md).
+  open. [Evidence and exact chronology](docs/history/iterations/301-350.md#iteration-317).
 
 - [x] DONE for named Windows connected RSS-limit breach — Actual connected
   1080p JPEG and heartbeat precede sampling; the first global/connected RSS
@@ -2133,7 +2213,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   751 / 51 skips and Linux 654 / 151 skips pass. This is private single-worker
   failure acceptance; registry/sibling isolation, total-session/startup budgets,
   hard OS failures, production deployment and soak remain open.
-  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/ITERATION_316.md).
+  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/history/iterations/301-350.md#iteration-316).
 
 - [x] DONE for named Windows connected CPU-limit breach — Actual connected
   1080p JPEG and heartbeat precede the first real CPU baseline. Bounded local
@@ -2143,7 +2223,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   and Linux 652 / 151 skips pass. This is private single-worker acceptance;
   connected registry/sibling isolation, RSS breach, production budgets and
   sustained/OS-failure gates remain open.
-  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/ITERATION_315.md).
+  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/history/iterations/301-350.md#iteration-315).
 
 - [x] DONE for named Windows connected CPU/RSS healthy-policy smoke — Explicit
   native-source receipt selection verifies worker/helper hashes before reading
@@ -2155,7 +2235,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   17/17 pass; Linux is common unit/foundation evidence only. Connected cap
   breaches, total-session/between-sample/startup budgets, production helper/
   package adoption, platform and soak gates remain open.
-  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/ITERATION_314.md).
+  [Contract](docs/RDP_RESOURCE_SMOKE.md), [evidence](docs/history/iterations/301-350.md#iteration-314).
 
 - [x] DONE for native resource-policy crash/retirement composition — One actual
   framed worker exits while a synthetic barrier holds completion of an actual
@@ -2166,7 +2246,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   CTest 16/16 and 17/17 pass. This does not accept an OS-stalled helper,
   forced-deadline expiry, simultaneous parent/worker kill or connected RDP
   failure. Production code, Release and pins are unchanged.
-  [Evidence](docs/ITERATION_311.md).
+  [Evidence](docs/history/iterations/301-350.md#iteration-311).
 
 - [x] DONE for configured unconnected CPU/RSS lifecycle capacity — Forty actual
   framed native workers at ordinary 1,000 ms polls, global 40 / per-principal
@@ -2179,7 +2259,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Windows 693 / 92 skips and Linux 638 / 150 skips, CTest 16/16 and 17/17 pass.
   Connected concurrency/faults, total-session budgets, primary capacity beyond
   32, production helper adoption and soak remain open. Release and pins stay
-  unchanged. [Evidence and changed files](docs/ITERATION_310.md).
+  unchanged. [Evidence and changed files](docs/history/iterations/301-350.md#iteration-310).
 
 - [x] DONE for actual unconnected native CPU-limit breach — Fixed 16-flight
   heartbeat load and genuine platform counter growth trigger WORKER_CPU_LIMIT
@@ -2188,7 +2268,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   full Node Windows 680 / 92 skips and Linux 627 / 148 skips, CTest 16/16 and
   17/17 pass. This is real C++ lifecycle load, not a production budget or
   connected RDP/media/concurrency/soak acceptance. Release and dependencies
-  remain unchanged. [Evidence](docs/ITERATION_309.md).
+  remain unchanged. [Evidence](docs/history/iterations/301-350.md#iteration-309).
 
 - [x] DONE for local Linux CPU-query/policy lifecycle slice — New colocated
   helper uses bounded proc-stat parsing, actual `_SC_CLK_TCK`, checked exact
@@ -2201,7 +2281,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   17/17 and 16/16 pass. Release settings/artifacts and pins are unchanged.
   Connected application overload/total-session budgets, production adoption,
   OS-failure and broader platform/sanitizer/soak gates stay open.
-  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_308.md).
+  [Contract](docs/PROCESS_CPU.md), [evidence](docs/history/iterations/301-350.md#iteration-308).
 
 - [x] DONE for optional sampled Windows CPU-policy lifecycle slice — Trusted
   host opt-in uses bounded cumulative queries and a conservative monotonic
@@ -2214,7 +2294,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   connected application overload/total-session/production-helper/OS/soak gates remain
   open. Defaults, Release
   and dependency pins are unchanged. [Contract](docs/WORKER_CPU_POLICY.md),
-  [evidence](docs/ITERATION_306.md).
+  [evidence](docs/history/iterations/301-350.md#iteration-306).
 
 - [x] DONE for typed Windows CPU-query prerequisite — Strict bounded schema-1
   parsing, validated PID, optional cancellation and joined query-helper close
@@ -2225,7 +2305,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   parser/refusals only; the separately verified sampled Windows policy above
   and Linux query extension above do not close Release helper adoption or actual
   overload/connected CPU gates. [Contract](docs/PROCESS_CPU.md),
-  [evidence](docs/ITERATION_304.md); `df40276`.
+  [evidence](docs/history/iterations/301-350.md#iteration-304); `df40276`.
 
 - [x] DONE for native Windows CPU-counter prerequisite — The existing host
   helper reports bounded cumulative kernel+user microseconds through limited
@@ -2235,7 +2315,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   654 / 90 skips and 599 / 148 skips pass. This native-only block does not claim
   the separately verified Node reader above, CPU watchdog or Linux process
   query; complete CPU/connected resource gates remain open.
-  [Contract](docs/PROCESS_CPU.md), [evidence](docs/ITERATION_300.md); `059c866`.
+  [Contract](docs/PROCESS_CPU.md), [evidence](docs/history/iterations/251-300.md#iteration-300); `059c866`.
 
 - [x] DONE for cancellable shared RSS queries — Optional AbortSignal stops
   pre-aborted work before resource acquisition, joins proc-file/helper-process
@@ -2244,7 +2324,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Linux parent FD count returns to baseline. Focus passes Windows 11/11 and
   Linux 12/12; full Node 640 / 90 skips and 586 / 147 skips, CTest 15/15 and
   16/16 pass. Watchdog enforcement and complete kernel/OS-failure/connected
-  resource gates remain open. [Evidence](docs/ITERATION_295.md); `61ec364`.
+  resource gates remain open. [Evidence](docs/history/iterations/251-300.md#iteration-295); `61ec364`.
 
 - [x] DONE for bounded shared host RSS sampling — Existing Linux proc and
   Windows colocated-helper readers now share strict TypeScript, typed fixed
@@ -2253,29 +2333,29 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Linux 10/10; full Node 638 / 90 skips and 584 / 147 skips, native CTest 15/15
   and 16/16 pass. This is a sampler prerequisite, not watchdog enforcement or
   CPU/private/total-session memory acceptance. [Contract](docs/PROCESS_RESIDENT.md),
-  [evidence](docs/ITERATION_294.md); `f9ff66d`.
+  [evidence](docs/history/iterations/251-300.md#iteration-294); `f9ff66d`.
 
 - [x] DONE for Linux foundation runtime smoke — Ordinary GCC CTest 8/8 and
   actual worker suite 12 passed / one Windows skip under UID 1000, read-only
   root, bounded runtime tmpfs, dropped capabilities/default seccomp and Docker
   init. No-init orphan zombie failure is retained; init/reaping is an explicit
   deployment requirement. This is separate from the production service image,
-  linked Linux RDP/devices and resource/soak acceptance. [Evidence](docs/ITERATION_185.md).
+  linked Linux RDP/devices and resource/soak acceptance. [Evidence](docs/history/iterations/151-200.md#iteration-185).
 - [x] DONE — Linux amd64 non-root multi-stage API/native artifact runtime.
   UID1000, production JS/dependency closure, private worker, actual HTTP/build /
   auth refusal and synthetic host/native lifecycle pass with primary IPC.
   Upstream source/fresh-checkout/distro builds and CI execution remain separate
-  open gates. [Deployment](docs/CONTAINER_RUNTIME.md), [evidence](docs/ITERATION_211.md).
+  open gates. [Deployment](docs/CONTAINER_RUNTIME.md), [evidence](docs/history/iterations/201-250.md#iteration-211).
 - [x] DONE — Read-only-root/init/cap-drop/no-new-privileges deployment example
   with bounded private runtime tmpfs passes the actual service fixture. Additional
-  device mappings and broader load/resource acceptance remain open. [Evidence](docs/ITERATION_211.md).
+  device mappings and broader load/resource acceptance remain open. [Evidence](docs/history/iterations/201-250.md#iteration-211).
 - [x] DONE for documentation — Optional USB/DRI/serial/PCSC mapping reference
   records explicit nodes/socket directory, host permissions, numeric groups,
   retained non-root runtime restrictions and current public-device refusal.
   All 31 local links and reference-shell syntax pass; no device mapping is
   executed or accepted as supported. Stage 8/device/hotplug/isolation gates
   remain open. [Reference](docs/CONTAINER_DEVICE_MAPPINGS.md),
-  [verification](docs/ITERATION_290.md); `63b980e`.
+  [verification](docs/history/iterations/251-300.md#iteration-290); `63b980e`.
 - [ ] seccomp/AppArmor recommendation and tested baseline profile if feasible.
 - [~] Resource watchdogs and cleanup on abnormal exit — Optional trusted-host
   sampled worker RSS policy now fails an owned child on an observed cap breach
@@ -2289,7 +2369,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   collects 969 paired samples with no active failures but three retirement
   IPC timeouts; earlier active query-deadline failures remain retained. This
   instrumentation does not close the load/retirement requirement or change
-  its bounds. [Measured phases](docs/ITERATION_375.md).
+  its bounds. [Measured phases](docs/history/iterations/351-400.md#iteration-375).
   The full repeat still fails this load case (821 passed / 51 skips / one
   failure): twelve active resource-deadline failures, up to 149 ms synchronous
   invocation and 1,466 ms admission/continuation. No load correction is claimed.
@@ -2298,7 +2378,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   admission/query deadlines. Controlled observer/expiry checks and the first
   unchanged Windows capacity control pass; the 2,949 ms maximum query remains
   near its 3,000 ms bound. Wider load/retirement stability remains open.
-  [Scheduling evidence](docs/ITERATION_376.md).
+  [Scheduling evidence](docs/history/iterations/351-400.md#iteration-376).
   Full check still fails that resource sampling case: 825 passed / 51 skips /
   one failure, two active query expiries at up to 3,057 ms despite event-loop
   delay reduced to 372 ms. Helper launch volume/query headroom remains open.
@@ -2307,28 +2387,28 @@ profile's target, microphone, recovery, resource or platform acceptance.
   14/14. Current watchdogs remain scalar; automatic coalescing, individual
   cancellation/shared retirement, shared 16/128 admission and native-support
   gating remain required before adoption or any load-fix acceptance.
-  [Prepared batch evidence](docs/ITERATION_377.md).
+  [Prepared batch evidence](docs/history/iterations/351-400.md#iteration-377).
   The new profile's full check passes 832 / 51 skips and retains one failing
   scalar-watchdog capacity case, with two active deadline failures. Batch
   command availability alone is not a throughput/adoption acceptance result.
-  [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/ITERATION_296.md); `6752257`.
+  [Contract](docs/WORKER_MEMORY_POLICY.md), [evidence](docs/history/iterations/251-300.md#iteration-296); `6752257`.
   A subsequent short Windows actual RDP 1080p healthy-policy smoke passes
   26 connected samples below the explicit 256 MiB cap, heartbeat/JPEG and joined
   empty-runtime close. This does not accept total-session/CPU, connected faults,
-  Linux connected or sustained budgets. [Evidence](docs/ITERATION_298.md).
+  Linux connected or sustained budgets. [Evidence](docs/history/iterations/251-300.md#iteration-298).
   Connected smoke helper commit: `be3ee69`.
   A separate optional Windows CPU policy now passes healthy unconnected native
   sampling and synthetic limit/fault/lifetime compositions. Actual overload,
   connected/total-session CPU, Linux CPU and production-helper adoption remain
-  open. [Scoped CPU evidence](docs/ITERATION_306.md).
+  open. [Scoped CPU evidence](docs/history/iterations/301-350.md#iteration-306).
   Local Linux CPU queries and the same sampled policy also pass native/Node
   lifecycle and Debug-install checks. Actual overload, production helper,
   connected/total-session, OS-failure and broader platform/soak acceptance remain
-  separate. [Linux CPU extension](docs/ITERATION_308.md).
+  separate. [Linux CPU extension](docs/history/iterations/301-350.md#iteration-308).
   Genuine Windows/Linux CPU-counter breach under bounded native heartbeat load
   now also verifies owned-process cleanup and sibling survival. Connected
   RDP/application/media loads and configured resource-policy concurrency remain
-  separate. [Actual native CPU control](docs/ITERATION_309.md).
+  separate. [Actual native CPU control](docs/history/iterations/301-350.md#iteration-309).
   A later full-suite capacity run has an unexplained resource-query latency
   spike and worker failures; an unchanged standalone control and full repeat
   pass, but the repeat still records unclassified IPC timeouts. Original logs
@@ -2338,8 +2418,8 @@ profile's target, microphone, recovery, resource or platform acceptance.
   control now proves RSS/CPU samples that return after a three-second deadline
   during a 3.1-second event-loop stall fail closed across separate and paired
   Windows queries; the original capacity-failure cause and wider load/OS timing
-  acceptance remain open. [Original evidence](docs/ITERATION_327.md),
-  [diagnostics](docs/ITERATION_328.md).
+  acceptance remain open. [Original evidence](docs/history/iterations/301-350.md#iteration-327),
+  [diagnostics](docs/history/iterations/301-350.md#iteration-328).
 - [x] DONE for worker resource-query deadline enforcement under event-loop
   stalls — Absolute monotonic expiry checks prevent late RSS/CPU values from
   reviving an expired query for separate policies, paired Windows policies and
@@ -2347,7 +2427,7 @@ profile's target, microphone, recovery, resource or platform acceptance.
   pass after; Windows resource focus 25/25, full Node 740 passed / 101
   platform/profile skips and CTest 33/33 pass. This does not identify the
   earlier capacity spike's root cause or prove hard OS close, Linux, connected
-  fault, total-session or soak bounds. [Evidence](docs/ITERATION_329.md).
+  fault, total-session or soak bounds. [Evidence](docs/history/iterations/301-350.md#iteration-329).
 - [ ] 5–10% packet-loss/latency backpressure test.
 - [ ] 30+ concurrent idle session soak (environment permitting).
 - [ ] 4+ simultaneous active media session soak.
@@ -2359,8 +2439,8 @@ profile's target, microphone, recovery, resource or platform acceptance.
   for the authorized lab password in UTF8/UTF16LE, with boundary/size tests.
   The Windows native/SBOM ZIPs also pass the same known-value scan. This is a
   regression gate, not discovery of arbitrary unknown credentials.
-  [Log evidence](docs/ITERATION_216.md), [Linux scope/evidence](docs/ITERATION_217.md),
-  [Windows scope/evidence](docs/ITERATION_221.md).
+  [Log evidence](docs/history/iterations/201-250.md#iteration-216), [Linux scope/evidence](docs/history/iterations/201-250.md#iteration-217),
+  [Windows scope/evidence](docs/history/iterations/201-250.md#iteration-221).
 - [~] IN PROGRESS — Linux application/native artifact SPDX 2.3 collection is
   generated and root-schema validated: actual Node graph, native versions/source,
   13 original vcpkg documents, 101 runtime files and exact artifact hashes.
@@ -2371,18 +2451,18 @@ profile's target, microphone, recovery, resource or platform acceptance.
   ZIP inventory now binds 24 runtime files, seven vcpkg companions and eight
   packaged CRT version resources. Complete embedded Node/native edges and licensing /
   vulnerability review remain open.
-  [Contract](docs/SBOM.md), [Linux evidence](docs/ITERATION_214.md),
-  [Windows native evidence](docs/ITERATION_221.md).
+  [Contract](docs/SBOM.md), [Linux evidence](docs/history/iterations/201-250.md#iteration-214),
+  [Windows native evidence](docs/history/iterations/201-250.md#iteration-221).
   New corrected Windows/Linux artifacts additionally bind the approved DSP
   correction to two exact metadata/recipe files and GENERATED_FROM edges;
   independent artifact-only generation and full platform Node suites pass.
-  [Correction provenance](docs/ITERATION_270.md).
+  [Correction provenance](docs/history/iterations/251-300.md#iteration-270).
 - [ ] Performance report against `PERFORMANCE.md` metrics.
 - [x] DONE for a fresh local synthetic 1080p H.264 encode sample — Three
   existing-binary runs record total/convert/compress p95 and encoded bytes at
   1/2/4 threads. Four-thread encode p95 is 33.730–39.882 ms in these samples;
   forwarding, queue, browser, CPU/RSS and soak measurements remain outside this
-  result, so the full report item above stays open. [Evidence](docs/ITERATION_331.md).
+  result, so the full report item above stays open. [Evidence](docs/history/iterations/301-350.md#iteration-331).
 - [ ] Full Windows + XRDP regression.
 
 **Gate:** release candidate v1.0.0.
@@ -2412,63 +2492,63 @@ remains open; they are not additional independent release stages.
   guarded negotiation/capture ownership. Four public cases / 30 assertions and
   two actual linked AUDIN/fake-DVC cases / 61 assertions pass; linked DVC 147 /
   7,909 and bundled CTest 21/21 pass. Actual microphone/core/pool/RSS/CPU/platform/
-  fuzz/soak gates remain open. [Iteration 169](docs/ITERATION_169.md).
+  fuzz/soak gates remain open. [Iteration 169](docs/history/iterations/151-200.md#iteration-169).
 
 - [~] IN PROGRESS — Exact audio DVC name now selects 64 KiB message/output /
   128 KiB encoded admission before host assembly/decompression and complete
   RDPSND validation before pool copying. Eight public/actual-linked-fake-SVC
   cases / 120 assertions, linked DVC 143 cases / 7,879 assertions and bundled
   CTest 21/21 pass. Pool/RSS/core/remote/platform/fuzz/soak remain open.
-  [Iteration 168](docs/ITERATION_168.md).
+  [Iteration 168](docs/history/iterations/151-200.md#iteration-168).
 
 - [~] IN PROGRESS — Production static RDPSND receive placement now checks
   complete bounded records before SDK pool/assembly/parser, including audio-off
   fake fallback. Eight public/actual-linked-fake-SVC cases / 189 assertions,
   linked DVC 135 cases / 7,759 assertions and bundled CTest 21/21 pass. Dynamic
   audio, core/pool/RSS/remote/platform/fuzz/soak gates remain open.
-  [Iteration 167](docs/ITERATION_167.md).
+  [Iteration 167](docs/history/iterations/151-200.md#iteration-167).
 
 - [~] IN PROGRESS — Isolated complete RDPSND owner composes fixed 64 KiB /
   4,096-fragment assembly and bounded PDU validation with one nonrenewing deadline
   over fragments and legacy WaveInfo/Wave. Nine portable cases / 8,358 assertions,
   foundation CTest 9/9 and bundled 21/21 pass. Automatic audio-off fake fallback
   placement, core/pool/remote/platform/fuzz/soak gates remain open; no worker
-  callback is installed by this block. [Iteration 166](docs/ITERATION_166.md).
+  callback is installed by this block. [Iteration 166](docs/history/iterations/151-200.md#iteration-166).
 
 - [~] IN PROGRESS — Production Graphics completion now owns bounded decoded
   batch inspection before original metadata parsing, preserves pending-close
   borrows and consumes zero-output messages before the pinned null-buffer
   assertion. Public binding and actual rdpgfx/drdynvc/fake-SVC counter/lifetime
   cases pass. Large literal CPU, total RSS, multiple-channel/remote/platform /
-  allocator/fuzzer/soak remain open. [Iteration 165](docs/ITERATION_165.md).
+  allocator/fuzzer/soak remain open. [Iteration 165](docs/history/iterations/151-200.md#iteration-165).
 
 - [~] IN PROGRESS — Isolated owner now decodes bounded ZGFX through public APIs,
   inspects each PDU before target metadata parsing and forwards only inspected
   literal segments with independent dictionary/borrow/retirement ownership.
   Nine native cases and actual SDK AVC/large-literal cost measurements pass;
   production placement, large-batch CPU, codec/RSS/remote/platform/soak remain
-  open. [Iteration 164](docs/ITERATION_164.md).
+  open. [Iteration 164](docs/history/iterations/151-200.md#iteration-164).
 
 - [~] IN PROGRESS — Scoped DVC selection now distinguishes bare dynamic plugin
   requests from subsystem/type backend ABIs sharing the DYNAMIC flag. This fixes
   actual XRDP `rdpsnd,sys:fake` Open refusal with browser audio off, preserving
   previous backend policy and strict DVC admission. Six provider cases and
   restored H.264 resize/reattachment pass; fake-backend resource, actual audio,
-  remote GFX/platform/soak gates remain open. [Iteration 163](docs/ITERATION_163.md).
+  remote GFX/platform/soak gates remain open. [Iteration 163](docs/history/iterations/151-200.md#iteration-163).
 
 - [~] IN PROGRESS — Portable decoded GFX batch inspection bounds each PDU before
   array/bitmap count checks, refusing cross-PDU borrowing and excessive AVC420
   metadata. Five portable and one public ZGFX-output cases pass; production
   decoded-message ownership/placement before metadata allocation remains open,
   together with codec/RSS/remote/platform/fuzzer/soak gates.
-  [Iteration 162](docs/ITERATION_162.md).
+  [Iteration 162](docs/history/iterations/151-200.md#iteration-162).
 
 - [~] IN PROGRESS — Allocation-free complete Annex-B SPS/subset-SPS inspection
   now bounds coded dimensions to the public GFX surface before AVC420 decoder
   creation/dispatch. Profiles/scaling/POC/escape/UE and byte/NAL boundaries plus
   actual private SDK prediction/refusal/recovery fixtures cover the new path.
   Total reference/working memory, aggregate surfaces/RSS, remote GFX, platforms,
-  sanitizer/fuzzer and soak gates remain open. [Iteration 161](docs/ITERATION_161.md).
+  sanitizer/fuzzer and soak gates remain open. [Iteration 161](docs/history/iterations/151-200.md#iteration-161).
 
 - [~] IN PROGRESS — Exact public graphics DVC name selects nested ZGFX inspection
   before the codec callback; malformed/excessive output/count claims are refused
@@ -2476,7 +2556,7 @@ remains open; they are not additional independent release stages.
   Six public/codec, one required identity-API and two actual rdpgfx/drdynvc/fake-SVC
   cases pass, including 12 MiB codec output and valid CapsConfirm. Dictionary/
   metadata/codec working memory, pool/total RSS and actual remote/platform/soak
-  gates remain open. [Iteration 160](docs/ITERATION_160.md).
+  gates remain open. [Iteration 160](docs/history/iterations/151-200.md#iteration-160).
 
 - [~] IN PROGRESS — Production synchronous scoped DVC provider now selects the
   bounded public entry/plugin/shared-manager/listener/channel ownership chain.
@@ -2484,7 +2564,7 @@ remains open; they are not additional independent release stages.
   allocation, polls own faults/deadlines and retires callbacks before SDK plugin
   teardown. Five provider fixtures and one actual drdynvc/fake-SVC fixture pass;
   total RSS/pool/nested codec, remote/Windows-server and platform/soak gates remain
-  open. [Iteration 159](docs/ITERATION_159.md).
+  open. [Iteration 159](docs/history/iterations/151-200.md#iteration-159).
 
 - [~] IN PROGRESS — Bounded public DVC entry-point registry captures one pinned
   plugin per entry, publishes stable proxy/name storage after entry success,
@@ -2492,14 +2572,14 @@ remains open; they are not additional independent release stages.
   Failed publication retains an inert late-callback proxy. Seven public/generic
   fixtures and one actual drdynvc/fake-SVC fixture pass; scoped provider/worker,
   allocator-fault and remote aggregate/cached/nested resource gates remain open.
-  [Iteration 158](docs/ITERATION_158.md).
+  [Iteration 158](docs/history/iterations/151-200.md#iteration-158).
 
 - [~] IN PROGRESS — Public DVC plugin lifecycle proxy resolves a shared manager,
   preserves original delegate identity and cleanup notifications, and terminates
   a self-deleting/throwing plugin once without uncertain retry. Six public cases
   and one actual drdynvc/fake-SVC case pass. Production registration/provider,
   shared manager/worker lifetime and remote resource acceptance remain open.
-  [Iteration 157](docs/ITERATION_157.md).
+  [Iteration 157](docs/history/iterations/151-200.md#iteration-157).
 
 - [~] IN PROGRESS — Bounded public DVC listener manager installs accepted callback
   proxies, rejects live duplicate names and slot overflow, defers destruction
@@ -2507,58 +2587,58 @@ remains open; they are not additional independent release stages.
   host unpublication. Actual pinned generic acceptance default is preserved.
   Six public fixtures and one actual drdynvc/fake-SVC fixture pass; production
   addin/plugin/worker and aggregate/cached/nested/remote resource gates remain open.
-  [Iteration 156](docs/ITERATION_156.md).
+  [Iteration 156](docs/history/iterations/151-200.md#iteration-156).
 
 - [~] IN PROGRESS — Public listener factory proxy transfers only explicitly
   accepted live callbacks, preserves ordinary factory refusal, prevents late
   publication on close and keeps uncertain cleanup visible. Seven public-ABI and
   two actual drdynvc/fake-SVC cases pass; production provider/host lifetime,
   aggregate/cached/nested/remote resource acceptance remain open.
-  [Iteration 155](docs/ITERATION_155.md).
+  [Iteration 155](docs/history/iterations/151-200.md#iteration-155).
 
 - [~] IN PROGRESS — Accepted DVC callback handoff closes rejected new targets once,
   preserves separate uncertain cleanup status and refuses shared live callback
   aliases without closing the existing owner. Five fixtures and two actual
   drdynvc/fake-SVC cases pass; production listener/provider handoff and aggregate/
-  cached/nested/remote resource acceptance remain open. [Iteration 154](docs/ITERATION_154.md).
+  cached/nested/remote resource acceptance remain open. [Iteration 154](docs/history/iterations/151-200.md#iteration-154).
 
 - [~] IN PROGRESS — Pinned public manager facade normalizes failed CreateListener
   output to stable fallback without touching a potentially freed native pointer;
   actual generic addin and successful drdynvc/fake-SVC fixtures pass. Production
   provider placement, partial/failed handoff and actual allocator-failure resource
-  acceptance remain open. [Iteration 153](docs/ITERATION_153.md).
+  acceptance remain open. [Iteration 153](docs/history/iterations/151-200.md#iteration-153).
 
 - [~] IN PROGRESS — Fixed public DVC ID/callback registry reserves DATA_FIRST only
   for registered live channels, retains rejected-target caller ownership and joins
   callback retirement. Seven public-ABI and five actual drdynvc/fake-SVC cases
   pass; production addin/listener handoff, aggregate admission and pool/nested
-  memory/resource acceptance remain open. [Iteration 152](docs/ITERATION_152.md).
+  memory/resource acceptance remain open. [Iteration 152](docs/history/iterations/151-200.md#iteration-152).
 
 - [~] IN PROGRESS — Public DVC completion/close proxy preserves callback borrow,
   defers nested close, joins retirement and releases DATA_FIRST reservations only
   after actual callback return or host close. Eight public-ABI and five actual
   drdynvc/fake-SVC cases pass. Production registration, cumulative admission and
-  pool/nested memory acceptance remain open. [Iteration 151](docs/ITERATION_151.md).
+  pool/nested memory acceptance remain open. [Iteration 151](docs/history/iterations/151-200.md#iteration-151).
 
 - [~] IN PROGRESS — Allocation-free cumulative DATA_FIRST reservation foundation
   has fixed 32 slots / 64 MiB aggregate / 16 MiB individual hard caps, original
   deadlines and observed release. Five portable cases and two public WinPR pool
   fixtures pass. Not active in worker: public completion/close wiring, host
   retirement, channel and retained-pool/nested memory limits remain open.
-  [Iteration 150](docs/ITERATION_150.md).
+  [Iteration 150](docs/history/iterations/101-150.md#iteration-150).
 
 - [~] IN PROGRESS — Worker public receive admission now bounds individual outer
   SVC, DATA_FIRST and compressed-DVC claims before pinned host dispatch. Six
   actual-linked drdynvc/fake-SVC cases include compressed decoding, 12 MiB input,
   two logical channels and partial shutdown; RDP-thread polling and callback
   restoration are implemented. Cumulative/pool/nested resource and actual
-  hostile/lost-transport acceptance remain open. [Iteration 149](docs/ITERATION_149.md).
+  hostile/lost-transport acceptance remain open. [Iteration 149](docs/history/iterations/101-150.md#iteration-149).
 
 - [~] IN PROGRESS — Public ReceiveChannelData adapter normalizes only complete
   inspected drdynvc input, preserves other SVC arguments and validates raw flags,
   notifications, channel-ID lifetime and callback retirement. Seven linked public
   ABI fixture cases pass; actual host/worker activation and remote resource
-  acceptance remain open. [Iteration 148](docs/ITERATION_148.md).
+  acceptance remain open. [Iteration 148](docs/history/iterations/101-150.md#iteration-148).
 
 - [~] IN PROGRESS — One bounded outer drdynvc SVC message owner now validates
   total before staging allocation and inner claims before synchronous forwarding.
@@ -2566,14 +2646,14 @@ remains open; they are not additional independent release stages.
   cleanup checks pass portable and linked-codec regression. No production receive
   callback is installed yet; actual host placement, raw flags, cumulative/channel
   budgets, nested GFX/control/codec and hostile/lost-transport/platform/fuzz/soak
-  gates remain open. [Evidence](docs/ITERATION_147.md). Headers: `6744bff`.
+  gates remain open. [Evidence](docs/history/iterations/101-150.md#iteration-147). Headers: `6744bff`.
 - [~] IN PROGRESS — Allocation-free DVC DATA_FIRST/ZGFX declared-size/count
   inspection and linked public-codec/large-payload fixtures are implemented.
   Limits are independent of touch size and include SDK output padding. This
   foundation is not installed before the actual host yet; outer/cumulative
   admission, public callback/lifetime placement, nested GFX/control/codec
   allocations, concurrent budgets, actual hostile/lost transport, platforms and
-  sanitizer/fuzz/soak acceptance remain open. [Evidence](docs/ITERATION_146.md).
+  sanitizer/fuzz/soak acceptance remain open. [Evidence](docs/history/iterations/101-150.md#iteration-146).
 - [ ] No new secret in logs/argv/env.
 - [ ] No unbounded queue introduced.
 - [ ] Public protocol change is versioned/documented.
@@ -2591,17 +2671,17 @@ remains open; they are not additional independent release stages.
 - [x] DONE on Windows (component) — Atomic native private-directory creation:
   protected current-user/LocalSystem inheritable ACLs, bounded metadata and
   unchanged existing objects. Five actual filesystem cases / 91 assertions.
-  [Iteration 170](docs/ITERATION_170.md); `8aaa379`.
+  [Iteration 170](docs/history/iterations/151-200.md#iteration-170); `8aaa379`.
 - [x] DONE on Windows (component) — Colocated helper packaging/discovery:
   three actual process cases and explicit relocated execution with minimal PATH.
-  [Iteration 171](docs/ITERATION_171.md); `5c75f26`.
+  [Iteration 171](docs/history/iterations/151-200.md#iteration-171); `5c75f26`.
 - [~] IN PROGRESS — Windows runtime ACL/multi-user isolation acceptance:
   Node now selects the helper before marker/worker spawn and joins normal startup
   cancellation/confirmed cleanup. Trusted root/parent validation, uncertain
   bootstrap outcome reclamation, other filesystems and actual second-account/
   service isolation remain open. Traces to ARCHITECTURE §2 and SECURITY §2/6.
   [Startup contract](docs/WINDOWS_DIRECTORY_STARTUP.md),
-  [iteration 172](docs/ITERATION_172.md); `2e30d14`.
-- [ ] TODO — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Normal close, worker-only crash and parent-only death are verified; simultaneous hard kill is not. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup.
-- [~] IN PROGRESS — Registry retains capacity through native forced-termination completion with a separate bounded deadline; filesystem/HELLO cancellation guards prevent late spawn/readiness. Unconfirmed cleanup now keeps global/per-principal capacity after logical close and wait expiry, releasing only on trusted graceful/forced completion. Synthetic fault cases and an actual unconnected native delayed-completion/replacement case pass; Windows foundation Node 835 / 102 skips and CTest 17/17 pass. Physical uncertain-resource reclamation, legacy backend adoption, OS/filesystem failures, connected faults and orphan acceptance remain open. [Current evidence](docs/ITERATION_384.md), [earlier completion contract](docs/ITERATION_056.md). Observed race: [iteration 55](docs/ITERATION_055.md), `46245b2`.
-- [~] IN PROGRESS — Package worker + exact FreeRDP/WinPR/runtime dependencies for Windows x64 and Linux x64 without requiring a system FreeRDP install. Windows native ZIP and relocation are verified; [manual bundled CI](.github/workflows/bundled-native.yml) is prepared, not run. Linux, Node.js distribution, MSI/EXE/DEB/RPM installer integration and clean-machine tests remain open.
+  [iteration 172](docs/history/iterations/151-200.md#iteration-172); `2e30d14`.
+- [~] IN PROGRESS — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Verified schema-1 metadata-only directories now pass actual simultaneous hard-kill recovery, parent-only cleanup, surviving-worker/live-owner preservation, foreign-UID refusal and bounded SDK cancellation on Windows/Linux. Windows supervisor and Windows/Linux portable restart/startup checks pass. Legacy/unknown contents remain protected; new-version installed upgrades and release acceptance remain open. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup. [Contract and current evidence](docs/RUNTIME_RECOVERY.md#acceptance).
+- [~] IN PROGRESS — Registry retains capacity through native forced-termination completion with a separate bounded deadline; filesystem/HELLO cancellation guards prevent late spawn/readiness. Unconfirmed cleanup now keeps global/per-principal capacity after logical close and wait expiry, releasing only on trusted graceful/forced completion. Synthetic fault cases and an actual unconnected native delayed-completion/replacement case pass; Windows foundation Node 835 / 102 skips and CTest 17/17 pass. Physical uncertain-resource reclamation, legacy backend adoption, OS/filesystem failures, connected faults and orphan acceptance remain open. [Current evidence](docs/history/iterations/351-400.md#iteration-384), [earlier completion contract](docs/history/iterations/051-100.md#iteration-056). Observed race: [iteration 55](docs/history/iterations/051-100.md#iteration-055), `46245b2`.
+- [~] IN PROGRESS overall; named 0.2.5 distributions accepted — Exact Windows x64/Linux x64 npm runtimes include private FreeRDP/WinPR dependencies. Standalone adds private Node.js, portable ZIP/TGZ and MSI/DEB/RPM, with successful public main-push CI, native lifecycle, version upgrades and final public-file installation on Windows Server 2025, Ubuntu 24.04, Astra 1.7.5 and RED OS 7.3. [Public acceptance](docs/ITERATION_457.md), [local scope](docs/ITERATION_455.md). The earlier Windows ZIP/manual-CI-only checkpoint is superseded. Original broader clean-machine/OS coverage and a separate EXE format remain unaccepted; named distribution acceptance does not complete all Stage 12 requirements.

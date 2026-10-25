@@ -48,7 +48,7 @@ Verified restored XRDP compatibility: actual Edge H.264/JPEG resize/restoration,
 cursor/display reattachment, RDPEI readiness without touch, and selected Opus
 input waiting without physical capture or sample transmission. Full bundled Node
 498/498, foundation CTest 7/7 and native relocation 1/1 pass.
-[Current evidence](ITERATION_149.md). Windows-server/actual GFX and resource gates
+[Current evidence](history/iterations/101-150.md#iteration-149). Windows-server/actual GFX and resource gates
 listed above remain open.
 
 Iteration 150 adds the [cumulative declaration foundation](DVC_MESSAGE_BUDGET.md)

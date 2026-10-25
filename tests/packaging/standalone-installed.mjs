@@ -9,6 +9,10 @@ import { readFile, writeFile, access, readdir, lstat } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
 import { readStandalonePayloadFile } from '../../scripts/standalone/payload.mjs';
+import {
+  isReleaseVersion,
+  compareReleaseVersions,
+} from '../../scripts/github-delivery/manifest.mjs';
 
 const ownedRedOs =
   process.platform === 'linux' &&
@@ -43,13 +47,10 @@ if (ownedLinux) {
 const windows = process.platform === 'win32';
 const build = JSON.parse(await readFile('build/standalone-ci.json', 'utf8'));
 assert.equal(build.prototypeOnly, true);
-assert.match(build.version, /^0\.2\.[0-9]{1,6}$/);
+assert.ok(isReleaseVersion(build.version));
 if (build.previous) {
-  assert.match(build.previous.version, /^0\.2\.[0-9]{1,6}$/);
-  assert.ok(
-    Number(build.previous.version.split('.')[2]) <
-      Number(build.version.split('.')[2]),
-  );
+  assert.ok(isReleaseVersion(build.previous.version));
+  assert.ok(compareReleaseVersions(build.previous.version, build.version) < 0);
   assert.match(build.previous.sha256, /^[a-f0-9]{64}$/);
   const previous = await readStandalonePayloadFile(
     build.previous.output,

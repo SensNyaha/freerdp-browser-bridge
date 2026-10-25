@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { productVersion } from './product-version.mjs';
 import { copyNativePackageSources } from './native-package-sources.mjs';
 import { checkNpmArchiveReadme } from './npm-readme.mjs';
+import { selectRuntimeCohort } from '../packages/node-bridge/dist/runtime-cohort.js';
 import {
   nativeRuntimePackageName,
   parseNativeRuntimeManifest,
@@ -138,6 +139,8 @@ async function main() {
     info.arch !== 'x64'
   )
     refuse();
+  phase = 'installed-runtime-cohort';
+  if (!(await selectRuntimeCohort(join(stage, 'bin', executable)))) refuse();
   phase = 'source-probe';
   const probe = run(
     join(
@@ -242,6 +245,8 @@ async function main() {
                 'freerdp-bridge-worker': 'runtime/bin/rdp-worker',
                 'freerdp-bridge-process-query': 'runtime/bin/rdp-process-query',
                 'freerdp-bridge-runtime-check': 'runtime/bin/rdp-runtime-check',
+                'freerdp-bridge-runtime-recovery':
+                  'runtime/bin/rdp-runtime-recovery',
               },
             }
           : {}),
@@ -293,6 +298,8 @@ async function main() {
   // Verify the flattened npm payload's relocation, with no library-path override.
   phase = 'relocation';
   const relocated = join(root, 'runtime');
+  if (!(await selectRuntimeCohort(join(relocated, 'bin', executable))))
+    refuse();
   const output = run(
     join(
       relocated,

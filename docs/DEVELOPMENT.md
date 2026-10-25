@@ -1,7 +1,119 @@
 # Building the foundation
 
+For current installation, architecture and release reading paths start with the
+[documentation map](README.md). Historical lab commands below retain their
+one-run authorizations and original scope; they are not permission to repeat
+remote tests. Cleanup removes obsolete native build outputs after saving their
+receipts ([record](ITERATION_458.md)). In a new test use a fresh verified linked
+receipt for that source/version; an archived receipt cannot make a removed
+worker executable available again.
+
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
+
+## Current functional work
+
+The current Stage 1 recovery feature is being completed before HTML clipboard.
+`release/0.3.0` contains its candidate corrections and exact archive pins through
+`915ac0c`; it is not merged or published stable. Current full linked checks pass
+Windows **1044/70 skips** and Linux **1024/92 skips**, zero failures; fresh native
+CTest passes **38/39**. Exact consumers pass on both OSes, Windows portable and
+all four actual Windows-to-Astra/RED OS desktop profiles pass. Installer CI
+`40185826696` now passes Windows/Ubuntu upgrades from 0.2.5 and combined artifact
+verification. Named Astra/RED OS installed upgrades and all eight actual desktop
+profiles now pass too. The initial Windows CI marker-owner failure led to the
+token-specific correction, with directory and ACL restrictions preserved.
+Source CI now succeeds, including the unchanged Windows browser case after
+one repeat of its timed-out job. All ten archives are frozen after exact
+audits/dry-runs. Merge/tag and real publication are next.
+[Current evidence](RUNTIME_RECOVERY.md#030-local-release-acceptance). Earlier checkpoints
+below retain their original evidence scope and do not override this status.
+
+Development continues in `feature/stage1-runtime-isolation` from shared
+`master`. The original eight Stage 0 tasks and its clean-build/version gate
+already have accepted release-profile evidence in
+[0.2.5 delivery](ITERATION_457.md). The expanded sanitizer matrix continues in
+the separate `feature/stage0-sanitizer-matrix` branch; its pending Node/addon and
+broader dependency results are retained, not treated as successful acceptance.
+
+The corrected hosted Node-ASan build in run `40113778793` now succeeds. Its
+next standalone-Node baseline fails before any bridge addon is loaded:
+LeakSanitizer reports 24 bytes allocated by Node's bundled OpenSSL
+`ossl_load_builtin_compressions`. The identity control exits 1; addon checks are
+skipped and remain unaccepted. This is a failure boundary, not an approved
+suppression or a claim that bridge sanitizer checks passed. The original JSON
+and diagnostic are retained as
+`build/current-validation/github-node-sanitizer-baseline.{json,stderr.log}`;
+the independent local Node build also finished successfully. Its automatic
+acceptance then failed the same standalone-Node baseline with a 24-byte
+OpenSSL leak before loading the bridge addon. Local evidence is
+`build/current-validation/node-addon/instrumented-node/node-sanitizer-baseline.{json,stderr.log}`;
+the addon matrix remains unaccepted. No suppression was added.
+
+The first Stage 1 change rejects unsafe Linux runtime roots before session
+creation: foreign service UID, group/other write permission, or a root symlink.
+It never changes an existing directory's owner/mode. Native runtime and wire
+contracts are unchanged. The host still supplies trusted ancestors; this does
+not close simultaneous hard-kill recovery or the whole multi-user isolation
+gate. [Host boundary](../SECURITY.md#2-worker-sandbox).
+
+Five actual Linux admission cases pass without skips under UID1000, including
+a real UID1001 root; four fail before the change. A real unchanged foundation
+worker passes HELLO/heartbeat/shutdown and leaves an empty safe 0750 runtime
+root with its original mode. Evidence is under
+`build/current-validation/runtime-root-{before,after,native}.log` and
+`runtime-root-acceptance.json`. Strict TypeScript, lint and formatting pass.
+Unchanged native CTest passes **36/36**; Windows worker/private-directory
+integration passes **22/22**, including 100 actual sequential workers and
+parent-death cleanup. Product version is
+still 0.2.5 during development; choose the next version only for accepted work.
+
+The SDK now verifies a bounded worker/helper manifest, selects managed session
+names, keeps independent Node ownership through joined retirement and exposes
+bounded `recoverRuntimeSessions` through all four adapters. Only known metadata
+in confirmed orphan directories can be removed; live owners, locked workers,
+foreign UID/unsafe ACLs, links and unknown contents are preserved.
+
+The current revision passes fresh linked MSVC CTest **38/38**, full Windows
+`pnpm check` **1036 / 70 skips / 0 failures**, Linux GCC12 ASan/UBSan foundation
+**22/22** and all SDK/process controls **27/27** without skips under UID1000 and
+zero effective capabilities, including a real UID1001 root. The current helper
+also compiles/links and runs its refusal path with exact GCC 8.3.0. Prior native
+and endpoint-only results remain in [Runtime recovery](RUNTIME_RECOVERY.md).
+`runtime-recovery-sdk-acceptance.json` under `build/current-validation` binds
+the unchanged native source snapshot and current JS to these results.
+Standalone calls recovery before listening. Actual Windows supervisor checks
+now pass **9/9**, portable ZIP acceptance **1/1**, service-host CTest **1/1** and
+full Windows check **1036/70 skips/0 failures**. The host now admits the bounded
+recovery report before READY and leaves schema-1 orphan directories for the
+verified SDK helper. The isolated development ZIP is not a published 0.2.5
+replacement. Linux portable now also passes actual orphan recovery before
+readiness, JWT/HTTP/native TLS and joined shutdown under UID1000. The current
+GCC 8.3 linked build passes CTest **39/39** and SDK/recovery **27/27**; a fresh
+Windows build passes CTest **38/38**. Installed bundle relocation passes on both
+OSes without a library-path override. An actual Linux startup failure exposed
+pre-install hashes surviving ELF RPATH replacement; installation now regenerates
+the recovery manifest from final bytes, and npm packaging verifies the cohort
+before creating an archive. Final Windows regression passes **1036/70 skips/0
+failures**; CPack's actual native TGZ also has matching installed cohort hashes.
+Installed upgrades, release
+versioning, merge and publication remain open;
+[evidence and limits](RUNTIME_RECOVERY.md#acceptance).
+
+The final helper-owner correction retains a four-child physical limit even
+after an unconfirmed close deadline; `exit` alone cannot free capacity. Its
+failing-before/passing-after model and actual recovery checks pass. Updated full
+`pnpm check` passes Windows **1037/70 skips/0 failures** and Linux **1017/92
+skips/0 failures**, using the exact GCC 8.3 linked worker under UID1000. The
+initial clean Linux source fixture omitted an empty scratch `build/` directory;
+all eleven resulting path failures pass after fixture setup, without changing
+test conditions. New-version installed upgrades, merge and publication remain
+open.
+
+Latest user priority: finish this Stage 1 recovery feature and its accepted
+delivery before starting HTML clipboard. The empty HTML branch/worktree was
+removed without code changes. Existing broader isolation and sanitizer gates
+remain explicit; no original stage is closed by a component-only check.
 
 Feature workflow (user instruction, 2026-10-21): start each feature on a separate
 branch from the shared `master`, keep its acceptance criteria/evidence with the
@@ -9,6 +121,30 @@ change, and make focused commits there. Run narrow checks, relevant regression
 and actual RDP/device acceptance where required. Merge the completed feature
 into `master` only after those checks pass; unfinished work stays on its branch.
 This workflow does not mark an entire V1 stage complete after one component.
+
+Fetch-backed loopback tests use `tests/fixtures/browser-port.mjs` to select
+49152–65535 with bounded collision retries. Some hosts allocate `listen(0)`
+from a low range containing ports such as 2049, which Node Fetch rejects before
+opening a connection. HTTP/Express/NestJS fixtures, copied npm consumers and
+standalone web-port reservations therefore use the same helper. Generated
+consumer projects must copy it next to their other local fixtures and rewrite
+its import, preserving their independence from the source checkout. The port
+unit test demonstrates the actual Fetch refusal and a reachable selected port.
+The port-fixture correction passes full Windows `pnpm check` **1006 / 63 skips /
+0 failures**, all four fresh public npm 0.2.5 consumers (strict TypeScript and
+native TLS), and the relocated Windows portable/private-Node shutdown test.
+Its five temporary consumer/portable trees were removed after saving receipts
+under `build/current-validation`; accepted release archives were preserved.
+
+Certificate-wait resource fixtures await the session's actual
+`certificate.prompt` event before taking an attachment's certificate snapshot.
+The preceding `awaiting-user` state is a separate IPC message and can arrive
+first. The combined sanitizer-branch check exposed this race at `assert.ok(prompt)`
+(1013 passed / 64 skipped / one failed); the failed report is retained under
+`build/current-validation/certificate-race-check`. After correcting the event
+wait, five consecutive native RSS/certificate runs and all nine related
+native TLS/HTTP/WS checks pass without skips. The original deadlines and memory
+policy assertions remain in the test.
 
 For the user-authorized local Linux RDP container, use the
 [owned XRDP stand](OWNED_XRDP_LAB.md). Its separate fixed loopback profile keeps
@@ -66,8 +202,8 @@ is observed for at most 3 seconds and still counts toward total sample loss.
 It captures no failure screenshots. A failed run may leave its test document;
 the finite tone ends itself or the user can stop it with Ctrl+C. Numeric results
 do not replace the user's listening assessment. The named complete real joint
-gate passes in [403](ITERATION_403.md); the earlier failed run remains recorded
-in [402](ITERATION_402.md). New compiler/profile regressions retain their own
+gate passes in [403](history/iterations/401-450.md#iteration-403); the earlier failed run remains recorded
+in [402](history/iterations/401-450.md#iteration-402). New compiler/profile regressions retain their own
 acceptance and do not inherit that result merely by using this helper.
 
 For separately authorized basic mouse/scroll acceptance, copy
@@ -79,7 +215,7 @@ approval for the button/drag/wheel sequence, left-button blur and middle-button
 detach/reattach, F2/Ctrl+C scalar readbacks and the existing optional single
 failure frame. It runs no remote command, does not launch an application, does
 not write a remote document and sends no clipboard offer. Exact scope and actual
-acceptance status are in [the pointer iteration](ITERATION_396.md).
+acceptance status are in [the pointer iteration](history/iterations/351-400.md#iteration-396).
 
 For operator-assisted actual Windows Notepad Unicode/input/clipboard checks,
 use the [application smoke](WINDOWS_APPLICATION_SMOKE.md). It requires an empty
@@ -96,7 +232,7 @@ preparation wizard themselves. [Current status and remaining gates](LAB_STATUS.m
 Core lab `strict` mode succeeds only for exact `RDP_CERTIFICATE_REJECTED` and
 a subsequent native heartbeat. A timeout/authentication error or unexpected
 connection is a failed check. `inspect` is inventory only; `connect`/`memory`
-require a connected/no-error result. [Result-classification evidence](ITERATION_299.md).
+require a connected/no-error result. [Result-classification evidence](history/iterations/251-300.md#iteration-299).
 
 With the current built Node package, existing bundled worker and ignored
 authorized lab files, use the previously approved exact fingerprint:
@@ -111,7 +247,7 @@ frame, heartbeat and empty-runtime cleanup. It records only count/peak scalars
 and sends no remote input, audio generation or physical capture. It does not
 stress memory or prove the whole-session target, CPU, hard allocation limits
 or sustained acceptance. Ordinary modes and Release defaults remain unchanged.
-[Host policy](WORKER_MEMORY_POLICY.md), [evidence](ITERATION_298.md).
+[Host policy](WORKER_MEMORY_POLICY.md), [evidence](history/iterations/251-300.md#iteration-298).
 
 ## Private clipboard lab probe
 
@@ -239,7 +375,7 @@ build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20
 
 The pinned FreeRDP source metadata is native/dependencies.json. The bundled development profile
 links exact FreeRDP/WinPR 3.32.1 and provides an experimental native connection core.
-See [connection contract](CONNECTION_CORE.md) and [XRDP evidence](ITERATION_004.md).
+See [connection contract](CONNECTION_CORE.md) and [XRDP evidence](history/iterations/001-050.md#iteration-004).
 Usable browser RDP remains false. Foundation defaults to BRIDGE_WITH_FREERDP=OFF explicitly.
 
 The Windows test machine originally had Node.js 22. A SHA-256 verified portable Node.js
@@ -447,7 +583,7 @@ Reports in `.local-tests/xrdp-microphone-<mode>-report.json` contain only bounde
 scalar inventory. Waiting/epoch 0 is not ready capture, permission, remote
 application, audible or latency acceptance. Historical iteration 115 public
 creation gating is superseded by explicit PCM selection in iteration 128.
-[Actual evidence](ITERATION_115.md).
+[Actual evidence](history/iterations/101-150.md#iteration-115).
 
 ## Explicit native/browser microphone viewer
 
@@ -474,7 +610,7 @@ reload. Other manual input follows the existing explicitly manual viewer rules.
 Automated `--microphone-test` verifies H.264/source replay and cleanup with the
 existing motion/reset-only guard. It never clicks microphone enable and replaces
 getUserMedia with a rejecting sentinel, preventing physical capture even on an
-unexpected startup. [Evidence and remaining acceptance](ITERATION_128.md).
+unexpected startup. [Evidence and remaining acceptance](history/iterations/101-150.md#iteration-128).
 
 ## Explicit Opus microphone input
 
@@ -526,13 +662,13 @@ every 30 seconds, then checks resize/restoration and cursor/attachment replay.
 It observes graphics with audio off and requests no microphone. Working-set
 measurements use the bundled limited-query helper. Do not rebuild native DLLs or
 run competing timing benchmarks during the observation. A reported failed memory
-budget or interrupted run is not acceptance. [Scope](ITERATION_174.md).
+budget or interrupted run is not acceptance. [Scope](history/iterations/151-200.md#iteration-174).
 
 The separate transport-loss mode uses one loopback relay to the configured lab
 IP, waits for real decoded desktop pixels, then breaks only that test connection.
 It requires an explicit RDP failure, closed viewer and ordinary cleanup. Extra
 peers are refused; no payloads are recorded or device permissions requested.
-Run it after the soak, not during another timing observation. [Verified scope](ITERATION_183.md).
+Run it after the soak, not during another timing observation. [Verified scope](history/iterations/151-200.md#iteration-183).
 
 The private `test-xrdp-audio.mjs $fingerprint pcm` (or `opus`) now observes ten
 seconds of real source data and makes at most one reset attempt while ready.
@@ -541,7 +677,7 @@ It emits scalar counts and a PCM nonzero indicator, never recordings/sample data
 Dedicated lab viewer `--audio-manual` / `--audio-opus-manual` performs the output
 activation button click so certificate approval cannot expire while waiting for
 it. The product viewer retains its gesture gate; this does not request microphone
-permission. Audible quality remains a user check. [Current XRDP corrections](ITERATION_175.md).
+permission. Audible quality remains a user check. [Current XRDP corrections](history/iterations/151-200.md#iteration-175).
 
 ## Explicit 200 ms output compatibility profile
 
@@ -570,12 +706,12 @@ skipped/late publication, revisions, consumer resets and packets) and
 formats and Close). Both are exact fixed uint64 decimal-string projections,
 or `null` if absent. The private helper preserves the same field names with
 omitted absent receipts. These are lifetime counters, not a causal diagnosis
-of a specific audible pause. [Collection checks](ITERATION_368.md).
+of a specific audible pause. [Collection checks](history/iterations/351-400.md#iteration-368).
 `consumerRecovery` separately counts calls and fixed results of the existing
 Node reset API: requests, scheduled/stale/busy/unavailable, unexpected results
 and failures. It never includes epochs or error text. A request can be pending
 or refused; it is not a successful source reset or an audible interruption.
-[Wrapper checks](ITERATION_369.md).
+[Wrapper checks](history/iterations/351-400.md#iteration-369).
 Recovery runs require actual ready-source packet/playback evidence before
 detachment; a waiting source fails in phase `audio-source-ready`, before a
 desktop snapshot is taken. The host source must run in the redirected Windows
@@ -613,7 +749,7 @@ Encode p95 covers the latest 128 encoded frames; mean/max and the other
 counters/maxima cover the worker lifetime. These describe video work, without
 identifying the cause or time of a particular audio pause. They exclude audio
 codec work, event waits, Node/browser processing and end-to-end latency.
-[Collection verification](ITERATION_374.md).
+[Collection verification](history/iterations/351-400.md#iteration-374).
 
 For a separately authorized fixed-source Windows test, use
 `--audio-opus-compat-tone-listen` instead. This opt-in is restricted to the
@@ -627,7 +763,7 @@ Do not connect with `mstsc` concurrently; it can replace the Bridge connection.
 process-readback proof. In this mode `remoteAudioGenerated: null` means that
 the helper cannot independently verify source execution; actual packet/playback
 counters and the operator's listening report provide separate evidence.
-[Named audible result and retained quality gaps](ITERATION_367.md).
+[Named audible result and retained quality gaps](history/iterations/351-400.md#iteration-367).
 
 For user-operated source startup, `--audio-opus-compat-source-listen` (also
 `--audio-opus-compat-tone-soak`, superseding its unverified automatic dispatch) opens a
@@ -647,7 +783,7 @@ an observation budget, not a change to connection/protocol/record deadlines.
 Opus/200 ms, microphone off, the existing counters and joined cleanup remain.
 Ordinary one-minute/45-second modes stay unchanged. This mode requires a
 separately approved connection and user-prepared PowerShell. Source-start
-failures and exact acceptance boundaries are retained in [387](ITERATION_387.md).
+failures and exact acceptance boundaries are retained in [387](history/iterations/351-400.md#iteration-387).
 
 On Windows, append one isolated native receipt after the existing viewer mode
 to select its verified worker/helper pair:
@@ -663,12 +799,12 @@ receipt profiles. Omitting the receipt keeps the ordinary bundled worker;
 explicit selection does not replace it. A schema-1 `lab.browser.native-profile`
 record reports receipt/build type and source/worker/helper hashes, without
 claiming connection or playback. This prepares the corrected Debug worker for
-a separately authorized actual session. [Selection checks](ITERATION_372.md).
+a separately authorized actual session. [Selection checks](history/iterations/351-400.md#iteration-372).
 
 The recovery modes require real active output before and after browser detach/
 reattach, and fail for an idle source. Opus also requires an observed native
 reset result and a fresh epoch. Leave audio playing on the authorized lab; the
-helper does not start remote applications or record audio. [Verified scope](ITERATION_181.md).
+helper does not start remote applications or record audio. [Verified scope](history/iterations/151-200.md#iteration-181).
 
 ## Manual WEB connection example
 
@@ -697,7 +833,7 @@ settings. Do not replace HOME with a project/test directory. Linked Linux
 CTest 20/20, Node 452 passed / 76 skipped, and canonical codec/libudev-context /
 lifecycle relocation 1/1 pass locally. Private ELF closure is enforced before
 CPack; clean-machine and actual Linux RDP/device acceptance remain open.
-[Build evidence](ITERATION_187.md), [closure boundaries](ITERATION_189.md).
+[Build evidence](history/iterations/151-200.md#iteration-187), [closure boundaries](history/iterations/151-200.md#iteration-189).
 
 The actual Linux/XRDP transport helper uses a separately owned Linux lab container
 with the current built source and private dependencies. The host reads ignored
@@ -713,7 +849,7 @@ accepts another certificate. Run modes sequentially. The connected mode requires
 actual JPEG/H.264 and negotiated resize/restoration, writes no desktop images,
 and performs no remote keyboard/mouse, audio generation or microphone capture.
 It is a private native integration check, separate from browser acceptance.
-[Actual evidence](ITERATION_201.md).
+[Actual evidence](history/iterations/201-250.md#iteration-201).
 
 To test a Linux producer with the local Windows Edge consumer, use a separate
 owned container built from the current verified SDK/source, publish its API only
@@ -731,14 +867,14 @@ the bounded Linux server through private stdin, and uses ordinary REST/control /
 media paths. It checks nonblank pixels, confirmed resize/restoration and fresh
 attachment replay; no microphone, audio or operational remote input is activated.
 The server is a disposable test host, not the production deployment image.
-[Browser evidence](ITERATION_202.md).
+[Browser evidence](history/iterations/201-250.md#iteration-202).
 
 Active Linux audio checks use `--audio-pcm` or `--audio-opus` instead of `--form`
 on `test-linux-xrdp-viewer.mjs`. These explicitly select the 200 ms output profile
 and activation gesture, require actual ready packets/Worklet rendering, then
 check replay. Opus additionally requires a native reset/new epoch. Leave sound
 playing in the authorized XRDP session; an idle source fails the audio gate.
-No microphone or audio recording is requested. [Evidence](ITERATION_208.md).
+No microphone or audio recording is requested. [Evidence](history/iterations/201-250.md#iteration-208).
 
 The Linux 30-minute H.264 observation uses `--soak-test` in place of `--form`:
 
@@ -754,7 +890,7 @@ only fixed aggregates, then checks resize/restoration and fresh attachment.
 The resource endpoint requires the ephemeral host bearer and rechecks the same
 connected worker owner. It activates neither audio nor physical microphone.
 This is one actual viewer, not concurrent/interactive/LAN quality acceptance.
-[Actual result and bounds](ITERATION_220.md).
+[Actual result and bounds](history/iterations/201-250.md#iteration-220).
 
 Current RSS lab wrappers share the strict TypeScript sampler from the built
 Node package. Rebuild the ordinary Node packages before use; when refreshing a
@@ -776,7 +912,7 @@ packages, `test-xrdp-microphone.mjs` and `private-lab-input.mjs`. Credentials st
 in ignored host lab files and are sent over private stdin. The helper only reads
 source status, pings, captures one desktop frame in memory and closes. Waiting
 or timed-out input is reported separately from ready AUDIN/recording acceptance.
-[Evidence and current network gap](ITERATION_210.md).
+[Evidence and current network gap](history/iterations/201-250.md#iteration-210).
 
 The independent native archive check uses only three explicitly selected files:
 
@@ -792,7 +928,7 @@ docker run --rm --network none --init --read-only --cap-drop ALL \
 Preparation defaults to `build/packages/freerdp-bridge-native-0.1.0-Linux.tar.gz`;
 one alternate archive below the project's build directory can be supplied.
 The verifier removes its own pinned base's system libudev fallback and changes
-no host libraries. [Actual restricted native-runtime evidence](ITERATION_190.md).
+no host libraries. [Actual restricted native-runtime evidence](history/iterations/151-200.md#iteration-190).
 
 ### Isolated native foundation source build
 
@@ -810,7 +946,7 @@ It leaves the fixture and SHA-256 receipt for inspection. Existing objects,
 FreeRDP SDK, Node dependencies and lab files are not copied; lifecycle JS is
 loaded from the original built workspace. This is a local project-native source
 check, separate from fresh upstream dependency/FreeRDP, linked, distro and CI
-acceptance. [Exact evidence and retained first helper error](ITERATION_243.md).
+acceptance. [Exact evidence and retained first helper error](history/iterations/201-250.md#iteration-243).
 
 New clean-native receipts also include `buildProfile.v = 1`: the actual Ninja
 generator, configured build type, CMake version and C++ compiler ID/version/path.
@@ -828,7 +964,7 @@ with the existing 64 MiB per-file bound. A missing/oversized output fails before
 receipt publication. Linked artifact inventories keep their existing fields;
 historical foundation receipts without this map are preserved. These hashes
 bind observed outputs, not deterministic binary reproduction or redistribution
-acceptance. [Receipt evidence](ITERATION_381.md).
+acceptance. [Receipt evidence](history/iterations/351-400.md#iteration-381).
 
 On Windows x64, after preparing the ordinary foundation/Catch2 source, use:
 
@@ -841,7 +977,7 @@ through the entire new build/CTest/Node lifecycle run. It uses the same source
 copy/hash checks and platform-specific Windows pipe/private-directory inventory.
 It copies no old object or binary. This is local foundation source evidence;
 linked FreeRDP/dependencies, clean-machine/distro and actual CI remain separate.
-[Windows/Linux receipts](ITERATION_244.md).
+[Windows/Linux receipts](history/iterations/201-250.md#iteration-244).
 
 To compile a new Linux linked Release project-native tree against the already
 prepared pinned SDK, after the ordinary dependency/FreeRDP build:
@@ -857,7 +993,7 @@ Node primary/framed/TLS lifecycle, checks the IPC addon's direct import boundary
 and leaves a source/input/artifact-hash receipt. No project binary/cache is
 copied. Upstream libraries are reused, not rebuilt; packaging,
 clean-machine/distro and CI gates remain separate.
-[Exact Linux scope and results](ITERATION_245.md).
+[Exact Linux scope and results](history/iterations/201-250.md#iteration-245).
 
 For the corresponding Windows x64 linked source build after preparing the
 ordinary bundled SDK/Catch2 source:
@@ -872,7 +1008,7 @@ rules and verifies Windows linked CTest/framed Node lifecycle. The Node addon
 remains Linux-only. The wrapper keeps its alias alive through all child checks;
 the fixture and hashes remain available under canonical build paths afterward.
 This does not rebuild/package upstream dependencies or prove clean-machine /
-device acceptance. [Windows linked receipt and scope](ITERATION_246.md).
+device acceptance. [Windows linked receipt and scope](history/iterations/201-250.md#iteration-246).
 
 To rebuild FreeRDP itself from a new local clone of the prepared pinned source,
 using the existing private dependency/toolchain inputs on Linux:
@@ -889,7 +1025,7 @@ of a foreign expected prefix and runs the consumer CTest. The generated report
 and receipt stay inside the fixture. No network, existing SDK replacement,
 RDP connection or device access is needed. Dependencies are reused; complete
 fresh dependency/distro/CI acceptance remains separate.
-[Exact scope, hashes and retained first failure](ITERATION_247.md).
+[Exact scope, hashes and retained first failure](history/iterations/201-250.md#iteration-247).
 
 After that SDK receipt passes, compile and verify an independent Linux project
 consumer against its exact installed prefix:
@@ -907,7 +1043,7 @@ receipt binds the SDK receipt hash and distinguishes SDK consumption from the
 preceding actual source rebuild. It leaves both build trees for inspection.
 This accepts the named Linux consumer, with reused other dependencies, rather
 than complete fresh dependency/distro/CI or RDP/device acceptance.
-[Results and scope](ITERATION_248.md).
+[Results and scope](history/iterations/201-250.md#iteration-248).
 
 The corresponding new Windows SDK source build uses the existing MSVC/ASCII
 alias wrapper:
@@ -922,7 +1058,7 @@ DLLs/toolchain are reused, not rebuilt. The independent probe explicitly uses
 the public shared WinPR import ABI; no production source is patched. This is a
 local SDK check, separate from a new Windows worker consumer and complete fresh
 dependency/clean-machine/distro/CI acceptance.
-[Windows result and retained first probe failure](ITERATION_249.md).
+[Windows result and retained first probe failure](history/iterations/201-250.md#iteration-249).
 
 To build a new Windows worker consumer of that completed SDK receipt:
 
@@ -938,7 +1074,7 @@ receipt and exact CMake package origins. It creates fresh project output and
 checks linked CTest/Node process lifecycle without replacing the ordinary SDK.
 Compilation has a separate finite ten-minute budget; CTest and process/IPC
 checks retain their existing deadlines. The prepared dependency/toolchain inputs
-remain reused. [Current Windows/Linux acceptance](ITERATION_250.md).
+remain reused. [Current Windows/Linux acceptance](history/iterations/201-250.md#iteration-250).
 
 For a separate Windows linked **Debug** consumer, first build an isolated
 Debug SDK with matching Debug CRT:
@@ -967,13 +1103,13 @@ reused with their recorded build types and API-specific ownership.
 The actual CMake compiler/build-type reply is verified in the consumer receipt.
 The existing `linked` / `clean-bundled` profile remains Release. No ordinary
 worker, helper or generated feature inventory is replaced by this Debug task.
-[Profile scope and verification](ITERATION_312.md).
+[Profile scope and verification](history/iterations/301-350.md#iteration-312).
 
 Windows receipt-backed consumers validate CRT compatibility in both directions:
 a Release consumer also refuses a Debug SDK before preparing output. Historical
 Release receipts without a recorded build type remain accepted when their
 actual SDK cache identifies Release and dynamic Release CRT.
-[Reverse-combination control](ITERATION_313.md).
+[Reverse-combination control](history/iterations/301-350.md#iteration-313).
 
 The selected source receipt can also drive the explicit authorized Windows
 RDP CPU/RSS smoke, including worker/helper hash verification and joined cleanup:
@@ -985,7 +1121,7 @@ node scripts/test-rdp-resource-lab.mjs sha256:<approved-session-fingerprint> `
 
 This observes the existing desktop without remote input/application launch or
 saved frames. [Requirements and scope](RDP_RESOURCE_SMOKE.md),
-[Release/Debug actual observations](ITERATION_314.md).
+[Release/Debug actual observations](history/iterations/301-350.md#iteration-314).
 
 For an isolated local Linux private dependency rebuild from cached source/tool
 downloads:
@@ -1002,7 +1138,7 @@ pin and bounded unchanged recipe input, then writes
 installed-status hash. The original dependency prefix remains separate.
 Compiler/build tools and source archives are reused; this is local source
 rebuild evidence, separate from Windows/distro/CI and final runtime acceptance.
-[Results and provenance](ITERATION_252.md).
+[Results and provenance](history/iterations/251-300.md#iteration-252).
 
 Use the completed source dependency receipt for a new Linux FreeRDP SDK:
 
@@ -1015,7 +1151,7 @@ The SDK helper verifies the receipt/settings/current recipes/status, uses its
 exact dependency root for configure/link/runtime and feature inspection, then
 binds the unchanged dependency receipt hash into the new SDK receipt. Omitting
 this argument retains the ordinary prepared dependency input. Neither path
-replaces the ordinary installed SDK. [Verified handoff](ITERATION_253.md).
+replaces the ordinary installed SDK. [Verified handoff](history/iterations/251-300.md#iteration-253).
 
 Pass that SDK's new receipt to the source-only project helper as before:
 
@@ -1029,7 +1165,7 @@ that exact receipt/status/recipe input and uses its prefix throughout configure,
 inventory and runtime children. Both receipt hashes appear in the consumer
 receipt. The actual Linux source chain, codec/module-origin checks and full
 Node regression pass locally; fresh OS/distro/CI and RDP/device/release gates
-remain separate. [Complete consumer evidence](ITERATION_254.md).
+remain separate. [Complete consumer evidence](history/iterations/251-300.md#iteration-254).
 
 The same source dependency → SDK chain is available on Windows:
 
@@ -1045,9 +1181,9 @@ The dependency selector refuses other tasks and traversal/absolute paths before
 toolchain setup. Existing binary caches are disabled and source downloads are
 refused; the Windows host itself is not network isolated. The first sandboxed
 MSBuild FileTracker access failure and successful authorized repeat are retained
-in [dependency evidence](ITERATION_255.md). The new pinned SDK's module origins,
+in [dependency evidence](history/iterations/251-300.md#iteration-255). The new pinned SDK's module origins,
 static inventory, consumer CTest and receipt binding pass
-[separately](ITERATION_256.md). Use its receipt with `clean-bundled` as above.
+[separately](history/iterations/251-300.md#iteration-256). Use its receipt with `clean-bundled` as above.
 
 Source-only linked consumers pass their verified SDK source `LICENSE` through
 `BRIDGE_FREERDP_LICENSE_FILE`. Ordinary builds retain `.deps/FreeRDP/LICENSE`
@@ -1055,7 +1191,7 @@ as the default. Linked packaging requires this input and the generated
 `build/native-features.json` at configure time; it installs both even when the
 source-only fixture contains no copied SDK CMake cache. New Linux install/ELF
 closure/TGZ/restricted native-only runtime and Windows install/ZIP checks pass
-[with the new source-built chain](ITERATION_258.md). To verify a particular TGZ,
+[with the new source-built chain](history/iterations/251-300.md#iteration-258). To verify a particular TGZ,
 pass its actual project-local path to `prepare-native-runtime-check.mjs`; the
 default archive may belong to an older release cohort.
 
@@ -1063,7 +1199,7 @@ Windows Ninja dependency verification follows the SDK actually selected by the
 worker's CMake cache. It checks the SDK's own matching install prefix and C-only
 GDI/H.264 object dependencies after rebasing its cached ASCII alias. Both the
 ordinary prepared and isolated source-built SDK layouts pass; unknown layouts
-refuse. [Verification correction and full regression](ITERATION_261.md).
+refuse. [Verification correction and full regression](history/iterations/251-300.md#iteration-261).
 
 For Windows native-build verification, keep CMake's temporary ASCII alias alive
 but run Node tests with physical project, entry-file and binary paths. The
@@ -1072,9 +1208,9 @@ pnpm junctions resolve to the physical drive. Mixing alias and physical module
 URLs can instantiate error classes twice and break constructor checks.
 Source/SDK receipt paths keep their original namespace. The bounded SUBST/pnpm
 identity regression and complete Windows/Linux checks pass
-[in iteration 266](ITERATION_266.md). A full tracked-source Windows export with
+[in iteration 266](history/iterations/251-300.md#iteration-266). A full tracked-source Windows export with
 offline install/build/relocation/production deploy also passes
-[in iteration 265](ITERATION_265.md).
+[in iteration 265](history/iterations/251-300.md#iteration-265).
 
 The current required GNU target is GCC 8.3.0 for Astra Linux 1.7.5, while RED OS
 7.3/GCC 11 remains mandatory. The compiler port retains C++20 language mode and
@@ -1088,7 +1224,7 @@ The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)
 uses the pinned compiler image and hash-checked offline build tools. Follow the
 [container instructions](../tests/fixtures/gcc83/README.md) to repeat it without
 installing an OS VM. It tests foundation compilation/CTest; the linked private
-runtime and actual RDP checks remain separate. [Local verification](ITERATION_413.md).
+runtime and actual RDP checks remain separate. [Local verification](history/iterations/401-450.md#iteration-413).
 
 The following historical sanitizer profile uses GCC 12 with its C++20 library. The local
 Ubuntu builder now includes g++-12; select it explicitly in a new output tree:
@@ -1108,4 +1244,4 @@ flags or change ASLR/seccomp. GCC 12.4 CTest 16/16 and eleven Clang 18 bounded
 PIE fuzz smokes pass locally; CI explicitly selects these compiler profiles and
 budgets but remains unrun. Fuzz seed generation additionally needs Node 24 and
 the built protocol JS (or its already generated public corpus).
-[Current results and remaining symbolizer/upstream scope](ITERATION_264.md).
+[Current results and remaining symbolizer/upstream scope](history/iterations/251-300.md#iteration-264).

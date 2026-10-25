@@ -46,7 +46,7 @@ This is a short healthy connected-policy control. It does not prove connected
 cap-breach enforcement, between-sample/startup/Node/session-total budgets, exact
 CPU utilization, dirty-to-send/audio/network latency, broad recovery or sustained
 resource/soak behavior. Debug developer-host results do not substitute for
-Release deployment/packaging acceptance. [Observed scope](ITERATION_314.md).
+Release deployment/packaging acceptance. [Observed scope](history/iterations/301-350.md#iteration-314).
 
 ## Explicit connected CPU-limit control
 
@@ -73,7 +73,7 @@ Acceptance requires real cumulative counter growth and exactly
 `WORKER_CPU_LIMIT`, followed by joined query/process retirement and empty runtime.
 Another resource/transport failure, premature baseline or no limit observation
 fails the check. Synthetic driver tests cover admission, wrong failures and
-deadline behavior separately from the [actual RDP control](ITERATION_315.md).
+deadline behavior separately from the [actual RDP control](history/iterations/301-350.md#iteration-315).
 This verifies the named private connected CPU breach, not public API/registry
 failure propagation, other connected sessions, RSS breach, hard OS stalls or soak.
 
@@ -98,7 +98,7 @@ sampling, another failure or a missing result cannot pass. Final joined PID/
 runtime cleanup is mandatory, as in the healthy mode. No remote application,
 input, stored image or server setting is used.
 
-The [named actual Windows result](ITERATION_316.md) verifies this private
+The [named actual Windows result](history/iterations/301-350.md#iteration-316) verifies this private
 connected failure slice. Synthetic result checks are separate. Public registry
 propagation, connected siblings, startup/between-sample/total-session budgets,
 hard OS failures, other producer/server profiles and soak remain open.
@@ -126,9 +126,9 @@ test-only cleanup-wait correction. The separate
 loopback TLS/native composition passes the pending-certificate failure slice,
 which does not implement a connected desktop. Connected public RSS failure is
 covered below; sibling isolation, CPU composition, full budgets and soak remain open.
-[Evidence and failed runs](ITERATION_317.md).
+[Evidence and failed runs](history/iterations/301-350.md#iteration-317).
 
-The automatic [public HTTP/WS native regression](ITERATION_318.md) separately
+The automatic [public HTTP/WS native regression](history/iterations/301-350.md#iteration-318) separately
 checks the pending-certificate RSS failure through the ordinary server, control
 error, both channel closes, failed GET snapshot and expired token authority.
 It uses a real linked worker and local synthetic TLS peer, not an RDP desktop.
@@ -160,7 +160,7 @@ Acceptance requires exactly one fixed WORKER_MEMORY_LIMIT control error, both
 channels closing 1000 / `session terminal`, HTTP 200 failed snapshot with the
 same error, refused new tokens (409), refused previously unused token upgrade
 (401), pre-factory overflow refusal and joined native/query/runtime retirement.
-[Actual Windows evidence](ITERATION_319.md) retains the measured values and
+[Actual Windows evidence](history/iterations/301-350.md#iteration-319) retains the measured values and
 separates the passing transport slice from browser rendering, other resource
 budgets, connected siblings and sustained/OS-failure acceptance.
 
@@ -187,7 +187,7 @@ production enforcement are unchanged.
 
 Acceptance requires increasing real connected CPU counters, exact
 WORKER_CPU_LIMIT over control, expected failed GET/token refusal, both terminal
-channels and joined PID/runtime/query cleanup. [Actual evidence](ITERATION_320.md)
+channels and joined PID/runtime/query cleanup. [Actual evidence](history/iterations/301-350.md#iteration-320)
 also includes the unchanged RSS-mode repeat. This receiver does not decode or
 render media; browser terminal display, connected siblings, complete CPU/session
 budgets and sustained/OS-failure acceptance remain open.

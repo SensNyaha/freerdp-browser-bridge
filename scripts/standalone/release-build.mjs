@@ -189,9 +189,10 @@ if (!windows) {
     const rpm = JSON.parse(output.split(/\r?\n/).at(-1));
     if (
       rpm.version !== report.version ||
-      !/^\/work\/source\/build\/standalone-rpm-[A-Za-z0-9]+\/rpmbuild\/RPMS\/x86_64\/freerdp-bridge-0\.2\.[0-9]+-1\.x86_64\.rpm$/.test(
+      !/^\/work\/source\/build\/standalone-rpm-[A-Za-z0-9]+\/rpmbuild\/RPMS\/x86_64\/freerdp-bridge-0\.[0-9]{1,6}\.[0-9]{1,6}-1\.x86_64\.rpm$/.test(
         rpm.output,
-      )
+      ) ||
+      basename(rpm.output) !== `freerdp-bridge-${report.version}-1.x86_64.rpm`
     )
       throw new Error('STANDALONE_RELEASE_RPM_RECEIPT_INVALID');
     const remoteRoot = dirname(dirname(dirname(dirname(rpm.output))));

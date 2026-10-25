@@ -5,13 +5,13 @@ pass automatic/manual heartbeat at the addon's exact fixed capacity. A 33rd
 request is refused before spawn with runtime cleanup; closing 16 and starting
 16 replacements preserves surviving owners. Full close restores parent FD count
 and empty runtime. This is unconnected worker/IPC evidence, not a 30-session RDP
-soak. Larger configured policies remain open. [Evidence](ITERATION_212.md).
+soak. Larger configured policies remain open. [Evidence](history/iterations/201-250.md#iteration-212).
 
 A separate configured **40 global / 20 per-principal** registry test now covers
 explicit `framed-pipes` native lifecycle workers on Windows/Linux, including
 pre-factory refusal and ten-slot replacement. It does not allocate packet pairs
 or change the addon's fixed 32-pair limit. Larger configured primary-carrier and
-actual RDP/resource gates remain open. [Framed evidence](ITERATION_291.md).
+actual RDP/resource gates remain open. [Framed evidence](history/iterations/251-300.md#iteration-291).
 
 Current default — iteration 200: WorkerOptions also accepts auto, now the default.
 Linux prefers primary after exact private pairing/hash verification; no pairing
@@ -19,7 +19,7 @@ metadata preserves legacy framed transport. A present malformed/mismatched
 manifest refuses startup before credentials. Windows remains framed. Installed
 hashes are regenerated after RPATH rewrite; the loaded addon comes from the
 canonical worker directory. The explicit selector semantics below remain valid.
-[Automatic preference evidence](ITERATION_200.md).
+[Automatic preference evidence](history/iterations/151-200.md#iteration-200).
 
 Iteration 199 exposes trusted-host `WorkerOptions.ipcTransport` with two exact
 values: `framed-pipes` (current default) and `unix-seqpacket-rws1` (Linux only).
@@ -56,7 +56,7 @@ expected differing field. No public RWI1/browser fields change.
 Verification distinguishes actual kernel/native lifecycle/private connection
 refusal from fake legacy peers and synthetic metadata mutation. No connected
 Linux remote desktop/audio/device or changed-certificate integration is claimed.
-[Evidence](ITERATION_199.md).
+[Evidence](history/iterations/151-200.md#iteration-199).
 
 The historical iteration-199 default-preference gate is now implemented by
 iteration 200. Larger configured-capacity admission, connected resource/release,
