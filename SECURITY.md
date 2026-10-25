@@ -49,6 +49,13 @@ unknown content is retained. [Recovery contract](docs/RUNTIME_RECOVERY.md).
 Broader multi-user/service isolation and future drive/spool retention remain
 open under Stage 1.
 
+Actual distinct-principal lifecycle checks additionally verify Windows
+LocalService and separate Linux UIDs against private live/sibling/orphan session
+directories under a readable runtime root. Foreign operations are denied, live
+owner heartbeats remain usable and only the owner reclaims the orphan.
+[Accepted profiles and limits](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance).
+This does not change the same-OS-user or privileged-host trust boundary above.
+
 ## 3. Secrets
 
 Secrets include passwords, gateway credentials, access tokens, pass-the-hash values, smartcard PINs and future companion credentials.

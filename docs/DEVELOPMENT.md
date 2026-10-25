@@ -13,13 +13,16 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
-Next work is `feature/stage1-cross-principal-isolation`: actual distinct
-Linux UIDs and Windows LocalService must be denied access to private live,
-sibling and orphan session directories while their owner remains operational.
-Linux GCC 8.3 passes, including a readable-orphan negative control; hosted
-Windows and full regression remain pending. This continues the remaining
-Stage 1 isolation gate after the completed 0.3.0 delivery.
-[Current scope](RUNTIME_RECOVERY.md#cross-principal-acceptance-in-progress).
+Additional Stage 1 cross-principal acceptance is complete in
+`feature/stage1-cross-principal-isolation`: actual distinct Linux UIDs and
+Windows LocalService are denied access to private live, sibling and orphan
+session directories while their owner remains operational. Dedicated steps pass
+2/2 on each OS, full hosted suites and sanitizers/fuzz succeed, and exact GCC 8.3
+passes with a readable-orphan negative control and a private source checkout.
+Local full checks pass Windows foundation 995/127 skips and Linux linked 1031/93;
+native CTest is 21/39, zero failures. This changes tests/CI, with no new production
+RDP capability or repacked 0.3.0 artifact.
+[Accepted scope and remaining gaps](RUNTIME_RECOVERY.md#cross-principal-acceptance).
 
 The Stage 1 runtime recovery feature is completed and publicly released as
 **0.3.0**, before starting HTML clipboard. Its feature/release branches and both

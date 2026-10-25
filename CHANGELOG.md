@@ -6,6 +6,12 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 No additional product feature is included beyond published 0.3.0.
 
+- Add actual cross-principal runtime privacy gates to CI: Windows LocalService
+  and distinct Linux UIDs cannot access or recover another owner's private
+  live/sibling/orphan directories. Owner liveness and joined cleanup survive.
+  This is test/CI acceptance; 0.3.0 archive bytes remain unchanged.
+  [Evidence and limits](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance).
+
 ## 0.3.0 — 2026-10-25
 
 - Add bounded orphan runtime recovery to Node and all four adapters, with

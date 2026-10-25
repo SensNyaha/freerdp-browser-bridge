@@ -9,12 +9,13 @@ Full current-source checks pass Windows 1050/70 skips and Linux 1030/92;
 native CTest remains 38/39. Eight actual desktop profiles pass separately.
 Broader multi-user isolation and the original full Stage 1 remain open.
 [Delivery and evidence](docs/RUNTIME_RECOVERY.md#030-public-delivery).
-Next work is `feature/stage1-cross-principal-isolation`: actual distinct OS
-principals must fail to read/write/claim/recover live, sibling and orphan private
-session directories while their owner remains usable. Exact GCC 8.3 Linux
-passes with a readable-orphan counterexample; actual Windows and full regression
-are pending. No broader Stage 1 checkbox is changed by this initial result.
-[Acceptance scope](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance-in-progress).
+Additional `feature/stage1-cross-principal-isolation` acceptance now passes:
+actual Windows LocalService and distinct Linux UIDs cannot read/write/list/claim
+or recover private live, sibling and orphan session directories; their owner
+remains usable and joins cleanup. Full hosted Windows/Linux, exact GCC 8.3 and
+sanitizer/fuzz checks pass. This is test/CI acceptance of the 0.3.0 boundary;
+no published artifact is repacked or new RDP capability claimed.
+[Acceptance scope](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance).
 The following preparation checkpoints retain their original scope/status.
 
 Completed preparation history: `feature/stage1-runtime-isolation` implemented the next
@@ -1450,6 +1451,18 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 **Gate:** clean build from fresh checkout/container; exact FreeRDP version visible; no UI required.
 
 ## Stage 1 — native worker process and IPC
+
+- [x] DONE for named actual OS-principal runtime privacy — A separate Windows
+  LocalService task and Linux UID/GID 42421 are denied session listing, marker
+  read/write, child creation, native lease and recovery against two live workers
+  and an orphan owned by another OS principal. A readable-root positive control
+  and Linux readable-orphan counterexample exclude permission-test false positives.
+  Owner heartbeats, owner-only orphan recovery and joined PID/directory cleanup
+  pass. Dedicated Windows/Linux steps pass 2/2 each; full source CI, native CTest,
+  sanitizers/fuzz and exact GCC 8.3 pass. `7a17eca`, `1838a05`, `5c4ac52`.
+  [Evidence and explicit limits](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance).
+  Same-OS-user adversaries, the broader installed-distro multi-user matrix and
+  future drive/spool retention are not closed by this test-only acceptance.
 
 - [x] DONE for verified schema-1 metadata-only runtime recovery — Independent
   Node ownership endpoints and native marker locks preserve live/uncertain

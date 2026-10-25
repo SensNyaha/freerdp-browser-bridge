@@ -57,7 +57,27 @@ upgrades and eight actual desktop profiles pass. [Exact release acceptance and
 frozen archives](#030-local-release-acceptance). Merge/tag and publication are
 complete. The original full Stage 1 is still open.
 
-## Cross-principal acceptance in progress
+## Cross-principal acceptance
+
+2026-10-25: the named OS-principal lifecycle scope is accepted. Private commits
+`7a17eca`, `1838a05` and `5c4ac52` match tested public source `e7f2af2`.
+[Foundation CI](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40212301851)
+passes Windows, both Linux compiler profiles and sanitizers/fuzz;
+[exact GCC 8.3 CI](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40212301856)
+passes too. Each OS-principal step passes **2/2 with no skips**, separately from
+the ordinary suite, which deliberately skips that privileged scenario.
+Windows full foundation checks pass **995/127 skips**, Linux linked checks
+**1031/93 skips**, zero failures. Native CTest passes Windows foundation **21/21**
+and Linux linked GCC 8.3 **39/39**. Both hosted foundation profiles also pass the
+actual 100-worker lifecycle gate. [Bounded machine-readable evidence](evidence/RUNTIME_RECOVERY_ISOLATION.json)
+binds all source inputs and final/retained-failure log hashes.
+
+This is additional acceptance of the existing 0.3.0 production boundary. No
+production package/dependency/native source, RDP capability, accepted npm archive
+or installer is changed or repacked. Malicious processes running as the same OS
+user, the broader installed-distro multi-user/security matrix and future
+drive/spool retention remain outside this accepted scope; full original Stage 1
+is not silently closed. Preparation failures below remain as history.
 
 `feature/stage1-cross-principal-isolation` adds an actual OS-principal boundary
 check for the remaining Stage 1 isolation gate. It does not change production
@@ -78,14 +98,14 @@ Evidence is `cross-principal-linux-{first,preflight,home,counterexample}.log`
 under `build/current-validation`. This is native lifecycle, not connected RDP.
 
 Windows uses a one-shot scheduled task under actual
-[`NT AUTHORITY\\LocalService`](https://learn.microsoft.com/en-us/windows/win32/services/localservice-account),
+[`NT AUTHORITY\LocalService`](https://learn.microsoft.com/en-us/windows/win32/services/localservice-account),
 without user passwords or new local accounts. The probe verifies its actual
 TokenUser SID. A fresh CI-only directory grants LocalService read/execute on the
 public probe/root and write access only to bounded nonsecret receipts; session
 directories retain the production owner/System boundary. Tasks have finite
 execution limits and only the newly registered task is retired. The probe is
-test-only and is never installed in npm or standalone payloads. Actual hosted
-Windows proof, full regression and feature acceptance remain pending. Existing
+test-only and is never installed in npm or standalone payloads. Hosted Windows
+proof and full regression now pass as recorded above. Existing
 same-user DACL checks do not count as this second-principal evidence.
 
 First hosted run `40210047679` passed the ordinary Linux suite but its extra
@@ -99,8 +119,8 @@ mode 0700, reproducing this boundary locally. The initial TypeBox manifest-expor
 lookup failure is retained too. An unrelated Windows full-suite Edge `page.goto`
 3000 ms timeout passes its unchanged focused repeat; the first log remains.
 Full Linux linked checks pass **1031/93 skips/0 failures**; original Windows
-foundation CTest is **21/21**, linked Linux CTest **39/39**. Final hosted proof and
-current Windows full-suite success remain required before merge.
+foundation CTest is **21/21**, linked Linux CTest **39/39**. Hosted proof and
+current Windows full-suite success were still pending at that checkpoint.
 
 The corrected Linux CI cases pass both compiler profiles. The next Windows CI
 reaches setup but inherits PowerShell 7 module lookup paths into the explicitly
@@ -108,8 +128,10 @@ selected Windows PowerShell process, so `Set-Acl` cannot load its matching modul
 The fixture now selects only that process's standard `$PSHOME/Modules`; the host
 environment is unchanged. OS-principal checks run as named CI steps before the
 long browser suite, and matrix failures no longer cancel the other profiles.
-Local Windows full checks now pass **995/127 skips/0 failures**. Actual Windows
-LocalService acceptance is still pending; its first setup failure is retained.
+Local Windows full checks pass **995/127 skips/0 failures**. Actual Windows
+LocalService acceptance then passes in run `40212301851`; its first setup failure
+is retained. Windows' ordinary full hosted suite also passes **995/127 skips**,
+and each Linux foundation suite passes **930/194 skips**, zero failures.
 
 ## Preparation checkpoints
 

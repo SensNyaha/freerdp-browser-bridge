@@ -1,0 +1,257 @@
+{
+  "schema": 1,
+  "productVersion": "0.3.0",
+  "scope": "Additional actual OS-principal runtime isolation acceptance; no new RDP capability or published artifact",
+  "accepted": true,
+  "fullOriginalStage1": false,
+  "privateImplementationCommits": [
+    "7a17eca",
+    "1838a05",
+    "5c4ac52"
+  ],
+  "publicTestSource": "e7f2af2a997c89cca8fd3a263024b57bfce57fc2",
+  "hosted": [
+    {
+      "id": 40212301856,
+      "name": "GCC 8.3 foundation",
+      "conclusion": "success",
+      "commit": "e7f2af2a997c89cca8fd3a263024b57bfce57fc2",
+      "jobs": [
+        {
+          "status": "completed",
+          "steps": [],
+          "name": "foundation",
+          "id": 121225951019,
+          "conclusion": "success"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40212301856"
+    },
+    {
+      "id": 40212301851,
+      "name": "foundation",
+      "conclusion": "success",
+      "commit": "e7f2af2a997c89cca8fd3a263024b57bfce57fc2",
+      "jobs": [
+        {
+          "status": "completed",
+          "steps": [],
+          "name": "sanitizers",
+          "id": 121225950983,
+          "conclusion": "success"
+        },
+        {
+          "status": "completed",
+          "steps": [
+            {
+              "name": "Actual LocalService preserves owner and sibling lifecycles",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Actual distinct Linux UIDs preserve owner and sibling lifecycles",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ],
+          "name": "build (ubuntu-24.04, g++-12)",
+          "id": 121225951168,
+          "conclusion": "success"
+        },
+        {
+          "status": "completed",
+          "steps": [
+            {
+              "name": "Actual LocalService preserves owner and sibling lifecycles",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Actual distinct Linux UIDs preserve owner and sibling lifecycles",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ],
+          "name": "build (ubuntu-24.04, g++)",
+          "id": 121225951210,
+          "conclusion": "success"
+        },
+        {
+          "status": "completed",
+          "steps": [
+            {
+              "name": "Actual LocalService preserves owner and sibling lifecycles",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual distinct Linux UIDs preserve owner and sibling lifecycles",
+              "status": "completed",
+              "conclusion": "skipped"
+            }
+          ],
+          "name": "build (windows-latest, cl)",
+          "id": 121225951213,
+          "conclusion": "success"
+        }
+      ],
+      "status": "completed",
+      "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40212301851"
+    }
+  ],
+  "hostedLogs": {
+    "win": {
+      "file": "recovery-release-cross-principal-win-accepted.log",
+      "bytes": 352265,
+      "sha256": "3f37c4d4ca5b891449113c549955413df1e13bd31ef51ae65219bd7c6f3cb531"
+    },
+    "gcc12": {
+      "file": "recovery-release-cross-principal-gcc12-accepted.log",
+      "bytes": 256178,
+      "sha256": "52324011faf39574d61b23be3580173c310c5548663735d600bd99adad29f3d7"
+    },
+    "linux": {
+      "file": "recovery-release-cross-principal-linux-accepted.log",
+      "bytes": 252901,
+      "sha256": "4c14fa0a0d4708f375804b1aa2dc57584c7b650ba39bfecc57906d879f400bf6"
+    },
+    "sanitizers": {
+      "file": "recovery-release-cross-principal-sanitizers-accepted.log",
+      "bytes": 911100,
+      "sha256": "f791b065f56eeb604177c06ac22e87df7e9ca2cc0a8577083f31a168e92c2546"
+    },
+    "gcc83": {
+      "file": "recovery-release-cross-principal-gcc83-accepted.log",
+      "bytes": 75134,
+      "sha256": "546713938e1d500f1c080358131f8ec9ffd04cea3c18bf8b160561c53a876989"
+    }
+  },
+  "local": {
+    "windowsFoundationCheck": {
+      "passed": 995,
+      "skipped": 127,
+      "failed": 0,
+      "evidence": {
+        "file": "cross-principal-windows-check-final.log",
+        "bytes": 309766,
+        "sha256": "1fc99a9c8e8bd6d148f39f36b73242c36293e0973fc70b3fcb68b5abe46ce0cf"
+      }
+    },
+    "linuxLinkedCheck": {
+      "passed": 1031,
+      "skipped": 93,
+      "failed": 0,
+      "evidence": {
+        "file": "cross-principal-linux-check.log",
+        "bytes": 298714,
+        "sha256": "062979ba00b678a4816e572f19f9b08689458e6263b0ff2925a362485716c289"
+      }
+    },
+    "nativeCtest": {
+      "windowsFoundation": 21,
+      "linuxLinkedGcc83": 39,
+      "evidence": [
+        {
+          "file": "cross-principal-windows-ctest.log",
+          "bytes": 6082,
+          "sha256": "c99ac683915281706dd0a30bb459a747005c8007ee3c0bfe7ac0d6330beb8ab8"
+        },
+        {
+          "file": "cross-principal-linux-ctest.log",
+          "bytes": 8820,
+          "sha256": "65d432eeaebf4727be3b1a9f64b336970e3040cfd98b637e0d073abe2236e3ed"
+        }
+      ]
+    },
+    "exactGcc83PrivateCheckoutFocus": {
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "sourceCheckoutMode": "0700",
+      "evidence": {
+        "file": "cross-principal-linux-current-accepted.log",
+        "bytes": 1268,
+        "sha256": "727350713f52019acb127c59b400c611a8ed1a95f62449bd24a2e2c909749e44"
+      }
+    }
+  },
+  "actors": {
+    "linux": {
+      "ownerUid": 42420,
+      "ownerGid": 42420,
+      "foreignUid": 42421,
+      "foreignGid": 42421,
+      "foreignInOwnerSupplementaryGroup": false
+    },
+    "windows": {
+      "foreignUserSid": "S-1-5-19",
+      "actualTokenUserChecked": true,
+      "passwordUsed": false,
+      "newUserCreated": false
+    }
+  },
+  "probeBits": {
+    "actualForeignIdentity": 1,
+    "readableSharedRootControl": 2,
+    "markerReadDenied": 4,
+    "markerWriteDenied": 8,
+    "childDirectoryCreateDenied": 16,
+    "nativeLeaseDenied": 32,
+    "nativeRecoveryPreservesDirectory": 64,
+    "sessionListingDenied": 128
+  },
+  "acceptance": {
+    "liveWorkers": 2,
+    "orphanDirectories": 1,
+    "ownerHeartbeatAfterEveryForeignAttempt": true,
+    "ownerAloneRecoversOrphan": true,
+    "joinedPidAndDirectoryCleanup": true,
+    "linuxReadableOrphanCounterexample": true,
+    "connectedRdpDesktop": false,
+    "installedDistroMultiUserMatrix": false,
+    "maliciousSameOsUserIsolation": false
+  },
+  "productionPathsDiff": [],
+  "sourceFiles": {
+    ".github/workflows/ci.yml": "ccf1316903ef1df0a4307734ab0697551916fd221267e86a8fc28bc35f329e3a",
+    "CMakeLists.txt": "3295c99cbea953e31c5b417ea6fb2d5e5543fabe1923a7388703c89ec8c08655",
+    "tests/fixtures/cross-principal-owner.mjs": "1a0f0fe41c4e0e06ef2f88fac233d5788f3437bce531326a72a5a85cf47dbb84",
+    "tests/fixtures/cross-principal-stage.mjs": "e584886cc5d184a98ab98d70625e6d5b9456d928f9fc8aced8ed0c947acfb0e8",
+    "tests/fixtures/cross-principal-windows.ps1": "f8a6f097872b8441a76d0734362f7ffe5626c7fca985de2e5c6623b00cccaf2b",
+    "tests/fixtures/cross-principal.cpp": "826774a51b205d32ba4d0f9d3ec7ce42666ba143da718a765dcf30b1b3a172e9",
+    "tests/integration/cross-principal-isolation.test.mjs": "7b07650ab044135e4ea06291e6e0dae107edf31bdb7caad4fa62be36dc4c34bc"
+  },
+  "retainedFailures": [
+    {
+      "file": "cross-principal-linux-preflight.log",
+      "bytes": 3040,
+      "sha256": "d0f7660ec00cde11c9558faadb174df21cad0a512737926f432d27e38a23dc96"
+    },
+    {
+      "file": "cross-principal-linux-home.log",
+      "bytes": 3056,
+      "sha256": "5cc57c3f437b895f4f6c26e5bf56c9e2003b51e3c213a11d43e5aed02cd76804"
+    },
+    {
+      "file": "cross-principal-linux-private-checkout.log",
+      "bytes": 3784,
+      "sha256": "6cd7c347c630a8228fbf622a295746fd1a8ae5eda2a769aa23d01a29c137a85d"
+    },
+    {
+      "file": "recovery-release-cross-principal-linux-ci-first.log",
+      "bytes": 255347,
+      "sha256": "8f9339140087173a113c3183e97e43e0489c08e43ba40b8035b2b984f745b0fb"
+    },
+    {
+      "file": "recovery-release-cross-principal-windows-ci-first.log",
+      "bytes": 325391,
+      "sha256": "add1543fac1eca40c4224d7ee26de14d5c5f9f2479de6d4ba0861aeb2d9e9c9e"
+    },
+    {
+      "file": "cross-principal-windows-check.log",
+      "bytes": 311378,
+      "sha256": "37e96373696843cbd57f9f01976483b2d72cec0a412df8c96f97dfdeb3624288"
+    }
+  ]
+}
