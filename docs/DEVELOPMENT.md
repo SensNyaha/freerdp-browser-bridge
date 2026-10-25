@@ -13,24 +13,19 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
-The current Stage 1 recovery feature is being completed before HTML clipboard.
-`release/0.3.0` contains its candidate corrections and exact archive pins through
-`915ac0c`; it is not merged or published stable. Current full linked checks pass
-Windows **1044/70 skips** and Linux **1024/92 skips**, zero failures; fresh native
-CTest passes **38/39**. Exact consumers pass on both OSes, Windows portable and
-all four actual Windows-to-Astra/RED OS desktop profiles pass. Installer CI
-`40185826696` now passes Windows/Ubuntu upgrades from 0.2.5 and combined artifact
-verification. Named Astra/RED OS installed upgrades and all eight actual desktop
-profiles now pass too. The initial Windows CI marker-owner failure led to the
-token-specific correction, with directory and ACL restrictions preserved.
-Source CI now succeeds, including the unchanged Windows browser case after
-one repeat of its timed-out job. All ten archives are frozen after exact
-audits/dry-runs. Merge/tag and real publication are next.
-[Current evidence](RUNTIME_RECOVERY.md#030-local-release-acceptance). Earlier checkpoints
+The Stage 1 runtime recovery feature is completed and publicly released as
+**0.3.0**, before starting HTML clipboard. Its feature/release branches and both
+delivery repairs are merged into shared `master`. All ten exact npm packages,
+five OIDC workflows, four registry-only consumers on each OS and final standalone
+delivery pass. Final public DEB/RPM upgrades pass on Astra 1.7.5 and RED OS 7.3;
+Windows/Ubuntu installed upgrades and eight actual desktop profiles pass too.
+Current full checks pass Windows **1050/70 skips** and Linux **1030/92 skips**,
+zero failures; native CTest passes **38/39**.
+[Current evidence](RUNTIME_RECOVERY.md#030-public-delivery). Earlier checkpoints
 below retain their original evidence scope and do not override this status.
 
-Development continues in `feature/stage1-runtime-isolation` from shared
-`master`. The original eight Stage 0 tasks and its clean-build/version gate
+`feature/stage1-runtime-isolation` and `release/0.3.0` are merged into shared
+`master`; this recovery scope is closed. The original eight Stage 0 tasks and its clean-build/version gate
 already have accepted release-profile evidence in
 [0.2.5 delivery](ITERATION_457.md). The expanded sanitizer matrix continues in
 the separate `feature/stage0-sanitizer-matrix` branch; its pending Node/addon and

@@ -1,0 +1,652 @@
+{
+  "schema": 1,
+  "version": "0.3.0",
+  "published": true,
+  "privateProductCommit": "4ce88b30fec0317e2f8e199a24d1dd21c4fba3ea",
+  "publicProductCommit": "9e8b229beb2b973e942504254b2441e6845cc143",
+  "publisherCommit": "0939d695f25a3ee83241b5c1197fb5ac31251c23",
+  "deliveryRepairCommit": "275a7ea",
+  "retainedSource": {
+    "verifiedAt": "2026-10-25T12:10:51.920Z",
+    "schema": 1,
+    "version": "0.3.0",
+    "sourceCommit": "9e8b229beb2b973e942504254b2441e6845cc143",
+    "runId": 40191077916
+  },
+  "npm": {
+    "version": "0.3.0",
+    "checkedAt": "2026-10-25T12:15:38.042Z",
+    "repositories": [
+      {
+        "kind": "core",
+        "repository": "SensNyaha/freerdp-browser-bridge",
+        "commit": "9e8b229beb2b973e942504254b2441e6845cc143",
+        "release": {
+          "tag": "v0.3.0",
+          "draft": false,
+          "prerelease": false,
+          "url": "https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.3.0"
+        },
+        "workflows": [
+          {
+            "id": 40189465774,
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40189465774",
+            "jobs": [
+              {
+                "id": 121160133138,
+                "name": "publish",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121160133916,
+                "name": "validate (windows-2025)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121160134327,
+                "name": "validate (ubuntu-24.04)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              }
+            ]
+          }
+        ],
+        "packages": [
+          {
+            "name": "@freerdp-bridge/runtime-win32-x64",
+            "public": true,
+            "exact": true
+          },
+          {
+            "name": "@freerdp-bridge/runtime-linux-x64-gnu",
+            "public": true,
+            "exact": true
+          },
+          {
+            "name": "@freerdp-bridge/protocol",
+            "public": true,
+            "exact": true
+          },
+          {
+            "name": "@freerdp-bridge/config",
+            "public": true,
+            "exact": true
+          },
+          {
+            "name": "@freerdp-bridge/node",
+            "public": true,
+            "exact": true
+          },
+          {
+            "name": "@freerdp-bridge/api",
+            "public": true,
+            "exact": true
+          }
+        ]
+      },
+      {
+        "kind": "fastify",
+        "repository": "SensNyaha/freerdp-bridge-fastify",
+        "commit": "1b4443f79f7e8ec2233f8a55cfe3f1d0c7b30a65",
+        "release": {
+          "tag": "v0.3.0",
+          "draft": false,
+          "prerelease": false,
+          "url": "https://github.com/SensNyaha/freerdp-bridge-fastify/releases/tag/v0.3.0"
+        },
+        "workflows": [
+          {
+            "id": 40191085664,
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/SensNyaha/freerdp-bridge-fastify/actions/runs/40191085664",
+            "jobs": [
+              {
+                "id": 121162051937,
+                "name": "validate (windows-2025)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121162052004,
+                "name": "validate (ubuntu-24.04)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121162263691,
+                "name": "publish",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              }
+            ]
+          }
+        ],
+        "packages": [
+          {
+            "name": "@freerdp-bridge/fastify",
+            "public": true,
+            "exact": true
+          }
+        ]
+      },
+      {
+        "kind": "nestjs",
+        "repository": "SensNyaha/freerdp-bridge-nestjs",
+        "commit": "27b66aeb092958d92e32fe4d9b609727777d6bd6",
+        "release": {
+          "tag": "v0.3.0",
+          "draft": false,
+          "prerelease": false,
+          "url": "https://github.com/SensNyaha/freerdp-bridge-nestjs/releases/tag/v0.3.0"
+        },
+        "workflows": [
+          {
+            "id": 40191225980,
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/SensNyaha/freerdp-bridge-nestjs/actions/runs/40191225980",
+            "jobs": [
+              {
+                "id": 121162466903,
+                "name": "validate (windows-2025)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121162467191,
+                "name": "validate (ubuntu-24.04)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121162765174,
+                "name": "publish",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              }
+            ]
+          }
+        ],
+        "packages": [
+          {
+            "name": "@freerdp-bridge/nestjs",
+            "public": true,
+            "exact": true
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "repository": "SensNyaha/freerdp-bridge-http",
+        "commit": "fbc3af1746ea3c036af5cc7b4716d81c87c46e7b",
+        "release": {
+          "tag": "v0.3.0",
+          "draft": false,
+          "prerelease": false,
+          "url": "https://github.com/SensNyaha/freerdp-bridge-http/releases/tag/v0.3.0"
+        },
+        "workflows": [
+          {
+            "id": 40191226417,
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/SensNyaha/freerdp-bridge-http/actions/runs/40191226417",
+            "jobs": [
+              {
+                "id": 121162468432,
+                "name": "validate (windows-2025)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121162468712,
+                "name": "validate (ubuntu-24.04)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121162728764,
+                "name": "publish",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              }
+            ]
+          }
+        ],
+        "packages": [
+          {
+            "name": "@freerdp-bridge/http",
+            "public": true,
+            "exact": true
+          }
+        ]
+      },
+      {
+        "kind": "express",
+        "repository": "SensNyaha/freerdp-bridge-express",
+        "commit": "22a15c482f903769fa900f0ae0b0c5b3a7a311be",
+        "release": {
+          "tag": "v0.3.0",
+          "draft": false,
+          "prerelease": false,
+          "url": "https://github.com/SensNyaha/freerdp-bridge-express/releases/tag/v0.3.0"
+        },
+        "workflows": [
+          {
+            "id": 40191962627,
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/SensNyaha/freerdp-bridge-express/actions/runs/40191962627",
+            "jobs": [
+              {
+                "id": 121164654470,
+                "name": "validate (ubuntu-24.04)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121164654522,
+                "name": "validate (windows-2025)",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              },
+              {
+                "id": 121164944840,
+                "name": "publish",
+                "status": "completed",
+                "conclusion": "success",
+                "steps": []
+              }
+            ]
+          }
+        ],
+        "packages": [
+          {
+            "name": "@freerdp-bridge/express",
+            "public": true,
+            "exact": true
+          }
+        ]
+      }
+    ]
+  },
+  "registryConsumers": [
+    {
+      "os": "windows",
+      "adapter": "fastify",
+      "file": "recovery-release-registry-fastify-windows.log",
+      "bytes": 2018,
+      "sha256": "b7e5e51b3d00e094ed7842677a647912123493e10de390ebc811271a562c8434"
+    },
+    {
+      "os": "windows",
+      "adapter": "nestjs",
+      "file": "recovery-release-registry-nestjs-windows.log",
+      "bytes": 5300,
+      "sha256": "634747a994b94a50cbfe5595ea5fc9f9cc3f9a044cae252d54e3c12460ef500c"
+    },
+    {
+      "os": "windows",
+      "adapter": "http",
+      "file": "recovery-release-registry-http-windows.log",
+      "bytes": 4260,
+      "sha256": "8209c529066dcc8786bc01a019fc229032d33422d764cad8842786a48914c249"
+    },
+    {
+      "os": "windows",
+      "adapter": "express",
+      "file": "recovery-release-registry-express-windows.log",
+      "bytes": 4520,
+      "sha256": "78b39adc4f4a974943775517a1c25103925f6305312abc68f1104698e58614a7"
+    },
+    {
+      "os": "linux",
+      "adapter": "fastify",
+      "file": "recovery-release-registry-fastify-linux.log",
+      "bytes": 652,
+      "sha256": "e56280f90a1c4473d2c478c0a7d05d6aedf1cff0789629470f2f53b269960886"
+    },
+    {
+      "os": "linux",
+      "adapter": "nestjs",
+      "file": "recovery-release-registry-nestjs-linux.log",
+      "bytes": 2342,
+      "sha256": "7162cc44d6a4070510d9ca6673b3060565503fea76f7226534f461e979a4a93d"
+    },
+    {
+      "os": "linux",
+      "adapter": "http",
+      "file": "recovery-release-registry-http-linux.log",
+      "bytes": 1810,
+      "sha256": "e4076e4b8921f998cdf6149632a3c9298f4c7dd3ccedeed11ba57ddb6ac57f9f"
+    },
+    {
+      "os": "linux",
+      "adapter": "express",
+      "file": "recovery-release-registry-express-linux.log",
+      "bytes": 1910,
+      "sha256": "709eac8c820681cf42188376604ea1c5702be80afd0b6010ecb31ff565976a53"
+    }
+  ],
+  "standalone": {
+    "manifest": {
+      "schema": 1,
+      "version": "0.3.0",
+      "sourceCommit": "9e8b229beb2b973e942504254b2441e6845cc143",
+      "candidateOnly": false,
+      "files": [
+        {
+          "name": "freerdp-bridge_0.3.0_amd64.deb",
+          "bytes": 121970154,
+          "sha256": "243cb641aa4bae3e57901915ce8ff19d6f1e54683c0bfa42aba7892e4934e249",
+          "integrity": "sha512-TU+N05BRVEBmWzTYWDNSATxtf9parKg7bsjRq6Ir/HtnKsIesntBNAaOgdtdtuGQqjqb+Sj0H2843fKWNKE9bQ=="
+        },
+        {
+          "name": "freerdp-bridge-0.3.0-1.x86_64.rpm",
+          "bytes": 122544637,
+          "sha256": "511525397e616a88a0b4ee1b5c18ca744036ddb321ea32d17efdc4b1cc41f4b4",
+          "integrity": "sha512-0Du+0hGfZyn8HJ3aaNHrx8KGpfbCL1rLhBBROVIiVrj6z9pxQzhwB06+cc2YlktnW5MMml3BvFRRJ0dx27E/8w=="
+        },
+        {
+          "name": "freerdp-bridge-0.3.0-corresponding-source-linux-x64-gnu.tar.gz",
+          "bytes": 4009862,
+          "sha256": "4e55ef4c651c2d9685bf3533f587e2772d91b12ac978b9f0424de453be36b71b",
+          "integrity": "sha512-7lQ7xfaZp/eiHaR9KhZuTborPSeynNJ1RfKEwReDBno/6bSEmnVmR4XwztKD0tkO9M4Ympglsi7CGc25D3iIYg=="
+        },
+        {
+          "name": "freerdp-bridge-0.3.0-corresponding-source-win32-x64.tar.gz",
+          "bytes": 440163,
+          "sha256": "3e39781f85f96825663a16bc8ab4c53976f48e572280947a9831939bf051c709",
+          "integrity": "sha512-1/KLnzCqeud7K6MTGgKKxLhhbhx5BHmjh4GNRDfAYbDFtY8XBuVf3X3RPl3eGg5bU4h/lKvbedfFGesTXb+htA=="
+        },
+        {
+          "name": "freerdp-bridge-0.3.0-linux-x64-gnu.tar.gz",
+          "bytes": 122321139,
+          "sha256": "1aa0bdfe9526d87d439f98ba80a362c2b06e02db14b3fb088f5ab5416c6d6bea",
+          "integrity": "sha512-KA7d5SFRNo7CE9beHZTlV/vrBkBhdso8men8IkOVEnzcZFjuHjVJ1D8Rr657+UIsBKy115XFJ3nNn/7rhInWEA=="
+        },
+        {
+          "name": "freerdp-bridge-0.3.0-win32-x64.msi",
+          "bytes": 36690203,
+          "sha256": "24f4160032f53d344d82884868bc75b4268f39d1ccbd4818bcbcfd3dfb525f62",
+          "integrity": "sha512-BGCeXRsosEJ7QE33vOWB0dWZs3OjCSVcKCLPLcCdm7NT8oyggABDKRJ3fIB4wIzhmsNiI3ZL7gLeorNSJhRzoQ=="
+        },
+        {
+          "name": "freerdp-bridge-0.3.0-win32-x64.zip",
+          "bytes": 47683319,
+          "sha256": "e28113cd7291865f88dff97b3eebe5803da6643300e8d8a4310fe2d64b16a076",
+          "integrity": "sha512-k5ITL4b/DS3NrDOwHU09Y96Kw+TZ8+UiPj/KVu426ThzL/oiDQKUHLEZVPDE9Zi1abPTb8O6YQfx4NKlX0In5A=="
+        }
+      ],
+      "acceptance": [
+        {
+          "platform": "linux-x64-gnu",
+          "portable": true,
+          "installed": true,
+          "realRdpDesktop": false,
+          "os": "ubuntu-24.04",
+          "upgradeFrom": "0.2.5"
+        },
+        {
+          "platform": "win32-x64",
+          "portable": true,
+          "installed": true,
+          "realRdpDesktop": false,
+          "os": "windows-2025",
+          "upgradeFrom": "0.2.5"
+        }
+      ]
+    },
+    "manifestEvidence": {
+      "file": "recovery-release-public-standalone/standalone-manifest.json",
+      "bytes": 2624,
+      "sha256": "d09e811da85173fd03cdc28186d065c5273e67f4262d4549674ee0aaf91b5d0a"
+    },
+    "checksumsEvidence": {
+      "file": "recovery-release-public-standalone/freerdp-bridge-0.3.0-standalone-SHA256SUMS.txt",
+      "bytes": 852,
+      "sha256": "a1646cf5f466256d6ed60aed61dfc023eee053076571249cc528ff5744af9da7"
+    },
+    "downloadLog": {
+      "file": "recovery-release-public-download.log",
+      "bytes": 2410,
+      "sha256": "e45cf86f4f1b1cc2dfa88079bba340d85de13b62a1b4d057d4a496aa177829e8"
+    },
+    "installedLabs": [
+      {
+        "lab": "astra",
+        "receipt": {
+          "platform": "linux",
+          "version": "0.3.0",
+          "acceptanceEnvironment": "owned-astra-1.7.5",
+          "nativeTls": true,
+          "nonRootService": true,
+          "crashRecovery": true,
+          "reinstallPreservesConfig": true,
+          "uninstall": true,
+          "retainedPublicConfig": true,
+          "retainedConfigFilename": "bridge.json",
+          "realRdpDesktop": false,
+          "upgradeToNewVersion": true,
+          "previousVersion": "0.2.5",
+          "previousPackageSha256": "ab1cfca521f3391877ae991f14cf426854d6256de69cbb3158baaa5475be79f8"
+        },
+        "evidence": {
+          "file": "recovery-release-public-installed-labs/installed-astra.json",
+          "bytes": 483,
+          "sha256": "c76d22728b45550aee10bb7f465182c7a64b5fcef5350f382a43a45f237c4e41"
+        },
+        "log": {
+          "file": "recovery-release-public-installed-labs/installed-astra.log",
+          "bytes": 34,
+          "sha256": "657fc5f423ddb15042c901f50774ebad650b4c2906eeb2f52f32cb38d09ce64e"
+        }
+      },
+      {
+        "lab": "redos",
+        "receipt": {
+          "platform": "linux",
+          "version": "0.3.0",
+          "acceptanceEnvironment": "owned-redos-7.3",
+          "nativeTls": true,
+          "nonRootService": true,
+          "crashRecovery": true,
+          "reinstallPreservesConfig": true,
+          "uninstall": true,
+          "retainedPublicConfig": true,
+          "retainedConfigFilename": "bridge.json.rpmsave",
+          "realRdpDesktop": false,
+          "upgradeToNewVersion": true,
+          "previousVersion": "0.2.5",
+          "previousPackageSha256": "bcd63d08b9f11f0e87c4345e72b0bcaf7d194102b4c4dc993fb55a7a0342ed17"
+        },
+        "evidence": {
+          "file": "recovery-release-public-installed-labs/installed-redos.json",
+          "bytes": 489,
+          "sha256": "f9c97bd59abcf562d1aa589c1f9d5d8d7aa0970eddb19109a17af04cabdf4c0c"
+        },
+        "log": {
+          "file": "recovery-release-public-installed-labs/installed-redos.log",
+          "bytes": 34,
+          "sha256": "657fc5f423ddb15042c901f50774ebad650b4c2906eeb2f52f32cb38d09ce64e"
+        }
+      }
+    ],
+    "ci": [
+      {
+        "id": 40192059608,
+        "name": "Standalone release",
+        "conclusion": "success",
+        "commit": "0939d695f25a3ee83241b5c1197fb5ac31251c23",
+        "jobs": [
+          {
+            "status": "completed",
+            "steps": [],
+            "name": "plan",
+            "id": 121164951410,
+            "conclusion": "success"
+          },
+          {
+            "status": "completed",
+            "steps": [],
+            "name": "resume",
+            "id": 121164990745,
+            "conclusion": "success"
+          },
+          {
+            "status": "completed",
+            "steps": [],
+            "name": "build",
+            "id": 121164992162,
+            "conclusion": "skipped"
+          },
+          {
+            "status": "completed",
+            "steps": [],
+            "name": "verify",
+            "id": 121164992481,
+            "conclusion": "skipped"
+          },
+          {
+            "status": "completed",
+            "steps": [],
+            "name": "publish",
+            "id": 121164992723,
+            "conclusion": "skipped"
+          }
+        ],
+        "status": "completed",
+        "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40192059608"
+      },
+      {
+        "id": 40192059558,
+        "name": "GCC 8.3 foundation",
+        "conclusion": "success",
+        "commit": "0939d695f25a3ee83241b5c1197fb5ac31251c23",
+        "jobs": [
+          {
+            "status": "completed",
+            "steps": [],
+            "name": "foundation",
+            "id": 121164951200,
+            "conclusion": "success"
+          }
+        ],
+        "status": "completed",
+        "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40192059558"
+      },
+      {
+        "id": 40192059536,
+        "name": "foundation",
+        "conclusion": null,
+        "commit": "0939d695f25a3ee83241b5c1197fb5ac31251c23",
+        "jobs": [
+          {
+            "status": "in_progress",
+            "steps": [
+              {
+                "name": "Run pnpm build:native",
+                "status": "in_progress",
+                "conclusion": null
+              }
+            ],
+            "name": "build (windows-latest, cl)",
+            "id": 121167781945,
+            "conclusion": null
+          },
+          {
+            "status": "in_progress",
+            "steps": [
+              {
+                "name": "Run pnpm check",
+                "status": "in_progress",
+                "conclusion": null
+              }
+            ],
+            "name": "build (ubuntu-24.04, g++)",
+            "id": 121167782194,
+            "conclusion": null
+          },
+          {
+            "status": "in_progress",
+            "steps": [
+              {
+                "name": "Run pnpm check",
+                "status": "in_progress",
+                "conclusion": null
+              }
+            ],
+            "name": "build (ubuntu-24.04, g++-12)",
+            "id": 121167782222,
+            "conclusion": null
+          },
+          {
+            "status": "completed",
+            "steps": [],
+            "name": "sanitizers",
+            "id": 121167783171,
+            "conclusion": "success"
+          }
+        ],
+        "status": "in_progress",
+        "url": "https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40192059536"
+      }
+    ]
+  },
+  "currentChecks": [
+    {
+      "os": "windows",
+      "passed": 1050,
+      "skipped": 70,
+      "failed": 0,
+      "file": "recovery-release-resume-windows-check.log",
+      "bytes": 309170,
+      "sha256": "5070dd7b452150f97965267e005eb3e4c071f39f72187cc360df5ca5cf95d505"
+    },
+    {
+      "os": "linux",
+      "passed": 1030,
+      "skipped": 92,
+      "failed": 0,
+      "file": "recovery-release-resume-linux-check.log",
+      "bytes": 298224,
+      "sha256": "c797e0599c5ff2a9288bdeda78389d67d6e98561f5f0e6a1106956f5e94606ff"
+    }
+  ],
+  "additionalPublisherCiFirstAttempt": {
+    "runId": 40192059536,
+    "jobId": 121164951156,
+    "failure": "unchanged Linux lifecycle fixture expected accepted from a nonblocking codec selection that returned busy",
+    "log": {
+      "file": "recovery-release-publisher-main-linux-failure.log",
+      "bytes": 63241,
+      "sha256": "e97f028a795ad5ae626f539a775912c55c2a391bb796a9e8c5a7e2783f2f31a8"
+    },
+    "repeat": "same source, failed/cancelled jobs only; no assertions or deadlines changed"
+  },
+  "localAcceptance": "RUNTIME_RECOVERY_0.3.0.json",
+  "boundaries": {
+    "fullOriginalStage1": false,
+    "expandedNodeAddonSanitizerMatrix": false,
+    "publicInstalledLabTestsAreRealRdpDesktop": false
+  }
+}

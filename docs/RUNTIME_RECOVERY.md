@@ -2,7 +2,8 @@
 
 Shared `master` now includes both accepted branches; immutable annotated
 `v0.3.0` identifies merge `4ce88b3`. The following local-acceptance report was
-recorded before that merge; npm and standalone public delivery is in progress.
+recorded before that merge. npm and standalone public delivery is now accepted;
+see [public delivery](#030-public-delivery).
 
 Post-tag review found a second delivery-only boundary: the standalone publisher
 still tested only `patch >= 5`, so it would reject 0.3.0/0.3.1 before uploading.
@@ -33,9 +34,9 @@ This delivery repair is on `fix/standalone-minor-publication`; focused release
 tests pass **17/17** and workflow lint passes. Full current-source `pnpm check`
 passes Windows **1050/70 skips/0 failures** and Linux **1030/92 skips/0 failures**,
 recorded in `recovery-release-resume-{windows,linux}-check.log` under
-`build/current-validation`. Actual hosted retained-artifact publication remains
-pending. No new RDP feature,
-dependency version, native binary or accepted npm archive is introduced.
+`build/current-validation`. Actual hosted retained-artifact publication is
+accepted below. No new RDP feature, dependency version, native binary or
+accepted npm archive is introduced.
 
 The first generated GitHub delivery export then exposed a test-packaging omission:
 `release-tools/native-smoke.mjs` copied its Fastify consumer and TLS fixture but
@@ -52,8 +53,8 @@ delivery helper separately from the immutable upstream product snapshot.
 The **0.3.0 recovery feature is locally accepted**: native/full workspace checks,
 exact npm consumers, both portable formats, Windows/Ubuntu/Astra/RED OS installed
 upgrades and eight actual desktop profiles pass. [Exact release acceptance and
-frozen archives](#030-local-release-acceptance). Merge/tag and real publication
-are next; public stable remains 0.2.5. The original full Stage 1 is still open.
+frozen archives](#030-local-release-acceptance). Merge/tag and publication are
+complete. The original full Stage 1 is still open.
 
 ## Preparation checkpoints
 
@@ -569,6 +570,55 @@ fixture lacked an empty `build/` scratch parent. After creating that parent,
 the focused cases pass **16/16** and the full command above exits successfully;
 no product code or test condition was changed to bypass those failures.
 
+## 0.3.0 public delivery
+
+2026-10-25: runtime recovery is completed and published. Private feature
+`51283d1`, release `1b92332` and delivery repairs `e071e11`/`275a7ea` are merged
+into shared `master`. Immutable private `v0.3.0` targets `4ce88b3`; its exported
+public product tag targets `9e8b229`. No accepted archive or tag was replaced.
+
+All ten npm versions are public at the exact accepted SHA-512 integrity.
+The five GitHub Releases and OIDC workflows succeed:
+
+| Repository | OIDC run |
+| --- | --- |
+| [Core](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.3.0) | [40189465774](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40189465774) |
+| [Fastify](https://github.com/SensNyaha/freerdp-bridge-fastify/releases/tag/v0.3.0) | [40191085664](https://github.com/SensNyaha/freerdp-bridge-fastify/actions/runs/40191085664) |
+| [NestJS](https://github.com/SensNyaha/freerdp-bridge-nestjs/releases/tag/v0.3.0) | [40191225980](https://github.com/SensNyaha/freerdp-bridge-nestjs/actions/runs/40191225980) |
+| [HTTP](https://github.com/SensNyaha/freerdp-bridge-http/releases/tag/v0.3.0) | [40191226417](https://github.com/SensNyaha/freerdp-bridge-http/actions/runs/40191226417) |
+| [Express](https://github.com/SensNyaha/freerdp-bridge-express/releases/tag/v0.3.0) | [40191962627](https://github.com/SensNyaha/freerdp-bridge-express/actions/runs/40191962627) |
+
+Four fresh registry-only consumer projects on each OS pass strict TypeScript,
+HTTP/HTTPS/WS integration, installed browser assets, actual native strict-TLS
+refusal and actual orphan runtime recovery. No checkout imports or local
+tarball overrides are used in these eight projects.
+
+The immutable-tag [registry-only standalone build](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40191077916)
+passes both portable formats, Windows Server 2025/Ubuntu 24.04 installed
+0.2.5-to-0.3.0 upgrades and combined verification. The corrected trusted-main
+[publisher](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40192059608)
+ships those exact retained files without rebuilding. All seven public files,
+the manifest and checksum list have been downloaded and independently verified.
+Final public DEB/RPM upgrades pass separately on Astra Linux 1.7.5 and RED OS 7.3:
+non-root service identity, old-worker retirement, native TLS, crash recovery,
+config-preserving reinstall and uninstall. These installed checks do not claim
+a real desktop; the eight accepted actual RDP profiles are recorded in local
+acceptance below.
+
+[Machine-readable public evidence](evidence/RUNTIME_RECOVERY_0.3.0_PUBLIC.json)
+preserves the exact final hashes, successful workflows and safe local log hashes.
+The temporary retained-run pointer is retired after successful publication;
+ordinary future builds use current-source publication guards. Full original
+Stage 1/V1, multi-user isolation and the extended Node/addon sanitizer matrix
+remain open. No HTML clipboard implementation is included.
+
+Additional publisher-main source CI first exposed an unchanged Linux stream
+lifecycle fixture: a nonblocking codec-selection attempt returned the supported
+`busy` result while the test immediately required `accepted`. The first failed
+log is retained in public evidence. Its failed/cancelled jobs are repeated once
+on the same source; no assertion, deadline or product binary is changed. The
+immutable product-tag source CI had already passed all its jobs.
+
 ## 0.3.0 local release acceptance
 
 2026-10-25: all local, candidate installer, named Astra/RED OS upgrade and eight
@@ -577,7 +627,8 @@ binds the exact archives, native source, CI and profiles. Source CI succeeds on
 Windows/both Linux compiler profiles, sanitizers/fuzz and exact GCC 8.3.
 The first Windows browser timeout and Astra issuer-clock failure remain recorded.
 This accepts the recovery feature delivery scope; full Stage 1 remains open.
-Merge/tag and real npm/registry-only standalone publication are separate next steps.
+This report precedes merge/tag and public delivery; their completed acceptance
+is recorded in [public delivery](#030-public-delivery).
 
 The following exact archives are frozen for this release; do not repack them.
 

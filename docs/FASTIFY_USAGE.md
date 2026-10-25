@@ -23,16 +23,16 @@ Plugin владеет сессиями, одноразовыми attach tokens �
 
 ## Установка и native runtime
 
-Текущий согласованный набор **0.2.5** полностью опубликован в npm. Чистые
+Текущий согласованный набор **0.3.0** полностью опубликован в npm. Чистые
 Windows/Linux consumers проходят strict TypeScript, HTTP/WS, assets и native
-TLS/lifecycle. [Публикация](ITERATION_456.md). Установка:
+TLS/lifecycle. [Публикация](RUNTIME_RECOVERY.md#030-public-delivery). Установка:
 
 ```sh
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.2.5
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.3.0
 # Выберите один native runtime той же версии для ОС сервера приложения:
-npm install @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
+npm install @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
 # Windows x64 вместо Linux runtime:
-# npm install @freerdp-bridge/runtime-win32-x64@0.2.5
+# npm install @freerdp-bridge/runtime-win32-x64@0.3.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 

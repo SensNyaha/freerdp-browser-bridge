@@ -5,19 +5,19 @@
 [Контракт](NESTJS_PLUGIN.md), [release-приёмка](ITERATION_429.md).
 Все восемь npm-пакетов 0.2.2 опубликованы; точный integrity и свежие Windows/Linux
 registry-only consumers проходят strict TS и 15/15 проверок на каждой ОС.
-[Публикация 0.2.2](history/iterations/401-450.md#iteration-437). Текущий согласованный набор **0.2.5**
+[Публикация 0.2.2](history/iterations/401-450.md#iteration-437). Текущий согласованный набор **0.3.0**
 также полностью опубликован; обе ОС проходят strict TS и 15/15.
-[Публикация 0.2.5](ITERATION_456.md). Историческая 0.2.1 содержит только Fastify.
+[Публикация 0.3.0](RUNTIME_RECOVERY.md#030-public-delivery). Историческая 0.2.1 содержит только Fastify.
 
 ## Зависимости и размещение worker
 
 На хосте приложения нужны Node.js 24, NestJS 12.2, выбранный platform adapter,
 `reflect-metadata`, RxJS и native runtime той же product version, что и bridge.
-Для текущей опубликованной версии 0.2.5:
+Для текущей опубликованной версии 0.3.0:
 
 ```sh
 # Linux x64 / glibc
-npm install @freerdp-bridge/nestjs@0.2.5 @freerdp-bridge/runtime-linux-x64-gnu@0.2.5
+npm install @freerdp-bridge/nestjs@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
 # Windows x64: вместо Linux runtime выбирается runtime-win32-x64 той же версии
 ```
 

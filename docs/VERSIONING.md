@@ -1,6 +1,6 @@
 # Product versions and release branches
 
-Current release preparation targets **0.3.0** for verified runtime ownership and
+Current public release is **0.3.0** for verified runtime ownership and
 bounded orphan recovery in Node, all adapters and standalone. The implementation
 starts at `51283d1`; `release/0.3.0` includes the installed npm executable fix
 `df95d74` and elevated Windows marker-owner correction `ee78be3`, followed by
@@ -9,9 +9,11 @@ passes Windows/Ubuntu 0.2.5-to-0.3.0 upgrades and combined artifact verification
 Named Astra/RED OS installed upgrades and all eight real desktop profiles now
 also pass. [Local acceptance and frozen archives](RUNTIME_RECOVERY.md#030-local-release-acceptance).
 This is a new capability outside the completed adapter/distribution 0.2.x
-exception, so it uses a minor increment. Merge/tag and publication remain
-pending; the latest public stable release is still
-0.2.5. The original full Stage 1 and V1 gates are not closed by this feature.
+exception, so it uses a minor increment. Feature/release and delivery repair
+branches are merged. All ten npm packages, five OIDC workflows, fresh consumers
+on both OSes and final public standalone upgrades pass.
+[Public delivery](RUNTIME_RECOVERY.md#030-public-delivery).
+The original full Stage 1 and V1 gates are not closed by this feature.
 
 Release tooling admits canonical bounded pre-1.0 minor versions. Standalone's
 0.3.0 upgrade predecessor is explicitly `v0.2.5`; it is not inferred by
@@ -21,7 +23,7 @@ accepted predecessor. Local source/lock/candidate/publisher tests pass **38/38**
 workflow lint and Python lab-driver syntax checks pass; these do not accept a
 real installer, registry publication or real RDP profile.
 
-The latest accepted local release is **0.2.5**, standalone web service and
+The prior accepted public release is **0.2.5**, standalone web service and
 portable/MSI/DEB/RPM distribution with aligned JS/native packages. Local/native,
 exact consumers, eight actual RDP profiles and all named installer-upgrade
 checks pass. All ten npm packages, five OIDC workflows and four fresh registry-only

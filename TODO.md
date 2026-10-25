@@ -1,15 +1,17 @@
 # TODO — implementation plan
 
-The Stage 1 schema-1 runtime recovery feature is locally accepted as **0.3.0**.
-Full linked checks pass Windows 1044/70 skips and Linux 1024/92, native CTest
-38/39, all exact npm consumers, both portable formats, Windows/Ubuntu/Astra/RED OS
-0.2.5-to-0.3.0 upgrades and eight actual desktop profiles. Source CI and installer
-CI pass. The exact ten archives are frozen; merge/tag and real publication are
-next. Broader multi-user isolation and the original full Stage 1 remain open.
-[Current acceptance](docs/RUNTIME_RECOVERY.md#030-local-release-acceptance).
+The Stage 1 schema-1 runtime recovery feature is completed and published as
+**0.3.0**. Feature/release and delivery repair branches are merged into shared
+`master`. All ten exact npm packages, five successful OIDC workflows, four fresh
+registry-only consumers on each OS and final standalone delivery pass. Public
+DEB/RPM 0.2.5-to-0.3.0 upgrades pass on Astra 1.7.5 and RED OS 7.3.
+Full current-source checks pass Windows 1050/70 skips and Linux 1030/92;
+native CTest remains 38/39. Eight actual desktop profiles pass separately.
+Broader multi-user isolation and the original full Stage 1 remain open.
+[Delivery and evidence](docs/RUNTIME_RECOVERY.md#030-public-delivery).
 The following preparation checkpoints retain their original scope/status.
 
-Current functional work: `feature/stage1-runtime-isolation` implements the next
+Completed preparation history: `feature/stage1-runtime-isolation` implemented the next
 open worker/isolation item from shared `master`. Initial Linux runtime-root
 admission has actual before/after evidence. Schema-1 native ownership locks now
 pass Windows linked CTest 37/37, Linux sanitizer foundation CTest 21/21 and two
@@ -40,7 +42,7 @@ preserving the accepted browser clipboard, audible output and desktop/lifecycle
 profiles. Features use separate branches and merge only after their acceptance
 checks pass; [version policy](docs/VERSIONING.md).
 
-Latest accepted public release is **0.2.5**, standalone web service and portable/
+Prior accepted public release is **0.2.5**, standalone web service and portable/
 MSI/DEB/RPM distribution. Full linked checks pass Windows 1002/63 and Linux
 977/90; fresh native CTest 36/37, all four exact consumers on both OSes, eight
 real desktop profiles and Windows/Ubuntu/Astra/RED OS upgrades pass. Source CI,
@@ -1447,12 +1449,15 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
   Node ownership endpoints and native marker locks preserve live/uncertain
   owners. Bounded recovery removes only known orphan metadata and empty owned
   directories after simultaneous hard kill, including startup prefixes. SDK
-  exports and standalone pre-listen recovery are accepted in local 0.3.0:
+  exports and standalone pre-listen recovery are accepted in public 0.3.0:
   native/full checks, all installed npm consumers, portable/service upgrades on
   Windows/Ubuntu/Astra/RED OS and eight real desktop profiles pass. Core changes
   `51283d1`, packaging `df95d74`, elevated Windows correction `ee78be3`.
   [Frozen archives and evidence](docs/RUNTIME_RECOVERY.md#030-local-release-acceptance).
-  Release merge/publication is next; broader multi-user/isolation and future
+  Feature/release and delivery repairs are merged; all ten npm archives,
+  five OIDC workflows and final standalone publication/installed upgrades pass.
+  [Public delivery](docs/RUNTIME_RECOVERY.md#030-public-delivery).
+  Broader multi-user/isolation and future
   drive/spool retention requirements are not closed by this slice.
 
 - [x] DONE for observed absolute backend startup deadline — One monotonic
@@ -1535,7 +1540,7 @@ Wire details: [IPC foundation](docs/IPC_FOUNDATION.md). Audit and iteration repo
 - [x] DONE — Heartbeat and graceful shutdown. Real-worker and adversarial fake-worker deadline/watchdog tests; `316cdc0`.
 - [x] DONE — Length limits and parser unit tests. Header checked before body allocation; malformed/truncated inputs fail without input disclosure. `1672590`.
 - [x] DONE for bounded local Linux smoke — libFuzzer IPC target and seeded run: 2,074,807 executions in 21 seconds with ASan/UBSan and zero failure. Six other portable parser targets also pass. Extended/upstream fuzzing and actual CI remain open. [Target](native/ipc/fuzz.cpp), [evidence](docs/history/iterations/151-200.md#iteration-184).
-- [~] IN PROGRESS — Parent-death handling and private runtime directory cleanup. Windows and actual Linux framed-pipe parent-death/cleanup and 100 sequential worker tests pass. Windows private ACL creation/startup is implemented. Verified schema-1 ownership now adds bounded orphan recovery after simultaneous Node/worker hard kill, live-owner/worker protection, finite scans and joined cancellation on both OSes. Windows supervisor and Windows/Linux portable checks pass; broader multi-user/service isolation, new-version installed upgrades and release acceptance remain open. [Current recovery evidence](docs/RUNTIME_RECOVERY.md#acceptance), [earlier Linux evidence](docs/history/iterations/151-200.md#iteration-184).
+- [~] IN PROGRESS — Parent-death handling and private runtime directory cleanup. Windows and actual Linux framed-pipe parent-death/cleanup and 100 sequential worker tests pass. Windows private ACL creation/startup is implemented. Verified schema-1 ownership adds bounded orphan recovery after simultaneous Node/worker hard kill, live-owner/worker protection, finite scans and joined cancellation on both OSes. Windows supervisor, Windows/Linux portable, new-version installed upgrades and public 0.3.0 release acceptance pass. Broader multi-user/service isolation remains open. [Current recovery evidence](docs/RUNTIME_RECOVERY.md#030-public-delivery), [earlier Linux evidence](docs/history/iterations/151-200.md#iteration-184).
 
 **Gate:** Node test supervisor can spawn 100 sequential workers, exchange heartbeats, kill/restart without leaked processes/files.
 

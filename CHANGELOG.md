@@ -4,9 +4,9 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-No additional product feature is included beyond the accepted 0.3.0 candidate.
+No additional product feature is included beyond published 0.3.0.
 
-## 0.3.0 — 2026-10-25 (local acceptance; publication pending)
+## 0.3.0 — 2026-10-25
 
 - Add bounded orphan runtime recovery to Node and all four adapters, with
   independent Node ownership endpoints, native exclusive marker locks and a
@@ -25,8 +25,11 @@ Full linked checks pass Windows 1044/70 skips and Linux 1024/92; native CTest
 upgrade profiles and eight actual desktop profiles pass. Source, sanitizer/fuzz,
 GCC8.3 and combined installer CI pass. All ten archive bytes are frozen.
 [Exact acceptance, limitations and retained failures](docs/RUNTIME_RECOVERY.md#030-local-release-acceptance).
-Merge/tag and public npm/standalone delivery remain separate next steps; full
-original Stage 1/V1 and the expanded Node/addon sanitizer matrix remain open.
+All ten exact npm archives and five GitHub Releases are public. Five OIDC
+workflows, fresh registry-only consumers on both OSes, final standalone downloads
+and public DEB/RPM upgrades on Astra/RED OS pass.
+[Public delivery](docs/RUNTIME_RECOVERY.md#030-public-delivery).
+The full original Stage 1/V1 and expanded Node/addon sanitizer matrix remain open.
 
 ### Preparation history (superseded by the acceptance above)
 
