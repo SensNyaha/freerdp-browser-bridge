@@ -202,7 +202,7 @@
     "node_modules/@freerdp-bridge/runtime-win32-x64": {
       "version": "0.3.0",
       "resolved": "https://registry.npmjs.org/@freerdp-bridge/runtime-win32-x64/-/runtime-win32-x64-0.3.0.tgz",
-      "integrity": "sha512-WShkJDGXbtFmb2Rxma7qWn117YLuxYFdV9pxPnFCb8/w3JDrQVoP+WL8v8TUlBSIGrnNErEbacPj1YbQperwkQ==",
+      "integrity": "sha512-qisAEHc1cUI5BKiUqq344AfBO1pfeRUB8Bk8vCZ3e0S+JnIA0Un/opRuTAK1j9qMEa7mlr7ktPGAzddIgDBrIQ==",
       "cpu": [
         "x64"
       ],
