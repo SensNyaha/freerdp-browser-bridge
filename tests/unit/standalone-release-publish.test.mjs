@@ -17,138 +17,208 @@ const environment = {
   GITHUB_REF: 'refs/heads/main',
   GITHUB_SHA: 'a'.repeat(40),
 };
-test('standalone publisher preserves core assets, publishes manifest last, skips exact bytes and refuses conflicts/uncertain writes', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'bridge-standalone-release-'));
-  try {
-    for (const platform of ['win32-x64', 'linux-x64-gnu']) {
-      const files = [];
-      for (const name of standaloneReleaseNames('0.2.5', platform)) {
-        const bytes = Buffer.from('synthetic-public-' + name);
-        await writeFile(join(root, name), bytes);
-        files.push({
-          name,
-          bytes: bytes.length,
-          sha256: createHash('sha256').update(bytes).digest('hex'),
-          integrity:
-            'sha512-' + createHash('sha512').update(bytes).digest('base64'),
-        });
+for (const version of ['0.2.5', '0.3.0', '0.3.1'])
+  test(
+    'standalone ' +
+      version +
+      ' publisher preserves core assets, publishes manifest last, skips exact bytes and refuses conflicts/uncertain writes',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'bridge-standalone-release-'));
+      try {
+        for (const platform of ['win32-x64', 'linux-x64-gnu']) {
+          const files = [];
+          for (const name of standaloneReleaseNames(version, platform)) {
+            const bytes = Buffer.from('synthetic-public-' + name);
+            await writeFile(join(root, name), bytes);
+            files.push({
+              name,
+              bytes: bytes.length,
+              sha256: createHash('sha256').update(bytes).digest('hex'),
+              integrity:
+                'sha512-' + createHash('sha512').update(bytes).digest('base64'),
+            });
+          }
+          await writeFile(
+            join(root, 'standalone-' + platform + '.json'),
+            JSON.stringify({
+              schema: 1,
+              version,
+              sourceCommit: environment.GITHUB_SHA,
+              platform,
+              files,
+              acceptance: {
+                portable: true,
+                installed: true,
+                realRdpDesktop: false,
+                upgradeFrom:
+                  version === '0.2.5'
+                    ? '0.2.4'
+                    : version === '0.3.0'
+                      ? '0.2.5'
+                      : '0.3.0',
+                os: platform === 'win32-x64' ? 'windows-2025' : 'ubuntu-24.04',
+              },
+            }),
+          );
+        }
+        const original = {
+          name: 'accepted-core.tgz',
+          state: 'uploaded',
+          size: 1,
+          digest: 'sha256:' + 'c'.repeat(64),
+        };
+        const release = {
+          id: 7,
+          tag_name: 'v' + version,
+          draft: false,
+          prerelease: false,
+          assets: [structuredClone(original)],
+        };
+        const writes = [];
+        let uncertain = false;
+        const api = async (path, options = {}) => {
+          if (path.includes('/git/ref/'))
+            return { object: { type: 'tag', sha: 'b'.repeat(40) } };
+          if (path.includes('/git/tags/'))
+            return { object: { type: 'commit', sha: environment.GITHUB_SHA } };
+          if (options.method !== 'POST') return structuredClone(release);
+          const chunks = [];
+          for await (const chunk of options.body) chunks.push(chunk);
+          const bytes = Buffer.concat(chunks),
+            name = new URL(path).searchParams.get('name');
+          writes.push(name);
+          if (uncertain) throw new Error('SYNTHETIC_UNCERTAIN_UPLOAD');
+          assert.equal(bytes.length, options.bytes);
+          const asset = {
+            name,
+            state: 'uploaded',
+            size: bytes.length,
+            digest:
+              'sha256:' + createHash('sha256').update(bytes).digest('hex'),
+          };
+          release.assets.push(asset);
+          return structuredClone(asset);
+        };
+        const options = { directory: root, environment, api };
+        assert.equal((await publishStandaloneRelease(options)).uploaded, 9);
+        assert.equal(writes.at(-1), 'standalone-manifest.json');
+        assert.deepEqual(release.assets[0], original);
+        assert.equal((await publishStandaloneRelease(options)).uploaded, 0);
+        assert.equal(writes.length, 9);
+        if (version === '0.3.0') {
+          const resumePointer = {
+            schema: 1,
+            version,
+            sourceCommit: environment.GITHUB_SHA,
+            runId: 123,
+          };
+          const resumeApi = async (path, options) => {
+            if (path.endsWith('/actions/runs/123'))
+              return {
+                id: 123,
+                head_sha: environment.GITHUB_SHA,
+                status: 'completed',
+                conclusion: 'success',
+                path: '.github/workflows/standalone-release.yml',
+                event: 'workflow_dispatch',
+                head_branch: 'v0.3.0',
+                repository: { full_name: environment.GITHUB_REPOSITORY },
+                head_repository: { full_name: environment.GITHUB_REPOSITORY },
+              };
+            if (path.endsWith('/jobs?per_page=20'))
+              return {
+                total_count: 4,
+                jobs: [
+                  'plan',
+                  'build (windows-2025)',
+                  'build (ubuntu-24.04)',
+                  'verify',
+                ].map((name) => ({
+                  name,
+                  status: 'completed',
+                  conclusion: 'success',
+                })),
+              };
+            return api(path, options);
+          };
+          const revised = {
+            ...options,
+            environment: { ...environment, GITHUB_SHA: 'f'.repeat(40) },
+            api: resumeApi,
+          };
+          await assert.rejects(
+            publishStandaloneRelease(revised),
+            /STANDALONE_RELEASE_PUBLISH_SOURCE_REFUSED/,
+          );
+          assert.equal(
+            (await publishStandaloneRelease({ ...revised, resumePointer }))
+              .uploaded,
+            0,
+          );
+          assert.equal(writes.length, 9);
+        }
+        const download = async () =>
+          new Response(await readFile(join(root, 'standalone-manifest.json')));
+        assert.equal(
+          (await standaloneReleasePreflight(version, { api, download }))
+            .alreadyPublished,
+          true,
+        );
+        for (const platform of ['win32-x64', 'linux-x64-gnu']) {
+          const path = join(root, 'standalone-' + platform + '.json');
+          const receipt = JSON.parse(await readFile(path, 'utf8'));
+          receipt.candidateOnly = true;
+          await writeFile(path, JSON.stringify(receipt));
+        }
+        await assert.rejects(
+          publishStandaloneRelease(options),
+          /STANDALONE_RELEASE_PUBLISH_SOURCE_REFUSED/,
+        );
+        assert.equal(writes.length, 9);
+        for (const platform of ['win32-x64', 'linux-x64-gnu']) {
+          const path = join(root, 'standalone-' + platform + '.json');
+          const receipt = JSON.parse(await readFile(path, 'utf8'));
+          receipt.candidateOnly = false;
+          await writeFile(path, JSON.stringify(receipt));
+        }
+        release.assets[1].digest = 'sha256:' + 'd'.repeat(64);
+        await assert.rejects(
+          publishStandaloneRelease(options),
+          /STANDALONE_RELEASE_ASSET_CONFLICT/,
+        );
+        assert.equal(writes.length, 9);
+        await assert.rejects(
+          standaloneReleasePreflight(version, { api, download }),
+          /STANDALONE_RELEASE_ASSET_READBACK_INVALID/,
+        );
+        release.assets = [structuredClone(original)];
+        uncertain = true;
+        await assert.rejects(
+          publishStandaloneRelease(options),
+          /SYNTHETIC_UNCERTAIN_UPLOAD/,
+        );
+        assert.equal(writes.length, 10);
+        await assert.rejects(
+          publishStandaloneRelease({
+            ...options,
+            environment: {
+              ...environment,
+              GITHUB_REF: 'refs/heads/feature/test',
+            },
+          }),
+          /STANDALONE_RELEASE_PUBLISH_CONTEXT_REFUSED/,
+        );
+        assert.equal(writes.length, 10);
+      } finally {
+        assert.equal(dirname(root), resolve(tmpdir()));
+        assert.match(
+          basename(root),
+          /^bridge-standalone-release-[A-Za-z0-9]+$/,
+        );
+        await rm(root, { recursive: true, force: true });
       }
-      await writeFile(
-        join(root, 'standalone-' + platform + '.json'),
-        JSON.stringify({
-          schema: 1,
-          version: '0.2.5',
-          sourceCommit: environment.GITHUB_SHA,
-          platform,
-          files,
-          acceptance: {
-            portable: true,
-            installed: true,
-            realRdpDesktop: false,
-            upgradeFrom: '0.2.4',
-            os: platform === 'win32-x64' ? 'windows-2025' : 'ubuntu-24.04',
-          },
-        }),
-      );
-    }
-    const original = {
-      name: 'accepted-core.tgz',
-      state: 'uploaded',
-      size: 1,
-      digest: 'sha256:' + 'c'.repeat(64),
-    };
-    const release = {
-      id: 7,
-      tag_name: 'v0.2.5',
-      draft: false,
-      prerelease: false,
-      assets: [structuredClone(original)],
-    };
-    const writes = [];
-    let uncertain = false;
-    const api = async (path, options = {}) => {
-      if (path.includes('/git/ref/'))
-        return { object: { type: 'tag', sha: 'b'.repeat(40) } };
-      if (path.includes('/git/tags/'))
-        return { object: { type: 'commit', sha: environment.GITHUB_SHA } };
-      if (options.method !== 'POST') return structuredClone(release);
-      const chunks = [];
-      for await (const chunk of options.body) chunks.push(chunk);
-      const bytes = Buffer.concat(chunks),
-        name = new URL(path).searchParams.get('name');
-      writes.push(name);
-      if (uncertain) throw new Error('SYNTHETIC_UNCERTAIN_UPLOAD');
-      assert.equal(bytes.length, options.bytes);
-      const asset = {
-        name,
-        state: 'uploaded',
-        size: bytes.length,
-        digest: 'sha256:' + createHash('sha256').update(bytes).digest('hex'),
-      };
-      release.assets.push(asset);
-      return structuredClone(asset);
-    };
-    const options = { directory: root, environment, api };
-    assert.equal((await publishStandaloneRelease(options)).uploaded, 9);
-    assert.equal(writes.at(-1), 'standalone-manifest.json');
-    assert.deepEqual(release.assets[0], original);
-    assert.equal((await publishStandaloneRelease(options)).uploaded, 0);
-    assert.equal(writes.length, 9);
-    const download = async () =>
-      new Response(await readFile(join(root, 'standalone-manifest.json')));
-    assert.equal(
-      (await standaloneReleasePreflight('0.2.5', { api, download }))
-        .alreadyPublished,
-      true,
-    );
-    for (const platform of ['win32-x64', 'linux-x64-gnu']) {
-      const path = join(root, 'standalone-' + platform + '.json');
-      const receipt = JSON.parse(await readFile(path, 'utf8'));
-      receipt.candidateOnly = true;
-      await writeFile(path, JSON.stringify(receipt));
-    }
-    await assert.rejects(
-      publishStandaloneRelease(options),
-      /STANDALONE_RELEASE_PUBLISH_SOURCE_REFUSED/,
-    );
-    assert.equal(writes.length, 9);
-    for (const platform of ['win32-x64', 'linux-x64-gnu']) {
-      const path = join(root, 'standalone-' + platform + '.json');
-      const receipt = JSON.parse(await readFile(path, 'utf8'));
-      receipt.candidateOnly = false;
-      await writeFile(path, JSON.stringify(receipt));
-    }
-    release.assets[1].digest = 'sha256:' + 'd'.repeat(64);
-    await assert.rejects(
-      publishStandaloneRelease(options),
-      /STANDALONE_RELEASE_ASSET_CONFLICT/,
-    );
-    assert.equal(writes.length, 9);
-    await assert.rejects(
-      standaloneReleasePreflight('0.2.5', { api, download }),
-      /STANDALONE_RELEASE_ASSET_READBACK_INVALID/,
-    );
-    release.assets = [structuredClone(original)];
-    uncertain = true;
-    await assert.rejects(
-      publishStandaloneRelease(options),
-      /SYNTHETIC_UNCERTAIN_UPLOAD/,
-    );
-    assert.equal(writes.length, 10);
-    await assert.rejects(
-      publishStandaloneRelease({
-        ...options,
-        environment: { ...environment, GITHUB_REF: 'refs/heads/feature/test' },
-      }),
-      /STANDALONE_RELEASE_PUBLISH_CONTEXT_REFUSED/,
-    );
-    assert.equal(writes.length, 10);
-  } finally {
-    assert.equal(dirname(root), resolve(tmpdir()));
-    assert.match(basename(root), /^bridge-standalone-release-[A-Za-z0-9]+$/);
-    await rm(root, { recursive: true, force: true });
-  }
-});
+    },
+  );
 test('standalone release seed and API refuse unsupported versions, foreign endpoints and unauthenticated writes', async () => {
   assert.deepEqual(standaloneUpgradeSeed('0.2.5'), {
     version: '0.2.4',

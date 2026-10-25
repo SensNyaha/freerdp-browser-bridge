@@ -2,15 +2,24 @@ import { createReadStream } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hashFile } from '../github-delivery/manifest.mjs';
+import {
+  hashFile,
+  compareReleaseVersions,
+} from '../github-delivery/manifest.mjs';
 import { readStandaloneReleaseReceipts } from './release-artifacts.mjs';
 import { standaloneGithubApi } from './release-api.mjs';
+import {
+  readStandaloneResumePointer,
+  verifyStandaloneResumeSource,
+} from './resume-source.mjs';
+import { productVersion } from '../product-version.mjs';
 
 const prefix = '/repos/SensNyaha/freerdp-browser-bridge';
 export async function publishStandaloneRelease({
   directory,
   environment = process.env,
   api = standaloneGithubApi(environment.GITHUB_TOKEN),
+  resumePointer,
 }) {
   if (
     environment.GITHUB_ACTIONS !== 'true' ||
@@ -22,10 +31,18 @@ export async function publishStandaloneRelease({
   )
     throw new Error('STANDALONE_RELEASE_PUBLISH_CONTEXT_REFUSED');
   const manifest = await readStandaloneReleaseReceipts(directory);
+  const resume = resumePointer;
+  let sourceCommit = environment.GITHUB_SHA;
+  if (resume) {
+    if (resume.version !== manifest.version)
+      throw new Error('STANDALONE_RESUME_SOURCE_REFUSED');
+    await verifyStandaloneResumeSource(resume, api);
+    sourceCommit = resume.sourceCommit;
+  }
   if (
-    Number(manifest.version.split('.')[2]) < 5 ||
+    compareReleaseVersions(manifest.version, '0.2.5') < 0 ||
     manifest.candidateOnly ||
-    manifest.sourceCommit !== environment.GITHUB_SHA
+    manifest.sourceCommit !== sourceCommit
   )
     throw new Error('STANDALONE_RELEASE_PUBLISH_SOURCE_REFUSED');
   const tag = 'v' + manifest.version;
@@ -140,7 +157,13 @@ if (
       throw new Error('STANDALONE_RELEASE_PUBLISH_USAGE');
     console.log(
       JSON.stringify(
-        await publishStandaloneRelease({ directory: resolve(process.argv[2]) }),
+        await publishStandaloneRelease({
+          directory: resolve(process.argv[2]),
+          resumePointer: await readStandaloneResumePointer(
+            resolve('.'),
+            productVersion,
+          ),
+        }),
       ),
     );
   } catch (error) {

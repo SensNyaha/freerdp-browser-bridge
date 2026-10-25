@@ -4,6 +4,11 @@ import { resolve } from 'node:path';
 import { standaloneReleasePreflight } from './release-preflight.mjs';
 import { readStandaloneCandidatePointer } from './candidate-release.mjs';
 import { standaloneUpgradeSeed } from './upgrade-seed.mjs';
+import {
+  readStandaloneResumePointer,
+  verifyStandaloneResumeSource,
+} from './resume-source.mjs';
+import { standaloneGithubApi } from './release-api.mjs';
 export { standaloneUpgradeSeed } from './upgrade-seed.mjs';
 if (
   process.argv[1] &&
@@ -33,10 +38,37 @@ if (
     skip: publish && !seed,
     seed,
   };
-  if (publish && seed)
-    plan.skip = (
-      await standaloneReleasePreflight(metadata.version)
-    ).alreadyPublished;
+  const resume = await readStandaloneResumePointer(
+    resolve('.'),
+    metadata.version,
+  );
+  if (publish && seed) {
+    try {
+      plan.skip = (
+        await standaloneReleasePreflight(metadata.version, {
+          api: standaloneGithubApi(process.env.GITHUB_TOKEN),
+        })
+      ).alreadyPublished;
+    } catch (error) {
+      // Only the verified retained build can resume a partial upload; fresh
+      // builds keep the existing refusal. Source proof below precedes output.
+      if (
+        !resume ||
+        error?.message !==
+          'STANDALONE_RELEASE_PARTIAL_RETRY_ORIGINAL_PUBLISH_JOB'
+      )
+        throw error;
+    }
+  }
+  if (resume && !plan.skip) {
+    if (!publish || candidate)
+      throw new Error('STANDALONE_RESUME_CONTEXT_REFUSED');
+    await verifyStandaloneResumeSource(
+      resume,
+      standaloneGithubApi(process.env.GITHUB_TOKEN),
+    );
+    plan.resume = resume;
+  }
   await mkdir('build', { recursive: true });
   await writeFile(
     'build/standalone-release-plan.json',
@@ -51,6 +83,10 @@ if (
         plan.skip +
         '\nseed-ref=' +
         (seed?.ref ?? '') +
+        '\nresume-run=' +
+        (plan.resume?.runId ?? '') +
+        '\nresume-source=' +
+        (plan.resume?.sourceCommit ?? '') +
         '\n',
     );
   console.log(JSON.stringify(plan));

@@ -1,5 +1,54 @@
 # Runtime recovery
 
+Shared `master` now includes both accepted branches; immutable annotated
+`v0.3.0` identifies merge `4ce88b3`. The following local-acceptance report was
+recorded before that merge; npm and standalone public delivery is in progress.
+
+Post-tag review found a second delivery-only boundary: the standalone publisher
+still tested only `patch >= 5`, so it would reject 0.3.0/0.3.1 before uploading.
+New before/after cases reproduce both refusals and now verify the complete
+version against 0.2.5. The immutable product tag and ten archive bytes are
+preserved. Core OIDC has published both native runtimes; delayed registry
+visibility ended the first job after acceptance. A read-first continuation of
+that same job skips the now-public exact bytes and continues the shared JS set.
+
+An explicitly committed `packaging/standalone/release-resume.json` may route a
+trusted main/master publisher revision to the original retained hosted build.
+Its bounded schema fixes product version, source SHA and run ID. GitHub API
+proof must match the immutable annotated product tag, the same public source
+repository, the original standalone workflow and a completed successful run;
+plan, both Windows/Ubuntu installed build jobs and combined verification must
+all have succeeded. Tag-based dispatch is validation-only until this proof is
+available. Actions downloads only that run's SHA-prefixed artifacts and checks
+their digests; ordinary receipt verification still requires the exact seven
+files and `candidateOnly: false`. The publisher rechecks the API proof and
+source/tag binding before writing. Normal publication retains its exact current
+workflow SHA rule. The main/master, fixed repository, no-overwrite and
+manifest-last guards remain unchanged; no local fake CI environment or manual
+asset upload is introduced. A verified retained run can resume partial uploads;
+a fresh build still refuses them. Pointer/schema/fork/workflow/source/job drift
+and the actual CLI partial-plan path have explicit tests.
+
+This delivery repair is on `fix/standalone-minor-publication`; focused release
+tests pass **17/17** and workflow lint passes. Full current-source `pnpm check`
+passes Windows **1050/70 skips/0 failures** and Linux **1030/92 skips/0 failures**,
+recorded in `recovery-release-resume-{windows,linux}-check.log` under
+`build/current-validation`. Actual hosted retained-artifact publication remains
+pending. No new RDP feature,
+dependency version, native binary or accepted npm archive is introduced.
+
+The first generated GitHub delivery export then exposed a test-packaging omission:
+`release-tools/native-smoke.mjs` copied its Fastify consumer and TLS fixture but
+omitted the consumer's `browser-port.mjs` dependency. Direct execution confirms
+`ERR_MODULE_NOT_FOUND` before native work. Copying the existing helper fixes the
+same smoke without changing the accepted product source, archive bytes or tag.
+The previous failed run leaves an intentional runtime junction, so the local
+repeat retires only that verified scratch alias before creating a fresh one.
+The source/native smoke and delivery guards pass; evidence is
+`recovery-release-native-smoke-{before,port-helper-fixed}.log` under
+`build/current-validation`. Current export tooling supplies this checked
+delivery helper separately from the immutable upstream product snapshot.
+
 The **0.3.0 recovery feature is locally accepted**: native/full workspace checks,
 exact npm consumers, both portable formats, Windows/Ubuntu/Astra/RED OS installed
 upgrades and eight actual desktop profiles pass. [Exact release acceptance and

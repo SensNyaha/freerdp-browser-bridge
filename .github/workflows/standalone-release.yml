@@ -36,6 +36,11 @@ jobs:
       skip: ${{ steps.plan.outputs.skip }}
       version: ${{ steps.plan.outputs.version }}
       seed-ref: ${{ steps.plan.outputs.seed-ref }}
+      resume-run: ${{ steps.plan.outputs.resume-run }}
+      resume-source: ${{ steps.plan.outputs.resume-source }}
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,10 +52,11 @@ jobs:
       - id: plan
         run: node scripts/standalone/release-plan.mjs
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STANDALONE_PUBLISH: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || inputs.publish }}
   build:
     needs: plan
-    if: needs.plan.outputs.skip != 'true'
+    if: needs.plan.outputs.skip != 'true' && needs.plan.outputs.resume-run == ''
     strategy:
       fail-fast: false
       matrix:
@@ -193,5 +199,33 @@ jobs:
           merge-multiple: true
           digest-mismatch: error
       - run: node scripts/standalone/release-publish.mjs build/standalone-publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  resume:
+    needs: plan
+    if: needs.plan.outputs.skip != 'true' && needs.plan.outputs.resume-run != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: standalone-release-${{ needs.plan.outputs.resume-source }}-*
+          run-id: ${{ needs.plan.outputs.resume-run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: build/standalone-resume
+          merge-multiple: true
+          digest-mismatch: error
+      - run: node scripts/standalone/release-verify.mjs build/standalone-resume
+      - run: node scripts/standalone/release-publish.mjs build/standalone-resume
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
