@@ -8,6 +8,7 @@ import { mkdtemp, mkdir, chmod, chown, lstat, rm } from 'node:fs/promises';
 import { join, resolve, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { stageLinuxIsolationActor } from '../fixtures/cross-principal-stage.mjs';
 
 const execute = promisify(execFile);
 const windows = process.platform === 'win32';
@@ -39,29 +40,30 @@ test('cross-principal fixture refuses invalid arguments before opening any targe
   }
 });
 
-function ownChild(runtimeRoot) {
+function ownChild(
+  runtimeRoot,
+  {
+    binaryDir: actorBin = binaryDir,
+    fixture = fileURLToPath(
+      new URL('../fixtures/cross-principal-owner.mjs', import.meta.url),
+    ),
+    executable = process.execPath,
+  } = {},
+) {
   const env = Object.fromEntries(
     ['SystemRoot', 'WINDIR', 'PATH', 'LD_LIBRARY_PATH'].flatMap((key) =>
       process.env[key] === undefined ? [] : [[key, process.env[key]]],
     ),
   );
-  env.BRIDGE_TEST_BINARY_DIR = binaryDir;
+  env.BRIDGE_TEST_BINARY_DIR = actorBin;
   if (!windows) env.HOME = join(dirname(runtimeRoot), 'home');
-  const child = spawn(
-    process.execPath,
-    [
-      fileURLToPath(
-        new URL('../fixtures/cross-principal-owner.mjs', import.meta.url),
-      ),
-      runtimeRoot,
-    ],
-    {
-      env,
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      ...(!windows ? { uid: 42420, gid: 42420 } : {}),
-    },
-  );
+  const child = spawn(executable, [fixture, runtimeRoot], {
+    cwd: dirname(fixture),
+    env,
+    windowsHide: true,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    ...(!windows ? { uid: 42420, gid: 42420 } : {}),
+  });
   const closed = once(child, 'close');
   child.stdin.on('error', () => {});
   let pending = '',
@@ -146,6 +148,7 @@ test(
       : await mkdtemp(join(tmpdir(), 'bridge-cross-principal-'));
     const runtimeRoot = join(stage, 'runtime');
     let owner;
+    let actor;
     try {
       if (windows) {
         const prepared = await execute(
@@ -177,8 +180,12 @@ test(
         const home = join(stage, 'home');
         await mkdir(home, { mode: 0o700 });
         await chown(home, 42420, 42420);
+        actor = await stageLinuxIsolationActor(stage, binaryDir);
       }
-      owner = ownChild(runtimeRoot);
+      owner = ownChild(runtimeRoot, actor);
+      const foreignProbe = windows
+        ? probe
+        : join(actor.binaryDir, 'fixture-cross-principal');
       const ready = await owner.next();
       assert.equal(ready.failure, undefined, JSON.stringify(ready));
       assert.deepEqual(Object.keys(ready).sort(), [
@@ -212,7 +219,7 @@ test(
               ],
               { timeout: 35000, maxBuffer: 4096, windowsHide: true },
             )
-          : await execute(probe, ['--probe', runtimeRoot, name], {
+          : await execute(foreignProbe, ['--probe', runtimeRoot, name], {
               uid: 42421,
               gid: 42421,
               timeout: 5000,
@@ -233,7 +240,7 @@ test(
         owner.command('expose');
         assert.deepEqual(await owner.next(), { v: 1, exposed: true });
         await assert.rejects(
-          execute(probe, ['--probe', runtimeRoot, ready.orphan], {
+          execute(foreignProbe, ['--probe', runtimeRoot, ready.orphan], {
             uid: 42421,
             gid: 42421,
             timeout: 5000,

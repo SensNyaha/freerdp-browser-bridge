@@ -88,6 +88,20 @@ test-only and is never installed in npm or standalone payloads. Actual hosted
 Windows proof, full regression and feature acceptance remain pending. Existing
 same-user DACL checks do not count as this second-principal evidence.
 
+First hosted run `40210047679` passed the ordinary Linux suite but its extra
+UID case could not load a fixture from the runner's private home. The corrected
+test stages only declared compiled workspace packages, installed TypeBox build,
+fixed native files and Node into a fresh public test subtree. It never copies a
+home directory, Git metadata or lab configuration and never changes ancestor
+permissions. Files/depth/bytes are bounded; the subtree is retired after joined
+cleanup. Exact GCC 8.3 passes with the original source checkout deliberately
+mode 0700, reproducing this boundary locally. The initial TypeBox manifest-export
+lookup failure is retained too. An unrelated Windows full-suite Edge `page.goto`
+3000 ms timeout passes its unchanged focused repeat; the first log remains.
+Full Linux linked checks pass **1031/93 skips/0 failures**; original Windows
+foundation CTest is **21/21**, linked Linux CTest **39/39**. Final hosted proof and
+current Windows full-suite success remain required before merge.
+
 ## Preparation checkpoints
 
 Release preparation now targets **0.3.0** on `release/0.3.0`, from the feature
