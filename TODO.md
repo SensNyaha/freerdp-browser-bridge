@@ -1,5 +1,17 @@
 # TODO — implementation plan
 
+Current public capability release: **0.4.0**, HTML clipboard. Feature and release
+branches are merged into shared `master`; the immutable private tag is `53b5edb`
+and public core tag is `b11db42`. Ten exact npm packages, five OIDC workflows,
+five GitHub Releases and stable MSI/DEB/RPM/ZIP/TGZ/source companions are public.
+All four fresh registry-only consumers pass on each OS. Final public DEB/RPM
+0.3.0-to-0.4.0 upgrades pass Astra 1.7.5 / RED OS 7.3. Named versioned HTML and
+desktop evidence retains its explicit scope. Additional main Windows foundation
+also passes on an unchanged retry after Edge/OpenSSL tool timeouts; the failed
+log is retained and all four source jobs are successful.
+[Current delivery, hashes and limits](docs/CLIPBOARD_BROWSER.md#040-public-delivery).
+The earlier preparation checkpoints below retain their historical scope.
+
 The Stage 1 schema-1 runtime recovery feature is completed and published as
 **0.3.0**. Feature/release and delivery repair branches are merged into shared
 `master`. All ten exact npm packages, five successful OIDC workflows, four fresh
@@ -2116,8 +2128,10 @@ profile's target, microphone, recovery, resource or platform acceptance.
   including Linux RWS1/framed IPC and an explicit Unicode-only XRDP refusal.
   Full local/hosted regression, exact GCC 8.3 and sanitizer/fuzz gates pass at
   private `bba3c98` / public `04fd0cc`. Safe static formatting/browser permission
-  limits are documented; other formats, full Stage 7 and versioned 0.4.0 delivery
-  remain separate. [Acceptance](docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance),
+  limits are documented. Versioned 0.4.0 is also publicly delivered with exact
+  npm/standalone acceptance; other formats and full Stage 7 remain separate.
+  [Public delivery](docs/CLIPBOARD_BROWSER.md#040-public-delivery),
+  [source acceptance](docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance),
   [contract](docs/CLIPBOARD_TEXT.md#html-codec-in-development).
 - [ ] Image clipboard where negotiated.
 - [ ] Session sandbox and safe path resolver.

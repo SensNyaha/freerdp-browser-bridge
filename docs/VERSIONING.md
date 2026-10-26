@@ -1,15 +1,20 @@
 # Product versions and release branches
 
 HTML source acceptance is merged into shared `master` at `6f21ce7`.
-`release/0.4.0` prepares the next minor capability release; public **0.3.0**
-remains unchanged until accepted delivery. The new standalone minor boundary
+`release/0.4.0` is accepted and merged into shared `master` at `53b5edb`;
+annotated `v0.4.0` is immutable. Public **0.4.0** includes ten exact npm packages,
+five GitHub Releases and stable standalone installers. Four fresh registry-only
+consumers per OS and final public Astra/RED OS upgrades pass.
+[Delivery evidence](CLIPBOARD_BROWSER.md#040-public-delivery).
+The new standalone minor boundary
 explicitly uses **`v0.3.0`** as its upgrade seed. Wrong/mixed predecessors in
 either platform receipt are refused; unknown future minor seeds still require
-an explicit decision. Eleven focused version/manifest/publisher checks pass,
-including failing-before/passing-after 0.4.0 seed and receipt cases. This is
-tooling acceptance, not an actual installer upgrade or published 0.4.0 artifact.
+an explicit decision. The original seed-tooling checkpoint passes eleven
+focused version/manifest/publisher checks,
+including failing-before/passing-after 0.4.0 seed and receipt cases. These
+tooling checks preceded the installed/public acceptance linked above.
 
-Current public release is **0.3.0** for verified runtime ownership and
+Previous public release is **0.3.0** for verified runtime ownership and
 bounded orphan recovery in Node, all adapters and standalone. The implementation
 starts at `51283d1`; `release/0.3.0` includes the installed npm executable fix
 `df95d74` and elevated Windows marker-owner correction `ee78be3`, followed by

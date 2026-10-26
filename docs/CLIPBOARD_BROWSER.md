@@ -834,3 +834,77 @@ and standalone publication, final public asset checks and registry-only consumer
 remain delivery gates. Until those complete, this section accepts the versioned
 distribution inputs and does not claim public 0.4.0 availability. File/image
 clipboard, drives, the full original Stage 7 and original V1 remain open.
+
+### 0.4.0 public delivery
+
+All ten exact accepted npm archives are public at **0.4.0**, with matching
+SHA-512 integrity and `latest` tags. All five GitHub repositories retain their
+old history/tags and have published `v0.4.0` Releases. The accepted private tag
+is `53b5edb181afe8d713a16a2b0616bfcebfc7e783`; public core is
+`b11db42dde8a68fcffcbbda62cae93d1defdb5a2`. No accepted archive is repacked.
+
+The successful OIDC workflows are
+[core](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40315491066),
+[Fastify](https://github.com/SensNyaha/freerdp-bridge-fastify/actions/runs/40318835699),
+[NestJS](https://github.com/SensNyaha/freerdp-bridge-nestjs/actions/runs/40318890822),
+[HTTP](https://github.com/SensNyaha/freerdp-bridge-http/actions/runs/40318970115) and
+[Express](https://github.com/SensNyaha/freerdp-bridge-express/actions/runs/40319636076).
+Four fresh independent npm registry-only consumers pass on **each** OS: strict
+TypeScript, HTTP/HTTPS/WS, native strict TLS refusal and joined recovery, plus
+actual relocated 0.4.0 worker HTML capabilities and installed browser modules.
+They import no checkout product code and use no development archives. These
+consumer checks do not establish OS clipboard or real RDP application behavior.
+
+[Stable main-push standalone CI](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40318439435)
+passes both production builds, Windows/Ubuntu installed 0.3.0-to-0.4.0 upgrades,
+combined verification and publication. Both receipts are `candidateOnly:false`.
+The [public core Release](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.4.0)
+contains MSI, DEB, RPM, ZIP, TGZ, both corresponding-source archives, standalone
+manifest/checksums and the seven original core release inputs. Downloaded CI
+artifact ZIP digests and all seven extracted SHA-256/SHA-512 values are verified
+against the published assets. The actual public manifest and checksums are
+downloaded and validated independently, including immutable source/tag binding.
+
+Final published DEB/RPM bytes separately pass actual **0.3.0-to-0.4.0** upgrades
+on **Astra 1.7.5 / RED OS 7.3**: service identity, strict TLS, old-worker retirement,
+crash recovery, reinstall, uninstall and retained public configuration. Their
+digests match the public assets before installation. Existing candidate lab
+evidence is retained; the final package uses a distinct filename and logs, with
+the previous logs preserved. Preflight and final absence/default-config checks
+pass; unrelated programs/services remain untouched.
+
+| Public file | SHA-256 |
+| --- | --- |
+| `freerdp-bridge_0.4.0_amd64.deb` | `0d2d796a2a82cb3d642ce5e74e47e2f17ea5ba603325b2a2a18ce211f00348e0` |
+| `freerdp-bridge-0.4.0-1.x86_64.rpm` | `a45ba8778c2e2d7198532eb97a6179b123b7d0d77354970c6fb57d2915e76c68` |
+| `freerdp-bridge-0.4.0-corresponding-source-linux-x64-gnu.tar.gz` | `be87e944b2745d2b9bc65912ada52f4c0ffcb137a0bd4d0caec9a5a86128aa8a` |
+| `freerdp-bridge-0.4.0-corresponding-source-win32-x64.tar.gz` | `fd7a5ed84f4b421d702d218ce1fad5643698d0341053de25e12445672a7d38ca` |
+| `freerdp-bridge-0.4.0-linux-x64-gnu.tar.gz` | `19afcc6ddd73d6fb23106702d33ac6a9b3821ebce4ac277a499a2c835d5fde8e` |
+| `freerdp-bridge-0.4.0-win32-x64.msi` | `b51fb354e49282e2b32b51d7d8081c59c382ae658529c3e9cfea56179d64bae8` |
+| `freerdp-bridge-0.4.0-win32-x64.zip` | `0b4ec72e2cc4e82e87b6846055c8129c42bee090b0043b4a83831da97387adad` |
+
+`build/current-validation/html04-public-delivery-acceptance.json` hashes the
+public metadata, eight registry consumer logs, final platform reports, stable CI
+receipts and the earlier scoped versioned acceptance. The five OIDC and stable
+installer workflow URLs above are authoritative public delivery results.
+
+Retained delivery failures: the first export stops on a local Git 10-second
+timeout; its unchanged NestJS guard passes 9/9 and the complete fresh export
+passes. Fastify's new draft is initially absent from GitHub's immediate read;
+the existing matching draft is later found and continued without duplicate
+creation. Core's first publish attempt accepts the Linux runtime but its version
+endpoint remains absent beyond the five-minute read budget. After exact public
+integrity is observed, only the failed publish job is repeated; both public
+runtimes are skipped and the remaining JS archives publish successfully.
+There is no manual per-package 2FA queue or replay of an uncertain upload.
+
+All foundation/sanitizer/fuzz jobs and GCC 8.3 pass on the final public tag.
+The additional same-commit main run passes Linux/sanitizers/GCC 8.3 but Windows
+hits two external tool deadlines: local Edge navigation (5 seconds) and OpenSSL
+test-certificate generation. Its failed log is retained. Only that unchanged
+Windows job is repeated and passes; all four jobs in
+[the final main run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40318439576)
+are now successful. No test assertion, timeout or product code is changed.
+The versioned Windows rich HTML application and eight desktop profiles above
+retain their precise tested inputs/scope; final public installed lifecycle is a
+separate result. Image/file clipboard, drives and the full original V1 remain open.

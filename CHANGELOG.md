@@ -4,9 +4,11 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## 0.4.0 — 2026-10-26
 
-HTML implementation and versioned distribution acceptance pass. Public npm and
-stable standalone delivery are being performed; public 0.3.0 remains unchanged
-until those publication checks complete.
+HTML implementation and versioned distribution acceptance pass. All ten exact
+npm packages, five GitHub Releases and stable standalone installers are public.
+Four fresh registry-only consumers pass on each OS; final public DEB/RPM upgrades
+from 0.3.0 pass Astra 1.7.5 and RED OS 7.3.
+[Public delivery and retained CI failures](docs/CLIPBOARD_BROWSER.md#040-public-delivery).
 
 The source feature is merged at `6f21ce7`. Ten exact archives pass independent
 Windows/Linux consumers and npm dry runs. Installed upgrades from 0.3.0 pass
