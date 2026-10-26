@@ -5271,8 +5271,8 @@
     },
     {
       "path": "tests/integration/express-adapter.test.mjs",
-      "bytes": 29051,
-      "sha256": "e97259aefacf8581613772d9cff93ec7e5b789f960d06844d8d2ea439bf2e4d8"
+      "bytes": 29217,
+      "sha256": "59ee6974a64f8e4cc8cd3bc05f302cc7a8ad54123c5d4af37454b1a1d7479914"
     },
     {
       "path": "tests/integration/fastify-plugin.test.mjs",

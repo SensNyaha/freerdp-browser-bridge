@@ -715,7 +715,7 @@ test(
 
 test(
   'Express HTTPS / fake RDP: verified host HTTPS/WSS and independent joined close',
-  { timeout: 20000 },
+  { timeout: 90000 },
   async () => {
     const runtimeRoot = await mkdtemp(join(tmpdir(), 'http-rdp-https-'));
     const factory = fakeFactory();
@@ -744,7 +744,9 @@ test(
         ],
         {
           windowsHide: true,
-          timeout: 15000,
+          // Hosted Windows can spend >15 seconds starting its system OpenSSL.
+          // Bound certificate setup separately; HTTPS/WSS deadlines below stay fixed.
+          timeout: 60000,
           stdio: 'ignore',
           env: Object.fromEntries(
             ['SystemRoot', 'WINDIR', 'PATH'].flatMap((name) =>
