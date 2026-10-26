@@ -18,7 +18,9 @@ Private HELLO bit 256, CONFIGURE schema 13 and schema-3 HTML commands/state are
 implemented on `feature/html-clipboard`, along with shared public ownership and
 the explicit HTML control extension, browser byte client, reference ClipboardItem
 actions and inert selection conversion. Named Windows/Edge OS ClipboardItem
-acceptance also passes; real RDP rich-application/peer acceptance remains pending.
+  acceptance also passes, followed by named prepared-Edge application roundtrips
+  through Windows and Linux workers (Linux RWS1 and framed IPC). Broader
+  platform/versioned release acceptance remains open.
 [Private HTML handoff](docs/CLIPBOARD_IPC.md#private-worker-html-negotiation-and-handoff-in-development).
 RWC1 version-1 byte chunks fit the existing 4 KiB message bound.
 [Layout](docs/CLIPBOARD_CHUNKS.md), [commands/credit/deadlines](docs/CLIPBOARD_CONTROL.md).

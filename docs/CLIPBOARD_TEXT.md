@@ -36,7 +36,13 @@ implements [private worker/Node HTML handoff](CLIPBOARD_IPC.md#private-worker-ht
 shared public ownership and the [HTML control extension](CLIPBOARD_CONTROL.md#html-control-extension-in-development)
 are also implemented, along with the [browser byte client](CLIPBOARD_BROWSER.md#html-byte-client-in-development).
 The branch now also implements reference ClipboardItem actions and inert
-selected-byte conversion; physical OS and real remote HTML acceptance remain.
+selected-byte conversion. Named Windows/Edge physical OS acceptance and prepared
+Windows application roundtrips through Windows and Linux workers now pass; the
+Linux runs cover RWS1 and framed IPC. The owned XRDP negative profile verifies
+explicit HTML refusal followed by a separate Unicode request. These later
+results supersede the pending application status at the codec checkpoint below;
+broader platform/versioned release gates remain open.
+[Current application evidence](CLIPBOARD_BROWSER.md#named-linux-worker-html-application-acceptance).
 Existing
 Unicode selection and public 0.3.0 artifacts retain their accepted behavior.
 

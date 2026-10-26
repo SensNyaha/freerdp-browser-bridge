@@ -58,6 +58,9 @@ revoke and OS/PID/runtime cleanup. Full current Windows check passes
 1129/71 skips/0 failures and full Linux UID1000 check passes 1097/108 skips/0
 failures. Hosted and versioned release acceptance remain.
 [Named Linux application acceptance](docs/CLIPBOARD_BROWSER.md#named-linux-worker-html-application-acceptance).
+The post-application CI compatibility corrections and their full/native/fuzz
+checks are recorded in [source CI acceptance](docs/CLIPBOARD_BROWSER.md#source-ci-compatibility-correction);
+the final hosted correction and versioned delivery remain separate gates.
 Public ownership/control checkpoint `7ccef0a` passes full Windows 1092/71 skips,
 Linux UID1000 1075/93, linked MSVC CTest 39/39 and focused checks 31/31, zero
 failures. These are synthetic/socket and strict-TLS checks, not real RDP HTML

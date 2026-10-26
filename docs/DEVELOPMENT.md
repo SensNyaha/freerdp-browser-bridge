@@ -40,6 +40,9 @@ owned page reset/close, acknowledged revoke and OS/PID/runtime cleanup. Full
 Windows checks pass 1129/71 skips/0 failures; Linux UID1000 passes 1097/108/0.
 Hosted and versioned release acceptance remain separate.
 [Linux evidence](CLIPBOARD_BROWSER.md#named-linux-worker-html-application-acceptance).
+Post-application CLI/HELLO and CI fixture corrections, full Windows regression
+and the instrumented general IPC fuzz dependency correction are recorded in
+[source CI acceptance](CLIPBOARD_BROWSER.md#source-ci-compatibility-correction).
 Conversion checkpoint `a3542d7` and reference-action checkpoint `7019d7a` pass
 combined full Windows `pnpm check` 1113/71 skips and Linux UID1000 1085/104,
 linked MSVC CTest 39/39, focused UI/permission/config/codec 25/25 and final

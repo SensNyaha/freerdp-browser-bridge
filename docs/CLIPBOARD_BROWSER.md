@@ -580,3 +580,36 @@ Full current Windows `pnpm check` passes **1129/71 skips/0 failures**, separatel
 bound to its terminal log. Full Linux `pnpm check` under UID1000/zero effective
 capabilities passes **1097/108 skips/0 failures**. Hosted checks and final
 versioned distribution/release acceptance remain open; no old archive is repacked.
+
+### Source CI compatibility correction
+
+The first public feature run (`6f5a445`) exposed two foundation-profile failures:
+the CLI emitted `clipboardHtml:false` while HELLO correctly omitted the optional
+property, and one synthetic browser fixture hard-coded `build/bundled` instead
+of the CI-selected native directory. Private correction `98a88c4` / public
+`8f67972` aligns unavailable CLI reports with the existing optional-property
+contract and makes that fixture honor `BRIDGE_TEST_BINARY_DIR`. Exact
+CLI/HELLO/REST equality remains asserted; no capability or RDP assertion is
+relaxed. The linked FreeRDP-enabled CLI branch is unchanged.
+
+Both failures now pass with the actual Windows foundation worker. Post-fix
+native CTest passes Windows foundation **22/22**, Windows linked **39/39** and
+exact GCC 8.3 foundation **23/23**; the latter also passes the actual CLI/HELLO
+probe. Public source bytes match the private feature checkpoint across every
+changed feature file. The hash-bound audit is
+`build/current-validation/html-ci-fix-source-audit.json`. The failed hosted run
+and its logs are retained. Both Linux build jobs in
+[the corrected foundation run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40294830780)
+and [the corrected GCC 8.3 run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40294830711)
+pass. Post-correction full Windows `pnpm check` passes **1129/71 skips/0
+failures** (`html-post-cli-windows-regression.json`).
+
+The sanitizer job passes native ASan/UBSan and Node **983/222 skips/0 failures**,
+then exposes a missing HTML decoder dependency in the general `ipc-fuzz`
+target's direct source list. Correction `ebc0fef` adds that instrumented source
+without changing production code. All local Clang 18 fuzz targets now link;
+sanitized CTest passes **23/23**, followed by **568,847 IPC**, **71,118 CF_HTML**
+and **256,312 clipboard-wire** runs in three 21-second seeded runs without
+failures or suppressions. The terminal log is
+`build/current-validation/html-all-fuzz-clang18-check.log`. Hosted acceptance
+of this final build correction and versioned release acceptance remain open.

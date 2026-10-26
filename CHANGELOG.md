@@ -4,7 +4,19 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-No additional product feature is included beyond published 0.3.0.
+The public release remains 0.3.0. The following HTML feature is in development
+on `feature/html-clipboard`; intended 0.4.0 distribution acceptance is pending.
+
+- Add opt-in HTML clipboard alongside Unicode through native CLIPRDR, private
+  IPC, public session/control API and explicit browser Paste/Send/Get/Copy
+  actions. Preserve selected byte ranges and bounded static formatting without
+  importing unselected context or executing markup. Both formats share one
+  flight, quota, revision and revocation owner.
+- Verify named Windows/Edge OS and remote-application roundtrips through Windows
+  and Linux workers, including Linux RWS1/framed carriers, a new remote revision
+  and cleanup. Verify explicit HTML refusal against the owned Unicode-only XRDP
+  peer. These source profiles do not establish published 0.4.0 artifact support.
+  [Contract, profiles and limits](docs/CLIPBOARD_BROWSER.md#html-selection-conversion-and-clipboarditem-actions-in-development).
 
 - Add actual cross-principal runtime privacy gates to CI: Windows LocalService
   and distinct Linux UIDs cannot access or recover another owner's private

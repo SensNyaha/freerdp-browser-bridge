@@ -86,7 +86,9 @@ The pinned CLIPRDR-enabled worker advertises HELLO extension bit **256**,
 `clipboardHtml`, only with connection-core, text bit 8 and revoke bit 16. Node
 refuses an incomplete combination. Older peers omit the optional property;
 explicit HTML selection refuses before CONFIGURE/SECRET when unsupported.
-Foundation workers do not advertise HTML and return content-free unavailable
+CLI and REST reports follow the same optional-property contract: unsupported
+workers omit `clipboardHtml`, rather than emitting `false`. Foundation workers
+do not advertise HTML and return content-free unavailable
 for otherwise structurally valid schema-3 commands. This private capability
 does not accept browser/remote-application HTML integration.
 
