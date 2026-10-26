@@ -12,10 +12,10 @@ Install the adapter and the matching native runtime version for your server:
 
 ```sh
 # Linux x64 / glibc
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
 
 # Windows x64
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.3.0 @freerdp-bridge/runtime-win32-x64@0.3.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.4.0 @freerdp-bridge/runtime-win32-x64@0.4.0
 ```
 
 For an unreleased source checkout, use locally built tarballs instead;
@@ -56,6 +56,19 @@ returning `{ id: verifiedUserId }` or `undefined`. There is no default identity.
 Cookie-based identity needs a separate CSRF/Origin adapter and is currently
 refused. On Windows, use an absolute Windows path for runtimeRoot. The host
 owns external TLS and access logging; exclude credentials and attach URL tokens.
+
+## HTML clipboard in 0.4.0
+
+The matched native/runtime and reference browser assets support explicit HTML
+clipboard selection alongside Unicode. Enable `clipboard.html: true`, select
+a direction and a finite item maximum, and require native `clipboardHtml: true`.
+The reference UI uses separate Paste/Send/Get/Copy actions with browser permission
+and bounded safe static formatting; it never reads a clipboard on an offer.
+Custom worker factories must preserve the whole frozen session limits object.
+Image/file clipboard remains unavailable. See the
+[HTML integration guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
+for API policy and limitations. Until publication, use complete verified local
+0.4.0 archives; a source version does not prove npm availability.
 
 ## Limitations
 

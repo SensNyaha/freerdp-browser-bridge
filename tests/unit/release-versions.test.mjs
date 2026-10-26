@@ -9,7 +9,7 @@ import { standaloneUpgradeSeed } from '../../scripts/standalone/upgrade-seed.mjs
 import { standaloneCandidatePointer } from '../../scripts/standalone/candidate-release.mjs';
 
 test('release versions admit canonical bounded pre-1.0 minors and compare the complete version', () => {
-  for (const version of ['0.1.0', '0.2.5', '0.3.0', '0.999999.999999'])
+  for (const version of ['0.1.0', '0.2.5', '0.3.0', '0.4.0', '0.999999.999999'])
     assert.equal(isReleaseVersion(version), true);
   for (const version of [
     undefined,
@@ -48,7 +48,7 @@ test('0.3.0 distribution binds the real 0.2.5 predecessor and exact candidate/ar
     ref: 'v0.3.0',
   });
   assert.throws(
-    () => standaloneUpgradeSeed('0.4.0'),
+    () => standaloneUpgradeSeed('0.5.0'),
     /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
   );
   assert.equal(
@@ -65,5 +65,20 @@ test('0.3.0 distribution binds the real 0.2.5 predecessor and exact candidate/ar
   assert.throws(
     () => standaloneCandidatePointer(pointer, '0.2.5'),
     /STANDALONE_CANDIDATE_RELEASE_INVALID/,
+  );
+});
+
+test('0.4.0 distribution upgrades from the published 0.3.0 line without guessing another minor predecessor', () => {
+  assert.deepEqual(standaloneUpgradeSeed('0.4.0'), {
+    version: '0.3.0',
+    ref: 'v0.3.0',
+  });
+  assert.deepEqual(standaloneUpgradeSeed('0.4.1'), {
+    version: '0.4.0',
+    ref: 'v0.4.0',
+  });
+  assert.throws(
+    () => standaloneUpgradeSeed('0.5.0'),
+    /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
   );
 });

@@ -4,8 +4,12 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-The public release remains 0.3.0. The following HTML feature is in development
+The public release remains 0.3.0. The following HTML source feature is accepted
 on `feature/html-clipboard`; intended 0.4.0 distribution acceptance is pending.
+
+The source feature is merged at `6f21ce7`. `release/0.4.0` now carries aligned
+0.4.0 product/native manifests and package documentation. Exact archives,
+consumer/installer acceptance and publication remain release gates.
 
 - Add opt-in HTML clipboard alongside Unicode through native CLIPRDR, private
   IPC, public session/control API and explicit browser Paste/Send/Get/Copy

@@ -55,6 +55,14 @@ must reference the complete installed runtime and come from trusted host config.
 
 ## Limitations
 
+0.4.0 adds opt-in negotiated HTML clipboard alongside Unicode. Use the public
+session policy and require the actual `clipboardHtml` capability. A custom
+`workerFactory` must pass the entire frozen session limits object, including
+`clipboardHtml`, to `NativeSessionWorker`. Both formats share one operation and
+revoke owner; buffers returned to custom consumers must be wiped after use.
+See the [HTML contract](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/CLIPBOARD_IPC.md#private-worker-html-negotiation-and-handoff-in-development).
+This does not add file/image clipboard or automatic OS clipboard access.
+
 Version 0.3.0 adds explicit `recoverRuntimeSessions` before application listener
 startup. It preserves active sessions, legacy/unknown contents and uncertain
 ownership; it never recursively clears a runtime root or kills session processes.

@@ -45,6 +45,11 @@ unknown fields. Limit transport bodies before parsing untrusted JSON.
 
 ## Limitations
 
+0.4.0 accepts explicit clipboard `html: true` with a selected direction and
+finite `maxItemBytes`. HTML is off by default and requires matching native
+capabilities. The same item budget covers HTML and optional Unicode fallback;
+schema acceptance alone cannot enable a missing channel or browser permission.
+
 Schema acceptance is separate from authentication, destination authorization,
 native capabilities and device policy. Privileged host-path/device/channel
 settings remain refused by the current policy resolver. Validation does not

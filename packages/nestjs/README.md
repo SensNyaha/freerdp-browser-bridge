@@ -14,7 +14,7 @@ profiles. All bridge packages and the native runtime use one product version.
 Install the matching release on Linux x64/glibc:
 
 ```sh
-npm install @freerdp-bridge/nestjs@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
+npm install @freerdp-bridge/nestjs@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
 ```
 
 During release preparation use complete verified local archives; a source
@@ -68,6 +68,19 @@ during startup joins that work and then retires its resources.
 
 The optional `./browser` export provides `referenceBrowserDirectory`. Serve
 those assets through the host static router and set client `basePath: '/rdp'`.
+
+## HTML clipboard in 0.4.0
+
+The matched native/runtime and reference browser assets support explicit HTML
+clipboard selection alongside Unicode. Enable `clipboard.html: true`, select
+a direction and a finite item maximum, and require native `clipboardHtml: true`.
+The reference UI uses separate Paste/Send/Get/Copy actions with browser permission
+and bounded safe static formatting; it never reads a clipboard on an offer.
+Custom worker factories must preserve the whole frozen session limits object.
+Image/file clipboard remains unavailable. See the
+[HTML integration guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
+for API policy and limitations. Until publication, use complete verified local
+0.4.0 archives; a source version does not prove npm availability.
 
 ## Limitations
 

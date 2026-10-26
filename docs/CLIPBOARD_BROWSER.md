@@ -1,5 +1,10 @@
 # Explicit reference browser clipboard
 
+Current HTML source status, 2026-10-26: implementation, named Windows/Linux
+application profiles and all required hosted checks pass.
+[Final source acceptance](#html-source-feature-acceptance). Public 0.3.0 remains
+the Unicode-only release while versioned 0.4.0 npm/standalone delivery is prepared.
+
 The additional owned XRDP 0.10.1 profile now passes actual headed Edge Clipboard
 API ↔ CLIPRDR ↔ prepared Tk Unicode/emoji/multiline roundtrips across two fresh
 RDP connections, permission refusal, revoke and PID/runtime cleanup
@@ -612,4 +617,106 @@ sanitized CTest passes **23/23**, followed by **568,847 IPC**, **71,118 CF_HTML*
 and **256,312 clipboard-wire** runs in three 21-second seeded runs without
 failures or suppressions. The terminal log is
 `build/current-validation/html-all-fuzz-clang18-check.log`. Hosted acceptance
-of this final build correction and versioned release acceptance remain open.
+of this final build correction subsequently passes as recorded below; versioned
+release acceptance remains open.
+
+### HTML source feature acceptance
+
+Source checkpoint private **`bba3c98`** / public **`04fd0cc`** passes all four
+[foundation jobs](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40296584437):
+Windows MSVC, both Linux GCC profiles and sanitizers. All twelve hosted fuzz
+steps pass, including general IPC, CF_HTML and clipboard wire validation.
+[Exact GCC 8.3 foundation](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40296584361)
+also passes. Full linked local regression is Windows **1129/71 skips/0 failures**
+and Linux UID1000 **1097/108/0**; linked native CTest is Windows **39/39** and
+Linux **40/40**. The later unavailable-CLI correction is additionally checked
+with Windows/GCC 8.3 foundation workers and the final hosted suites.
+
+`build/current-validation/html-source-acceptance.json` binds every required CI
+result and the real OS/Windows/Linux RDP reports. Its audit verifies matching
+public/private source bytes, unchanged application-tested browser product code,
+both HTML directions, static formatting/Unicode, a fresh remote revision,
+explicit no-fallback XRDP refusal and cleanup. Actual Linux reports identify
+RWS1/framed through HELLO, independently of the requested transport. The only
+native change since their source checkpoint is the unavailable CLI property's
+representation; the linked HTML branch is unchanged.
+
+This completes the source HTML item in SPECIFICATION §2.7 and TODO Stage 7.
+The reference safe static formatting profile and explicit browser permission /
+Paste/Send/Get/Copy semantics above remain its documented behavior. This is not
+image/file clipboard, drive redirection, the full original Stage 7 or blanket
+browser/peer/OS acceptance. Versioned **0.4.0** archives, independent consumers,
+standalone upgrade/installation and public delivery are separate release gates.
+
+### 0.4.0 archive preparation
+
+`release/0.4.0` aligns all ten product manifests and CMake. The new Windows
+linked source consumer passes **39/39 CTest** and **54 lifecycle/IPC checks**
+(two Linux-only checks skipped); exact GCC 8.3 Linux passes **40/40 CTest**,
+runtime relocation and CLI/HELLO/REST agreement. The Windows source receipt is
+`build/native-clean-RljYC8/receipt.json`. Both reuse the pinned FreeRDP SDK.
+
+Ten exact JS/native tarballs are in `build/release-0.4.0-archives`.
+`build/current-validation/html04-exact-archives.json` records their SHA-256 /
+SHA-512 and the two standalone lock hashes. Lock advancement verifies an
+unchanged external dependency graph and binds the exact archives. All archives
+contain explanatory root README files and matching repository identities.
+
+Four independent npm consumers pass on each OS: Fastify, node:http/https,
+Express and NestJS with its two host adapters. Strict TypeScript, same-port
+HTTP/WS, native strict TLS refusal, cleanup and installed recovery remain
+checked. The shared installed fixture also starts the relocated real worker,
+requires **0.4.0** HTML/text/revoke HELLO capabilities, loads the three HTML
+browser modules through the adapter's installed browser export and checks a
+Unicode HTML item roundtrip plus aggregate-quota refusal. This test does not
+connect to a desktop or access the OS clipboard.
+
+Canonical terminal logs are `html04-windows-fastify-consumer.log`,
+`html04-windows-{http,express,nestjs}-consumer-final.log` and
+`html04-linux-consumers-full-final.log` under `build/current-validation`.
+The initial orchestration passed a Fastify-only `--npm` flag to node:http;
+its explicit usage refusal is retained, then the remaining adapters pass with
+their supported `--archives` arguments. Initial Linux configure inputs and a
+missing packaging pnpm mount were corrected without changing production code
+or weakening any acceptance check. The locks initially refused the new product
+version, then all **21** focused version/lock/publisher guards pass after exact
+lock advancement. Full release suites, versioned standalone acceptance and
+public delivery remain open; none of these archives has been published.
+
+### 0.4.0 local release checkpoint
+
+Checkpoint **`679abc5`** passes full release-source `pnpm check` on Windows
+**1131/71 skips/1202 total** and Linux UID1000 **1099/108/1207**, zero failures.
+All eight exact npm consumers pass. Windows standalone payload checks pass
+**10/10**, including private Node/native process retirement and guarded recovery.
+Both new portable formats pass exact byte inventory, extraction/relocation,
+startup orphan recovery, strict TLS refusal and joined launcher shutdown.
+
+Windows production-mode MSI is built at
+`build/standalone-msi-AFRwKS/freerdp-bridge-0.4.0-win32-x64.msi`, SHA-256
+`bdde86a472f6a748944fb5f056b5fddb1a4bb36fed6855b9732690ddff0c9217`.
+The Linux candidate DEB is built at SDK-volume path
+`/bridge/check-source/build/standalone-deb-oHTYhB/freerdp-bridge_0.4.0_amd64.deb`,
+SHA-256 `e1cbbc976ec551ad4cc89ccccb6b215a8eab936950cb783b307477eea21b2d9f`.
+Building either installer is separate from installation/upgrade acceptance.
+
+`build/current-validation/html04-local-release-checkpoint.json` verifies the
+terminal results and binds all logs, archive/lock hashes and Windows MSI bytes.
+Linux consumer/full-check logs and receipts are exported from the SDK volume to
+that same validation directory. None of the ten npm archives has changed since
+its exact consumer checks.
+
+The initial Windows WiX CAB helper failed on the long/non-ASCII workspace path;
+the same payload builds successfully through a short workspace alias. The
+initial portable run fails because its restricted PowerShell child cannot
+resolve its owned Temp directory. An unchanged test repeated with ordinary
+owner access passes; no launcher/ACL/assertion changes are made. The diagnostic
+copy is not acceptance evidence. Linux's task cache directory is created for
+UID1000 without broad permission changes. Its npm build explicitly uses the
+supported single public `--build-ca` input, scoped to build subprocesses and
+excluded from the payload; TLS verification is retained. All failed logs remain.
+
+Still required: release-source hosted checks, RPM assembly, installed two-version
+upgrades including Astra/RED OS, versioned actual RDP/HTML artifact profiles,
+stable tags, npm/GitHub publication and fresh registry-only consumers. The public
+release remains **0.3.0**; this checkpoint is not final release acceptance.

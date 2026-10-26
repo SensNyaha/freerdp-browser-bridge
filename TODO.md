@@ -29,9 +29,18 @@ checked item schema. Reference ClipboardItem UI and inert selected-byte context
 conversion are implemented. Named Windows/Edge OS ClipboardItem acceptance now
 passes, together with the named Windows- and Linux-worker/Windows-peer prepared
 Edge application roundtrips (Linux primary RWS1 and framed IPC); broader
-platform/release acceptance remains. The Stage 7 HTML
-checkbox stays open. Intended release 0.4.0 follows full acceptance; current
-public version and development manifests remain 0.3.0.
+platform/release acceptance remains separate. The Stage 7 HTML source feature
+now passes its implementation/application/hosted gates and is checked below.
+Release 0.4.0 is being prepared in `release/0.4.0`: product/native manifests
+and package examples are aligned to 0.4.0; the public release remains 0.3.0.
+Ten JS/native archives pass dependency/README/repository audits. New Windows
+and exact GCC 8.3 Linux linked runtimes pass CTest 39/40 and installed probes.
+All four exact npm consumers pass on both OSes, including installed HTML
+capability/assets. Standalone locks bind their exact digests with an unchanged
+external dependency graph. Full release checks now pass Windows 1131/71 skips
+and Linux 1099/108, zero failures. Both portable candidates pass relocation,
+recovery and joined shutdown; Windows payload checks pass 10/10. MSI/DEB are
+built. Release hosted CI, RPM, installed upgrades and public delivery remain.
 An explicit prepared-Edge actual-RDP helper is now implemented and its bounded
 document/receipt/CLI/public-WS fixture checks pass 5/5. The remote application
 run now passes in its prepared-document Windows/Edge profile; fixture checks
@@ -60,7 +69,8 @@ failures. Hosted and versioned release acceptance remain.
 [Named Linux application acceptance](docs/CLIPBOARD_BROWSER.md#named-linux-worker-html-application-acceptance).
 The post-application CI compatibility corrections and their full/native/fuzz
 checks are recorded in [source CI acceptance](docs/CLIPBOARD_BROWSER.md#source-ci-compatibility-correction);
-the final hosted correction and versioned delivery remain separate gates.
+the final hosted correction now passes. Versioned delivery remains separate.
+[Completed HTML source acceptance](docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
 Public ownership/control checkpoint `7ccef0a` passes full Windows 1092/71 skips,
 Linux UID1000 1075/93, linked MSVC CTest 39/39 and focused checks 31/31, zero
 failures. These are synthetic/socket and strict-TLS checks, not real RDP HTML
@@ -2091,15 +2101,16 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [~] IN PROGRESS — Explicit text directions/item caps pass native, Node, server
   and Edge fixtures, including full 16 MiB composition. Actual remote direction /
   quota, other required formats and total-resource acceptance remain open.
-- [ ] HTML clipboard. In progress on `feature/html-clipboard`; bounded CF_HTML
-  conversion, combined native ownership and the inner item codec are component
-  work. Private worker/Node handoff and public session/control transport are
-  implemented, together with the browser byte client and reference ClipboardItem
-  UI/conversion. Named Windows/Edge OS ClipboardItem acceptance passes; actual
-  named Windows- and Linux-worker/Windows-peer Edge HTML/Unicode application
-  roundtrips also pass, including Linux primary RWS1 and framed IPC. Broader
-  platform/release acceptance remains.
-  [Contract and remaining integration](docs/CLIPBOARD_TEXT.md#html-codec-in-development).
+- [x] HTML clipboard — Opt-in negotiated HTML with bounded CF_HTML/inner-item
+  codecs, shared HTML/Unicode native ownership, private IPC, public session/control
+  transport and explicit reference ClipboardItem actions/conversion. Named
+  Windows/Edge OS and Windows-/Linux-worker remote application roundtrips pass,
+  including Linux RWS1/framed IPC and an explicit Unicode-only XRDP refusal.
+  Full local/hosted regression, exact GCC 8.3 and sanitizer/fuzz gates pass at
+  private `bba3c98` / public `04fd0cc`. Safe static formatting/browser permission
+  limits are documented; other formats, full Stage 7 and versioned 0.4.0 delivery
+  remain separate. [Acceptance](docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance),
+  [contract](docs/CLIPBOARD_TEXT.md#html-codec-in-development).
 - [ ] Image clipboard where negotiated.
 - [ ] Session sandbox and safe path resolver.
 - [ ] Streaming file upload/download REST API.

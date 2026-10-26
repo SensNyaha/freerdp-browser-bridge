@@ -13,6 +13,27 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
+HTML source acceptance is now complete at private `bba3c98` / public `04fd0cc`:
+all hosted foundation/GCC 8.3/sanitizer/fuzz checks and the named application
+profiles pass. [Evidence and limits](CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
+The feature is merged into shared `master` as `6f21ce7`; `release/0.4.0` prepares
+aligned npm/standalone delivery separately. The preparation checkpoints below retain their original
+scope and do not claim a published 0.4.0 artifact.
+
+Release preparation now aligns all ten manifests and CMake to 0.4.0. TypeScript
+build/version/README checks pass; all ten JS/native tarballs have exact dependency,
+repository and root README audits. Fresh Windows/Linux linked runtimes reuse
+the pinned SDK and pass CTest 39/40 and installed probes. All four exact npm
+consumers pass on each OS, including relocated native HTML capabilities and
+installed browser codec/assets without checkout imports. Both standalone locks
+now bind the exact 0.4.0 SHA-512 values; external dependency graphs are unchanged.
+Full release checks pass Windows 1131/71 skips and Linux 1099/108, zero failures.
+Windows/Linux portable relocation/startup recovery/shutdown passes; Windows
+payload checks pass 10/10. Production-mode MSI and candidate DEB are built.
+Release hosted CI, RPM, installed upgrades, versioned actual desktop/HTML
+profiles and publication remain open. Published 0.3.0 archives remain immutable.
+[Current release checkpoint](CLIPBOARD_BROWSER.md#040-local-release-checkpoint).
+
 The next feature is HTML clipboard in `feature/html-clipboard`, started from
 shared `master` after the accepted recovery and cross-principal branches were
 merged (`284d9b9`). The bounded CF_HTML codec and combined native CLIPRDR
