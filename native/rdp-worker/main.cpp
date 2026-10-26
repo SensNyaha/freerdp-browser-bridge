@@ -443,7 +443,7 @@ int main(int argc, char **argv) {
     defined(CHANNEL_CLIPRDR_CLIENT)
                  "\"clipboardText\":true,\"clipboardRevoke\":true,\"clipboardHtml\":true,"
 #else
-                 "\"clipboardText\":false,\"clipboardRevoke\":false,\"clipboardHtml\":false,"
+                 "\"clipboardText\":false,\"clipboardRevoke\":false,"
 #endif
 #ifdef _WIN32
                  "\"processResourceBatch\":true,"

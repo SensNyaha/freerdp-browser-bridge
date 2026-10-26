@@ -120,7 +120,10 @@ test(
     };
     const server = await createSessionServer({
       worker: {
-        workerPath: resolve('build/bundled/rdp-worker.exe'),
+        workerPath: resolve(
+          process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/bundled',
+          'rdp-worker.exe',
+        ),
         runtimeRoot: resolve('.runtime/html-lab-fixture'),
       },
       authenticate: () => ({ id: 'synthetic-html-lab' }),
