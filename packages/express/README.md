@@ -9,7 +9,7 @@ The adapter delegates bounded routing and lifecycle to `@freerdp-bridge/http`.
 ## Installation
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
+npm install express@5.3.0 @freerdp-bridge/express@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
 ```
 
 For an unpublished source snapshot, use complete local tarballs instead; a
@@ -67,6 +67,19 @@ listener to the supplied server. `diagnostics()` exposes bounded counters;
 Browser assets are exported as `referenceBrowserDirectory` from
 `@freerdp-bridge/express/browser`. Copy or serve an explicit static allowlist;
 the package does not automatically expose arbitrary filesystem paths.
+
+## HTML clipboard in 0.4.0
+
+The matched native/runtime and reference browser assets support explicit HTML
+clipboard selection alongside Unicode. Enable `clipboard.html: true`, select
+a direction and a finite item maximum, and require native `clipboardHtml: true`.
+The reference UI uses separate Paste/Send/Get/Copy actions with browser permission
+and bounded safe static formatting; it never reads a clipboard on an offer.
+Custom worker factories must preserve the whole frozen session limits object.
+Image/file clipboard remains unavailable. See the
+[HTML integration guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
+for API policy and limitations. Until publication, use complete verified local
+0.4.0 archives; a source version does not prove npm availability.
 
 ## Limitations
 

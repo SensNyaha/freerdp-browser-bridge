@@ -179,6 +179,10 @@ test('native integration: build REST is backed by actual handshake and CLI repor
     standalone.capabilities.performanceSettings ??= false;
     standalone.capabilities.ipSettings ??= false;
     assert.equal(standalone.transport, 'framed-pipes');
+    assert.equal(
+      Object.hasOwn(standalone.capabilities, 'clipboardHtml'),
+      build.capabilities.clipboardHtml === true,
+    );
     assert.deepEqual({ ...standalone, transport: build.transport }, build);
     const featureCli = await promisify(execFile)(
       workerPath,
@@ -224,6 +228,20 @@ test('native integration: build REST is backed by actual handshake and CLI repor
         ).stdout,
       );
       assert.equal(capabilityCli.capabilities.penInput, false);
+      for (const capabilities of [
+        capabilityCli.capabilities,
+        response.json().capabilities,
+        (await server.inject('/v1/capabilities')).json(),
+      ]) {
+        assert.equal(
+          Object.hasOwn(capabilities, 'clipboardHtml'),
+          build.capabilities.clipboardHtml === true,
+        );
+        assert.equal(
+          capabilities.clipboardHtml,
+          build.capabilities.clipboardHtml,
+        );
+      }
       assert.equal(
         capabilityCli.capabilities.opusInput,
         build.capabilities.opusInput,

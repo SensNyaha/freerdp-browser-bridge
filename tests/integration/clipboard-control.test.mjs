@@ -11,7 +11,10 @@ import { createSessionServer } from '../../apps/bridge-api/dist/session-server.j
 import {
   encodeClipboardChunk,
   decodeClipboardChunk,
+  encodeClipboardHtmlItem,
+  decodeClipboardHtmlItem,
 } from '../../packages/protocol/dist/index.js';
+import { HtmlSessionWorker } from '../fixtures/html-session-worker.mjs';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
@@ -84,9 +87,9 @@ class Backend extends FakeSessionWorker {
     this.inputs.push(event);
   }
 }
-async function fixture(run, mode = 'bidirectional') {
+async function fixture(run, mode = 'bidirectional', html = false) {
   const root = await mkdtemp(join(tmpdir(), 'rdp-clipboard-ws-')),
-    worker = new Backend(),
+    worker = html ? new HtmlSessionWorker() : new Backend(),
     logs = [],
     sockets = [];
   const server = await createSessionServer({
@@ -115,7 +118,12 @@ async function fixture(run, mode = 'bidirectional') {
       payload: {
         target: { host: 'synthetic' },
         auth: {},
-        clipboard: { mode, text: true, maxItemBytes: 1048576 },
+        clipboard: {
+          mode,
+          text: true,
+          maxItemBytes: 1048576,
+          ...(html ? { html: true } : {}),
+        },
       },
     });
     assert.equal(response.statusCode, 202);
@@ -193,8 +201,15 @@ async function fixture(run, mode = 'bidirectional') {
   } finally {
     for (const ws of sockets) ws.terminate();
     await server.close();
-    worker.readText.fill(0);
-    worker.written?.fill(0);
+    if (html) {
+      worker.htmlBody.fill(0);
+      worker.plain.fill(0);
+      worker.written?.body.fill(0);
+      worker.written?.text?.fill(0);
+    } else {
+      worker.readText.fill(0);
+      worker.written?.fill(0);
+    }
     assert.deepEqual(await readdir(root), []);
     const absolute = resolve(root);
     if (!absolute.startsWith(resolve(tmpdir()) + sep + 'rdp-clipboard-ws-'))
@@ -202,12 +217,13 @@ async function fixture(run, mode = 'bidirectional') {
     await rm(absolute, { recursive: true, force: true, maxRetries: 3 });
   }
 }
-async function upload(client, bytes) {
-  const seq = client.send('clipboard.set', {
+async function upload(client, bytes, html = false) {
+  const prefix = html ? 'clipboard.html.' : 'clipboard.';
+  const seq = client.send(prefix + 'set', {
     generation: '1',
     bytes: bytes.length,
   });
-  let { creditEnd } = await client.event('clipboard.set.ready', seq);
+  let { creditEnd } = await client.event(prefix + 'set.ready', seq);
   for (let offset = 0; offset < bytes.length; ) {
     while (offset < creditEnd) {
       const end = Math.min(bytes.length, offset + 4076);
@@ -224,27 +240,28 @@ async function upload(client, bytes) {
       await eventually(() =>
         client.messages.some(
           (m) =>
-            m.type === 'clipboard.set.ack' &&
+            m.type === prefix + 'set.ack' &&
             m.data.requestSeq === seq &&
             m.data.offset === offset,
         ),
       );
       creditEnd = client.messages.find(
         (m) =>
-          m.type === 'clipboard.set.ack' &&
+          m.type === prefix + 'set.ack' &&
           m.data.requestSeq === seq &&
           m.data.offset === offset,
       ).data.creditEnd;
     }
   }
-  return client.event('clipboard.set.result', seq);
+  return client.event(prefix + 'set.result', seq);
 }
-async function download(client) {
-  const seq = client.send('clipboard.request', {
+async function download(client, html = false) {
+  const prefix = html ? 'clipboard.html.' : 'clipboard.';
+  const seq = client.send(prefix + 'request', {
     generation: '1',
     revision: '1',
   });
-  const meta = await client.event('clipboard.data', seq);
+  const meta = await client.event(prefix + 'data', seq);
   assert.equal(meta.status, 'accepted');
   const bytes = Buffer.alloc(meta.bytes);
   let offset = 0,
@@ -273,11 +290,162 @@ async function download(client) {
     creditEnd = Math.min(meta.bytes, offset + 32608);
   }
   assert.equal(
-    (await client.event('clipboard.data.complete', seq)).status,
+    (await client.event(prefix + 'data.complete', seq)).status,
     'accepted',
   );
   return bytes;
 }
+test('fake HTML RDP / actual control WS: explicit rich item uses bounded chunks and content-free status/logs', async () => {
+  await fixture(
+    async ({ worker, open, status, logs }) => {
+      const client = await open();
+      const offer = await client.event('clipboard.offer');
+      assert.deepEqual(offer.html, { version: 1, itemMetadataBytes: 32 });
+      assert.equal(offer.state.html, true);
+      const body = Buffer.from(
+        '<p><b>HTML private selection ' +
+          '\u0416\ud83d\ude00'.repeat(5000) +
+          '</b></p>',
+      );
+      const item = {
+        body,
+        fragmentOffset: 0,
+        fragmentBytes: body.length,
+        selectionOffset: 0,
+        selectionBytes: 0,
+        context: false,
+        selection: false,
+        text: Buffer.from('HTML private text fallback'),
+      };
+      const encoded = encodeClipboardHtmlItem(item);
+      assert.equal((await upload(client, encoded, true)).status, 'accepted');
+      assert.deepEqual(worker.written.body, body);
+      assert.deepEqual(worker.written.text, item.text);
+      worker.htmlBody = Buffer.from(body);
+      worker.plain = Buffer.from(item.text);
+      const received = await download(client, true),
+        decoded = decodeClipboardHtmlItem(received);
+      assert.deepEqual(decoded.body, body);
+      assert.deepEqual(decoded.text, item.text);
+      assert.ok(worker.returned[0].body.every((byte) => byte === 0));
+      assert.ok(worker.returned[0].text.every((byte) => byte === 0));
+      assert.equal(
+        JSON.stringify(await status()).includes('HTML private'),
+        false,
+      );
+      assert.equal(logs.join('').includes('HTML private'), false);
+      client.ws.close();
+      await once(client.ws, 'close');
+      await eventually(() => worker.revokes === 1);
+      assert.equal((await status()).state, 'connected');
+      received.fill(0);
+      encoded.fill(0);
+      body.fill(0);
+      item.text.fill(0);
+    },
+    'bidirectional',
+    true,
+  );
+});
+test('fake HTML RDP / actual control WS: invalid contextual upload refuses atomically and preserves fresh transfer', async () => {
+  await fixture(
+    async ({ worker, open }) => {
+      const client = await open();
+      const body = Buffer.from('<b>X</b>');
+      const item = {
+        body,
+        fragmentOffset: 0,
+        fragmentBytes: 8,
+        selectionOffset: 0,
+        selectionBytes: 0,
+        context: true,
+        selection: false,
+        text: Buffer.from('X'),
+      };
+      assert.equal(
+        (await upload(client, encodeClipboardHtmlItem(item), true)).status,
+        'invalid',
+      );
+      assert.equal(worker.writes, 0);
+      item.context = false;
+      assert.equal(
+        (await upload(client, encodeClipboardHtmlItem(item), true)).status,
+        'accepted',
+      );
+      assert.equal(worker.writes, 1);
+    },
+    'bidirectional',
+    true,
+  );
+});
+test('fake HTML RDP / actual control WS: new controller waits for old rich write and revoke ACK', async () => {
+  await fixture(
+    async ({ worker, open }) => {
+      const write = deferred(),
+        revoke = deferred();
+      worker.writeGate = write.promise;
+      worker.revokeGate = revoke.promise;
+      const client = await open(),
+        body = Buffer.from('<b>X</b>');
+      const encoded = encodeClipboardHtmlItem({
+        body,
+        fragmentOffset: 0,
+        fragmentBytes: 8,
+        selectionOffset: 0,
+        selectionBytes: 0,
+        context: false,
+        selection: false,
+        text: Buffer.from('X'),
+      });
+      const seq = client.send('clipboard.html.set', {
+        generation: '1',
+        bytes: encoded.length,
+      });
+      await client.event('clipboard.html.set.ready', seq);
+      client.ws.send(
+        encodeClipboardChunk({ requestSeq: seq, offset: 0, bytes: encoded }),
+      );
+      await eventually(() => worker.writes === 1);
+      client.ws.close();
+      await once(client.ws, 'close');
+      const next = await open(true);
+      let request = next.send('clipboard.html.request', {
+        generation: '1',
+        revision: '1',
+      });
+      assert.equal(
+        (await next.event('clipboard.html.data', request)).status,
+        'unavailable',
+      );
+      write.resolve();
+      await eventually(() => worker.revokes === 1);
+      request = next.send('clipboard.html.request', {
+        generation: '1',
+        revision: '1',
+      });
+      assert.equal(
+        (await next.event('clipboard.html.data', request)).status,
+        'unavailable',
+      );
+      revoke.resolve();
+      await eventually(() =>
+        next.messages.some(
+          (message) =>
+            message.type === 'clipboard.offer' && !message.data.retiring,
+        ),
+      );
+      const received = await download(next, true);
+      assert.equal(
+        decodeClipboardHtmlItem(received).body.toString(),
+        worker.htmlBody.toString(),
+      );
+      received.fill(0);
+    },
+    'bidirectional',
+    true,
+  );
+});
+
 test('fake RDP / actual control WS: bounded Unicode upload/download, input interleave and content-free logs', async () => {
   await fixture(async ({ worker, open, status, logs }) => {
     const client = await open(),

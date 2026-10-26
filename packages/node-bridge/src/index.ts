@@ -84,6 +84,11 @@ import {
   decodeClipboardResult,
   encodeClipboardCommand,
   validateClipboardText,
+  isClipboardRead,
+  decodeClipboardHtmlItem,
+  encodeClipboardHtmlItem,
+  validateClipboardHtmlWrite,
+  type ClipboardHtmlItem,
   type ClipboardState,
   type ClipboardOperation,
   type ClipboardStatus,
@@ -131,12 +136,18 @@ export type {
   MicrophoneResetResult,
   ClipboardState,
   ClipboardStatus,
+  ClipboardHtmlItem,
 } from '@freerdp-bridge/protocol';
 
 type ClipboardSelection = NonNullable<ConnectionSettings['clipboard']>;
 export interface ClipboardReadResult {
   status: ClipboardStatus;
   text: Buffer;
+}
+export interface ClipboardHtmlReadResult {
+  status: ClipboardStatus;
+  /** Owned backing buffer; context/fragment/selection remain separate. */
+  item?: ClipboardHtmlItem;
 }
 
 export class WorkerError extends Error {
@@ -976,7 +987,9 @@ export class WorkerProcess extends EventEmitter {
       if (
         next.maximum !== profile.maximum ||
         next.toServer !== profile.toServer ||
-        next.fromServer !== profile.fromServer
+        next.fromServer !== profile.fromServer ||
+        Boolean(next.html) !== Boolean(profile.html) ||
+        (next.html === true && this.report.capabilities.clipboardHtml !== true)
       )
         throw new WorkerError('IPC_UNEXPECTED_EVENT');
       // Control has priority over queued source state. Terminal lifecycle cannot
@@ -1347,6 +1360,20 @@ export class WorkerProcess extends EventEmitter {
   async writeClipboardText(text: Buffer): Promise<ClipboardStatus> {
     return (await this.clipboardTransfer('set', 0n, text)).status;
   }
+  async readClipboardHtml(revision: bigint): Promise<ClipboardHtmlReadResult> {
+    const result = await this.clipboardTransfer(
+      'read-html',
+      revision,
+      Buffer.alloc(0),
+    );
+    return result.status === 'accepted'
+      ? { status: 'accepted', item: decodeClipboardHtmlItem(result.text) }
+      : { status: result.status };
+  }
+  async writeClipboardHtml(item: ClipboardHtmlItem): Promise<ClipboardStatus> {
+    return (await this.clipboardTransfer('set-html', 0n, Buffer.alloc(0), item))
+      .status;
+  }
   /** Wipe the native offer and wait for its empty-format-list ACK. Never retries. */
   async revokeClipboardText(): Promise<ClipboardStatus> {
     if (!this.report?.capabilities.clipboardRevoke)
@@ -1357,12 +1384,16 @@ export class WorkerProcess extends EventEmitter {
     operation: ClipboardOperation,
     revision: bigint,
     text: Buffer,
+    html?: ClipboardHtmlItem,
   ): Promise<ClipboardReadResult> {
     if (!this.report?.capabilities.clipboardText)
       throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
+    const htmlOperation = operation === 'read-html' || operation === 'set-html';
+    if (htmlOperation && this.report.capabilities.clipboardHtml !== true)
+      throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
     if (
       typeof revision !== 'bigint' ||
-      revision < (operation === 'read' ? 1n : 0n) ||
+      revision < (isClipboardRead(operation) ? 1n : 0n) ||
       revision > 0xffffffffffffffffn
     )
       throw new WorkerError('CLIPBOARD_INVALID_REQUEST');
@@ -1379,14 +1410,18 @@ export class WorkerProcess extends EventEmitter {
       !profile
     )
       return negative('unavailable');
+    if (htmlOperation && !profile.html) return negative('unavailable');
     if (this.clipboardRequest) return negative('busy');
-    if (operation === 'read' && revision !== source.revision)
+    if (isClipboardRead(operation) && revision !== source.revision)
       return negative('stale');
     if (operation === 'revoke' && source.localPending) return negative('busy');
     if (
-      operation === 'read'
-        ? !source.fromServer || !source.remoteText || source.remotePending
-        : operation === 'set' && (!source.toServer || source.localPending)
+      isClipboardRead(operation)
+        ? !source.fromServer ||
+          source.remotePending ||
+          (operation === 'read-html' ? !source.remoteHtml : !source.remoteText)
+        : (operation === 'set' || operation === 'set-html') &&
+          (!source.toServer || source.localPending)
     )
       return negative('refused');
     if (operation === 'set') {
@@ -1396,8 +1431,23 @@ export class WorkerProcess extends EventEmitter {
         throw new WorkerError('CLIPBOARD_INVALID_TEXT');
       }
     }
+    let htmlPayload: Buffer | undefined;
+    if (operation === 'set-html') {
+      try {
+        validateClipboardHtmlWrite(html!, profile.maximum);
+        htmlPayload = encodeClipboardHtmlItem(html!, profile.maximum);
+        text = htmlPayload;
+      } catch {
+        throw new WorkerError('CLIPBOARD_INVALID_HTML');
+      }
+    }
     const identity = { operation, generation: source.generation, revision };
-    const payload = encodeClipboardCommand({ ...identity, text });
+    let payload: Buffer;
+    try {
+      payload = encodeClipboardCommand({ ...identity, text });
+    } finally {
+      htmlPayload?.fill(0);
+    }
     this.clipboardRequest = identity;
     let response: Packet | undefined;
     try {
@@ -1407,7 +1457,7 @@ export class WorkerProcess extends EventEmitter {
           Kind.ClipboardCommand,
           Kind.ClipboardResult,
           payload,
-          7000,
+          operation === 'read-html' ? 12000 : 7000,
         );
       } finally {
         payload.fill(0);
@@ -1427,7 +1477,7 @@ export class WorkerProcess extends EventEmitter {
         return negative('disconnected');
       if (
         current.generation !== identity.generation ||
-        (operation === 'read' && current.revision !== revision)
+        (isClipboardRead(operation) && current.revision !== revision)
       )
         return negative('stale');
       if (
@@ -1438,9 +1488,11 @@ export class WorkerProcess extends EventEmitter {
         this.fail('IPC_UNEXPECTED_REPLY');
         throw new WorkerError('IPC_UNEXPECTED_REPLY');
       }
-      if (operation === 'read' && result.status === 'accepted') {
+      if (isClipboardRead(operation) && result.status === 'accepted') {
         try {
-          validateClipboardText(result.text, profile.maximum);
+          if (operation === 'read-html')
+            decodeClipboardHtmlItem(result.text, profile.maximum);
+          else validateClipboardText(result.text, profile.maximum);
         } catch {
           this.fail('IPC_UNEXPECTED_REPLY');
           throw new WorkerError('IPC_UNEXPECTED_REPLY');
@@ -1722,6 +1774,7 @@ export class WorkerProcess extends EventEmitter {
       const clipboard = clipboardSelection(
         config,
         this.report.capabilities.clipboardText,
+        this.report.capabilities.clipboardHtml === true,
       );
       const payload = connectionPayload(
         config,
@@ -1895,6 +1948,7 @@ export class WorkerProcess extends EventEmitter {
 function clipboardSelection(
   config: SessionCreate,
   available: boolean,
+  htmlAvailable: boolean,
 ): ClipboardSelection | undefined {
   const c = config.clipboard;
   if (!c || c.mode === 'off') return undefined;
@@ -1902,7 +1956,7 @@ function clipboardSelection(
     !available ||
     !c.mode ||
     c.text === false ||
-    c.html ||
+    (c.html && !htmlAvailable) ||
     c.images ||
     c.files
   )
@@ -1911,6 +1965,7 @@ function clipboardSelection(
     toServer: c.mode !== 'server-to-browser',
     fromServer: c.mode !== 'browser-to-server',
     maximum: c.maxItemBytes ?? 1048576,
+    ...(c.html ? { html: true } : {}),
   };
 }
 function connectionPayload(

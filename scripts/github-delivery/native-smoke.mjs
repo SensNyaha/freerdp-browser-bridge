@@ -123,6 +123,10 @@ try {
     'tests/fixtures/rdp-tls.mjs',
     join(scratch, 'tls-fixture.mjs'),
   );
+  await copyFile(
+    'tests/fixtures/browser-port.mjs',
+    join(scratch, 'browser-port.mjs'),
+  );
   phase = 'source-native-consumer';
   tool(process.execPath, [join(scratch, 'consumer.mjs'), '--package-runtime']);
   phase = 'final-source-verification';
@@ -144,6 +148,7 @@ try {
       code: /^[A-Z][A-Z0-9_]{1,63}$/.test(error?.code ?? '')
         ? error.code
         : 'DELIVERY_NATIVE_SMOKE_FAILED',
+      phase,
     }),
   );
   process.exitCode = 1;

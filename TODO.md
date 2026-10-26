@@ -18,6 +18,87 @@ no published artifact is repacked or new RDP capability claimed.
 [Acceptance scope](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance).
 The following preparation checkpoints retain their original scope/status.
 
+Current next feature: `feature/html-clipboard`, based on shared `master`
+`284d9b9` after the accepted Stage 1 branches were merged. A bounded native
+CF_HTML codec is implemented and verified in `dd4b530`, and the combined native
+HTML/Unicode CLIPRDR owner in `5de031a`. The bounded inner item now has independent
+C++/TypeScript codecs. Explicit private worker/Node HTML negotiation and handoff
+are implemented, together with shared public ownership and bounded HTML control
+transport. The browser byte client now implements the same shared flight and
+checked item schema. Reference ClipboardItem UI and inert selected-byte context
+conversion are implemented. Named Windows/Edge OS ClipboardItem acceptance now
+passes, together with the named Windows- and Linux-worker/Windows-peer prepared
+Edge application roundtrips (Linux primary RWS1 and framed IPC); broader
+platform/release acceptance remains separate. The Stage 7 HTML source feature
+now passes its implementation/application/hosted gates and is checked below.
+Release 0.4.0 is being prepared in `release/0.4.0`: product/native manifests
+and package examples are aligned to 0.4.0; the public release remains 0.3.0.
+Ten JS/native archives pass dependency/README/repository audits. New Windows
+and exact GCC 8.3 Linux linked runtimes pass CTest 39/40 and installed probes.
+All four exact npm consumers pass on both OSes, including installed HTML
+capability/assets. Standalone locks bind their exact digests with an unchanged
+external dependency graph. Full release checks now pass Windows 1131/71 skips
+and Linux 1099/108, zero failures. Both portable candidates pass relocation,
+recovery and joined shutdown; Windows payload checks pass 10/10. MSI/DEB are
+built; RPM also builds and passes independent header/digest/extraction checks.
+Release source CI passes at public `0bbc128`, including sanitizers/fuzz and GCC
+8.3. Both Windows/Linux installed 0.3.0-to-0.4.0 CI jobs and combined verification
+pass after the bounded extraction-budget correction. Actual upgrades also pass
+Astra 1.7.5 and RED OS 7.3. Eight actual versioned desktop profiles and the
+prepared Windows 0.4.0 HTML application test pass. RED OS GCC 11.4.1 foundation
+passes 23/23 separately. All ten exact npm publish dry runs pass. Public stable
+delivery and fresh registry-only consumers remain.
+[Versioned acceptance and exact archives](docs/CLIPBOARD_BROWSER.md#040-versioned-distribution-acceptance).
+An explicit prepared-Edge actual-RDP helper is now implemented and its bounded
+document/receipt/CLI/public-WS fixture checks pass 5/5. The remote application
+run now passes in its prepared-document Windows/Edge profile; fixture checks
+remain separate from that actual RDP result.
+Checkpoint `75a6a93` passes full Windows check 1119/71 skips/0 failures; a fresh
+linked MSVC build passes CTest 39/39. The runtime/fixture evidence remains
+separate from actual application acceptance.
+[Named actual application acceptance](docs/CLIPBOARD_BROWSER.md#named-windows-rdp-html-application-acceptance).
+The owned XRDP 0.10.1 negative remote-source profile also passes on the Windows
+worker: HTML refusal has zero native reads/no automatic text fallback, followed
+by a successful separately requested Unicode read and joined cleanup. Final
+helper/document/guard/public-WS fixture checks pass 7/7. Broader
+platform/release acceptance remains open.
+Linux backend preparation now passes three actual linked bootstrap/start/stop
+profiles (legacy, HTML auto, HTML framed) under UID1000/zero effective
+capabilities, plus three bounded bootstrap/CLI tests on both OSes. This is not
+Linux-worker remote HTML application acceptance.
+The Windows-to-Linux application driver is prepared: seven fixture/profile checks
+and both headed-Edge/native preflights pass, identifying actual RWS1/framed
+transports and joining cleanup without RDP or clipboard access. Both actual
+prepared-document Linux/RDP runs now pass: HTML/Unicode in both directions,
+new remote revision, first-run document reset, final-run close request, native
+revoke and OS/PID/runtime cleanup. Full current Windows check passes
+1129/71 skips/0 failures and full Linux UID1000 check passes 1097/108 skips/0
+failures. Hosted and versioned release acceptance remain.
+[Named Linux application acceptance](docs/CLIPBOARD_BROWSER.md#named-linux-worker-html-application-acceptance).
+The post-application CI compatibility corrections and their full/native/fuzz
+checks are recorded in [source CI acceptance](docs/CLIPBOARD_BROWSER.md#source-ci-compatibility-correction);
+the final hosted correction now passes. Versioned delivery remains separate.
+[Completed HTML source acceptance](docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
+Public ownership/control checkpoint `7ccef0a` passes full Windows 1092/71 skips,
+Linux UID1000 1075/93, linked MSVC CTest 39/39 and focused checks 31/31, zero
+failures. These are synthetic/socket and strict-TLS checks, not real RDP HTML
+application or browser acceptance.
+Browser byte-client checkpoint `57981d3` passes full Windows 1103/71 skips,
+Linux UID1000 1083/96, linked MSVC CTest 39/39, browser/legacy composition 14/14
+and actual Edge/WebSocket synthetic-RDP checks 3/3, zero failures. ClipboardItem
+physical OS roundtrips and real RDP HTML acceptance remain open on this branch;
+the reference ClipboardItem actions and conversion are now implemented.
+Combined conversion/action checkpoints `a3542d7` / `7019d7a` pass full Windows
+1113/71 skips, Linux UID1000 1085/104, linked MSVC CTest 39/39, focused
+UI/permission/config/codec 25/25 and final normalizer 4/4, zero failures. Actual
+permission denial is verified without OS data read; physical ClipboardItem and
+RDP HTML application roundtrips remain required.
+The later `c3447a5` named Windows/Edge 156 physical OS scenario passes known
+Unicode/static formatting and independent-browser-process HTML/text readback
+with real Clipboard API and owned cleanup. Its session API is synthetic; actual
+RDP HTML application acceptance remains required.
+[Current scope](docs/CLIPBOARD_TEXT.md#html-codec-in-development).
+
 Completed preparation history: `feature/stage1-runtime-isolation` implemented the next
 open worker/isolation item from shared `master`. Initial Linux runtime-root
 admission has actual before/after evidence. Schema-1 native ownership locks now
@@ -2028,7 +2109,16 @@ profile's target, microphone, recovery, resource or platform acceptance.
 - [~] IN PROGRESS — Explicit text directions/item caps pass native, Node, server
   and Edge fixtures, including full 16 MiB composition. Actual remote direction /
   quota, other required formats and total-resource acceptance remain open.
-- [ ] HTML clipboard.
+- [x] HTML clipboard — Opt-in negotiated HTML with bounded CF_HTML/inner-item
+  codecs, shared HTML/Unicode native ownership, private IPC, public session/control
+  transport and explicit reference ClipboardItem actions/conversion. Named
+  Windows/Edge OS and Windows-/Linux-worker remote application roundtrips pass,
+  including Linux RWS1/framed IPC and an explicit Unicode-only XRDP refusal.
+  Full local/hosted regression, exact GCC 8.3 and sanitizer/fuzz gates pass at
+  private `bba3c98` / public `04fd0cc`. Safe static formatting/browser permission
+  limits are documented; other formats, full Stage 7 and versioned 0.4.0 delivery
+  remain separate. [Acceptance](docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance),
+  [contract](docs/CLIPBOARD_TEXT.md#html-codec-in-development).
 - [ ] Image clipboard where negotiated.
 - [ ] Session sandbox and safe path resolver.
 - [ ] Streaming file upload/download REST API.
@@ -2706,6 +2796,6 @@ remains open; they are not additional independent release stages.
   service isolation remain open. Traces to ARCHITECTURE §2 and SECURITY §2/6.
   [Startup contract](docs/WINDOWS_DIRECTORY_STARTUP.md),
   [iteration 172](docs/history/iterations/151-200.md#iteration-172); `2e30d14`.
-- [~] IN PROGRESS — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. Verified schema-1 metadata-only directories now pass actual simultaneous hard-kill recovery, parent-only cleanup, surviving-worker/live-owner preservation, foreign-UID refusal and bounded SDK cancellation on Windows/Linux. Windows supervisor and Windows/Linux portable restart/startup checks pass. Legacy/unknown contents remain protected; new-version installed upgrades and release acceptance remain open. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup. [Contract and current evidence](docs/RUNTIME_RECOVERY.md#acceptance).
+- [~] IN PROGRESS overall; verified schema-1 metadata-only recovery accepted in public 0.3.0 — Reclaim directories after simultaneous parent/worker hard kill, including stale ownership records. The named scope passes simultaneous hard-kill recovery, parent-only cleanup, surviving-worker/live-owner preservation, foreign-principal refusal, bounded SDK cancellation, portable restart and installed-service upgrades on Windows/Ubuntu/Astra/RED OS. Feature/release branches are merged; exact npm archives and final standalone files are public and verified. Legacy/unknown contents remain protected; broader filesystem failure and future drive/spool reclamation acceptance remain open. Traces to SPECIFICATION §3.1 and Stage 10 watchdog cleanup. [Public acceptance](docs/RUNTIME_RECOVERY.md#030-public-delivery), [cross-principal acceptance](docs/RUNTIME_RECOVERY.md#cross-principal-acceptance).
 - [~] IN PROGRESS — Registry retains capacity through native forced-termination completion with a separate bounded deadline; filesystem/HELLO cancellation guards prevent late spawn/readiness. Unconfirmed cleanup now keeps global/per-principal capacity after logical close and wait expiry, releasing only on trusted graceful/forced completion. Synthetic fault cases and an actual unconnected native delayed-completion/replacement case pass; Windows foundation Node 835 / 102 skips and CTest 17/17 pass. Physical uncertain-resource reclamation, legacy backend adoption, OS/filesystem failures, connected faults and orphan acceptance remain open. [Current evidence](docs/history/iterations/351-400.md#iteration-384), [earlier completion contract](docs/history/iterations/051-100.md#iteration-056). Observed race: [iteration 55](docs/history/iterations/051-100.md#iteration-055), `46245b2`.
 - [~] IN PROGRESS overall; named 0.2.5 distributions accepted — Exact Windows x64/Linux x64 npm runtimes include private FreeRDP/WinPR dependencies. Standalone adds private Node.js, portable ZIP/TGZ and MSI/DEB/RPM, with successful public main-push CI, native lifecycle, version upgrades and final public-file installation on Windows Server 2025, Ubuntu 24.04, Astra 1.7.5 and RED OS 7.3. [Public acceptance](docs/ITERATION_457.md), [local scope](docs/ITERATION_455.md). The earlier Windows ZIP/manual-CI-only checkpoint is superseded. Original broader clean-machine/OS coverage and a separate EXE format remain unaccepted; named distribution acceptance does not complete all Stage 12 requirements.

@@ -58,6 +58,25 @@ the bridge and preserves the host.
 optional HTML/JS through your static router and set client `basePath: '/rdp'`.
 The package exports `./fastify` and `./browser`, with no root API import.
 
+## HTML clipboard in 0.4.0
+
+Select HTML explicitly in an authenticated session-create request:
+
+```json
+{"clipboard":{"mode":"bidirectional","text":true,"html":true,"maxItemBytes":1048576}}
+```
+
+This is only the clipboard portion; the host also supplies authorized target
+and credentials. Require `clipboardHtml: true` in native capabilities. The
+matched reference assets provide separate Paste/Send/Get/Copy actions and a
+bounded safe static formatting profile. Offers do not read either clipboard.
+HTML and Unicode share one item/flight/quota; unsupported HTML is refused
+without an automatic text fallback. Image/file clipboard remains unavailable.
+See the [HTML guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
+for integration, selected ranges and browser permission requirements. Before
+publication, use complete verified local 0.4.0 archives; a source version does
+not establish registry availability.
+
 ## Limitations
 
 Bodies are strictly validated within 64 KiB. Session ownership, single-use

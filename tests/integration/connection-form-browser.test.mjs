@@ -59,6 +59,7 @@ for (const [performanceSettings, ipSettings] of [
               displayControl: true,
               clipboardText: true,
               clipboardRevoke: true,
+              clipboardHtml: performanceSettings && ipSettings,
               performanceSettings,
               ipSettings,
             }),
@@ -157,6 +158,12 @@ for (const [performanceSettings, ipSettings] of [
         await page.locator('[name=clipboard]').selectOption('bidirectional');
         await page.locator('[name=clipboardMax]').fill('65536');
         assert.equal(
+          await page.locator('[name=clipboardHtml]').isDisabled(),
+          !(performanceSettings && ipSettings),
+        );
+        if (performanceSettings && ipSettings)
+          await page.locator('[name=clipboardHtml]').check();
+        assert.equal(
           await page.locator('[name=certificatePolicy]').inputValue(),
           'strict',
         );
@@ -213,6 +220,7 @@ for (const [performanceSettings, ipSettings] of [
         assert.deepEqual(payload.clipboard, {
           mode: 'bidirectional',
           text: true,
+          ...(performanceSettings && ipSettings ? { html: true } : {}),
           maxItemBytes: 65536,
         });
         assert.equal(await page.locator('[name=password]').inputValue(), '');

@@ -8,6 +8,15 @@ using namespace bridge::clipboard::test;
 namespace wire = bridge::ipc::clipboard;
 using bridge::ipc::Kind;
 namespace {
+::bridge::compat::span<const BYTE> html_bytes(std::string_view value) {
+  return {reinterpret_cast<const BYTE *>(value.data()),value.size()};
+}
+std::vector<BYTE> html_wire() {
+  const std::string value="Version:1.0\r\nStartHTML:0000000105\r\nEndHTML:0000000177\r\n"
+    "StartFragment:0000000137\r\nEndFragment:0000000145\r\n"
+    "<html><body><!--StartFragment--><b>X</b><!--EndFragment--></body></html>";
+  std::vector<BYTE> bytes(value.begin(),value.end());bytes.push_back(0);return bytes;
+}
 struct Owner {
   struct Record {
     Kind kind;
@@ -85,6 +94,112 @@ TEST_CASE("Clipboard worker handoff moves one cross-thread command and waits for
   REQUIRE(result.status == wire::Status::accepted);
   REQUIRE(std::vector(result.text.begin(), result.text.end()) == std::vector<BYTE>{0xd0, 0x96});
   REQUIRE_FALSE(o.session.admitted()->remote_pending);
+}
+TEST_CASE("HTML worker set owns both formats through ACK and shared revoke result credit") {
+  Host h(false);Owner o({true,true,1024,true});o.start(h);
+  REQUIRE(o.session.admitted()->html);
+  const wire::HtmlItem item{html_bytes("<b>X</b>"),0,8,0,0,false,false,html_bytes("X")};
+  const auto inner=wire::encode_html_item(item);
+  auto set=wire::encode_command({wire::Operation::set_html,1,0,inner});
+  REQUIRE_FALSE(o.session.submit(1,set));REQUIRE(set.empty());REQUIRE(o.session.pump());
+  REQUIRE(o.session.admitted()->local_pending);
+  REQUIRE_FALSE(o.session.admitted()->local_html_accepted);
+  auto revoke=wire::encode_command({wire::Operation::revoke,1,0,{}});
+  REQUIRE(o.session.submit(2,revoke)==wire::Status::busy);
+  REQUIRE(h.send(record(3,1)));REQUIRE(o.session.pump());
+  REQUIRE(o.result(1).status==wire::Status::accepted);
+  REQUIRE(o.session.admitted()->local_html_accepted);
+  REQUIRE(h.send(record(4,0,{1,192,0,0})));
+  REQUIRE(h.writes.back()==record(5,1,html_wire()));
+  REQUIRE_FALSE(o.session.submit(2,revoke));REQUIRE(o.session.pump());
+  REQUIRE_FALSE(o.session.admitted()->local_html_accepted);
+  REQUIRE(h.writes.back()==record(2,0));
+  REQUIRE(h.send(record(3,1)));o.result_credit=false;REQUIRE(o.session.pump());
+  auto replacement=wire::encode_command({wire::Operation::set_html,1,0,inner});
+  REQUIRE(o.session.submit(3,replacement)==wire::Status::busy);
+  REQUIRE(h.send(record(4,0,{1,192,0,0})));REQUIRE(h.writes.back()==record(5,2));
+  o.result_credit=true;REQUIRE(o.session.pump());REQUIRE(o.result(2).status==wire::Status::accepted);
+}
+TEST_CASE("HTML worker gathers one revision with optional Unicode fallback and exact aggregate quota") {
+  for(bool fallback:{false,true})for(std::size_t maximum:{181U,182U}) {
+    Host h(false);Owner o({true,true,maximum,true});o.start(h);
+    std::vector<BYTE> formats{0x34,0x12,0,0};
+    for(const auto c:std::string_view("HTML Format")){formats.push_back(static_cast<BYTE>(c));formats.push_back(0);}
+    formats.insert(formats.end(),{0,0});
+    if(fallback)formats.insert(formats.end(),{13,0,0,0,0,0});
+    REQUIRE(h.send(record(2,0,formats)));REQUIRE(o.session.pump());
+    REQUIRE(o.session.admitted()->remote_html);
+    auto request=wire::encode_command({wire::Operation::read_html,1,1,{}});
+    REQUIRE_FALSE(o.session.submit(7,request));REQUIRE(o.session.pump());
+    REQUIRE(h.writes.back()==record(4,0,{0x34,0x12,0,0}));
+    REQUIRE(h.send(record(5,1,html_wire())));REQUIRE(o.session.pump());
+    if(fallback) {
+      REQUIRE(o.session.admitted()->remote_pending);
+      REQUIRE(h.writes.back()==record(4,0,{13,0,0,0}));
+      auto competing=o.read();REQUIRE(o.session.submit(8,competing)==wire::Status::busy);
+      REQUIRE(h.send(record(5,1,{88,0,0,0})));REQUIRE(o.session.pump());
+    }
+    const auto result=o.result(7);
+    if(fallback&&maximum==181){REQUIRE(result.status==wire::Status::refused);REQUIRE(result.text.empty());}
+    else {
+      REQUIRE(result.status==wire::Status::accepted);
+      const auto item=wire::decode_html_item(result.text,maximum);
+      REQUIRE(item.context);REQUIRE(item.body.size()==72);
+      REQUIRE(item.fragment_offset==32);REQUIRE(item.fragment_bytes==8);
+      REQUIRE(item.text.has_value()==fallback);
+      if(fallback)REQUIRE(std::vector(item.text->begin(),item.text->end())==std::vector<BYTE>{88});
+    }
+    REQUIRE_FALSE(o.session.admitted()->remote_pending);
+  }
+}
+TEST_CASE("HTML worker never returns a partial item after replacement refusal or result backpressure") {
+  for(unsigned mode=0;mode<4;++mode) {
+    Host h(false);Owner o({true,true,1024,true});o.start(h);
+    std::vector<BYTE> formats{0x34,0x12,0,0};
+    for(const auto c:std::string_view("HTML Format")){formats.push_back(static_cast<BYTE>(c));formats.push_back(0);}
+    formats.insert(formats.end(),{0,0,13,0,0,0,0,0});
+    REQUIRE(h.send(record(2,0,formats)));REQUIRE(o.session.pump());
+    auto request=wire::encode_command({wire::Operation::read_html,1,1,{}});
+    REQUIRE_FALSE(o.session.submit(1,request));REQUIRE(o.session.pump());
+    REQUIRE(h.send(record(5,1,html_wire())));
+    if(mode==0)REQUIRE(h.send(record(2,0,formats)));
+    REQUIRE(o.session.pump());
+    if(mode!=0) {
+      if(mode==1)REQUIRE(h.send(record(2,0,formats)));
+      REQUIRE(h.send(record(5,mode==2?2:1,mode==2?std::vector<BYTE>{}:std::vector<BYTE>{88,0,0,0})));
+      if(mode==3){o.result_credit=false;REQUIRE(o.session.pump());REQUIRE(h.send(record(2,0,formats)));o.result_credit=true;}
+      REQUIRE(o.session.pump());
+    }
+    const auto result=o.result(1);
+    REQUIRE(result.status==(mode==2?wire::Status::refused:wire::Status::stale));
+    REQUIRE(result.text.empty());
+  }
+}
+TEST_CASE("HTML worker aggregate deadline cannot be revived by a late second response before poll") {
+  Host h(false);Owner o({true,true,1024,true});o.start(h);
+  std::vector<BYTE> formats{0x34,0x12,0,0};
+  for(const auto c:std::string_view("HTML Format")){formats.push_back(static_cast<BYTE>(c));formats.push_back(0);}
+  formats.insert(formats.end(),{0,0,13,0,0,0,0,0});
+  REQUIRE(h.send(record(2,0,formats)));REQUIRE(o.session.pump());
+  auto request=wire::encode_command({wire::Operation::read_html,1,1,{}});
+  REQUIRE_FALSE(o.session.submit(1,request));REQUIRE(o.session.pump());
+  o.now=4999;REQUIRE(h.send(record(5,1,html_wire())));
+  o.now=9999;REQUIRE(o.session.pump()); // Second SDK deadline is now 14999.
+  o.now=10001;REQUIRE_FALSE(h.send(record(5,1,{88,0,0,0})));
+  REQUIRE_FALSE(o.session.pump());REQUIRE_FALSE(o.session.admitted());
+  REQUIRE(h.clip->custom==nullptr);
+}
+TEST_CASE("HTML worker opt-in and encoded quota admission preserve caller-owned refused payloads") {
+  for(bool html:{false,true}) {
+    Host h(false);Owner o({true,true,181,html});o.start(h);
+    const wire::HtmlItem item{html_bytes("<b>X</b>"),0,8,0,0,false,false,html_bytes("X")};
+    const auto inner=wire::encode_html_item(item);
+    auto request=wire::encode_command({wire::Operation::set_html,1,0,inner});
+    const auto copy=request;
+    REQUIRE(o.session.submit(1,request)==(html?wire::Status::refused:wire::Status::unavailable));
+    REQUIRE(request==copy);
+    REQUIRE(o.session.pump());REQUIRE_FALSE(o.session.admitted()->local_pending);
+  }
 }
 TEST_CASE("Clipboard worker set completes only after peer ACK and preserves text serving") {
   Host h(false);

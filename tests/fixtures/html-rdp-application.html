@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Bridge HTML Lab</title>
+<h2>Owned HTML clipboard lab</h2>
+<p>
+  F2: receipt, then Ctrl+C. F8: source, then Ctrl+C. F9: empty target, then
+  Ctrl+V.
+</p>
+<div id="s"></div>
+<div id="t" contenteditable style="border: 2px solid; padding: 10px">
+  Paste target
+</div>
+<textarea id="r" readonly style="width: 95%; height: 80px"></textarea>
+<!-- Keep this owned script compact: its data URL can become CF_HTML SourceURL. -->
+<!-- prettier-ignore -->
+<script>
+const id='__BRIDGE_ID__',s=document.querySelector('#s'),t=document.querySelector('#t'),r=document.querySelector('#r');let n=0,p=0,ok=false,html=false,text=false;const u=' \u0416\u65e5\u672c\u8a9e\ud83d\ude00',b='Bridge browser '+id+u;function receipt(){r.value=JSON.stringify({v:1,id,ready:true,source:n,pastes:p,ok,html,text});}function source(){s.innerHTML='<table><tbody><tr><td><b>Bridge app '+n+' '+id+u+'</b></td><td><i>cell 2</i></td></tr></tbody></table><ol start=4><li>first</li><li>second</li></ol>';}source();receipt();document.addEventListener('keydown',e=>{if(!['F2','F8','F9'].includes(e.code))return;e.preventDefault();if(e.code==='F2'){receipt();r.focus();r.select();}else if(e.code==='F8'){n++;source();s.tabIndex=0;s.focus();const a=document.createRange();a.selectNodeContents(s);const z=getSelection();z.removeAllRanges();z.addRange(a);receipt();}else{t.textContent='';t.focus();const a=document.createRange();a.selectNodeContents(t);a.collapse(true);const z=getSelection();z.removeAllRanges();z.addRange(a);}});t.addEventListener('paste',e=>{e.preventDefault();p++;ok=html=text=false;const a=e.clipboardData.getData('text/html'),c=e.clipboardData.getData('text/plain');if(a.length>65536||c.length>4096||c!==b){receipt();return;}const d=document.createElement('template');d.innerHTML=a;html=d.content.querySelectorAll('table').length===1&&d.content.querySelectorAll('b,strong').length>0&&d.content.querySelectorAll('i,em').length>0&&d.content.querySelectorAll('li').length===2&&d.content.textContent.includes(b)&&!a.includes('PRIVATE-');text=c===b;ok=html&&text;d.content.replaceChildren();t.textContent=ok?'Owned HTML paste verified':'Owned HTML paste refused';receipt();});
+</script>

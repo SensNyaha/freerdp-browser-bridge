@@ -1,5 +1,14 @@
 # Product versions and release branches
 
+HTML source acceptance is merged into shared `master` at `6f21ce7`.
+`release/0.4.0` prepares the next minor capability release; public **0.3.0**
+remains unchanged until accepted delivery. The new standalone minor boundary
+explicitly uses **`v0.3.0`** as its upgrade seed. Wrong/mixed predecessors in
+either platform receipt are refused; unknown future minor seeds still require
+an explicit decision. Eleven focused version/manifest/publisher checks pass,
+including failing-before/passing-after 0.4.0 seed and receipt cases. This is
+tooling acceptance, not an actual installer upgrade or published 0.4.0 artifact.
+
 Current public release is **0.3.0** for verified runtime ownership and
 bounded orphan recovery in Node, all adapters and standalone. The implementation
 starts at `51283d1`; `release/0.3.0` includes the installed npm executable fix

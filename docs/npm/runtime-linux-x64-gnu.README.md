@@ -31,6 +31,15 @@ Source support targets GCC 8.3 for Astra Linux 1.7.5 and retains RED OS 7.3/GCC
 11. Compiler checks, runtime relocation and actual RDP acceptance remain
 separate evidence; this does not promise every Linux/security profile.
 
+## HTML clipboard in 0.4.0
+
+The matching runtime advertises `clipboardHtml` when its CLIPRDR support is
+available. HTML remains opt-in per session, with shared HTML/Unicode item limits
+and explicit browser actions. Runtime installation alone does not access the
+host clipboard or enable file/image clipboard. See the
+[HTML profile and acceptance](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
+Versioned runtime/installer acceptance is separate from compiler/source results.
+
 ## Usage
 
 ```js

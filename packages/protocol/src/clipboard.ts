@@ -1,11 +1,27 @@
 import { isUtf8 } from 'node:buffer';
 import { ProtocolError } from './index.js';
+import { decodeClipboardHtmlItem } from './clipboard-html.js';
 
 export const CLIPBOARD_METADATA_BYTES = 24;
 export const CLIPBOARD_MAX_TEXT_BYTES = 16 * 1024 * 1024;
 export const CLIPBOARD_MAX_RECORD_BYTES =
   CLIPBOARD_METADATA_BYTES + CLIPBOARD_MAX_TEXT_BYTES;
-export type ClipboardOperation = 'read' | 'set' | 'revoke';
+export type ClipboardOperation =
+  | 'read'
+  | 'set'
+  | 'revoke'
+  | 'read-html'
+  | 'set-html';
+const operations: readonly ClipboardOperation[] = [
+  'read',
+  'set',
+  'revoke',
+  'read-html',
+  'set-html',
+];
+export function isClipboardRead(op: ClipboardOperation): boolean {
+  return op === 'read' || op === 'read-html';
+}
 export const clipboardStatuses = [
   'accepted',
   'refused',
@@ -28,6 +44,9 @@ export interface ClipboardState {
   localAccepted: boolean;
   localPending: boolean;
   remotePending: boolean;
+  html?: true;
+  remoteHtml?: boolean;
+  localHtmlAccepted?: boolean;
 }
 export interface ClipboardCommand {
   operation: ClipboardOperation;
@@ -66,7 +85,17 @@ export function validateClipboardState(s: ClipboardState): void {
     ((!s.ready || !s.fromServer) && (s.remoteText || s.remotePending)) ||
     ((!s.ready || !s.toServer) && (s.localAccepted || s.localPending)) ||
     (s.localAccepted && s.localPending) ||
-    (s.revision === 0n && (s.remoteText || s.remotePending))
+    (s.revision === 0n && (s.remoteText || s.remotePending)) ||
+    (s.html !== undefined && s.html !== true) ||
+    (s.html === true &&
+      (typeof s.remoteHtml !== 'boolean' ||
+        typeof s.localHtmlAccepted !== 'boolean')) ||
+    (s.html === undefined &&
+      (s.remoteHtml !== undefined || s.localHtmlAccepted !== undefined)) ||
+    ((!s.html || !s.ready || !s.fromServer || s.revision === 0n) &&
+      s.remoteHtml) ||
+    ((!s.html || !s.ready || !s.toServer || !s.localAccepted) &&
+      s.localHtmlAccepted)
   )
     throw new ProtocolError();
 }
@@ -101,23 +130,28 @@ export function validateClipboardText(
 }
 function identity(c: ClipboardCommand): void {
   u64(c.generation, true);
-  u64(c.revision, c.operation === 'read');
+  u64(c.revision, isClipboardRead(c.operation));
   if (
-    !['read', 'set', 'revoke'].includes(c.operation) ||
-    (c.operation !== 'read' && c.revision !== 0n) ||
+    !operations.includes(c.operation) ||
+    (!isClipboardRead(c.operation) && c.revision !== 0n) ||
     !Buffer.isBuffer(c.text)
   )
     throw new ProtocolError();
 }
 function command(c: ClipboardCommand): void {
   identity(c);
-  if (c.operation === 'set') validateClipboardText(c.text);
+  if (c.operation === 'set-html') {
+    const item = decodeClipboardHtmlItem(c.text);
+    if (item.context || item.selection) throw new ProtocolError();
+  } else if (c.operation === 'set') validateClipboardText(c.text);
   else if (c.text.length) throw new ProtocolError();
 }
 function result(r: ClipboardResult): void {
   identity(r);
   if (!clipboardStatuses.includes(r.status)) throw new ProtocolError();
-  if (r.operation === 'read' && r.status === 'accepted')
+  if (r.operation === 'read-html' && r.status === 'accepted')
+    decodeClipboardHtmlItem(r.text);
+  else if (r.operation === 'read' && r.status === 'accepted')
     validateClipboardText(r.text);
   else if (r.text.length) throw new ProtocolError();
 }
@@ -126,18 +160,23 @@ function header(b: Buffer): void {
     !Buffer.isBuffer(b) ||
     b.length < CLIPBOARD_METADATA_BYTES ||
     b.length > CLIPBOARD_MAX_RECORD_BYTES ||
-    b.readUInt16BE(0) !== (b.readUInt16BE(2) === 3 ? 2 : 1) ||
+    b.readUInt16BE(0) !==
+      (b.readUInt16BE(2) >= 4 ? 3 : b.readUInt16BE(2) === 3 ? 2 : 1) ||
     b.readUInt16BE(6) !== 0
   )
     throw new ProtocolError();
 }
 function encode(c: ClipboardCommand, status: number): Buffer {
   const b = Buffer.alloc(CLIPBOARD_METADATA_BYTES + c.text.length);
-  b.writeUInt16BE(c.operation === 'revoke' ? 2 : 1, 0);
   b.writeUInt16BE(
-    c.operation === 'read' ? 1 : c.operation === 'set' ? 2 : 3,
-    2,
+    c.operation === 'read-html' || c.operation === 'set-html'
+      ? 3
+      : c.operation === 'revoke'
+        ? 2
+        : 1,
+    0,
   );
+  b.writeUInt16BE(operations.indexOf(c.operation) + 1, 2);
   b.writeUInt16BE(status, 4);
   b.writeBigUInt64BE(c.generation, 8);
   b.writeBigUInt64BE(c.revision, 16);
@@ -146,9 +185,10 @@ function encode(c: ClipboardCommand, status: number): Buffer {
 }
 function decode(b: Buffer): ClipboardCommand {
   const op = b.readUInt16BE(2);
-  if (op !== 1 && op !== 2 && op !== 3) throw new ProtocolError();
+  const operation = operations[op - 1];
+  if (!operation) throw new ProtocolError();
   return {
-    operation: op === 1 ? 'read' : op === 2 ? 'set' : 'revoke',
+    operation,
     generation: b.readBigUInt64BE(8),
     revision: b.readBigUInt64BE(16),
     text: b.subarray(CLIPBOARD_METADATA_BYTES),
@@ -157,7 +197,7 @@ function decode(b: Buffer): ClipboardCommand {
 export function encodeClipboardState(s: ClipboardState): Buffer {
   validateClipboardState(s);
   const b = Buffer.alloc(CLIPBOARD_METADATA_BYTES);
-  b.writeUInt16BE(1, 0);
+  b.writeUInt16BE(s.html ? 3 : 1, 0);
   b.writeUInt16BE(
     Number(s.ready) |
       (Number(s.toServer) << 1) |
@@ -165,7 +205,10 @@ export function encodeClipboardState(s: ClipboardState): Buffer {
       (Number(s.remoteText) << 3) |
       (Number(s.localAccepted) << 4) |
       (Number(s.localPending) << 5) |
-      (Number(s.remotePending) << 6),
+      (Number(s.remotePending) << 6) |
+      (Number(s.html === true) << 7) |
+      (Number(s.remoteHtml === true) << 8) |
+      (Number(s.localHtmlAccepted === true) << 9),
     2,
   );
   b.writeUInt32BE(s.maximum, 4);
@@ -177,8 +220,11 @@ export function decodeClipboardState(b: Buffer): ClipboardState {
   if (
     !Buffer.isBuffer(b) ||
     b.length !== CLIPBOARD_METADATA_BYTES ||
-    b.readUInt16BE(0) !== 1 ||
-    b.readUInt16BE(2) > 127
+    (b.readUInt16BE(0) === 1
+      ? b.readUInt16BE(2) > 127
+      : b.readUInt16BE(0) !== 3 ||
+        b.readUInt16BE(2) > 1023 ||
+        !(b.readUInt16BE(2) & 128))
   )
     throw new ProtocolError();
   const f = b.readUInt16BE(2);
@@ -193,6 +239,13 @@ export function decodeClipboardState(b: Buffer): ClipboardState {
     localAccepted: Boolean(f & 16),
     localPending: Boolean(f & 32),
     remotePending: Boolean(f & 64),
+    ...(f & 128
+      ? {
+          html: true as const,
+          remoteHtml: Boolean(f & 256),
+          localHtmlAccepted: Boolean(f & 512),
+        }
+      : {}),
   };
   validateClipboardState(s);
   return s;

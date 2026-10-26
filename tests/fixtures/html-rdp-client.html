@@ -1,0 +1,286 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Owned actual RDP HTML clipboard client</title>
+<style>
+  body {
+    font: 16px sans-serif;
+    margin: 24px;
+  }
+  textarea {
+    display: block;
+    width: 95%;
+  }
+  button {
+    padding: 8px;
+    margin: 4px;
+  }
+  [hidden] {
+    display: none;
+  }
+</style>
+<p>
+  Explicit owned HTML application acceptance. Real control WS and Clipboard API.
+</p>
+<button id="seed">Write owned local HTML</button>
+<button id="inspect">Inspect owned OS result</button>
+<button id="clear-os">Clear owned OS clipboard</button>
+<!--REFERENCE_PANEL-->
+<script type="module">
+  import { ClipboardClient } from '/clipboard-client.js';
+  import { installClipboardHtmlView } from '/clipboard-html-view.js';
+  const id = new URL(location.href).searchParams.get('id');
+  if (!/^[0-9a-f]{32}$/.test(id ?? ''))
+    throw new Error('Invalid owned fixture');
+  const unicode = ' \u0416\u65e5\u672c\u8a9e\ud83d\ude00',
+    local = 'Bridge browser ' + id + unicode;
+  let ws,
+    client,
+    view,
+    timer,
+    prompt,
+    connected = false,
+    sequence = 0;
+  let textRequest,
+    failures = 0,
+    seeded = false,
+    writes = 0,
+    readNumber = 0,
+    uriBytes = 0;
+  const fixture = { seeded: false, cleared: false, inspection: undefined };
+  const changed = () => {
+    clearTimeout(timer);
+    const deadline = client?.nextDeadline;
+    if (deadline !== undefined)
+      timer = setTimeout(
+        () => client.service(),
+        Math.max(1, Math.ceil(deadline - performance.now())),
+      );
+    view?.changed();
+  };
+  function send(type, data) {
+    if (ws?.readyState !== WebSocket.OPEN)
+      throw new Error('Owned control closed');
+    const seq = sequence++;
+    ws.send(JSON.stringify({ v: 1, type, seq, ts: Date.now(), data }));
+    return seq;
+  }
+  function dispose() {
+    connected = false;
+    view?.dispose();
+    client?.dispose();
+    clearTimeout(timer);
+    textRequest?.resolve(false);
+    textRequest = undefined;
+    ws?.close();
+  }
+  Object.defineProperties(
+    fixture,
+    Object.getOwnPropertyDescriptors({
+      attach(created) {
+        if (ws) throw new Error('Owned control already attached');
+        ws = new WebSocket(
+          'ws://' +
+            location.host +
+            '/v1/sessions/' +
+            created.sessionId +
+            '/control?token=' +
+            encodeURIComponent(created.attach.control.token),
+          ['freerdp-bridge-v1'],
+        );
+        ws.binaryType = 'arraybuffer';
+        client = new ClipboardClient({
+          authorized: () => connected && ws.readyState === WebSocket.OPEN,
+          bufferedAmount: () => ws.bufferedAmount,
+          changed,
+          failed: () => {
+            ++failures;
+            dispose();
+          },
+          sendControl(type, data) {
+            if (type === 'clipboard.html.set') ++writes;
+            return send(type, data);
+          },
+          sendBinary(bytes) {
+            ws.send(bytes);
+            return true;
+          },
+        });
+        view = installClipboardHtmlView(
+          document.querySelector('#clipboard-html'),
+          client,
+        );
+        ws.addEventListener('message', (event) => {
+          if (event.data instanceof ArrayBuffer) {
+            client.binary(event.data);
+            return;
+          }
+          const message = JSON.parse(event.data);
+          if (message.type === 'session.state') {
+            connected = message.data.state === 'connected';
+            client.service();
+          } else if (message.type === 'certificate.prompt')
+            prompt = message.data;
+          else if (message.type === 'session.error') {
+            ++failures;
+            dispose();
+          } else if (message.type === 'input.text.result') {
+            if (textRequest?.seq === message.data.requestSeq) {
+              textRequest.resolve(message.data.status === 'sent');
+              textRequest = undefined;
+            }
+          } else client.message(message.type, message.data);
+        });
+        ws.addEventListener('close', dispose);
+      },
+      get snapshot() {
+        return client?.snapshot;
+      },
+      get failures() {
+        return failures;
+      },
+      get writes() {
+        return writes;
+      },
+      get hasPrompt() {
+        return Boolean(prompt);
+      },
+      accept(fingerprint) {
+        if (!prompt || fingerprint !== prompt.fingerprint) return false;
+        send('certificate.response', {
+          challenge: prompt.challenge,
+          fingerprint,
+          accept: true,
+        });
+        prompt = undefined;
+        return true;
+      },
+      press(codes) {
+        if (
+          !connected ||
+          !Array.isArray(codes) ||
+          !codes.length ||
+          codes.length > 2 ||
+          !codes.every((code) =>
+            [
+              'ControlLeft',
+              'KeyL',
+              'KeyC',
+              'KeyV',
+              'KeyW',
+              'Enter',
+              'F2',
+              'F5',
+              'F8',
+              'F9',
+            ].includes(code),
+          )
+        )
+          throw new Error('Invalid owned key');
+        for (const code of codes)
+          send('input.key', { code, down: true, repeat: false });
+        for (const code of [...codes].reverse())
+          send('input.key', { code, down: false, repeat: false });
+      },
+      text(value) {
+        if (
+          !connected ||
+          textRequest ||
+          typeof value !== 'string' ||
+          value.length > 256 ||
+          uriBytes + value.length > 3500 ||
+          !(uriBytes === 0
+            ? /^data:text\/html;base64,[A-Za-z0-9+/=]+$/.test(value)
+            : /^[A-Za-z0-9+/=]+$/.test(value))
+        )
+          throw new Error('Invalid owned URI input');
+        uriBytes += value.length;
+        return new Promise((resolve) => {
+          const seq = send('input.text', { text: value });
+          textRequest = { seq, resolve };
+        });
+      },
+      async receipt() {
+        if (++readNumber > 3) throw new Error('Owned receipt limit');
+        const result = await client.read();
+        if (result.status !== 'accepted')
+          throw new Error('Owned receipt unavailable');
+        return result.text;
+      },
+      dispose,
+    }),
+  );
+  document.querySelector('#seed').addEventListener('click', async (event) => {
+    if (!event.isTrusted || seeded) return;
+    try {
+      const html =
+        '<table><tbody><tr><td><b>' +
+        local +
+        '</b></td><td><i>cell 2</i></td></tr></tbody></table><ol start="4"><li>first</li><li>second</li></ol>';
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([local], { type: 'text/plain' }),
+        }),
+      ]);
+      seeded = fixture.seeded = true;
+    } catch {
+      ++failures;
+    }
+  });
+  async function ownedRead() {
+    const items = await navigator.clipboard.read();
+    if (items.length !== 1 || !items[0].types.includes('text/plain'))
+      throw new Error('Owned formats missing');
+    const plain = await items[0].getType('text/plain');
+    if (plain.size > 65536) throw new Error('Owned quota');
+    const text = await plain.text();
+    if (!text.includes(id)) throw new Error('Owned clipboard changed');
+    const rich = items[0].types.includes('text/html')
+      ? await items[0].getType('text/html')
+      : undefined;
+    if (rich && rich.size > 1048576) throw new Error('Owned quota');
+    return { text, html: rich ? await rich.text() : undefined };
+  }
+  document
+    .querySelector('#inspect')
+    .addEventListener('click', async (event) => {
+      if (!event.isTrusted || !seeded) return;
+      try {
+        const { text, html } = await ownedRead();
+        if (!html) throw new Error('Owned HTML missing');
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        const content = template.content,
+          source = text.includes('Bridge app 2 ' + id) ? 2 : 1,
+          marker = 'Bridge app ' + source + ' ' + id + unicode;
+        fixture.inspection = {
+          source,
+          knownText: text.includes(marker),
+          knownHtml: content.textContent.includes(marker),
+          table: content.querySelectorAll('table').length,
+          bold: content.querySelectorAll('b,strong').length,
+          italic: content.querySelectorAll('i,em').length,
+          listItems: content.querySelectorAll('li').length,
+          listStart: content.querySelector('ol')?.getAttribute('start'),
+          privateText: html.includes('PRIVATE-'),
+        };
+        template.content.replaceChildren();
+      } catch {
+        fixture.inspection = { failed: true };
+      }
+    });
+  document
+    .querySelector('#clear-os')
+    .addEventListener('click', async (event) => {
+      if (!event.isTrusted || !seeded) return;
+      try {
+        await ownedRead();
+        await navigator.clipboard.writeText('');
+        fixture.cleared = true;
+      } catch {
+        fixture.cleared = false;
+      }
+    });
+  window.fixture = fixture;
+  window.addEventListener('pagehide', dispose);
+</script>

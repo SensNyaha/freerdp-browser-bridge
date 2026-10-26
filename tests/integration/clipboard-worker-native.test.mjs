@@ -13,6 +13,7 @@ import {
   PacketDecoder,
   encodePacket,
   helloPayload,
+  decodeBuild,
   encodeConnectionSettings,
   decodeConnectionState,
   encodeClipboardCommand,
@@ -31,10 +32,19 @@ const available = JSON.parse(
   }),
 ).capabilities.connectCore;
 
-for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
+for (const profile of [
+  'bidirectional',
+  'server-to-browser',
+  'browser-to-server',
+  'html-bidirectional',
+  'html-server-to-browser',
+  'html-browser-to-server',
+]) {
+  const html = profile.startsWith('html-');
+  const mode = html ? profile.slice(5) : profile;
   test(
     'actual typed native clipboard: ' +
-      mode +
+      profile +
       ' keeps strict TLS, heartbeat and cleanup',
     { skip: !available, timeout: 15000 },
     async () => {
@@ -50,12 +60,18 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
       try {
         assert.equal((await worker.start()).capabilities.clipboardText, true);
         assert.equal(worker.build.capabilities.clipboardRevoke, true);
+        if (html) assert.equal(worker.build.capabilities.clipboardHtml, true);
         await worker.connect({
           target: { host: '127.0.0.1', port: endpoint.port },
           auth: { username: 'synthetic', password: 'synthetic IPC sentinel' },
           security: { protocol: 'tls', certificatePolicy: 'strict' },
           timeouts: { connectMs: 5000 },
-          clipboard: { mode, text: true, maxItemBytes: 1024 },
+          clipboard: {
+            mode,
+            text: true,
+            maxItemBytes: 1024,
+            ...(html ? { html: true } : {}),
+          },
         });
         const deadline = Date.now() + 6000;
         while (!terminal) {
@@ -72,8 +88,13 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           assert.equal(source.maximum, 1024);
           assert.equal(source.toServer, mode !== 'server-to-browser');
           assert.equal(source.fromServer, mode !== 'browser-to-server');
+          if (html) assert.equal(source.html, true);
         }
         assert.equal(worker.clipboardState, undefined);
+        if (html)
+          assert.deepEqual(await worker.readClipboardHtml(1n), {
+            status: 'unavailable',
+          });
         assert.equal(await worker.revokeClipboardText(), 'unavailable');
         assert.equal(
           (await worker.readClipboardText(1n)).status,
@@ -97,11 +118,23 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
       }
     },
   );
+}
 
-for (const mode of ['to', 'from', 'both', 'cancel'])
+for (const profile of [
+  'to',
+  'from',
+  'both',
+  'cancel',
+  'html-to',
+  'html-from',
+  'html-both',
+  'html-cancel',
+]) {
+  const html = profile.startsWith('html-');
+  const mode = html ? profile.slice(5) : profile;
   test(
     'actual native raw clipboard selection: ' +
-      mode +
+      profile +
       ' / strict TLS and retirement',
     { skip: !available, timeout: 15000 },
     async (t) => {
@@ -162,7 +195,17 @@ for (const mode of ['to', 'from', 'both', 'cancel'])
             (p) => p.kind === expected && p.requestId === requestId,
           );
         };
-        await request(Kind.Hello, Kind.HelloAck, 1n, helloPayload());
+        const hello = await request(
+          Kind.Hello,
+          Kind.HelloAck,
+          1n,
+          helloPayload(),
+        );
+        if (html)
+          assert.equal(
+            decodeBuild(hello.payload).capabilities.clipboardHtml,
+            true,
+          );
         const baseline = encodeConnectionSettings({
           host: '127.0.0.1',
           port: endpoint.port,
@@ -181,7 +224,7 @@ for (const mode of ['to', 'from', 'both', 'cancel'])
           opusOutput: mode === 'both',
           audioBuffer200: mode === 'both',
         });
-        const config = Buffer.concat([baseline, Buffer.alloc(4)]);
+        let config = Buffer.concat([baseline, Buffer.alloc(4)]);
         config.writeUInt16BE(10, 0);
         const flagsAt = baseline.length - 4;
         const directions = mode === 'to' ? 128 : mode === 'from' ? 256 : 384;
@@ -190,12 +233,35 @@ for (const mode of ['to', 'from', 'both', 'cancel'])
           flagsAt,
         );
         config.writeUInt32BE(1024, config.length - 4);
+        if (html)
+          config = encodeConnectionSettings({
+            host: '127.0.0.1',
+            port: endpoint.port,
+            username: 'synthetic',
+            domain: '',
+            width: 1024,
+            height: 768,
+            colorDepth: 32,
+            security: 2,
+            certificatePolicy: mode === 'cancel' ? 1 : 0,
+            minimumTls: 2,
+            connectMs: 5000,
+            tcpAckMs: 1000,
+            clipboard: {
+              toServer: mode !== 'from',
+              fromServer: mode !== 'to',
+              maximum: 1024,
+              html: true,
+            },
+          });
         await request(Kind.Configure, Kind.ConfigureAck, 2n, config);
         const command = encodeClipboardCommand({
-          operation: 'set',
+          operation: html ? 'read-html' : 'set',
           generation: 1n,
-          revision: 0n,
-          text: Buffer.from('synthetic clipboard sentinel'),
+          revision: html ? 1n : 0n,
+          text: html
+            ? Buffer.alloc(0)
+            : Buffer.from('synthetic clipboard sentinel'),
         });
         const early = await request(
           Kind.ClipboardCommand,
@@ -239,6 +305,10 @@ for (const mode of ['to', 'from', 'both', 'cancel'])
           assert.equal(state.ready, false);
           assert.equal(state.toServer, mode !== 'from');
           assert.equal(state.fromServer, mode !== 'to');
+          if (html) {
+            assert.equal(state.html, true);
+            assert.equal(state.remoteHtml, false);
+          }
         }
         const late = await request(
           Kind.ClipboardCommand,
@@ -278,3 +348,4 @@ for (const mode of ['to', 'from', 'both', 'cancel'])
       }
     },
   );
+}

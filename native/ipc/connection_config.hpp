@@ -23,6 +23,7 @@ struct ConnectionConfig {
   bool opus_input = false;
   bool audio_buffer_200 = false;
   bool clipboard_to_server = false, clipboard_from_server = false;
+  bool clipboard_html = false;
   std::uint32_t clipboard_maximum = 0;
   std::uint8_t performance_mask = 0, performance_values = 0;
   std::uint8_t ip_mask = 0, prefer_ipv6 = 0, force_ip_version = 0;

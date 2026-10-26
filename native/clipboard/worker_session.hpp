@@ -1,6 +1,6 @@
 #pragma once
 #include "../compat/span.hpp"
-#include "../ipc/clipboard.hpp"
+#include "../ipc/clipboard_html.hpp"
 #include "text_session.hpp"
 #include <memory>
 #include <mutex>
@@ -45,6 +45,10 @@ private:
   std::thread::id owner_;
   std::uint64_t generation_ = 0, now_ = 0, output_deadline_ = 0;
   std::vector<std::uint8_t> result_;
+  std::vector<std::uint8_t> html_result_;
+  std::size_t html_wire_bytes_ = 0;
+  std::uint64_t html_deadline_ = 0;
+  bool html_fallback_ = false, html_text_pending_ = false;
   std::optional<std::array<std::uint8_t, ipc::clipboard::metadata_bytes>> published_;
   bool seen_clock_ = false, started_ = false, bound_ = false, pumping_ = false;
   bool retire_requested_ = false;
@@ -52,6 +56,8 @@ private:
   bool observe() noexcept;
   bool complete(ipc::clipboard::Status, ::bridge::compat::span<const std::uint8_t> = {}) noexcept;
   bool reply(std::uint64_t, TextReply, ::bridge::compat::span<const std::uint8_t>) noexcept;
+  bool reply_html(std::uint64_t, TextReply, HtmlView) noexcept;
+  bool complete_html(const ipc::clipboard::HtmlItem &) noexcept;
   bool publish(const TextSnapshot &);
   void release_job() noexcept;
   bool fail() noexcept;

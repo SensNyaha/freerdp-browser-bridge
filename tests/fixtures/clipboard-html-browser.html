@@ -1,0 +1,152 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Owned HTML transfer fixture</title>
+<script type="module">
+  import { ClipboardClient } from '/clipboard-client.js';
+  let ws,
+    client,
+    timer,
+    connected = false,
+    sequence = 0,
+    commands = 0,
+    failures = 0,
+    lastItem;
+  window.localClipboardCalls = 0;
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: Object.fromEntries(
+      ['read', 'write', 'readText', 'writeText'].map((name) => [
+        name,
+        () => {
+          ++window.localClipboardCalls;
+          throw new Error('Unexpected OS clipboard access');
+        },
+      ]),
+    ),
+  });
+  const clear = () => {
+    lastItem?.body.fill(0);
+    lastItem?.text?.fill(0);
+    lastItem = undefined;
+  };
+  const dispose = () => {
+    clear();
+    clearTimeout(timer);
+    client?.dispose();
+    ws?.close();
+  };
+  const changed = () => {
+    clearTimeout(timer);
+    const deadline = client.nextDeadline;
+    if (deadline !== undefined)
+      timer = setTimeout(
+        () => client.service(),
+        Math.max(1, Math.ceil(deadline - performance.now())),
+      );
+  };
+  window.fixture = {
+    attach(created) {
+      ws = new WebSocket(
+        'ws://' +
+          location.host +
+          '/v1/sessions/' +
+          created.sessionId +
+          '/control?token=' +
+          encodeURIComponent(created.attach.control.token),
+        ['freerdp-bridge-v1'],
+      );
+      ws.binaryType = 'arraybuffer';
+      client = new ClipboardClient({
+        authorized: () => connected && ws.readyState === WebSocket.OPEN,
+        bufferedAmount: () => ws.bufferedAmount,
+        changed,
+        failed: () => {
+          ++failures;
+          dispose();
+        },
+        sendControl(type, data) {
+          const seq = sequence++;
+          ++commands;
+          ws.send(JSON.stringify({ v: 1, type, seq, ts: Date.now(), data }));
+          return seq;
+        },
+        sendBinary(bytes) {
+          ws.send(bytes);
+          return true;
+        },
+      });
+      ws.addEventListener('message', (event) => {
+        if (event.data instanceof ArrayBuffer) {
+          client.binary(event.data);
+          return;
+        }
+        const message = JSON.parse(event.data);
+        if (message.type === 'session.state') {
+          connected = message.data.state === 'connected';
+          client.service();
+        } else client.message(message.type, message.data);
+      });
+      ws.addEventListener('close', () => {
+        connected = false;
+        client.dispose();
+        clearTimeout(timer);
+      });
+    },
+    get snapshot() {
+      return client?.snapshot;
+    },
+    get commands() {
+      return commands;
+    },
+    get failures() {
+      return failures;
+    },
+    upload(html, text) {
+      const body = new TextEncoder().encode(html),
+        plain = text === undefined ? undefined : new TextEncoder().encode(text);
+      const result = client.setHtml({
+        body,
+        fragmentOffset: 0,
+        fragmentBytes: body.length,
+        selectionOffset: 0,
+        selectionBytes: 0,
+        context: false,
+        selection: false,
+        ...(plain === undefined ? {} : { text: plain }),
+      });
+      body.fill(0);
+      plain?.fill(0);
+      return result;
+    },
+    async read() {
+      const result = await client.readHtml();
+      if (result.status !== 'accepted') return { status: result.status };
+      clear();
+      lastItem = result.item;
+      return {
+        status: 'accepted',
+        body: new TextDecoder().decode(lastItem.body),
+        text:
+          lastItem.text === undefined
+            ? undefined
+            : new TextDecoder().decode(lastItem.text),
+        fragmentOffset: lastItem.fragmentOffset,
+        fragmentBytes: lastItem.fragmentBytes,
+        selectionOffset: lastItem.selectionOffset,
+        selectionBytes: lastItem.selectionBytes,
+        context: lastItem.context,
+        selection: lastItem.selection,
+      };
+    },
+    clear() {
+      const body = lastItem?.body,
+        text = lastItem?.text;
+      clear();
+      return (
+        (!body || body.every((byte) => byte === 0)) &&
+        (!text || text.every((byte) => byte === 0))
+      );
+    },
+    dispose,
+  };
+</script>

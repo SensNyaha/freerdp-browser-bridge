@@ -9,6 +9,7 @@ import {
 import {
   CLIPBOARD_CHUNK_MAX_BYTES,
   CLIPBOARD_CHUNK_WINDOW,
+  CLIPBOARD_HTML_ITEM_METADATA_BYTES,
 } from '@freerdp-bridge/protocol';
 
 const u64 = Type.String({ pattern: '^[1-9][0-9]{0,19}$' });
@@ -92,6 +93,8 @@ export function installClipboard(
       start: () => lease.startClipboard(),
       read: (revision) => lease.readClipboardText(revision),
       write: (bytes) => lease.writeClipboardText(bytes),
+      readHtml: (revision) => lease.readClipboardHtml(revision),
+      writeHtml: (item) => lease.writeClipboardHtml(item),
     },
     {
       control: send,
@@ -123,6 +126,14 @@ export function installClipboard(
       window: CLIPBOARD_CHUNK_WINDOW,
       granted: snapshot.granted,
       retiring: snapshot.retiring,
+      ...(snapshot.state?.html
+        ? {
+            html: {
+              version: 1,
+              itemMetadataBytes: CLIPBOARD_HTML_ITEM_METADATA_BYTES,
+            },
+          }
+        : {}),
       ...(snapshot.state
         ? {
             state: {
@@ -154,7 +165,13 @@ export function installClipboard(
     },
     command(type, seq, data) {
       if (
-        !['clipboard.set', 'clipboard.request', 'clipboard.ack'].includes(type)
+        ![
+          'clipboard.set',
+          'clipboard.request',
+          'clipboard.html.set',
+          'clipboard.html.request',
+          'clipboard.ack',
+        ].includes(type)
       )
         return false;
       if (disposed) return true;
@@ -163,6 +180,15 @@ export function installClipboard(
           transfer.set(seq, BigInt(data.generation), data.bytes);
         else if (type === 'clipboard.request' && readRequest.Check(data))
           transfer.read(seq, BigInt(data.generation), BigInt(data.revision));
+        else if (type === 'clipboard.html.set' && setRequest.Check(data))
+          transfer.set(seq, BigInt(data.generation), data.bytes, 'html');
+        else if (type === 'clipboard.html.request' && readRequest.Check(data))
+          transfer.read(
+            seq,
+            BigInt(data.generation),
+            BigInt(data.revision),
+            'html',
+          );
         else if (type === 'clipboard.ack' && ack.Check(data))
           transfer.acknowledge(data.requestSeq, data.offset);
         else close();

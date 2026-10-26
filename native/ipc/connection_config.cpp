@@ -65,7 +65,7 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 12)
+  if (schema < 1 || schema > 13)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -103,7 +103,7 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
                  : schema == 7 ? 31U
                  : schema == 8 ? 63U
                  : schema == 9 ? 127U
-                               : 511U) ||
+                 : schema < 13 ? 511U : 1023U) ||
         (flags & 12U) == 12U || (flags & 48U) == 48U)
       throw ProtocolError();
     config.dynamic_resolution = (flags & 1U) != 0;
@@ -115,6 +115,9 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
     config.audio_buffer_200 = (flags & 64U) != 0;
     config.clipboard_to_server = (flags & 128U) != 0;
     config.clipboard_from_server = (flags & 256U) != 0;
+    config.clipboard_html = (flags & 512U) != 0;
+    if (config.clipboard_html && !config.clipboard_to_server && !config.clipboard_from_server)
+      throw ProtocolError();
     if (config.audio_buffer_200 && !(config.pcm_output || config.opus_output))
       throw ProtocolError();
   }

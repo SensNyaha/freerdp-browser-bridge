@@ -1,5 +1,6 @@
 #include "../compat/span.hpp"
 #include "clipboard.hpp"
+#include "clipboard_html.hpp"
 #include <algorithm>
 #include <cstdlib>
 
@@ -22,6 +23,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
   }
   try {
     equal(encode_result(decode_result(input)));
+  } catch (const bridge::ipc::ProtocolError &) {
+  }
+  try {
+    equal(encode_html_item(decode_html_item(input)));
   } catch (const bridge::ipc::ProtocolError &) {
   }
   return 0;

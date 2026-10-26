@@ -58,17 +58,20 @@
       details {
         margin: 12px 0;
       }
-      #clipboard-text {
+      #clipboard-text,
+      #clipboard-html {
         max-width: 920px;
         padding: 16px;
         border: 1px solid #374151;
         margin-top: 16px;
       }
-      #clipboard-text label {
+      #clipboard-text label,
+      #clipboard-html label {
         display: block;
         margin: 12px 0;
       }
-      #clipboard-text textarea {
+      #clipboard-text textarea,
+      #clipboard-html textarea {
         display: block;
         width: 100%;
         box-sizing: border-box;
@@ -78,11 +81,16 @@
         border: 1px solid #6b7280;
         border-radius: 4px;
       }
-      #clipboard-text button {
+      #clipboard-text button,
+      #clipboard-html button {
         margin-bottom: 8px;
       }
-      #clipboard-text [role='status'] {
+      #clipboard-text [role='status'],
+      #clipboard-html [role='status'] {
         display: block;
+      }
+      #clipboard-html [hidden] {
+        display: none;
       }
       #certificate:not([hidden]) {
         padding: 16px;
@@ -199,7 +207,7 @@
           <p id="ip-settings-status" role="status">Проверка выбора IP…</p>
         </details>
         <details>
-          <summary>Текстовый буфер обмена</summary>
+          <summary>Буфер обмена</summary>
           <div class="connection-fields">
             <label
               >Направление
@@ -222,10 +230,15 @@
                 disabled
               />
             </label>
+            <label
+              ><input type="checkbox" name="clipboardHtml" disabled /> HTML с
+              форматированием</label
+            >
           </div>
           <p>
-            Только явные операции с текстом Unicode. HTML, изображения и файлы
-            пока недоступны.
+            Явные операции с текстом Unicode. HTML включается отдельно и требует
+            поддержки удалённого приложения и браузера. Лимит общий для HTML и
+            текстовой версии.
           </p>
         </details>
         <details>
@@ -443,6 +456,69 @@
         удалённого рабочего стола.
       </p>
     </form>
+    <section id="clipboard-html" aria-label="HTML-буфер обмена" hidden>
+      <p>
+        HTML с форматированием. Получение, отправка и копирование выполняются
+        отдельными кнопками.
+      </p>
+      <label
+        >Черновик HTML<textarea
+          data-html-clipboard-draft
+          rows="3"
+          readonly
+          autocomplete="off"
+          spellcheck="false"
+          disabled
+        ></textarea>
+      </label>
+      <label hidden
+        >Текстовая версия черновика<textarea
+          data-html-clipboard-draft-text
+          rows="2"
+          readonly
+          autocomplete="off"
+          spellcheck="false"
+          disabled
+        ></textarea>
+      </label>
+      <button data-html-clipboard="paste" disabled>
+        Вставить HTML из локального буфера
+      </button>
+      <button data-html-clipboard="send" disabled>Предложить HTML в RDP</button>
+      <button data-html-clipboard="read" disabled>Получить HTML из RDP</button>
+      <label
+        >Полученный HTML<textarea
+          data-html-clipboard-received
+          rows="3"
+          readonly
+          autocomplete="off"
+          spellcheck="false"
+          disabled
+        ></textarea>
+      </label>
+      <label hidden
+        >Полученная текстовая версия<textarea
+          data-html-clipboard-received-text
+          rows="2"
+          readonly
+          autocomplete="off"
+          spellcheck="false"
+          disabled
+        ></textarea>
+      </label>
+      <button data-html-clipboard="copy" disabled>
+        Скопировать полученный HTML
+      </button>
+      <button data-html-clipboard="clear" disabled>
+        Очистить локальный HTML
+      </button>
+      <span role="status">HTML-буфер выключен</span>
+      <p>
+        Выберите форматированный текст в своём приложении и нажмите «Вставить
+        HTML». Отправка в RDP — отдельное действие. После отправки используйте
+        команду «Вставить» в удалённом приложении.
+      </p>
+    </section>
     <section id="clipboard-text" aria-label="Текстовый буфер обмена">
       <p>
         Текстовый буфер обмена. Получение и отправка выполняются отдельными

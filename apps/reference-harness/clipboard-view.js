@@ -1,6 +1,6 @@
 import { measureClipboardText } from './clipboard-text.js';
 /** Explicit local actions only. Async permission results never send text to RDP. */
-export function installClipboardView(panel, client) {
+export function installClipboardView(panel, client, actions) {
   if (!panel) return { changed() {}, dispose() {} };
   const draft = panel.querySelector('[data-clipboard-draft]');
   const received = panel.querySelector('[data-clipboard-received]');
@@ -18,10 +18,15 @@ export function installClipboardView(panel, client) {
     version = 0;
   const listeners = [];
   const cancelPermission = () => {
+    const token = permission;
     permission?.cancel();
     permission = undefined;
     if (permissionTimer) clearTimeout(permissionTimer);
     permissionTimer = undefined;
+    if (token && actions?.owner === token) {
+      actions.owner = undefined;
+      actions.changed();
+    }
   };
   const clear = () => {
     ++version;
@@ -37,7 +42,7 @@ export function installClipboardView(panel, client) {
       clear();
       status.textContent = 'Буфер обмена недоступен';
     }
-    const busy = s.busy || Boolean(permission);
+    const busy = s.busy || Boolean(permission) || Boolean(actions?.owner);
     draft.disabled = !s.available || busy || !s.toServer;
     draft.maxLength = s.maximum ?? 1;
     buttons.send.disabled = busy || !s.canSet;
@@ -69,7 +74,8 @@ export function installClipboardView(panel, client) {
       disposed ||
       !client.snapshot.available ||
       client.snapshot.busy ||
-      permission
+      permission ||
+      actions?.owner
     )
       return;
     const epoch = ++version;
@@ -114,6 +120,7 @@ export function installClipboardView(panel, client) {
       !s.available ||
       s.busy ||
       permission ||
+      actions?.owner ||
       !globalThis.isSecureContext ||
       (operation === 'read' ? !s.toServer : !hasReceived)
     )
@@ -125,6 +132,10 @@ export function installClipboardView(panel, client) {
       token.cancel = () => resolve({ status: 'cancelled' });
       permissionTimer = setTimeout(() => resolve({ status: 'expired' }), 5000);
     });
+    if (actions) {
+      actions.owner = token;
+      actions.changed();
+    }
     let promise;
     try {
       // Called directly during this click, before any await or remote request.

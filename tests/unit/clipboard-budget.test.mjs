@@ -129,3 +129,50 @@ test('clipboard reservation: manager factory receives only frozen nonsecret nume
     }
   }
 });
+test('HTML reservation: fixed inner header is explicit, capped and refused before process construction when missing', async () => {
+  let captured,
+    constructed = 0;
+  class Inspect extends NativeSessionWorker {
+    createWorkerProcess(options) {
+      captured = options;
+      ++constructed;
+      return new WorkerProcess(options);
+    }
+  }
+  for (const maximum of [1, 1024, 16777216]) {
+    const required = 65536 + 48 + Math.min(16777216, maximum + 32);
+    const worker = new Inspect(workerOptions, {
+      clipboardItemBytes: maximum,
+      clipboardHtml: true,
+    });
+    assert.equal(captured.maxWriteBytes, required);
+    await worker.close();
+    const before = constructed;
+    assert.throws(
+      () =>
+        new Inspect(
+          { ...workerOptions, maxWriteBytes: required - 1 },
+          { clipboardItemBytes: maximum, clipboardHtml: true },
+        ),
+      { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
+    );
+    assert.equal(constructed, before);
+  }
+  assert.throws(() => new Inspect(workerOptions, { clipboardHtml: true }), {
+    code: 'RDP_SETTING_NOT_IMPLEMENTED',
+  });
+  const worker = new Inspect(workerOptions, { clipboardItemBytes: 1024 });
+  await assert.rejects(
+    worker.start(
+      {
+        target: { host: 'synthetic' },
+        auth: {},
+        clipboard: { mode: 'bidirectional', html: true, maxItemBytes: 1024 },
+      },
+      new AbortController().signal,
+    ),
+    { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
+  );
+  assert.equal(worker.pid, undefined);
+  await worker.close();
+});

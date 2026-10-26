@@ -39,6 +39,25 @@ test('standalone 0.3.0 requires accepted 0.2.5 upgrade evidence for both platfor
     );
   }
 });
+
+test('standalone 0.4.0 requires 0.3.0 upgrade evidence on each platform and rejects old or mixed predecessors', () => {
+  const input = receipts('0.4.0', '0.3.0');
+  const manifest = standaloneReleaseManifest(input);
+  assert.equal(manifest.version, '0.4.0');
+  assert.equal(manifest.files.length, 7);
+  assert.ok(
+    manifest.acceptance.every((profile) => profile.upgradeFrom === '0.3.0'),
+  );
+  for (const index of [0, 1])
+    for (const previous of ['0.2.4', '0.2.5', '0.4.0', null]) {
+      const changed = structuredClone(input);
+      changed[index].acceptance.upgradeFrom = previous;
+      assert.throws(
+        () => standaloneReleaseManifest(changed),
+        /STANDALONE_RELEASE_MANIFEST_INVALID/,
+      );
+    }
+});
 test('standalone release requires both exact platform sets, source identity and accepted two-version upgrade without claiming real RDP', () => {
   const input = receipts(),
     before = structuredClone(input);

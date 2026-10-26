@@ -9,6 +9,36 @@ using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
     0x3d, 4, 0, 3, 0,   0,   32,  2,   1,   2,   0,   0,   0,   0x13, 0x88, 0,   0, 3, 0xe8};
+TEST_CASE("connection v13 HTML requires a clipboard direction and canonical legacy tails") {
+  auto bytes = connection;
+  bytes[1] = 13;
+  bytes.insert(bytes.end(), {30,20,80,0,0,0x3d,9,0,0,0x3d,9,0});
+  const auto flags_at = bytes.size();
+  bytes.insert(bytes.end(), {0,0,3,128,0,0,4,0,0,0,0,0,0});
+  const auto decoded = decode_connection_config(bytes);
+  REQUIRE(decoded.clipboard_html);
+  REQUIRE(decoded.clipboard_to_server);
+  REQUIRE(decoded.clipboard_from_server);
+  REQUIRE(decoded.clipboard_maximum == 1024);
+  REQUIRE(decoded.performance_mask == 0);
+  REQUIRE(decoded.ip_mask == 0);
+  for (unsigned flags=0;flags<2048;++flags) {
+    bytes[flags_at+2]=static_cast<std::uint8_t>(flags>>8);
+    bytes[flags_at+3]=static_cast<std::uint8_t>(flags);
+    const bool direction=(flags&384U)!=0;
+    const bool valid=flags<=1023 && direction && (flags&12U)!=12U &&
+                     (flags&48U)!=48U && (!(flags&64U)||(flags&12U));
+    if (valid)
+      REQUIRE(decode_connection_config(bytes).clipboard_html == ((flags&512U)!=0));
+    else
+      REQUIRE_THROWS_AS(decode_connection_config(bytes),ProtocolError);
+  }
+  bytes[flags_at+2]=3;bytes[flags_at+3]=128;
+  for (std::size_t cut=1;cut<=5;++cut)
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(bytes.size()-cut)),ProtocolError);
+  bytes[1]=12;
+  REQUIRE_THROWS_AS(decode_connection_config(bytes),ProtocolError);
+}
 TEST_CASE("connection v12 IP selection is canonical and preserves legacy fields") {
   auto bytes = connection;
   bytes[1] = 12;

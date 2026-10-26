@@ -10,6 +10,8 @@ struct TextResult {
   TextStatus status;
   std::size_t bytes = 0; // Required output size on ok/capacity; zero on refusal.
 };
+// Strict scalar UTF8 without NUL; caller admits its byte budget before this scan.
+bool valid_clipboard_utf8(::bridge::compat::span<const std::uint8_t> input) noexcept;
 // Immutable input/disjoint output. No allocation or partial output on refusal.
 // UTF8 has no NUL; CF_UNICODETEXT is UTF16LE with a terminator/zero padding.
 // Output line ends are CRLF on RDP and LF on the browser side.

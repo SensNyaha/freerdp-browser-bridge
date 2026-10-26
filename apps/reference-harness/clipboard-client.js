@@ -5,6 +5,11 @@ import {
   CLIPBOARD_CHUNK_WINDOW as windowSize,
 } from './clipboard-wire.js';
 import { encodeClipboardText, decodeClipboardText } from './clipboard-text.js';
+import {
+  encodeClipboardHtmlItem,
+  decodeClipboardHtmlItem,
+  validateClipboardHtmlWrite,
+} from './clipboard-html.js';
 const windowBytes = chunkBytes * windowSize;
 const statuses = [
   'accepted',
@@ -61,6 +66,23 @@ export class ClipboardClient {
       toServer: s?.toServer === true,
       fromServer: s?.fromServer === true,
       remoteText: s?.remoteText === true,
+      html: s?.html === true,
+      remoteHtml: s?.remoteHtml === true,
+      canSetHtml: Boolean(
+        admission &&
+          s.html &&
+          s.toServer &&
+          !s.localPending &&
+          !s.remotePending,
+      ),
+      canReadHtml: Boolean(
+        admission &&
+          s.html &&
+          s.fromServer &&
+          s.remoteHtml &&
+          !s.localPending &&
+          !s.remotePending,
+      ),
     };
   }
   get nextDeadline() {
@@ -133,7 +155,8 @@ export class ClipboardClient {
       s?.ready &&
       !s.retiring &&
       s.generation === a.generation &&
-      s.maximum === a.maximum
+      s.maximum === a.maximum &&
+      s.html === a.htmlSelected
     );
   }
   offer(data) {
@@ -150,6 +173,15 @@ export class ClipboardClient {
       )
         throw new Error();
       let source;
+      if (
+        data.html !== undefined &&
+        (!data.html ||
+          data.html.version !== 1 ||
+          data.html.itemMetadataBytes !== 32)
+      )
+        throw new Error();
+      if (Boolean(data.state?.html) !== (data.html !== undefined))
+        throw new Error();
       if (data.state !== undefined) {
         const s = data.state;
         if (!s || !integer(s.maximum) || s.maximum < 1) throw new Error();
@@ -166,7 +198,16 @@ export class ClipboardClient {
         if (
           (!s.toServer && (s.localAccepted || s.localPending)) ||
           (!s.fromServer && (s.remoteText || s.remotePending)) ||
-          (s.remoteText && s.revision === '0')
+          (s.remoteText && s.revision === '0') ||
+          (s.html !== undefined && s.html !== true) ||
+          (s.html === true &&
+            (typeof s.remoteHtml !== 'boolean' ||
+              typeof s.localHtmlAccepted !== 'boolean')) ||
+          (s.html === undefined &&
+            (s.remoteHtml !== undefined ||
+              s.localHtmlAccepted !== undefined)) ||
+          (s.remoteHtml && (!s.ready || !s.fromServer || s.revision === '0')) ||
+          (s.localHtmlAccepted && (!s.ready || !s.toServer || !s.localAccepted))
         )
           throw new Error();
         source = {
@@ -182,6 +223,8 @@ export class ClipboardClient {
           generation: u64(s.generation),
           revision: u64(s.revision, true),
           retiring: data.retiring,
+          html: s.html === true,
+          remoteHtml: s.remoteHtml === true,
         };
         const old = this.source;
         if (
@@ -190,6 +233,7 @@ export class ClipboardClient {
             old.maximum !== source.maximum ||
             old.toServer !== source.toServer ||
             old.fromServer !== source.fromServer ||
+            old.html !== source.html ||
             BigInt(source.revision) < BigInt(old.revision))
         )
           throw new Error();
@@ -202,22 +246,36 @@ export class ClipboardClient {
     }
     this.changed();
   }
-  admit(operation, text) {
+  admit(operation, value, format = 'text') {
     const time = this.now(),
       s = this.source;
     if (time === undefined || !this.snapshot.available)
       return Promise.resolve({ status: 'unavailable' });
     if (this.active) return Promise.resolve({ status: 'busy' });
-    if (operation === 'set' ? !this.snapshot.canSet : !this.snapshot.canRead)
+    if (format === 'html' && !s.html)
+      return Promise.resolve({ status: 'unavailable' });
+    const snapshot = this.snapshot;
+    if (
+      operation === 'set'
+        ? !(format === 'html' ? snapshot.canSetHtml : snapshot.canSet)
+        : !(format === 'html' ? snapshot.canReadHtml : snapshot.canRead)
+    )
       return Promise.resolve({ status: 'refused' });
     let buffer;
     try {
-      if (operation === 'set') buffer = encodeClipboardText(text, s.maximum);
+      if (operation === 'set') {
+        if (format === 'html') {
+          validateClipboardHtmlWrite(value, s.maximum);
+          buffer = encodeClipboardHtmlItem(value, s.maximum);
+        } else buffer = encodeClipboardText(value, s.maximum);
+      }
     } catch {
       return Promise.resolve({ status: 'invalid' });
     }
     const a = {
       operation,
+      format,
+      htmlSelected: s.html,
       generation: s.generation,
       revision: s.revision,
       maximum: s.maximum,
@@ -228,7 +286,8 @@ export class ClipboardClient {
       frames: [],
       stage: operation === 'set' ? 'ready' : 'native',
       whole: time + 60000,
-      progress: time + (operation === 'set' ? 2000 : 8000),
+      progress:
+        time + (operation === 'set' ? 2000 : format === 'html' ? 13000 : 8000),
       nextAt: time,
       lastWindow: undefined,
     };
@@ -238,7 +297,8 @@ export class ClipboardClient {
     this.active = a;
     try {
       const seq = this.host.sendControl(
-        operation === 'set' ? 'clipboard.set' : 'clipboard.request',
+        (format === 'html' ? 'clipboard.html.' : 'clipboard.') +
+          (operation === 'set' ? 'set' : 'request'),
         operation === 'set'
           ? { generation: a.generation, bytes: a.total }
           : { generation: a.generation, revision: a.revision },
@@ -257,11 +317,24 @@ export class ClipboardClient {
   read() {
     return this.admit('read');
   }
-  finish(a, status, text) {
+  setHtml(item) {
+    return this.admit('set', item, 'html');
+  }
+  readHtml() {
+    return this.admit('read', undefined, 'html');
+  }
+  finish(a, status, value) {
     if (this.active !== a) return;
     this.active = undefined;
     this.wipe(a);
-    a.resolve({ status, ...(text === undefined ? {} : { text }) });
+    a.resolve({
+      status,
+      ...(value === undefined
+        ? {}
+        : a.format === 'html'
+          ? { item: value }
+          : { text: value }),
+    });
     this.changed();
   }
   message(type, data) {
@@ -274,14 +347,17 @@ export class ClipboardClient {
     try {
       const a = this.active;
       if (!a || !data || data.requestSeq !== a.seq) throw new Error();
-      if (type === 'clipboard.set.ready' || type === 'clipboard.set.ack') {
+      const prefix = a.format === 'html' ? 'clipboard.html.' : 'clipboard.';
+      if (!type.startsWith(prefix)) throw new Error();
+      const event = type.slice(prefix.length);
+      if (event === 'set.ready' || event === 'set.ack') {
         if (
           a.operation !== 'set' ||
           data.creditEnd !== Math.min(a.total, a.offset + windowBytes)
         )
           throw new Error();
         if (
-          type === 'clipboard.set.ready'
+          event === 'set.ready'
             ? a.stage !== 'ready' || data.bytes !== a.total
             : a.stage !== 'upload-ack' || data.offset !== a.offset
         )
@@ -293,7 +369,7 @@ export class ClipboardClient {
         a.progress = this.lastTime + (a.total ? 2000 : 8000);
         a.nextAt = Math.max(this.lastTime, (a.lastWindow ?? -64) + 64);
         this.service();
-      } else if (type === 'clipboard.set.result') {
+      } else if (event === 'set.result') {
         if (
           a.operation !== 'set' ||
           !['ready', 'native'].includes(a.stage) ||
@@ -303,13 +379,15 @@ export class ClipboardClient {
         )
           throw new Error();
         this.finish(a, data.status);
-      } else if (type === 'clipboard.data') {
+      } else if (event === 'data') {
         if (
           a.operation !== 'read' ||
           a.stage !== 'native' ||
           !statuses.includes(data.status) ||
           !integer(data.bytes) ||
-          data.bytes > a.maximum
+          data.bytes >
+            Math.min(16777216, a.maximum + (a.format === 'html' ? 32 : 0)) ||
+          (a.format === 'html' && data.status === 'accepted' && data.bytes < 32)
         )
           throw new Error();
         if (data.status !== 'accepted') {
@@ -329,7 +407,7 @@ export class ClipboardClient {
           a.progress = this.lastTime + 2000;
           if (!a.total) this.acknowledge(a);
         }
-      } else if (type === 'clipboard.data.complete') {
+      } else if (event === 'data.complete') {
         if (
           a.operation !== 'read' ||
           a.stage !== 'complete' ||
@@ -338,7 +416,14 @@ export class ClipboardClient {
           data.bytes !== 0
         )
           throw new Error();
-        this.finish(a, 'accepted', decodeClipboardText(a.buffer, a.maximum));
+        if (a.format === 'html') {
+          const item = decodeClipboardHtmlItem(a.buffer, a.maximum);
+          // Ownership transfers only after complete validation and terminal ACK.
+          // The consumer clears both views when finished; wipe must not erase them here.
+          a.buffer = undefined;
+          this.finish(a, 'accepted', item);
+        } else
+          this.finish(a, 'accepted', decodeClipboardText(a.buffer, a.maximum));
       } else throw new Error();
     } catch {
       this.fail();

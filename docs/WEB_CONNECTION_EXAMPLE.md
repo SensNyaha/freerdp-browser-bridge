@@ -45,7 +45,12 @@ Controls cover auto/NLA/TLS, minimum TLS 1.2/1.3, strict/session-only certificat
 prompt, connection deadline, one primary display at 100% scale, initial size /
 dynamic resolution, video codec, quality/FPS, touch, PCM/Opus output, 120/200 ms
 handoff buffer, PCM/Opus microphone and opt-in text clipboard directions/item
-quota. [Explicit clipboard controls and scope](CLIPBOARD_BROWSER.md).
+quota. The development HTML branch additionally exposes an explicit rich-text
+option with its own Paste/Send/Get/Copy actions. Named Windows/Edge OS clipboard
+acceptance passes, as do prepared-Edge application roundtrips through Windows
+and Linux workers (Linux RWS1 and framed IPC). These are named source profiles;
+versioned distribution/release acceptance remains open.
+[Explicit clipboard controls and scope](CLIPBOARD_BROWSER.md).
 The clipboard quota field is disabled while off; turning text selection on
 enables the bounded quota input. Current Windows/XRDP JPEG/H.264 default-off
 viewer regression is recorded in [Iteration 239](history/iterations/201-250.md#iteration-239).
@@ -84,10 +89,61 @@ fingerprint dialog offers accept-for-this-session or reject, without enabling
 TOFU/persistent trust/ignore. Video choice belongs to viewer negotiation and
 is not passed as unsupported native `media.videoCodec`.
 
-Gateway/proxy, reconnect, HTML/image/file clipboard, files/drives, printers, smartcard,
+Gateway/proxy, reconnect, image/file clipboard, files/drives, printers, smartcard,
 serial/parallel, USB and RemoteApp are listed as unavailable in the current
 backend. Their original implementation stages/gates remain required. This does
 not claim a complete Remmina clone or turn a compiled addin into device support.
+
+## HTML development workflow
+
+With a matched HTML-capable development worker/browser build, enable a clipboard
+direction, choose a finite shared item maximum and check **HTML with formatting**.
+The option defaults to off and is unavailable on older workers. Published 0.3.0
+remains the accepted Unicode-only release until the new feature passes its gates.
+
+For browser-to-RDP, copy formatted content in your application, click the HTML
+panel's local Paste button, inspect its HTML/text draft, then click Send. Paste
+inside the remote application is a separate action. For RDP-to-browser, copy in
+an HTML-capable remote application, click Get, then local Copy when ready. An
+offer never reads either clipboard automatically. The remote Get button stays
+disabled if the current peer offer contains no HTML.
+
+The reference panel keeps common static formatting and safe inline presentation;
+removed active/unsupported markup is reported. Unselected context text is
+excluded. Clear erases local fields and invalidates late results; it does not
+send a new RDP item or overwrite the OS clipboard. Browser permission denial,
+unsupported HTML, quota overflow and an expired request have explicit outcomes.
+Use the separate Unicode panel when deliberately choosing text operations.
+[Conversion profile, limits and acceptance](CLIPBOARD_BROWSER.md#html-selection-conversion-and-clipboarditem-actions-in-development).
+
+Hosts creating sessions through the HTTP API use the same explicit policy:
+
+```json
+{
+  "clipboard": {
+    "mode": "bidirectional",
+    "text": true,
+    "html": true,
+    "maxItemBytes": 1048576
+  }
+}
+```
+
+This is the clipboard portion of an authenticated session-create request; target
+and credentials still come from the hosting application. Use `server-to-browser`
+or `browser-to-server` for one direction. Check `/v1/capabilities` for
+`clipboardHtml: true` before offering HTML selection. An absent property means
+unavailable. Custom `workerFactory` implementations must pass the whole frozen
+session limits object, including `clipboardHtml`, to `NativeSessionWorker`.
+Serving the matched `@freerdp-bridge/api/browser` reference asset directory
+includes the HTML modules; selecting HTML in the API does not itself access the
+browser clipboard.
+
+[Windows application acceptance](CLIPBOARD_BROWSER.md#named-windows-rdp-html-application-acceptance)
+and [Linux application acceptance](CLIPBOARD_BROWSER.md#named-linux-worker-html-application-acceptance)
+cover formatting, Unicode, a new remote revision and joined cleanup. The owned
+XRDP profile separately verifies refusal when the peer offers only Unicode:
+there is no automatic HTML-to-text fallback. Image/file clipboard remains open.
 
 ## Hosting and ownership
 

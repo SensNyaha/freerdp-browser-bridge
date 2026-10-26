@@ -33,7 +33,7 @@ test(
   'portable archive relocates with exact bytes and launcher joins private Node/native shutdown',
   {
     skip: !source || !['win32', 'linux'].includes(process.platform),
-    timeout: 90000,
+    timeout: 240000,
   },
   async () => {
     const directory = resolve(source);
@@ -63,7 +63,10 @@ test(
       await run(
         windows ? join(process.env.SystemRoot, 'System32/tar.exe') : 'tar',
         ['-xf', receipt.output, '-C', scratch],
-        { timeout: 45000, maxBuffer: 65536, windowsHide: true },
+        // Hosted Windows extraction exceeded 45 seconds for the complete
+        // private Node/npm tree. Bound archive extraction separately
+        // from the unchanged service readiness and process-retirement budgets.
+        { timeout: 120000, maxBuffer: 65536, windowsHide: true },
       );
       const root = join(scratch, receipt.rootName);
       assert.deepEqual(await standalonePayloadInventory(root), inventory.files);

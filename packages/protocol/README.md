@@ -43,6 +43,11 @@ connection records may contain sensitive data.
 
 ## Limitations
 
+0.4.0 adds the bounded HTML inner item and optional `clipboardHtml` negotiation.
+Unsupported workers omit that optional property. HTML selection and byte-range
+validation do not execute markup or grant OS clipboard access; use the public
+session layer rather than sending private IPC records through a browser socket.
+
 A codec export does not establish usable devices or channels on a native build
 or permission under deployment policy. This package provides no HTTP server,
 browser UI, RDP executable or authentication. Private worker IPC must not be

@@ -172,7 +172,7 @@ void Connection::configure(::bridge::compat::span<const std::uint8_t> payload) {
       throw ProtocolError();
     clipboard_ = std::make_unique<bridge::clipboard::WorkerSession>(
         bridge::clipboard::TextPolicy{c.clipboard_to_server, c.clipboard_from_server,
-                                      c.clipboard_maximum},
+                                      c.clipboard_maximum, c.clipboard_html},
         clipboard_send_, [] { return audio_time_us() / 1000; });
   }
 #else

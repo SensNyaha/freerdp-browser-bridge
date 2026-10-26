@@ -1,153 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { ClipboardClient } from '../../apps/reference-harness/clipboard-client.js';
+import { clipboardClientFixture as fixture } from '../fixtures/clipboard-client.mjs';
 import {
   measureClipboardText,
   encodeClipboardText,
   decodeClipboardText,
 } from '../../apps/reference-harness/clipboard-text.js';
-import { ClipboardTransfer } from '../../packages/node-bridge/dist/index.js';
 import { encodeClipboardChunk } from '../../packages/protocol/dist/index.js';
 const windowBytes = 4076 * 8;
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
-function fixture(maximum = 1048576) {
-  const f = {
-    time: 0,
-    seq: 0,
-    tasks: [],
-    frames: [],
-    windows: [],
-    closed: 0,
-    queued: 0,
-    written: undefined,
-    readText: Buffer.from('remote\nЖ😀'),
-    readBuffer: undefined,
-    granted: false,
-  };
-  f.state = {
-    ready: true,
-    generation: 1n,
-    revision: 1n,
-    maximum,
-    toServer: true,
-    fromServer: true,
-    remoteText: true,
-    localAccepted: false,
-    localPending: false,
-    remotePending: false,
-  };
-  f.offer = (patch) => {
-    Object.assign(f.state, patch);
-    f.client.offer({
-      protocol: 'RWC1',
-      version: 1,
-      chunkBytes: 4076,
-      window: 8,
-      granted: f.granted,
-      retiring: false,
-      state: {
-        ...f.state,
-        generation: String(f.state.generation),
-        revision: String(f.state.revision),
-      },
-    });
-  };
-  f.client = new ClipboardClient(
-    {
-      authorized: () => true,
-      bufferedAmount: () => f.queued,
-      changed: () => {},
-      failed: () => ++f.closed,
-      sendControl: (type, data) => {
-        const seq = f.seq++;
-        f.tasks.push(() =>
-          type === 'clipboard.set'
-            ? f.server.set(seq, BigInt(data.generation), data.bytes)
-            : type === 'clipboard.request'
-              ? f.server.read(
-                  seq,
-                  BigInt(data.generation),
-                  BigInt(data.revision),
-                )
-              : f.server.acknowledge(data.requestSeq, data.offset),
-        );
-        return seq;
-      },
-      sendBinary: (frame) => {
-        assert.ok(f.client.active.frames.length <= 8);
-        f.frames.push(frame);
-        const bytes = Buffer.from(new Uint8Array(frame));
-        if (bytes.readUInt32BE(12) % windowBytes === 0) f.windows.push(f.time);
-        f.tasks.push(() => {
-          f.server.receive(bytes);
-          bytes.fill(0);
-        });
-        return true;
-      },
-    },
-    () => f.time,
-  );
-  f.server = new ClipboardTransfer(
-    {
-      snapshot: () => ({ state: f.state, granted: f.granted, retiring: false }),
-      start: () => {
-        f.granted = true;
-        f.offer();
-        return true;
-      },
-      read: async () => {
-        f.readBuffer = Buffer.from(f.readText);
-        return { status: 'accepted', text: f.readBuffer };
-      },
-      write: (bytes) => {
-        f.written = Buffer.from(bytes);
-        return Promise.resolve('accepted');
-      },
-    },
-    {
-      control: (type, data) => f.tasks.push(() => f.client.message(type, data)),
-      chunk: (bytes) =>
-        new Promise((resolve) =>
-          f.tasks.push(() => {
-            f.client.binary(Uint8Array.from(bytes).buffer);
-            resolve();
-          }),
-        ),
-      close: () => ++f.closed,
-      changed: () => {},
-    },
-    () => f.time,
-  );
-  f.flush = async () => {
-    for (let n = 0; n < 1000; ++n) {
-      while (f.tasks.length) f.tasks.shift()();
-      await Promise.resolve();
-      if (!f.tasks.length) {
-        await Promise.resolve();
-        if (!f.tasks.length) return;
-      }
-    }
-    throw new Error('Fixture work limit');
-  };
-  f.drive = async (promise) => {
-    let result;
-    promise.then((value) => {
-      result = value;
-    });
-    for (let n = 0; n < 1100 && result === undefined; ++n) {
-      f.client.service();
-      f.server.service();
-      await f.flush();
-      if (result === undefined) f.time += 64;
-    }
-    assert.notEqual(result, undefined);
-    return result;
-  };
-  f.offer();
-  return f;
-}
-
 test('browser clipboard text: scalar validation, independent UTF8/UTF16 quotas, CRLF and preserved BOM', () => {
   for (const [text, maximum] of [
     ['', 2],

@@ -10,6 +10,8 @@ let authorize;
 let basePath = '';
 const updateClipboardQuota = () => {
   form.elements.clipboardMax.disabled = form.elements.clipboard.value === 'off';
+  form.elements.clipboardHtml.disabled =
+    form.elements.clipboard.value === 'off' || !capabilities?.clipboardHtml;
 };
 form.elements.clipboard.addEventListener('change', updateClipboardQuota);
 async function request(path, method = 'GET', config) {
@@ -183,6 +185,7 @@ async function refresh() {
     for (const [name, available] of [
       ['dynamicResolution', value.displayControl],
       ['touch', value.touchInput],
+      ['clipboardHtml', value.clipboardHtml],
     ]) {
       form.elements[name].disabled = !available;
       if (!available) form.elements[name].checked = false;

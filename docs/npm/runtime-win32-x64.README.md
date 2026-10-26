@@ -26,6 +26,15 @@ applicable Microsoft runtime DLLs, are supplied app-locally. Node.js, Fastify
 and a browser are separate installations. The remote RDP machine needs a
 reachable, authorized RDP server, not this npm package.
 
+## HTML clipboard in 0.4.0
+
+The matching runtime advertises `clipboardHtml` when its CLIPRDR support is
+available. HTML remains opt-in per session, with shared HTML/Unicode item limits
+and explicit browser actions. Runtime installation alone does not access the
+host clipboard or enable file/image clipboard. See the
+[HTML profile and acceptance](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
+Versioned runtime/installer acceptance is separate from compiler/source results.
+
 ## Usage
 
 ```js

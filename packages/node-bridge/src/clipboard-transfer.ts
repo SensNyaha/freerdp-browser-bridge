@@ -2,12 +2,19 @@ import {
   encodeClipboardChunk,
   decodeClipboardChunk,
   validateClipboardText,
+  validateClipboardHtmlItem,
+  validateClipboardHtmlWrite,
+  encodeClipboardHtmlItem,
+  decodeClipboardHtmlItem,
+  CLIPBOARD_HTML_ITEM_METADATA_BYTES,
   clipboardStatuses,
   CLIPBOARD_CHUNK_MAX_BYTES,
   CLIPBOARD_CHUNK_WINDOW,
   type ClipboardStatus,
+  type ClipboardHtmlItem,
 } from '@freerdp-bridge/protocol';
-import type { ClipboardReadResult } from './index.js';
+import type { ClipboardReadResult, ClipboardHtmlReadResult } from './index.js';
+import { wipeClipboardHtml } from './clipboard-ownership.js';
 import type { SessionClipboardSnapshot } from './session-manager.js';
 
 export interface ClipboardTransferBackend {
@@ -16,6 +23,8 @@ export interface ClipboardTransferBackend {
   read(revision: bigint): Promise<ClipboardReadResult>;
   /** Copies borrowed text synchronously, before returning its promise. */
   write(text: Buffer): Promise<ClipboardStatus>;
+  readHtml?(revision: bigint): Promise<ClipboardHtmlReadResult>;
+  writeHtml?(item: ClipboardHtmlItem): Promise<ClipboardStatus>;
 }
 export interface ClipboardTransferTransport {
   control(type: string, data: Record<string, unknown>): void;
@@ -28,6 +37,8 @@ export interface ClipboardTransferTransport {
 type Transfer = {
   seq: number;
   operation: 'read' | 'set';
+  format: 'text' | 'html';
+  htmlSelected: boolean;
   generation: bigint;
   revision: bigint;
   maximum: number;
@@ -131,7 +142,8 @@ export class ClipboardTransfer {
         !snapshot.retiring &&
         source?.ready &&
         source.generation === a.generation &&
-        source.maximum === a.maximum,
+        source.maximum === a.maximum &&
+        Boolean(source.html) === a.htmlSelected,
     );
   }
   private admit(
@@ -140,6 +152,7 @@ export class ClipboardTransfer {
     operation: 'read' | 'set',
     revision: bigint,
     total: number,
+    format: 'text' | 'html' = 'text',
   ): Transfer | undefined {
     const time = this.now();
     if (time === undefined) return;
@@ -160,7 +173,8 @@ export class ClipboardTransfer {
     }
     const reject = (status: ClipboardStatus) =>
       this.control(
-        operation === 'read' ? 'clipboard.data' : 'clipboard.set.result',
+        (format === 'html' ? 'clipboard.html.' : 'clipboard.') +
+          (operation === 'read' ? 'data' : 'set.result'),
         { requestSeq: seq, status, bytes: 0 },
       );
     if (this.active) {
@@ -169,6 +183,15 @@ export class ClipboardTransfer {
     }
     try {
       let snapshot = this.backend.snapshot();
+      if (
+        format === 'html' &&
+        (!snapshot.state?.html ||
+          typeof this.backend.readHtml !== 'function' ||
+          typeof this.backend.writeHtml !== 'function')
+      ) {
+        reject('unavailable');
+        return;
+      }
       if (!snapshot.granted && !snapshot.retiring) {
         this.backend.start();
         snapshot = this.backend.snapshot();
@@ -176,6 +199,23 @@ export class ClipboardTransfer {
       const source = snapshot.state;
       if (!snapshot.granted || snapshot.retiring || !source?.ready) {
         reject('unavailable');
+        return;
+      }
+      if (
+        format === 'html' &&
+        (!source.html ||
+          typeof this.backend.readHtml !== 'function' ||
+          typeof this.backend.writeHtml !== 'function')
+      ) {
+        reject('unavailable');
+        return;
+      }
+      if (
+        format === 'html' &&
+        operation === 'set' &&
+        total < CLIPBOARD_HTML_ITEM_METADATA_BYTES
+      ) {
+        reject('invalid');
         return;
       }
       if (
@@ -187,8 +227,17 @@ export class ClipboardTransfer {
       }
       if (
         operation === 'read'
-          ? !source.fromServer || !source.remoteText || source.remotePending
-          : !source.toServer || source.localPending || total > source.maximum
+          ? !source.fromServer ||
+            (format === 'html' ? !source.remoteHtml : !source.remoteText) ||
+            source.remotePending
+          : !source.toServer ||
+            source.localPending ||
+            total >
+              Math.min(
+                16777216,
+                source.maximum +
+                  (format === 'html' ? CLIPBOARD_HTML_ITEM_METADATA_BYTES : 0),
+              )
       ) {
         reject('refused');
         return;
@@ -196,6 +245,8 @@ export class ClipboardTransfer {
       const a: Transfer = {
         seq,
         operation,
+        format,
+        htmlSelected: source.html === true,
         generation,
         revision,
         maximum: source.maximum,
@@ -203,7 +254,13 @@ export class ClipboardTransfer {
         offset: 0,
         creditEnd: Math.min(total, windowBytes),
         whole: time + wholeMs,
-        progress: time + (operation === 'read' ? nativeMs : progressMs),
+        progress:
+          time +
+          (operation === 'read'
+            ? format === 'html'
+              ? 13000
+              : nativeMs
+            : progressMs),
         nextAt: time,
         stage: operation === 'read' ? 'native' : 'upload',
         awaitingAck: false,
@@ -217,12 +274,20 @@ export class ClipboardTransfer {
       return;
     }
   }
-  set(seq: number, generation: bigint, total: number): void {
-    const a = this.admit(seq, generation, 'set', 0n, total);
+  private event(a: Transfer, suffix: string): string {
+    return (a.format === 'html' ? 'clipboard.html.' : 'clipboard.') + suffix;
+  }
+  set(
+    seq: number,
+    generation: bigint,
+    total: number,
+    format: 'text' | 'html' = 'text',
+  ): void {
+    const a = this.admit(seq, generation, 'set', 0n, total, format);
     if (!a) return;
     try {
       a.buffer = Buffer.alloc(total);
-      this.control('clipboard.set.ready', {
+      this.control(this.event(a, 'set.ready'), {
         requestSeq: seq,
         bytes: total,
         creditEnd: a.creditEnd,
@@ -233,31 +298,51 @@ export class ClipboardTransfer {
     }
     this.changed();
   }
-  read(seq: number, generation: bigint, revision: bigint): void {
-    const a = this.admit(seq, generation, 'read', revision, 0);
+  read(
+    seq: number,
+    generation: bigint,
+    revision: bigint,
+    format: 'text' | 'html' = 'text',
+  ): void {
+    const a = this.admit(seq, generation, 'read', revision, 0, format);
     if (!a) return;
     void (async () => {
       let bytes: Buffer | undefined;
+      let rich: ClipboardHtmlItem | undefined;
       try {
-        const result = await this.backend.read(revision);
-        bytes = result.text;
+        let status: ClipboardStatus;
+        if (format === 'html') {
+          const result = await this.backend.readHtml!(revision);
+          status = result.status;
+          rich = result.item;
+          bytes = Buffer.alloc(0);
+        } else {
+          const result = await this.backend.read(revision);
+          status = result.status;
+          bytes = result.text;
+        }
         if (this.now() === undefined || this.active !== a) return;
         if (
           !this.authority(a) ||
-          !clipboardStatuses.includes(result.status) ||
+          !clipboardStatuses.includes(status) ||
           !Buffer.isBuffer(bytes) ||
-          (result.status !== 'accepted' && bytes.length)
+          (status !== 'accepted' && (bytes.length || rich !== undefined))
         )
           throw new Error();
-        if (result.status !== 'accepted') {
-          this.finish(a, result.status);
+        if (status !== 'accepted') {
+          this.finish(a, status);
           return;
         }
         if (this.backend.snapshot().state?.revision !== a.revision) {
           this.finish(a, 'stale');
           return;
         }
-        validateClipboardText(bytes, a.maximum);
+        if (format === 'html') {
+          validateClipboardHtmlItem(rich!, a.maximum);
+          bytes = encodeClipboardHtmlItem(rich!, a.maximum);
+          wipeClipboardHtml(rich);
+          rich = undefined;
+        } else validateClipboardText(bytes, a.maximum);
         a.buffer = bytes;
         bytes = undefined;
         a.total = a.buffer.length;
@@ -266,7 +351,7 @@ export class ClipboardTransfer {
         a.awaitingAck = true;
         a.nextAt = this.lastTime!;
         a.progress = this.lastTime! + progressMs;
-        this.control('clipboard.data', {
+        this.control(this.event(a, 'data'), {
           requestSeq: a.seq,
           status: 'accepted',
           bytes: a.total,
@@ -279,6 +364,7 @@ export class ClipboardTransfer {
         this.fail();
       } finally {
         if (Buffer.isBuffer(bytes)) bytes.fill(0);
+        wipeClipboardHtml(rich);
         this.changed();
       }
     })();
@@ -307,7 +393,7 @@ export class ClipboardTransfer {
       else if (a.offset === a.creditEnd) {
         a.creditEnd = Math.min(a.total, a.offset + windowBytes);
         a.progress = this.lastTime! + progressMs;
-        this.control('clipboard.set.ack', {
+        this.control(this.event(a, 'set.ack'), {
           requestSeq: a.seq,
           offset: a.offset,
           creditEnd: a.creditEnd,
@@ -321,7 +407,12 @@ export class ClipboardTransfer {
   private write(a: Transfer): void {
     if (this.active !== a || this.closed || !a.buffer) return;
     try {
-      validateClipboardText(a.buffer, a.maximum);
+      if (a.format === 'html')
+        validateClipboardHtmlWrite(
+          decodeClipboardHtmlItem(a.buffer, a.maximum),
+          a.maximum,
+        );
+      else validateClipboardText(a.buffer, a.maximum);
       if (!this.authority(a)) throw new Error();
     } catch {
       this.finish(a, 'invalid');
@@ -331,7 +422,12 @@ export class ClipboardTransfer {
     a.progress = this.lastTime! + nativeMs;
     let completion: Promise<ClipboardStatus>;
     try {
-      completion = this.backend.write(a.buffer);
+      completion =
+        a.format === 'html'
+          ? this.backend.writeHtml!(
+              decodeClipboardHtmlItem(a.buffer, a.maximum),
+            )
+          : this.backend.write(a.buffer);
     } catch {
       this.fail();
       return;
@@ -445,11 +541,14 @@ export class ClipboardTransfer {
   private finish(a: Transfer, status: ClipboardStatus): void {
     if (this.closed || this.active !== a) return;
     this.control(
-      a.operation === 'read'
-        ? a.stage === 'download'
-          ? 'clipboard.data.complete'
-          : 'clipboard.data'
-        : 'clipboard.set.result',
+      this.event(
+        a,
+        a.operation === 'read'
+          ? a.stage === 'download'
+            ? 'data.complete'
+            : 'data'
+          : 'set.result',
+      ),
       { requestSeq: a.seq, status, bytes: 0 },
     );
     a.buffer?.fill(0);

@@ -8,6 +8,7 @@ import { MicrophoneOwner } from './microphone-owner.js';
 import { queryMicrophoneOpusSupport } from './microphone-opus-encoder.js';
 import { ClipboardClient } from './clipboard-client.js';
 import { installClipboardView } from './clipboard-view.js';
+import { installClipboardHtmlView } from './clipboard-html-view.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -81,6 +82,7 @@ function detach() {
   if (!current || current.detaching) return;
   current.detaching = true;
   current.clipboardView?.dispose();
+  current.clipboardHtmlView?.dispose();
   current.clipboard?.dispose();
   clearTimeout(current.clipboardTimer);
   current.disposeInput?.();
@@ -616,6 +618,7 @@ function attachSession(created, options, playback) {
         Math.max(1, Math.ceil(deadline - performance.now())),
       );
     session.clipboardView?.changed();
+    session.clipboardHtmlView?.changed();
   };
   session.clipboard = new ClipboardClient({
     authorized: clipboardAuthorized,
@@ -646,9 +649,16 @@ function attachSession(created, options, playback) {
       return true;
     },
   });
+  const clipboardUiActions = { owner: undefined, changed: clipboardChanged };
   session.clipboardView = installClipboardView(
     document.querySelector('#clipboard-text'),
     session.clipboard,
+    clipboardUiActions,
+  );
+  session.clipboardHtmlView = installClipboardHtmlView(
+    document.querySelector('#clipboard-html'),
+    session.clipboard,
+    clipboardUiActions,
   );
   for (const ws of [session.control, session.media])
     ws.addEventListener('close', () => {
