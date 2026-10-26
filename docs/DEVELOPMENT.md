@@ -20,6 +20,29 @@ Feature/release branches are merged into shared `master` at `53b5edb`.
 [Public delivery and current CI follow-up](CLIPBOARD_BROWSER.md#040-public-delivery).
 The preparation checkpoints below retain their historical scope/status.
 
+### Hosted HTTPS fixture startup budget
+
+The Markdown-only public main `37213b1` repeats the earlier Windows system
+OpenSSL timeout in `express-adapter.test.mjs`; Linux and sanitizer jobs pass.
+The first failure is retained in
+`build/current-validation/html04-public-docs-windows-failed.log`. Separate
+`test/https-fixture-startup-budget` private `9652248` / public `241e609` changes
+only dummy certificate setup from 15 to 60 seconds and its enclosing test from
+20 to 90 seconds. HTTPS/WSS request deadlines, CA/hostname verification and
+joined cleanup assertions remain unchanged. No product source, wire contract,
+accepted archive or immutable tag changes; this needs no new product version.
+
+The focused verified HTTPS/WSS scenario passes in 1.4 seconds. Full local
+Windows foundation `pnpm check` passes **1065/137 skips/1202 total/zero failures**.
+[Hosted foundation](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40360010862)
+and [exact GCC 8.3](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40360010759)
+pass before merge: Windows, both Linux build jobs, sanitizers with all twelve
+fuzz steps and exact GCC 8.3 are successful. The public source inventory and
+unchanged accepted archives are independently verified. Local and hosted
+acceptance are bound in
+`build/current-validation/https-fixture-budget-acceptance.json`; no test is skipped
+or assertion removed for this correction.
+
 HTML source acceptance is now complete at private `bba3c98` / public `04fd0cc`:
 all hosted foundation/GCC 8.3/sanitizer/fuzz checks and the named application
 profiles pass. [Evidence and limits](CLIPBOARD_BROWSER.md#html-source-feature-acceptance).

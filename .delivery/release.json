@@ -786,8 +786,8 @@
     },
     {
       "path": "docs/DEVELOPMENT.md",
-      "bytes": 80005,
-      "sha256": "201dc65ab4384e0a85bd96b3133e85decd7526b7232a81409e44e044d3e0f207"
+      "bytes": 81433,
+      "sha256": "5260b129eb0b089c7b64e3adc3545a7ed79a3ac9c9240206a121dcd15a921b10"
     },
     {
       "path": "docs/DIRTY_REGIONS.md",
