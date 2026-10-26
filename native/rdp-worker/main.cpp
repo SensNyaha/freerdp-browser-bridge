@@ -133,7 +133,7 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
   extensions |= 4;
 #endif
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_CLIPRDR_CLIENT)
-  extensions |= 8 | 16;
+  extensions |= 8 | 16 | 256;
 #endif
 #endif
 #ifdef _WIN32
@@ -441,9 +441,9 @@ int main(int argc, char **argv) {
 #endif
 #if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
     defined(CHANNEL_CLIPRDR_CLIENT)
-                 "\"clipboardText\":true,\"clipboardRevoke\":true,"
+                 "\"clipboardText\":true,\"clipboardRevoke\":true,\"clipboardHtml\":true,"
 #else
-                 "\"clipboardText\":false,\"clipboardRevoke\":false,"
+                 "\"clipboardText\":false,\"clipboardRevoke\":false,\"clipboardHtml\":false,"
 #endif
 #ifdef _WIN32
                  "\"processResourceBatch\":true,"

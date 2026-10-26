@@ -1,5 +1,12 @@
 # Public CLIPRDR Unicode text owner
 
+The original text-only owner checkpoint below retains its implementation scope.
+Named actual Unicode/browser profiles are accepted separately in
+[browser clipboard](CLIPBOARD_BROWSER.md). The additional HTML owner in
+`feature/html-clipboard` is described at the end of this document. Its
+[private worker/Node handoff](CLIPBOARD_IPC.md#private-worker-html-negotiation-and-handoff-in-development)
+is now implemented; public ownership/control/browser HTML integration remains pending.
+
 Implements the native text/channel ownership portion of SPECIFICATION §2.7.
 `TextSession` composes with [guarded ingress](CLIPBOARD_INGRESS.md) and the
 [Unicode codec](CLIPBOARD_TEXT.md). Explicit schema-10 worker opt-in and private
@@ -84,3 +91,78 @@ lifecycle must reject pending private calls when the RDP connection ends. The
 wrapper cannot restart or move a live callback owner to another thread. No public
 control/media transfer, browser clipboard API or automatic OS clipboard access is
 introduced. Linked fake-SVC evidence is distinct from actual remote acceptance.
+
+## HTML and Unicode share one native owner
+
+The in-development `TextSession` extension implements the native owner portion
+of SPECIFICATION §2.7. It keeps one public `CliprdrClientContext` callback owner,
+the same RDP thread, direction policy, monotonic clock and retirement barrier.
+`TextPolicy.html` defaults to false. A receive-enabled HTML policy requires a
+complete HTML reply callback at construction; partial setup is refused. No new
+public worker capability or HTML selection is enabled by this component alone.
+
+Remote HTML is selected by the registered name `HTML Format`, with bounded
+ASCII case-insensitive matching consistent with
+[Windows registration](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerclipboardformatw).
+The numerical ID comes from each remote format list; it is never copied from
+this host's local ID or constrained to the Windows registered-ID range when
+talking to another OS. MS-RDPECLIP requires requests to use the
+[ID in the peer's list](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpeclip/b4c6e5c8-27dd-4d07-b15f-d7e40302a870).
+Zero, CF_UNICODETEXT 13, duplicate HTML names and another format sharing the HTML
+ID are refused as ambiguous. Each new list replaces both availability flags
+and the HTML mapping together, under one revision.
+
+`request` and `request_html` share the single outstanding RDP response slot.
+A new list leaves the old flight outstanding; its eventual response completes
+as stale without exposing or parsing old contents. Unknown, disabled or stale
+formats cannot issue a remote request. Current successful HTML responses pass
+the allocation-free [CF_HTML codec](CLIPBOARD_TEXT.md#html-codec-in-development).
+`HtmlView` borrows only the UTF-8 body with relative fragment/selection offsets,
+including the optional context flag. CF_HTML headers, `SourceURL`, NUL and zero
+padding are excluded. The consumer must copy before callback return; it must
+not insert untrusted markup into a live DOM. Context and the selected fragment
+remain distinct for later table/list handling. The legacy offer callback still
+reports Unicode availability; the RDP loop obtains HTML availability from the
+scalar snapshot after callbacks return.
+
+`set_local_html(fragment, optionalText)` replaces one item atomically. It advertises
+HTML first using the bridge-local named ID 0xC001, followed by CF_UNICODETEXT only
+when a fallback is present. Empty text remains distinct from no text. Both the
+original aggregate UTF-8 size and the sum of the complete encoded CF_HTML and
+terminated UTF-16 representations must fit the same configured maximum before
+either buffer is allocated. Invalid replacement leaves the preceding accepted
+item usable. No format is served until the one format-list ACK succeeds. ACK
+refusal wipes both buffers. Unicode-only replacement removes old HTML, and
+no-format revoke wipes both before sending the existing checked empty-list PDU.
+The peer ACK barrier applies to the entire item.
+
+Callbacks borrow buffers only until return. Reentrant close defers wiping until
+the SDK borrow ends, while reentrant commands are refused. Consumer faults,
+malformed current HTML, uncertain writes and deadlines retire both formats.
+A structurally valid response above the ingress quota is drained as a refusal
+without poisoning the channel. Incoming headers/content never enter diagnostics.
+
+The linked tests use the pinned real FreeRDP CLIPRDR parser and SDK callbacks
+with synthetic SVC packets, not a remote RDP server or an OS clipboard. They
+exercise short/long format names, different 32-bit peer IDs, combined and absent/
+empty fallbacks, rich Unicode context/selection, ACK/revoke, stale cross-format
+responses, ambiguity, quota, timeout, callback failure, foreign-thread refusal
+and borrowed local data during close. Actual browser/remote rich-application
+acceptance, worker handoff and versioned IPC/control negotiation remain required
+before the HTML TODO item or a 0.4.0 release can be accepted.
+
+The native owner checkpoint `5de031a` passes MSVC `/WX` + `/analyze` linked CTest 39/39,
+exact GCC 8.3 linked CTest 40/40, and GNU 13.3 ASan/UBSan owner/worker suites 2/2
+without suppressions. The latter instruments bridge code and reuses the pinned
+SDK; it does not claim that all SDK dependencies were sanitizer-built. Complete
+Windows linked `pnpm check` passes 1051 tests, 71 explicit skips, zero failures.
+The final native checks include the aggregate UTF-8 guard and volatile buffer
+wipes added during the preceding Node run; public HTML selection remains off.
+
+The aggregate-quota counterexample removes only its new admission guard from
+the disposable Linux source: a 1150-byte UTF-8 item whose two RDP forms total
+1022 bytes incorrectly succeeds under a 1024-byte policy. The new assertion
+fails with Catch2 exit 42 and actual `0 == 13`; restoring the guard passes.
+Initial controller checks expecting exit 1/an unexpanded WinPR macro and the
+initial MSVC signedness warning in test expectations are retained in local logs.
+Hash-bound evidence is `build/current-validation/html-session-acceptance.json`.

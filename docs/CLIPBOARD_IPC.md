@@ -1,5 +1,185 @@
 # Clipboard private payload schemas
 
+HTML development adds the bounded inner item below and an explicit private
+worker/Node handoff. Schema-1/2 text command/result bytes and their maximum
+envelope size remain unchanged. The new private schema-3 selection is described
+after the inner item. Shared public ownership/control and the browser byte client
+are implemented on `feature/html-clipboard`, along with reference ClipboardItem
+actions and inert selected-context conversion. Named Windows/Edge OS ClipboardItem
+acceptance now passes separately; actual RDP rich-application/peer acceptance
+remains pending.
+
+## HTML inner item in development
+
+`native/ipc/clipboard_html.*` and `packages/protocol/src/clipboard-html.ts`
+independently encode one HTML item for SPECIFICATION §2.7. It contains a checked
+UTF-8 body, optional context, separate fragment/selection byte ranges and optional
+UTF-8 text fallback. An absent fallback and a present empty text value are
+distinct. CF_HTML headers, `SourceURL`, terminators and padding do not enter this
+representation. HTML syntax is opaque; decoding never evaluates or sanitizes it.
+
+All integers are big-endian. The fixed inner header is 32 bytes:
+
+| Offset | Size | Value |
+| --- | --- | --- |
+| 0 | 2 | Inner item schema 1; distinct from outer text command schema 1 |
+| 2 | 2 | Flags: text present=1, context=2, selection=4; no other bits |
+| 4 | 4 | HTML body byte count |
+| 8 | 4 | Text byte count; zero when absent |
+| 12 | 4 | Fragment offset relative to body |
+| 16 | 4 | Fragment byte count |
+| 20 | 4 | Selection offset relative to body; zero when absent |
+| 24 | 4 | Selection byte count; zero when absent |
+| 28 | 4 | Reserved zero |
+| 32 | body count | UTF-8 HTML body |
+| after body | text count | Optional UTF-8 text fallback |
+
+Declared lengths must exhaust the packet exactly. No-context items have the
+whole body as their fragment; an empty fragment without context is valid.
+Context requires a nonempty body. Selection must stay inside the fragment; fragment stays inside
+the body. All boundaries must fall between complete UTF-8 scalars. Embedded NUL,
+invalid/overlong UTF-8, unpaired surrogates, noncanonical absent fields, unknown
+versions/flags, nonzero reserved bytes and trailing content are refused.
+
+Body plus text fit the configured 1..16 MiB item maximum. The item including its
+32-byte header additionally fits the existing 16 MiB outer payload reservation,
+so useful content cannot exceed 16 MiB minus 32 bytes. Outer RWI1 command/result
+metadata remains separately bounded by its existing 24 bytes. No parser-limit or
+queue increase is introduced. Text also fits its terminated/normalized UTF-16
+limit; the outgoing native owner separately admits the sum of both actual RDP
+representations before encoding them. The item codec alone confers no direction,
+controller, generation/revision, capability, transport-credit or deadline authority.
+
+Encoders validate the complete immutable input before allocating/copying one
+packet. Decoders borrow body and text after fixed-header/length/quota admission;
+owners must copy only after all outer authority checks and wipe retained content
+on retirement. Context may contain unselected text: later browser conversion
+must preserve the distinction between context and the actual selection.
+
+Shared independently specified golden bytes cover HTML plus text and distinguish
+empty/absent fallback. C++ and TypeScript tests exercise contextual Unicode,
+fragment/selection boundaries, every golden truncation, overflowed lengths,
+reserved bits, malformed UTF-8 and the exact 16 MiB transport ceiling. The existing
+clipboard wire fuzzer additionally roundtrips this inner item with seeded valid
+and malformed samples. These checks are codec evidence, not real remote HTML
+or browser clipboard acceptance.
+
+The 41-byte golden item is `<b>X</b>` with text `X`, no context and no separate
+selection. Its exact bytes are:
+
+```text
+00010001000000080000000100000000000000080000000000000000000000003c623e583c2f623e58
+```
+
+The item checkpoint `68cebfc` passes complete Windows linked `pnpm check`: 1056 passed,
+71 explicit skips, zero failures. MSVC `/WX` + `/analyze` linked CTest passes
+39/39 and exact GCC 8.3 linked CTest 40/40. The Clang 18 wire suite passes under
+ASan/UBSan; the instrumented wire fuzzer completes 936,689 runs in 61 seconds
+without a crash or sanitizer failure. Final native/sanitizer runs also include
+additional corrupted body/fallback input assertions added during the Node run;
+production codec bytes are unchanged. This is synthetic codec acceptance only.
+Hash-bound source/log evidence: `build/current-validation/html-item-acceptance.json`.
+
+## Private worker HTML negotiation and handoff in development
+
+The pinned CLIPRDR-enabled worker advertises HELLO extension bit **256**,
+`clipboardHtml`, only with connection-core, text bit 8 and revoke bit 16. Node
+refuses an incomplete combination. Older peers omit the optional property;
+explicit HTML selection refuses before CONFIGURE/SECRET when unsupported.
+Foundation workers do not advertise HTML and return content-free unavailable
+for otherwise structurally valid schema-3 commands. This private capability
+does not accept browser/remote-application HTML integration.
+
+Raw connection schema **13** retains all schema-12 fields and adds flag **512**
+for HTML in the existing four-byte feature word. The word admits only 0..1023,
+retains exclusive audio/input and compatibility-buffer constraints, and HTML
+requires at least one clipboard direction. The maximum remains 1..16 MiB. The
+performance pair and IP triple are mandatory even when omitted by the caller:
+both then contain zeroes. Earlier schemas retain their masks and byte layouts.
+
+Selected HTML source state remains 24 bytes with schema **3**. Existing flag
+meanings are retained; **128=HTML selected**, **256=remote HTML available**,
+**512=local HTML accepted**. Schema 3 requires selection bit 128. Remote HTML
+requires ready, from-server and a nonzero revision. Local HTML accepted requires
+ready, to-server and local-accepted. State without HTML selection still emits
+exact schema 1. A typed Node source must match its immutable selected policy;
+unsolicited HTML selection cannot enable a session.
+
+Command/result metadata remains the existing 24-byte layout, with schema **3**
+only for **read-html=4** and **set-html=5**. A read uses the current nonzero
+generation/revision and no command body. A set uses nonzero generation, revision
+zero and one encoded inner item. Set accepts a no-context complete fragment and
+optional text; contextual read items are refused as writes rather than silently
+losing context/selection. Accepted reads return one inner item. Set results and
+every negative result are content-free. Status values and outer RWI1 correlation
+and allocation bounds are unchanged. Schema-3 revoke is invalid: the existing
+content-free schema-2 operation revokes both local formats together.
+
+`WorkerSession` retains one shared producer reservation for all five operations.
+Input admission checks published generation/revision, explicit HTML policy,
+directions and quotas before moving a payload. Dispatch rechecks the real owner
+and the existing 250 ms arrival deadline. HTML writes wait for the one native
+format-list ACK, and successful revoke waits for its empty-list ACK. No format
+is served before that ACK. Unknown/failing/legacy selection never becomes a
+successful write or an automatic downgrade to text.
+
+Rich reads request HTML by the current peer's named ID. When that same offer
+also advertises Unicode, the worker retains the bounded HTML item and requests
+Unicode after the first callback returns, within the same producer reservation.
+There is never more than one uncorrelated CLIPRDR response outstanding. The
+aggregate original UTF-8 and the original admitted CF_HTML wire bytes plus the
+canonical terminated Unicode representation must fit the configured maximum.
+Inner-item metadata must still fit the existing absolute private transport cap.
+Quota refusal, a refused fallback or a changed offer returns no partial item.
+The old flight is drained before any replacement; a result held under output
+backpressure becomes stale without content if its offer changes.
+
+The pair has a ten-second absolute deadline in addition to each native
+five-second response budget. Both callbacks and polling check the absolute
+deadline; a late second response before the next poll cannot revive it. Existing
+one-second output-publication and channel-retirement barriers remain. Node uses
+a finite twelve-second completion timeout for rich reads, seven seconds for
+other clipboard calls, and never retries. Retained HTML/text bytes are wiped on
+completion/retirement, including partial pair and result buffers. This bounds
+owned slots; SDK copies and whole-process resource acceptance remain separate.
+
+The private `WorkerProcess` adds `readClipboardHtml(revision)` and
+`writeClipboardHtml(item)`. HTML is explicitly selected with
+`clipboard: {mode, html:true, maxItemBytes}` alongside baseline Unicode support;
+`text:false`, images and files remain refused. Reads return `{status,item?}`;
+only accepted reads include a checked item, with owned backing storage shared
+by its body/text views. A retaining caller must clear both content views after
+use. Writes copy only after authority/size/busy admission and leave caller-owned
+buffers unchanged. `revokeClipboardText()` keeps its historical name and revokes
+the entire item. No method accesses an OS clipboard, evaluates markup or fetches
+URLs. The public session manager/adapters and reference browser still need their
+HTML integration and acceptance before release.
+
+Native component tests use the real pinned parser with a synthetic SVC peer.
+Actual native process/TLS tests prove only schema/capability admission, strict
+certificate refusal or cancellation, heartbeat and joined shutdown on the test
+machine. Synthetic private-IPC tests prove typed Node ownership and validation.
+Neither establishes successful HTML exchange with a remote application.
+
+The private handoff checkpoint `fd091a5` passes Windows linked CTest **39/39** and exact
+GCC 8.3 linked CTest **40/40**. Complete `pnpm check` passes Windows **1068/71
+skips** and Linux UID1000 with no effective capabilities **1049/93 skips**, zero
+failures. GNU 13.3 ASan/UBSan passes the four touched wire/IPC/owner/worker suites
+without suppressions, using the existing pinned SDK dependencies. Clang 18's
+instrumented wire fuzzer completes **905,341 runs in 61 seconds** without errors.
+
+The Node focus passes 23/23. Three extra typed native HTML direction cases pass
+on each OS, and a separate current Node test observes the actual twelve-second
+timeout without retries; these tests were added during the full runs and have
+their own receipts. The native aggregate-deadline negative control removes only
+the second response callback guard in a disposable source copy: the late response
+then succeeds and the assertion fails (Catch2 exit 42). Restoring the exact
+current source bytes makes the assertion pass. No suppression, timeout extension
+or published artifact change is used. Hash-bound evidence is
+`build/current-validation/html-worker-acceptance.json`.
+
+## Existing text transport
+
 Prepares the private Node/worker portion of SPECIFICATION §2.7. The payload
 codecs are implemented independently in C++20 and strict TypeScript. Iteration
 227 prepared these payloads; Iteration 228 assigns additive RWI1 kinds below

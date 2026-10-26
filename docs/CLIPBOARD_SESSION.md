@@ -10,7 +10,7 @@ accepts explicit text selection with a matching item reservation and both
 `clipboardText` / `clipboardRevoke` HELLO capabilities (Iteration 237).
 
 Selection requires an explicit direction mode, text enabled, no unsupported
-HTML/images/files and a finite item maximum (default 1 MiB, range 1..16 MiB).
+images/files and a finite item maximum (default 1 MiB, range 1..16 MiB).
 Missing backend read/write/revoke/source hooks refuse before backend start.
 Omitted/off selection requires none of these hooks. Current control attachment
 methods are `clipboardSnapshot`, `onClipboard`, `startClipboard`, `stopClipboard`,
@@ -72,3 +72,32 @@ Evidence distinguishes pure fake-backend ownership/manager fixtures, an actual
 Node child/private-IPC synthetic peer, linked pinned-CLIPRDR simulated transport
 and the single authorized XRDP offer/empty-text ACK from Iteration 232. The latter
 does not establish remote data consumption or revoke, and is not repeated here.
+
+## Shared HTML authority in development
+
+`feature/html-clipboard` additionally admits explicit `html:true` with text
+enabled. The worker must implement both `readClipboardHtml` and
+`writeClipboardHtml`; its frozen reservation must select HTML and its HELLO must
+advertise `clipboardHtml` in addition to text/revoke. Missing hooks refuse before
+backend start. Immutable source policy must match HTML selection exactly; a
+later downgrade fails the session rather than silently continuing as text.
+
+Current control leases add typed `readClipboardHtml` / `writeClipboardHtml`.
+They share the existing opaque grant, flight, dirty flag and native revoke
+barrier with Unicode operations. Read results carry owned `body` and optional
+`text` buffers plus checked scalar ranges; unknown backend properties are not
+copied. Both buffers are wiped on stale authority/revision, malformed results,
+detach and late completion. Consumers clear accepted buffers after use.
+Backend writes must copy borrowed body/text synchronously before returning.
+
+Default retirement is 20 seconds for HTML selection, covering the private
+12-second paired read and seven-second revoke; text-only retains 15 seconds.
+An explicit host retirement override retains the original 20..15,000 ms range.
+Neither traffic nor intermediate progress extends it. The session's global
+shutdown deadline still takes precedence. Replacement controllers cannot gain
+clipboard authority before the shared drain/revoke completes.
+
+Synthetic ownership/manager fixtures and actual socket tests cover HTML/text
+flight exclusion, controller replacement, native ACK barriers, quota refusal,
+known-field metadata and late buffer wiping. Actual RDP HTML application and
+browser acceptance remain required on this same feature branch.

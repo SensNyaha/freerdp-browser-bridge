@@ -10,10 +10,12 @@ namespace bridge::clipboard {
 namespace {
 namespace wire = ipc::clipboard;
 void wipe(std::vector<std::uint8_t> &b) noexcept {
-  std::fill(b.begin(), b.end(), 0);
+  volatile std::uint8_t *output = b.data();
+  for (std::size_t i = 0; i < b.size(); ++i)
+    output[i] = 0;
   std::vector<std::uint8_t>{}.swap(b);
 }
-constexpr std::uint64_t dispatch_ms = 250, publication_ms = 1000;
+constexpr std::uint64_t dispatch_ms = 250, publication_ms = 1000, html_read_ms = 10000;
 } // namespace
 WorkerSession::WorkerSession(TextPolicy policy, Send send, Clock clock,
                              TextSession::Resolve resolve)
@@ -34,7 +36,7 @@ bool WorkerSession::current_thread() const noexcept {
 bool WorkerSession::observe() noexcept {
   try {
     const auto t = clock_();
-    if ((seen_clock_ && t < now_) || t > (std::numeric_limits<std::uint64_t>::max)() - 5000)
+    if ((seen_clock_ && t < now_) || t > (std::numeric_limits<std::uint64_t>::max)() - html_read_ms)
       return false;
     now_ = t;
     seen_clock_ = true;
@@ -55,7 +57,7 @@ bool WorkerSession::start(std::uint64_t generation) noexcept {
     text_ = std::make_unique<TextSession>(
         policy_, [](auto, auto) { return true; },
         [this](auto id, auto status, auto bytes) { return reply(id, status, bytes); }, clock_,
-        resolve_);
+        resolve_, [this](auto id, auto status, HtmlView view) { return reply_html(id, status, view); });
   } catch (...) {
     return false;
   }
@@ -76,9 +78,25 @@ std::optional<wire::Status> WorkerSession::submit(std::uint64_t id,
     const auto c = wire::decode_command(payload);
     if (!id)
       return wire::Status::invalid;
+    if (wire::is_html(c.operation) && !policy_.html)
+      return wire::Status::unavailable;
     if (c.operation == wire::Operation::set &&
         encode_unicode_text(c.text, {}, policy_.maximum).status != TextStatus::capacity)
       return wire::Status::refused;
+    if (c.operation == wire::Operation::set_html) {
+      wire::HtmlItem item;
+      try {
+        item = wire::decode_html_item(c.text, policy_.maximum);
+      } catch (const ipc::ProtocolError &) {
+        return wire::Status::refused;
+      }
+      const auto html = encode_html_clipboard(item.body, {}, policy_.maximum);
+      const auto text = item.text ? encode_unicode_text(*item.text, {}, policy_.maximum)
+                                  : TextResult{TextStatus::capacity, 0};
+      if (html.status != TextStatus::capacity || text.status != TextStatus::capacity ||
+          text.bytes > policy_.maximum - html.bytes)
+        return wire::Status::refused;
+    }
     const auto t = clock_();
     if (t > (std::numeric_limits<std::uint64_t>::max)() - dispatch_ms)
       return wire::Status::unavailable;
@@ -89,13 +107,14 @@ std::optional<wire::Status> WorkerSession::submit(std::uint64_t id,
     if (stopped_ || !admitted_ || !admitted_->ready)
       return wire::Status::unavailable;
     if (c.generation != admitted_->generation ||
-        (c.operation == wire::Operation::read && c.revision != admitted_->revision))
+        (wire::is_read(c.operation) && c.revision != admitted_->revision))
       return wire::Status::stale;
     if (occupied_)
       return wire::Status::busy;
-    if (c.operation == wire::Operation::read
-            ? (!policy_.from_server || !admitted_->remote_text || admitted_->remote_pending)
-            : ((c.operation == wire::Operation::set && !policy_.to_server) ||
+    if (wire::is_read(c.operation)
+            ? (!policy_.from_server || admitted_->remote_pending ||
+               (c.operation == wire::Operation::read_html ? !admitted_->remote_html : !admitted_->remote_text))
+            : (((c.operation == wire::Operation::set || c.operation == wire::Operation::set_html) && !policy_.to_server) ||
                admitted_->local_pending))
       return wire::Status::refused;
     queued_.emplace(
@@ -113,6 +132,10 @@ bool WorkerSession::complete(wire::Status status, ::bridge::compat::span<const s
     result_ = wire::encode_result(
         {active_->operation, status, active_->generation, active_->revision, bytes});
     wipe(active_->payload);
+    wipe(html_result_);
+    html_wire_bytes_ = 0;
+    html_deadline_ = 0;
+    html_fallback_ = html_text_pending_ = false;
     return true;
   } catch (...) {
     return false;
@@ -121,12 +144,68 @@ bool WorkerSession::complete(wire::Status status, ::bridge::compat::span<const s
 bool WorkerSession::reply(std::uint64_t id, TextReply status,
                           ::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (!current_thread() || !active_ || active_->id != id ||
-      active_->operation != wire::Operation::read)
+      !wire::is_read(active_->operation))
     return false;
+  if (active_->operation == wire::Operation::read_html) {
+    if (!observe() || !html_deadline_ || now_ >= html_deadline_)
+      return false;
+    if (html_result_.empty())
+      return false;
+    if (status != TextReply::ok)
+      return complete(status == TextReply::stale ? wire::Status::stale : wire::Status::refused);
+    try {
+      auto item = wire::decode_html_item(html_result_, policy_.maximum);
+      item.text = bytes;
+      return complete_html(item);
+    } catch (...) {
+      return false;
+    }
+  }
   return complete(status == TextReply::ok      ? wire::Status::accepted
                   : status == TextReply::stale ? wire::Status::stale
                                                : wire::Status::refused,
                   bytes);
+}
+bool WorkerSession::complete_html(const wire::HtmlItem &item) noexcept {
+  try {
+    wire::validate_html_item(item, policy_.maximum);
+    const auto text = item.text ? encode_unicode_text(*item.text, {}, policy_.maximum)
+                                : TextResult{TextStatus::capacity, 0};
+    if (text.status != TextStatus::capacity || html_wire_bytes_ > policy_.maximum ||
+        text.bytes > policy_.maximum - html_wire_bytes_)
+      return complete(wire::Status::refused);
+    auto encoded = wire::encode_html_item(item, policy_.maximum);
+    const auto ok = complete(wire::Status::accepted, encoded);
+    wipe(encoded);
+    return ok;
+  } catch (const ipc::ProtocolError &) {
+    return complete(wire::Status::refused);
+  } catch (...) {
+    return false;
+  }
+}
+bool WorkerSession::reply_html(std::uint64_t id, TextReply status, HtmlView view) noexcept {
+  if (!current_thread() || !active_ || active_->id != id ||
+      active_->operation != wire::Operation::read_html || !html_result_.empty())
+    return false;
+  if (!observe() || !html_deadline_ || now_ >= html_deadline_)
+    return false;
+  if (status != TextReply::ok)
+    return complete(status == TextReply::stale ? wire::Status::stale : wire::Status::refused);
+  const wire::HtmlItem item{view.body, view.fragment_offset, view.fragment_bytes,
+                            view.selection_offset, view.selection_bytes, view.context, view.selection, {}};
+  html_wire_bytes_ = view.wire_bytes;
+  if (!html_fallback_)
+    return complete_html(item);
+  try {
+    html_result_ = wire::encode_html_item(item, policy_.maximum);
+    html_text_pending_ = true;
+    return true;
+  } catch (const ipc::ProtocolError &) {
+    return complete(wire::Status::refused);
+  } catch (...) {
+    return false;
+  }
 }
 bool WorkerSession::publish(const TextSnapshot &s) {
   const wire::State state{generation_,
@@ -138,7 +217,9 @@ bool WorkerSession::publish(const TextSnapshot &s) {
                           s.ready && s.remote_text,
                           s.ready && s.local_accepted,
                           s.ready && policy_.to_server && s.awaiting_local,
-                          s.ready && policy_.from_server && s.awaiting_remote};
+                          s.ready && policy_.from_server &&
+                              (s.awaiting_remote || (active_ && active_->operation == wire::Operation::read_html && result_.empty())),
+                          policy_.html, s.ready && s.remote_html, s.ready && s.local_html_accepted};
   const auto bytes = wire::encode_state(state);
   if (published_ && *published_ == bytes)
     return true;
@@ -164,6 +245,8 @@ bool WorkerSession::pump() noexcept {
       auto s = text_->snapshot();
       if (!s || s->failed)
         return false;
+      if (html_deadline_ && now_ >= html_deadline_)
+        return false;
       if (!active_) {
         std::lock_guard lock(mutex_);
         if (queued_) {
@@ -181,20 +264,31 @@ bool WorkerSession::pump() noexcept {
         else if (!s->ready)
           refusal = wire::Status::unavailable;
         else if (job.generation != generation_ ||
-                 (job.operation == wire::Operation::read && job.revision != s->revision))
+                 (wire::is_read(job.operation) && job.revision != s->revision))
           refusal = wire::Status::stale;
-        else if (job.operation == wire::Operation::read ? !s->remote_text || s->awaiting_remote
+        else if (wire::is_read(job.operation) ?
+                     (job.operation == wire::Operation::read_html ? !s->remote_html : !s->remote_text) || s->awaiting_remote
                                                         : s->awaiting_local)
           refusal = wire::Status::busy;
         if (refusal != wire::Status::accepted) {
           if (!complete(refusal))
             return false;
         } else {
-          const auto rc =
-              job.operation == wire::Operation::read ? text_->request(job.revision, job.id)
-              : job.operation == wire::Operation::set
-                  ? text_->set_local(::bridge::compat::span(job.payload).subspan(wire::metadata_bytes))
-                  : text_->revoke_local();
+          UINT rc = ERROR_INVALID_STATE;
+          if (job.operation == wire::Operation::read_html) {
+            html_fallback_ = s->remote_text;
+            html_deadline_ = now_ + html_read_ms;
+            rc = text_->request_html(job.revision, job.id);
+          } else if (job.operation == wire::Operation::read)
+            rc = text_->request(job.revision, job.id);
+          else if (job.operation == wire::Operation::set_html) {
+            const auto item = wire::decode_html_item(
+                ::bridge::compat::span(job.payload).subspan(wire::metadata_bytes), policy_.maximum);
+            rc = text_->set_local_html(item.body, item.text);
+          } else if (job.operation == wire::Operation::set)
+            rc = text_->set_local(::bridge::compat::span(job.payload).subspan(wire::metadata_bytes));
+          else
+            rc = text_->revoke_local();
           // The delegate may synchronously complete a read into result_.
           if (rc != CHANNEL_RC_OK)
             return false;
@@ -204,12 +298,25 @@ bool WorkerSession::pump() noexcept {
         if (!s || s->failed)
           return false;
       }
-      if (active_ && active_->operation != wire::Operation::read && result_.empty() &&
+      if (html_text_pending_ && active_ && result_.empty()) {
+        if (active_->revision != s->revision) {
+          if (!complete(wire::Status::stale))
+            return false;
+        } else {
+          html_text_pending_ = false;
+          if (text_->request(active_->revision, active_->id) != CHANNEL_RC_OK)
+            return false;
+        }
+        s = text_->snapshot();
+        if (!s || s->failed)
+          return false;
+      }
+      if (active_ && !wire::is_read(active_->operation) && result_.empty() &&
           !s->awaiting_local &&
           !complete(s->local_response_ok ? wire::Status::accepted : wire::Status::refused))
         return false;
       // An offered value can change while an encoded result awaits output.
-      if (active_ && active_->operation == wire::Operation::read && !result_.empty() &&
+      if (active_ && wire::is_read(active_->operation) && !result_.empty() &&
           active_->revision != s->revision) {
         wipe(result_);
         if (!complete(wire::Status::stale))
@@ -248,6 +355,10 @@ void WorkerSession::release_job() noexcept {
     wipe(active_->payload);
   active_.reset();
   wipe(result_);
+  wipe(html_result_);
+  html_wire_bytes_ = 0;
+  html_deadline_ = 0;
+  html_fallback_ = html_text_pending_ = false;
   occupied_ = false;
 }
 void WorkerSession::retire() noexcept {

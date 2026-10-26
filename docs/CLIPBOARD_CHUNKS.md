@@ -53,3 +53,23 @@ full valid 16 MiB UTF-8 set/revoke, heartbeat and empty-runtime cleanup. This do
 not claim actual RDP/OS clipboard support. Existing
 framing cannot preempt a transmitted record; total memory/CPU, latency, real
 network and platform acceptance remain open.
+
+## Explicit HTML reservation in development
+
+With selected `html:true`, `SessionWorkerLimits` adds `clipboardHtml:true` to
+`clipboardItemBytes`. Omitted/off and text-only reservations keep their previous
+shape. Factories must forward the complete frozen limits object to
+`NativeSessionWorker`, including the HTML flag.
+
+The HTML IPC write reservation is
+`65,536 + 48 + min(16 MiB, item maximum + 32)`; the additional 32 bytes are
+the inner item header. The absolute 16 MiB inner-payload ceiling is unchanged.
+A missing/mismatched reservation or insufficient explicit write override refuses
+before process construction/startup. Text-only budgets remain unchanged.
+
+RWC1 records and credit are format-independent. Explicit HTML commands select
+one [inner HTML item](CLIPBOARD_IPC.md#html-inner-item-in-development), including
+body and optional plain fallback in that same item/credit flight. The server
+checks its complete encoded length before allocation and validates its ranges,
+UTF-8 and aggregate quotas after assembly. No per-format parallel queue is added.
+See the [HTML control extension](CLIPBOARD_CONTROL.md#html-control-extension-in-development).

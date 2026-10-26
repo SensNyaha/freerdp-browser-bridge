@@ -6,8 +6,11 @@ import {
   decodeClipboardCommand,
   encodeClipboardState,
   encodeClipboardResult,
+  encodeClipboardHtmlItem,
 } from '../../packages/protocol/dist/index.js';
-const mode = process.argv[2] ?? 'valid';
+const requestedMode = process.argv[2] ?? 'valid';
+const htmlMode = requestedMode.startsWith('html-');
+const mode = htmlMode ? requestedMode.slice(5) : requestedMode;
 const decoder = new PacketDecoder();
 let state, held;
 const send = (kind, requestId, payload = Buffer.alloc(0)) => {
@@ -29,12 +32,14 @@ const reply = (p, command) => {
     send(Kind.State, 0n, Buffer.from([0, 4, 0, 0, 0, 0, 0, 0]));
     source(); // Already queued state cannot revive authority.
   }
-  if (command.operation === 'set') {
+  if (command.operation === 'set' || command.operation === 'set-html') {
     state.localAccepted = true;
+    if (htmlMode) state.localHtmlAccepted = command.operation === 'set-html';
     source();
   }
   if (command.operation === 'revoke') {
     state.localAccepted = mode === 'revoke-stale';
+    if (htmlMode) state.localHtmlAccepted = mode === 'revoke-stale';
     source();
   }
   const payload = encodeClipboardResult({
@@ -43,11 +48,30 @@ const reply = (p, command) => {
     revision: mode === 'mismatch' ? 0n : command.revision,
     status: 'accepted',
     text:
-      mode === 'mismatch' || command.operation !== 'read'
-        ? Buffer.alloc(0)
-        : mode === 'overquota'
-          ? Buffer.alloc(1024, 65)
-          : Buffer.from('A\nЖ😀'),
+      command.operation === 'read-html'
+        ? (() => {
+            const body =
+              mode === 'overquota'
+                ? Buffer.alloc(1025, 65)
+                : Buffer.from(
+                    '<html><body><b>\u0416\ud83d\ude00</b></body></html>',
+                  );
+            return encodeClipboardHtmlItem({
+              body,
+              fragmentOffset: mode === 'overquota' ? 0 : 12,
+              fragmentBytes: mode === 'overquota' ? body.length : 13,
+              context: mode !== 'overquota',
+              selection: mode !== 'overquota',
+              selectionOffset: mode === 'overquota' ? 0 : 15,
+              selectionBytes: mode === 'overquota' ? 0 : 6,
+              text: Buffer.from('\u0416\ud83d\ude00'),
+            });
+          })()
+        : mode === 'mismatch' || command.operation !== 'read'
+          ? Buffer.alloc(0)
+          : mode === 'overquota'
+            ? Buffer.alloc(1024, 65)
+            : Buffer.from('A\nЖ😀'),
   });
   send(Kind.ClipboardResult, p.requestId, payload);
   if (mode === 'duplicate') send(Kind.ClipboardResult, p.requestId, payload);
@@ -87,20 +111,27 @@ process.stdin.on('data', (b) => {
                     0,
                     0,
                     0,
-                    0,
+                    htmlMode ? 1 : 0,
                     mode === 'no-revoke' ? 8 : 24,
                   ]),
                 ]),
           ]),
         );
       } else if (p.kind === Kind.Configure) {
-        if (mode === 'legacy' || p.payload.readUInt16BE(0) !== 10)
+        if (
+          mode === 'legacy' ||
+          p.payload.readUInt16BE(0) !== (htmlMode ? 13 : 10)
+        )
           process.exit(2);
-        const flags = p.payload.readUInt32BE(p.payload.length - 8);
+        const flags = p.payload.readUInt32BE(
+          p.payload.length - (htmlMode ? 13 : 8),
+        );
         state = {
           generation: 1n,
           revision: 1n,
-          maximum: p.payload.readUInt32BE(p.payload.length - 4),
+          maximum: p.payload.readUInt32BE(
+            p.payload.length - (htmlMode ? 9 : 4),
+          ),
           ready: true,
           toServer: Boolean(flags & 128),
           fromServer: Boolean(flags & 256),
@@ -108,6 +139,13 @@ process.stdin.on('data', (b) => {
           localAccepted: false,
           localPending: false,
           remotePending: false,
+          ...(htmlMode
+            ? {
+                html: true,
+                remoteHtml: Boolean(flags & 256),
+                localHtmlAccepted: false,
+              }
+            : {}),
         };
         send(Kind.ConfigureAck, p.requestId);
       } else if (p.kind === Kind.Secret) {
@@ -126,6 +164,7 @@ process.stdin.on('data', (b) => {
         if (mode === 'backward') {
           state.revision = 0n;
           state.remoteText = false;
+          if (htmlMode) state.remoteHtml = false;
           source();
         }
       } else if (p.kind === Kind.ClipboardCommand) {
@@ -141,6 +180,10 @@ process.stdin.on('data', (b) => {
           state.ready = false;
           state.remoteText = false;
           state.localAccepted = false;
+          if (htmlMode) {
+            state.remoteHtml = false;
+            state.localHtmlAccepted = false;
+          }
           source();
           held = [p, command];
         } else if (mode === 'hold') held = [p, command];

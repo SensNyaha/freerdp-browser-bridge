@@ -79,6 +79,151 @@ test('fake clipboard IPC: explicit profiles, copied scalar state and Unicode rea
       await worker.ping();
     });
 });
+test('fake HTML IPC: negotiated schema13 and schema3 preserve rich context and share revoke', async () => {
+  await run('html-valid', async (worker) => {
+    assert.equal(worker.build.capabilities.clipboardHtml, true);
+    const value = config();
+    value.clipboard.html = true;
+    await worker.connect(value);
+    await eventually(() => worker.clipboardState?.ready);
+    assert.equal(worker.clipboardState.html, true);
+    assert.equal(worker.clipboardState.remoteHtml, true);
+    const state = worker.clipboardState;
+    state.remoteHtml = false;
+    assert.equal(worker.clipboardState.remoteHtml, true);
+    const result = await worker.readClipboardHtml(1n);
+    assert.equal(result.status, 'accepted');
+    assert.equal(result.item.context, true);
+    assert.equal(
+      result.item.body.toString(),
+      '<html><body><b>\u0416\ud83d\ude00</b></body></html>',
+    );
+    assert.equal(result.item.fragmentOffset, 12);
+    assert.equal(result.item.fragmentBytes, 13);
+    assert.equal(result.item.selectionOffset, 15);
+    assert.equal(result.item.selectionBytes, 6);
+    assert.equal(result.item.text.toString(), '\u0416\ud83d\ude00');
+    const item = {
+      body: Buffer.from('<b>X</b>'),
+      fragmentOffset: 0,
+      fragmentBytes: 8,
+      selectionOffset: 0,
+      selectionBytes: 0,
+      selection: false,
+      context: false,
+      text: Buffer.from('X'),
+    };
+    const before = Buffer.from(item.body);
+    assert.equal(await worker.writeClipboardHtml(item), 'accepted');
+    assert.deepEqual(item.body, before);
+    assert.equal(worker.clipboardState.localHtmlAccepted, true);
+    assert.equal(await worker.revokeClipboardText(), 'accepted');
+    assert.equal(worker.clipboardState.localHtmlAccepted, false);
+    assert.equal(await worker.writeClipboardText(Buffer.from('Y')), 'accepted');
+    assert.equal(worker.clipboardState.localHtmlAccepted, false);
+    result.item.body.fill(0);
+    result.item.text.fill(0);
+    await worker.ping();
+  });
+});
+test('fake HTML IPC: one shared flight, stale completion, direction and aggregate refusal', async () => {
+  const item = {
+    body: Buffer.from('<b>X</b>'),
+    fragmentOffset: 0,
+    fragmentBytes: 8,
+    selectionOffset: 0,
+    selectionBytes: 0,
+    selection: false,
+    context: false,
+    text: Buffer.from('X'),
+  };
+  await run('html-hold', async (worker) => {
+    const value = config();
+    value.clipboard.html = true;
+    await worker.connect(value);
+    await eventually(() => worker.clipboardState?.ready);
+    const read = worker.readClipboardHtml(1n);
+    assert.equal(await worker.writeClipboardHtml(item), 'busy');
+    assert.equal((await worker.readClipboardText(1n)).status, 'busy');
+    assert.equal(await worker.revokeClipboardText(), 'busy');
+    await worker.ping();
+    assert.equal((await read).status, 'accepted');
+  });
+  await run('html-stale', async (worker) => {
+    const value = config();
+    value.clipboard.html = true;
+    await worker.connect(value);
+    await eventually(() => worker.clipboardState?.ready);
+    assert.deepEqual(await worker.readClipboardHtml(1n), { status: 'stale' });
+  });
+  await run('html-valid', async (worker) => {
+    const value = config('server-to-browser');
+    value.clipboard.html = true;
+    await worker.connect(value);
+    await eventually(() => worker.clipboardState?.ready);
+    assert.equal(await worker.writeClipboardHtml(item), 'refused');
+    assert.equal((await worker.readClipboardHtml(1n)).status, 'accepted');
+  });
+  await run('html-valid', async (worker) => {
+    const value = config('bidirectional', 181);
+    value.clipboard.html = true;
+    await worker.connect(value);
+    await eventually(() => worker.clipboardState?.ready);
+    await assert.rejects(worker.writeClipboardHtml(item), {
+      code: 'CLIPBOARD_INVALID_HTML',
+    });
+    const smaller = { ...item, body: Buffer.from('B'), fragmentBytes: 1 };
+    assert.equal(await worker.writeClipboardHtml(smaller), 'accepted');
+    await assert.rejects(
+      worker.writeClipboardHtml({ ...smaller, context: true }),
+      { code: 'CLIPBOARD_INVALID_HTML' },
+    );
+    await worker.ping();
+  });
+  await run('valid', async (worker) => {
+    await assert.rejects(worker.readClipboardHtml(1n), {
+      code: 'CLIPBOARD_NOT_IMPLEMENTED',
+    });
+    await assert.rejects(worker.writeClipboardHtml(item), {
+      code: 'CLIPBOARD_NOT_IMPLEMENTED',
+    });
+    const value = config();
+    value.clipboard.html = true;
+    await assert.rejects(worker.connect(value), {
+      code: 'RDP_SETTING_NOT_IMPLEMENTED',
+    });
+    await worker.ping();
+  });
+});
+test('fake HTML IPC: over-quota rich result fails before retaining an item', async () => {
+  await run('html-overquota', async (worker) => {
+    const value = config();
+    value.clipboard.html = true;
+    await worker.connect(value);
+    await eventually(() => worker.clipboardState?.ready);
+    await assert.rejects(worker.readClipboardHtml(1n), {
+      code: 'IPC_UNEXPECTED_REPLY',
+    });
+    assert.equal(worker.clipboardState, undefined);
+  });
+});
+test(
+  'fake HTML IPC: rich read has a finite pair deadline and never retries',
+  { timeout: 18000 },
+  async () => {
+    await run('html-timeout', async (worker) => {
+      const value = config();
+      value.clipboard.html = true;
+      await worker.connect(value);
+      await eventually(() => worker.clipboardState?.ready);
+      await assert.rejects(worker.readClipboardHtml(1n), {
+        code: 'IPC_TIMEOUT',
+      });
+      assert.equal(worker.state, 'failed');
+      assert.equal(worker.clipboardState, undefined);
+    });
+  },
+);
 test('fake clipboard IPC: explicit revoke uses its capability, clears offer authority and preserves reuse', async () => {
   for (const mode of [
     'bidirectional',

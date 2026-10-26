@@ -30,7 +30,9 @@ async function removeOwned(root) {
 }
 
 test('native clipboard adapter: legacy and read/set-only HELLO refuse before CONFIGURE or SECRET', async () => {
-  for (const mode of ['legacy', 'no-revoke']) {
+  for (const profile of ['legacy', 'no-revoke', 'html-unavailable']) {
+    const html = profile === 'html-unavailable';
+    const mode = html ? 'valid' : profile;
     const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-clip-adapter-'));
     let connects = 0,
       processOwner;
@@ -60,7 +62,7 @@ test('native clipboard adapter: legacy and read/set-only HELLO refuse before CON
     }
     const native = new Adapter(
       { workerPath, runtimeRoot, ipcTransport: 'framed-pipes' },
-      { clipboardItemBytes: 1024 },
+      { clipboardItemBytes: 1024, ...(html ? { clipboardHtml: true } : {}) },
     );
     try {
       await assert.rejects(
@@ -68,7 +70,11 @@ test('native clipboard adapter: legacy and read/set-only HELLO refuse before CON
           {
             target: { host: 'synthetic' },
             auth: { password: 'synthetic rejected secret' },
-            clipboard: { mode: 'bidirectional', maxItemBytes: 1024 },
+            clipboard: {
+              mode: 'bidirectional',
+              maxItemBytes: 1024,
+              ...(html ? { html: true } : {}),
+            },
           },
           new AbortController().signal,
         ),
@@ -76,7 +82,9 @@ test('native clipboard adapter: legacy and read/set-only HELLO refuse before CON
       );
       assert.equal(connects, 0);
       assert.equal(processOwner.state, 'ready');
-      assert.equal(processOwner.build.capabilities.clipboardRevoke, false);
+      assert.equal(processOwner.build.capabilities.clipboardRevoke, html);
+      if (html)
+        assert.equal(processOwner.build.capabilities.clipboardHtml, undefined);
       await native.close();
       assert.equal(processOwner.state, 'closed');
     } finally {
@@ -86,12 +94,21 @@ test('native clipboard adapter: legacy and read/set-only HELLO refuse before CON
   }
 });
 
-for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
+for (const profile of [
+  'bidirectional',
+  'server-to-browser',
+  'browser-to-server',
+  'html-bidirectional',
+  'html-server-to-browser',
+  'html-browser-to-server',
+]) {
+  const html = profile.startsWith('html-');
+  const mode = html ? profile.slice(5) : profile;
   for (const ipcTransport of process.platform === 'linux'
     ? ['auto', 'framed-pipes']
     : ['auto'])
     test(
-      `actual native clipboard session: ${mode} / ${ipcTransport} strict TLS and joined cleanup`,
+      `actual native clipboard session: ${profile} / ${ipcTransport} strict TLS and joined cleanup`,
       { skip: !available, timeout: 15000 },
       async () => {
         const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-clip-adapter-'));
@@ -118,7 +135,12 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
                 password: 'synthetic private IPC sentinel',
               },
               security: { protocol: 'tls', certificatePolicy: 'strict' },
-              clipboard: { mode, text: true, maxItemBytes: 65536 },
+              clipboard: {
+                mode,
+                text: true,
+                maxItemBytes: 65536,
+                ...(html ? { html: true } : {}),
+              },
               timeouts: { connectMs: 5000 },
             },
             principal,
@@ -139,6 +161,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
             assert.equal(source.maximum, 65536);
             assert.equal(source.toServer, mode !== 'server-to-browser');
             assert.equal(source.fromServer, mode !== 'browser-to-server');
+            if (html) assert.equal(source.html, true);
           }
           assert.equal(
             (await native.readClipboardText(1n)).status,
@@ -148,6 +171,10 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
             await native.writeClipboardText(Buffer.from('synthetic')),
             'unavailable',
           );
+          if (html)
+            assert.deepEqual(await native.readClipboardHtml(1n), {
+              status: 'unavailable',
+            });
           await manager.shutdown();
         } finally {
           await manager.shutdown();
@@ -156,3 +183,4 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
         }
       },
     );
+}

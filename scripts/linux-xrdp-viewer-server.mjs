@@ -6,40 +6,54 @@ import { createSessionServer } from '../apps/bridge-api/dist/session-server.js';
 import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { linuxWorkerResidentBytes } from './linux-process-resident.mjs';
 import { soakDurationMs } from './viewer-soak.mjs';
+import { readLinuxViewerBootstrap } from './linux-viewer-bootstrap.mjs';
 
 // Disposable lab container only. Docker must publish 47999 to HOST LOOPBACK 47998.
 // Private bootstrap carries an ephemeral host bearer, never RDP credentials.
 if (process.platform !== 'linux' || process.argv.length !== 2)
   throw new Error('Linux lab server only');
-const scratch = Buffer.alloc(1024);
-let count = 0;
-let bearer;
-let soak = false;
-try {
-  for await (const chunk of process.stdin) {
-    if (!Buffer.isBuffer(chunk) || chunk.length > scratch.length - count)
-      throw new Error('Invalid bootstrap');
-    chunk.copy(scratch, count);
-    count += chunk.length;
-    chunk.fill(0);
-  }
-  const value = JSON.parse(scratch.subarray(0, count).toString('utf8'));
-  if (
-    Object.keys(value).some((key) => !['bearer', 'soak'].includes(key)) ||
-    (value.soak !== undefined && typeof value.soak !== 'boolean') ||
-    !/^[A-Za-z0-9_-]{43}$/.test(value.bearer ?? '')
-  )
-    throw new Error('Invalid bootstrap');
-  bearer = value.bearer;
-  soak = value.soak === true;
-} finally {
-  scratch.fill(0);
-}
+let { bearer, soak, htmlClipboard, ipcTransport } =
+  await readLinuxViewerBootstrap(process.stdin);
 const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-linux-browser-'));
-const worker = { workerPath: resolve('build/bundled/rdp-worker'), runtimeRoot };
+const worker = {
+  workerPath: resolve(
+    process.env.BRIDGE_TEST_BINARY_DIR ?? 'build/bundled',
+    'rdp-worker',
+  ),
+  runtimeRoot,
+  ...(htmlClipboard ? { ipcTransport } : {}),
+};
 let server;
 const audioResets = { requested: 0, scheduled: 0 };
-let nativeWorker, nativeState;
+const clipboard = {
+  writes: 0,
+  htmlReads: 0,
+  textReads: 0,
+  revokes: 0,
+  revokeAccepted: false,
+};
+let nativeWorker, nativeState, nativePid, source;
+const clipboardSnapshot = () => ({
+  ...clipboard,
+  state: nativeState,
+  ...(source
+    ? {
+        source: {
+          generation: source.generation.toString(),
+          revision: source.revision.toString(),
+          maximum: source.maximum,
+          ready: source.ready,
+          html: source.html,
+          remoteText: source.remoteText,
+          remoteHtml: source.remoteHtml,
+          localPending: source.localPending,
+          localAccepted: source.localAccepted,
+          localHtmlAccepted: source.localHtmlAccepted,
+          remotePending: source.remotePending,
+        },
+      }
+    : {}),
+});
 let finish;
 const finished = new Promise((done) => {
   finish = done;
@@ -51,8 +65,25 @@ const close = () =>
       await server?.close();
       const cleanup = (await readdir(runtimeRoot)).length === 0;
       if (!cleanup) throw new Error('Runtime not empty');
+      let pidRetired = !nativePid;
+      if (nativePid) {
+        try {
+          process.kill(nativePid, 0);
+        } catch (error) {
+          pidRetired = error.code === 'ESRCH';
+        }
+      }
+      if (htmlClipboard && !pidRetired) throw new Error('Worker not retired');
       await rm(runtimeRoot, { recursive: true, force: true });
-      console.log(JSON.stringify({ type: 'lab.server.closed', cleanup }));
+      console.log(
+        JSON.stringify({
+          type: 'lab.server.closed',
+          cleanup,
+          ...(htmlClipboard
+            ? { pidRetired, clipboard: clipboardSnapshot() }
+            : {}),
+        }),
+      );
     } catch {
       process.exitCode = 1;
       console.log(
@@ -67,7 +98,7 @@ const timer = setTimeout(
   () => {
     void close();
   },
-  (soak ? soakDurationMs : 0) + 90000,
+  htmlClipboard ? 180000 : (soak ? soakDurationMs : 0) + 90000,
 );
 process.once('SIGTERM', () => {
   void close();
@@ -90,10 +121,38 @@ try {
         nativeWorker = session;
         session.onState((state) => {
           nativeState = state;
+          if (state === 'connected') nativePid = session.pid;
         });
         session.onFailure(() => {
           nativeState = 'failed';
         });
+        if (htmlClipboard) {
+          session.onClipboard((value) => {
+            source = { ...value };
+          });
+          const write = session.writeClipboardHtml.bind(session),
+            htmlRead = session.readClipboardHtml.bind(session),
+            textRead = session.readClipboardText.bind(session),
+            revoke = session.revokeClipboardText.bind(session);
+          session.writeClipboardHtml = (item) => {
+            ++clipboard.writes;
+            return write(item);
+          };
+          session.readClipboardHtml = (revision) => {
+            ++clipboard.htmlReads;
+            return htmlRead(revision);
+          };
+          session.readClipboardText = (revision) => {
+            ++clipboard.textReads;
+            return textRead(revision);
+          };
+          session.revokeClipboardText = () =>
+            revoke().then((result) => {
+              ++clipboard.revokes;
+              if (result === 'accepted') clipboard.revokeAccepted = true;
+              return result;
+            });
+        }
         const reset = session.resetAudio.bind(session);
         session.resetAudio = async (epoch) => {
           audioResets.requested++;
@@ -131,6 +190,32 @@ try {
           .send(bytes),
     );
   }
+  if (htmlClipboard) {
+    const index = await readFile(join(directory, 'index.html'), 'utf8'),
+      start = index.indexOf('<section id="clipboard-html"'),
+      end = index.indexOf('<section id="clipboard-text"');
+    if (start < 0 || end <= start)
+      throw new Error('HTML reference panel unavailable');
+    const fixture = (
+      await readFile('tests/fixtures/html-rdp-client.html', 'utf8')
+    ).replace('<!--REFERENCE_PANEL-->', index.slice(start, end));
+    server.get('/html-lab/', (_request, reply) =>
+      reply.type('text/html').send(fixture),
+    );
+    for (const name of [
+      'clipboard-client.js',
+      'clipboard-html-view.js',
+      'clipboard-html-normalize.js',
+      'clipboard-html.js',
+      'clipboard-text.js',
+      'clipboard-wire.js',
+    ]) {
+      const bytes = await readFile(join(directory, name));
+      server.get('/' + name, (_request, reply) =>
+        reply.type('text/javascript').send(bytes),
+      );
+    }
+  }
   server.post('/lab/stop', (request, reply) => {
     if (request.headers.authorization !== 'Bearer ' + bearer)
       return reply.code(401).send();
@@ -142,7 +227,7 @@ try {
   server.get('/lab/stats', (request, reply) => {
     if (request.headers.authorization !== 'Bearer ' + bearer)
       return reply.code(401).send();
-    return { ...audioResets };
+    return htmlClipboard ? clipboardSnapshot() : { ...audioResets };
   });
   server.get('/lab/resources', async (request, reply) => {
     if (request.headers.authorization !== 'Bearer ' + bearer)

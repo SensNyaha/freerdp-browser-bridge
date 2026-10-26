@@ -3,7 +3,8 @@
 Read CODEX_INSTRUCTIONS.md and the relevant normative documents before changing code.
 Priority: explicit user instructions, SPECIFICATION.md, accepted ADRs, architecture/protocol, TODO.md.
 Preserve the original documentation. Record gaps and blockers; never silently reduce requirements.
-One C++20 worker per session. FreeRDP must not run inside Node; no GUI capture or arbitrary FreeRDP argv.
+One C++20 worker per session. FreeRDP must not run inside Node; no arbitrary FreeRDP argv.
+GUI capture and screenshots of RDP lab sessions are permitted for development, testing and diagnostics.
 Pin FreeRDP 3.32.1 to the commit in native/dependencies.json. Use its public headers as authority.
 Node.js 24, pnpm, strict TypeScript; CMake/Ninja, C++20, RAII, warnings as errors.
 Explicit user target (2026-10-21): port to GCC 8.3.0 for Astra Linux 1.7.5 and retain mandatory RED OS 7.3/GCC 11 support. Keep platform acceptance separate from compiler/foundation results.

@@ -41,6 +41,44 @@ const caps = {
 };
 const fields = (extra = {}) => new Map(Object.entries({ ...values, ...extra }));
 
+test('manual HTML clipboard: explicit opt-in requires native HTML and off ignores disabled drafts', () => {
+  const available = {
+    ...caps,
+    clipboardText: true,
+    clipboardRevoke: true,
+    clipboardHtml: true,
+  };
+  const selected = {
+    clipboard: 'bidirectional',
+    clipboardHtml: 'on',
+    clipboardMax: '1024',
+  };
+  const config = connectionConfig(fields(selected), available).config;
+  assert.deepEqual(config.clipboard, {
+    mode: 'bidirectional',
+    text: true,
+    html: true,
+    maxItemBytes: 1024,
+  });
+  assert.deepEqual(validateSessionConfig(config), config);
+  assert.equal(
+    connectionConfig(fields({ ...selected, clipboardHtml: '' }), available)
+      .config.clipboard.html,
+    undefined,
+  );
+  for (const clipboardHtml of [false, undefined])
+    assert.throws(() =>
+      connectionConfig(fields(selected), { ...available, clipboardHtml }),
+    );
+  assert.equal(
+    connectionConfig(
+      fields({ ...selected, clipboard: 'off', clipboardMax: '' }),
+      { ...available, clipboardHtml: false },
+    ).config.clipboard,
+    undefined,
+  );
+});
+
 test('manual IP selection: defaults omit keys; explicit system order/family require support and preserve strict schema', () => {
   for (const ipSettings of [undefined, false, true]) {
     const available = { ...caps, ipSettings };

@@ -71,7 +71,7 @@ and at most one 4 KiB copied transport borrow. It has no content/history queue.
 Upload buffers are wiped after native admission/copy; download buffers after
 completion or retirement. A pending copied block survives until its write
 callback, then is wiped. Late backend results after close/timeout are discarded
-and wiped. No automatic read, retransmission, retry, HTML/image/file or OS
+and wiped. No automatic read, retransmission, retry, image/file or OS
 clipboard operation is introduced.
 
 One host timer services the earliest deadline: 60 seconds for the whole item,
@@ -89,3 +89,56 @@ interleave, direction refusal, malformed body, 4 KiB preallocation boundary,
 wrong ACK, independent stalls, flooding, old-write/revoke replacement barrier,
 metadata/log privacy and cleanup. These do not close actual remote transfer,
 total memory/CPU, measured input/media latency, lossy-network or platform gates.
+
+## HTML control extension in development
+
+On `feature/html-clipboard`, explicit `clipboard.html:true` selection adds
+`html:{version:1,itemMetadataBytes:32}` to `clipboard.offer` alongside scalar
+state flags `html`, `remoteHtml` and `localHtmlAccepted`. This descriptor is
+absent from text-only offers. Missing backend hooks or native capability refuse
+selection before connection settings/secrets are submitted. Existing text
+commands and RWC1 version-1 binary framing keep their original meaning.
+
+`clipboard.html.set` has exactly `{generation,bytes}` and
+`clipboard.html.request` exactly `{generation,revision}`. Their events use
+`clipboard.html.set.ready`, `.set.ack`, `.set.result`, `.data` and
+`.data.complete`, with the same fields/credit rules as the text equivalents.
+Both formats share `clipboard.ack`, correlation sequences, one item/flight and
+the existing controller authority. There is no parallel rich-content lane or
+automatic text fallback after HTML refusal.
+
+The binary item is the independently versioned
+[32-byte HTML item plus UTF-8 body/optional text](CLIPBOARD_IPC.md#html-inner-item-in-development).
+The declared length is at least 32 and at most
+`min(16 MiB, configured maximum + 32)`, checked before allocation. Body and
+optional fallback share the configured content quota. Complete upload validation
+also checks the encoded CF_HTML/CF_UNICODETEXT aggregate before native dispatch.
+Uploads are fragment-only: context or selection flags are invalid. Downloads
+preserve checked context/fragment/selection byte ranges for explicit browser
+conversion; the server does not parse or render HTML.
+
+HTML reads have a finite 13-second native-progress ceiling covering the bounded
+two-format private read. Text reads and both writes retain eight seconds; issued
+windows retain two seconds and the whole item 60 seconds. Accepted backend body
+and fallback buffers are wiped after encoding; stale/late/refused results and
+retired encoded items are wiped too. No content enters offers, logs or status.
+
+Current tests use synthetic backends with real HTTP/WebSocket transport and
+actual native-process strict-TLS refusal/cleanup. Browser ClipboardItem handling
+and real remote HTML application acceptance remain open; this extension is not
+yet an accepted public release.
+
+Implementation checkpoint `7ccef0a` passes full `pnpm check` on Windows
+**1092 passed / 71 skipped / 0 failed** and Linux under UID1000 with zero
+effective capabilities **1075 / 93 / 0**. Linked MSVC `/WX` + `/analyze` native
+CTest passes **39/39**. Focused ownership/manager/transfer, actual socket and
+native strict-TLS checks pass **31/31**; the three actual WebSocket HTML cases
+also pass independently. Current C++ source is unchanged from the accepted
+private handoff checkpoint; its GCC 8.3, sanitizer and fuzz evidence remains
+separate in [private IPC](CLIPBOARD_IPC.md#private-worker-html-negotiation-and-handoff-in-development).
+
+`build/current-validation/html-public-acceptance.json` binds current product/test
+source and terminal logs by SHA256. The initial narrow regression caught an
+accidentally widened explicit retirement override range; the original maximum
+was restored before these passing full runs. No suppression or skipped failure
+was added. Browser ClipboardItem and real RDP HTML acceptance remain open.

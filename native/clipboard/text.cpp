@@ -150,6 +150,15 @@ TextResult convert(::bridge::compat::span<const std::uint8_t> input, ::bridge::c
   return {TextStatus::ok, write.size};
 }
 } // namespace
+bool valid_clipboard_utf8(::bridge::compat::span<const std::uint8_t> input) noexcept {
+  std::size_t at = 0;
+  while (at < input.size()) {
+    const auto value = next_utf8(input, at);
+    if (!value || !*value)
+      return false;
+  }
+  return true;
+}
 TextResult encode_unicode_text(::bridge::compat::span<const std::uint8_t> input, ::bridge::compat::span<std::uint8_t> output,
                                std::size_t maximum) noexcept {
   return convert(input, output, maximum, encode);

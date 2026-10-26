@@ -5,6 +5,7 @@ import {
   WorkerError,
   type WorkerOptions,
   type ClipboardReadResult,
+  type ClipboardHtmlReadResult,
 } from './index.js';
 import {
   SessionError,
@@ -17,6 +18,7 @@ import type { SessionAudioEvent } from './session-audio.js';
 import {
   CLIPBOARD_MAX_TEXT_BYTES,
   CLIPBOARD_METADATA_BYTES,
+  CLIPBOARD_HTML_ITEM_METADATA_BYTES,
   HEADER_BYTES,
 } from '@freerdp-bridge/protocol';
 import type {
@@ -39,6 +41,7 @@ import type {
   MicrophoneResetResult,
   ClipboardState,
   ClipboardStatus,
+  ClipboardHtmlItem,
 } from '@freerdp-bridge/protocol';
 
 /** Map the small, documented FreeRDP ERRINFO subset to stable public failures. */
@@ -133,6 +136,7 @@ export function classifyNativeConnectionFailure(
 export class NativeSessionWorker implements SessionWorker {
   private readonly worker: WorkerProcess;
   private readonly clipboardMaximum: number | undefined;
+  private readonly clipboardHtml: boolean;
   private readonly events = new EventEmitter();
   private startup: Promise<void> | undefined;
   private closing = false;
@@ -146,16 +150,25 @@ export class NativeSessionWorker implements SessionWorker {
   ) {
     const maximum = limits.clipboardItemBytes;
     if (
-      maximum !== undefined &&
-      (!Number.isInteger(maximum) ||
-        maximum < 1 ||
-        maximum > CLIPBOARD_MAX_TEXT_BYTES)
+      (limits.clipboardHtml !== undefined && limits.clipboardHtml !== true) ||
+      (limits.clipboardHtml === true && maximum === undefined) ||
+      (maximum !== undefined &&
+        (!Number.isInteger(maximum) ||
+          maximum < 1 ||
+          maximum > CLIPBOARD_MAX_TEXT_BYTES))
     )
       throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
     const required =
       maximum === undefined
         ? undefined
-        : 65536 + HEADER_BYTES + CLIPBOARD_METADATA_BYTES + maximum;
+        : 65536 +
+          HEADER_BYTES +
+          CLIPBOARD_METADATA_BYTES +
+          Math.min(
+            CLIPBOARD_MAX_TEXT_BYTES,
+            maximum +
+              (limits.clipboardHtml ? CLIPBOARD_HTML_ITEM_METADATA_BYTES : 0),
+          );
     if (
       required !== undefined &&
       options.maxWriteBytes !== undefined &&
@@ -163,6 +176,7 @@ export class NativeSessionWorker implements SessionWorker {
     )
       throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
     this.clipboardMaximum = maximum;
+    this.clipboardHtml = limits.clipboardHtml === true;
     this.worker = this.createWorkerProcess({
       ...options,
       ...(required === undefined
@@ -230,9 +244,9 @@ export class NativeSessionWorker implements SessionWorker {
         selectedClipboard &&
         (!clipboard.mode ||
           clipboard.text === false ||
-          clipboard.html ||
           clipboard.images ||
           clipboard.files ||
+          Boolean(clipboard.html) !== this.clipboardHtml ||
           this.clipboardMaximum !== (clipboard.maxItemBytes ?? 1048576))
       )
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
@@ -246,7 +260,8 @@ export class NativeSessionWorker implements SessionWorker {
       if (
         selectedClipboard &&
         (!build.capabilities.clipboardText ||
-          !build.capabilities.clipboardRevoke)
+          !build.capabilities.clipboardRevoke ||
+          (clipboard.html && !build.capabilities.clipboardHtml))
       )
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (
@@ -386,6 +401,16 @@ export class NativeSessionWorker implements SessionWorker {
     return this.closing
       ? Promise.resolve('unavailable')
       : this.worker.writeClipboardText(text);
+  }
+  readClipboardHtml(revision: bigint): Promise<ClipboardHtmlReadResult> {
+    return this.closing
+      ? Promise.resolve({ status: 'unavailable' })
+      : this.worker.readClipboardHtml(revision);
+  }
+  writeClipboardHtml(item: ClipboardHtmlItem): Promise<ClipboardStatus> {
+    return this.closing
+      ? Promise.resolve('unavailable')
+      : this.worker.writeClipboardHtml(item);
   }
   revokeClipboardText(): Promise<ClipboardStatus> {
     return this.closing

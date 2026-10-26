@@ -13,6 +13,57 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
+The next feature is HTML clipboard in `feature/html-clipboard`, started from
+shared `master` after the accepted recovery and cross-principal branches were
+merged (`284d9b9`). The bounded CF_HTML codec and combined native CLIPRDR
+HTML/Unicode owner pass their component checks. Private HTML worker/Node
+negotiation and handoff are implemented, including bounded two-format reads
+under one revision and shared write/revoke ownership. Public session/control
+transport now implements explicit HTML commands over the same bounded RWC1
+flight. The browser byte codec/client now implements explicit HTML commands,
+shared transfer ownership and preserved context/selection ranges. The reference
+form/panel now implements explicit ClipboardItem actions and inert selected-byte
+conversion with bounded static formatting. Physical browser/OS and real
+application acceptance remain on this same branch.
+Named Windows/Edge 156 OS ClipboardItem acceptance now passes in `c3447a5`:
+real API, owned source selection, Unicode/static formatting and readback through
+a second independent headed browser process, followed by owned clipboard/UI
+cleanup. Its session API is synthetic; real RDP HTML acceptance remains open.
+[Owned OS scenario](CLIPBOARD_BROWSER.md#named-windows-os-clipboarditem-acceptance).
+The later named Windows-worker/Windows-peer prepared Edge application scenario
+now passes both HTML/Unicode directions, a newer remote revision, native revoke,
+owned OS cleanup and PID/runtime retirement. Broader peer/platform and release
+acceptance remain open. [Actual application evidence](CLIPBOARD_BROWSER.md#named-windows-rdp-html-application-acceptance).
+The Linux-worker/Windows-peer prepared Edge profile now also passes both
+primary RWS1 and framed IPC: both HTML/Unicode directions, newer remote source,
+owned page reset/close, acknowledged revoke and OS/PID/runtime cleanup. Full
+Windows checks pass 1129/71 skips/0 failures; Linux UID1000 passes 1097/108/0.
+Hosted and versioned release acceptance remain separate.
+[Linux evidence](CLIPBOARD_BROWSER.md#named-linux-worker-html-application-acceptance).
+Conversion checkpoint `a3542d7` and reference-action checkpoint `7019d7a` pass
+combined full Windows `pnpm check` 1113/71 skips and Linux UID1000 1085/104,
+linked MSVC CTest 39/39, focused UI/permission/config/codec 25/25 and final
+normalizer 4/4, zero failures. These accept browser/synthetic integration and
+actual permission denial; physical OS/RDP HTML roundtrips remain open.
+[Current conversion/action contract](CLIPBOARD_BROWSER.md#html-selection-conversion-and-clipboarditem-actions-in-development).
+Browser byte-client checkpoint `57981d3` passes full Windows `pnpm check`
+1103/71 skips and Linux UID1000 1083/96, linked MSVC CTest 39/39, browser/legacy
+composition 14/14 and actual Edge/WebSocket synthetic-RDP checks 3/3, zero
+failures. [Browser scope and remaining UI/RDP gates](CLIPBOARD_BROWSER.md#html-byte-client-in-development).
+Public ownership/control checkpoint `7ccef0a` passes full Windows `pnpm check`
+1092/71 skips and Linux UID1000 1075/93, with zero failures; linked MSVC CTest
+passes 39/39. Focused checks pass 31/31.
+[Contract, evidence and remaining gates](CLIPBOARD_CONTROL.md#html-control-extension-in-development).
+The bounded inner HTML item codec now has independent C++/TypeScript golden
+vectors, borrowed content views and seeded wire fuzzing; its schema is documented
+in [private payloads](CLIPBOARD_IPC.md#html-inner-item-in-development). Schema-3
+commands are selected only with HELLO bit 256 and connection schema 13.
+No HTML capability, TODO checkbox or release is accepted by the codec alone.
+The intended capability release is 0.4.0 after complete acceptance; manifests
+remain at the published 0.3.0 during implementation.
+[Codec contract and remaining integration](CLIPBOARD_TEXT.md#html-codec-in-development).
+[Native owner and acceptance scope](CLIPBOARD_TEXT_SESSION.md#html-and-unicode-share-one-native-owner).
+
 Additional Stage 1 cross-principal acceptance is complete in
 `feature/stage1-cross-principal-isolation`: actual distinct Linux UIDs and
 Windows LocalService are denied access to private live, sibling and orphan

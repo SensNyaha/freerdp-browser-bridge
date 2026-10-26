@@ -1,0 +1,210 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Owned Bridge HTML Clipboard acceptance</title>
+<style>
+  body {
+    font: 16px sans-serif;
+    margin: 24px;
+  }
+  textarea {
+    display: block;
+    width: 95%;
+  }
+  button {
+    padding: 8px;
+    margin: 4px;
+  }
+  #clipboard-html [hidden] {
+    display: none;
+  }
+</style>
+<p>This isolated fixture copies only its synthetic data. No RDP connection.</p>
+<button id="seed">Copy owned source selection</button>
+<button id="inspect">Inspect owned result</button>
+<button id="clear-os">Clear owned clipboard</button>
+<div id="source-before">PRIVATE-BEFORE-DO-NOT-COPY</div>
+<div id="source">
+  <table>
+    <tbody>
+      <tr>
+        <th>Bridge header</th>
+        <th>Unicode</th>
+      </tr>
+      <tr>
+        <td><b id="local-marker"></b></td>
+        <td><i>Japanese 日本語</i></td>
+      </tr>
+    </tbody>
+  </table>
+  <ol start="4">
+    <li>First selected item</li>
+    <li>Second selected item</li>
+  </ol>
+</div>
+<div id="source-after">PRIVATE-AFTER-DO-NOT-COPY</div>
+<!--REFERENCE_PANEL-->
+<script type="module">
+  import { installClipboardHtmlView } from '/clipboard-html-view.js';
+  const nonce = new URL(location.href).searchParams.get('id');
+  if (!/^[0-9a-f]{32}$/.test(nonce ?? ''))
+    throw new Error('Invalid owned fixture');
+  const local = 'Bridge local ' + nonce + ' Ж😀';
+  const remote = 'Bridge remote ' + nonce + ' Ж😀';
+  document.querySelector('#local-marker').textContent = local;
+  const before = '<table><tbody><tr><td>PRIVATE-REMOTE-BEFORE<b>';
+  const after =
+    '</b>PRIVATE-REMOTE-AFTER</td></tr><tr><td>PRIVATE-REMOTE-SIBLING</td></tr></tbody></table>';
+  const utf8 = (value) => new TextEncoder().encode(value);
+  let sent,
+    returned,
+    busy = false;
+  window.fixture = {
+    writes: 0,
+    reads: 0,
+    seeded: false,
+    inspection: undefined,
+    cleared: false,
+  };
+  const client = {
+    get snapshot() {
+      return {
+        available: true,
+        html: true,
+        maximum: 1048576,
+        toServer: true,
+        fromServer: true,
+        canSetHtml: true,
+        canReadHtml: true,
+        busy,
+      };
+    },
+    async setHtml(item) {
+      ++window.fixture.writes;
+      sent = {
+        body: item.body.slice(),
+        ...(item.text === undefined ? {} : { text: item.text.slice() }),
+      };
+      return { status: 'accepted' };
+    },
+    async readHtml() {
+      ++window.fixture.reads;
+      returned = {
+        body: utf8(before + remote + after),
+        text: utf8(remote),
+        context: true,
+        selection: true,
+        fragmentOffset: utf8(before).length - 3,
+        fragmentBytes: utf8(remote).length + 7,
+        selectionOffset: utf8(before).length,
+        selectionBytes: utf8(remote).length,
+      };
+      return { status: 'accepted', item: returned };
+    },
+  };
+  window.view = installClipboardHtmlView(
+    document.querySelector('#clipboard-html'),
+    client,
+  );
+  const structure = (value) => {
+    const template = document.createElement('template');
+    template.innerHTML = value;
+    const fragment = template.content;
+    return {
+      table: fragment.querySelectorAll('table').length,
+      bold: fragment.querySelectorAll('b,strong').length,
+      italic: fragment.querySelectorAll('i,em').length,
+      lists: fragment.querySelectorAll('ol').length,
+      listItems: fragment.querySelectorAll('li').length,
+      hasLocal: fragment.textContent.includes(local),
+      knownLocalContents: [
+        local,
+        'Japanese 日本語',
+        'Bridge header',
+        'Unicode',
+        'First selected item',
+        'Second selected item',
+      ].every((text) => fragment.textContent.includes(text)),
+      hasRemote: fragment.textContent.includes(remote),
+      privateText: value.includes('PRIVATE-'),
+      listStart: fragment.querySelector('ol')?.getAttribute('start'),
+    };
+  };
+  window.fixture.sent = () => {
+    if (!sent) return undefined;
+    return {
+      ...structure(new TextDecoder().decode(sent.body)),
+      textPresent: sent.text !== undefined,
+      plainKnown:
+        sent.text !== undefined &&
+        new TextDecoder().decode(sent.text).includes(local),
+    };
+  };
+  window.fixture.returnedWiped = () =>
+    Boolean(
+      returned &&
+        returned.body.every((n) => !n) &&
+        returned.text.every((n) => !n),
+    );
+  document.querySelector('#seed').addEventListener('click', (event) => {
+    if (!event.isTrusted) return;
+    const range = document.createRange();
+    range.selectNodeContents(document.querySelector('#source'));
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    window.fixture.seeded = document.execCommand('copy');
+    selection.removeAllRanges();
+  });
+  async function ownedRead() {
+    const items = await navigator.clipboard.read();
+    if (
+      items.length !== 1 ||
+      !items[0].types.includes('text/html') ||
+      !items[0].types.includes('text/plain')
+    )
+      throw new Error('Owned formats missing');
+    const html = await items[0].getType('text/html'),
+      text = await items[0].getType('text/plain');
+    if (html.size > 1048576 || text.size > 1048576)
+      throw new Error('Owned quota');
+    const markup = await html.text(),
+      plain = await text.text();
+    if (!plain.includes(nonce))
+      throw new Error('Clipboard changed outside fixture');
+    return { markup, plain };
+  }
+  document
+    .querySelector('#inspect')
+    .addEventListener('click', async (event) => {
+      if (!event.isTrusted) return;
+      try {
+        const value = await ownedRead();
+        window.fixture.inspection = {
+          ...structure(value.markup),
+          plainRemote: value.plain === remote,
+        };
+      } catch {
+        window.fixture.inspection = { failed: true };
+      }
+    });
+  document
+    .querySelector('#clear-os')
+    .addEventListener('click', async (event) => {
+      if (!event.isTrusted || !window.fixture.seeded) return;
+      try {
+        await ownedRead();
+        await navigator.clipboard.writeText('');
+        window.fixture.cleared = true;
+      } catch {
+        window.fixture.cleared = false;
+      }
+    });
+  window.fixture.dispose = () => {
+    window.view.dispose();
+    sent?.body.fill(0);
+    sent?.text?.fill(0);
+    returned?.body.fill(0);
+    returned?.text.fill(0);
+    busy = true;
+  };
+</script>

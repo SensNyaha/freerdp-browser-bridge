@@ -12,6 +12,14 @@ Server control transport retains the WebSocket body limit (Iteration 236);
 the [reference browser client](docs/CLIPBOARD_BROWSER.md) implements explicit
 text operations without automatic clipboard access (Iteration 238).
 [Private contract](docs/CLIPBOARD_IPC.md).
+HTML development adds an independently versioned bounded
+[inner item codec](docs/CLIPBOARD_IPC.md#html-inner-item-in-development).
+Private HELLO bit 256, CONFIGURE schema 13 and schema-3 HTML commands/state are
+implemented on `feature/html-clipboard`, along with shared public ownership and
+the explicit HTML control extension, browser byte client, reference ClipboardItem
+actions and inert selection conversion. Named Windows/Edge OS ClipboardItem
+acceptance also passes; real RDP rich-application/peer acceptance remains pending.
+[Private HTML handoff](docs/CLIPBOARD_IPC.md#private-worker-html-negotiation-and-handoff-in-development).
 RWC1 version-1 byte chunks fit the existing 4 KiB message bound.
 [Layout](docs/CLIPBOARD_CHUNKS.md), [commands/credit/deadlines](docs/CLIPBOARD_CONTROL.md).
 
@@ -95,6 +103,11 @@ Required server events include:
 - `clipboard.set.ready`
 - `clipboard.set.ack`
 - `clipboard.set.result`
+- `clipboard.html.data` (explicit experimental HTML selection)
+- `clipboard.html.data.complete`
+- `clipboard.html.set.ready`
+- `clipboard.html.set.ack`
+- `clipboard.html.set.result`
 - `printer.job.ready`
 - `device.status`
 - `stats.update`
@@ -109,6 +122,8 @@ Required client commands include:
 - `display.resize.request`
 - `clipboard.set`
 - `clipboard.request`
+- `clipboard.html.set` (explicit experimental HTML selection)
+- `clipboard.html.request`
 - `clipboard.ack`
 - `auth.response`
 - `certificate.response`

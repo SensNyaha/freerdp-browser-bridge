@@ -2,6 +2,7 @@
 #include "text_session.hpp"
 #include "ingress.hpp"
 #include <algorithm>
+#include <array>
 #include <exception>
 #include <freerdp/channels/channels.h>
 #include <freerdp/freerdp.h>
@@ -13,7 +14,31 @@
 namespace bridge::clipboard {
 namespace {
 constexpr UINT32 unicode_text = 13;
+constexpr UINT32 local_html = 0xc001;
 constexpr std::uint64_t timeout_ms = 5000;
+void wipe(std::vector<std::uint8_t> &bytes) noexcept {
+  volatile std::uint8_t *output = bytes.data();
+  for (std::size_t i = 0; i < bytes.size(); ++i)
+    output[i] = 0;
+  std::vector<std::uint8_t>{}.swap(bytes);
+}
+bool html_name(const char *name) noexcept {
+  if (!name)
+    return false;
+  // Registered Windows format names compare case-insensitively. Match only
+  // this fixed ASCII name and its terminator, never scan a peer string to EOF.
+  constexpr char expected[] = "html format";
+  for (std::size_t i = 0; i < sizeof(expected); ++i) {
+    auto c = static_cast<unsigned char>(name[i]);
+    if (c >= 'A' && c <= 'Z')
+      c = static_cast<unsigned char>(c - 'A' + 'a');
+    if (c != static_cast<unsigned char>(expected[i]))
+      return false;
+    if (!c)
+      return true;
+  }
+  return false;
+}
 } // namespace
 struct TextSession::Operation {
   TextSession &owner;
@@ -28,11 +53,13 @@ struct TextSession::Operation {
 UINT16 TextSession::resolve_channel(freerdp *instance) {
   return freerdp_channels_get_id_by_name(instance, "cliprdr");
 }
-TextSession::TextSession(TextPolicy policy, Offer offer, Reply reply, Clock clock, Resolve resolve)
-    : policy_(policy), offer_(std::move(offer)), reply_(std::move(reply)), clock_(std::move(clock)),
+TextSession::TextSession(TextPolicy policy, Offer offer, Reply reply, Clock clock, Resolve resolve,
+                         HtmlReply html_reply)
+    : policy_(policy), offer_(std::move(offer)), reply_(std::move(reply)),
+      html_reply_(std::move(html_reply)), clock_(std::move(clock)),
       resolve_(resolve) {
   if (!policy.maximum || policy.maximum > max_item_bytes || !offer_ || !reply_ || !clock_ ||
-      !resolve_)
+      !resolve_ || (policy.html && policy.from_server && !html_reply_))
     throw std::invalid_argument("Invalid clipboard text owner");
 }
 TextSession::~TextSession() {
@@ -41,15 +68,19 @@ TextSession::~TextSession() {
   (void)close();
 }
 void TextSession::wipe_local() noexcept {
-  std::fill(local_.begin(), local_.end(), 0);
-  std::vector<std::uint8_t>{}.swap(local_);
+  wipe(local_);
+  wipe(local_html_);
   state_.local_accepted = false;
+  state_.local_html_accepted = false;
 }
 void TextSession::release() noexcept {
   wipe_local();
   request_ = request_revision_ = 0;
+  remote_html_id_ = 0;
+  request_html_ = false;
   state_.ready = state_.remote_text = state_.awaiting_local = state_.awaiting_remote = false;
   state_.local_response_ok = false;
+  state_.remote_html = false;
   if (context_ && context_->custom == this) {
     context_->ServerCapabilities = saved_.ServerCapabilities;
     context_->MonitorReady = saved_.MonitorReady;
@@ -133,13 +164,20 @@ TextSession *TextSession::owner(CliprdrClientContext *c) noexcept {
   return s && s->context_ == c ? s : nullptr;
 }
 UINT TextSession::advertise() noexcept {
-  CLIPRDR_FORMAT format{unicode_text, nullptr};
+  char name[] = "HTML Format";
+  std::array<CLIPRDR_FORMAT, 2> formats{};
   CLIPRDR_FORMAT_LIST list{};
   list.common.msgType = CB_FORMAT_LIST;
-  list.numFormats = policy_.to_server && !local_.empty() ? 1 : 0;
-  list.formats = list.numFormats ? &format : nullptr;
+  if (policy_.to_server) {
+    if (policy_.html && !local_html_.empty())
+      formats[list.numFormats++] = {local_html, name};
+    if (!local_.empty())
+      formats[list.numFormats++] = {unicode_text, nullptr};
+  }
+  list.formats = list.numFormats ? formats.data() : nullptr;
   state_.awaiting_local = true;
   state_.local_accepted = false;
+  state_.local_html_accepted = false;
   state_.local_response_ok = false;
   local_deadline_ = now_ + timeout_ms;
   try {
@@ -217,6 +255,42 @@ UINT TextSession::set_local(::bridge::compat::span<const std::uint8_t> text) noe
     return fail();
   }
 }
+UINT TextSession::set_local_html(
+    ::bridge::compat::span<const std::uint8_t> fragment,
+    std::optional<::bridge::compat::span<const std::uint8_t>> text) noexcept {
+  Operation op(*this);
+  if (!op || !state_.ready || !policy_.to_server || !policy_.html || state_.awaiting_local)
+    return ERROR_INVALID_STATE;
+  if (fragment.size() > policy_.maximum ||
+      (text && text->size() > policy_.maximum - fragment.size()))
+    return ERROR_INVALID_DATA;
+  const auto html_size = encode_html_clipboard(fragment, {}, policy_.maximum);
+  if (html_size.status != TextStatus::capacity)
+    return ERROR_INVALID_DATA;
+  const auto text_size = text ? encode_unicode_text(*text, {}, policy_.maximum)
+                              : TextResult{TextStatus::capacity, 0};
+  if (text_size.status != TextStatus::capacity ||
+      text_size.bytes > policy_.maximum - html_size.bytes)
+    return ERROR_INVALID_DATA;
+  // Validate both representations and their aggregate before allocating either.
+  std::vector<std::uint8_t> value, html;
+  try {
+    value.resize(text_size.bytes);
+    html.resize(html_size.bytes);
+  } catch (...) {
+    return ERROR_NOT_ENOUGH_MEMORY;
+  }
+  if ((text && encode_unicode_text(*text, value, policy_.maximum).status != TextStatus::ok) ||
+      encode_html_clipboard(fragment, html, policy_.maximum).status != TextStatus::ok) {
+    wipe(value);
+    wipe(html);
+    return ERROR_INVALID_DATA;
+  }
+  wipe_local();
+  local_ = std::move(value);
+  local_html_ = std::move(html);
+  return advertise();
+}
 UINT TextSession::revoke_local() noexcept {
   Operation op(*this);
   if (!op || !state_.ready || state_.awaiting_local)
@@ -273,7 +347,10 @@ UINT TextSession::acknowledged(CliprdrClientContext *c,
     return s->fail();
   s->state_.awaiting_local = false;
   s->state_.local_response_ok = r->common.msgFlags == CB_RESPONSE_OK;
-  s->state_.local_accepted = s->state_.local_response_ok && !s->local_.empty();
+  s->state_.local_accepted =
+      s->state_.local_response_ok && (!s->local_.empty() || !s->local_html_.empty());
+  s->state_.local_html_accepted =
+      s->state_.local_response_ok && !s->local_html_.empty();
   if (!s->state_.local_accepted)
     s->wipe_local();
   return CHANNEL_RC_OK;
@@ -290,9 +367,27 @@ UINT TextSession::formats(CliprdrClientContext *c, const CLIPRDR_FORMAT_LIST *r)
     return s->fail();
   ++s->state_.revision;
   s->state_.remote_text = false;
+  s->state_.remote_html = false;
+  s->remote_html_id_ = 0;
   for (UINT32 i = 0; i < r->numFormats; ++i)
     if (r->formats[i].formatId == unicode_text && s->policy_.from_server)
       s->state_.remote_text = true;
+  if (s->policy_.html && s->policy_.from_server) {
+    for (UINT32 i = 0; i < r->numFormats; ++i) {
+      const auto &format = r->formats[i];
+      if (!html_name(format.formatName))
+        continue;
+      if (!format.formatId || format.formatId == unicode_text || s->remote_html_id_)
+        return s->fail();
+      // A named format ID is supplied by the peer, not by Windows on this host.
+      // No assumption about the peer OS's registered-ID range is made here.
+      for (UINT32 j = 0; j < r->numFormats; ++j)
+        if (j != i && r->formats[j].formatId == format.formatId)
+          return s->fail();
+      s->remote_html_id_ = format.formatId;
+    }
+    s->state_.remote_html = s->remote_html_id_ != 0;
+  }
   CLIPRDR_FORMAT_LIST_RESPONSE response{{CB_FORMAT_LIST_RESPONSE, CB_RESPONSE_OK, 0}};
   try {
     if (c->ClientFormatListResponse(c, &response) != CHANNEL_RC_OK)
@@ -305,15 +400,24 @@ UINT TextSession::formats(CliprdrClientContext *c, const CLIPRDR_FORMAT_LIST *r)
   return CHANNEL_RC_OK;
 }
 UINT TextSession::request(std::uint64_t revision, std::uint64_t id) noexcept {
+  return request_format(revision, id, false);
+}
+UINT TextSession::request_html(std::uint64_t revision, std::uint64_t id) noexcept {
+  return request_format(revision, id, true);
+}
+UINT TextSession::request_format(std::uint64_t revision, std::uint64_t id, bool html) noexcept {
   Operation op(*this);
-  if (!op || !id || !state_.ready || !policy_.from_server || !state_.remote_text ||
+  if (!op || !id || !state_.ready || !policy_.from_server ||
+      (html ? (!policy_.html || !state_.remote_html) : !state_.remote_text) ||
       state_.awaiting_remote || revision != state_.revision)
     return ERROR_INVALID_STATE;
   request_ = id;
   request_revision_ = revision;
+  request_html_ = html;
   state_.awaiting_remote = true;
   remote_deadline_ = now_ + timeout_ms;
-  CLIPRDR_FORMAT_DATA_REQUEST r{{CB_FORMAT_DATA_REQUEST, 0, 4}, unicode_text};
+  CLIPRDR_FORMAT_DATA_REQUEST r{{CB_FORMAT_DATA_REQUEST, 0, 4},
+                                html ? remote_html_id_ : unicode_text};
   try {
     const auto rc = context_->ClientFormatDataRequest(context_, &r);
     return rc == CHANNEL_RC_OK ? rc : fail();
@@ -334,11 +438,15 @@ UINT TextSession::requested(CliprdrClientContext *c,
   CLIPRDR_FORMAT_DATA_RESPONSE response{};
   response.common.msgType = CB_FORMAT_DATA_RESPONSE;
   response.common.msgFlags = CB_RESPONSE_FAIL;
-  if (s->policy_.to_server && s->state_.local_accepted && !s->state_.awaiting_local &&
-      r->requestedFormatId == unicode_text && !s->local_.empty()) {
-    response.common.msgFlags = CB_RESPONSE_OK;
-    response.common.dataLen = static_cast<UINT32>(s->local_.size());
-    response.requestedFormatData = s->local_.data();
+  if (s->policy_.to_server && s->state_.local_accepted && !s->state_.awaiting_local) {
+    const auto *value = r->requestedFormatId == unicode_text ? &s->local_
+                        : s->policy_.html && r->requestedFormatId == local_html ? &s->local_html_
+                                                                              : nullptr;
+    if (value && !value->empty()) {
+      response.common.msgFlags = CB_RESPONSE_OK;
+      response.common.dataLen = static_cast<UINT32>(value->size());
+      response.requestedFormatData = value->data();
+    }
   }
   try {
     return c->ClientFormatDataResponse(c, &response) == CHANNEL_RC_OK ? CHANNEL_RC_OK : s->fail();
@@ -362,6 +470,10 @@ UINT TextSession::received(CliprdrClientContext *c,
   const auto id = s->request_;
   s->request_ = 0;
   s->state_.awaiting_remote = false;
+  if (s->request_html_) {
+    s->request_html_ = false;
+    return s->received_html(*r, id);
+  }
   std::vector<std::uint8_t> text;
   auto status = TextReply::refused;
   if (s->request_revision_ != s->state_.revision)
@@ -388,8 +500,31 @@ UINT TextSession::received(CliprdrClientContext *c,
     accepted = s->reply_(id, status, text);
   } catch (...) { /* Consumer fault retires below. */
   }
-  std::fill(text.begin(), text.end(), 0);
+  wipe(text);
   return accepted ? CHANNEL_RC_OK : s->fail();
+}
+UINT TextSession::received_html(const CLIPRDR_FORMAT_DATA_RESPONSE &r, std::uint64_t id) noexcept {
+  HtmlView view;
+  auto status = TextReply::refused;
+  if (request_revision_ != state_.revision)
+    status = TextReply::stale;
+  else if (r.common.msgFlags == CB_RESPONSE_OK) {
+    const ::bridge::compat::span<const std::uint8_t> wire{r.requestedFormatData, r.common.dataLen};
+    const auto inspection = inspect_html_clipboard(wire, policy_.maximum);
+    if (inspection.status != TextStatus::ok)
+      return fail();
+    view = {wire.subspan(inspection.body_offset, inspection.body_bytes),
+            inspection.fragment_offset - inspection.body_offset, inspection.fragment_bytes,
+            inspection.selection ? inspection.selection_offset - inspection.body_offset : 0,
+            inspection.selection_bytes, inspection.context, inspection.selection, wire.size()};
+    status = TextReply::ok;
+  }
+  bool accepted = false;
+  try {
+    accepted = html_reply_(id, status, view);
+  } catch (...) { /* Consumer fault retires both formats below. */
+  }
+  return accepted ? CHANNEL_RC_OK : fail();
 }
 bool TextSession::poll() noexcept {
   Operation op(*this);
