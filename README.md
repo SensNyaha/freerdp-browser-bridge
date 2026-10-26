@@ -4,18 +4,18 @@
 Node.js для HTTP/WebSocket API. FreeRDP выполняется вне процесса Node.js.
 Можно встроить bridge в существующий backend или установить отдельную службу.
 
-Текущий публичный релиз — **0.3.0**. Все десять npm-пакетов и пять GitHub
+Текущий публичный релиз — **0.4.0**. Все десять npm-пакетов и пять GitHub
 Releases опубликованы; чистые установки четырёх адаптеров проверены на Windows
 и Linux. Standalone MSI/DEB/RPM/ZIP/TGZ автоматически опубликованы по push в
 `main`; обновления проверены на Windows Server 2025, Ubuntu 24.04,
 Astra Linux 1.7.5 и RED OS 7.3.
-[Приёмка и границы поддержки](docs/RUNTIME_RECOVERY.md#030-public-delivery).
+[Приёмка и границы поддержки](docs/CLIPBOARD_BROWSER.md#040-public-delivery).
 
 ## Использование
 
 | Задача | С чего начать |
 | --- | --- |
-| Установить отдельный web-сервер с приватным Node.js | [Standalone: установка и эксплуатация](docs/STANDALONE.md), [скачать 0.3.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.3.0) |
+| Установить отдельный web-сервер с приватным Node.js | [Standalone: установка и эксплуатация](docs/STANDALONE.md), [скачать 0.4.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.4.0) |
 | Подключить к Fastify | [Реальный проект Fastify](docs/FASTIFY_USAGE.md) |
 | Подключить к NestJS | [Реальный проект NestJS](docs/NESTJS_USAGE.md) |
 | Подключить к Node HTTP/HTTPS | [Реальный проект node:http](docs/NODE_HTTP_USAGE.md) |
@@ -27,10 +27,10 @@ Astra Linux 1.7.5 и RED OS 7.3.
 Например, Express на Linux x64/glibc:
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
+npm install express@5.3.0 @freerdp-bridge/express@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
 ```
 
-На Windows x64 выбирайте `@freerdp-bridge/runtime-win32-x64@0.3.0`.
+На Windows x64 выбирайте `@freerdp-bridge/runtime-win32-x64@0.4.0`.
 Готовым npm/standalone комплектам не нужен системный FreeRDP или компилятор.
 Для standalone не нужен и глобальный Node.js. macOS, ARM и musl этими
 проверками не приняты.
@@ -42,7 +42,7 @@ RDP-сессию и передаёт её в браузер. Standalone подх
 Java/Python/Go/.NET, внутренним порталам и учебным стендам.
 Изображение, ввод, resize, звук и буфер обмена зависят от capability report и
 принятого профиля: [практический MVP](docs/MVP_ACCEPTANCE.md),
-[приёмка 0.3.0](docs/RUNTIME_RECOVERY.md#030-local-release-acceptance).
+[приёмка 0.4.0](docs/CLIPBOARD_BROWSER.md#040-versioned-distribution-acceptance).
 
 Desktop GUI, Electron, управление VM, запись и совместный просмотр не входят
 в этот релиз. Произвольные USB/смарт-карты браузера не поддерживаются одним
@@ -64,6 +64,6 @@ environment, логи или артефакты; [безопасность](SECU
 
 [Changelog](CHANGELOG.md) сохраняет историю версий. 0.2.3 оставлена архивной:
 семь отсутствующих JS npm-версий не допубликовываются по решению пользователя;
-полные 0.2.4/0.2.5 и 0.3.0 доступны. [Решение и очистка](docs/ITERATION_458.md).
+полные 0.2.4/0.2.5 и 0.4.0 доступны. [Решение и очистка](docs/ITERATION_458.md).
 [Предыдущий подробный README](docs/history/README_BEFORE_458.md) сохранён;
 нормативные документы и исторические отчёты не удалены.

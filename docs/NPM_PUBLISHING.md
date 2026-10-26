@@ -5,9 +5,9 @@ GitHub owner `SensNyaha`, npm scope `@freerdp-bridge`. Ручная очеред
 остановлена; не возобновлять её автоматически. Исторические сведения о
 staging ниже сохранены, но staging сам по себе не устраняет ручную 2FA.
 
-Текущая приёмка: **0.3.0 полностью опубликован в npm** — десять exact accepted
+Текущая приёмка: **0.4.0 полностью опубликован в npm** — десять exact accepted
 архивов, пять успешных OIDC workflows и все четыре fresh registry-only consumers
-на Windows/Linux; [проверки](RUNTIME_RECOVERY.md#030-public-delivery). Финальные standalone установщики
+на Windows/Linux; [проверки](CLIPBOARD_BROWSER.md#040-public-delivery). Финальные standalone установщики
 также опубликованы и проверены в этом отчёте. Историческая 0.2.5 также полностью
 публична; [её приёмка](ITERATION_457.md).
 **0.2.2 полностью опубликован**, точные публичные bytes и

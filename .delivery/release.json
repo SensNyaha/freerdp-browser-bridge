@@ -131,8 +131,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 16097,
-      "sha256": "01bd13c4650cebd4944aad24a6c611fe13c31244e822be55d0b2ec8e3ea763f7"
+      "bytes": 16273,
+      "sha256": "a2e834db53cbd351d6652612f95cd3bc625bc8889e19618704d8fec59a6d24bd"
     },
     {
       "path": "CMakeLists.txt",
@@ -196,8 +196,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 5376,
-      "sha256": "5727b5ac5eaf0629183f69da10f1770bd91bf739f1dfa623c51aacab81ef16b0"
+      "bytes": 5387,
+      "sha256": "8ef8f4e30e570bafe6145a2084be2cf3d4e2617c34db76c9caad28a261ace6fe"
     },
     {
       "path": "SECURITY.md",
@@ -226,8 +226,8 @@
     },
     {
       "path": "TODO.md",
-      "bytes": 227200,
-      "sha256": "b6e06ca4c96b9f3c206bf8456a3e860592be1a94bbfb90a0bd3ab2b0f674af3e"
+      "bytes": 228189,
+      "sha256": "c334ac6bb55cf01e8a94d8d5fdb73fffb33636bc9cbb317eb1ec8c9be19fe591"
     },
     {
       "path": "TRACEABILITY.md",
@@ -716,8 +716,8 @@
     },
     {
       "path": "docs/CLIPBOARD_BROWSER.md",
-      "bytes": 54052,
-      "sha256": "a5108c8802530e53e61e469565ec1e26e7f3ebde277d635ce5bac16e82f1c1a7"
+      "bytes": 59267,
+      "sha256": "25815055420bd112953d3ee2508bb4470f1439041fc8f7a693e351fdd86a8acd"
     },
     {
       "path": "docs/CLIPBOARD_CHUNKS.md",
@@ -786,8 +786,8 @@
     },
     {
       "path": "docs/DEVELOPMENT.md",
-      "bytes": 79546,
-      "sha256": "281521b69fb4fd3a3e017c7607c945a58dc9b8cd867014c4109142bb12a7cc81"
+      "bytes": 80005,
+      "sha256": "201dc65ab4384e0a85bd96b3133e85decd7526b7232a81409e44e044d3e0f207"
     },
     {
       "path": "docs/DIRTY_REGIONS.md",
@@ -876,8 +876,8 @@
     },
     {
       "path": "docs/EXPRESS_USAGE.md",
-      "bytes": 15751,
-      "sha256": "d67eb1ea0a09b97fecbdce2d35e016bcc61180b054f00d86e144a5cc163dd42a"
+      "bytes": 15752,
+      "sha256": "c36de4ad6b7e4928bcab830058c59189286557f73fb494dbafc6c017d8a00525"
     },
     {
       "path": "docs/FASTIFY_PLUGIN.md",
@@ -886,8 +886,8 @@
     },
     {
       "path": "docs/FASTIFY_USAGE.md",
-      "bytes": 19967,
-      "sha256": "089e283fb0ba911c7719a134e39f5816b700aa20f0d3d88071beb7877ad5316b"
+      "bytes": 19968,
+      "sha256": "0a5451511e8427f4b988ab31a5bb3c1ae583406f8292ea168e8ae81fb01768ae"
     },
     {
       "path": "docs/FRAMEWORK_SELECTION.md",
@@ -926,8 +926,8 @@
     },
     {
       "path": "docs/GITHUB_DELIVERY.md",
-      "bytes": 18842,
-      "sha256": "82c3c4d4dfd629d0a3c21c0d1ec7593304b14cd9bae0f0ad5b30fe8c40dba143"
+      "bytes": 18843,
+      "sha256": "1fdf9cde8b8eae1fde4a1e8e011fe9c73e550594b05a145fcba34e5765b869f7"
     },
     {
       "path": "docs/GITHUB_DELIVERY_IMPLEMENTATION.md",
@@ -1181,8 +1181,8 @@
     },
     {
       "path": "docs/NATIVE_NPM_RUNTIME.md",
-      "bytes": 13188,
-      "sha256": "4e25928763be860b93fc51acb7f225b34ee6b3d3362be0f8f56b931a4f39ba05"
+      "bytes": 13189,
+      "sha256": "7fd58fbc996995389ca556d5ddf27d3e41e7255d7a8393cb65a3e486b2975b4d"
     },
     {
       "path": "docs/NESTJS_PLUGIN.md",
@@ -1191,8 +1191,8 @@
     },
     {
       "path": "docs/NESTJS_USAGE.md",
-      "bytes": 18030,
-      "sha256": "4c2f4208dae4d5ae8af936039a9946c924069e96457d13e907bcebc8365220ce"
+      "bytes": 18031,
+      "sha256": "328f4015862aac699d2a107896dc3b9646617e93767c489f0b79df8c88f4d145"
     },
     {
       "path": "docs/NODE_HTTP_PLUGIN.md",
@@ -1201,8 +1201,8 @@
     },
     {
       "path": "docs/NODE_HTTP_USAGE.md",
-      "bytes": 16111,
-      "sha256": "79f5f573e4a5edbe1faa8f31b98d0473434bd2f95b8e32fce0c47a8c498199ee"
+      "bytes": 16112,
+      "sha256": "76fd4dca16b4abcb2f665f7fec65447225fc9f9dc9d97fcb8f1188f132a16efb"
     },
     {
       "path": "docs/NODE_SEQPACKET.md",
@@ -1226,13 +1226,13 @@
     },
     {
       "path": "docs/NPM_PUBLISHING.md",
-      "bytes": 20824,
-      "sha256": "02707530c4409321dbce6afec1ca79509037ad6291f5a0beab2169f1301fdb89"
+      "bytes": 20825,
+      "sha256": "5f71df224eebc30431cb6df5c66af1d2082885f5fa5a27d8b2bec6d0649d20c0"
     },
     {
       "path": "docs/NPM_TRUSTED_PUBLISHING.md",
-      "bytes": 10590,
-      "sha256": "eebceb96b1bdf2079b2768b46d90ce5bba07431fe15816d09830d6575eeb15b0"
+      "bytes": 10591,
+      "sha256": "bb874463e572dc80d8c4b9895e2b8da59687c92648cb361be6a37b5db4b8408d"
     },
     {
       "path": "docs/OWNED_XRDP_LAB.md",
@@ -1301,8 +1301,8 @@
     },
     {
       "path": "docs/README.md",
-      "bytes": 8709,
-      "sha256": "944db0ccb4fdf51c2269f1d150b0a3264a9b6fa71a07e6185e2aa9704cd5a924"
+      "bytes": 8720,
+      "sha256": "d2c165201c3b8c50d1edb47556b569e543308762ed86f4f802d644c2627ea8d8"
     },
     {
       "path": "docs/RUNTIME_RECOVERY.md",
@@ -1331,13 +1331,13 @@
     },
     {
       "path": "docs/STANDALONE.md",
-      "bytes": 23542,
-      "sha256": "f37a02213437a3c6a423a155d46795e6225f304c102fbda8606a5b55844f02b7"
+      "bytes": 23657,
+      "sha256": "bd257e12acb6387499fcd0c377f9b9ee339708aa5debdb3c562d03b91d7d70de"
     },
     {
       "path": "docs/STANDALONE_INSTALL.md",
-      "bytes": 9393,
-      "sha256": "8bc699db9d74c20461d243b0ba213e8a3318535ea3b6b9fd9ba10162fc153d2a"
+      "bytes": 9394,
+      "sha256": "77521c1521a99d998956b51fb518f8ba7a90f3a50f4501aaeb3f2c585f56d577"
     },
     {
       "path": "docs/V1_NEXT_STEPS.md",
@@ -1346,8 +1346,8 @@
     },
     {
       "path": "docs/VERSIONING.md",
-      "bytes": 10291,
-      "sha256": "e03e78302bde9966dcc0769eadafb42124489d9cc5c2bce91adc25e261845a17"
+      "bytes": 10560,
+      "sha256": "22c63a0e57843d1dab75836445fd94cf7cf555f74eede4742483fca629db0775"
     },
     {
       "path": "docs/VIDEO_QUALITY.md",

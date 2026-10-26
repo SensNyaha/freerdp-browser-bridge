@@ -1,9 +1,9 @@
 # Встраивание bridge в настоящий Express-проект
 
-Адаптер принят в **0.2.4**; текущий набор **0.3.0** опубликован в npm и GitHub.
+Адаптер принят в **0.2.4**; текущий набор **0.4.0** опубликован в npm и GitHub.
 Все десять согласованных
 пакетов имеют принятый integrity; чистые Windows/Linux consumers проходят
-strict TypeScript и 11/11 проверок. [Публикация](RUNTIME_RECOVERY.md#030-public-delivery),
+strict TypeScript и 11/11 проверок. [Публикация](CLIPBOARD_BROWSER.md#040-public-delivery),
 [release-приёмка](ITERATION_438.md), [контракт](EXPRESS_PLUGIN.md).
 
 ## Установка и структура приложения
@@ -12,7 +12,7 @@ strict TypeScript и 11/11 проверок. [Публикация](RUNTIME_RECO
 Установка в существующем проекте:
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
+npm install express@5.3.0 @freerdp-bridge/express@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -23,7 +23,7 @@ npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 `"type": "module"`. Не копируйте workspace-исходники в `node_modules`.
 
 На Windows x64 вместо Linux runtime явно установите
-`@freerdp-bridge/runtime-win32-x64@0.3.0`. На Windows x64 и Linux x64 glibc
+`@freerdp-bridge/runtime-win32-x64@0.4.0`. На Windows x64 и Linux x64 glibc
 `resolveNativeRuntime()` выбирает уже установленный пакет нужной платформы,
 проверяет версию, FreeRDP pin, inventory и hashes. Resolver не скачивает runtime.
 Общие JS-пакеты http/api/node/config/protocol устанавливаются автоматически

@@ -1,13 +1,13 @@
 # Standalone service and installers
 
-Standalone **0.3.0** has passed local release acceptance on its feature/release
+Standalone **0.4.0** has passed local release acceptance on its feature/release
 branches: aligned native/JS archives, exact external consumers, portable and
 Windows/Ubuntu/Astra/RED OS installed upgrades, plus eight real desktop profiles.
-[Acceptance and scope](RUNTIME_RECOVERY.md#030-local-release-acceptance). All ten exact npm packages and four
+[Acceptance and scope](CLIPBOARD_BROWSER.md#040-versioned-distribution-acceptance). All ten exact npm packages and four
 fresh Windows/Linux registry-only consumers pass. Automatic main-push MSI/DEB/
 RPM/portable publication, final downloads and actual public DEB/RPM upgrades on
-Astra/RED OS pass; [public delivery](RUNTIME_RECOVERY.md#030-public-delivery).
-[Download 0.3.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.3.0).
+Astra/RED OS pass; [public delivery](CLIPBOARD_BROWSER.md#040-public-delivery).
+[Download 0.4.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.4.0).
 For ready-made distributions, start with the concise
 [installation and operations guide](STANDALONE_INSTALL.md).
 
@@ -54,7 +54,8 @@ provide that package. This source entry point alone is not an installer.
 Version 0.3.0 also runs bounded runtime recovery before opening HTTP,
 prints a content-free `STANDALONE_RUNTIME_RECOVERY` counter record and refuses
 readiness if the native cohort is unavailable or scanning is incomplete.
-This is included in the published 0.3.0 archives.
+Published 0.4.0 retains that recovery contract and adds opt-in HTML clipboard in
+the [accepted named profiles](CLIPBOARD_BROWSER.md#040-public-delivery).
 [Recovery/retention contract](RUNTIME_RECOVERY.md).
 SIGINT/SIGTERM and Windows SIGBREAK join service/worker cleanup with a bounded
 shutdown deadline. The HTTP API is under `/rdp`. Native build/readiness remains

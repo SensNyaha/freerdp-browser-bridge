@@ -8,9 +8,9 @@ Windows/Linux проверены в [426](history/iterations/401-450.md#iteratio
 в [итерации 420](history/iterations/401-450.md#iteration-420) и [итерации 421](history/iterations/401-450.md#iteration-421);
 они не переименовываются в релизные архивы 0.2.1.
 
-Текущий согласованный npm-набор — **0.3.0**: десять точных архивов публичны,
+Текущий согласованный npm-набор — **0.4.0**: десять точных архивов публичны,
 все четыре adapter проходят свежие Windows/Linux registry-only consumers.
-[Публикация](RUNTIME_RECOVERY.md#030-public-delivery). Ниже обычная установка использует этот набор;
+[Публикация](CLIPBOARD_BROWSER.md#040-public-delivery). Ниже обычная установка использует этот набор;
 первоначальная приёмка 0.2.1 выше сохранена как история.
 
 ## Установка в приложении
@@ -25,14 +25,14 @@ CMake, compiler, system FreeRDP или сетевой `postinstall`. Node.js и 
 | `@freerdp-bridge/runtime-linux-x64-gnu` | Linux x64 с glibc; worker, IPC-only addon, process query, private DSOs, notices |
 | `@freerdp-bridge/runtime-win32-x64` | Windows x64; worker, private directory/resource helper, DLL/CRT, notices |
 
-Для опубликованного 0.3.0 выберите одну команду под ОС сервера:
+Для опубликованного 0.4.0 выберите одну команду под ОС сервера:
 
 ```sh
 # Linux x64 / glibc
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.3.0 @freerdp-bridge/runtime-linux-x64-gnu@0.3.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
 
 # Windows x64
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.3.0 @freerdp-bridge/runtime-win32-x64@0.3.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.4.0 @freerdp-bridge/runtime-win32-x64@0.4.0
 ```
 
 Для ещё неопубликованного development-снимка установите соответствующие локальные

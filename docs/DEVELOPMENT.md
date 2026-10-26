@@ -13,6 +13,13 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
+HTML clipboard **0.4.0** is publicly delivered: ten exact npm packages, five
+GitHub Releases, stable standalone installers/source companions, four fresh
+registry-only consumers per OS and final public Astra/RED OS upgrades pass.
+Feature/release branches are merged into shared `master` at `53b5edb`.
+[Public delivery and current CI follow-up](CLIPBOARD_BROWSER.md#040-public-delivery).
+The preparation checkpoints below retain their historical scope/status.
+
 HTML source acceptance is now complete at private `bba3c98` / public `04fd0cc`:
 all hosted foundation/GCC 8.3/sanitizer/fuzz checks and the named application
 profiles pass. [Evidence and limits](CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
