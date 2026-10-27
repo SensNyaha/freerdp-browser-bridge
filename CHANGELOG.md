@@ -4,37 +4,29 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-- Add explicit image ClipboardItem paste/send/get/copy/clear actions, bounded
+- Add opt-in negotiated image clipboard alongside text/HTML. Allocation-free
+  packed DIB/DIBV5 inspection and RGBA8 conversion, canonical DIBV5 writes,
+  bounded C++/TypeScript inner records and versioned worker negotiation feed
+  typed public image read/write operations over RWC1. Formats share controller
+  authority, one transfer flight, item quotas, revision and joined revoke.
+  Native DIBV5 write admission includes its header under the 16 MiB item cap.
+  [Native contract](docs/CLIPBOARD_TEXT.md#shared-native-image-owner-in-development),
+  [private IPC](docs/CLIPBOARD_IPC.md#private-image-handoff-in-development),
+  [public control](docs/CLIPBOARD_CONTROL.md#image-control-extension-in-development).
+- Add explicit image ClipboardItem Paste/Send/Get/Copy/Clear actions, bounded
   previews and independent image selection in the reference connection form.
-  PNG conversion uses one disposable browser worker with cancellation/deadline;
-  a named actual Windows/Edge opaque PNG OS profile passes. Actual RDP image
-  application and release acceptance remain open.
-  [Actions contract](docs/CLIPBOARD_BROWSER.md#explicit-image-actions-in-development).
-- Add the independent browser RGBA codec and negotiated image byte client, sharing
-  text/HTML transfer authority, bounded credit and cleanup. Explicit ClipboardItem
-  actions and actual OS/RDP image application acceptance remain open.
-  [Browser contract](docs/CLIPBOARD_BROWSER.md#image-byte-client-in-development).
-
-- Start the Stage 7 image clipboard feature with allocation-free packed DIB /
-  DIBV5 inspection and RGBA8 conversion. This component does not enable a new
-  clipboard capability or constitute browser/RDP image acceptance.
-  [Development contract](docs/CLIPBOARD_TEXT.md#image-codec-in-development).
-- Add independent bounded C++/TypeScript codecs for the image RGBA8 inner item,
-  with a fixed 16-byte header, exact geometry checks and native DIBV5 write
-  admission. Outer commands, negotiation and live image dispatch remain pending.
-  [Inner wire contract](docs/CLIPBOARD_IPC.md#image-inner-item-in-development).
-- Add opt-in image handling to the shared native CLIPRDR callback owner: one
-  remote text/HTML/image flight, canonical DIBV5 local replacement and the
-  existing revoke barrier. Worker/public/browser selection remains pending.
-  [Native owner contract](docs/CLIPBOARD_TEXT.md#shared-native-image-owner-in-development).
-- Connect the shared native image owner to versioned private worker/Node
-  negotiation, bounded binary commands and typed image read/write methods.
-  Public managed image selection and browser/application acceptance remain open.
-  [Private handoff contract](docs/CLIPBOARD_IPC.md#private-image-handoff-in-development).
-- Add shared public image controller authority, exact adapter reservations and
-  bounded RWC1 image transfer on the existing control WebSocket. Browser image
-  actions and actual OS/RDP application acceptance remain open.
-  [Public contract](docs/CLIPBOARD_CONTROL.md#image-control-extension-in-development).
+  The browser byte client shares text/HTML credit, deadlines and cleanup. PNG
+  conversion uses one disposable worker with cancellation and a finite deadline.
+  Automatic conversion profiles cover non-square opaque pixels, representable
+  alpha and near-16-MiB input; this does not promise arbitrary alpha/color-space
+  fidelity or universal browser Clipboard API availability.
+  [Actions and limits](docs/CLIPBOARD_BROWSER.md#explicit-image-actions-in-development).
+- Verify named real Edge opaque PNG OS and RDP application roundtrips through
+  Windows and Linux workers, including Linux RWS1/framed IPC, exact pixels in
+  both directions, a newer remote revision, strict approved certificate and
+  joined cleanup. Hosted and versioned npm/standalone acceptance remain separate;
+  published 0.4.0 does not contain this image capability.
+  [Actual application scope](docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
 
 ## 0.4.0 — 2026-10-26
 

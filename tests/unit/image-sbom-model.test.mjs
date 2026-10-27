@@ -105,6 +105,43 @@ test('image SBOM refuses registry references, wrong platform, excessive size and
     });
 });
 
+test('image SBOM identity diagnostics distinguish fixed refusal reasons without including inspected metadata', () => {
+  const f = fixture();
+  const changes = [
+    [undefined, 'RECORDS'],
+    [[], 'RECORDS'],
+    [[null], 'ID'],
+    [[{ ...f.inspected, Id: 'private-invalid-id' }], 'ID'],
+    [[{ ...f.inspected, Os: 'private-invalid-os' }], 'PLATFORM'],
+    [[{ ...f.inspected, Architecture: 'private-invalid-arch' }], 'PLATFORM'],
+    [[{ ...f.inspected, Size: undefined }], 'SIZE'],
+    [[{ ...f.inspected, Size: 256 * 1024 * 1024 + 1 }], 'SIZE'],
+    [[{ ...f.inspected, RootFS: undefined }], 'LAYERS'],
+    [
+      [{ ...f.inspected, RootFS: { Layers: ['private-invalid-layer'] } }],
+      'LAYERS',
+    ],
+  ];
+  for (const [input, reason] of changes) {
+    const before = structuredClone(input);
+    assert.throws(
+      () => imageInspection(input),
+      (error) => {
+        assert.equal(error.message, 'SBOM_IMAGE_IDENTITY');
+        assert.equal(error.code, 'SBOM_IMAGE_IDENTITY_' + reason);
+        assert.equal(error.cause, undefined);
+        assert.equal(JSON.stringify(error).includes('private-'), false);
+        return true;
+      },
+    );
+    assert.deepEqual(input, before);
+  }
+  assert.equal(
+    imageInspection([{ ...f.inspected, Size: 256 * 1024 * 1024 }]).Size,
+    256 * 1024 * 1024,
+  );
+});
+
 test('image SBOM refuses changed blobs, missing targets and excessive descriptor depth', async () => {
   const f = fixture();
   await assert.rejects(

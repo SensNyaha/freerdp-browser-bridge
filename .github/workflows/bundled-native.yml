@@ -129,7 +129,9 @@ jobs:
           docker run --rm --network none --init --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /run/freerdp-bridge:rw,noexec,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=700 freerdp-bridge-service-check
       - name: Inventory final runtime image with hash-pinned Syft
         if: runner.os == 'Linux'
-        run: node scripts/scan-runtime-image.mjs freerdp-bridge-service
+        run: |
+          docker image inspect --format 'SBOM_IMAGE_SIZE_BYTES={{.Size}} SBOM_IMAGE_ROOTFS_LAYERS={{len .RootFS.Layers}}' freerdp-bridge-service
+          node scripts/scan-runtime-image.mjs freerdp-bridge-service
       - uses: actions/upload-artifact@v4
         with:
           name: native-runtime-${{ runner.os }}

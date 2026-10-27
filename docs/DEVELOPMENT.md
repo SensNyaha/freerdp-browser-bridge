@@ -1381,8 +1381,18 @@ an empty host HOME reproduces the missing-tarball error before the explicit
 store, then checks the actual clean source build, production deploy/import and
 unchanged lockfile against the populated shared store. Its logs are bound in
 `build/current-validation/image-builder-pnpm-store-acceptance.json`.
-Complete hosted service assembly/inventory remains pending. Actual Astra/RED OS
-application and installed-runtime acceptance stays separate.
+Corrected-source public `c04c030` then passes the cold Linux native build/CTest
+41/41, full linked Node 1184/119 skips, clean offline Node source build and
+production deploy/import, both application/native SBOM archives, and restricted
+native and full API runtime probes. The final image inventory step fails with
+`SBOM_IMAGE_IDENTITY` before scanning; the saved log does not identify which
+inspection field was refused. The fixed refusal codes described in
+[the SBOM contract](SBOM.md) preserve all original admission limits. Local
+`build/current-validation/image-actual-linux-hosted-checkpoint.json` binds the
+terminal job/step states, counted tests and successful probe receipts. Windows
+bundled `c04c030` passes CTest 40/40, Node 1227/71 skips, relocation and CRT/SBOM
+checks. Final Linux image inventory and overall bundled acceptance remain open.
+Actual Astra/RED OS application and installed-runtime acceptance stays separate.
 
 The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)
 uses the pinned compiler image and hash-checked offline build tools. Follow the

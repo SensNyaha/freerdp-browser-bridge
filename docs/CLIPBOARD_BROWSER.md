@@ -1322,6 +1322,29 @@ per-host reports, adapted probe hashes and cleanup. These are named native
 runtime/kernel compatibility checks, not actual image application or installer
 acceptance.
 
+### Image artifact-only full service checkpoint
+
+An additional local full-service checkpoint consumes the exact native archive
+above and a fresh 3,586,519-byte production Node archive, SHA256
+`8e652bc75ace64fe16b4ce1fc657a91e1765569fb15bcb58d99ef8e1d9c67fb9`.
+The offline Node assembly verifies 1,150 non-Markdown/non-workflow source hashes
+against the accepted source snapshot. Both original service Dockerfile targets
+build without network access. The unchanged artifact-only API probe passes in
+the verification image: UID1000, read-only root, CapDropALL, no-new-privileges,
+network disabled, and only a private 16 MiB noexec runtime tmpfs. There are no
+source, SDK or build mounts. Default authentication denial, synthetic host
+identity with actual native lifecycle/RWS1, expected loopback connection refusal,
+joined server shutdown and empty runtime all pass.
+
+All 39 packaged browser assets, including image modules/workers, match their
+source bytes. The packaged worker separately reports image/HTML/revoke hooks
+and overall `rdp:false`. This probe makes no real RDP or OS clipboard connection;
+the three actual application profiles below remain separate. Local
+`build/current-validation/image-service-runtime-acceptance.json` binds the two
+archive hashes, exact Docker/probe inputs, image IDs, terminal log and asset
+comparison. These are development 0.4.0 bytes, not replacement public assets or
+0.5.0 installer acceptance. The corrected hosted full-service run remains open.
+
 ### Image hosted Windows bundled checkpoint
 
 The Windows job in

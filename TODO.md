@@ -160,6 +160,15 @@ default pnpm stores. An explicit shared store now passes the actual offline
 clean build/deploy/import regression with an empty host HOME and unchanged
 lockfile. Workflow lint passes; complete hosted service assembly still requires
 the corrected-source run. [Builder procedure](docs/DEVELOPMENT.md).
+Corrected-source `c04c030` passes all foundation/sanitizer/fuzz and exact GCC 8.3
+jobs, Windows bundled CTest 40/40 and Node 1227/71 skips, plus Linux bundled
+CTest 41/41 and Node 1184/119 skips. Linux clean offline Node assembly/deploy,
+application/native SBOM and restricted full API runtime also pass. The final
+image inventory step fails before scanning with generic `SBOM_IMAGE_IDENTITY`;
+its cause remains unverified. Fixed payload-free refusal codes are locally
+tested without changing image size, platform or digest guards. The original
+failure is retained; final image inventory, feature merge and versioned release
+acceptance remain open. [SBOM diagnostic scope](docs/SBOM.md).
 
 The earlier preparation checkpoints below retain their historical scope.
 

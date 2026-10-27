@@ -2,7 +2,7 @@
   "schema": 1,
   "branch": "feature/image-clipboard",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "41b411d4d2d8dadd5f9c9b3e4ea01ac19c72e309",
+  "privateSourceCommit": "a4191100b6e318f7150f99437ea7413e56f18c6c",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
   "actualImageRdpAccepted": true,
@@ -13,8 +13,8 @@
       "sha256": "baf8ead8ef7214f1ecdababa35fd223c4d961b6b5a45c1be573ef222cb587dd4"
     },
     "CHANGELOG.md": {
-      "bytes": 18622,
-      "sha256": "91e1cfda6630882503b709f13604df2ed74dd656716beaf68ecbe3753945dffa"
+      "bytes": 18091,
+      "sha256": "4f65478c7097d12a0df45406084c9ae7e307d3fa3a314aff1a859a4bc782579d"
     },
     "CMakeLists.txt": {
       "bytes": 49670,
@@ -25,8 +25,8 @@
       "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
     },
     "TODO.md": {
-      "bytes": 239567,
-      "sha256": "ab26e51afcac0fec003af1d1fe36d8059ec8bcf269a1c4ef7611169720b2c8f2"
+      "bytes": 240255,
+      "sha256": "029b877545c5fc37e8f0f65edcf5faeb7abda0cd02f0670187a5f1e152a64106"
     },
     "apps/bridge-api/src/clipboard.ts": {
       "bytes": 6634,
@@ -73,8 +73,8 @@
       "sha256": "a7d650226992e44b9aa08b4a4283120bcb2d7408239a2ef535d2c2c32e229d24"
     },
     "docs/CLIPBOARD_BROWSER.md": {
-      "bytes": 89755,
-      "sha256": "f36622ce45f00eb441716372cf79e2cfde0cca67280a5a4cf88fc345bbb9d81a"
+      "bytes": 91241,
+      "sha256": "4188f9380699a9dba899d7d2198b54b927f5f0a2ac369e11329e7934f0aaddc6"
     },
     "docs/CLIPBOARD_CONTROL.md": {
       "bytes": 12464,
@@ -421,8 +421,8 @@
       "sha256": "a7616414ced80e039850a1b888edd47e35bc70eb8b5e2af378ff960113cfb2c2"
     },
     ".github/workflows/bundled-native.yml": {
-      "bytes": 7247,
-      "sha256": "817435adc075dd3bdcb6efbcfea2c61fa7c9e5f33dbaf995d2bc7f69e8664e0e"
+      "bytes": 7404,
+      "sha256": "15e56fc6579fac488ce59a12e6f26f1b7c4868b945d66808ab1d066283cc5392"
     },
     "docker/gcc83-bundled-builder.Dockerfile": {
       "bytes": 2407,
@@ -433,8 +433,8 @@
       "sha256": "77d58012cc255da56cbee39d937b565e57e204468c92cb2ec90f13f92c955c94"
     },
     "docs/DEVELOPMENT.md": {
-      "bytes": 84921,
-      "sha256": "1abded51eddb9eed060fba2d20e0e598fefae93dc1c2e8e73f28835128c58c5f"
+      "bytes": 85714,
+      "sha256": "6acde3c666469eaf741ddc2368410380f8e4b11b20afd1523b86b39df82f8804"
     },
     "tests/integration/clipboard-viewer.test.mjs": {
       "bytes": 13194,
@@ -455,6 +455,18 @@
     "tests/unit/standalone-release-artifacts.test.mjs": {
       "bytes": 3974,
       "sha256": "84aa0da383f35334ee785e242fa612fdb1e09adb3c4677ca4cf64eaeacd0a2d0"
+    },
+    "docs/SBOM.md": {
+      "bytes": 11663,
+      "sha256": "0ff5864fb1412e2c495d51e0a1ecfb7df3d9772854fe03c03bb495c8c9126c54"
+    },
+    "scripts/image-sbom-model.mjs": {
+      "bytes": 3029,
+      "sha256": "25a3bac2b2e4de7ee81a7786ecb564e7f6892cfd860f2a7b7948b7ae5f102ce2"
+    },
+    "tests/unit/image-sbom-model.test.mjs": {
+      "bytes": 6359,
+      "sha256": "569bdcd5459e977adc23e17666c0f2748321026332410d5c05ae04b8088eae55"
     }
   },
   "actualImageRdpScope": "Owned opaque 32x32 PNG / Edge156 / Windows worker and Linux GCC8.3 RWS1+framed workers / Windows RDP server / both directions and newer revision / joined revoke and cleanup"

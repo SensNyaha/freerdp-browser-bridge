@@ -135,6 +135,35 @@ schema and reference checks as the application report; Debian packages and a
 Node 24 binary must be present. Source paths passed to Syft are relative. Raw
 image metadata and scanner diagnostics are not printed.
 
+The developing image branch adds a fixed `code` to Docker-inspection refusals:
+`SBOM_IMAGE_IDENTITY_RECORDS`, `_ID`, `_PLATFORM`, `_SIZE` or `_LAYERS`, while
+retaining the existing `SBOM_IMAGE_IDENTITY` message. These identify which
+unchanged admission guard refused the input without including inspected values.
+The original 256 MiB size, Linux/amd64 and digest/layer limits remain mandatory.
+Ten focused image/application SBOM model checks pass, including a failing-before
+diagnostic case, metadata non-disclosure and unchanged input. This instrumentation
+also preserves admission outcomes in 456 comparisons with the original model.
+Full linked `pnpm check` passes Windows 1228/71 skips and Linux UID1000/CapEff=0
+1185/119 skips, zero failures; local
+`build/current-validation/image-sbom-identity-acceptance.json` binds the source
+hashes, before/focused/full logs, local scan and equivalence receipts. Native
+sources are unchanged. This instrumentation
+does not establish the cause of hosted run `40472270571`'s generic identity
+refusal; its native and full API runtime steps pass, but final image SBOM and
+overall bundled acceptance remain incomplete pending an actual inspection.
+The bundled workflow prints only the image byte count and rootfs layer count
+before invoking the scanner; the next refusal therefore has both fixed guard
+codes and these two bounded scalars, without full Docker metadata or config.
+
+The current artifact-only local image independently passes the complete scanner:
+115,997,218 inspect bytes, seven rootfs layers, and a schema-valid SPDX inventory
+of 304 packages (89 Debian, 209 npm, five binary). Config digest, ordered layers,
+saved-archive hashes before/after scanning and Node/Debian presence all pass.
+The earlier generated report is preserved before producing the new report.
+`build/current-validation/image-service-sbom-acceptance.json` binds the image ID,
+scanner pin, output hashes and preserved files. This does not reproduce or
+explain the hosted identity refusal, and does not accept a versioned installer.
+
 Published files are build/packages/freerdp-bridge-runtime.spdx.json and
 build/packages/freerdp-bridge-runtime-sbom.json, the latter containing the image
 ID, config digest, archive/report SHA-256, scanner version/archive hash and counts.
