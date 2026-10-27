@@ -1,13 +1,19 @@
 # Product versions and release branches
 
-Versioned **0.5.0 candidate acceptance is complete**: ten exact npm dry-runs,
-four archive consumers per OS, all required hosted jobs, three actual PNG
-profiles, eight actual standalone desktop profiles, and installed 0.4.0 upgrades
-on Astra 1.7.5 / RED OS 7.3 pass. Actual RED OS GCC 11 linked CTest passes 41/41.
-Final stable tagging, OIDC publication, registry-only consumers and final public
-standalone upgrades remain pending; public stable is still 0.4.0.
-[Acceptance and exact archive hashes](RELEASE_0_5_0.md).
-The preparation checkpoints below retain their historical scope.
+Current public capability release: **0.5.0**, negotiated image clipboard.
+Feature/release branches are merged into shared `master`; immutable private
+`v0.5.0` is `cec3b8e`, public core tag is `31dcee4`. All ten exact npm packages
+are latest 0.5.0, all five OIDC workflows/GitHub Releases pass, and all four fresh
+registry-only consumers pass on each OS. Seven final standalone files are
+downloaded and verified; actual public DEB/RPM 0.4.0 upgrades pass Astra 1.7.5 /
+RED OS 7.3, separately from hosted Windows/Ubuntu installer acceptance.
+Three named PNG application profiles use the exact published native bytes.
+[Public delivery, hashes and limits](RELEASE_0_5_0.md#public-delivery).
+Full Stage 7/V1, file clipboard and unaccepted resource/device gates remain open.
+
+## Earlier delivery checkpoints
+
+The following preparation checkpoints retain their historical scope.
 
 Versioned 0.5.0 now passes the three named actual PNG RDP application profiles
 with exact npm native bytes. Candidate installed-service run `40497112168`

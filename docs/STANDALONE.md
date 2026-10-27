@@ -1,13 +1,12 @@
 # Standalone service and installers
 
-Standalone **0.4.0** has passed local release acceptance on its feature/release
-branches: aligned native/JS archives, exact external consumers, portable and
-Windows/Ubuntu/Astra/RED OS installed upgrades, plus eight real desktop profiles.
-[Acceptance and scope](CLIPBOARD_BROWSER.md#040-versioned-distribution-acceptance). All ten exact npm packages and four
-fresh Windows/Linux registry-only consumers pass. Automatic main-push MSI/DEB/
-RPM/portable publication, final downloads and actual public DEB/RPM upgrades on
-Astra/RED OS pass; [public delivery](CLIPBOARD_BROWSER.md#040-public-delivery).
-[Download 0.4.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.4.0).
+Standalone **0.5.0** is publicly released: ten exact npm packages, five GitHub
+Releases and MSI/DEB/RPM/ZIP/TGZ/source companions. All four fresh registry-only
+consumers pass on Windows and Linux. Final published DEB/RPM upgrades from 0.4.0
+pass on Astra 1.7.5 and RED OS 7.3; final hosted Windows/Ubuntu installation,
+upgrade/recovery/config retention and uninstall also pass.
+[Release acceptance and limits](RELEASE_0_5_0.md#public-delivery).
+[Download 0.5.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.5.0).
 For ready-made distributions, start with the concise
 [installation and operations guide](STANDALONE_INSTALL.md).
 
@@ -56,6 +55,9 @@ prints a content-free `STANDALONE_RUNTIME_RECOVERY` counter record and refuses
 readiness if the native cohort is unavailable or scanning is incomplete.
 Published 0.4.0 retains that recovery contract and adds opt-in HTML clipboard in
 the [accepted named profiles](CLIPBOARD_BROWSER.md#040-public-delivery).
+Version 0.5.0 additionally supplies opt-in image clipboard, with separate
+named PNG application acceptance and explicit browser actions; arbitrary
+alpha/color-space/browser/server coverage is not established.
 [Recovery/retention contract](RUNTIME_RECOVERY.md).
 SIGINT/SIGTERM and Windows SIGBREAK join service/worker cleanup with a bounded
 shutdown deadline. The HTTP API is under `/rdp`. Native build/readiness remains

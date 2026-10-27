@@ -1,15 +1,21 @@
 # TODO — implementation plan
 
-Versioned **0.5.0 candidate acceptance is complete**: ten exact npm dry-runs,
-four archive consumers per OS, all required hosted jobs, three actual PNG
-profiles, eight actual standalone desktop profiles, and installed 0.4.0 upgrades
-on Astra 1.7.5 / RED OS 7.3 pass. Actual RED OS GCC 11 linked CTest passes 41/41.
-Final stable tagging, OIDC publication, registry-only consumers and final public
-standalone upgrades remain pending; public stable is still 0.4.0.
-[Acceptance and exact archive hashes](docs/RELEASE_0_5_0.md).
-The preparation checkpoints below retain their historical scope.
+Current public capability release: **0.5.0**, negotiated image clipboard.
+Feature/release branches are merged into shared `master`; immutable private
+`v0.5.0` is `cec3b8e`, public core tag is `31dcee4`. All ten exact npm packages
+are latest 0.5.0, all five OIDC workflows/GitHub Releases pass, and all four fresh
+registry-only consumers pass on each OS. Seven final standalone files are
+downloaded and verified; actual public DEB/RPM 0.4.0 upgrades pass Astra 1.7.5 /
+RED OS 7.3, separately from hosted Windows/Ubuntu installer acceptance.
+Three named PNG application profiles use the exact published native bytes.
+[Public delivery, hashes and limits](docs/RELEASE_0_5_0.md#public-delivery).
+Full Stage 7/V1, file clipboard and unaccepted resource/device gates remain open.
 
-Current public capability release: **0.4.0**, HTML clipboard. Feature and release
+## Earlier delivery checkpoints
+
+The following preparation checkpoints retain their historical scope.
+
+Previous public capability release: **0.4.0**, HTML clipboard. Feature and release
 branches are merged into shared `master`; the immutable private tag is `53b5edb`
 and public core tag is `b11db42`. Ten exact npm packages, five OIDC workflows,
 five GitHub Releases and stable MSI/DEB/RPM/ZIP/TGZ/source companions are public.
@@ -2345,8 +2351,9 @@ profile's target, microphone, recovery, resource or platform acceptance.
   private `f922a9a` / public `794f9b7`. Three named Windows/Edge application
   profiles pass both directions/new revisions with Windows and Linux
   RWS1/framed workers. All current required local/hosted/compiler/fuzz/runtime
-  gates pass; published 0.4.0 has no image support and separate 0.5.0 npm/
-  standalone distribution acceptance remains open. Full Stage 7, total-resource
+  gates pass. Versioned 0.5.0 npm/standalone delivery and all eight fresh
+  registry consumers now pass; [public acceptance](docs/RELEASE_0_5_0.md#public-delivery).
+  Published 0.4.0 has no image support. Full Stage 7, total-resource
   and arbitrary color/browser/server matrices remain separate.
   [Source acceptance](docs/CLIPBOARD_BROWSER.md#image-source-feature-acceptance).
 - [ ] Session sandbox and safe path resolver.

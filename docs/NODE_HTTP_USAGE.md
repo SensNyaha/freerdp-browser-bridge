@@ -1,12 +1,16 @@
 # Встраивание RDP в сервер на node:http
 
+В 0.5.0 доступен отдельно включаемый буфер изображений. Именованные PNG-профили,
+явные действия браузера, общие лимиты и ограничения описаны в
+[image clipboard](CLIPBOARD_BROWSER.md#versioned-050-image-application-acceptance).
+
 Адаптер принят в **0.2.3**, после отдельных feature/release branches и всех
 versioned native/consumer/RDP checks. [Контракт](NODE_HTTP_PLUGIN.md),
-[release-приёмка](ITERATION_433.md). Текущий согласованный набор **0.4.0**
+[release-приёмка](ITERATION_433.md). Текущий согласованный набор **0.5.0**
 полностью опубликован в npm и GitHub; чистые Windows/Linux consumers проходят
-strict TypeScript и 10/10. [Публикация](CLIPBOARD_BROWSER.md#040-public-delivery). Исторический 0.2.3
+strict TypeScript и 10/10. [Публикация](RELEASE_0_5_0.md#public-delivery). Исторический 0.2.3
 оставлен архивным по решению пользователя от 2026-10-24: его семь отсутствующих
-JS-пакетов не допубликовываются. Используйте опубликованный 0.4.0;
+JS-пакетов не допубликовываются. Используйте опубликованный 0.5.0;
 [решение](ITERATION_458.md).
 
 ## Роли и установка
@@ -22,10 +26,10 @@ Node.js-приложение владеет HTTP(S) listener, TLS, identity, р�
 FreeRDP не загружается в процесс Node. Внутренний Fastify router является
 зависимостью bridge; переводить свой сервер на Fastify не требуется.
 
-Установка опубликованного 0.4.0 на Linux x64/glibc:
+Установка опубликованного 0.5.0 на Linux x64/glibc:
 
 ```sh
-npm install @freerdp-bridge/http@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
+npm install @freerdp-bridge/http@0.5.0 @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 

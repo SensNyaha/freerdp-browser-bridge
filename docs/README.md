@@ -6,20 +6,20 @@
 
 ## 1. Что готово и какой вариант выбрать
 
-Текущий публичный набор **0.4.0** включает четыре Node.js адаптера, два native
+Текущий публичный набор **0.5.0** включает четыре Node.js адаптера, два native
 runtime и standalone web-сервер с установщиками Windows/Linux. Все десять npm
 архивов, пять GitHub Releases, независимые Windows/Linux consumers и финальные
 установщики проверены. Это не завершение всей исходной V1-программы.
 
 | Нужный результат | Основной документ |
 | --- | --- |
-| Принятые возможности и ограничения 0.4.0 | [Публичная приёмка](CLIPBOARD_BROWSER.md#040-public-delivery), [локальные RDP-профили](CLIPBOARD_BROWSER.md#040-versioned-distribution-acceptance) |
+| Принятые возможности и ограничения 0.5.0 | [Публичная приёмка](RELEASE_0_5_0.md#public-delivery), [локальные RDP-профили](RELEASE_0_5_0.md#versioned-checks) |
 | Выбор адаптера или отдельного сервера | [Framework selection](FRAMEWORK_SELECTION.md), [Standalone](STANDALONE.md) |
 | Список оставшихся задач | [TODO](../TODO.md) |
 | Версии и история | [Version policy](VERSIONING.md), [Changelog](../CHANGELOG.md) |
 
 0.2.3 — архивный принятый snapshot с частичной npm-публикацией. Семь старых JS
-версий намеренно не допубликовываются; используйте полный 0.4.0. Исходники,
+версий намеренно не допубликовываются; используйте полный 0.5.0. Исходники,
 тег и принятые архивы сохранены. [Решение пользователя](ITERATION_458.md).
 
 ## 2. Встраивание в приложение
@@ -46,7 +46,7 @@ Koa/Hono/Next.js не объявлены принятыми адаптерами
 [Установка и обслуживание](STANDALONE_INSTALL.md) — короткая инструкция для
 готовых архивов и служб. [Standalone](STANDALONE.md) описывает целевые сценарии,
 JWT, allowed targets, reverse proxy и точный контракт.
-[Скачать дистрибутивы](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.4.0).
+[Скачать дистрибутивы](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.5.0).
 
 | Формат | Инструкция |
 | --- | --- |

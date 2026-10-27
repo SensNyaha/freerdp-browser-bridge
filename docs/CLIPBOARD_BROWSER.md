@@ -1514,3 +1514,17 @@ application profiles. All versioned candidate gates pass. Earlier preparation
 and deferral paragraphs retain their original scope. Stable tagging, npm OIDC,
 registry-only consumers and final public standalone delivery remain pending;
 public 0.4.0 still does not contain image support.
+
+
+### 0.5.0 public delivery
+
+All ten exact 0.5.0 npm packages are now public/latest, all five GitHub Releases
+and OIDC workflows pass, and all four fresh registry-only consumers pass on each
+OS. Final standalone MSI/DEB/RPM/ZIP/TGZ/source files are downloaded and verified;
+actual public DEB/RPM 0.4.0 upgrades pass Astra 1.7.5 and RED OS 7.3. The three
+named PNG profiles use exact published native artifacts. Eight versioned desktop
+profiles remain separate from final installer fixtures, which make no actual
+RDP desktop claim. [Full delivery evidence, hashes and limits](RELEASE_0_5_0.md#public-delivery).
+Earlier pending paragraphs retain their original prepublication scope. This
+does not accept file clipboard, arbitrary alpha/browser/server combinations,
+total CPU/RSS budgets or the complete Stage 7/V1 plan.

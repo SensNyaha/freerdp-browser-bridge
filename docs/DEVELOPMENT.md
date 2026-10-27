@@ -13,6 +13,16 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
+Image clipboard **0.5.0 is publicly delivered**, including ten exact npm
+packages, five successful OIDC workflows, eight fresh registry consumers and
+seven final standalone files. Public Astra/RED OS 0.4.0 upgrades pass.
+[Acceptance](RELEASE_0_5_0.md#public-delivery). The next unchecked Stage 7 work is
+the session sandbox/safe resolver, then streaming file APIs and managed drive
+redirection. These file capabilities are not accepted by the image release.
+Keep their implementation on a new feature branch and close each actual gate.
+
+The source/preparation checkpoints below retain their historical scope.
+
 The image source feature is now accepted at private `f922a9a` / public `794f9b7`:
 all required foundation, GCC 8.3, sanitizer/fuzz and Windows/Linux bundled jobs
 pass. The Linux final full-image SBOM gate passes after the measured size-budget

@@ -1,5 +1,9 @@
 # Встраивание RDP в приложение Fastify
 
+В 0.5.0 доступен отдельно включаемый буфер изображений. Именованные PNG-профили,
+явные действия браузера, общие лимиты и ограничения описаны в
+[image clipboard](CLIPBOARD_BROWSER.md#versioned-050-image-application-acceptance).
+
 Этот документ описывает Fastify-реализацию релиза **0.2.1**, принятую через
 отдельные `feature/fastify-0.2.1` и `release/0.2.1`. Стабильная 0.2.0 не
 содержит этого plugin. JS/native-артефакты имеют согласованную версию 0.2.1;
@@ -23,16 +27,16 @@ Plugin владеет сессиями, одноразовыми attach tokens �
 
 ## Установка и native runtime
 
-Текущий согласованный набор **0.4.0** полностью опубликован в npm. Чистые
+Текущий согласованный набор **0.5.0** полностью опубликован в npm. Чистые
 Windows/Linux consumers проходят strict TypeScript, HTTP/WS, assets и native
-TLS/lifecycle. [Публикация](CLIPBOARD_BROWSER.md#040-public-delivery). Установка:
+TLS/lifecycle. [Публикация](RELEASE_0_5_0.md#public-delivery). Установка:
 
 ```sh
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.4.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.5.0
 # Выберите один native runtime той же версии для ОС сервера приложения:
-npm install @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
+npm install @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
 # Windows x64 вместо Linux runtime:
-# npm install @freerdp-bridge/runtime-win32-x64@0.4.0
+# npm install @freerdp-bridge/runtime-win32-x64@0.5.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 

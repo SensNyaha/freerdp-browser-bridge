@@ -8,11 +8,12 @@ No additional changes since the accepted 0.5.0 release snapshot.
 
 ## 0.5.0 — 2026-10-27
 
-Versioned candidate acceptance passes: ten exact npm archives and dry runs,
-four installed archive consumers per OS, all hosted checks, actual Astra/RED OS
-0.4.0 upgrades, eight desktop profiles and three PNG application profiles.
-Stable npm/standalone publication and registry-only acceptance are the next
-delivery steps. [Accepted inputs and scope](docs/RELEASE_0_5_0.md).
+All ten exact npm packages are public as latest 0.5.0; five GitHub Releases and
+OIDC workflows pass. Four fresh registry-only consumers pass per OS. All seven
+final standalone files are public/downloaded/hash-verified; final public DEB/RPM
+0.4.0 upgrades pass Astra/RED OS, separately from Windows/Ubuntu hosted acceptance.
+Versioned checks retain eight desktop profiles and three actual PNG application
+profiles with exact published native bytes. [Accepted scope and delivery](docs/RELEASE_0_5_0.md#public-delivery).
 
 - Preserve Windows extended-length executable paths when launching the verified
   runtime recovery helper. A deeply installed npm runtime can be readable after
