@@ -139,7 +139,8 @@ The developing image branch adds a fixed `code` to Docker-inspection refusals:
 `SBOM_IMAGE_IDENTITY_RECORDS`, `_ID`, `_PLATFORM`, `_SIZE` or `_LAYERS`, while
 retaining the existing `SBOM_IMAGE_IDENTITY` message. These identify which
 unchanged admission guard refused the input without including inspected values.
-The original 256 MiB size, Linux/amd64 and digest/layer limits remain mandatory.
+That diagnostic checkpoint retains the original 256 MiB size, Linux/amd64 and
+digest/layer limits; the later measured size correction is recorded below.
 Ten focused image/application SBOM model checks pass, including a failing-before
 diagnostic case, metadata non-disclosure and unchanged input. This instrumentation
 also preserves admission outcomes in 456 comparisons with the original model.
@@ -164,10 +165,28 @@ The earlier generated report is preserved before producing the new report.
 scanner pin, output hashes and preserved files. This does not reproduce or
 explain the hosted identity refusal, and does not accept a versioned installer.
 
+Hosted diagnostic run `40482004084` subsequently identifies the exact refusal:
+`SBOM_IMAGE_IDENTITY_SIZE`, with **312,426,738 inspect bytes** and seven layers.
+All native/Node, clean assembly and restricted API runtime checks pass before
+this pre-scan refusal. The prior generic cause is therefore resolved as the
+256 MiB inventory admission budget. The local and hosted Docker byte counts
+differ; they must not be treated as interchangeable artifact-size evidence.
+The ignored `build/current-validation/image-sbom-hosted-size-counterexample.json`
+binds the terminal log and these measured scalars.
+
+The inspection budget is explicitly increased to **512 MiB** to admit the
+measured complete service while retaining a finite bound. The saved archive
+also retains its separate 512 MiB limit. Regression checks admit the exact
+hosted byte count and exact new ceiling, refuse one byte above it and invalid
+numeric values, and retain platform/digest/layer refusals at the admitted sizes.
+This is an SBOM artifact budget; session memory targets and the 16 MiB clipboard
+item quota are independent. A passing model fixture does not accept the hosted
+full scan, which still needs its corrected-source execution.
+
 Published files are build/packages/freerdp-bridge-runtime.spdx.json and
 build/packages/freerdp-bridge-runtime-sbom.json, the latter containing the image
 ID, config digest, archive/report SHA-256, scanner version/archive hash and counts.
-Previous success outputs are removed before a new scan. Bounds are 256 MiB
+Previous success outputs are removed before a new scan. Bounds are 512 MiB
 Docker image size, 512 MiB saved archive, 32 MiB per report, 64 KiB process output,
 64 KiB per descriptor, four descriptor levels, 64 rootfs layers and 180 seconds
 per subprocess. Report limits are checked before reading JSON; disk output from

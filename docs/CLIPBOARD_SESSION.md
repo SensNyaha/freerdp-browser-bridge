@@ -157,8 +157,11 @@ actual RDP image application acceptance. The local receipt is
 
 This section describes `feature/image-clipboard`. Published 0.4.0 supports
 text/HTML; installing 0.4.0 does not enable these developing image APIs. Image
-merge/release and actual application acceptance remain open. Use the matching
-development JS and native runtime together until a versioned release is accepted.
+merge/release remain open. The named actual Edge PNG application profiles pass
+through Windows and Linux workers, including both Linux carriers;
+[their exact scope](CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint)
+does not imply universal browser/server support or a published image package.
+Use matching development JS and native runtime until a versioned release passes.
 
 Select images in the session configuration passed to your existing framework
 adapter or standalone session endpoint:

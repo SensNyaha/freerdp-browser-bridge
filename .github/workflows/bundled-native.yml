@@ -50,8 +50,9 @@ jobs:
         with:
           path: .tools/vcpkg-cache
           key: bundled-${{ runner.os }}-msvc-${{ hashFiles('native/dependencies.json', 'native/vcpkg/**') }}
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         if: runner.os == 'Linux'
+        id: linux-dependencies
         with:
           path: .tools/vcpkg-cache
           key: bundled-${{ runner.os }}-gcc83-buster-${{ hashFiles('native/dependencies.json', 'native/vcpkg/**', 'docker/gcc83-bundled-builder.*') }}
@@ -97,6 +98,12 @@ jobs:
                 LD_LIBRARY_PATH="$PWD/.deps/freerdp-install/lib:$PWD/.deps/installed/x64-linux-bundled/lib" \
                 pnpm check
             '
+      - name: Save checked Linux dependency binaries
+        if: runner.os == 'Linux' && steps.linux-dependencies.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .tools/vcpkg-cache
+          key: ${{ steps.linux-dependencies.outputs.cache-primary-key }}
       - run: pnpm test:bundle
       - name: Inventory exact Windows native archive and packaged CRT
         if: runner.os == 'Windows'

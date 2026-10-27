@@ -53,6 +53,22 @@ Resolution validates version, inventory, hashes and worker/IPC compatibility.
 Do not strip returned Windows namespace prefixes. A custom `packageDirectory`
 must reference the complete installed runtime and come from trusted host config.
 
+## Image clipboard in development
+
+The source feature adds typed `ClipboardImageItem`, image read/write results
+and shared session control methods. Explicitly select `clipboard.images: true`
+and require `clipboardImage`, `clipboardText` and `clipboardRevoke`. Custom
+worker factories must pass the whole frozen limits object, including
+`clipboardImage` and `clipboardItemBytes`, to `NativeSessionWorker`.
+Wait for the clipboard-ready snapshot and acquire the current control grant;
+connection alone is insufficient. Returned RGBA8 buffers belong to the consumer
+and must be wiped after use. One text/HTML/image transfer and revoke owner is
+shared; canonical DIBV5 header overhead counts toward native write admission.
+Published 0.4.0 does not contain this feature. Use matching verified development
+JS/native artifacts and the
+[application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
+for readiness, exact control API examples, quotas and named acceptance scope.
+
 ## Limitations
 
 0.4.0 adds opt-in negotiated HTML clipboard alongside Unicode. Use the public

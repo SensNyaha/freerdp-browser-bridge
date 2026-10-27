@@ -70,6 +70,21 @@ Image/file clipboard remains unavailable. See the
 for API policy and limitations. Until publication, use complete verified local
 0.4.0 archives; a source version does not prove npm availability.
 
+## Image clipboard in development
+
+The source feature adds `clipboard.images: true` with a direction, `text: true`
+and finite `maxItemBytes`. Require native `clipboardImage`, `clipboardText` and
+`clipboardRevoke`; custom worker factories must preserve the frozen limits.
+The reference browser provides separate PNG Paste/Send/Get/Copy/Clear actions.
+Images share text/HTML authority, one transfer flight and revoke; offers never
+read the OS clipboard automatically. RGBA8 pixels and the complete native DIBV5
+write must fit the item quota, with a 16 MiB ceiling. File clipboard is separate.
+Published 0.4.0 does not contain this feature: use matching verified development
+JS/native artifacts. See the
+[application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
+for session JSON, readiness, typed control methods, buffer wiping and exact
+browser/RDP acceptance limits.
+
 ## Limitations
 
 The plugin validates bodies strictly within 64 KiB, preserves session ownership,

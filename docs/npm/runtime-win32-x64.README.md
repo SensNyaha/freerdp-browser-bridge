@@ -52,6 +52,17 @@ the complete runtime tree and its DLLs intact. Do not load FreeRDP into Node.
 Session credentials reach workers only over private IPC, never argv/environment.
 RDP certificate verification is strict by default.
 
+## Image clipboard in development
+
+The source feature advertises `clipboardImage` only with its native image hooks.
+It remains opt-in per session through matching JS packages, with negotiated
+DIB/DIBV5 conversion, RGBA8 handoff, finite encoded/decoded item limits and
+shared text/HTML/image revoke. Installation does not read the OS clipboard.
+Published 0.4.0 does not include this image runtime. Use verified matching
+development artifacts and inspect concrete capabilities; file clipboard and
+arbitrary image formats remain separate. See the
+[application profiles and limits](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
+
 ## Limitations
 
 This is a platform payload, not an HTTP server, JS RDP client or standalone UI.

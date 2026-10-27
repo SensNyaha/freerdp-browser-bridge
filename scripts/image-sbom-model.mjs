@@ -24,7 +24,7 @@ export function imageInspection(records) {
   if (
     !Number.isSafeInteger(records[0].Size) ||
     records[0].Size <= 0 ||
-    records[0].Size > 256 * 1024 * 1024
+    records[0].Size > 512 * 1024 * 1024
   )
     refuse('SIZE');
   if (

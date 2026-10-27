@@ -41,6 +41,18 @@ Use exported declarations for record shapes and limits. Let the session layer
 handle handshake, ownership, timeouts and shutdown. Never log packet payloads:
 connection records may contain sensitive data.
 
+## Image clipboard in development
+
+The source codecs add a bounded RGBA8 inner image record and optional
+`clipboardImage` worker negotiation. Geometry, exact byte length and complete
+native DIBV5 write admission are checked against the finite item maximum.
+These private records are distinct from the public RWC1 image control transfer;
+use the managed session owner for authority, readiness, revisions and cleanup.
+The codecs grant no OS clipboard access and do not enable file clipboard.
+Published 0.4.0 does not contain this extension. Use matching development
+JS/native artifacts and the
+[private handoff contract](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_IPC.md#private-image-handoff-in-development).
+
 ## Limitations
 
 0.4.0 adds the bounded HTML inner item and optional `clipboardHtml` negotiation.

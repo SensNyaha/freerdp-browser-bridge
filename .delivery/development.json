@@ -2,7 +2,7 @@
   "schema": 1,
   "branch": "feature/image-clipboard",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "a4191100b6e318f7150f99437ea7413e56f18c6c",
+  "privateSourceCommit": "f922a9af08108fd7964d77251ad076a814ac6351",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
   "actualImageRdpAccepted": true,
@@ -25,8 +25,8 @@
       "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
     },
     "TODO.md": {
-      "bytes": 240255,
-      "sha256": "029b877545c5fc37e8f0f65edcf5faeb7abda0cd02f0670187a5f1e152a64106"
+      "bytes": 240863,
+      "sha256": "cd4b87ccb3b11b855d2972a3a7c3b6247dc0ce6ca070d26a4e84723f2e59fc87"
     },
     "apps/bridge-api/src/clipboard.ts": {
       "bytes": 6634,
@@ -85,8 +85,8 @@
       "sha256": "5d5d8142aff59c79fe3bdc6e9c1b723b05b69fe212b7454654cefd7a4558cdff"
     },
     "docs/CLIPBOARD_SESSION.md": {
-      "bytes": 14246,
-      "sha256": "54c00d3224862b3519ada24a072a7870527ee1494970ac4e0c48a405695ca450"
+      "bytes": 14472,
+      "sha256": "009499947a2a60d9aecf02f0f360518a459fbb8e85cf4b849c8ed0e13f75f4d4"
     },
     "docs/CLIPBOARD_TEXT.md": {
       "bytes": 14885,
@@ -421,8 +421,8 @@
       "sha256": "a7616414ced80e039850a1b888edd47e35bc70eb8b5e2af378ff960113cfb2c2"
     },
     ".github/workflows/bundled-native.yml": {
-      "bytes": 7404,
-      "sha256": "15e56fc6579fac488ce59a12e6f26f1b7c4868b945d66808ab1d066283cc5392"
+      "bytes": 7743,
+      "sha256": "f4ce122d369d3279383568d75e8bf76b2a95c8222cb34d30690953c5c196e7a4"
     },
     "docker/gcc83-bundled-builder.Dockerfile": {
       "bytes": 2407,
@@ -433,8 +433,8 @@
       "sha256": "77d58012cc255da56cbee39d937b565e57e204468c92cb2ec90f13f92c955c94"
     },
     "docs/DEVELOPMENT.md": {
-      "bytes": 85714,
-      "sha256": "6acde3c666469eaf741ddc2368410380f8e4b11b20afd1523b86b39df82f8804"
+      "bytes": 87181,
+      "sha256": "e438164f778afdcd9473fd637580437d8b298d9e7d8279744c5ae8b631cc16f0"
     },
     "tests/integration/clipboard-viewer.test.mjs": {
       "bytes": 13194,
@@ -457,16 +457,60 @@
       "sha256": "84aa0da383f35334ee785e242fa612fdb1e09adb3c4677ca4cf64eaeacd0a2d0"
     },
     "docs/SBOM.md": {
-      "bytes": 11663,
-      "sha256": "0ff5864fb1412e2c495d51e0a1ecfb7df3d9772854fe03c03bb495c8c9126c54"
+      "bytes": 12941,
+      "sha256": "4808149f020384a91e861f57aad654e055256c01286395a6d18b5ef00e3aa11f"
     },
     "scripts/image-sbom-model.mjs": {
       "bytes": 3029,
-      "sha256": "25a3bac2b2e4de7ee81a7786ecb564e7f6892cfd860f2a7b7948b7ae5f102ce2"
+      "sha256": "db667010eb8b0a88604578203f0b5b242f37b84bafa062175aed9dbc39e833f4"
     },
     "tests/unit/image-sbom-model.test.mjs": {
-      "bytes": 6359,
-      "sha256": "569bdcd5459e977adc23e17666c0f2748321026332410d5c05ae04b8088eae55"
+      "bytes": 7147,
+      "sha256": "b5f696545babaec0e5aeb7b1147eec804637dc3b5de5b177a9a467dbf88d5e17"
+    },
+    "apps/bridge-api/README.md": {
+      "bytes": 4897,
+      "sha256": "dc8768991e69093e4e110723640d3e1758d19866f8ea2c8f114c53af56181ac8"
+    },
+    "apps/standalone/README.md": {
+      "bytes": 1244,
+      "sha256": "8be8a54d6077aeeeb2797d85f5724e0dba35a00874c49c1609d701e7d5a8c243"
+    },
+    "docs/npm/runtime-linux-x64-gnu.README.md": {
+      "bytes": 4091,
+      "sha256": "7355aba74e90d3d20ede89b358f0576026769952c0e611a048e456ff5b2e9d73"
+    },
+    "docs/npm/runtime-win32-x64.README.md": {
+      "bytes": 3839,
+      "sha256": "d46c4f46a319362f40f732e08d3d0a4c1523c5e9e368937ee88f9d72d4004130"
+    },
+    "packages/config/README.md": {
+      "bytes": 2815,
+      "sha256": "ebb3434e5e5b394e69742bc3ceb989c3178f68a08f625dd76f1e3af44dcbe13a"
+    },
+    "packages/express/README.md": {
+      "bytes": 6275,
+      "sha256": "850dc3fb71b4c150deae920fb0634e8bbb65e9ed9a24a110c7f1ce52a09ef859"
+    },
+    "packages/fastify/README.md": {
+      "bytes": 5950,
+      "sha256": "59556acf80f0b1a68ca37ec794d18e15594293fb44fbb6f7f4bce564095aa4bc"
+    },
+    "packages/http/README.md": {
+      "bytes": 5402,
+      "sha256": "25c700d6e8fda802718ee6c6a2f3be81420a33f30986af713732f498a5a4b2be"
+    },
+    "packages/nestjs/README.md": {
+      "bytes": 5652,
+      "sha256": "79c212752d5b7a13eb3d08b0b2524c1102e8061c3cd25126a3848cabf878fa44"
+    },
+    "packages/node-bridge/README.md": {
+      "bytes": 4860,
+      "sha256": "63105e0645991ea4557e8f23692fc789e413eb575e1c062557b2023124d0f36b"
+    },
+    "packages/protocol/README.md": {
+      "bytes": 2828,
+      "sha256": "3f313a431ae57392740623c134cd66ce27a1f2cd5af9dc713a3a4b2e36011a5a"
     }
   },
   "actualImageRdpScope": "Owned opaque 32x32 PNG / Edge156 / Windows worker and Linux GCC8.3 RWS1+framed workers / Windows RDP server / both directions and newer revision / joined revoke and cleanup"

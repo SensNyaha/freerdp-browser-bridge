@@ -1351,6 +1351,17 @@ MSVC key is retained. The subsequent native/service verification still uses the
 original restricted bookworm images without build-prefix mounts. This catches
 the initial Ubuntu-built bundle's `GLIBC_2.38` dependency mismatch rather than
 raising the verification runtime's baseline. Both OS jobs finish independently.
+Linux now uses separate cache restore/save actions: the checked dependency binary
+cache is saved immediately after successful native build and linked checks,
+before later runtime/SBOM steps. Three retained failed jobs report misses for
+the same recipe key; the former combined action only saves on whole-job success,
+so a late image-inventory refusal discarded that cache opportunity. The cache
+path, exact recipe/input key and OS/compiler separation are unchanged; no broad
+restore fallback is added. This follows the
+[cache action's explicit restore/save workflow](https://github.com/actions/cache/blob/v4/README.md#using-a-combination-of-restore-and-save-actions).
+It neither skips required builds/checks nor accepts cached bytes as release
+evidence. Saving and a later cache hit still need hosted observation; cache scope
+remains restricted by GitHub's branch rules.
 The local builder/UID1000 smoke passes, including Node/glibc/compiler and the
 pinned vcpkg/Meson tools. The first cold hosted run identified missing `zip`
 before vcpkg bootstrap. The builder now explicitly installs curl/zip/unzip/tar;
@@ -1393,6 +1404,15 @@ terminal job/step states, counted tests and successful probe receipts. Windows
 bundled `c04c030` passes CTest 40/40, Node 1227/71 skips, relocation and CRT/SBOM
 checks. Final Linux image inventory and overall bundled acceptance remain open.
 Actual Astra/RED OS application and installed-runtime acceptance stays separate.
+
+Diagnostic repeat `40482004084` at public `59d71eb` retains all those native/API
+successes and records the precise image refusal: `SBOM_IMAGE_IDENTITY_SIZE`,
+312,426,738 inspect bytes and seven layers. The prior 256 MiB SBOM admission
+budget is explicitly corrected to a finite 512 MiB, with a measured-size
+failing-before case and exact/over-ceiling tests passing on Windows and Linux.
+The independent saved-archive/report bounds and digest/platform/layer checks
+continue to apply. See [the measured artifact budget](SBOM.md); the corrected
+hosted full scan remains a separate required result.
 
 The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)
 uses the pinned compiler image and hash-checked offline build tools. Follow the

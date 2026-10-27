@@ -58,6 +58,17 @@ global library-path overrides. Credentials reach workers only over private IPC,
 never argv/environment. Certificates are strict by default. Use the adapter
 lifecycle for joined worker cleanup.
 
+## Image clipboard in development
+
+The source feature advertises `clipboardImage` only with its native image hooks.
+It remains opt-in per session through matching JS packages, with negotiated
+DIB/DIBV5 conversion, RGBA8 handoff, finite encoded/decoded item limits and
+shared text/HTML/image revoke. Installation does not read the OS clipboard.
+Published 0.4.0 does not include this image runtime. Use verified matching
+development artifacts and inspect concrete capabilities; file clipboard and
+arbitrary image formats remain separate. See the
+[application profiles and limits](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
+
 ## Limitations
 
 This is a platform payload, not an HTTP server or standalone UI. Its only JS

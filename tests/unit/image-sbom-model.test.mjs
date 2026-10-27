@@ -97,7 +97,7 @@ test('image SBOM refuses registry references, wrong platform, excessive size and
     { Id: 'sha256:bad' },
     { Os: 'windows' },
     { Architecture: 'arm64' },
-    { Size: 256 * 1024 * 1024 + 1 },
+    { Size: 512 * 1024 * 1024 + 1 },
     { RootFS: { Layers: ['bad'] } },
   ])
     assert.throws(() => imageInspection([{ ...f.inspected, ...change }]), {
@@ -115,7 +115,7 @@ test('image SBOM identity diagnostics distinguish fixed refusal reasons without 
     [[{ ...f.inspected, Os: 'private-invalid-os' }], 'PLATFORM'],
     [[{ ...f.inspected, Architecture: 'private-invalid-arch' }], 'PLATFORM'],
     [[{ ...f.inspected, Size: undefined }], 'SIZE'],
-    [[{ ...f.inspected, Size: 256 * 1024 * 1024 + 1 }], 'SIZE'],
+    [[{ ...f.inspected, Size: 512 * 1024 * 1024 + 1 }], 'SIZE'],
     [[{ ...f.inspected, RootFS: undefined }], 'LAYERS'],
     [
       [{ ...f.inspected, RootFS: { Layers: ['private-invalid-layer'] } }],
@@ -140,6 +140,27 @@ test('image SBOM identity diagnostics distinguish fixed refusal reasons without 
     imageInspection([{ ...f.inspected, Size: 256 * 1024 * 1024 }]).Size,
     256 * 1024 * 1024,
   );
+});
+
+test('image SBOM admits the measured hosted service and keeps a finite 512 MiB inspection ceiling', () => {
+  const f = fixture();
+  for (const Size of [312426738, 512 * 1024 * 1024]) {
+    const record = { ...f.inspected, Size };
+    assert.equal(imageInspection([record]), record);
+    for (const change of [
+      { Architecture: 'arm64' },
+      { Id: 'sha256:bad' },
+      { RootFS: { Layers: ['bad'] } },
+    ])
+      assert.throws(() => imageInspection([{ ...record, ...change }]), {
+        message: 'SBOM_IMAGE_IDENTITY',
+      });
+  }
+  for (const Size of [0, -1, NaN, Infinity, '312426738', 512 * 1024 * 1024 + 1])
+    assert.throws(() => imageInspection([{ ...f.inspected, Size }]), {
+      message: 'SBOM_IMAGE_IDENTITY',
+      code: 'SBOM_IMAGE_IDENTITY_SIZE',
+    });
 });
 
 test('image SBOM refuses changed blobs, missing targets and excessive descriptor depth', async () => {

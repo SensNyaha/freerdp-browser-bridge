@@ -43,6 +43,18 @@ structured clone on success. It does not coerce strings to numbers or remove
 unknown fields. Limit transport bodies before parsing untrusted JSON.
 `redactSecrets` is a helper, not permission to record session configuration.
 
+## Image clipboard in development
+
+The source schema adds explicit `clipboard.images: true`, disabled by default.
+Combine it with `text: true`, an allowed direction and finite `maxItemBytes`.
+The same 1..16 MiB item budget governs images and text/HTML; a native image write
+must also fit its complete DIBV5 header and pixels. Validation cannot provide
+native `clipboardImage`, clipboard readiness or browser OS permissions.
+Published 0.4.0 does not contain this feature; use matching development packages.
+See the
+[application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
+for session JSON and runtime capability requirements.
+
 ## Limitations
 
 0.4.0 accepts explicit clipboard `html: true` with a selected direction and

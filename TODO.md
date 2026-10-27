@@ -169,6 +169,14 @@ its cause remains unverified. Fixed payload-free refusal codes are locally
 tested without changing image size, platform or digest guards. The original
 failure is retained; final image inventory, feature merge and versioned release
 acceptance remain open. [SBOM diagnostic scope](docs/SBOM.md).
+The diagnostic repeat at public `59d71eb` resolves that cause: Docker reports
+312,426,738 bytes and seven layers, rejected by the 256 MiB inspection ceiling.
+The SBOM artifact ceiling is explicitly corrected to 512 MiB, retaining the
+separate bounded saved-archive/report checks. Eleven focused model checks pass
+on Windows and Linux UID1000/CapEff=0, including failing-before measured-size,
+exact ceiling, one-byte-over and invalid/platform/digest/layer refusals. This
+does not change the clipboard quota or accept the hosted final scan; a
+corrected-source hosted run remains required before feature merge.
 
 The earlier preparation checkpoints below retain their historical scope.
 
