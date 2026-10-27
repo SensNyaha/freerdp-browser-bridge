@@ -1363,6 +1363,12 @@ archive is limited to 8 MiB, checked before extraction, and excluded from native
 runtime artifacts. A source-SHA512-bound gperf fixture reproduces exit 63 with
 2.69 and passes with 2.72 under UID1000/network-none/read-only/tmpfs, retaining
 GCC 8.3 and glibc 2.28. No library or FreeRDP pin is changed for this tool fix.
+The following hosted attempt times out during an HTTPS builder-tool download
+before compilation. These GETs now use a 15-second connect timeout, at most two
+retries and the existing per-transfer time/size limits. SHA256 checks still run
+before any archive extraction; mismatched content is a refusal, not a retry or
+alternative unpinned source. The failed log is retained separately from build
+failures.
 The complete cold dependency/SDK and hosted runtime build remains pending. Actual
 Astra/RED OS application and installed-runtime acceptance stays separate.
 

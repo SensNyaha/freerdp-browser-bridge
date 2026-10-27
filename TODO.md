@@ -134,6 +134,12 @@ Approved Node 24 bytes are independently verified and reused; no service, sudo
 or RDP operation is involved. Both new temporary contexts are removed. This
 extends named runtime portability, not image application or installer acceptance.
 [Compiler/hosted checkpoint](docs/CLIPBOARD_BROWSER.md#image-gcc-11-and-hosted-checkpoint).
+Hosted Windows bundled checkpoint `1399b3a` now passes the pinned FreeRDP build,
+native CTest 40/40, linked `pnpm check` 1225/71 skips, staged relocation without
+dependency PATH and SBOM/packaged CRT verification. Its 15 standalone packaging
+skips remain separate installer gates. The 398 native files match the current
+branch; Linux cold SDK/runtime and actual image RDP remain open.
+[Windows hosted scope](docs/CLIPBOARD_BROWSER.md#image-hosted-windows-bundled-checkpoint).
 
 The earlier preparation checkpoints below retain their historical scope.
 

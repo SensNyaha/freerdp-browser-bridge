@@ -1321,3 +1321,26 @@ fixtures and services are untouched. Local
 per-host reports, adapted probe hashes and cleanup. These are named native
 runtime/kernel compatibility checks, not actual image application or installer
 acceptance.
+
+### Image hosted Windows bundled checkpoint
+
+The Windows job in
+[bundled run 40463490091](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40463490091/job/122053311396)
+passes at public source `1399b3afaef078577d56376d91359e1f3bbb3fae`.
+The workflow builds the pinned FreeRDP 3.32.1 source
+`bf217a504e54cc719880c228e82353382cd7d4fa`, then the worker and native helpers;
+its dependency binary cache is not described as a fresh dependency source build.
+All **40 native CTest** cases and full linked Node checks (**1225 passed /
+71 skipped**) pass. The staged native bundle relocates with only the system
+directory in PATH, verifies private codec origins, helper/lifecycle/recovery
+behavior and joined cleanup. ZIP generation and SBOM/packaged CRT checks also
+pass. The archive is uploaded as a development CI artifact, not a public release.
+
+The packaging test command has one executed relocation case and **15 standalone
+skips**; those skips do not establish installer acceptance. No actual image RDP
+session is tested by this job. The exact 398 native source files at that public
+commit match the current branch. The local
+`build/current-validation/image-windows-hosted-bundled-acceptance.json` binds
+the source comparison, terminal job/step states, full log and counted checks.
+Linux cold dependency/SDK/runtime, actual image application and versioned
+distribution gates remain open.

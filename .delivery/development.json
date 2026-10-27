@@ -2,7 +2,7 @@
   "schema": 1,
   "branch": "feature/image-clipboard",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "6f66079d60d2fd6a9049e02b6ac753881ee9740e",
+  "privateSourceCommit": "c314002fc69f52480c3cb8de9fdabb00607e9723",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
   "actualImageRdpAccepted": false,
@@ -25,8 +25,8 @@
       "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
     },
     "TODO.md": {
-      "bytes": 237640,
-      "sha256": "5c1e2aa9ec64a56429a526a1c770a5613e61d2c774d48a333f1faedac5e93818"
+      "bytes": 238116,
+      "sha256": "2ef41cfae4f42bfa30e77002c49d5484e6e704a5d784e44cf9ec4b14044fd7d8"
     },
     "apps/bridge-api/src/clipboard.ts": {
       "bytes": 6634,
@@ -73,8 +73,8 @@
       "sha256": "a7d650226992e44b9aa08b4a4283120bcb2d7408239a2ef535d2c2c32e229d24"
     },
     "docs/CLIPBOARD_BROWSER.md": {
-      "bytes": 86211,
-      "sha256": "30cd8850c5ee3cf0b619a7b6451c2b33b10ab8b19db6bb91bdcfcd2cb4e47307"
+      "bytes": 87613,
+      "sha256": "b7e320cf391df9dc22401a216a313447c0230fb3d81b3c8bfaa9f10105ef53d8"
     },
     "docs/CLIPBOARD_CONTROL.md": {
       "bytes": 12464,
@@ -421,8 +421,8 @@
       "sha256": "a7616414ced80e039850a1b888edd47e35bc70eb8b5e2af378ff960113cfb2c2"
     },
     ".github/workflows/bundled-native.yml": {
-      "bytes": 6828,
-      "sha256": "56ef26a27f69293d3d17a059e5d55d02a960e3b190417a1d17a6420eb86efe97"
+      "bytes": 7032,
+      "sha256": "f3e6e0aca1ec017904a31acd03137364ad7d264b856ed2a82192a2e8f99bac3e"
     },
     "docker/gcc83-bundled-builder.Dockerfile": {
       "bytes": 2407,
@@ -433,8 +433,8 @@
       "sha256": "77d58012cc255da56cbee39d937b565e57e204468c92cb2ec90f13f92c955c94"
     },
     "docs/DEVELOPMENT.md": {
-      "bytes": 83609,
-      "sha256": "3d32d4aeef229ab7be63e9215bda6778a5c2f1b174c86baaca133f1ba2ac8ddf"
+      "bytes": 84013,
+      "sha256": "6f6f03760257a5134c54fd2d83593284a6749c97589e7e1db660c2e1dbb3d8fc"
     },
     "tests/integration/clipboard-viewer.test.mjs": {
       "bytes": 13194,
