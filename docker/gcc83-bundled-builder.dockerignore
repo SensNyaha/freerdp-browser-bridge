@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!node.tar.xz
+!cmake.whl
+!ninja.whl
+!ca-certificates.crt

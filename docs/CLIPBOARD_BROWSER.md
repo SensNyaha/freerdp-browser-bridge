@@ -1113,7 +1113,7 @@ browser-process and new-revision readback and owned cleanup. Its new report is
 `build/current-validation/image-application-acceptance.json` binds helper and
 product source, native receipt, terminal logs and that named OS report.
 
-The current actual RDP gate is environmental: `192.168.21.149:3389` times out
+The initial actual RDP gate was environmental: `192.168.21.149:3389` timed out
 at TCP connect. A no-credentials certificate preflight accepts no certificate,
 performs no RDP application/clipboard operation and leaves its runtime empty.
 This is not image application evidence; the Stage 7 checkbox remains open.
@@ -1122,6 +1122,18 @@ The user requested postponing the next availability check until **2026-10-27
 it supplies no credentials and starts no RDP application session. Earlier
 prepared-window confirmations for HTML do not establish readiness of this new
 image document.
+
+The scheduled 09:58:20 Samara TCP retry also times out after three seconds,
+without payload or authentication. The user subsequently restores access and
+approves the exact lab certificate. A new TCP probe connects in 15 ms. The first
+Windows image helper connects with that pin but receives no F2 challenge text,
+so it performs no image writes/reads. An allowed private GUI diagnostic shows
+the owned page with blank canvas/receipt; reading only that page's source through
+RDP confirms `__NONCE__` and `__PIXELS__` were left unexpanded. Its temporary
+view-source tab is closed and the worker/runtime are retired. The ready generated
+document is also supplied as `build/current-validation/owned-image-clipboard-lab.html`
+(the same accepted document bytes/nonce) for the operator to open. These findings
+do not establish image application acceptance.
 
 ### Linux image application preparation
 
@@ -1243,3 +1255,11 @@ original logs and timeouts are preserved. Native sources/artifacts are unchanged
 snapshot, terminal suites, held-source counterexample and initial hosted failures.
 Corrected-source hosted checks, the bundled Linux ABI repair and actual image
 RDP application acceptance remain open.
+
+The corrected-source hosted run passes both Linux jobs, sanitizers and exact
+GCC 8.3, but its Windows job times out in the pre-existing bidirectional text
+viewer test. The test now emits its fixed operation/cleanup phase through the
+test context, preserving all assertions, the screenshot and existing deadlines.
+All three unchanged text scenarios pass locally with joined cleanup. This adds
+diagnostic evidence for a repeat rather than claiming a root cause for that
+timeout; the original hosted log is retained.

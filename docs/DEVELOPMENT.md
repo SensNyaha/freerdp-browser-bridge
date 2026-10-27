@@ -1336,6 +1336,25 @@ version check as complete platform support. Use a fresh build tree for each
 compiler and rebuild all C++ dependencies rather than mixing their ABI/runtime
 closures. Node 24 and CMake >=3.24 requirements are unchanged.
 
+The bundled-native workflow now selects the
+[pinned GCC 8.3 builder](../docker/gcc83-bundled-builder.Dockerfile) for Linux.
+The Ubuntu runner orchestrates Docker; dependencies, FreeRDP, native worker/addon
+and linked Node checks execute inside the Debian 10/glibc 2.28 builder with the
+runner's non-root UID, dropped capabilities and no-new-privileges. Checkout does
+not persist Git credentials. The image context contains only its recipe, public
+CA roots and hash-checked Node 24.21.0/CMake 3.31.6/Ninja inputs. Historical Debian
+archive metadata needs its expiry check disabled; HTTPS and signed package
+verification remain enabled. The resulting tools also pin pnpm 10.11.0.
+
+Linux has a separate recipe-bound GCC 8.3 binary-cache key; the existing Windows
+MSVC key is retained. The subsequent native/service verification still uses the
+original restricted bookworm images without build-prefix mounts. This catches
+the initial Ubuntu-built bundle's `GLIBC_2.38` dependency mismatch rather than
+raising the verification runtime's baseline. Both OS jobs finish independently.
+The local builder/UID1000 smoke passes, including Node/glibc/compiler and the
+pinned vcpkg/Meson tools; the complete cold hosted build remains pending. Actual
+Astra/RED OS application and installed-runtime acceptance stays separate.
+
 The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)
 uses the pinned compiler image and hash-checked offline build tools. Follow the
 [container instructions](../tests/fixtures/gcc83/README.md) to repeat it without

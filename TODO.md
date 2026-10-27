@@ -83,9 +83,12 @@ pass 8/8. A fresh source-only Windows linked build passes CTest 40/40 and its
 native/process/clipboard Node subset 60/2 skips. Full helper regression passes
 Windows 1215/71 skips and Linux UID1000/CapEff=0 1176/118 skips, zero failures;
 the tracked OS helper also passes the independent browser-process PNG scenario.
-Actual image RDP remains open: after the unavailable TCP preflight the user
-requested retry no earlier than 2026-10-27 09:58 Samara. No certificate was
-accepted and the preflight runtime was cleaned.
+Actual image RDP remains open. The requested 09:58 Samara TCP retry timed out;
+access was subsequently restored and the user approved the exact lab certificate.
+The first Windows application challenge failed because the remote file was the
+unexpanded template. An owned-source RDP Unicode read confirms both placeholders;
+the ready generated document is supplied for the repeat. No image roundtrip is
+accepted by these diagnostics; all probe workers/runtimes were cleaned.
 [Prepared application procedure](docs/CLIPBOARD_BROWSER.md#prepared-image-application-helper).
 Linux image application preparation now adds a bounded private image bootstrap,
 separate read-only UID1000 container admission and actual-carrier preflight for
