@@ -2,7 +2,7 @@
   "schema": 1,
   "branch": "release/0.5.0",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "3d055c641d10a124b66a033973805e3bdcb9b6d9",
+  "privateSourceCommit": "2f0bbf74959ffcf6c870dadeea535e11d1eb48d0",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
   "actualImageRdpAccepted": false,
@@ -591,6 +591,10 @@
     "tests/integration/runtime-recovery-long-path.test.mjs": {
       "bytes": 2064,
       "sha256": "7cd34659ebe85c91ea8077047314b3de99b3232613d611c5ebd6040f1ec588dc"
+    },
+    "packaging/standalone/candidate-release.json": {
+      "bytes": 154,
+      "sha256": "1514b41260fa1360f304f26626a5c73b57a7ead1ce9df00c0a76d671523356fe"
     }
   },
   "productVersion": "0.5.0",
@@ -603,5 +607,6 @@
     "Hosted release checks",
     "Versioned actual RDP and installed upgrades",
     "Public npm and standalone delivery"
-  ]
+  ],
+  "candidateTag": "standalone-candidate-0.5.0-51bc17eb4f1a"
 }
