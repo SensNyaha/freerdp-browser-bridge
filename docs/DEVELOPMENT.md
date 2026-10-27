@@ -1355,6 +1355,14 @@ The local builder/UID1000 smoke passes, including Node/glibc/compiler and the
 pinned vcpkg/Meson tools. The first cold hosted run identified missing `zip`
 before vcpkg bootstrap. The builder now explicitly installs curl/zip/unzip/tar;
 a source-only bootstrap with no pre-existing vcpkg binary passes as UID1000.
+The next cold hosted dependency build reaches gperf 3.3, whose nested
+`lib/configure.ac` requires Autoconf >=2.70. Debian 10's 2.69 fails `autoreconf`
+with exit 63. The builder now compiles official hash-pinned Autoconf 2.72 into
+its private build-tool prefix and verifies the selected version. The GNU source
+archive is limited to 8 MiB, checked before extraction, and excluded from native
+runtime artifacts. A source-SHA512-bound gperf fixture reproduces exit 63 with
+2.69 and passes with 2.72 under UID1000/network-none/read-only/tmpfs, retaining
+GCC 8.3 and glibc 2.28. No library or FreeRDP pin is changed for this tool fix.
 The complete cold dependency/SDK and hosted runtime build remains pending. Actual
 Astra/RED OS application and installed-runtime acceptance stays separate.
 

@@ -119,6 +119,20 @@ bootstrap now passes locally. Full hosted bundled acceptance remains open.
 The user defers real RDP tests after another application becomes active in the
 lab session; the unused Linux application container is removed. Main, release
 tags and published 0.4.0 inputs remain unchanged.
+An independent artifact-only clean runtime also passes for the current GCC 8.3
+image worker/addon: a fresh install stage has private dependency origins, then
+the unchanged restricted bookworm verifier (glibc 2.36) runs codec probes, RWS1
+pairing and native lifecycle/cleanup without SDK/source mounts or network,
+with UID1000/read-only/CapDropALL. Image/HTML/revoke capabilities are present;
+overall `rdp` stays false. This reuses the accepted SDK, does not accept the cold
+hosted SDK build or an actual image RDP roundtrip, and publishes no archive.
+[Clean runtime evidence](docs/CLIPBOARD_BROWSER.md#image-artifact-only-clean-linux-runtime).
+The same exact archive also passes non-root artifact-only runtime checks on
+actual Astra Linux 1.7.5 and RED OS 7.3 hosts, both glibc 2.28: six codec/private
+origin probes, actual addon/RWS1 pairing, native lifecycle and joined cleanup.
+Approved Node 24 bytes are independently verified and reused; no service, sudo
+or RDP operation is involved. Both new temporary contexts are removed. This
+extends named runtime portability, not image application or installer acceptance.
 [Compiler/hosted checkpoint](docs/CLIPBOARD_BROWSER.md#image-gcc-11-and-hosted-checkpoint).
 
 The earlier preparation checkpoints below retain their historical scope.

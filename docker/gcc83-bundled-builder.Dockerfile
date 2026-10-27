@@ -6,6 +6,13 @@ RUN printf '%s\n' 'deb https://archive.debian.org/debian buster main' > /etc/apt
     && apt-get -o Acquire::Check-Valid-Until=false update \
     && apt-get install -y --no-install-recommends curl zip unzip tar nasm bison autoconf-archive libltdl-dev pkg-config python3 \
     && rm -rf /var/lib/apt/lists/*
+COPY autoconf.tar.xz /tmp/autoconf.tar.xz
+RUN echo 'ba885c1319578d6c94d46e9b0dceb4014caafe2490e437a0dbca3f270a223f5a  /tmp/autoconf.tar.xz' | sha256sum --check \
+    && tar -xf /tmp/autoconf.tar.xz -C /tmp \
+    && cd /tmp/autoconf-2.72 \
+    && ./configure --prefix=/opt/bridge-tools/autoconf \
+    && make -j2 && make install \
+    && cd / && rm -rf /tmp/autoconf-2.72 /tmp/autoconf.tar.xz
 COPY node.tar.xz cmake.whl ninja.whl /tmp/tools/
 RUN echo 'fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  /tmp/tools/node.tar.xz' | sha256sum --check \
     && echo '1c8b05df0602365da91ee6a3336fe57525b137706c4ab5675498f662ae1dbcec  /tmp/tools/cmake.whl' | sha256sum --check \
@@ -16,11 +23,12 @@ RUN echo 'fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  /tmp
     && python3 -m zipfile -e /tmp/tools/ninja.whl /opt/bridge-tools/python \
     && chmod +x /opt/bridge-tools/python/cmake/data/bin/* /opt/bridge-tools/python/ninja-1.11.1.4.data/scripts/ninja \
     && rm -rf /tmp/tools
-ENV PATH=/opt/bridge-tools/node/bin:/opt/bridge-tools/python/cmake/data/bin:/opt/bridge-tools/python/ninja-1.11.1.4.data/scripts:/usr/local/bin:/usr/bin:/bin \
+ENV PATH=/opt/bridge-tools/autoconf/bin:/opt/bridge-tools/node/bin:/opt/bridge-tools/python/cmake/data/bin:/opt/bridge-tools/python/ninja-1.11.1.4.data/scripts:/usr/local/bin:/usr/bin:/bin \
     NODE_USE_SYSTEM_CA=1
 RUN test "$(g++ -dumpfullversion)" = 8.3.0 \
     && test "$(node --version)" = v24.21.0 \
     && npm install --global pnpm@10.11.0 --ignore-scripts --no-audit --no-fund \
     && test "$(pnpm --version)" = 10.11.0 \
-    && cmake --version && ninja --version
+    && cmake --version && ninja --version \
+    && test "$(autoconf --version | head -n 1)" = 'autoconf (GNU Autoconf) 2.72'
 WORKDIR /work

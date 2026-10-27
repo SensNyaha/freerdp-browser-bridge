@@ -1278,3 +1278,46 @@ page does not complete the initial receipt, and a private diagnostic frame
 shows another active application. No image transfer is accepted. The unused
 Linux application container is removed after exact ID/name/label checks; its
 server never starts. Actual RDP testing waits for a later operator-ready window.
+
+### Image artifact-only clean Linux runtime
+
+The current accepted GCC 8.3 worker/addon is independently installed into a new
+empty prefix. The private runtime verifier checks 34 ELF files and 333 dependency
+edges against that prefix. A separate 30,516,431-byte development archive is
+bound by SHA256 `826126910aa005fbbe9dc87aae88fbf27bb19b4b45ff771c0f77ed5ba80f673f`;
+it neither replaces nor publishes any existing 0.4.0 release asset.
+
+The unchanged `docker/native-runtime-check.Dockerfile` and artifact-only probe
+then run this archive in pinned bookworm/glibc 2.36 with Node 24.21.0, UID1000,
+network disabled, read-only root, CapDropALL, no-new-privileges and a 16 MiB
+noexec/nosuid/nodev runtime tmpfs. No SDK, source or build prefix is mounted.
+Six codec/dependency origin probes, one actual IPC addon/RWS1 pair, three native
+lifecycle acknowledgements and joined directory cleanup pass. The worker reports
+FreeRDP 3.32.1 and image/HTML/revoke capabilities; the overall V1 `rdp` flag remains
+false. This performs no RDP connection, clipboard or physical device operation.
+
+`build/current-validation/image-native-clean-acceptance.json` binds the input
+archive, strict runtime logs, capabilities and the exact 398 native source files.
+All six original build artifacts remain unchanged after installation. This uses
+the already accepted private SDK, so it does not establish the separate cold
+hosted dependency/SDK build, Astra/RED OS application acceptance or the deferred
+actual PNG RDP roundtrip. Those gates and image feature merge/release remain open.
+
+The exact same archive additionally passes on actual **Astra Linux 1.7.5**
+(kernel `6.1.50-1-generic`) and **RED OS 7.3** (kernel `6.1.180-1.el7.3.x86_64`),
+both with glibc 2.28. Each uses UID1000, the exact previously approved Node
+24.21.0 bytes, an isolated private fixture and the same artifact-only probe.
+Only the runtime temporary-directory constant is adapted to that fixture's
+owned directory; its hash is recorded. Six codec/private-module origins,
+actual addon/RWS1 pairing, three lifecycle acknowledgements and joined cleanup
+pass on each host. Image/HTML/revoke capabilities are present and overall `rdp`
+remains false. The runtime is compiled with GCC 8.3; the separate GCC 11 linked
+CTest checkpoint above remains a distinct compiler result.
+
+There is no sudo, service installation/configuration or RDP connection. The new
+temporary contexts are removed after exact ownership/path/symlink checks; older
+fixtures and services are untouched. Local
+`build/current-validation/image-native-os-acceptance.json` binds the archive,
+per-host reports, adapted probe hashes and cleanup. These are named native
+runtime/kernel compatibility checks, not actual image application or installer
+acceptance.

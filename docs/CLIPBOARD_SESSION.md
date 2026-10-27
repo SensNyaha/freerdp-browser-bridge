@@ -152,3 +152,101 @@ GCC 8.3/Clang 41/41; GCC 11 foundation 24/24 plus three SDK modules).
 These are source/ownership/lifecycle checks, not physical OS clipboard or
 actual RDP image application acceptance. The local receipt is
 `build/current-validation/image-public-acceptance.json`.
+
+### Application integration for the developing image feature
+
+This section describes `feature/image-clipboard`. Published 0.4.0 supports
+text/HTML; installing 0.4.0 does not enable these developing image APIs. Image
+merge/release and actual application acceptance remain open. Use the matching
+development JS and native runtime together until a versioned release is accepted.
+
+Select images in the session configuration passed to your existing framework
+adapter or standalone session endpoint:
+
+```json
+{
+  "clipboard": {
+    "mode": "bidirectional",
+    "text": true,
+    "images": true,
+    "maxItemBytes": 1048576
+  }
+}
+```
+
+The same selection applies to Express, Fastify, NestJS and node:http; these
+adapters share the session manager. Check `clipboardImage`, `clipboardText` and
+`clipboardRevoke` in the runtime capabilities. The overall V1 `rdp:false` does
+not replace those concrete capability checks. Use `server-to-browser` or
+`browser-to-server` for a single direction; an unavailable image capability is
+an explicit refusal, without silently selecting text/HTML or another runtime.
+
+For a custom server-side control integration, acquire its current control lease
+and subscribe with `onClipboard`. Wait for `clipboardSnapshot.state.ready`, then
+request the shared grant with `startClipboard()`. A connected session alone is
+insufficient: clipboard negotiation is asynchronous, and the grant may still be
+retiring from a prior controller. A false return grants no access. Keep one
+subscriber and one operation at a time; use the current generation/revision
+from that lease's snapshot rather than caching them across source changes.
+
+With a ready, granted lease named `control`, a small owned offer is:
+
+```ts
+const rgba = Buffer.from([255, 0, 0, 255, 0, 128, 255, 255]);
+try {
+  const status = await control.writeClipboardImage({
+    width: 2,
+    height: 1,
+    rgba,
+  });
+  // Surface status to the application; accepted means an offer, not a paste.
+  showOfferStatus(status);
+} finally {
+  rgba.fill(0);
+}
+```
+
+The item is compact top-down straight-alpha sRGB RGBA8, not a PNG/JPEG/BMP file.
+Its pixel length must be exactly `width * height * 4`; a local image decoder
+belongs in the hosting application's bounded, trusted input path. The maximum
+includes 124 bytes of the native DIBV5 representation: a 1 MiB setting permits
+at most 1,048,452 pixel bytes on write. Unknown metadata or profile URLs are not
+part of the item. The backend copies caller-owned pixels synchronously; clear
+your copy when the application no longer needs it.
+
+An accepted offer remains available while the grant is held. The remote user
+must paste it in the target application separately. Do not immediately revoke
+the grant after offering, or the target may lose the offer before requesting
+the pixels. At controller detach, unsubscribe/stop through the owning lifecycle,
+await `stopClipboard()`, then release the control attachment. Failed/uncertain
+retirement is a terminal owner failure, not permission for a replacement.
+
+For a read, require the snapshot's `remoteImage` and use that snapshot's current
+revision. A successful result owns its pixel buffer:
+
+```ts
+const source = control.clipboardSnapshot.state;
+if (source?.ready && source.remoteImage) {
+  const result = await control.readClipboardImage(source.revision);
+  const item = result.status === 'accepted' ? result.item : undefined;
+  if (item) {
+    try {
+      await consumeOwnedPixels(item);
+    } finally {
+      item.rgba.fill(0);
+    }
+  }
+}
+```
+
+`consumeOwnedPixels` must finish using the borrowed view before resolving; make
+your own bounded copy if it must outlive the call. A stale or unsuccessful read
+has no usable item and must not be replayed into the next source/controller.
+Never put pixels or clipboard text into diagnostics, errors or metrics.
+
+Browser applications normally use the existing reference image panel and
+[explicit ClipboardItem actions](CLIPBOARD_BROWSER.md#explicit-image-actions-in-development)
+instead of calling these server-side methods themselves. Paste creates a local
+draft; Send offers it to RDP; Get retrieves the remote pixels; Copy writes the
+received image to the browser's OS clipboard after a separate user gesture.
+File clipboard and managed drives remain separate TODO items.

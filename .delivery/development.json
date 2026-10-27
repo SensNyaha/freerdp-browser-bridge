@@ -2,7 +2,7 @@
   "schema": 1,
   "branch": "feature/image-clipboard",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "9018556c31a2d5a9d29b6cd66f3163c5600e7d20",
+  "privateSourceCommit": "6f66079d60d2fd6a9049e02b6ac753881ee9740e",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
   "actualImageRdpAccepted": false,
@@ -25,8 +25,8 @@
       "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
     },
     "TODO.md": {
-      "bytes": 236522,
-      "sha256": "f01bc1901acccd7a09419e06a35451522aa19f8829b9119a1e42c40cce2907d6"
+      "bytes": 237640,
+      "sha256": "5c1e2aa9ec64a56429a526a1c770a5613e61d2c774d48a333f1faedac5e93818"
     },
     "apps/bridge-api/src/clipboard.ts": {
       "bytes": 6634,
@@ -73,8 +73,8 @@
       "sha256": "a7d650226992e44b9aa08b4a4283120bcb2d7408239a2ef535d2c2c32e229d24"
     },
     "docs/CLIPBOARD_BROWSER.md": {
-      "bytes": 83445,
-      "sha256": "0fb5423ff2fe7439c65cd37dd8fca998502bf995a27a9d4c33376ed2c8a37758"
+      "bytes": 86211,
+      "sha256": "30cd8850c5ee3cf0b619a7b6451c2b33b10ab8b19db6bb91bdcfcd2cb4e47307"
     },
     "docs/CLIPBOARD_CONTROL.md": {
       "bytes": 12464,
@@ -85,8 +85,8 @@
       "sha256": "5d5d8142aff59c79fe3bdc6e9c1b723b05b69fe212b7454654cefd7a4558cdff"
     },
     "docs/CLIPBOARD_SESSION.md": {
-      "bytes": 9965,
-      "sha256": "0095593b40fc1734fe63e406c7a2165bea04f22fd2f987a2f1811796e096be03"
+      "bytes": 14246,
+      "sha256": "54c00d3224862b3519ada24a072a7870527ee1494970ac4e0c48a405695ca450"
     },
     "docs/CLIPBOARD_TEXT.md": {
       "bytes": 14885,
@@ -421,20 +421,20 @@
       "sha256": "a7616414ced80e039850a1b888edd47e35bc70eb8b5e2af378ff960113cfb2c2"
     },
     ".github/workflows/bundled-native.yml": {
-      "bytes": 6484,
-      "sha256": "afa7a98dcabc8186053edf16fa2e9e4521b8ba5f6c3ba39a69f15c275fe37b7f"
+      "bytes": 6828,
+      "sha256": "56ef26a27f69293d3d17a059e5d55d02a960e3b190417a1d17a6420eb86efe97"
     },
     "docker/gcc83-bundled-builder.Dockerfile": {
-      "bytes": 1901,
-      "sha256": "34532afa424d8f42f74c6ec9dd590e67e0888ca02759bf92bb0b0363dcf4e40f"
+      "bytes": 2407,
+      "sha256": "b879b460ea9ea3fd1246b85558ea1f03ae553b84cd9e76b2060b5b416c58c35e"
     },
     "docker/gcc83-bundled-builder.dockerignore": {
-      "bytes": 70,
-      "sha256": "462a8ae3024caf24fd09adf160e6bbed93742c0c21b91d8ea0d7224b319e9930"
+      "bytes": 87,
+      "sha256": "77d58012cc255da56cbee39d937b565e57e204468c92cb2ec90f13f92c955c94"
     },
     "docs/DEVELOPMENT.md": {
-      "bytes": 82979,
-      "sha256": "f9980e27fe0de2e0c2490b6a46f2e58568e7edaa19901521902ef527090159dd"
+      "bytes": 83609,
+      "sha256": "3d32d4aeef229ab7be63e9215bda6778a5c2f1b174c86baaca133f1ba2ac8ddf"
     },
     "tests/integration/clipboard-viewer.test.mjs": {
       "bytes": 13194,

@@ -3,4 +3,5 @@
 !node.tar.xz
 !cmake.whl
 !ninja.whl
+!autoconf.tar.xz
 !ca-certificates.crt
