@@ -73,10 +73,13 @@ jobs:
           BRIDGE_TEST_BINARY_DIR: build/bundled
       - name: Build and check Linux native closure at the GCC 8.3 ABI baseline
         if: runner.os == 'Linux'
+        env:
+          npm_config_store_dir: ${{ github.workspace }}/.tools/pnpm-store
         run: |
           docker run --rm --init --cap-drop ALL --security-opt no-new-privileges \
             --user "$(id -u):$(id -g)" \
             --env HOME=/tmp/bridge-builder-home --env CC=gcc --env CXX=g++ \
+            --env npm_config_store_dir \
             --env VCPKG_MAX_CONCURRENCY=2 --env CMAKE_BUILD_PARALLEL_LEVEL=2 \
             --volume "$PWD:$PWD" --workdir "$PWD" \
             freerdp-bridge-gcc83-bundled-tools sh -eu -c '
@@ -110,6 +113,8 @@ jobs:
           docker run --rm --network none --init --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /run/rdp-bridge-tests:rw,noexec,nosuid,nodev,size=16m,uid=1000,gid=1000,mode=700 freerdp-bridge-native-check
       - name: Assemble production Node runtime and service context
         if: runner.os == 'Linux'
+        env:
+          npm_config_store_dir: ${{ github.workspace }}/.tools/pnpm-store
         run: |
           node scripts/test-node-clean-build.mjs
           node scripts/package-node-runtime.mjs

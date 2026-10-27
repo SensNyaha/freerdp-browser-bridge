@@ -141,6 +141,26 @@ skips remain separate installer gates. The 398 native files match the current
 branch; Linux cold SDK/runtime and actual image RDP remain open.
 [Windows hosted scope](docs/CLIPBOARD_BROWSER.md#image-hosted-windows-bundled-checkpoint).
 
+The restored operator-ready window now passes three actual PNG RDP application
+profiles: Windows native worker, Linux GCC 8.3 RWS1 and Linux framed IPC, all
+against the prepared Windows Edge document. Exact opaque 32x32 pixels pass both
+directions and a newer remote revision, with real public control/session APIs
+and OS Clipboard APIs. The approved certificate matches; revoke, clipboard
+cleanup, worker retirement and empty runtimes pass. The final profile requests
+closing only its verified document; the temporary Linux container is removed.
+This supersedes the earlier application deferral and failed preparation probes,
+which remain recorded. All four current hosted foundation jobs also pass at
+`b13f706`. Cold Linux bundled and versioned distribution acceptance remain open;
+the image checkbox is not yet checked.
+[Actual image RDP scope](docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
+Hosted `b13f706` also passes the cold GCC 8.3 dependency/FreeRDP build, CTest
+41/41, linked Node 1182/119 skips and artifact-only restricted native runtime.
+The next clean Node assembly fails because the host and builder use different
+default pnpm stores. An explicit shared store now passes the actual offline
+clean build/deploy/import regression with an empty host HOME and unchanged
+lockfile. Workflow lint passes; complete hosted service assembly still requires
+the corrected-source run. [Builder procedure](docs/DEVELOPMENT.md).
+
 The earlier preparation checkpoints below retain their historical scope.
 
 The Stage 1 schema-1 runtime recovery feature is completed and published as

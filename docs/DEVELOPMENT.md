@@ -1369,8 +1369,20 @@ retries and the existing per-transfer time/size limits. SHA256 checks still run
 before any archive extraction; mismatched content is a refusal, not a retry or
 alternative unpinned source. The failed log is retained separately from build
 failures.
-The complete cold dependency/SDK and hosted runtime build remains pending. Actual
-Astra/RED OS application and installed-runtime acceptance stays separate.
+The next hosted run `40468676394` passes the cold GCC 8.3 dependency/FreeRDP
+build, native CTest 41/41, linked Node checks 1182/119 skips, and the unchanged
+restricted native runtime verifier (six modules, one IPC pair, three lifecycle
+acknowledgements and cleanup). It then fails the clean Node build because the
+host's default pnpm store differs from the container's temporary HOME store.
+The workflow now explicitly shares a workspace-local `npm_config_store_dir`
+between the non-root builder and host Node assembly. The clean build/deploy
+commands remain offline and frozen. A network-disabled UID1000 regression with
+an empty host HOME reproduces the missing-tarball error before the explicit
+store, then checks the actual clean source build, production deploy/import and
+unchanged lockfile against the populated shared store. Its logs are bound in
+`build/current-validation/image-builder-pnpm-store-acceptance.json`.
+Complete hosted service assembly/inventory remains pending. Actual Astra/RED OS
+application and installed-runtime acceptance stays separate.
 
 The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)
 uses the pinned compiler image and hash-checked offline build tools. Follow the

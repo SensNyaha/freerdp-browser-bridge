@@ -1344,3 +1344,37 @@ commit match the current branch. The local
 the source comparison, terminal job/step states, full log and counted checks.
 Linux cold dependency/SDK/runtime, actual image application and versioned
 distribution gates remain open.
+
+### Actual image RDP application checkpoint
+
+After access is restored and the operator confirms the generated document is
+active, three actual application profiles pass against the Windows RDP server:
+the clean Windows worker, the GCC 8.3 Linux worker with `unix-seqpacket-rws1`,
+and the same Linux worker with `framed-pipes`. Local headed Edge 156 uses real
+OS Clipboard APIs and the actual public session/control WebSocket path; neither
+the session backend nor Clipboard APIs are mocked. Each verifies exact owned
+opaque 32x32 PNG pixels in both directions, a newer remote revision, and that
+local paste alone does not send data to the remote application. The existing
+explicitly approved certificate must match throughout.
+
+All three verify revoke, owned clipboard clearing, UI disposal, worker retirement
+and an empty runtime. The first two reset and verify their own document for the
+next profile. The last requests closing only the verified test document; it
+does not assert that the browser process exits. The read-only UID1000 Linux
+container is stopped and removed after exact ID/name/label/mount checks, while
+the SDK volume is retained. No remote application is launched by the helper.
+
+Local evidence is bound by source/report hashes in
+`build/current-validation/image-actual-rdp-acceptance.json`, with the three
+terminal reports and container cleanup receipt alongside it. Native source
+digest remains `f1fbb2c01ccde9b154225b2eb665afe4def7e64a8cc934e96439c6438ee1153d`.
+The runtime still identifies as development 0.4.0; published 0.4.0 does not
+contain image support. These results supersede the earlier RDP deferral and
+failed document/focus probes without erasing their evidence.
+
+This accepts the named real image application profiles, including both Linux
+carriers. It does not establish arbitrary alpha/color-space fidelity, all browser
+or RDP-server combinations, or versioned installer/publication acceptance.
+All four current hosted foundation jobs pass at public `b13f706`; the separate
+cold Linux dependency/SDK/runtime job is still running. The feature remains on
+its branch until the remaining required gates pass.

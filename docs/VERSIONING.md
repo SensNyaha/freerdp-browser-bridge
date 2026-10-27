@@ -1,5 +1,17 @@
 # Product versions and release branches
 
+The developing image clipboard capability targets the next minor **0.5.0**
+under the capability rule below. Its standalone upgrade predecessor is explicitly
+**`v0.4.0`**. Seed/candidate/manifest tests require that exact predecessor in
+both platform receipts and reject older, mixed or absent evidence; unknown
+0.6.0 still requires a separate decision. The new seed tests fail before the
+implementation, then all 13 focused checks pass. Full linked `pnpm check` passes
+Windows 1227/71 skips and Linux UID1000/CapEff=0 1184/119 skips, zero failures.
+Local `build/current-validation/image05-seed-acceptance.json` binds the source
+snapshot and logs. This prepares release tooling only: product manifests remain
+0.4.0, the image feature remains on its branch, and actual versioned installers,
+registry publication and immutable 0.5.0 tagging require their own acceptance.
+
 HTML source acceptance is merged into shared `master` at `6f21ce7`.
 `release/0.4.0` is accepted and merged into shared `master` at `53b5edb`;
 annotated `v0.4.0` is immutable. Public **0.4.0** includes ten exact npm packages,
