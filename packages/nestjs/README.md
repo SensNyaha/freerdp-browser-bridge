@@ -14,7 +14,7 @@ profiles. All bridge packages and the native runtime use one product version.
 Install the matching release on Linux x64/glibc:
 
 ```sh
-npm install @freerdp-bridge/nestjs@0.4.0 @freerdp-bridge/runtime-linux-x64-gnu@0.4.0
+npm install @freerdp-bridge/nestjs@0.5.0 @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
 ```
 
 During release preparation use complete verified local archives; a source
@@ -69,7 +69,7 @@ during startup joins that work and then retires its resources.
 The optional `./browser` export provides `referenceBrowserDirectory`. Serve
 those assets through the host static router and set client `basePath: '/rdp'`.
 
-## HTML clipboard in 0.4.0
+## HTML clipboard
 
 The matched native/runtime and reference browser assets support explicit HTML
 clipboard selection alongside Unicode. Enable `clipboard.html: true`, select
@@ -77,10 +77,28 @@ a direction and a finite item maximum, and require native `clipboardHtml: true`.
 The reference UI uses separate Paste/Send/Get/Copy actions with browser permission
 and bounded safe static formatting; it never reads a clipboard on an offer.
 Custom worker factories must preserve the whole frozen session limits object.
-Image/file clipboard remains unavailable. See the
-[HTML integration guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
+File clipboard remains separate. See the
+[HTML integration guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
 for API policy and limitations. Until publication, use complete verified local
-0.4.0 archives; a source version does not prove npm availability.
+0.5.0 archives; a source version does not prove npm availability.
+
+## Image clipboard in 0.5.0
+
+During release preparation, use the complete verified 0.5.0 JS/native archive
+cohort; a source version alone does not establish registry availability.
+
+Version 0.5.0 adds `clipboard.images: true` with a direction, `text: true`
+and finite `maxItemBytes`. Require native `clipboardImage`, `clipboardText` and
+`clipboardRevoke`; custom worker factories must preserve the frozen limits.
+The reference browser provides separate PNG Paste/Send/Get/Copy/Clear actions.
+Images share text/HTML authority, one transfer flight and revoke; offers never
+read the OS clipboard automatically. RGBA8 pixels and the complete native DIBV5
+write must fit the item quota, with a 16 MiB ceiling. File clipboard is separate.
+Published 0.4.0 does not contain this feature: use matching verified 0.5.0
+JS/native artifacts. See the
+[application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
+for session JSON, readiness, typed control methods, buffer wiping and exact
+browser/RDP acceptance limits.
 
 ## Limitations
 

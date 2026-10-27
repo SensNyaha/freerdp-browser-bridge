@@ -1,6 +1,7 @@
 #pragma once
 #include "../compat/span.hpp"
 #include "../ipc/clipboard_html.hpp"
+#include "../ipc/clipboard_image.hpp"
 #include "text_session.hpp"
 #include <memory>
 #include <mutex>
@@ -11,7 +12,8 @@ namespace bridge::clipboard {
 // or the SDK context. No callback/transport call runs under the producer mutex.
 class WorkerSession final {
 public:
-  using Send = std::function<bool(ipc::Kind, std::uint64_t, ::bridge::compat::span<const std::uint8_t>)>;
+  using Send =
+      std::function<bool(ipc::Kind, std::uint64_t, ::bridge::compat::span<const std::uint8_t>)>;
   using Clock = TextSession::Clock;
   WorkerSession(TextPolicy, Send, Clock, TextSession::Resolve = TextSession::resolve_channel);
   ~WorkerSession();
@@ -57,6 +59,7 @@ private:
   bool complete(ipc::clipboard::Status, ::bridge::compat::span<const std::uint8_t> = {}) noexcept;
   bool reply(std::uint64_t, TextReply, ::bridge::compat::span<const std::uint8_t>) noexcept;
   bool reply_html(std::uint64_t, TextReply, HtmlView) noexcept;
+  bool reply_image(std::uint64_t, TextReply, ImageView) noexcept;
   bool complete_html(const ipc::clipboard::HtmlItem &) noexcept;
   bool publish(const TextSnapshot &);
   void release_job() noexcept;

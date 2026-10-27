@@ -48,7 +48,7 @@ test('0.3.0 distribution binds the real 0.2.5 predecessor and exact candidate/ar
     ref: 'v0.3.0',
   });
   assert.throws(
-    () => standaloneUpgradeSeed('0.5.0'),
+    () => standaloneUpgradeSeed('0.6.0'),
     /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
   );
   assert.equal(
@@ -78,7 +78,37 @@ test('0.4.0 distribution upgrades from the published 0.3.0 line without guessing
     ref: 'v0.4.0',
   });
   assert.throws(
-    () => standaloneUpgradeSeed('0.5.0'),
+    () => standaloneUpgradeSeed('0.6.0'),
     /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
+  );
+});
+
+test('0.5.0 image distribution explicitly upgrades the published 0.4.0 line and leaves future minor seeds unknown', () => {
+  assert.deepEqual(standaloneUpgradeSeed('0.5.0'), {
+    version: '0.4.0',
+    ref: 'v0.4.0',
+  });
+  assert.deepEqual(standaloneUpgradeSeed('0.5.1'), {
+    version: '0.5.0',
+    ref: 'v0.5.0',
+  });
+  assert.throws(
+    () => standaloneUpgradeSeed('0.6.0'),
+    /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
+  );
+  const pointer = {
+    schema: 1,
+    version: '0.5.0',
+    sourceCommit: 'a'.repeat(40),
+    tag: 'standalone-candidate-0.5.0-' + 'a'.repeat(12),
+  };
+  assert.deepEqual(standaloneCandidatePointer(pointer, '0.5.0'), pointer);
+  assert.throws(
+    () => standaloneCandidatePointer(pointer, '0.4.0'),
+    /STANDALONE_CANDIDATE_RELEASE_INVALID/,
+  );
+  assert.equal(
+    publicTarballUrl('@freerdp-bridge/node', '0.5.0'),
+    'https://registry.npmjs.org/@freerdp-bridge/node/-/node-0.5.0.tgz',
   );
 });

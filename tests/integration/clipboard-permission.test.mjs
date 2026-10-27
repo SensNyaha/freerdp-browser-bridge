@@ -5,45 +5,58 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 import { listenBrowserHttp } from '../fixtures/browser-port.mjs';
 
-for (const rich of [false, true])
+for (const format of ['text', 'html', 'image'])
   test(
-    `Edge actual ${rich ? 'HTML' : 'text'} Clipboard API denial targets the owned context and reaches the reference UI without a transfer`,
+    `Edge actual ${format === 'html' ? 'HTML' : format} Clipboard API denial targets the owned context and reaches the reference UI without a transfer`,
     { skip: process.platform !== 'win32', timeout: 20000 },
     async () => {
+      const rich = format === 'html',
+        image = format === 'image';
       const assets = new Map();
-      for (const name of rich
+      for (const name of image
         ? [
-            'clipboard-html-view.js',
-            'clipboard-html-normalize.js',
-            'clipboard-html.js',
-            'clipboard-text.js',
+            'clipboard-image-view.js',
+            'clipboard-image.js',
+            'clipboard-image-conversion.js',
+            'clipboard-image-worker.js',
           ]
-        : ['clipboard-view.js', 'clipboard-text.js'])
+        : rich
+          ? [
+              'clipboard-html-view.js',
+              'clipboard-html-normalize.js',
+              'clipboard-html.js',
+              'clipboard-text.js',
+            ]
+          : ['clipboard-view.js', 'clipboard-text.js'])
         assets.set(
           '/' + name,
           await readFile('apps/reference-harness/' + name),
         );
       const index = await readFile('apps/reference-harness/index.html', 'utf8');
       const panel = index.slice(
+        index.indexOf('<section id="clipboard-' + format + '"'),
         index.indexOf(
-          '<section id="clipboard-' + (rich ? 'html' : 'text') + '"',
-        ),
-        index.indexOf(
-          rich ? '<section id="clipboard-text"' : '<form id="resize">',
+          image
+            ? '<section id="clipboard-html"'
+            : rich
+              ? '<section id="clipboard-text"'
+              : '<form id="resize">',
         ),
       );
       const html =
         '<!doctype html><meta charset="utf-8">' +
         panel +
         `<script type="module">
-      import {${rich ? 'installClipboardHtmlView' : 'installClipboardView'} as installView} from '/clipboard-${rich ? 'html-view' : 'view'}.js';
+      import {${image ? 'installClipboardImageView' : rich ? 'installClipboardHtmlView' : 'installClipboardView'} as installView} from '/clipboard-${image ? 'image-view' : rich ? 'html-view' : 'view'}.js';
       window.transfers=0;
-      window.view=installView(document.querySelector('#clipboard-${rich ? 'html' : 'text'}'), {
-        snapshot:{available:true,busy:false,toServer:true,canSet:true,html:${rich},canSetHtml:${rich},maximum:1024},
+      window.view=installView(document.querySelector('#clipboard-${format}'), {
+        snapshot:{available:true,busy:false,toServer:true,canSet:true,html:${rich},canSetHtml:${rich},image:${image},canSetImage:${image},maximum:1024},
         set(){++window.transfers;throw new Error('Unexpected transfer');},
         read(){++window.transfers;throw new Error('Unexpected transfer');},
         setHtml(){++window.transfers;throw new Error('Unexpected transfer');},
-        readHtml(){++window.transfers;throw new Error('Unexpected transfer');}
+        readHtml(){++window.transfers;throw new Error('Unexpected transfer');},
+        setImage(){++window.transfers;throw new Error('Unexpected transfer');},
+        readImage(){++window.transfers;throw new Error('Unexpected transfer');}
       });
     </script>`;
       const server = createServer((request, response) => {
@@ -97,7 +110,11 @@ for (const rich of [false, true])
         // Real browser denial happens before clipboard data can be acquired.
         // No Clipboard API override, OS write or remote backend is used here.
         const paste = page.locator(
-          rich ? '[data-html-clipboard=paste]' : '[data-clipboard=paste]',
+          image
+            ? '[data-image-clipboard=paste]'
+            : rich
+              ? '[data-html-clipboard=paste]'
+              : '[data-clipboard=paste]',
         );
         await paste.click();
         await page.waitForFunction(
@@ -105,13 +122,18 @@ for (const rich of [false, true])
             document.querySelector('[role=status]').textContent ===
             'Браузер отказал в доступе к буферу обмена',
         );
+        const draft = page.locator(
+          image
+            ? '[data-image-clipboard-draft]'
+            : rich
+              ? '[data-html-clipboard-draft]'
+              : '[data-clipboard-draft]',
+        );
         assert.equal(
-          await page
-            .locator(
-              rich ? '[data-html-clipboard-draft]' : '[data-clipboard-draft]',
-            )
-            .inputValue(),
-          '',
+          image
+            ? await draft.evaluate((canvas) => canvas.width)
+            : await draft.inputValue(),
+          image ? 0 : '',
         );
         assert.equal(await page.evaluate(() => window.transfers), 0);
         assert.equal(await paste.isEnabled(), true);

@@ -199,6 +199,8 @@ test('HTML HELLO requires both text and revoke and leaves the flag absent on old
   };
   assert.equal(decodeBuild(base).capabilities.clipboardHtml, undefined);
   assert.equal(decodeBuild(build(280)).capabilities.clipboardHtml, true);
-  for (const flags of [256, 264, 272, 512, 792])
+  assert.equal(decodeBuild(build(792)).capabilities.clipboardHtml, true);
+  assert.equal(decodeBuild(build(792)).capabilities.clipboardImage, true);
+  for (const flags of [256, 264, 272, 512, 1048, 1816])
     assert.throws(() => decodeBuild(build(flags)), ProtocolError);
 });

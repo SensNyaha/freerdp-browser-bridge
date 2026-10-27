@@ -58,7 +58,7 @@ the bridge and preserves the host.
 optional HTML/JS through your static router and set client `basePath: '/rdp'`.
 The package exports `./fastify` and `./browser`, with no root API import.
 
-## HTML clipboard in 0.4.0
+## HTML clipboard
 
 Select HTML explicitly in an authenticated session-create request:
 
@@ -71,11 +71,29 @@ and credentials. Require `clipboardHtml: true` in native capabilities. The
 matched reference assets provide separate Paste/Send/Get/Copy actions and a
 bounded safe static formatting profile. Offers do not read either clipboard.
 HTML and Unicode share one item/flight/quota; unsupported HTML is refused
-without an automatic text fallback. Image/file clipboard remains unavailable.
-See the [HTML guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
+without an automatic text fallback. File clipboard remains separate.
+See the [HTML guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/WEB_CONNECTION_EXAMPLE.md#html-development-workflow)
 for integration, selected ranges and browser permission requirements. Before
-publication, use complete verified local 0.4.0 archives; a source version does
+publication, use complete verified local 0.5.0 archives; a source version does
 not establish registry availability.
+
+## Image clipboard in 0.5.0
+
+During release preparation, use the complete verified 0.5.0 JS/native archive
+cohort; a source version alone does not establish registry availability.
+
+Version 0.5.0 adds `clipboard.images: true` with a direction, `text: true`
+and finite `maxItemBytes`. Require native `clipboardImage`, `clipboardText` and
+`clipboardRevoke`; custom worker factories must preserve the frozen limits.
+The reference browser provides separate PNG Paste/Send/Get/Copy/Clear actions.
+Images share text/HTML authority, one transfer flight and revoke; offers never
+read the OS clipboard automatically. RGBA8 pixels and the complete native DIBV5
+write must fit the item quota, with a 16 MiB ceiling. File clipboard is separate.
+Published 0.4.0 does not contain this feature: use matching verified 0.5.0
+JS/native artifacts. See the
+[application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
+for session JSON, readiness, typed control methods, buffer wiping and exact
+browser/RDP acceptance limits.
 
 ## Limitations
 

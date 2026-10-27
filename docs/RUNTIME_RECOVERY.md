@@ -1,5 +1,27 @@
 # Runtime recovery
 
+## Windows long installation paths in 0.5.0 preparation
+
+An actual independent 0.5.0 npm consumer exposed a canonical helper path of
+299 characters: the verified executable exists and can be read, but Windows
+process launch returns ENOENT. Its 303-character extended-length path launches
+the same bytes. Cohort canonicalization removes that prefix, so the recovery
+process owner now applies `toNamespacedPath` only at the Windows executable
+launch boundary. Linux executable handling is unchanged. Root/component
+arguments, cohort hashes, finite child/output limits, cancellation and joined
+settlement retain their existing contracts.
+
+`tests/integration/runtime-recovery-long-path.test.mjs` copies the actual native
+helper into a fresh path above MAX_PATH, canonicalizes it, and verifies recovery
+of a privately created owned orphan through the production process owner. The
+case fails before the fix with `RUNTIME_RECOVERY_UNAVAILABLE`; all nine focused
+long-path, SDK and cancellation cases then pass on Windows. A fresh exact-archive
+Fastify consumer also passes image/HTML capabilities and runtime recovery after
+the fix. Full final release checks and other OS/installer acceptance are
+separate. The prior failed consumer log and unpublished archive are retained in
+`build/current-validation/image05-recovery-long-path-counterexample.json`.
+No existing immutable release bytes are replaced.
+
 Shared `master` now includes both accepted branches; immutable annotated
 `v0.3.0` identifies merge `4ce88b3`. The following local-acceptance report was
 recorded before that merge. npm and standalone public delivery is now accepted;

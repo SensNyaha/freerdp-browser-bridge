@@ -46,6 +46,7 @@ export function connectionConfig(fields, capabilities) {
   const microphone = choice('microphone', ['off', 'pcm', 'opus']);
   const clipboardMode = fields.get('clipboard') ?? 'off';
   const clipboardHtml = fields.get('clipboardHtml') === 'on';
+  const clipboardImages = fields.get('clipboardImages') === 'on';
   if (
     ![
       'off',
@@ -59,7 +60,8 @@ export function connectionConfig(fields, capabilities) {
     clipboardMode !== 'off' &&
     (!capabilities?.clipboardText ||
       !capabilities?.clipboardRevoke ||
-      (clipboardHtml && !capabilities?.clipboardHtml))
+      (clipboardHtml && !capabilities?.clipboardHtml) ||
+      (clipboardImages && !capabilities?.clipboardImage))
   )
     throw new Error('Выбранная функция не поддерживается этим bridge');
   const dynamicResolution = fields.get('dynamicResolution') === 'on';
@@ -139,6 +141,7 @@ export function connectionConfig(fields, capabilities) {
             mode: clipboardMode,
             text: true,
             ...(clipboardHtml ? { html: true } : {}),
+            ...(clipboardImages ? { images: true } : {}),
             maxItemBytes: number('clipboardMax', 1, 16777216),
           },
         }),

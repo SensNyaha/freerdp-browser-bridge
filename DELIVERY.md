@@ -1,8 +1,8 @@
-# Accepted 0.4.0 delivery
+# Accepted 0.5.0 delivery
 
-Upstream: v0.4.0, 53b5edb181afe8d713a16a2b0616bfcebfc7e783. GitHub: SensNyaha/freerdp-browser-bridge.
+Upstream: v0.5.0, cec3b8e00da849dd524ce55917f76f39fcfe537c. GitHub: SensNyaha/freerdp-browser-bridge.
 
-Push main and the annotated v0.4.0 tag with an ordinary fast-forward push. Preserve existing public history and immutable tags.
+Push main and the annotated v0.5.0 tag with an ordinary fast-forward push. Preserve existing public history and immutable tags.
 
 The exact accepted archives stay in the sibling release-assets folder, outside Git. After the repository/workflow exists, configure npm Trusted Publishing with owner SensNyaha, this repository and npm-publish.yml, allowing direct npm publish. Then upload the checked assets through the bootstrap release helper. No manual per-package publishing token is used by CI.
 

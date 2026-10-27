@@ -46,6 +46,208 @@ async function run(mode, body, options = {}) {
     await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
   }
 }
+const imageItem = () => ({
+  width: 2,
+  height: 1,
+  rgba: Buffer.from('12345678fedcba98', 'hex'),
+});
+const imageConfig = (mode = 'bidirectional', maximum = 1024, html = false) => {
+  const value = config(mode, maximum);
+  Object.assign(value.clipboard, {
+    images: true,
+    ...(html ? { html: true } : {}),
+  });
+  return value;
+};
+test('fake image IPC: schema14 image-only negotiation directions and owned RGBA readback', async () => {
+  for (const direction of [
+    'bidirectional',
+    'server-to-browser',
+    'browser-to-server',
+  ])
+    await run('image-no-html', async (worker) => {
+      assert.equal(worker.build.capabilities.clipboardImage, true);
+      assert.equal(worker.build.capabilities.clipboardHtml, undefined);
+      assert.deepEqual(await worker.readClipboardImage(1n), {
+        status: 'unavailable',
+      });
+      await worker.connect(imageConfig(direction));
+      await eventually(() => worker.clipboardState?.ready);
+      assert.equal(worker.clipboardState.image, true);
+      assert.equal(worker.clipboardState.html, undefined);
+      const source = worker.clipboardState;
+      source.remoteImage = false;
+      assert.equal(
+        worker.clipboardState.remoteImage,
+        direction !== 'browser-to-server',
+      );
+      const result = await worker.readClipboardImage(1n);
+      assert.equal(
+        result.status,
+        direction === 'browser-to-server' ? 'refused' : 'accepted',
+      );
+      if (result.item) {
+        assert.deepEqual(result.item, imageItem());
+        await worker.ping();
+        assert.deepEqual(result.item, imageItem());
+        result.item.rgba.fill(0);
+      }
+      const item = imageItem();
+      assert.equal(
+        await worker.writeClipboardImage(item),
+        direction === 'server-to-browser' ? 'refused' : 'accepted',
+      );
+      assert.deepEqual(item, imageItem());
+      await worker.ping();
+    });
+});
+test('fake image IPC: writes copy caller pixels synchronously and shared revoke clears accepted image', async () => {
+  await run('image-check-write', async (worker) => {
+    await worker.connect(imageConfig());
+    await eventually(() => worker.clipboardState?.ready);
+    const item = imageItem(),
+      writing = worker.writeClipboardImage(item);
+    item.rgba.fill(0);
+    assert.equal(await writing, 'accepted');
+    assert.equal(worker.clipboardState.localImageAccepted, true);
+    assert.equal(await worker.revokeClipboardText(), 'accepted');
+    assert.equal(worker.clipboardState.localImageAccepted, false);
+    assert.equal(worker.clipboardState.localAccepted, false);
+    assert.deepEqual(item.rgba, Buffer.alloc(8));
+    await worker.ping();
+  });
+});
+test('fake image IPC: image HTML Unicode and revoke share a flight and stale read never returns an item', async () => {
+  await run('image-hold', async (worker) => {
+    await worker.connect(imageConfig('bidirectional', 1024, true));
+    await eventually(() => worker.clipboardState?.ready);
+    const pending = worker.readClipboardImage(1n);
+    assert.equal(await worker.writeClipboardImage(imageItem()), 'busy');
+    assert.equal(await worker.writeClipboardText(Buffer.from('X')), 'busy');
+    assert.equal((await worker.readClipboardHtml(1n)).status, 'busy');
+    assert.equal(await worker.revokeClipboardText(), 'busy');
+    await worker.ping();
+    const value = await pending;
+    assert.equal(value.status, 'accepted');
+    value.item.rgba.fill(0);
+  });
+  await run('image-stale', async (worker) => {
+    await worker.connect(imageConfig());
+    await eventually(() => worker.clipboardState?.ready);
+    assert.deepEqual(await worker.readClipboardImage(1n), { status: 'stale' });
+  });
+});
+test('fake image IPC: native overhead and malformed geometry refuse before dispatch while read quotas fail closed', async () => {
+  for (const maximum of [131, 132])
+    await run('image-valid', async (worker) => {
+      await worker.connect(imageConfig('bidirectional', maximum));
+      await eventually(() => worker.clipboardState?.ready);
+      if (maximum === 131)
+        await assert.rejects(worker.writeClipboardImage(imageItem()), {
+          code: 'CLIPBOARD_INVALID_IMAGE',
+        });
+      else
+        assert.equal(await worker.writeClipboardImage(imageItem()), 'accepted');
+      for (const patch of [
+        { width: 0 },
+        { height: 0x7fffffff, width: 0x7fffffff },
+        { rgba: Buffer.alloc(0) },
+      ])
+        await assert.rejects(
+          worker.writeClipboardImage({ ...imageItem(), ...patch }),
+          { code: 'CLIPBOARD_INVALID_IMAGE' },
+        );
+      await worker.ping();
+    });
+  await run('image-overquota', async (worker) => {
+    await worker.connect(imageConfig());
+    await eventually(() => worker.clipboardState?.ready);
+    await assert.rejects(worker.readClipboardImage(1n), {
+      code: 'IPC_UNEXPECTED_REPLY',
+    });
+    assert.equal(worker.clipboardState, undefined);
+  });
+  await run('image-valid', async (worker) => {
+    await worker.connect(imageConfig('bidirectional', 1048576));
+    await eventually(() => worker.clipboardState?.ready);
+    const item = { width: 17500, height: 1, rgba: Buffer.alloc(70000, 65) };
+    await assert.rejects(worker.writeClipboardImage(item), {
+      code: 'IPC_QUEUE_FULL',
+    });
+    assert.equal(
+      item.rgba.every((byte) => byte === 65),
+      true,
+    );
+    assert.equal(await worker.writeClipboardImage(imageItem()), 'accepted');
+    await worker.ping();
+  });
+});
+test('fake image IPC: missing capability unselected policy downgrade and terminal reply cannot gain image authority', async () => {
+  await run('image-no-image', async (worker) => {
+    await assert.rejects(worker.readClipboardImage(1n), {
+      code: 'CLIPBOARD_NOT_IMPLEMENTED',
+    });
+    await assert.rejects(worker.connect(imageConfig()), {
+      code: 'RDP_SETTING_NOT_IMPLEMENTED',
+    });
+    await worker.ping();
+  });
+  await run('image-unselected', async (worker) => {
+    await worker.connect(config());
+    await eventually(() => worker.clipboardState?.ready);
+    assert.deepEqual(await worker.readClipboardImage(1n), {
+      status: 'unavailable',
+    });
+    assert.equal(await worker.writeClipboardImage(imageItem()), 'unavailable');
+    await worker.ping();
+  });
+  await run('image-downgrade', async (worker) => {
+    await worker.connect(imageConfig());
+    await eventually(() => worker.state === 'failed');
+    assert.equal(worker.clipboardState, undefined);
+  });
+  await run('image-mismatch', async (worker) => {
+    await worker.connect(imageConfig());
+    await eventually(() => worker.clipboardState?.ready);
+    await assert.rejects(worker.readClipboardImage(1n), {
+      code: 'IPC_UNEXPECTED_REPLY',
+    });
+  });
+  await run('image-malformed', async (worker) => {
+    await worker.connect(imageConfig());
+    await eventually(() => worker.clipboardState?.ready);
+    await assert.rejects(worker.readClipboardImage(1n), {
+      code: 'IPC_PROTOCOL_ERROR',
+    });
+    assert.equal(worker.state, 'failed');
+    assert.equal(worker.clipboardState, undefined);
+  });
+  await run('image-source-close', async (worker) => {
+    await worker.connect(imageConfig());
+    await eventually(() => worker.clipboardState?.ready);
+    assert.deepEqual(await worker.readClipboardImage(1n), {
+      status: 'disconnected',
+    });
+    await worker.ping();
+    assert.equal(worker.clipboardState, undefined);
+  });
+});
+test(
+  'fake image IPC: finite seven-second image read deadline is not retried',
+  { timeout: 12000 },
+  async () => {
+    await run('image-timeout', async (worker) => {
+      await worker.connect(imageConfig());
+      await eventually(() => worker.clipboardState?.ready);
+      await assert.rejects(worker.readClipboardImage(1n), {
+        code: 'IPC_TIMEOUT',
+      });
+      assert.equal(worker.state, 'failed');
+      assert.equal(worker.clipboardState, undefined);
+    });
+  },
+);
+
 test('fake clipboard IPC: explicit profiles, copied scalar state and Unicode read/write ownership', async () => {
   for (const mode of [
     'bidirectional',

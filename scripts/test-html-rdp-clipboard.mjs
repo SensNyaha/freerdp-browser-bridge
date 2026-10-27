@@ -218,6 +218,7 @@ try {
     'clipboard-html-view.js',
     'clipboard-html-normalize.js',
     'clipboard-html.js',
+    'clipboard-image.js',
     'clipboard-text.js',
     'clipboard-wire.js',
   ];

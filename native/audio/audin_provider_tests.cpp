@@ -384,6 +384,8 @@ TEST_CASE("Actual guarded AUDIN negotiates beneath public early DVC audio alloca
   REQUIRE_FALSE(fixture.source.stats()->opened);
   REQUIRE(registry.retire() != CHANNEL_RC_OK); // Admission error survives completed cleanup.
   REQUIRE(registry.stats().resources_retired);
+  // The fixture owns provider, while this scope owns its borrowed registration.
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
 TEST_CASE("Actual guarded AUDIN normal close retires early DVC ownership without a false fault") {
   Fixture fixture;
@@ -405,6 +407,7 @@ TEST_CASE("Actual guarded AUDIN normal close retires early DVC ownership without
   REQUIRE(registry.retire() == CHANNEL_RC_OK);
   REQUIRE_FALSE(registry.stats().failed);
   REQUIRE(registry.stats().resources_retired);
+  REQUIRE(fixture.provider.close() == CHANNEL_RC_OK);
 }
 TEST_CASE("Microphone reset control clears actual source before fresh admitted authority") {
   Fixture fixture;

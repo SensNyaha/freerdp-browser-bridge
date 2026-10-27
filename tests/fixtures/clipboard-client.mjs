@@ -6,6 +6,7 @@ export function clipboardClientFixture(
   maximum = 1048576,
   html = false,
   mode = 'bidirectional',
+  image = false,
 ) {
   const f = {
     time: 0,
@@ -20,6 +21,18 @@ export function clipboardClientFixture(
     readBuffer: undefined,
     granted: false,
     descriptor: html ? { version: 1, itemMetadataBytes: 32 } : undefined,
+    imageDescriptor: image
+      ? {
+          version: 1,
+          itemMetadataBytes: 16,
+          pixelFormat: 'rgba8-srgb-straight',
+        }
+      : undefined,
+    readImage: {
+      width: 2,
+      height: 1,
+      rgba: Buffer.from('12345678fedcba98', 'hex'),
+    },
     readItem: {
       body: Buffer.from('<b>synthetic</b>'),
       fragmentOffset: 0,
@@ -30,7 +43,14 @@ export function clipboardClientFixture(
       selection: false,
       text: Buffer.from('synthetic'),
     },
-    calls: { readHtml: 0, writeHtml: 0, read: 0, write: 0 },
+    calls: {
+      readHtml: 0,
+      writeHtml: 0,
+      readImage: 0,
+      writeImage: 0,
+      read: 0,
+      write: 0,
+    },
   };
   f.state = {
     ready: true,
@@ -43,6 +63,13 @@ export function clipboardClientFixture(
     localAccepted: false,
     localPending: false,
     remotePending: false,
+    ...(image
+      ? {
+          image: true,
+          remoteImage: mode !== 'browser-to-server',
+          localImageAccepted: false,
+        }
+      : {}),
     ...(html
       ? {
           html: true,
@@ -61,6 +88,7 @@ export function clipboardClientFixture(
       granted: f.granted,
       retiring: false,
       ...(f.descriptor === undefined ? {} : { html: f.descriptor }),
+      ...(f.imageDescriptor === undefined ? {} : { image: f.imageDescriptor }),
       state: {
         ...f.state,
         generation: String(f.state.generation),
@@ -77,19 +105,35 @@ export function clipboardClientFixture(
       sendControl: (type, data) => {
         const seq = f.seq++;
         f.tasks.push(() =>
-          type === 'clipboard.set' || type === 'clipboard.html.set'
+          [
+            'clipboard.set',
+            'clipboard.html.set',
+            'clipboard.image.set',
+          ].includes(type)
             ? f.server.set(
                 seq,
                 BigInt(data.generation),
                 data.bytes,
-                type === 'clipboard.html.set' ? 'html' : 'text',
+                type === 'clipboard.html.set'
+                  ? 'html'
+                  : type === 'clipboard.image.set'
+                    ? 'image'
+                    : 'text',
               )
-            : type === 'clipboard.request' || type === 'clipboard.html.request'
+            : [
+                  'clipboard.request',
+                  'clipboard.html.request',
+                  'clipboard.image.request',
+                ].includes(type)
               ? f.server.read(
                   seq,
                   BigInt(data.generation),
                   BigInt(data.revision),
-                  type === 'clipboard.html.request' ? 'html' : 'text',
+                  type === 'clipboard.html.request'
+                    ? 'html'
+                    : type === 'clipboard.image.request'
+                      ? 'image'
+                      : 'text',
                 )
               : f.server.acknowledge(data.requestSeq, data.offset),
         );
@@ -144,6 +188,23 @@ export function clipboardClientFixture(
           ...item,
           body: Buffer.from(item.body),
           ...(item.text === undefined ? {} : { text: Buffer.from(item.text) }),
+        };
+        return Promise.resolve('accepted');
+      },
+      readImage: async () => {
+        ++f.calls.readImage;
+        f.readImageBuffer = {
+          ...f.readImage,
+          rgba: Buffer.from(f.readImage.rgba),
+        };
+        return { status: 'accepted', item: f.readImageBuffer };
+      },
+      writeImage: (item) => {
+        ++f.calls.writeImage;
+        f.imageWritten = {
+          width: item.width,
+          height: item.height,
+          rgba: Buffer.from(item.rgba),
         };
         return Promise.resolve('accepted');
       },

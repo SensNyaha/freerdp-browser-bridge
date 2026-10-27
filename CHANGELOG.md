@@ -2,6 +2,47 @@
 
 Product release versions follow [the version policy](docs/VERSIONING.md).
 
+## Unreleased
+
+No additional changes since the accepted 0.5.0 release snapshot.
+
+## 0.5.0 — 2026-10-27
+
+Versioned candidate acceptance passes: ten exact npm archives and dry runs,
+four installed archive consumers per OS, all hosted checks, actual Astra/RED OS
+0.4.0 upgrades, eight desktop profiles and three PNG application profiles.
+Stable npm/standalone publication and registry-only acceptance are the next
+delivery steps. [Accepted inputs and scope](docs/RELEASE_0_5_0.md).
+
+- Preserve Windows extended-length executable paths when launching the verified
+  runtime recovery helper. A deeply installed npm runtime can be readable after
+  canonicalization but fail CreateProcess with ENOENT without its path prefix.
+  Recovery ownership, cohort hashes, deadlines and joined cleanup are unchanged.
+
+- Add opt-in negotiated image clipboard alongside text/HTML. Allocation-free
+  packed DIB/DIBV5 inspection and RGBA8 conversion, canonical DIBV5 writes,
+  bounded C++/TypeScript inner records and versioned worker negotiation feed
+  typed public image read/write operations over RWC1. Formats share controller
+  authority, one transfer flight, item quotas, revision and joined revoke.
+  Native DIBV5 write admission includes its header under the 16 MiB item cap.
+  [Native contract](docs/CLIPBOARD_TEXT.md#shared-native-image-owner-in-development),
+  [private IPC](docs/CLIPBOARD_IPC.md#private-image-handoff-in-development),
+  [public control](docs/CLIPBOARD_CONTROL.md#image-control-extension-in-development).
+- Add explicit image ClipboardItem Paste/Send/Get/Copy/Clear actions, bounded
+  previews and independent image selection in the reference connection form.
+  The browser byte client shares text/HTML credit, deadlines and cleanup. PNG
+  conversion uses one disposable worker with cancellation and a finite deadline.
+  Automatic conversion profiles cover non-square opaque pixels, representable
+  alpha and near-16-MiB input; this does not promise arbitrary alpha/color-space
+  fidelity or universal browser Clipboard API availability.
+  [Actions and limits](docs/CLIPBOARD_BROWSER.md#explicit-image-actions-in-development).
+- Verify named real Edge opaque PNG OS and RDP application roundtrips through
+  Windows and Linux workers, including Linux RWS1/framed IPC, exact pixels in
+  both directions, a newer remote revision, strict approved certificate and
+  joined cleanup. Hosted and versioned npm/standalone acceptance remain separate;
+  published 0.4.0 does not contain this image capability.
+  [Actual application scope](docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
+
 ## 0.4.0 — 2026-10-26
 
 HTML implementation and versioned distribution acceptance pass. All ten exact

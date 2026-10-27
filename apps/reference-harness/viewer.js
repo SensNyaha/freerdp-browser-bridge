@@ -9,6 +9,7 @@ import { queryMicrophoneOpusSupport } from './microphone-opus-encoder.js';
 import { ClipboardClient } from './clipboard-client.js';
 import { installClipboardView } from './clipboard-view.js';
 import { installClipboardHtmlView } from './clipboard-html-view.js';
+import { installClipboardImageView } from './clipboard-image-view.js';
 const status = document.querySelector('#status');
 const canvas = document.querySelector('#desktop');
 const certificate = document.querySelector('#certificate');
@@ -83,6 +84,7 @@ function detach() {
   current.detaching = true;
   current.clipboardView?.dispose();
   current.clipboardHtmlView?.dispose();
+  current.clipboardImageView?.dispose();
   current.clipboard?.dispose();
   clearTimeout(current.clipboardTimer);
   current.disposeInput?.();
@@ -619,6 +621,7 @@ function attachSession(created, options, playback) {
       );
     session.clipboardView?.changed();
     session.clipboardHtmlView?.changed();
+    session.clipboardImageView?.changed();
   };
   session.clipboard = new ClipboardClient({
     authorized: clipboardAuthorized,
@@ -657,6 +660,11 @@ function attachSession(created, options, playback) {
   );
   session.clipboardHtmlView = installClipboardHtmlView(
     document.querySelector('#clipboard-html'),
+    session.clipboard,
+    clipboardUiActions,
+  );
+  session.clipboardImageView = installClipboardImageView(
+    document.querySelector('#clipboard-image'),
     session.clipboard,
     clipboardUiActions,
   );

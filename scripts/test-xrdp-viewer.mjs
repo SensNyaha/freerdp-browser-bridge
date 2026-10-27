@@ -228,7 +228,19 @@ const server = await createSessionServer({
 for (const [url, name, type] of [
   ['/harness/', 'index.html', 'text/html'],
   ['/harness/viewer.js', 'viewer.js', 'text/javascript'],
-  ...['wire', 'text', 'client', 'view'].map((name) => [
+  ...[
+    'wire',
+    'text',
+    'client',
+    'view',
+    'html',
+    'html-view',
+    'html-normalize',
+    'image',
+    'image-view',
+    'image-conversion',
+    'image-worker',
+  ].map((name) => [
     `/harness/clipboard-${name}.js`,
     `clipboard-${name}.js`,
     'text/javascript',
@@ -272,7 +284,7 @@ for (const [url, name, type] of [
       .header('Cache-Control', 'no-store')
       .header(
         'Content-Security-Policy',
-        "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src blob:",
+        "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src blob:; worker-src 'self'",
       )
       .type(type)
       .send(bytes),

@@ -1,5 +1,10 @@
 # Clipboard private payload schemas
 
+The image feature's independently versioned inner item is described in
+[image development](#image-inner-item-in-development). Outer image negotiation,
+ownership and dispatch are still unavailable; the existing text/HTML path is
+unchanged by this component.
+
 HTML development adds the bounded inner item below and an explicit private
 worker/Node handoff. Schema-1/2 text command/result bytes and their maximum
 envelope size remain unchanged. The new private schema-3 selection is described
@@ -362,3 +367,171 @@ contents; optional `set-sentinel` explicitly writes one fixed synthetic value,
 waits for the server ACK and clears it. It does not establish application reads.
 No content enters errors, metrics or logs; total RSS and network latency remain
 separate acceptance gates.
+
+## Image inner item in development
+
+`native/ipc/clipboard_image.*` and `packages/protocol/src/clipboard-image.ts`
+independently encode a compact top-down straight-alpha sRGB RGBA8 raster.
+There is no PNG/DIB header, palette, stride, profile path, host bitmap handle or
+text fallback in this item. Zero bytes and every channel/alpha value are valid
+pixel data; no UTF-8/text interpretation is performed.
+
+The fixed 16-byte header is big-endian, independently of the little-endian
+native DIB codec:
+
+| Offset | Size | Value |
+| --- | --- | --- |
+| 0 | 2 | Image inner schema 1 |
+| 2 | 2 | Reserved flags, exactly zero |
+| 4 | 4 | Width, positive signed-32 range |
+| 8 | 4 | Height, positive signed-32 range |
+| 12 | 4 | RGBA byte count, exactly width × height × 4 |
+| 16 | declared count | Compact RGBA8 rows from top to bottom |
+
+The packet must end exactly after its pixels. Unknown version/flags, zero or
+negative-range dimensions, inconsistent/truncated/trailing bytes and invalid
+limits are rejected with the fixed protocol error. Geometry and actual byte
+count are checked before borrowing pixels or allocating output. JavaScript
+bounds the product before multiplying dimensions; C++ admits signed-positive
+32-bit dimensions before its exact uint64 product.
+
+Raw pixels must fit the configured 1..16 MiB maximum. Header plus pixels also
+fit the existing 16 MiB outer payload reservation, leaving at most 16 MiB minus
+16 bytes for pixels. No queue or parser ceiling grows. The write validator
+additionally admits the actual canonical DIBV5's 124-byte overhead under the
+native maximum before copying/conversion. A valid received item is not by itself
+permission or sufficient native capacity for a later outgoing write.
+
+The decoder borrows immutable packet bytes; encoding owns its output. A future
+owner must first check selection, capability, direction, controller, generation,
+revision, quota, credit and deadline, then copy and wipe its retained pixels on
+retirement. This module alone adds none of those authorities. Existing command
+decoders still reject the independent image golden; no current worker/browser
+path may send this item as an image operation yet.
+
+Independent C++ and TypeScript tests use the complete golden
+`0001000000000002000000010000000812345678fedcba98`, representing two pixels in
+one row. They cover borrowing/copy ownership, malformed headers and lengths,
+overflow geometry, exact raw/transport/native limits and native DIBV5 composition.
+The existing clipboard wire fuzz target additionally exercises image items;
+pixel-format fuzzing remains a separate codec target. Component checks are
+separate from actual OS clipboard, CLIPRDR or application acceptance.
+
+The component passes five native cases / 80 assertions and 11 combined image /
+legacy HTML Node cases on each OS. Full Windows `pnpm check` passes
+**1070/137 skips/1207 total/zero failures**. Native CTest passes Windows **23/23**,
+exact GCC 8.3 **24/24**, RED OS GCC 11.4.1 **24/24** and Clang 18 ASan/UBSan
+**24/24**. Seeded `clipboard-wire-fuzz` completes **795,134 runs in 61 seconds**
+without sanitizer errors or suppressions; all fuzz targets link. Local evidence
+`build/current-validation/image-item-acceptance.json` binds the sources, isolated
+archives and logs. These are compiler/component checks, not negotiated image or
+installed-platform acceptance.
+
+Independent public main `90ee398` foundation run `40362680762` passes both Linux
+jobs and sanitizers; its Windows job `121712008010` fails the unchanged 5-second
+Edge startup timeout in the synthetic microphone Worklet test. No image code is
+present in that main commit. The log is retained as
+`html04-main-90ee-windows-failed.log`; full hosted feature acceptance remains open.
+
+## Private image handoff in development
+
+The image branch now connects the native shared owner to private IPC and typed
+`WorkerProcess` operations. This remains unreleased development; public managed
+session/control/browser integration and actual image application acceptance are
+separate work. Existing published artifact bytes remain immutable.
+
+HELLO extension bit **512** (`clipboardImage`) requires connect-core plus both
+text/revoke extension bits 8/16. The compile-guarded linked Windows/Linux CLIPRDR
+backend reports it; foundation/unlinked workers do not. Older peers without this
+capability refuse typed image selection before CONFIGURE/SECRET. HTML bit 256 is
+independent: image-only selection does not turn HTML on.
+
+CONFIGURE schema **14** preserves schema-13 field order and adds flag **1024**
+for image selection. It requires that flag, at least one clipboard direction and
+the existing finite 1..16 MiB maximum. Known flags end at 2047; audio exclusivity,
+performance/IP tails and all earlier range checks remain. Text-only and HTML-only
+selections retain their existing emitted schemas. The Node configuration uses
+`clipboard: {mode, images:true, maxItemBytes}` with baseline text enabled; HTML is
+selected independently. Files and `text:false` remain explicitly unsupported.
+
+Scalar clipboard state remains exactly 24 bytes. Schema **4** requires image
+selection flag **1024**, adds remote-image **2048** and local-image-accepted
+**4096**, and retains the previous text/HTML flags. Reserved bits are zero.
+Remote-image requires ready/from-server/current revision; local-image-accepted
+requires ready/to-server/local-accepted. Local HTML/image acceptance cannot both
+be set: local writes replace the single shared item. HTML-only state stays
+schema 3 and text-only state schema 1.
+
+Image read/set operation IDs **6/7** use schema 4 command/result metadata. The
+historical `text` byte field carries the independently validated RGBA inner item
+for sets and accepted reads; it is never interpreted as UTF-8. Reads require a
+nonzero revision; sets require revision zero; generation is always nonzero.
+Negative results and all set/revoke results contain no content. Existing
+text/HTML commands and schema-2 revoke keep their byte layouts, including when
+the image profile is selected. No RWI1 kind, parser, queue or record limit grows.
+
+Worker admission checks explicit policy, direction, generation/revision,
+busy/readiness and canonical DIBV5 write budget before moving producer bytes.
+Image, HTML, Unicode and revoke share one occupied slot through result output.
+Queued work has the existing 250 ms dispatch deadline; the native image response
+has five seconds and output publication one second. A changed offer makes a
+pending or held image reply stale, with no pixels. Local image bytes retire
+through the same no-format ACK barrier. Queued, converted and encoded temporary
+content is wiped on completion, stale result and retirement; no automatic reads,
+text fallback, polling or retries are introduced.
+
+`WorkerProcess.readClipboardImage(revision)` returns `{status,item?}` with an
+owned checked `{width,height,rgba}` only on acceptance. Callers wipe retained
+pixels after use. `writeClipboardImage(item)` validates native/transport budgets
+and copies caller pixels synchronously after policy/busy checks; caller storage
+remains untouched. `revokeClipboardText()` keeps its historical name and revokes
+the entire selected item. Image operations have a nonrenewing seven-second Node
+completion deadline. Source policy/capability changes and malformed, mismatched
+or over-quota results fail closed and wipe private packets. The ordinary host
+write budget still applies; a larger image requires an explicitly sufficient
+finite `maxWriteBytes`, not a bypass.
+
+At the private handoff checkpoint `5b419f1`, managed `NativeSessionWorker` still refuses `images:true` before
+startup. Public clipboard ownership also refuses image state before granting
+authority, rather than dropping unknown selection fields. Private handoff does
+not yet establish public controller, browser permission, image conversion or
+real OS/RDP application acceptance.
+
+Focused handoff checks pass **57/57**, including synthetic image IPC, independent
+wire/config/HELLO vectors, existing HTML/Unicode behavior and three additional
+actual native schema-14 direction profiles against a strict-TLS refusal fixture.
+The latter prove negotiation, heartbeat and joined lifecycle, not image exchange
+with an RDP application. Full linked `pnpm check` passes Windows **1152/71 skips**
+and Linux UID1000/CapEff=0 **1120/108 skips**, zero failures. Linked CTest passes
+Windows **40/40**, exact GCC 8.3 **41/41** and Clang 18 ASan/UBSan **41/41**.
+Image wire cases pass 125 assertions, worker handoff 379 and schema-14 flag
+admission 4,472 on each tested compiler. RED OS GCC 11.4.1 separately passes
+foundation CTest **24/24** and compiles the worker owner, clipboard wire and
+connection-config SDK objects; this is not GCC 11 linked or actual RDP acceptance.
+All Clang fuzz targets link; seeded wire fuzz completes **686,165 runs in 61
+seconds** and general IPC fuzz **581,671 in 21 seconds**, without sanitizer
+errors or suppressions.
+
+`build/current-validation/image-handoff-acceptance.json` binds source/archive/log
+hashes. Retained initial failures distinguish test preparation from product
+results: an older HTML HELLO fixture still classified the newly assigned bit
+512 as unknown; the mismatch peer attempted to encode an internally invalid
+negative case; and a malformed packet is refused by the existing outer parser
+as `IPC_PROTOCOL_ERROR` before typed completion. Corrected fixtures keep the
+production fail-closed parser behavior. A partial Windows worker rebuild is
+correctly refused by its stale recovery-cohort manifest; the full native build
+regenerates a matching worker/helper cohort before the passing process tests.
+The first Linux source-only check lacks Git and initially lacks the writable
+`build` test directory. An unchanged, hash-verified source rerun with those
+environment inputs passes in a separate Git-equipped image, still without root
+or effective capabilities. No test assertion or permission boundary is weakened.
+
+Native pinned-plugin simulation, process/TLS lifecycle, synthetic IPC and actual
+application tests retain their distinct scope. Public ownership/control/browser,
+actual image application, hosted feature and versioned release gates stay open.
+
+Subsequent public source development now implements
+[shared image controller authority](CLIPBOARD_SESSION.md#shared-image-authority-in-development)
+and [RWC1 image control framing](CLIPBOARD_CONTROL.md#image-control-extension-in-development).
+Its new full-suite/browser/application acceptance is tracked separately from
+the accepted private handoff above.

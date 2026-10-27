@@ -1,0 +1,164 @@
+<!doctype html><meta charset="utf-8" /><title>
+  Owned Bridge PNG Clipboard acceptance
+</title>
+<p>
+  Owned synthetic PNG fixture. No RDP connection; previous clipboard data is
+  never read.
+</p>
+<button id="seed">Copy owned source image</button
+><button id="inspect">Inspect owned result</button
+><button id="clear-os">Clear owned clipboard</button>
+<!--REFERENCE_PANEL-->
+<script type="module">
+  import { installClipboardImageView } from '/clipboard-image-view.js';
+  import { ClipboardImageConversion } from '/clipboard-image-conversion.js';
+  const nonce = new URL(location.href).searchParams.get('id');
+  if (!/^[0-9a-f]{32}$/.test(nonce ?? ''))
+    throw new Error('Invalid owned fixture');
+  const seed = Uint8Array.from(nonce.match(/../g), (v) => parseInt(v, 16));
+  function image(remote = false, revision = 0) {
+    const rgba = new Uint8Array(4096);
+    for (let n = 0; n < 1024; n++)
+      rgba.set(
+        [
+          (seed[n % 16] + n + (remote ? 71 : 0) + revision * 13) & 255,
+          (seed[(n + 5) % 16] + n * 3 + (remote ? 137 : 0) + revision * 29) &
+            255,
+          (seed[(n + 9) % 16] + n * 7 + (remote ? 193 : 0) + revision * 47) &
+            255,
+          255,
+        ],
+        n * 4,
+      );
+    return { width: 32, height: 32, rgba };
+  }
+  const equal = (a, b) =>
+    a?.width === b.width &&
+    a.height === b.height &&
+    a.rgba.length === b.rgba.length &&
+    a.rgba.every((v, n) => v === b.rgba[n]);
+  let sent, returned, borrowed;
+  const codec = new ClipboardImageConversion();
+  window.fixture = {
+    seeded: false,
+    cleared: false,
+    inspection: undefined,
+    writes: 0,
+    reads: 0,
+    revision: 0,
+  };
+  const client = {
+    get snapshot() {
+      return {
+        available: true,
+        image: true,
+        maximum: 8192,
+        toServer: true,
+        fromServer: true,
+        canSetImage: true,
+        canReadImage: true,
+        busy: false,
+      };
+    },
+    async setImage(item) {
+      ++window.fixture.writes;
+      borrowed = item.rgba;
+      sent = {
+        width: item.width,
+        height: item.height,
+        rgba: item.rgba.slice(),
+      };
+      return { status: 'accepted' };
+    },
+    async readImage() {
+      ++window.fixture.reads;
+      returned = image(true, window.fixture.revision);
+      return { status: 'accepted', item: returned };
+    },
+  };
+  window.view = installClipboardImageView(
+    document.querySelector('#clipboard-image'),
+    client,
+  );
+  window.fixture.sentMatches = () => {
+    const expected = image();
+    try {
+      return equal(sent, expected) && borrowed.every((v) => !v);
+    } finally {
+      expected.rgba.fill(0);
+    }
+  };
+  window.fixture.receivedWiped = () =>
+    Boolean(returned && returned.rgba.every((v) => !v));
+  document.querySelector('#seed').addEventListener('click', (event) => {
+    if (!event.isTrusted) return;
+    const source = image();
+    const png = codec.run('encode', source, 8192).then((result) => {
+      if (result.status !== 'accepted')
+        throw new Error('Owned PNG unavailable');
+      return result.blob;
+    });
+    source.rgba.fill(0);
+    void navigator.clipboard
+      .write([new ClipboardItem({ 'image/png': png })])
+      .then(
+        () => {
+          window.fixture.seeded = true;
+        },
+        () => {
+          window.fixture.seedFailed = true;
+        },
+      );
+  });
+  document.querySelector('#inspect').addEventListener('click', (event) => {
+    if (!event.isTrusted) return;
+    window.fixture.inspection = undefined;
+    const promise = navigator.clipboard.read();
+    void promise.then(
+      async (items) => {
+        let item, expected;
+        try {
+          if (
+            !Array.isArray(items) ||
+            items.length !== 1 ||
+            !items[0].types.includes('image/png')
+          )
+            throw new Error();
+          const blob = await items[0].getType('image/png');
+          const result = await codec.run('decode', blob, 8192);
+          item = result.item;
+          if (result.status !== 'accepted') throw new Error();
+          expected = image(true, window.fixture.revision);
+          window.fixture.inspection = {
+            matched: equal(item, expected),
+            revision: window.fixture.revision,
+          };
+        } catch {
+          window.fixture.inspection = { matched: false };
+        } finally {
+          item?.rgba.fill(0);
+          expected?.rgba.fill(0);
+        }
+      },
+      () => {
+        window.fixture.inspection = { matched: false };
+      },
+    );
+  });
+  document.querySelector('#clear-os').addEventListener('click', (event) => {
+    if (!event.isTrusted) return;
+    void navigator.clipboard.writeText('').then(
+      () => {
+        window.fixture.cleared = true;
+      },
+      () => {},
+    );
+  });
+  window.fixture.dispose = () => {
+    window.view.dispose();
+    codec.dispose();
+    sent?.rgba.fill(0);
+    returned?.rgba.fill(0);
+    seed.fill(0);
+  };
+</script>

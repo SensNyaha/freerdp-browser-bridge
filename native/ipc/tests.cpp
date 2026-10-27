@@ -9,12 +9,41 @@ using namespace bridge::ipc;
 static const std::vector<std::uint8_t> connection{
     0,    1, 0, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0,    1,    'u', 0, 0, 0x0d,
     0x3d, 4, 0, 3, 0,   0,   32,  2,   1,   2,   0,   0,   0,   0x13, 0x88, 0,   0, 3, 0xe8};
+TEST_CASE("connection v14 image selection requires its own flag direction and canonical tails") {
+  auto bytes = connection;
+  bytes[1] = 14;
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0});
+  const auto at = bytes.size();
+  bytes.insert(bytes.end(), {0, 0, 5, 128, 0, 0, 4, 0, 0, 0, 0, 0, 0});
+  REQUIRE(decode_connection_config(bytes).clipboard_image);
+  REQUIRE_FALSE(decode_connection_config(bytes).clipboard_html);
+  for (unsigned flags = 0; flags < 4096; ++flags) {
+    bytes[at + 2] = static_cast<std::uint8_t>(flags >> 8);
+    bytes[at + 3] = static_cast<std::uint8_t>(flags);
+    const bool valid = flags <= 2047 && (flags & 1024U) && (flags & 384U) && (flags & 12U) != 12U &&
+                       (flags & 48U) != 48U && (!(flags & 64U) || (flags & 12U));
+    if (valid) {
+      const auto decoded = decode_connection_config(bytes);
+      REQUIRE(decoded.clipboard_image);
+      REQUIRE(decoded.clipboard_html == ((flags & 512U) != 0));
+    } else
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+  }
+  bytes[at + 2] = 5;
+  bytes[at + 3] = 128;
+  for (unsigned cut = 1; cut <= 13; ++cut)
+    REQUIRE_THROWS_AS(
+        decode_connection_config(::bridge::compat::span(bytes).first(bytes.size() - cut)),
+        ProtocolError);
+  bytes[1] = 13;
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
+}
 TEST_CASE("connection v13 HTML requires a clipboard direction and canonical legacy tails") {
   auto bytes = connection;
   bytes[1] = 13;
-  bytes.insert(bytes.end(), {30,20,80,0,0,0x3d,9,0,0,0x3d,9,0});
+  bytes.insert(bytes.end(), {30, 20, 80, 0, 0, 0x3d, 9, 0, 0, 0x3d, 9, 0});
   const auto flags_at = bytes.size();
-  bytes.insert(bytes.end(), {0,0,3,128,0,0,4,0,0,0,0,0,0});
+  bytes.insert(bytes.end(), {0, 0, 3, 128, 0, 0, 4, 0, 0, 0, 0, 0, 0});
   const auto decoded = decode_connection_config(bytes);
   REQUIRE(decoded.clipboard_html);
   REQUIRE(decoded.clipboard_to_server);
@@ -22,22 +51,25 @@ TEST_CASE("connection v13 HTML requires a clipboard direction and canonical lega
   REQUIRE(decoded.clipboard_maximum == 1024);
   REQUIRE(decoded.performance_mask == 0);
   REQUIRE(decoded.ip_mask == 0);
-  for (unsigned flags=0;flags<2048;++flags) {
-    bytes[flags_at+2]=static_cast<std::uint8_t>(flags>>8);
-    bytes[flags_at+3]=static_cast<std::uint8_t>(flags);
-    const bool direction=(flags&384U)!=0;
-    const bool valid=flags<=1023 && direction && (flags&12U)!=12U &&
-                     (flags&48U)!=48U && (!(flags&64U)||(flags&12U));
+  for (unsigned flags = 0; flags < 2048; ++flags) {
+    bytes[flags_at + 2] = static_cast<std::uint8_t>(flags >> 8);
+    bytes[flags_at + 3] = static_cast<std::uint8_t>(flags);
+    const bool direction = (flags & 384U) != 0;
+    const bool valid = flags <= 1023 && direction && (flags & 12U) != 12U && (flags & 48U) != 48U &&
+                       (!(flags & 64U) || (flags & 12U));
     if (valid)
-      REQUIRE(decode_connection_config(bytes).clipboard_html == ((flags&512U)!=0));
+      REQUIRE(decode_connection_config(bytes).clipboard_html == ((flags & 512U) != 0));
     else
-      REQUIRE_THROWS_AS(decode_connection_config(bytes),ProtocolError);
+      REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
   }
-  bytes[flags_at+2]=3;bytes[flags_at+3]=128;
-  for (std::size_t cut=1;cut<=5;++cut)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(bytes.size()-cut)),ProtocolError);
-  bytes[1]=12;
-  REQUIRE_THROWS_AS(decode_connection_config(bytes),ProtocolError);
+  bytes[flags_at + 2] = 3;
+  bytes[flags_at + 3] = 128;
+  for (std::size_t cut = 1; cut <= 5; ++cut)
+    REQUIRE_THROWS_AS(
+        decode_connection_config(::bridge::compat::span(bytes).first(bytes.size() - cut)),
+        ProtocolError);
+  bytes[1] = 12;
+  REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
 }
 TEST_CASE("connection v12 IP selection is canonical and preserves legacy fields") {
   auto bytes = connection;
@@ -88,7 +120,8 @@ TEST_CASE("connection v12 IP selection is canonical and preserves legacy fields"
   bytes[at + 1] = 1;
   bytes[at + 2] = 6;
   for (std::size_t n = 0; n < bytes.size(); ++n)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)),
+                      ProtocolError);
   for (std::uint8_t schema = 1; schema < 12; ++schema) {
     bytes[1] = schema;
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -126,7 +159,8 @@ TEST_CASE("connection v11 performance selection is canonical and preserves legac
   bytes[at] = 3;
   bytes[at + 1] = 2;
   for (std::size_t n = 0; n < bytes.size(); ++n)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)),
+                      ProtocolError);
   for (unsigned schema = 1; schema < 11; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -173,7 +207,8 @@ TEST_CASE("connection v10 clipboard direction and item quota preserve all legacy
   bytes[at + 4] = bytes[at + 5] = bytes[at + 6] = 0;
   bytes.back() = 1;
   for (std::size_t n = 0; n < bytes.size(); ++n)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(n)),
+                      ProtocolError);
   for (unsigned schema = 1; schema < 10; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -205,7 +240,8 @@ TEST_CASE("connection v9 compatibility buffer requires exactly one output and ke
   }
   bytes[1] = 9;
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)),
+                      ProtocolError);
 }
 TEST_CASE(
     "connection v8 Opus microphone flags preserve independent exclusive input and output codecs") {
@@ -228,7 +264,8 @@ TEST_CASE(
   }
   bytes.back() = 32;
   for (std::size_t size = 0; size < bytes.size(); ++size)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(size)),
+                      ProtocolError);
   for (unsigned schema = 1; schema < 8; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -285,7 +322,8 @@ TEST_CASE("connection v7 private microphone input is independent of the exclusiv
   }
   bytes.back() = 16;
   for (std::size_t size = 0; size < bytes.size(); ++size)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(size)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(size)),
+                      ProtocolError);
   for (unsigned schema = 1; schema <= 6; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -340,7 +378,8 @@ TEST_CASE("frame payload bounds are checked before allocation") {
   bytes = encode({Kind::frame, 1, std::vector<std::uint8_t>(frame_metadata_bytes)});
   REQUIRE(decode_header(::bridge::compat::span(bytes).first(header_bytes)).kind == Kind::frame);
   bytes[20] = 0xff;
-  REQUIRE_THROWS_AS(decode_header(::bridge::compat::span(bytes).first(header_bytes)), ProtocolError);
+  REQUIRE_THROWS_AS(decode_header(::bridge::compat::span(bytes).first(header_bytes)),
+                    ProtocolError);
   REQUIRE_THROWS_AS(encode({Kind::frame, 1, std::vector<std::uint8_t>(23)}), ProtocolError);
 }
 TEST_CASE("connection settings independently encoded vector, truncation and policy boundaries") {
@@ -356,7 +395,8 @@ TEST_CASE("connection settings independently encoded vector, truncation and poli
   REQUIRE(c.max_bitrate == 4000000);
   REQUIRE_FALSE(c.dynamic_resolution);
   for (std::size_t i = 0; i < connection.size(); ++i)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(connection).first(i)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(connection).first(i)),
+                      ProtocolError);
   auto extra = connection;
   extra.push_back(0);
   REQUIRE_THROWS_AS(decode_connection_config(extra), ProtocolError);
@@ -377,7 +417,8 @@ TEST_CASE("connection settings v2 independently encoded quality and rejection bo
   REQUIRE(config.target_bitrate == 1000000);
   REQUIRE(config.max_bitrate == 2000000);
   for (std::size_t i = 0; i < bytes.size(); ++i)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(i)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(i)),
+                      ProtocolError);
   for (const auto &[index, value] : {std::pair<std::size_t, std::uint8_t>{38, 0},
                                      {38, 31},
                                      {39, 0},
@@ -420,7 +461,8 @@ TEST_CASE("connection v3 explicit dynamic-resolution flag with strict legacy com
   bytes.back() = 0;
   REQUIRE_FALSE(decode_connection_config(bytes).dynamic_resolution);
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)),
+                      ProtocolError);
   for (std::size_t offset = bytes.size() - 4; offset < bytes.size(); ++offset) {
     auto invalid = bytes;
     invalid[offset] = 2;
@@ -456,7 +498,8 @@ TEST_CASE("connection v5 PCM opt-in preserves flags and refuses truncated and le
   }
   bytes.back() = 4;
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)),
+                      ProtocolError);
   for (const unsigned flags : {8U, 128U, 255U}) {
     bytes.back() = static_cast<std::uint8_t>(flags);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);
@@ -489,7 +532,8 @@ TEST_CASE("connection v6 Opus opt-in refuses mixed audio modes and legacy masks"
   }
   bytes.back() = 8;
   for (std::size_t length = 0; length < bytes.size(); ++length)
-    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)), ProtocolError);
+    REQUIRE_THROWS_AS(decode_connection_config(::bridge::compat::span(bytes).first(length)),
+                      ProtocolError);
   for (unsigned schema = 1; schema <= 5; ++schema) {
     bytes[1] = static_cast<std::uint8_t>(schema);
     REQUIRE_THROWS_AS(decode_connection_config(bytes), ProtocolError);

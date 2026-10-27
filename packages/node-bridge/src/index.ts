@@ -89,6 +89,10 @@ import {
   encodeClipboardHtmlItem,
   validateClipboardHtmlWrite,
   type ClipboardHtmlItem,
+  type ClipboardImageItem,
+  decodeClipboardImageItem,
+  encodeClipboardImageItem,
+  validateClipboardImageWrite,
   type ClipboardState,
   type ClipboardOperation,
   type ClipboardStatus,
@@ -137,6 +141,7 @@ export type {
   ClipboardState,
   ClipboardStatus,
   ClipboardHtmlItem,
+  ClipboardImageItem,
 } from '@freerdp-bridge/protocol';
 
 type ClipboardSelection = NonNullable<ConnectionSettings['clipboard']>;
@@ -148,6 +153,11 @@ export interface ClipboardHtmlReadResult {
   status: ClipboardStatus;
   /** Owned backing buffer; context/fragment/selection remain separate. */
   item?: ClipboardHtmlItem;
+}
+export interface ClipboardImageReadResult {
+  status: ClipboardStatus;
+  /** Owned compact RGBA8; callers wipe retained pixels after use. */
+  item?: ClipboardImageItem;
 }
 
 export class WorkerError extends Error {
@@ -986,6 +996,9 @@ export class WorkerProcess extends EventEmitter {
       const next = decodeClipboardState(packet.payload);
       if (
         next.maximum !== profile.maximum ||
+        Boolean(next.image) !== Boolean(profile.image) ||
+        (next.image === true &&
+          this.report.capabilities.clipboardImage !== true) ||
         next.toServer !== profile.toServer ||
         next.fromServer !== profile.fromServer ||
         Boolean(next.html) !== Boolean(profile.html) ||
@@ -1374,7 +1387,33 @@ export class WorkerProcess extends EventEmitter {
     return (await this.clipboardTransfer('set-html', 0n, Buffer.alloc(0), item))
       .status;
   }
-  /** Wipe the native offer and wait for its empty-format-list ACK. Never retries. */
+  /** Explicit revision-bound image read; no automatic clipboard access or retries. */
+  async readClipboardImage(
+    revision: bigint,
+  ): Promise<ClipboardImageReadResult> {
+    const result = await this.clipboardTransfer(
+      'read-image',
+      revision,
+      Buffer.alloc(0),
+    );
+    return result.status === 'accepted'
+      ? { status: 'accepted', item: decodeClipboardImageItem(result.text) }
+      : { status: result.status };
+  }
+  async writeClipboardImage(
+    item: ClipboardImageItem,
+  ): Promise<ClipboardStatus> {
+    return (
+      await this.clipboardTransfer(
+        'set-image',
+        0n,
+        Buffer.alloc(0),
+        undefined,
+        item,
+      )
+    ).status;
+  }
+  /** Wipe the entire native offer, including selected HTML/image representations. */
   async revokeClipboardText(): Promise<ClipboardStatus> {
     if (!this.report?.capabilities.clipboardRevoke)
       throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
@@ -1385,11 +1424,16 @@ export class WorkerProcess extends EventEmitter {
     revision: bigint,
     text: Buffer,
     html?: ClipboardHtmlItem,
+    image?: ClipboardImageItem,
   ): Promise<ClipboardReadResult> {
     if (!this.report?.capabilities.clipboardText)
       throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
     const htmlOperation = operation === 'read-html' || operation === 'set-html';
     if (htmlOperation && this.report.capabilities.clipboardHtml !== true)
+      throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
+    const imageOperation =
+      operation === 'read-image' || operation === 'set-image';
+    if (imageOperation && this.report.capabilities.clipboardImage !== true)
       throw new WorkerError('CLIPBOARD_NOT_IMPLEMENTED');
     if (
       typeof revision !== 'bigint' ||
@@ -1411,6 +1455,7 @@ export class WorkerProcess extends EventEmitter {
     )
       return negative('unavailable');
     if (htmlOperation && !profile.html) return negative('unavailable');
+    if (imageOperation && !profile.image) return negative('unavailable');
     if (this.clipboardRequest) return negative('busy');
     if (isClipboardRead(operation) && revision !== source.revision)
       return negative('stale');
@@ -1419,8 +1464,14 @@ export class WorkerProcess extends EventEmitter {
       isClipboardRead(operation)
         ? !source.fromServer ||
           source.remotePending ||
-          (operation === 'read-html' ? !source.remoteHtml : !source.remoteText)
-        : (operation === 'set' || operation === 'set-html') &&
+          (operation === 'read-image'
+            ? !source.remoteImage
+            : operation === 'read-html'
+              ? !source.remoteHtml
+              : !source.remoteText)
+        : (operation === 'set' ||
+            operation === 'set-html' ||
+            operation === 'set-image') &&
           (!source.toServer || source.localPending)
     )
       return negative('refused');
@@ -1431,12 +1482,21 @@ export class WorkerProcess extends EventEmitter {
         throw new WorkerError('CLIPBOARD_INVALID_TEXT');
       }
     }
-    let htmlPayload: Buffer | undefined;
+    let itemPayload: Buffer | undefined;
+    if (operation === 'set-image') {
+      try {
+        validateClipboardImageWrite(image!, profile.maximum);
+        itemPayload = encodeClipboardImageItem(image!, profile.maximum);
+        text = itemPayload;
+      } catch {
+        throw new WorkerError('CLIPBOARD_INVALID_IMAGE');
+      }
+    }
     if (operation === 'set-html') {
       try {
         validateClipboardHtmlWrite(html!, profile.maximum);
-        htmlPayload = encodeClipboardHtmlItem(html!, profile.maximum);
-        text = htmlPayload;
+        itemPayload = encodeClipboardHtmlItem(html!, profile.maximum);
+        text = itemPayload;
       } catch {
         throw new WorkerError('CLIPBOARD_INVALID_HTML');
       }
@@ -1446,7 +1506,7 @@ export class WorkerProcess extends EventEmitter {
     try {
       payload = encodeClipboardCommand({ ...identity, text });
     } finally {
-      htmlPayload?.fill(0);
+      itemPayload?.fill(0);
     }
     this.clipboardRequest = identity;
     let response: Packet | undefined;
@@ -1490,7 +1550,9 @@ export class WorkerProcess extends EventEmitter {
       }
       if (isClipboardRead(operation) && result.status === 'accepted') {
         try {
-          if (operation === 'read-html')
+          if (operation === 'read-image')
+            decodeClipboardImageItem(result.text, profile.maximum);
+          else if (operation === 'read-html')
             decodeClipboardHtmlItem(result.text, profile.maximum);
           else validateClipboardText(result.text, profile.maximum);
         } catch {
@@ -1775,6 +1837,7 @@ export class WorkerProcess extends EventEmitter {
         config,
         this.report.capabilities.clipboardText,
         this.report.capabilities.clipboardHtml === true,
+        this.report.capabilities.clipboardImage === true,
       );
       const payload = connectionPayload(
         config,
@@ -1949,6 +2012,7 @@ function clipboardSelection(
   config: SessionCreate,
   available: boolean,
   htmlAvailable: boolean,
+  imageAvailable: boolean,
 ): ClipboardSelection | undefined {
   const c = config.clipboard;
   if (!c || c.mode === 'off') return undefined;
@@ -1957,7 +2021,7 @@ function clipboardSelection(
     !c.mode ||
     c.text === false ||
     (c.html && !htmlAvailable) ||
-    c.images ||
+    (c.images && !imageAvailable) ||
     c.files
   )
     throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
@@ -1966,6 +2030,7 @@ function clipboardSelection(
     fromServer: c.mode !== 'browser-to-server',
     maximum: c.maxItemBytes ?? 1048576,
     ...(c.html ? { html: true } : {}),
+    ...(c.images ? { image: true } : {}),
   };
 }
 function connectionPayload(

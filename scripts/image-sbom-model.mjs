@@ -12,20 +12,27 @@ export function imageReference(value) {
 }
 
 export function imageInspection(records) {
+  const refuse = (reason) => {
+    throw Object.assign(new Error('SBOM_IMAGE_IDENTITY'), {
+      code: 'SBOM_IMAGE_IDENTITY_' + reason,
+    });
+  };
+  if (!Array.isArray(records) || records.length !== 1) refuse('RECORDS');
+  if (!isDigest(records[0]?.Id)) refuse('ID');
+  if (records[0].Os !== 'linux' || records[0].Architecture !== 'amd64')
+    refuse('PLATFORM');
   if (
-    !Array.isArray(records) ||
-    records.length !== 1 ||
-    !isDigest(records[0]?.Id) ||
-    records[0].Os !== 'linux' ||
-    records[0].Architecture !== 'amd64' ||
     !Number.isSafeInteger(records[0].Size) ||
     records[0].Size <= 0 ||
-    records[0].Size > 256 * 1024 * 1024 ||
+    records[0].Size > 512 * 1024 * 1024
+  )
+    refuse('SIZE');
+  if (
     !Array.isArray(records[0].RootFS?.Layers) ||
     records[0].RootFS.Layers.length > 64 ||
     !records[0].RootFS.Layers.every(isDigest)
   )
-    throw new Error('SBOM_IMAGE_IDENTITY');
+    refuse('LAYERS');
   return records[0];
 }
 

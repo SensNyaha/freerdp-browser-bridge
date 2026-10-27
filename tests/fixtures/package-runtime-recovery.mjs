@@ -78,7 +78,8 @@ try {
   const processOwner = new WorkerProcess(worker);
   try {
     const build = await processOwner.start();
-    assert.equal(build.bridgeVersion, '0.4.0');
+    assert.equal(build.bridgeVersion, '0.5.0');
+    assert.equal(build.capabilities.clipboardImage, true);
     assert.equal(build.capabilities.clipboardHtml, true);
     assert.equal(build.capabilities.clipboardText, true);
     assert.equal(build.capabilities.clipboardRevoke, true);
@@ -93,6 +94,10 @@ try {
     'clipboard-html.js',
     'clipboard-html-view.js',
     'clipboard-html-normalize.js',
+    'clipboard-image.js',
+    'clipboard-image-view.js',
+    'clipboard-image-conversion.js',
+    'clipboard-image-worker.js',
   ]) {
     const info = await readFile(join(referenceBrowserDirectory, name));
     assert.ok(info.length > 0 && info.length <= 65536);
@@ -126,6 +131,40 @@ try {
     text.fill(0);
     encoded?.fill(0);
   }
+  const {
+    encodeClipboardImageItem,
+    decodeClipboardImageItem,
+    validateClipboardImageWrite,
+  } = await import(
+    pathToFileURL(join(referenceBrowserDirectory, 'clipboard-image.js')).href
+  );
+  const rgba = Uint8Array.from([17, 39, 61, 255, 83, 105, 127, 255]);
+  const image = { width: 2, height: 1, rgba };
+  const nativeMaximum = 124 + rgba.length;
+  let imageEncoded, imageDecoded;
+  try {
+    validateClipboardImageWrite(image, nativeMaximum);
+    assert.throws(() => validateClipboardImageWrite(image, nativeMaximum - 1));
+    assert.throws(() => encodeClipboardImageItem(image, rgba.length - 1));
+    imageEncoded = encodeClipboardImageItem(image, nativeMaximum);
+    imageDecoded = decodeClipboardImageItem(imageEncoded, nativeMaximum);
+    assert.equal(imageDecoded.width, image.width);
+    assert.equal(imageDecoded.height, image.height);
+    assert.deepEqual(imageDecoded.rgba, rgba);
+    assert.deepEqual(
+      rgba,
+      Uint8Array.from([17, 39, 61, 255, 83, 105, 127, 255]),
+    );
+    // Installed decoders must refuse unknown flags before exposing pixels.
+    new DataView(imageEncoded.buffer).setUint16(2, 1);
+    assert.throws(() => decodeClipboardImageItem(imageEncoded, nativeMaximum));
+  } finally {
+    rgba.fill(0);
+    imageEncoded?.fill(0);
+  }
+  // Decoded pixels borrow the encoded item and are cleared with that owner.
+  assert.ok(imageDecoded.rgba.every((value) => value === 0));
+  console.log('NPM_RUNTIME_IMAGE_CAPABILITY_AND_ASSETS_OK');
   console.log('NPM_RUNTIME_HTML_CAPABILITY_AND_ASSETS_OK');
   console.log('NPM_RUNTIME_RECOVERY_CONSUMER_OK');
 } finally {

@@ -1,5 +1,57 @@
 # Product versions and release branches
 
+Versioned **0.5.0 candidate acceptance is complete**: ten exact npm dry-runs,
+four archive consumers per OS, all required hosted jobs, three actual PNG
+profiles, eight actual standalone desktop profiles, and installed 0.4.0 upgrades
+on Astra 1.7.5 / RED OS 7.3 pass. Actual RED OS GCC 11 linked CTest passes 41/41.
+Final stable tagging, OIDC publication, registry-only consumers and final public
+standalone upgrades remain pending; public stable is still 0.4.0.
+[Acceptance and exact archive hashes](RELEASE_0_5_0.md).
+The preparation checkpoints below retain their historical scope.
+
+Versioned 0.5.0 now passes the three named actual PNG RDP application profiles
+with exact npm native bytes. Candidate installed-service run `40497112168`
+passes Windows/Ubuntu 0.4.0-to-0.5.0 upgrades and seven distribution files;
+publication is skipped. Named Astra/RED OS upgrades and final immutable stable
+npm/standalone public acceptance remain open.
+[Versioned acceptance](CLIPBOARD_BROWSER.md#versioned-050-image-application-acceptance).
+The earlier preparation checkpoints below retain their historical scope.
+
+Current release preparation is **`release/0.5.0`**, based on accepted image merge
+`a1909bd`. Product/native manifests are now aligned at 0.5.0. Ten exact npm
+archives and both standalone production locks agree, retaining the external
+dependency graph and explicit immutable 0.4.0 upgrade predecessor. Four
+independent exact-archive consumers pass on each OS, including image capability,
+installed PNG assets, quota/codec checks, strict TypeScript and runtime recovery.
+Full source-identical checks pass Windows 1230/71 skips and Linux
+UID1000/CapEff=0 1186/120 skips, zero failures/cancellations; fresh linked CTest
+passes Windows 40/40 and GCC 8.3 Linux 41/41. A proven Windows recovery long-path
+failure is fixed in `adcde20`; its nine focused checks pass before the full runs.
+Local `build/current-validation/image05-cohort-checks-acceptance.json` binds the
+1380-file snapshot, source hashes, logs and consumer receipts. Windows candidate
+MSI/ZIP are built; payload 10/10 and ZIP relocation/joined shutdown pass.
+Hosted release checks, versioned RDP and installed upgrades/public delivery
+remain open. **0.5.0 is not yet published or tagged**; public stable remains
+0.4.0. The following checkpoints retain their historical preparation scope.
+
+Image source acceptance passes at private `f922a9a` / public `794f9b7`, including
+all required hosted jobs and the final full Linux runtime image scan.
+[Source acceptance](CLIPBOARD_BROWSER.md#image-source-feature-acceptance)
+permits merging the feature before preparing `release/0.5.0`; it does not
+claim a versioned installer, npm publication or a new stable tag.
+
+The developing image clipboard capability targets the next minor **0.5.0**
+under the capability rule below. Its standalone upgrade predecessor is explicitly
+**`v0.4.0`**. Seed/candidate/manifest tests require that exact predecessor in
+both platform receipts and reject older, mixed or absent evidence; unknown
+0.6.0 still requires a separate decision. The new seed tests fail before the
+implementation, then all 13 focused checks pass. Full linked `pnpm check` passes
+Windows 1227/71 skips and Linux UID1000/CapEff=0 1184/119 skips, zero failures.
+Local `build/current-validation/image05-seed-acceptance.json` binds the source
+snapshot and logs. This prepares release tooling only: product manifests remain
+0.4.0, the image feature remains on its branch, and actual versioned installers,
+registry publication and immutable 0.5.0 tagging require their own acceptance.
+
 HTML source acceptance is merged into shared `master` at `6f21ce7`.
 `release/0.4.0` is accepted and merged into shared `master` at `53b5edb`;
 annotated `v0.4.0` is immutable. Public **0.4.0** includes ten exact npm packages,

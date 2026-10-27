@@ -46,6 +46,8 @@ const knownCommands = new Set([
   'clipboard.request',
   'clipboard.html.set',
   'clipboard.html.request',
+  'clipboard.image.set',
+  'clipboard.image.request',
   'clipboard.ack',
   'auth.response',
   'certificate.response',

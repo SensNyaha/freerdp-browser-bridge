@@ -908,3 +908,609 @@ are now successful. No test assertion, timeout or product code is changed.
 The versioned Windows rich HTML application and eight desktop profiles above
 retain their precise tested inputs/scope; final public installed lifecycle is a
 separate result. Image/file clipboard, drives and the full original V1 remain open.
+## Image byte client in development
+
+On `feature/image-clipboard`, the independent browser `clipboard-image.js`
+codec validates the 16-byte inner schema before borrowing RGBA8 pixels. Its
+encoder owns a compact top-down straight sRGB RGBA8 copy; canonical native
+write admission includes the additional 124-byte DIBV5 header. Invalid geometry,
+flags, truncation and aggregate/item limits are refused before allocation.
+Node Buffer and native codecs are not imported into the browser module.
+
+`ClipboardClient` now requires an explicit image offer descriptor with
+`version: 1`, `itemMetadataBytes: 16` and `pixelFormat: rgba8-srgb-straight`, plus
+the complete selected image scalar state. Selection, directions, generation and
+maximum remain immutable for the attachment. `setImage`/`readImage` use
+`clipboard.image.*` events, the same shared flight as text/HTML, existing RWC1
+windows, 60-second whole-operation and two-second progress deadlines, and an
+eight-second native completion budget. There is no implicit format conversion,
+text fallback or OS clipboard access.
+
+Uploads synchronously copy the caller's pixels. Downloads expose a checked item
+only after terminal `data.complete`; the consumer then owns and must wipe the
+returned `rgba` view. Every interrupted retained buffer/frame is wiped. A later
+remote revision does not mutate the accepted native snapshot, while source,
+selection or controller loss terminates transfer authority, including another
+selected format's transfer.
+
+The module also provides a fixed 33-byte PNG signature/IHDR/CRC/dimension guard
+for later explicit ClipboardItem actions. This guard follows the
+[PNG specification](https://www.w3.org/TR/2025/REC-png-3-20250624/) header rules;
+it does not validate an entire PNG, decode pixels, inspect ancillary chunks or
+bound a decoder's CPU/total memory. A caller must separately bound its complete
+Blob and decoded result. Browser permission and OS operations remain follow-up
+work under the [Clipboard API](https://www.w3.org/TR/2026/WD-clipboard-apis-20260624/).
+
+Focused browser/legacy composition checks pass **25/25**, including independent
+goldens, byte-offset views, native write overhead, 16 MiB items, window pacing,
+shared flight, malformed headers and cleanup. Actual Edge/HTTP/WebSocket image
+profiles in all three directions and retained HTML/helper checks pass **8/8**
+with synthetic RDP and an OS clipboard API that refuses every call. These are
+not physical OS clipboard or actual RDP image application acceptance. Full linked
+`pnpm check` passes Windows **1191 passed / 71 skipped** and Linux UID1000 /
+CapEff=0 **1159 passed / 111 skipped**, zero failures. Native and public backend
+sources remain unchanged from the accepted image handoff/control components.
+The receipt `build/current-validation/image-browser-client-acceptance.json`
+binds the source snapshot and logs.
+
+The initial Linux full run lacked Docker `--init`: Python PID 1 did not reap
+orphaned children, and five existing parent-death assertions failed. A separate
+before/after probe observes zombie versus reaped state; all five unchanged
+cases then pass with init, followed by the unchanged full check. The initial
+failure and probe logs are retained. No product/test deadline, assertion or
+skip was relaxed. ClipboardItem actions, actual OS/RDP image application
+acceptance, hosted whole-feature gates and merge/release remain open.
+
+## Explicit image actions in development
+
+The reference connection form now independently selects `clipboard.images:true`
+only when the native `clipboardImage`, text and revoke capabilities are present.
+Disabled mode omits all clipboard settings; HTML remains independently selected.
+The existing item maximum and both directional policies apply. For example,
+`clipboard:{mode:"bidirectional",images:true,maxItemBytes:1048576}` selects
+images with a 1 MiB maximum; native image writes include 124 bytes of DIBV5
+overhead within that maximum. This is a `browser-virtual` device origin under
+[ADR-006](adr/ADR-006-device-origin-model.md), not host filesystem access.
+
+The image panel has five explicit actions: paste a local PNG into a draft,
+offer that draft to RDP, get the remote image, copy the received image locally,
+and clear both local items. Sending does not paste into a remote application;
+use its Paste command separately. Getting does not write the OS clipboard.
+No automatic synchronization, URL/file loading or text/HTML fallback is added.
+Each retained draft/received item owns one checked RGBA view. Clear, source loss
+and detach wipe both views and reset the preview canvases; stale remote results
+are wiped without publication. The UI shares local permission reservation and
+the existing control client's transfer flight with text/HTML.
+
+Local actions require a trusted user gesture, secure context, ClipboardItem
+PNG support, module workers, OffscreenCanvas and createImageBitmap. Browser
+read/write APIs are invoked directly in that gesture. Copy supplies a promised
+PNG Blob to ClipboardItem while conversion proceeds asynchronously, as allowed
+by the [Clipboard API](https://www.w3.org/TR/2026/WD-clipboard-apis-20260624/).
+One nonrenewing five-second permission deadline cancels late publication.
+An already invoked OS write cannot be rolled back; the browser/OS may retain
+opaque or immutable copies. No restoration of unknown prior clipboard content
+is attempted.
+
+`clipboard-image-conversion.js` owns at most one disposable module worker,
+terminates it on cancellation/disposal or its five-second deadline, and admits
+only a checked item/PNG result. The worker bounds the complete PNG to 16 MiB,
+checks its fixed IHDR signature/CRC/geometry and native write quota before
+createImageBitmap, checks decoded dimensions, then converts through an sRGB
+OffscreenCanvas. PNG export copies the checked pixels synchronously before
+transfer to the worker. Temporary retained pixels are wiped, bitmaps closed
+and canvas storage reset. Decoder internals/ancillary metadata and aggregate
+CPU/RSS remain browser implementation/resource acceptance concerns; the header
+guard is not an entire PNG parser. A failed/unsupported decode returns a fixed
+refusal, without downscaling the transferred item or trying another format.
+
+Only the local preview scales: nearest-neighbour sampling uses at most 320×240
+pixels/iterations and wipes its temporary ImageData. It does not allocate a
+full-sized DOM canvas or alter the transfer pixels. Browser canvas color/alpha
+conversion follows the [HTML canvas model](https://html.spec.whatwg.org/multipage/canvas.html#pixel-manipulation);
+arbitrary translucent RGB values can quantize during premultiplication. Exact
+wire RGBA preservation does not establish lossless browser/OS color conversion.
+Named opaque and broader alpha/color profiles require their own acceptance.
+
+The browser modules ship in the existing npm/standalone reference assets.
+Custom hosting must serve the worker/module files with JavaScript MIME types
+and allow same-origin workers (`worker-src 'self'`); standalone already permits
+them. The reference/lab hosting policies now include that permission.
+
+Focused pure conversion/config checks pass **19/19**. Actual Edge/reference
+viewer/WS tests with synthetic RDP pass **13/13**, including all three image
+directions, trusted PNG actions, shared text/HTML reservation, permission expiry,
+late type/result refusal, worker cancellation, no automatic OS calls and joined
+revoke. Additional Edge preview and real permission-refusal checks pass **4/4**:
+large preview geometry/selected pixels and clear/source/dispose buffer wiping,
+plus a browser denial set before any clipboard read. These tests do not read
+physical OS clipboard contents or connect to an RDP image application. Full linked
+`pnpm check` passes Windows **1207 passed / 71 skipped** and Linux UID1000 /
+CapEff=0 **1170 passed / 116 skipped**, zero failures. Native and public backend
+sources remain unchanged from accepted image components. The local receipt
+`build/current-validation/image-ui-acceptance.json` binds source, all test logs
+and the independent actual OS profile below. Actual RDP, broader platform/color/
+resource, hosted whole-feature and release gates remain open.
+
+### Named Windows/Edge PNG OS profile
+
+An independent headed **Edge 156.0.4314.42 / Windows** run passes with real
+ClipboardItem APIs and an owned **opaque 32×32 PNG**. Before its first clipboard
+read, the helper writes its own nonce-bound image. The reference panel pastes
+it locally without sending, then explicitly sends exact pixels to the synthetic
+session backend. The borrowed source pixels are observed cleared after success.
+Remote get/copy uses that synthetic backend; a second independent browser
+process reads the actual OS PNG and compares every pixel. A new remote revision
+also passes exact readback. Local retained pixels, UI and owned OS clipboard
+are cleared, and both browsers close.
+
+The report `build/current-validation/image-os-clipboard-1793043616262-17cfe3.json`
+binds the tested reference sources by SHA256. Its helper/fixture bytes are also
+bound by the UI acceptance receipt. No unknown previous clipboard content is
+read or restored, and no PNG/pixel contents are written into logs. This named
+profile is **not RDP application acceptance**: its session API is synthetic.
+It does not accept arbitrary alpha/color/metadata conversions, other browsers
+or platforms, aggregate decoder resources or the complete Stage 7 requirement.
+
+### Prepared image application helper
+
+The manual `scripts/test-image-os-clipboard.mjs --owned-os-clipboard` helper
+reproduces the named OS scenario using the tracked
+`tests/fixtures/image-os-clipboard.html`. Run it with Node 24 from the project
+root on Windows. It replaces the OS clipboard with its own image before the
+first read, opens its own headed Edge processes, verifies exact independent
+readback and clears the owned clipboard. This is a synthetic session API test,
+not RDP acceptance. It writes a new timestamped, source-hashed report under
+`build/current-validation/`; unknown previous content is never read/restored.
+
+For actual RDP, `scripts/image-rdp-lab-fixture.mjs` generates an operator-owned
+single HTML document from `tests/fixtures/image-rdp-application.html`. The
+document contains only a strict 32-hex nonce, finite deterministic 32×32 opaque
+images, F8 PNG copy, F9 paste target and F2 bounded scalar receipt. Paste checks
+the 16 KiB PNG ceiling, signature/IHDR/CRC and exact 32×32 geometry before
+decoding. It compares all pixels, wipes owned arrays and never emits clipboard
+contents in the receipt. There is no application/URL/shell launch path.
+
+Open the generated file on the authorized Windows lab in a separate active Edge
+window, with title **Owned image clipboard lab**. The manual driver is:
+
+```text
+node scripts/test-image-rdp-clipboard.mjs --prepared-remote-document=<nonce> --owned-os-clipboard sha256:<approved-certificate-pin> build/native-clean-<id>/receipt.json [--keep-remote-document]
+```
+
+The driver requires the exact previously approved certificate fingerprint and
+a verified clean linked native receipt. It reads the already authorized lab
+configuration/credentials only from ignored `.local-tests/` files; credentials
+reach the native worker through private IPC, never argv/environment/artifacts.
+The target remains the named Windows lab. It verifies the remote document's
+receipt before sending an image, performs local PNG paste/send and actual remote
+Paste/readback, then remote image copy/read/local OS copy with a fresh revision.
+It uses the real public control WebSocket and reference image actions. Only
+F2/F5/F8/F9 and Ctrl+C/V/W input sequences are admitted; no arbitrary text input
+is provided. PNG source copy is F8 alone, because this document writes PNG
+directly through ClipboardItem.
+
+The optional keep flag reloads and verifies zeroed document counters through
+another owned receipt, leaving the page for a later transport profile. Otherwise
+the driver requests closing its verified owned document. It joins native revoke,
+worker/PID/runtime cleanup and clears the owned local OS clipboard. Diagnostics
+contain only fixed status/phase/scalar metadata and source/native hashes.
+
+Eight document/receipt/profile/CLI and actual-WS/synthetic-backend checks pass;
+they do not use real RDP or OS clipboard data. The initial narrow test expected
+revoke after a read-only fixture: that fixture never dirties a native offer,
+so its correct expectation is zero; all eight pass after that test-only correction.
+Its original failure log is retained. A fresh source-only linked Windows build
+passes CTest **40/40** and the standard native/process/clipboard Node subset
+**60 passed / 2 skipped**. Full helper regression is recorded below.
+
+The helper block now passes full `pnpm check`: Windows with the fresh clean
+linked worker **1215 passed / 71 skipped**, Linux UID1000/CapEff=0
+**1176 passed / 118 skipped**, zero failures. The tracked OS helper independently
+passes its actual headed Windows/Edge PNG scenario, including exact second
+browser-process and new-revision readback and owned cleanup. Its new report is
+`build/current-validation/image-os-clipboard-1793073638636-c36994.json`.
+`build/current-validation/image-application-acceptance.json` binds helper and
+product source, native receipt, terminal logs and that named OS report.
+
+The initial actual RDP gate was environmental: `192.168.21.149:3389` timed out
+at TCP connect. A no-credentials certificate preflight accepts no certificate,
+performs no RDP application/clipboard operation and leaves its runtime empty.
+This is not image application evidence; the Stage 7 checkbox remains open.
+The user requested postponing the next availability check until **2026-10-27
+09:58 Samara / 05:58 UTC**. A single local delayed TCP-only probe is scheduled;
+it supplies no credentials and starts no RDP application session. Earlier
+prepared-window confirmations for HTML do not establish readiness of this new
+image document.
+
+The scheduled 09:58:20 Samara TCP retry also times out after three seconds,
+without payload or authentication. The user subsequently restores access and
+approves the exact lab certificate. A new TCP probe connects in 15 ms. The first
+Windows image helper connects with that pin but receives no F2 challenge text,
+so it performs no image writes/reads. An allowed private GUI diagnostic shows
+the owned page with blank canvas/receipt; reading only that page's source through
+RDP confirms `__NONCE__` and `__PIXELS__` were left unexpanded. Its temporary
+view-source tab is closed and the worker/runtime are retired. The ready generated
+document is also supplied as `build/current-validation/owned-image-clipboard-lab.html`
+(the same accepted document bytes/nonce) for the operator to open. These findings
+do not establish image application acceptance.
+
+### Linux image application preparation
+
+The private Linux lab bootstrap now independently selects `imageClipboard:true`
+with `ipcTransport:"auto"` or `"framed-pipes"`. Image/HTML/soak combinations that
+would select two scenarios are refused before server startup; the existing
+1024-byte bootstrap ceiling, chunk/storage wiping and legacy return shape are
+preserved. The server instruments only finite scalar image/native-call state,
+serves the prepared image reference client and its worker modules, and joins
+worker/runtime retirement. This bootstrap is a local development tool, not a
+public API or production secret store.
+
+`scripts/linux-image-lab-profile.mjs` admits only the dedicated pinned GCC-image
+container with UID1000, dropped capabilities, read-only root/SDK volume,
+loopback-only 47998→47999 publication, the image-acceptance label and exact
+`/bridge/image-linux-node-source` working directory. The native path is the
+accepted GCC 8.3 image-handoff build; duplicate/foreign worker paths and loader
+hooks are refused before bearer generation or lab-credential reads.
+
+The Windows host driver uses this profile:
+
+```text
+node scripts/test-linux-image-rdp.mjs freerdp-bridge-linux-image-viewer-<id> --prepared-remote-document=<nonce> sha256:<approved-pin> --owned-os-clipboard auto [--bootstrap-only|--keep-remote-document]
+```
+
+Use `framed-pipes` instead of `auto` for the second carrier. In bootstrap-only
+mode the driver verifies actual Linux HELLO/capabilities/carrier and browser
+module loading, with Clipboard APIs mocked to refuse every call. It is headless,
+creates no RDP session and reads no private lab configuration. Actual mode uses
+headed Edge and the same bounded PNG/pixel/receipt checks as the Windows helper;
+the optional keep flag verifies a remote document reset for the next profile.
+The current RDP access deferral still applies to actual mode.
+
+`scripts/test-linux-viewer-bootstrap.mjs --linked-native` now checks five
+independent server start/stop profiles: legacy, HTML auto/framed and image
+auto/framed. Each observes the real native carrier; image profiles additionally
+check worker/module routes and zero native clipboard calls. Eleven focused
+bootstrap/profile checks pass, including retained legacy HTML selection.
+All five linked Linux bootstrap profiles pass under UID1000/CapEff=0. Both
+Windows Edge 156 browser bootstrap profiles also pass against the real Linux
+worker, observing `unix-seqpacket-rws1` and `framed-pipes`, respectively. Each
+loads the image modules, makes zero native clipboard calls, retires the worker
+and cleans its runtime. The dedicated container was then removed. These two
+headless profiles mock Clipboard APIs to refuse access and create no RDP session.
+
+Full helper regression passes Windows 1220/71 skips and Linux UID1000/CapEff=0
+1181/118 skips, zero failures. Native sources and the accepted clean Windows
+artifacts are unchanged. The initial five-profile helper incorrectly applied an
+HTML-only page assertion to the image profile; its failing log is retained,
+the test condition is corrected, and the five profiles and full suites pass
+after the correction. Evidence is bound in the ignored local
+`build/current-validation/image-linux-acceptance.json` report. Actual image
+application acceptance, including both Linux carriers, remains open.
+
+### Image GCC 11 and hosted checkpoint
+
+The native sources used by `ef70a0b` pass a fresh out-of-tree Release build with
+**GCC 11.4.1 on RED OS 7.3**, followed by **CTest 41/41**. The linked worker reports
+FreeRDP 3.32.1 and the image/HTML/revoke hooks. The source digest matches the
+accepted clean Windows/native sources; the local
+`build/current-validation/image-redos-gcc11-linked-v3.json` report binds the
+source/archive/SDK inputs and output worker, with the terminal CTest log beside
+it. Build and tests run as an unprivileged user in their own temporary directory.
+
+This is a linked bridge compiler check using the unchanged pinned SDK built with
+GCC 8.3. It does not rebuild FreeRDP with GCC 11. `BRIDGE_NODE_IPC=OFF` leaves the
+Node addon outside this check, and no remote RDP/application operation is made.
+It therefore extends the earlier GCC 11 foundation/object evidence without
+accepting the image feature or all RED OS deployment scenarios.
+
+Public development commit `3115593e104f5912e6f0ea54dc03d73edb09af90` on
+`SensNyaha/freerdp-browser-bridge:feature/image-clipboard` contains the exact
+102 feature file changes from private base `233b811` through `ef70a0b`. Its
+`.delivery/development.json` binds those source bytes and explicitly leaves
+release and actual image RDP acceptance false. Published 0.4.0 delivery inputs,
+main and release tags are unchanged. The
+[foundation run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40451978659)
+passes Windows, default Linux and sanitizers, but its GCC 12 job fails the
+synthetic adapter test's connected-before-clipboard-ready ordering described
+below. The [GCC 8.3 run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40451978578)
+passes. The separate
+[Windows/Linux bundled-native run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40452353162)
+passes the Linux linked build and full Node checks, then fails in the existing
+restricted bookworm runtime: Ubuntu-built private dependencies require
+`GLIBC_2.38`, which that runtime does not provide. Its Windows job is cancelled
+by fail-fast during Node checks. Neither failure is a passing hosted gate.
+The runtime's baseline must remain intact while the builder is repaired.
+These workflows publish no packages or releases.
+
+### Automatic named PNG profiles and source readiness
+
+`tests/integration/clipboard-image-conversion-browser.test.mjs` now automatically
+exercises real disposable Edge PNG workers with three owned profiles: opaque
+257×19, representable alpha 33×17 and opaque 2048×2047. The last contains
+16,769,024 RGBA bytes (16,769,148 with DIBV5 overhead) under the 16 MiB item cap.
+Each profile checks exact pixels/geometry, unchanged borrowed input, refusal at
+one byte below the required DIBV5 quota, one active worker, joined termination
+and explicit owned-array wiping. Transparent pixels canonicalize to zero RGB;
+the selected nonzero alpha colors use full-intensity/zero RGB and remain exactly
+representable. Arbitrary translucent RGB, other color spaces and total browser
+decoder CPU/RSS are separate concerns. Clipboard APIs are mocked to refuse all
+access; these are PNG conversion tests, not OS clipboard or RDP acceptance.
+
+The synthetic native-adapter manager test now explicitly waits for
+`clipboardSnapshot.state.ready`. Connected and clipboard-ready arrive as
+independent events; the initial hosted GCC 12 failure assumed they arrived
+together. A deterministic second case holds one scalar source snapshot until
+after connection, verifies permission is refused while the source is absent,
+publishes that source, then checks normal image read/write and joined revoke.
+It adds no scheduling sleep, permission relaxation or production change.
+
+Eight focused checks pass. Full linked regression passes Windows **1225 passed /
+71 skipped** and Linux UID1000/CapEff=0 **1182 passed / 119 skipped**, zero
+failures. The earlier Windows run retained six TLS/setup deadline failures,
+including an explicit OpenSSL startup timeout. Tool initialization and the
+unchanged targeted TLS subset pass 14/14 before the passing full rerun; the
+original logs and timeouts are preserved. Native sources/artifacts are unchanged.
+`build/current-validation/image-png-ready-acceptance.json` binds the final source
+snapshot, terminal suites, held-source counterexample and initial hosted failures.
+Corrected-source hosted checks, the bundled Linux ABI repair and actual image
+RDP application acceptance remain open.
+
+The corrected-source hosted run passes both Linux jobs, sanitizers and exact
+GCC 8.3, but its Windows job times out in the pre-existing bidirectional text
+viewer test. The test now emits its fixed operation/cleanup phase through the
+test context, preserving all assertions, the screenshot and existing deadlines.
+All three unchanged text scenarios pass locally with joined cleanup. This adds
+diagnostic evidence for a repeat rather than claiming a root cause for that
+timeout; the original hosted log is retained.
+
+The next public source checkpoint `677ba6f` passes all four
+[foundation jobs](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40461624829)
+and [exact GCC 8.3](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40461625113).
+The new bundled Linux job reaches its cold vcpkg bootstrap and identifies a
+missing `zip`; the builder's explicit prerequisites are corrected and a local
+source-only bootstrap passes without a pre-existing vcpkg binary. The independent
+Windows bundled job continues. This does not yet accept the complete bundled
+Linux dependency/SDK/runtime chain.
+
+The user subsequently defers actual RDP testing. A retry on the generated image
+page does not complete the initial receipt, and a private diagnostic frame
+shows another active application. No image transfer is accepted. The unused
+Linux application container is removed after exact ID/name/label checks; its
+server never starts. Actual RDP testing waits for a later operator-ready window.
+
+### Image artifact-only clean Linux runtime
+
+The current accepted GCC 8.3 worker/addon is independently installed into a new
+empty prefix. The private runtime verifier checks 34 ELF files and 333 dependency
+edges against that prefix. A separate 30,516,431-byte development archive is
+bound by SHA256 `826126910aa005fbbe9dc87aae88fbf27bb19b4b45ff771c0f77ed5ba80f673f`;
+it neither replaces nor publishes any existing 0.4.0 release asset.
+
+The unchanged `docker/native-runtime-check.Dockerfile` and artifact-only probe
+then run this archive in pinned bookworm/glibc 2.36 with Node 24.21.0, UID1000,
+network disabled, read-only root, CapDropALL, no-new-privileges and a 16 MiB
+noexec/nosuid/nodev runtime tmpfs. No SDK, source or build prefix is mounted.
+Six codec/dependency origin probes, one actual IPC addon/RWS1 pair, three native
+lifecycle acknowledgements and joined directory cleanup pass. The worker reports
+FreeRDP 3.32.1 and image/HTML/revoke capabilities; the overall V1 `rdp` flag remains
+false. This performs no RDP connection, clipboard or physical device operation.
+
+`build/current-validation/image-native-clean-acceptance.json` binds the input
+archive, strict runtime logs, capabilities and the exact 398 native source files.
+All six original build artifacts remain unchanged after installation. This uses
+the already accepted private SDK, so it does not establish the separate cold
+hosted dependency/SDK build, Astra/RED OS application acceptance or the deferred
+actual PNG RDP roundtrip. Those gates and image feature merge/release remain open.
+
+The exact same archive additionally passes on actual **Astra Linux 1.7.5**
+(kernel `6.1.50-1-generic`) and **RED OS 7.3** (kernel `6.1.180-1.el7.3.x86_64`),
+both with glibc 2.28. Each uses UID1000, the exact previously approved Node
+24.21.0 bytes, an isolated private fixture and the same artifact-only probe.
+Only the runtime temporary-directory constant is adapted to that fixture's
+owned directory; its hash is recorded. Six codec/private-module origins,
+actual addon/RWS1 pairing, three lifecycle acknowledgements and joined cleanup
+pass on each host. Image/HTML/revoke capabilities are present and overall `rdp`
+remains false. The runtime is compiled with GCC 8.3; the separate GCC 11 linked
+CTest checkpoint above remains a distinct compiler result.
+
+There is no sudo, service installation/configuration or RDP connection. The new
+temporary contexts are removed after exact ownership/path/symlink checks; older
+fixtures and services are untouched. Local
+`build/current-validation/image-native-os-acceptance.json` binds the archive,
+per-host reports, adapted probe hashes and cleanup. These are named native
+runtime/kernel compatibility checks, not actual image application or installer
+acceptance.
+
+### Image artifact-only full service checkpoint
+
+An additional local full-service checkpoint consumes the exact native archive
+above and a fresh 3,586,519-byte production Node archive, SHA256
+`8e652bc75ace64fe16b4ce1fc657a91e1765569fb15bcb58d99ef8e1d9c67fb9`.
+The offline Node assembly verifies 1,150 non-Markdown/non-workflow source hashes
+against the accepted source snapshot. Both original service Dockerfile targets
+build without network access. The unchanged artifact-only API probe passes in
+the verification image: UID1000, read-only root, CapDropALL, no-new-privileges,
+network disabled, and only a private 16 MiB noexec runtime tmpfs. There are no
+source, SDK or build mounts. Default authentication denial, synthetic host
+identity with actual native lifecycle/RWS1, expected loopback connection refusal,
+joined server shutdown and empty runtime all pass.
+
+All 39 packaged browser assets, including image modules/workers, match their
+source bytes. The packaged worker separately reports image/HTML/revoke hooks
+and overall `rdp:false`. This probe makes no real RDP or OS clipboard connection;
+the three actual application profiles below remain separate. Local
+`build/current-validation/image-service-runtime-acceptance.json` binds the two
+archive hashes, exact Docker/probe inputs, image IDs, terminal log and asset
+comparison. These are development 0.4.0 bytes, not replacement public assets or
+0.5.0 installer acceptance. The corrected hosted full-service run remains open.
+
+### Image hosted Windows bundled checkpoint
+
+The Windows job in
+[bundled run 40463490091](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40463490091/job/122053311396)
+passes at public source `1399b3afaef078577d56376d91359e1f3bbb3fae`.
+The workflow builds the pinned FreeRDP 3.32.1 source
+`bf217a504e54cc719880c228e82353382cd7d4fa`, then the worker and native helpers;
+its dependency binary cache is not described as a fresh dependency source build.
+All **40 native CTest** cases and full linked Node checks (**1225 passed /
+71 skipped**) pass. The staged native bundle relocates with only the system
+directory in PATH, verifies private codec origins, helper/lifecycle/recovery
+behavior and joined cleanup. ZIP generation and SBOM/packaged CRT checks also
+pass. The archive is uploaded as a development CI artifact, not a public release.
+
+The packaging test command has one executed relocation case and **15 standalone
+skips**; those skips do not establish installer acceptance. No actual image RDP
+session is tested by this job. The exact 398 native source files at that public
+commit match the current branch. The local
+`build/current-validation/image-windows-hosted-bundled-acceptance.json` binds
+the source comparison, terminal job/step states, full log and counted checks.
+Linux cold dependency/SDK/runtime, actual image application and versioned
+distribution gates remain open.
+
+### Actual image RDP application checkpoint
+
+After access is restored and the operator confirms the generated document is
+active, three actual application profiles pass against the Windows RDP server:
+the clean Windows worker, the GCC 8.3 Linux worker with `unix-seqpacket-rws1`,
+and the same Linux worker with `framed-pipes`. Local headed Edge 156 uses real
+OS Clipboard APIs and the actual public session/control WebSocket path; neither
+the session backend nor Clipboard APIs are mocked. Each verifies exact owned
+opaque 32x32 PNG pixels in both directions, a newer remote revision, and that
+local paste alone does not send data to the remote application. The existing
+explicitly approved certificate must match throughout.
+
+All three verify revoke, owned clipboard clearing, UI disposal, worker retirement
+and an empty runtime. The first two reset and verify their own document for the
+next profile. The last requests closing only the verified test document; it
+does not assert that the browser process exits. The read-only UID1000 Linux
+container is stopped and removed after exact ID/name/label/mount checks, while
+the SDK volume is retained. No remote application is launched by the helper.
+
+Local evidence is bound by source/report hashes in
+`build/current-validation/image-actual-rdp-acceptance.json`, with the three
+terminal reports and container cleanup receipt alongside it. Native source
+digest remains `f1fbb2c01ccde9b154225b2eb665afe4def7e64a8cc934e96439c6438ee1153d`.
+The runtime still identifies as development 0.4.0; published 0.4.0 does not
+contain image support. These results supersede the earlier RDP deferral and
+failed document/focus probes without erasing their evidence.
+
+This accepts the named real image application profiles, including both Linux
+carriers. It does not establish arbitrary alpha/color-space fidelity, all browser
+or RDP-server combinations, or versioned installer/publication acceptance.
+All four current hosted foundation jobs pass at public `b13f706`; the separate
+cold Linux dependency/SDK/runtime job is still running. The feature remains on
+its branch until the remaining required gates pass.
+
+
+### Image source feature acceptance
+
+The image source feature is accepted at private `f922a9a` / public
+`794f9b798547f9f7451be3bf5463af1d15d4dab9`. The
+[foundation matrix and sanitizers](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486671724),
+[exact GCC 8.3 foundation](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486671726)
+and [both bundled runtimes](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486679359)
+all finish successfully on that exact exported source. Linked native CTest is
+Windows 40/40 and Linux 41/41; full linked Node checks are Windows **1229 passed,
+71 skipped, 1300 total** and Linux **1186 passed, 119 skipped, 1305 total**,
+with zero failures/cancellations. Foundation-only native checks remain 23/24;
+they are distinct from those linked results. Thirteen sanitizer fuzz targets
+complete 13,462,443 runs without an error. Packaging relocation passes on both
+OSes; its 15 standalone skips per OS remain separate installer gates.
+
+The Linux job builds the pinned dependencies and FreeRDP at GCC 8.3/glibc 2.28,
+then verifies the artifact-only native runtime, clean offline Node assembly,
+application/native inventories and restricted complete API/native service.
+The final hash-pinned Syft scan now passes with a schema-validated 300-package
+SPDX report for the exact 312,430,340-byte hosted image. Checked dependency
+binaries are saved before packaging; no future cache-hit timing is claimed.
+This supersedes the prior pre-scan size refusal without erasing it.
+
+The three [actual RDP application profiles](#actual-image-rdp-application-checkpoint)
+remain source-identical for their browser/helpers and 398 native inputs.
+The current audit also verifies all 126 exported changed files against the
+private commit, four Windows native artifact hashes, 134 retained historical
+evidence files, named PNG conversion profiles and Astra/RED OS runtime and
+RED OS GCC 11 linked evidence. Local
+`build/current-validation/image-source-feature-acceptance.json` binds the source,
+terminal jobs/logs, supporting receipts and final image inventory. Earlier
+component receipts keep their original partial scope.
+
+This closes the image **source** item in Stage 7 and permits its feature merge.
+It does not close all of Stage 7/V1, total decoder CPU/RSS acceptance, arbitrary
+alpha/color-space/browser/server combinations, or file clipboard. Product
+manifests still identify development 0.4.0; the published immutable 0.4.0 does
+not contain image support. The next minor **0.5.0** requires its separate release
+branch, exact npm consumers, versioned RDP/installer upgrades and public delivery
+acceptance before it is described as released.
+
+
+### Versioned 0.5.0 image application preparation
+
+The manual Linux image helper now admits an additional explicit release lab
+profile: label `freerdp-bridge.image-product-version=0.5.0`, working directory
+`/bridge/image05-release-source-v1`, and installed worker stage
+`/bridge/image05-release-source-v1/build/native-stage-release/bin`. All three
+must agree. The existing development profile remains separate. Unknown versions,
+mixed source/native paths, duplicate overrides, mutable/foreign mounts, wildcard
+ports and loader hooks are refused before lab credentials. The build response
+must also identify 0.5.0 and the selected RWS1/framed carrier before credentials
+are loaded. CLI document/clipboard/certificate opt-ins remain unchanged.
+
+A release-profile fixture fails before admission is implemented. Eleven focused
+image/container/bootstrap checks then pass; both actual Linux native bootstrap
+profiles report version 0.5.0, image hooks, loaded browser assets and joined
+empty-runtime cleanup. These are headless, use mocked Clipboard APIs that deny
+access, and make no RDP connection. Actual application acceptance still requires
+the operator-ready owned document; no application is launched by the helper.
+
+The two local reports are bound in
+`build/current-validation/image05-linux-release-profile-acceptance.json`.
+The separately accepted exact npm cohort and complete Windows/Linux checks
+precede this manual-helper extension; production sources, native binaries,
+package archives and lock integrities are unchanged by it. This preparation does
+not accept a versioned image roundtrip or an installed OS upgrade.
+
+
+### Versioned 0.5.0 image application acceptance
+
+The operator-ready generated document now passes all three actual application
+profiles with the exact **0.5.0** native artifacts: fresh Windows worker, installed
+Linux GCC 8.3 RWS1 and installed Linux framed IPC. Each uses headed Edge 156,
+real OS Clipboard APIs and actual public session/control transport against the
+Windows RDP peer. Exact owned opaque 32x32 PNG pixels pass both directions and
+a newer remote revision; local paste alone sends nothing. The existing approved
+certificate must match. Revoke, clipboard clearing, UI disposal, worker retirement
+and an empty runtime pass in each profile. The first two reset their verified
+owned document; the last requests closing only that document.
+
+The four Windows cohort artifacts and five installed Linux worker/addon/manifest
+artifacts match their exact npm archives. Both Linux build responses identify
+0.5.0 and the expected carrier. The dedicated read-only UID1000 Linux container
+is removed only after all reports pass and its remaining processes are verified
+to be idle init/sleep. The SDK volume is retained. Local
+`build/current-validation/image05-versioned-actual-rdp-acceptance.json` binds the
+three terminal reports/logs, unchanged source hashes, exact native artifact
+hashes and container cleanup. This supersedes the earlier versioned application
+preparation gap without erasing its separate headless/bootstrap scope.
+
+The independent [candidate installer run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40497112168)
+also succeeds on Windows Server 2025 and Ubuntu 24.04: MSI/DEB/RPM/ZIP/TGZ plus
+source companions, installation, immutable 0.4.0-to-0.5.0 upgrades, old-worker
+retirement, crash recovery, reinstall/config retention and uninstall. Combined
+verification admits exactly seven files and preserves `candidateOnly: true`;
+publication is skipped. These installer fixtures make no real RDP claim.
+Named Astra/RED OS installed upgrades and final stable/npm/standalone public
+acceptance remain open. Arbitrary alpha/color-space/browser/server combinations
+and full Stage 7/V1 remain outside this named image acceptance.
+
+
+### 0.5.0 versioned distribution acceptance
+
+The [0.5.0 acceptance record](RELEASE_0_5_0.md) now binds the ten exact archives,
+all hosted gates, four independent archive consumers per OS, actual named
+Astra/RED OS upgrades, eight actual desktop profiles and three actual PNG
+application profiles. All versioned candidate gates pass. Earlier preparation
+and deferral paragraphs retain their original scope. Stable tagging, npm OIDC,
+registry-only consumers and final public standalone delivery remain pending;
+public 0.4.0 still does not contain image support.

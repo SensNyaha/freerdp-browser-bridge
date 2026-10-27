@@ -13,6 +13,15 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
+The image source feature is now accepted at private `f922a9a` / public `794f9b7`:
+all required foundation, GCC 8.3, sanitizer/fuzz and Windows/Linux bundled jobs
+pass. The Linux final full-image SBOM gate passes after the measured size-budget
+correction. The explicit cache save also succeeds after checked native builds
+and before packaging; its restore was a miss, so a subsequent cache-hit speedup
+is not yet measured. The [acceptance record](CLIPBOARD_BROWSER.md#image-source-feature-acceptance)
+separates named real RDP, compiler, runtime and upcoming 0.5.0 installer/npm gates.
+The earlier checkpoints below retain their historical scope.
+
 HTML clipboard **0.4.0** is publicly delivered: ten exact npm packages, five
 GitHub Releases, stable standalone installers/source companions, four fresh
 registry-only consumers per OS and final public Astra/RED OS upgrades pass.
@@ -1335,6 +1344,84 @@ See [current acceptance scope](COMPILER_SUPPORT.md) before treating a source
 version check as complete platform support. Use a fresh build tree for each
 compiler and rebuild all C++ dependencies rather than mixing their ABI/runtime
 closures. Node 24 and CMake >=3.24 requirements are unchanged.
+
+The bundled-native workflow now selects the
+[pinned GCC 8.3 builder](../docker/gcc83-bundled-builder.Dockerfile) for Linux.
+The Ubuntu runner orchestrates Docker; dependencies, FreeRDP, native worker/addon
+and linked Node checks execute inside the Debian 10/glibc 2.28 builder with the
+runner's non-root UID, dropped capabilities and no-new-privileges. Checkout does
+not persist Git credentials. The image context contains only its recipe, public
+CA roots and hash-checked Node 24.21.0/CMake 3.31.6/Ninja inputs. Historical Debian
+archive metadata needs its expiry check disabled; HTTPS and signed package
+verification remain enabled. The resulting tools also pin pnpm 10.11.0.
+
+Linux has a separate recipe-bound GCC 8.3 binary-cache key; the existing Windows
+MSVC key is retained. The subsequent native/service verification still uses the
+original restricted bookworm images without build-prefix mounts. This catches
+the initial Ubuntu-built bundle's `GLIBC_2.38` dependency mismatch rather than
+raising the verification runtime's baseline. Both OS jobs finish independently.
+Linux now uses separate cache restore/save actions: the checked dependency binary
+cache is saved immediately after successful native build and linked checks,
+before later runtime/SBOM steps. Three retained failed jobs report misses for
+the same recipe key; the former combined action only saves on whole-job success,
+so a late image-inventory refusal discarded that cache opportunity. The cache
+path, exact recipe/input key and OS/compiler separation are unchanged; no broad
+restore fallback is added. This follows the
+[cache action's explicit restore/save workflow](https://github.com/actions/cache/blob/v4/README.md#using-a-combination-of-restore-and-save-actions).
+It neither skips required builds/checks nor accepts cached bytes as release
+evidence. Saving and a later cache hit still need hosted observation; cache scope
+remains restricted by GitHub's branch rules.
+The local builder/UID1000 smoke passes, including Node/glibc/compiler and the
+pinned vcpkg/Meson tools. The first cold hosted run identified missing `zip`
+before vcpkg bootstrap. The builder now explicitly installs curl/zip/unzip/tar;
+a source-only bootstrap with no pre-existing vcpkg binary passes as UID1000.
+The next cold hosted dependency build reaches gperf 3.3, whose nested
+`lib/configure.ac` requires Autoconf >=2.70. Debian 10's 2.69 fails `autoreconf`
+with exit 63. The builder now compiles official hash-pinned Autoconf 2.72 into
+its private build-tool prefix and verifies the selected version. The GNU source
+archive is limited to 8 MiB, checked before extraction, and excluded from native
+runtime artifacts. A source-SHA512-bound gperf fixture reproduces exit 63 with
+2.69 and passes with 2.72 under UID1000/network-none/read-only/tmpfs, retaining
+GCC 8.3 and glibc 2.28. No library or FreeRDP pin is changed for this tool fix.
+The following hosted attempt times out during an HTTPS builder-tool download
+before compilation. These GETs now use a 15-second connect timeout, at most two
+retries and the existing per-transfer time/size limits. SHA256 checks still run
+before any archive extraction; mismatched content is a refusal, not a retry or
+alternative unpinned source. The failed log is retained separately from build
+failures.
+The next hosted run `40468676394` passes the cold GCC 8.3 dependency/FreeRDP
+build, native CTest 41/41, linked Node checks 1182/119 skips, and the unchanged
+restricted native runtime verifier (six modules, one IPC pair, three lifecycle
+acknowledgements and cleanup). It then fails the clean Node build because the
+host's default pnpm store differs from the container's temporary HOME store.
+The workflow now explicitly shares a workspace-local `npm_config_store_dir`
+between the non-root builder and host Node assembly. The clean build/deploy
+commands remain offline and frozen. A network-disabled UID1000 regression with
+an empty host HOME reproduces the missing-tarball error before the explicit
+store, then checks the actual clean source build, production deploy/import and
+unchanged lockfile against the populated shared store. Its logs are bound in
+`build/current-validation/image-builder-pnpm-store-acceptance.json`.
+Corrected-source public `c04c030` then passes the cold Linux native build/CTest
+41/41, full linked Node 1184/119 skips, clean offline Node source build and
+production deploy/import, both application/native SBOM archives, and restricted
+native and full API runtime probes. The final image inventory step fails with
+`SBOM_IMAGE_IDENTITY` before scanning; the saved log does not identify which
+inspection field was refused. The fixed refusal codes described in
+[the SBOM contract](SBOM.md) preserve all original admission limits. Local
+`build/current-validation/image-actual-linux-hosted-checkpoint.json` binds the
+terminal job/step states, counted tests and successful probe receipts. Windows
+bundled `c04c030` passes CTest 40/40, Node 1227/71 skips, relocation and CRT/SBOM
+checks. Final Linux image inventory and overall bundled acceptance remain open.
+Actual Astra/RED OS application and installed-runtime acceptance stays separate.
+
+Diagnostic repeat `40482004084` at public `59d71eb` retains all those native/API
+successes and records the precise image refusal: `SBOM_IMAGE_IDENTITY_SIZE`,
+312,426,738 inspect bytes and seven layers. The prior 256 MiB SBOM admission
+budget is explicitly corrected to a finite 512 MiB, with a measured-size
+failing-before case and exact/over-ceiling tests passing on Windows and Linux.
+The independent saved-archive/report bounds and digest/platform/layer checks
+continue to apply. See [the measured artifact budget](SBOM.md); the corrected
+hosted full scan remains a separate required result.
 
 The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)
 uses the pinned compiler image and hash-checked offline build tools. Follow the

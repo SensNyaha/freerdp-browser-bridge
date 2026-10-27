@@ -41,6 +41,77 @@ const caps = {
 };
 const fields = (extra = {}) => new Map(Object.entries({ ...values, ...extra }));
 
+test('manual image clipboard: independent explicit capability, directions and disabled drafts', () => {
+  const available = {
+    ...caps,
+    clipboardText: true,
+    clipboardRevoke: true,
+    clipboardImage: true,
+  };
+  for (const mode of [
+    'bidirectional',
+    'server-to-browser',
+    'browser-to-server',
+  ]) {
+    const selected = {
+      clipboard: mode,
+      clipboardImages: 'on',
+      clipboardMax: '132',
+    };
+    const config = connectionConfig(fields(selected), available).config;
+    assert.deepEqual(config.clipboard, {
+      mode,
+      text: true,
+      images: true,
+      maxItemBytes: 132,
+    });
+    assert.deepEqual(validateSessionConfig(config), config);
+    assert.equal(
+      connectionConfig(fields({ ...selected, clipboardImages: '' }), available)
+        .config.clipboard.images,
+      undefined,
+    );
+    for (const capability of [
+      'clipboardImage',
+      'clipboardText',
+      'clipboardRevoke',
+    ])
+      assert.throws(
+        () =>
+          connectionConfig(fields(selected), {
+            ...available,
+            [capability]: false,
+          }),
+        /не поддерживается/,
+      );
+    assert.equal(
+      connectionConfig(
+        fields({ ...selected, clipboard: 'off', clipboardMax: '' }),
+        caps,
+      ).config.clipboard,
+      undefined,
+    );
+  }
+  assert.deepEqual(
+    connectionConfig(
+      fields({
+        clipboard: 'bidirectional',
+        clipboardImages: 'on',
+        clipboardHtml: 'on',
+        clipboardMax: '1024',
+      }),
+      { ...available, clipboardHtml: true },
+    ).config.clipboard,
+    {
+      mode: 'bidirectional',
+      text: true,
+      html: true,
+      images: true,
+      maxItemBytes: 1024,
+    },
+  );
+});
+
 test('manual HTML clipboard: explicit opt-in requires native HTML and off ignores disabled drafts', () => {
   const available = {
     ...caps,

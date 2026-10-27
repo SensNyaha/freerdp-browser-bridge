@@ -113,6 +113,7 @@ The declared length is at least 32 and at most
 `min(16 MiB, configured maximum + 32)`, checked before allocation. Body and
 optional fallback share the configured content quota. Complete upload validation
 also checks the encoded CF_HTML/CF_UNICODETEXT aggregate before native dispatch.
+
 Uploads are fragment-only: context or selection flags are invalid. Downloads
 preserve checked context/fragment/selection byte ranges for explicit browser
 conversion; the server does not parse or render HTML.
@@ -142,3 +143,57 @@ source and terminal logs by SHA256. The initial narrow regression caught an
 accidentally widened explicit retirement override range; the original maximum
 was restored before these passing full runs. No suppression or skipped failure
 was added. Browser ClipboardItem and real RDP HTML acceptance remain open.
+
+## Image control extension in development
+
+Explicit `clipboard.images:true` adds
+`image:{version:1,itemMetadataBytes:16,pixelFormat:"rgba8-srgb-straight"}` to
+`clipboard.offer`, with scalar `image`, `remoteImage` and `localImageAccepted`
+selection state. The descriptor is absent unless selected. Managed sessions
+require complete image hooks and the matching immutable/native reservation
+described in [ownership](CLIPBOARD_SESSION.md#shared-image-authority-in-development).
+Browser actions and actual image application acceptance are still separate work.
+
+`clipboard.image.set` has exactly `{generation,bytes}` and
+`clipboard.image.request` exactly `{generation,revision}`. Their events use
+`clipboard.image.set.ready`, `.set.ack`, `.set.result`, `.data` and
+`.data.complete`, following the existing text/HTML fields and ACK rules.
+All formats share `clipboard.ack`, monotonically increasing control sequences,
+one current controller, one item/flight and one existing RWC1 binary lane.
+No socket, channel, automatic read or fallback is added. The 4 KiB WS record,
+eight-block credit, pacing, rate and backlog limits remain unchanged.
+
+The complete binary item uses the independently validated
+[16-byte image header and compact RGBA8](CLIPBOARD_IPC.md#image-inner-item-in-development).
+Upload declaration is at least 16 bytes and no more than
+`min(16 MiB, configured maximum + 16)` before allocation. A complete image must
+also have positive exact width × height × 4 geometry; raw pixels fit the
+configured maximum. The native DIBV5 write validator additionally admits the
+124-byte representation overhead before any backend write. An invalid complete
+image returns `invalid` without dispatch and permits a fresh operation; malformed
+RWC1 framing closes the current control attachment under existing rules.
+
+Native accepted image reads transfer owned pixels to the transport, which
+validates and encodes them into its one existing item buffer, then wipes the
+backend pixel storage. It releases encoded bytes only through issued credit.
+Final `data.complete` follows the last exact ACK and outstanding write completion.
+No received image may be exposed before that terminal event. Upload views are
+borrowed until synchronous backend copying, then the assembled buffer is wiped.
+Late, negative-with-content, invalid, stale and timed-out image results are
+discarded and wiped; they never become text. Image selection changes terminate
+transfer authority even during an existing text/HTML transfer.
+
+Image native completion uses the existing eight-second public transport budget
+over its seven-second private operation. Whole-item 60-second and progress
+two-second deadlines remain nonrenewing. Source/controller loss and wrong ACK
+close transfer ownership and join the common native drain/revoke boundary.
+
+Focused public checks pass **35/35**: pure owner/transfer boundary cases, native
+adapter composition with a synthetic child and actual control WebSocket tests
+with synthetic RDP cover multi-window RGBA, exact quotas, malformed pixels,
+direction refusal, content-free logs/status and controller replacement waiting
+for old write/revoke. Full linked `pnpm check` passes Windows **1178 passed /
+71 skipped** and Linux UID1000/CapEff=0 **1149 passed / 108 skipped**, zero
+failures. The receipt `build/current-validation/image-public-acceptance.json`
+binds source and logs, including the corrected initial fixture failures.
+Browser/OS/RDP acceptance and whole-feature merge/release remain open.

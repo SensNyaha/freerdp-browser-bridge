@@ -15,9 +15,80 @@ import {
   encodeClipboardState,
   encodeClipboardCommand,
   encodeClipboardResult,
+  encodeClipboardImageItem,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+const imageInner = encodeClipboardImageItem({
+  width: 2,
+  height: 1,
+  rgba: Buffer.from('12345678fedcba98', 'hex'),
+});
+const imageConfig = encodeConnectionSettings({
+  host: 'localhost',
+  username: 'u',
+  domain: '',
+  port: 3389,
+  width: 1024,
+  height: 768,
+  colorDepth: 32,
+  security: 2,
+  certificatePolicy: 0,
+  minimumTls: 2,
+  connectMs: 5000,
+  tcpAckMs: 1000,
+  clipboard: { toServer: true, fromServer: true, maximum: 1024, image: true },
+});
+for (const [name, kind, requestId, payload] of [
+  ['configure-image', Kind.Configure, 1n, imageConfig],
+  [
+    'clipboard-image-state',
+    Kind.ClipboardState,
+    0n,
+    encodeClipboardState({
+      generation: 1n,
+      revision: 0n,
+      maximum: 1024,
+      ready: false,
+      toServer: true,
+      fromServer: true,
+      remoteText: false,
+      localAccepted: false,
+      localPending: false,
+      remotePending: false,
+      image: true,
+      remoteImage: false,
+      localImageAccepted: false,
+    }),
+  ],
+  [
+    'clipboard-image-set',
+    Kind.ClipboardCommand,
+    2n,
+    encodeClipboardCommand({
+      operation: 'set-image',
+      generation: 1n,
+      revision: 0n,
+      text: imageInner,
+    }),
+  ],
+  [
+    'clipboard-image-result',
+    Kind.ClipboardResult,
+    2n,
+    encodeClipboardResult({
+      operation: 'read-image',
+      generation: 1n,
+      revision: 1n,
+      text: imageInner,
+      status: 'accepted',
+    }),
+  ],
+])
+  await writeFile(
+    'build/fuzz/corpus/' + name,
+    encodePacket({ kind, requestId, payload }),
+  );
 for (const [name, flags, maximum] of [
   ['clipboard-both', 384, 1048576],
   ['clipboard-from-max', 256, 16777216],

@@ -7,13 +7,15 @@ import { NativeSessionWorker } from '../packages/node-bridge/dist/index.js';
 import { linuxWorkerResidentBytes } from './linux-process-resident.mjs';
 import { soakDurationMs } from './viewer-soak.mjs';
 import { readLinuxViewerBootstrap } from './linux-viewer-bootstrap.mjs';
+import { imageLabPixels } from './image-rdp-lab-fixture.mjs';
 
 // Disposable lab container only. Docker must publish 47999 to HOST LOOPBACK 47998.
 // Private bootstrap carries an ephemeral host bearer, never RDP credentials.
 if (process.platform !== 'linux' || process.argv.length !== 2)
   throw new Error('Linux lab server only');
-let { bearer, soak, htmlClipboard, ipcTransport } =
+let { bearer, soak, htmlClipboard, imageClipboard, ipcTransport } =
   await readLinuxViewerBootstrap(process.stdin);
+const richClipboard = htmlClipboard || imageClipboard;
 const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-linux-browser-'));
 const worker = {
   workerPath: resolve(
@@ -21,13 +23,14 @@ const worker = {
     'rdp-worker',
   ),
   runtimeRoot,
-  ...(htmlClipboard ? { ipcTransport } : {}),
+  ...(richClipboard ? { ipcTransport } : {}),
 };
 let server;
 const audioResets = { requested: 0, scheduled: 0 };
 const clipboard = {
   writes: 0,
   htmlReads: 0,
+  ...(imageClipboard ? { imageReads: 0 } : {}),
   textReads: 0,
   revokes: 0,
   revokeAccepted: false,
@@ -49,6 +52,13 @@ const clipboardSnapshot = () => ({
           localPending: source.localPending,
           localAccepted: source.localAccepted,
           localHtmlAccepted: source.localHtmlAccepted,
+          ...(imageClipboard
+            ? {
+                image: source.image,
+                remoteImage: source.remoteImage,
+                localImageAccepted: source.localImageAccepted,
+              }
+            : {}),
           remotePending: source.remotePending,
         },
       }
@@ -73,13 +83,13 @@ const close = () =>
           pidRetired = error.code === 'ESRCH';
         }
       }
-      if (htmlClipboard && !pidRetired) throw new Error('Worker not retired');
+      if (richClipboard && !pidRetired) throw new Error('Worker not retired');
       await rm(runtimeRoot, { recursive: true, force: true });
       console.log(
         JSON.stringify({
           type: 'lab.server.closed',
           cleanup,
-          ...(htmlClipboard
+          ...(richClipboard
             ? { pidRetired, clipboard: clipboardSnapshot() }
             : {}),
         }),
@@ -98,7 +108,7 @@ const timer = setTimeout(
   () => {
     void close();
   },
-  htmlClipboard ? 180000 : (soak ? soakDurationMs : 0) + 90000,
+  richClipboard ? 180000 : (soak ? soakDurationMs : 0) + 90000,
 );
 process.once('SIGTERM', () => {
   void close();
@@ -126,7 +136,7 @@ try {
         session.onFailure(() => {
           nativeState = 'failed';
         });
-        if (htmlClipboard) {
+        if (richClipboard) {
           session.onClipboard((value) => {
             source = { ...value };
           });
@@ -142,6 +152,18 @@ try {
             ++clipboard.htmlReads;
             return htmlRead(revision);
           };
+          if (imageClipboard) {
+            const imageWrite = session.writeClipboardImage.bind(session),
+              imageRead = session.readClipboardImage.bind(session);
+            session.writeClipboardImage = (item) => {
+              ++clipboard.writes;
+              return imageWrite(item);
+            };
+            session.readClipboardImage = (revision) => {
+              ++clipboard.imageReads;
+              return imageRead(revision);
+            };
+          }
           session.readClipboardText = (revision) => {
             ++clipboard.textReads;
             return textRead(revision);
@@ -184,22 +206,25 @@ try {
           .header('Cache-Control', 'no-store')
           .header(
             'Content-Security-Policy',
-            "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src blob:",
+            "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src blob:; worker-src 'self'",
           )
           .type(name.endsWith('.js') ? 'text/javascript' : 'text/html')
           .send(bytes),
     );
   }
-  if (htmlClipboard) {
+  if (richClipboard) {
     const index = await readFile(join(directory, 'index.html'), 'utf8'),
-      start = index.indexOf('<section id="clipboard-html"'),
-      end = index.indexOf('<section id="clipboard-text"');
+      format = imageClipboard ? 'image' : 'html',
+      start = index.indexOf('<section id="clipboard-' + format + '"'),
+      end = index.indexOf(
+        '<section id="clipboard-' + (imageClipboard ? 'html' : 'text') + '"',
+      );
     if (start < 0 || end <= start)
-      throw new Error('HTML reference panel unavailable');
+      throw new Error('Clipboard reference panel unavailable');
     const fixture = (
-      await readFile('tests/fixtures/html-rdp-client.html', 'utf8')
+      await readFile('tests/fixtures/' + format + '-rdp-client.html', 'utf8')
     ).replace('<!--REFERENCE_PANEL-->', index.slice(start, end));
-    server.get('/html-lab/', (_request, reply) =>
+    server.get('/' + format + '-lab/', (_request, reply) =>
       reply.type('text/html').send(fixture),
     );
     for (const name of [
@@ -207,6 +232,10 @@ try {
       'clipboard-html-view.js',
       'clipboard-html-normalize.js',
       'clipboard-html.js',
+      'clipboard-image.js',
+      'clipboard-image-view.js',
+      'clipboard-image-conversion.js',
+      'clipboard-image-worker.js',
       'clipboard-text.js',
       'clipboard-wire.js',
     ]) {
@@ -215,6 +244,12 @@ try {
         reply.type('text/javascript').send(bytes),
       );
     }
+    if (imageClipboard)
+      server.get('/image-lab-pixels.js', (_request, reply) =>
+        reply
+          .type('text/javascript')
+          .send('export ' + imageLabPixels.toString()),
+      );
   }
   server.post('/lab/stop', (request, reply) => {
     if (request.headers.authorization !== 'Bearer ' + bearer)
@@ -227,7 +262,7 @@ try {
   server.get('/lab/stats', (request, reply) => {
     if (request.headers.authorization !== 'Bearer ' + bearer)
       return reply.code(401).send();
-    return htmlClipboard ? clipboardSnapshot() : { ...audioResets };
+    return richClipboard ? clipboardSnapshot() : { ...audioResets };
   });
   server.get('/lab/resources', async (request, reply) => {
     if (request.headers.authorization !== 'Bearer ' + bearer)

@@ -84,7 +84,10 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
   test(
     `Edge reference clipboard / actual WS / fake RDP: ${mode} explicit actions and retirement`,
     { skip: process.platform !== 'win32', timeout: 35000 },
-    async () => {
+    async (t) => {
+      let phase = 'prepare',
+        cleanupFrom;
+      t.after(() => t.diagnostic(JSON.stringify({ mode, phase, cleanupFrom })));
       const worker = new ClipboardViewerWorker(),
         ports = Array.from({ length: 8 }, () => randomInt(49152, 65536));
       worker.source.localPending = mode === 'browser-to-server';
@@ -124,6 +127,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           (port) => server.listen({ host: '127.0.0.1', port }),
           () => ports[portIndex++],
         );
+        phase = 'browser-start';
         browser = await chromium.launch({ channel: 'msedge', headless: true });
         const page = await browser.newPage();
         page.setDefaultTimeout(7000);
@@ -155,6 +159,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
             },
           });
         });
+        phase = 'page-load';
         await page.goto('http://127.0.0.1:' + port + '/harness/');
         await page.waitForFunction(() => Boolean(window.bridgeViewer));
         worker.jpeg = Buffer.from(
@@ -179,11 +184,13 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
         assert.equal(response.statusCode, 202);
         const created = response.json();
         sessionId = created.sessionId;
+        phase = 'attach';
         await page.evaluate(
           (created) =>
             window.bridgeViewer.attach(created, { codecs: ['jpeg'] }),
           created,
         );
+        phase = 'first-frame';
         await page.waitForFunction(
           () => window.bridgeViewer.stats.frames === 1,
         );
@@ -218,6 +225,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
         );
         assert.equal(worker.reads + worker.writes, 0);
         if (mode !== 'server-to-browser') {
+          phase = 'local-roundtrip-and-permission';
           const text = '\ufeff界😀\n'.repeat(10000);
           await page.evaluate((text) => {
             window.localText = text;
@@ -272,6 +280,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           assert.equal(await draft.inputValue(), '');
         }
         if (mode !== 'browser-to-server') {
+          phase = 'remote-read-copy';
           await read.click();
           await page.waitForFunction(
             () =>
@@ -287,10 +296,13 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
             worker.text.toString(),
           );
           assert.ok(worker.returned.every((byte) => !byte));
-          if (mode === 'bidirectional')
+          if (mode === 'bidirectional') {
+            phase = 'diagnostic-panel-screenshot';
             await page.locator('#clipboard-text').screenshot({
               path: resolve('build/iteration-238-clipboard-panel.png'),
             });
+          }
+          phase = 'remote-empty-item';
           worker.text.fill(0);
           worker.text = Buffer.alloc(0);
           await read.click();
@@ -303,6 +315,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           await page.waitForFunction(() => window.localWrites === 2);
           assert.equal(await page.evaluate(() => window.copiedText), '');
         }
+        phase = 'detach';
         if (mode !== 'server-to-browser') {
           await paste.click();
           await page.waitForFunction(() => Boolean(window.releaseClipboard));
@@ -315,6 +328,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
         assert.equal(await draft.inputValue(), '');
         assert.equal(await received.inputValue(), '');
         assert.equal(await send.isDisabled(), true);
+        phase = 'joined-revoke';
         await eventually(
           () => worker.revokes === (mode === 'server-to-browser' ? 0 : 1),
         );
@@ -328,12 +342,17 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
           'connected',
         );
         assert.deepEqual(errors, []);
+        phase = 'complete';
       } finally {
+        cleanupFrom = phase;
+        phase = 'browser-close';
         await browser?.close();
+        phase = 'server-close';
         await server.close();
         worker.text.fill(0);
         worker.written?.fill(0);
         worker.returned?.fill(0);
+        phase = 'closed';
       }
     },
   );

@@ -10,6 +10,7 @@ import {
   CLIPBOARD_CHUNK_MAX_BYTES,
   CLIPBOARD_CHUNK_WINDOW,
   CLIPBOARD_HTML_ITEM_METADATA_BYTES,
+  CLIPBOARD_IMAGE_ITEM_METADATA_BYTES,
 } from '@freerdp-bridge/protocol';
 
 const u64 = Type.String({ pattern: '^[1-9][0-9]{0,19}$' });
@@ -95,6 +96,8 @@ export function installClipboard(
       write: (bytes) => lease.writeClipboardText(bytes),
       readHtml: (revision) => lease.readClipboardHtml(revision),
       writeHtml: (item) => lease.writeClipboardHtml(item),
+      readImage: (revision) => lease.readClipboardImage(revision),
+      writeImage: (item) => lease.writeClipboardImage(item),
     },
     {
       control: send,
@@ -126,6 +129,15 @@ export function installClipboard(
       window: CLIPBOARD_CHUNK_WINDOW,
       granted: snapshot.granted,
       retiring: snapshot.retiring,
+      ...(snapshot.state?.image
+        ? {
+            image: {
+              version: 1,
+              itemMetadataBytes: CLIPBOARD_IMAGE_ITEM_METADATA_BYTES,
+              pixelFormat: 'rgba8-srgb-straight',
+            },
+          }
+        : {}),
       ...(snapshot.state?.html
         ? {
             html: {
@@ -170,6 +182,8 @@ export function installClipboard(
           'clipboard.request',
           'clipboard.html.set',
           'clipboard.html.request',
+          'clipboard.image.set',
+          'clipboard.image.request',
           'clipboard.ack',
         ].includes(type)
       )
@@ -188,6 +202,15 @@ export function installClipboard(
             BigInt(data.generation),
             BigInt(data.revision),
             'html',
+          );
+        else if (type === 'clipboard.image.set' && setRequest.Check(data))
+          transfer.set(seq, BigInt(data.generation), data.bytes, 'image');
+        else if (type === 'clipboard.image.request' && readRequest.Check(data))
+          transfer.read(
+            seq,
+            BigInt(data.generation),
+            BigInt(data.revision),
+            'image',
           );
         else if (type === 'clipboard.ack' && ack.Check(data))
           transfer.acknowledge(data.requestSeq, data.offset);

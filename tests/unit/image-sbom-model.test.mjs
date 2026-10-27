@@ -97,11 +97,69 @@ test('image SBOM refuses registry references, wrong platform, excessive size and
     { Id: 'sha256:bad' },
     { Os: 'windows' },
     { Architecture: 'arm64' },
-    { Size: 256 * 1024 * 1024 + 1 },
+    { Size: 512 * 1024 * 1024 + 1 },
     { RootFS: { Layers: ['bad'] } },
   ])
     assert.throws(() => imageInspection([{ ...f.inspected, ...change }]), {
       message: 'SBOM_IMAGE_IDENTITY',
+    });
+});
+
+test('image SBOM identity diagnostics distinguish fixed refusal reasons without including inspected metadata', () => {
+  const f = fixture();
+  const changes = [
+    [undefined, 'RECORDS'],
+    [[], 'RECORDS'],
+    [[null], 'ID'],
+    [[{ ...f.inspected, Id: 'private-invalid-id' }], 'ID'],
+    [[{ ...f.inspected, Os: 'private-invalid-os' }], 'PLATFORM'],
+    [[{ ...f.inspected, Architecture: 'private-invalid-arch' }], 'PLATFORM'],
+    [[{ ...f.inspected, Size: undefined }], 'SIZE'],
+    [[{ ...f.inspected, Size: 512 * 1024 * 1024 + 1 }], 'SIZE'],
+    [[{ ...f.inspected, RootFS: undefined }], 'LAYERS'],
+    [
+      [{ ...f.inspected, RootFS: { Layers: ['private-invalid-layer'] } }],
+      'LAYERS',
+    ],
+  ];
+  for (const [input, reason] of changes) {
+    const before = structuredClone(input);
+    assert.throws(
+      () => imageInspection(input),
+      (error) => {
+        assert.equal(error.message, 'SBOM_IMAGE_IDENTITY');
+        assert.equal(error.code, 'SBOM_IMAGE_IDENTITY_' + reason);
+        assert.equal(error.cause, undefined);
+        assert.equal(JSON.stringify(error).includes('private-'), false);
+        return true;
+      },
+    );
+    assert.deepEqual(input, before);
+  }
+  assert.equal(
+    imageInspection([{ ...f.inspected, Size: 256 * 1024 * 1024 }]).Size,
+    256 * 1024 * 1024,
+  );
+});
+
+test('image SBOM admits the measured hosted service and keeps a finite 512 MiB inspection ceiling', () => {
+  const f = fixture();
+  for (const Size of [312426738, 512 * 1024 * 1024]) {
+    const record = { ...f.inspected, Size };
+    assert.equal(imageInspection([record]), record);
+    for (const change of [
+      { Architecture: 'arm64' },
+      { Id: 'sha256:bad' },
+      { RootFS: { Layers: ['bad'] } },
+    ])
+      assert.throws(() => imageInspection([{ ...record, ...change }]), {
+        message: 'SBOM_IMAGE_IDENTITY',
+      });
+  }
+  for (const Size of [0, -1, NaN, Infinity, '312426738', 512 * 1024 * 1024 + 1])
+    assert.throws(() => imageInspection([{ ...f.inspected, Size }]), {
+      message: 'SBOM_IMAGE_IDENTITY',
+      code: 'SBOM_IMAGE_IDENTITY_SIZE',
     });
 });
 

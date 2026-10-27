@@ -1,0 +1,196 @@
+<!doctype html><meta charset="utf-8" /><title>Bridge image lab</title>
+<h2>Owned image clipboard lab</h2>
+<p>
+  F8: copy owned PNG. F9: empty target, then Ctrl+V. F2: receipt, then Ctrl+C.
+</p>
+<canvas id="s" width="32" height="32"></canvas>
+<div
+  id="t"
+  contenteditable
+  tabindex="0"
+  style="border: 2px solid; padding: 10px"
+>
+  Paste target
+</div>
+<textarea id="r" readonly style="width: 95%; height: 100px"></textarea>
+<script>
+  const id = '__NONCE__',
+    pixels = __PIXELS__,
+    s = document.querySelector('#s'),
+    t = document.querySelector('#t'),
+    r = document.querySelector('#r');
+  let n = 0,
+    c = 0,
+    p = 0,
+    pending = false,
+    ok = false,
+    png = false;
+  const ready =
+    isSecureContext &&
+    typeof ClipboardItem === 'function' &&
+    typeof navigator.clipboard?.write === 'function' &&
+    typeof OffscreenCanvas === 'function' &&
+    typeof createImageBitmap === 'function';
+  function receipt() {
+    r.value = JSON.stringify({
+      v: 1,
+      id,
+      ready,
+      source: n,
+      copies: c,
+      pastes: p,
+      pending,
+      ok,
+      png,
+    });
+  }
+  function source(number) {
+    const rgba = pixels(id, 'remote', number),
+      data = new ImageData(new Uint8ClampedArray(rgba.buffer), 32, 32, {
+        colorSpace: 'srgb',
+      });
+    s.getContext('2d', { colorSpace: 'srgb' }).putImageData(data, 0, 0);
+    rgba.fill(0);
+  }
+  async function sourceBlob(number) {
+    const rgba = pixels(id, 'remote', number),
+      canvas = new OffscreenCanvas(32, 32);
+    try {
+      canvas.getContext('2d', { colorSpace: 'srgb' }).putImageData(
+        new ImageData(new Uint8ClampedArray(rgba.buffer), 32, 32, {
+          colorSpace: 'srgb',
+        }),
+        0,
+        0,
+      );
+      rgba.fill(0);
+      return await canvas.convertToBlob({ type: 'image/png' });
+    } finally {
+      rgba.fill(0);
+      canvas.width = canvas.height = 0;
+    }
+  }
+  function pngHeader(bytes) {
+    if (bytes.length !== 33) return false;
+    const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+    for (let i = 0; i < 8; i++) if (bytes[i] !== signature[i]) return false;
+    const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (
+      v.getUint32(8) !== 13 ||
+      v.getUint32(12) !== 0x49484452 ||
+      v.getUint32(16) !== 32 ||
+      v.getUint32(20) !== 32 ||
+      bytes[24] !== 8 ||
+      ![2, 6].includes(bytes[25]) ||
+      bytes[26] ||
+      bytes[27] ||
+      bytes[28] > 1
+    )
+      return false;
+    let crc = 0xffffffff;
+    for (let i = 12; i < 29; i++) {
+      crc ^= bytes[i];
+      for (let b = 0; b < 8; b++)
+        crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+    return (crc ^ 0xffffffff) >>> 0 === v.getUint32(29);
+  }
+  source(0);
+  receipt();
+  document.addEventListener('keydown', (e) => {
+    if (!['F2', 'F8', 'F9'].includes(e.code)) return;
+    e.preventDefault();
+    if (e.code === 'F2') {
+      receipt();
+      r.focus();
+      r.select();
+      return;
+    }
+    if (pending) return;
+    if (e.code === 'F9') {
+      t.textContent = '';
+      t.focus();
+      return;
+    }
+    if (!ready || n >= 2) return;
+    pending = true;
+    source(++n);
+    receipt();
+    const blob = sourceBlob(n);
+    void navigator.clipboard
+      .write([new ClipboardItem({ 'image/png': blob })])
+      .then(
+        () => {
+          c++;
+        },
+        () => {},
+      )
+      .finally(() => {
+        pending = false;
+        receipt();
+      });
+  });
+  t.addEventListener('paste', (e) => {
+    e.preventDefault();
+    if (pending || p >= 2) return;
+    p++;
+    ok = png = false;
+    pending = true;
+    receipt();
+    const entries = e.clipboardData?.items;
+    const matches =
+      entries && entries.length <= 16
+        ? Array.from(entries).filter(
+            (x) => x.kind === 'file' && x.type === 'image/png',
+          )
+        : [];
+    const file = matches.length === 1 ? matches[0].getAsFile() : undefined;
+    void (async () => {
+      let bitmap, canvas, actual, expected;
+      try {
+        if (
+          !(file instanceof Blob) ||
+          file.type !== 'image/png' ||
+          file.size < 45 ||
+          file.size > 16384
+        )
+          throw new Error();
+        const header = new Uint8Array(await file.slice(0, 33).arrayBuffer());
+        let valid;
+        try {
+          valid = pngHeader(header);
+        } finally {
+          header.fill(0);
+        }
+        if (!valid) throw new Error();
+        bitmap = await createImageBitmap(file, {
+          imageOrientation: 'none',
+          premultiplyAlpha: 'none',
+          colorSpaceConversion: 'default',
+        });
+        if (bitmap.width !== 32 || bitmap.height !== 32) throw new Error();
+        canvas = new OffscreenCanvas(32, 32);
+        const ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
+        ctx.drawImage(bitmap, 0, 0);
+        actual = ctx.getImageData(0, 0, 32, 32, { colorSpace: 'srgb' }).data;
+        expected = pixels(id, 'browser', 0);
+        png = true;
+        ok =
+          actual.length === expected.length &&
+          actual.every((v, i) => v === expected[i]);
+      } catch {
+        ok = false;
+      } finally {
+        actual?.fill(0);
+        expected?.fill(0);
+        bitmap?.close();
+        if (canvas) canvas.width = canvas.height = 0;
+        pending = false;
+        t.textContent = ok
+          ? 'Owned image paste verified'
+          : 'Owned image paste refused';
+        receipt();
+      }
+    })();
+  });
+</script>

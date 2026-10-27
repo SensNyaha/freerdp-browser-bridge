@@ -1,5 +1,5 @@
-#include "../compat/span.hpp"
 #include "connection_config.hpp"
+#include "../compat/span.hpp"
 #include <algorithm>
 
 namespace bridge::ipc {
@@ -65,7 +65,7 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 13)
+  if (schema < 1 || schema > 14)
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -96,14 +96,16 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
   }
   if (schema >= 3) {
     const auto flags = number(4);
-    if (flags > (schema == 3   ? 1U
-                 : schema == 4 ? 3U
-                 : schema == 5 ? 7U
-                 : schema == 6 ? 15U
-                 : schema == 7 ? 31U
-                 : schema == 8 ? 63U
-                 : schema == 9 ? 127U
-                 : schema < 13 ? 511U : 1023U) ||
+    if (flags > (schema == 3    ? 1U
+                 : schema == 4  ? 3U
+                 : schema == 5  ? 7U
+                 : schema == 6  ? 15U
+                 : schema == 7  ? 31U
+                 : schema == 8  ? 63U
+                 : schema == 9  ? 127U
+                 : schema < 13  ? 511U
+                 : schema == 13 ? 1023U
+                                : 2047U) ||
         (flags & 12U) == 12U || (flags & 48U) == 48U)
       throw ProtocolError();
     config.dynamic_resolution = (flags & 1U) != 0;
@@ -116,7 +118,11 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
     config.clipboard_to_server = (flags & 128U) != 0;
     config.clipboard_from_server = (flags & 256U) != 0;
     config.clipboard_html = (flags & 512U) != 0;
-    if (config.clipboard_html && !config.clipboard_to_server && !config.clipboard_from_server)
+    config.clipboard_image = (flags & 1024U) != 0;
+    if (schema == 14 && !config.clipboard_image)
+      throw ProtocolError();
+    if ((config.clipboard_html || config.clipboard_image) && !config.clipboard_to_server &&
+        !config.clipboard_from_server)
       throw ProtocolError();
     if (config.audio_buffer_200 && !(config.pcm_output || config.opus_output))
       throw ProtocolError();

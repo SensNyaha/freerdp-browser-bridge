@@ -124,7 +124,7 @@ try {
           .header('Cache-Control', 'no-store')
           .header(
             'Content-Security-Policy',
-            "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src blob:",
+            "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src blob:; worker-src 'self'",
           )
           .type(name.endsWith('.js') ? 'text/javascript' : 'text/html')
           .send(bytes),

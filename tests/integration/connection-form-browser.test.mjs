@@ -60,6 +60,7 @@ for (const [performanceSettings, ipSettings] of [
               clipboardText: true,
               clipboardRevoke: true,
               clipboardHtml: performanceSettings && ipSettings,
+              clipboardImage: performanceSettings || ipSettings,
               performanceSettings,
               ipSettings,
             }),
@@ -155,6 +156,10 @@ for (const [performanceSettings, ipSettings] of [
           'off',
         );
         await page.locator('details:has([name=clipboard]) > summary').click();
+        assert.equal(
+          await page.locator('[name=clipboardImages]').isDisabled(),
+          true,
+        );
         await page.locator('[name=clipboard]').selectOption('bidirectional');
         await page.locator('[name=clipboardMax]').fill('65536');
         assert.equal(
@@ -163,6 +168,12 @@ for (const [performanceSettings, ipSettings] of [
         );
         if (performanceSettings && ipSettings)
           await page.locator('[name=clipboardHtml]').check();
+        assert.equal(
+          await page.locator('[name=clipboardImages]').isDisabled(),
+          !(performanceSettings || ipSettings),
+        );
+        if (performanceSettings || ipSettings)
+          await page.locator('[name=clipboardImages]').check();
         assert.equal(
           await page.locator('[name=certificatePolicy]').inputValue(),
           'strict',
@@ -221,6 +232,7 @@ for (const [performanceSettings, ipSettings] of [
           mode: 'bidirectional',
           text: true,
           ...(performanceSettings && ipSettings ? { html: true } : {}),
+          ...(performanceSettings || ipSettings ? { images: true } : {}),
           maxItemBytes: 65536,
         });
         assert.equal(await page.locator('[name=password]').inputValue(), '');

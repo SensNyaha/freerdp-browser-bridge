@@ -135,10 +135,71 @@ schema and reference checks as the application report; Debian packages and a
 Node 24 binary must be present. Source paths passed to Syft are relative. Raw
 image metadata and scanner diagnostics are not printed.
 
+The developing image branch adds a fixed `code` to Docker-inspection refusals:
+`SBOM_IMAGE_IDENTITY_RECORDS`, `_ID`, `_PLATFORM`, `_SIZE` or `_LAYERS`, while
+retaining the existing `SBOM_IMAGE_IDENTITY` message. These identify which
+unchanged admission guard refused the input without including inspected values.
+That diagnostic checkpoint retains the original 256 MiB size, Linux/amd64 and
+digest/layer limits; the later measured size correction is recorded below.
+Ten focused image/application SBOM model checks pass, including a failing-before
+diagnostic case, metadata non-disclosure and unchanged input. This instrumentation
+also preserves admission outcomes in 456 comparisons with the original model.
+Full linked `pnpm check` passes Windows 1228/71 skips and Linux UID1000/CapEff=0
+1185/119 skips, zero failures; local
+`build/current-validation/image-sbom-identity-acceptance.json` binds the source
+hashes, before/focused/full logs, local scan and equivalence receipts. Native
+sources are unchanged. This instrumentation
+does not establish the cause of hosted run `40472270571`'s generic identity
+refusal; its native and full API runtime steps pass, but final image SBOM and
+overall bundled acceptance remain incomplete pending an actual inspection.
+The bundled workflow prints only the image byte count and rootfs layer count
+before invoking the scanner; the next refusal therefore has both fixed guard
+codes and these two bounded scalars, without full Docker metadata or config.
+
+The current artifact-only local image independently passes the complete scanner:
+115,997,218 inspect bytes, seven rootfs layers, and a schema-valid SPDX inventory
+of 304 packages (89 Debian, 209 npm, five binary). Config digest, ordered layers,
+saved-archive hashes before/after scanning and Node/Debian presence all pass.
+The earlier generated report is preserved before producing the new report.
+`build/current-validation/image-service-sbom-acceptance.json` binds the image ID,
+scanner pin, output hashes and preserved files. This does not reproduce or
+explain the hosted identity refusal, and does not accept a versioned installer.
+
+Hosted diagnostic run `40482004084` subsequently identifies the exact refusal:
+`SBOM_IMAGE_IDENTITY_SIZE`, with **312,426,738 inspect bytes** and seven layers.
+All native/Node, clean assembly and restricted API runtime checks pass before
+this pre-scan refusal. The prior generic cause is therefore resolved as the
+256 MiB inventory admission budget. The local and hosted Docker byte counts
+differ; they must not be treated as interchangeable artifact-size evidence.
+The ignored `build/current-validation/image-sbom-hosted-size-counterexample.json`
+binds the terminal log and these measured scalars.
+
+The inspection budget is explicitly increased to **512 MiB** to admit the
+measured complete service while retaining a finite bound. The saved archive
+also retains its separate 512 MiB limit. Regression checks admit the exact
+hosted byte count and exact new ceiling, refuse one byte above it and invalid
+numeric values, and retain platform/digest/layer refusals at the admitted sizes.
+This is an SBOM artifact budget; session memory targets and the 16 MiB clipboard
+item quota are independent. A passing model fixture does not accept the hosted
+full scan, which still needs its corrected-source execution.
+
+Corrected-source public `794f9b7` subsequently passes the full hosted scan in
+[run 40486679359](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486679359).
+The exact image is 312,430,340 inspect bytes with seven layers; image/config ID
+is `sha256:dda8a68f5670ee1dd5a9db471942ee02e886057e73b285300637a6ec516eb4c2`.
+Syft 1.54.1 produces 300 packages (88 Debian, 209 npm, two binary), 3241 files
+and 3890 relationships with schema validation. Report SHA-256 is
+`0caeaefb653d07a1b02401887b1d5551181485525a1f090cc769fe22b5124698`;
+saved-archive SHA-256 is
+`62cd212eb0e38558e1313d478482e1be3a58a3e56983a698e3d5d0e812fe2012`.
+`build/current-validation/image-size-hosted-linux-acceptance.json` binds the
+terminal log and exact receipt. This accepts the corrected inventory gate;
+versioned 0.5.0 installer/npm delivery remains separate.
+
 Published files are build/packages/freerdp-bridge-runtime.spdx.json and
 build/packages/freerdp-bridge-runtime-sbom.json, the latter containing the image
 ID, config digest, archive/report SHA-256, scanner version/archive hash and counts.
-Previous success outputs are removed before a new scan. Bounds are 256 MiB
+Previous success outputs are removed before a new scan. Bounds are 512 MiB
 Docker image size, 512 MiB saved archive, 32 MiB per report, 64 KiB process output,
 64 KiB per descriptor, four descriptor levels, 64 rootfs layers and 180 seconds
 per subprocess. Report limits are checked before reading JSON; disk output from

@@ -1,12 +1,14 @@
-#include "../compat/span.hpp"
 #include "clipboard.hpp"
-#include "clipboard_html.hpp"
 #include "../clipboard/text.hpp"
+#include "../compat/span.hpp"
+#include "clipboard_html.hpp"
+#include "clipboard_image.hpp"
 #include <algorithm>
 
 namespace bridge::ipc::clipboard {
 namespace {
-void put(::bridge::compat::span<std::uint8_t> b, std::size_t at, std::uint64_t value, std::size_t count) {
+void put(::bridge::compat::span<std::uint8_t> b, std::size_t at, std::uint64_t value,
+         std::size_t count) {
   for (std::size_t i = 0; i < count; ++i)
     b[at + i] = static_cast<std::uint8_t>(value >> ((count - i - 1) * 8));
 }
@@ -15,14 +17,19 @@ void validate(const State &s) {
       (!s.to_server && !s.from_server) ||
       ((!s.ready || !s.from_server) && (s.remote_text || s.remote_pending)) ||
       ((!s.ready || !s.to_server) && (s.local_accepted || s.local_pending)) ||
-      (s.local_accepted && s.local_pending) || (!s.revision && (s.remote_text || s.remote_pending)) ||
+      (s.local_accepted && s.local_pending) ||
+      (!s.revision && (s.remote_text || s.remote_pending)) ||
       ((!s.html || !s.ready || !s.from_server || !s.revision) && s.remote_html) ||
-      ((!s.html || !s.ready || !s.to_server || !s.local_accepted) && s.local_html_accepted))
+      ((!s.html || !s.ready || !s.to_server || !s.local_accepted) && s.local_html_accepted) ||
+      ((!s.image || !s.ready || !s.from_server || !s.revision) && s.remote_image) ||
+      ((!s.image || !s.ready || !s.to_server || !s.local_accepted) && s.local_image_accepted) ||
+      (s.local_html_accepted && s.local_image_accepted))
     throw ProtocolError();
 }
 void validate(Operation op, std::uint64_t generation, std::uint64_t revision) {
-  if (!generation || (op != Operation::read && op != Operation::set && op != Operation::revoke &&
-                      !is_html(op)) ||
+  if (!generation ||
+      (op != Operation::read && op != Operation::set && op != Operation::revoke && !is_html(op) &&
+       !is_image(op)) ||
       (is_read(op) ? !revision : revision != 0))
     throw ProtocolError();
 }
@@ -39,6 +46,8 @@ void validate(const Command &c) {
     // are not silently truncated or reinterpreted as outgoing fragments.
     if (item.context || item.selection)
       throw ProtocolError();
+  } else if (c.operation == Operation::set_image) {
+    validate_image_write(decode_image_item(c.text));
   } else if (c.operation != Operation::set) {
     if (!c.text.empty())
       throw ProtocolError();
@@ -49,23 +58,28 @@ void validate(const Result &r) {
   validate(r.operation, r.generation, r.revision);
   if (static_cast<unsigned>(r.status) > static_cast<unsigned>(Status::disconnected))
     throw ProtocolError();
-  if (r.operation == Operation::read_html && r.status == Status::accepted)
+  if (r.operation == Operation::read_image && r.status == Status::accepted)
+    (void)decode_image_item(r.text);
+  else if (r.operation == Operation::read_html && r.status == Status::accepted)
     (void)decode_html_item(r.text);
   else if (r.operation == Operation::read && r.status == Status::accepted)
     text(r.text);
   else if (!r.text.empty())
     throw ProtocolError();
 }
+unsigned schema(Operation op) {
+  return is_image(op) ? 4 : is_html(op) ? 3 : op == Operation::revoke ? 2 : 1;
+}
 void header(::bridge::compat::span<const std::uint8_t> b) {
   if (b.size() < metadata_bytes || b.size() > max_record_bytes || read_be(b.subspan(6, 2)) ||
-      read_be(b.first(2)) != (read_be(b.subspan(2, 2)) >= 4 ? 3u
-                            : read_be(b.subspan(2, 2)) == 3 ? 2u : 1u))
+      read_be(b.first(2)) != schema(static_cast<Operation>(read_be(b.subspan(2, 2)))))
     throw ProtocolError();
 }
 std::vector<std::uint8_t> encode(Operation op, Status status, std::uint64_t generation,
-                                 std::uint64_t revision, ::bridge::compat::span<const std::uint8_t> text) {
+                                 std::uint64_t revision,
+                                 ::bridge::compat::span<const std::uint8_t> text) {
   std::vector<std::uint8_t> b(metadata_bytes + text.size());
-  put(b, 0, is_html(op) ? 3 : op == Operation::revoke ? 2 : 1, 2);
+  put(b, 0, schema(op), 2);
   put(b, 2, static_cast<std::uint16_t>(op), 2);
   put(b, 4, static_cast<std::uint16_t>(status), 2);
   put(b, 8, generation, 8);
@@ -81,8 +95,10 @@ std::array<std::uint8_t, metadata_bytes> encode_state(const State &s) {
                          (unsigned{s.from_server} << 2) | (unsigned{s.remote_text} << 3) |
                          (unsigned{s.local_accepted} << 4) | (unsigned{s.local_pending} << 5) |
                          (unsigned{s.remote_pending} << 6) | (unsigned{s.html} << 7) |
-                         (unsigned{s.remote_html} << 8) | (unsigned{s.local_html_accepted} << 9);
-  put(b, 0, s.html ? 3 : 1, 2);
+                         (unsigned{s.remote_html} << 8) | (unsigned{s.local_html_accepted} << 9) |
+                         (unsigned{s.image} << 10) | (unsigned{s.remote_image} << 11) |
+                         (unsigned{s.local_image_accepted} << 12);
+  put(b, 0, s.image ? 4 : s.html ? 3 : 1, 2);
   put(b, 2, flags, 2);
   put(b, 4, s.maximum, 4);
   put(b, 8, s.generation, 8);
@@ -94,7 +110,9 @@ State decode_state(::bridge::compat::span<const std::uint8_t> b) {
     throw ProtocolError();
   const auto f = read_be(b.subspan(2, 2));
   const auto schema = read_be(b.first(2));
-  if ((schema == 1 ? f > 127 : schema != 3 || f > 1023 || !(f & 128)))
+  if (schema == 1   ? f > 127
+      : schema == 3 ? f > 1023 || !(f & 128)
+                    : schema != 4 || f > 8191 || !(f & 1024))
     throw ProtocolError();
   State s{read_be(b.subspan(8, 8)),
           read_be(b.subspan(16, 8)),
@@ -106,7 +124,12 @@ State decode_state(::bridge::compat::span<const std::uint8_t> b) {
           (f & 16) != 0,
           (f & 32) != 0,
           (f & 64) != 0,
-          (f & 128) != 0, (f & 256) != 0, (f & 512) != 0};
+          (f & 128) != 0,
+          (f & 256) != 0,
+          (f & 512) != 0,
+          (f & 1024) != 0,
+          (f & 2048) != 0,
+          (f & 4096) != 0};
   validate(s);
   return s;
 }

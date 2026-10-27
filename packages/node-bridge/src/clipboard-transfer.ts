@@ -7,14 +7,27 @@ import {
   encodeClipboardHtmlItem,
   decodeClipboardHtmlItem,
   CLIPBOARD_HTML_ITEM_METADATA_BYTES,
+  CLIPBOARD_IMAGE_ITEM_METADATA_BYTES,
+  validateClipboardImageItem,
+  validateClipboardImageWrite,
+  encodeClipboardImageItem,
+  decodeClipboardImageItem,
   clipboardStatuses,
   CLIPBOARD_CHUNK_MAX_BYTES,
   CLIPBOARD_CHUNK_WINDOW,
   type ClipboardStatus,
   type ClipboardHtmlItem,
+  type ClipboardImageItem,
 } from '@freerdp-bridge/protocol';
-import type { ClipboardReadResult, ClipboardHtmlReadResult } from './index.js';
-import { wipeClipboardHtml } from './clipboard-ownership.js';
+import type {
+  ClipboardReadResult,
+  ClipboardHtmlReadResult,
+  ClipboardImageReadResult,
+} from './index.js';
+import {
+  wipeClipboardHtml,
+  wipeClipboardImage,
+} from './clipboard-ownership.js';
 import type { SessionClipboardSnapshot } from './session-manager.js';
 
 export interface ClipboardTransferBackend {
@@ -25,6 +38,8 @@ export interface ClipboardTransferBackend {
   write(text: Buffer): Promise<ClipboardStatus>;
   readHtml?(revision: bigint): Promise<ClipboardHtmlReadResult>;
   writeHtml?(item: ClipboardHtmlItem): Promise<ClipboardStatus>;
+  readImage?(revision: bigint): Promise<ClipboardImageReadResult>;
+  writeImage?(item: ClipboardImageItem): Promise<ClipboardStatus>;
 }
 export interface ClipboardTransferTransport {
   control(type: string, data: Record<string, unknown>): void;
@@ -37,8 +52,9 @@ export interface ClipboardTransferTransport {
 type Transfer = {
   seq: number;
   operation: 'read' | 'set';
-  format: 'text' | 'html';
+  format: 'text' | 'html' | 'image';
   htmlSelected: boolean;
+  imageSelected: boolean;
   generation: bigint;
   revision: bigint;
   maximum: number;
@@ -59,6 +75,15 @@ const wholeMs = 60000,
   nativeMs = 8000,
   paceMs = 64;
 const windowBytes = CLIPBOARD_CHUNK_MAX_BYTES * CLIPBOARD_CHUNK_WINDOW;
+type Format = Transfer['format'];
+const metadata = (format: Format) =>
+  format === 'image'
+    ? CLIPBOARD_IMAGE_ITEM_METADATA_BYTES
+    : format === 'html'
+      ? CLIPBOARD_HTML_ITEM_METADATA_BYTES
+      : 0;
+const prefix = (format: Format) =>
+  format === 'text' ? 'clipboard.' : `clipboard.${format}.`;
 const u32 = (n: number) => Number.isInteger(n) && n >= 0 && n <= 0xffffffff;
 
 /** One RWC1 item, fixed credit and nonrenewing deadlines. No OS clipboard access. */
@@ -143,7 +168,8 @@ export class ClipboardTransfer {
         source?.ready &&
         source.generation === a.generation &&
         source.maximum === a.maximum &&
-        Boolean(source.html) === a.htmlSelected,
+        Boolean(source.html) === a.htmlSelected &&
+        Boolean(source.image) === a.imageSelected,
     );
   }
   private admit(
@@ -152,11 +178,12 @@ export class ClipboardTransfer {
     operation: 'read' | 'set',
     revision: bigint,
     total: number,
-    format: 'text' | 'html' = 'text',
+    format: Format = 'text',
   ): Transfer | undefined {
     const time = this.now();
     if (time === undefined) return;
     if (
+      !['text', 'html', 'image'].includes(format) ||
       !u32(seq) ||
       typeof generation !== 'bigint' ||
       generation < 1n ||
@@ -173,8 +200,7 @@ export class ClipboardTransfer {
     }
     const reject = (status: ClipboardStatus) =>
       this.control(
-        (format === 'html' ? 'clipboard.html.' : 'clipboard.') +
-          (operation === 'read' ? 'data' : 'set.result'),
+        prefix(format) + (operation === 'read' ? 'data' : 'set.result'),
         { requestSeq: seq, status, bytes: 0 },
       );
     if (this.active) {
@@ -183,6 +209,15 @@ export class ClipboardTransfer {
     }
     try {
       let snapshot = this.backend.snapshot();
+      if (
+        format === 'image' &&
+        (!snapshot.state?.image ||
+          typeof this.backend.readImage !== 'function' ||
+          typeof this.backend.writeImage !== 'function')
+      ) {
+        reject('unavailable');
+        return;
+      }
       if (
         format === 'html' &&
         (!snapshot.state?.html ||
@@ -202,6 +237,15 @@ export class ClipboardTransfer {
         return;
       }
       if (
+        format === 'image' &&
+        (!source.image ||
+          typeof this.backend.readImage !== 'function' ||
+          typeof this.backend.writeImage !== 'function')
+      ) {
+        reject('unavailable');
+        return;
+      }
+      if (
         format === 'html' &&
         (!source.html ||
           typeof this.backend.readHtml !== 'function' ||
@@ -211,9 +255,9 @@ export class ClipboardTransfer {
         return;
       }
       if (
-        format === 'html' &&
+        format !== 'text' &&
         operation === 'set' &&
-        total < CLIPBOARD_HTML_ITEM_METADATA_BYTES
+        total < metadata(format)
       ) {
         reject('invalid');
         return;
@@ -228,16 +272,15 @@ export class ClipboardTransfer {
       if (
         operation === 'read'
           ? !source.fromServer ||
-            (format === 'html' ? !source.remoteHtml : !source.remoteText) ||
+            (format === 'image'
+              ? !source.remoteImage
+              : format === 'html'
+                ? !source.remoteHtml
+                : !source.remoteText) ||
             source.remotePending
           : !source.toServer ||
             source.localPending ||
-            total >
-              Math.min(
-                16777216,
-                source.maximum +
-                  (format === 'html' ? CLIPBOARD_HTML_ITEM_METADATA_BYTES : 0),
-              )
+            total > Math.min(16777216, source.maximum + metadata(format))
       ) {
         reject('refused');
         return;
@@ -247,6 +290,7 @@ export class ClipboardTransfer {
         operation,
         format,
         htmlSelected: source.html === true,
+        imageSelected: source.image === true,
         generation,
         revision,
         maximum: source.maximum,
@@ -275,13 +319,13 @@ export class ClipboardTransfer {
     }
   }
   private event(a: Transfer, suffix: string): string {
-    return (a.format === 'html' ? 'clipboard.html.' : 'clipboard.') + suffix;
+    return prefix(a.format) + suffix;
   }
   set(
     seq: number,
     generation: bigint,
     total: number,
-    format: 'text' | 'html' = 'text',
+    format: Format = 'text',
   ): void {
     const a = this.admit(seq, generation, 'set', 0n, total, format);
     if (!a) return;
@@ -302,16 +346,22 @@ export class ClipboardTransfer {
     seq: number,
     generation: bigint,
     revision: bigint,
-    format: 'text' | 'html' = 'text',
+    format: Format = 'text',
   ): void {
     const a = this.admit(seq, generation, 'read', revision, 0, format);
     if (!a) return;
     void (async () => {
       let bytes: Buffer | undefined;
       let rich: ClipboardHtmlItem | undefined;
+      let image: ClipboardImageItem | undefined;
       try {
         let status: ClipboardStatus;
-        if (format === 'html') {
+        if (format === 'image') {
+          const result = await this.backend.readImage!(revision);
+          status = result.status;
+          image = result.item;
+          bytes = Buffer.alloc(0);
+        } else if (format === 'html') {
           const result = await this.backend.readHtml!(revision);
           status = result.status;
           rich = result.item;
@@ -326,7 +376,8 @@ export class ClipboardTransfer {
           !this.authority(a) ||
           !clipboardStatuses.includes(status) ||
           !Buffer.isBuffer(bytes) ||
-          (status !== 'accepted' && (bytes.length || rich !== undefined))
+          (status !== 'accepted' &&
+            (bytes.length || rich !== undefined || image !== undefined))
         )
           throw new Error();
         if (status !== 'accepted') {
@@ -337,7 +388,12 @@ export class ClipboardTransfer {
           this.finish(a, 'stale');
           return;
         }
-        if (format === 'html') {
+        if (format === 'image') {
+          validateClipboardImageItem(image!, a.maximum);
+          bytes = encodeClipboardImageItem(image!, a.maximum);
+          wipeClipboardImage(image);
+          image = undefined;
+        } else if (format === 'html') {
           validateClipboardHtmlItem(rich!, a.maximum);
           bytes = encodeClipboardHtmlItem(rich!, a.maximum);
           wipeClipboardHtml(rich);
@@ -365,6 +421,7 @@ export class ClipboardTransfer {
       } finally {
         if (Buffer.isBuffer(bytes)) bytes.fill(0);
         wipeClipboardHtml(rich);
+        wipeClipboardImage(image);
         this.changed();
       }
     })();
@@ -407,7 +464,12 @@ export class ClipboardTransfer {
   private write(a: Transfer): void {
     if (this.active !== a || this.closed || !a.buffer) return;
     try {
-      if (a.format === 'html')
+      if (a.format === 'image')
+        validateClipboardImageWrite(
+          decodeClipboardImageItem(a.buffer, a.maximum),
+          a.maximum,
+        );
+      else if (a.format === 'html')
         validateClipboardHtmlWrite(
           decodeClipboardHtmlItem(a.buffer, a.maximum),
           a.maximum,
@@ -423,11 +485,15 @@ export class ClipboardTransfer {
     let completion: Promise<ClipboardStatus>;
     try {
       completion =
-        a.format === 'html'
-          ? this.backend.writeHtml!(
-              decodeClipboardHtmlItem(a.buffer, a.maximum),
+        a.format === 'image'
+          ? this.backend.writeImage!(
+              decodeClipboardImageItem(a.buffer, a.maximum),
             )
-          : this.backend.write(a.buffer);
+          : a.format === 'html'
+            ? this.backend.writeHtml!(
+                decodeClipboardHtmlItem(a.buffer, a.maximum),
+              )
+            : this.backend.write(a.buffer);
     } catch {
       this.fail();
       return;

@@ -1,6 +1,10 @@
 import { isUtf8 } from 'node:buffer';
 import { ProtocolError } from './index.js';
 import { decodeClipboardHtmlItem } from './clipboard-html.js';
+import {
+  decodeClipboardImageItem,
+  validateClipboardImageWrite,
+} from './clipboard-image.js';
 
 export const CLIPBOARD_METADATA_BYTES = 24;
 export const CLIPBOARD_MAX_TEXT_BYTES = 16 * 1024 * 1024;
@@ -11,16 +15,20 @@ export type ClipboardOperation =
   | 'set'
   | 'revoke'
   | 'read-html'
-  | 'set-html';
+  | 'set-html'
+  | 'read-image'
+  | 'set-image';
 const operations: readonly ClipboardOperation[] = [
   'read',
   'set',
   'revoke',
   'read-html',
   'set-html',
+  'read-image',
+  'set-image',
 ];
 export function isClipboardRead(op: ClipboardOperation): boolean {
-  return op === 'read' || op === 'read-html';
+  return op === 'read' || op === 'read-html' || op === 'read-image';
 }
 export const clipboardStatuses = [
   'accepted',
@@ -47,6 +55,9 @@ export interface ClipboardState {
   html?: true;
   remoteHtml?: boolean;
   localHtmlAccepted?: boolean;
+  image?: true;
+  remoteImage?: boolean;
+  localImageAccepted?: boolean;
 }
 export interface ClipboardCommand {
   operation: ClipboardOperation;
@@ -95,7 +106,18 @@ export function validateClipboardState(s: ClipboardState): void {
     ((!s.html || !s.ready || !s.fromServer || s.revision === 0n) &&
       s.remoteHtml) ||
     ((!s.html || !s.ready || !s.toServer || !s.localAccepted) &&
-      s.localHtmlAccepted)
+      s.localHtmlAccepted) ||
+    (s.image !== undefined && s.image !== true) ||
+    (s.image === true &&
+      (typeof s.remoteImage !== 'boolean' ||
+        typeof s.localImageAccepted !== 'boolean')) ||
+    (s.image === undefined &&
+      (s.remoteImage !== undefined || s.localImageAccepted !== undefined)) ||
+    ((!s.image || !s.ready || !s.fromServer || s.revision === 0n) &&
+      s.remoteImage) ||
+    ((!s.image || !s.ready || !s.toServer || !s.localAccepted) &&
+      s.localImageAccepted) ||
+    (s.localImageAccepted && s.localHtmlAccepted)
   )
     throw new ProtocolError();
 }
@@ -143,39 +165,44 @@ function command(c: ClipboardCommand): void {
   if (c.operation === 'set-html') {
     const item = decodeClipboardHtmlItem(c.text);
     if (item.context || item.selection) throw new ProtocolError();
-  } else if (c.operation === 'set') validateClipboardText(c.text);
+  } else if (c.operation === 'set-image')
+    validateClipboardImageWrite(decodeClipboardImageItem(c.text));
+  else if (c.operation === 'set') validateClipboardText(c.text);
   else if (c.text.length) throw new ProtocolError();
 }
 function result(r: ClipboardResult): void {
   identity(r);
   if (!clipboardStatuses.includes(r.status)) throw new ProtocolError();
-  if (r.operation === 'read-html' && r.status === 'accepted')
+  if (r.operation === 'read-image' && r.status === 'accepted')
+    decodeClipboardImageItem(r.text);
+  else if (r.operation === 'read-html' && r.status === 'accepted')
     decodeClipboardHtmlItem(r.text);
   else if (r.operation === 'read' && r.status === 'accepted')
     validateClipboardText(r.text);
   else if (r.text.length) throw new ProtocolError();
+}
+function schema(operation: ClipboardOperation): number {
+  return operation === 'read-image' || operation === 'set-image'
+    ? 4
+    : operation === 'read-html' || operation === 'set-html'
+      ? 3
+      : operation === 'revoke'
+        ? 2
+        : 1;
 }
 function header(b: Buffer): void {
   if (
     !Buffer.isBuffer(b) ||
     b.length < CLIPBOARD_METADATA_BYTES ||
     b.length > CLIPBOARD_MAX_RECORD_BYTES ||
-    b.readUInt16BE(0) !==
-      (b.readUInt16BE(2) >= 4 ? 3 : b.readUInt16BE(2) === 3 ? 2 : 1) ||
+    b.readUInt16BE(0) !== schema(operations[b.readUInt16BE(2) - 1]!) ||
     b.readUInt16BE(6) !== 0
   )
     throw new ProtocolError();
 }
 function encode(c: ClipboardCommand, status: number): Buffer {
   const b = Buffer.alloc(CLIPBOARD_METADATA_BYTES + c.text.length);
-  b.writeUInt16BE(
-    c.operation === 'read-html' || c.operation === 'set-html'
-      ? 3
-      : c.operation === 'revoke'
-        ? 2
-        : 1,
-    0,
-  );
+  b.writeUInt16BE(schema(c.operation), 0);
   b.writeUInt16BE(operations.indexOf(c.operation) + 1, 2);
   b.writeUInt16BE(status, 4);
   b.writeBigUInt64BE(c.generation, 8);
@@ -197,7 +224,7 @@ function decode(b: Buffer): ClipboardCommand {
 export function encodeClipboardState(s: ClipboardState): Buffer {
   validateClipboardState(s);
   const b = Buffer.alloc(CLIPBOARD_METADATA_BYTES);
-  b.writeUInt16BE(s.html ? 3 : 1, 0);
+  b.writeUInt16BE(s.image ? 4 : s.html ? 3 : 1, 0);
   b.writeUInt16BE(
     Number(s.ready) |
       (Number(s.toServer) << 1) |
@@ -208,7 +235,10 @@ export function encodeClipboardState(s: ClipboardState): Buffer {
       (Number(s.remotePending) << 6) |
       (Number(s.html === true) << 7) |
       (Number(s.remoteHtml === true) << 8) |
-      (Number(s.localHtmlAccepted === true) << 9),
+      (Number(s.localHtmlAccepted === true) << 9) |
+      (Number(s.image === true) << 10) |
+      (Number(s.remoteImage === true) << 11) |
+      (Number(s.localImageAccepted === true) << 12),
     2,
   );
   b.writeUInt32BE(s.maximum, 4);
@@ -222,9 +252,11 @@ export function decodeClipboardState(b: Buffer): ClipboardState {
     b.length !== CLIPBOARD_METADATA_BYTES ||
     (b.readUInt16BE(0) === 1
       ? b.readUInt16BE(2) > 127
-      : b.readUInt16BE(0) !== 3 ||
-        b.readUInt16BE(2) > 1023 ||
-        !(b.readUInt16BE(2) & 128))
+      : b.readUInt16BE(0) === 3
+        ? b.readUInt16BE(2) > 1023 || !(b.readUInt16BE(2) & 128)
+        : b.readUInt16BE(0) !== 4 ||
+          b.readUInt16BE(2) > 8191 ||
+          !(b.readUInt16BE(2) & 1024))
   )
     throw new ProtocolError();
   const f = b.readUInt16BE(2);
@@ -244,6 +276,13 @@ export function decodeClipboardState(b: Buffer): ClipboardState {
           html: true as const,
           remoteHtml: Boolean(f & 256),
           localHtmlAccepted: Boolean(f & 512),
+        }
+      : {}),
+    ...(f & 1024
+      ? {
+          image: true as const,
+          remoteImage: Boolean(f & 2048),
+          localImageAccepted: Boolean(f & 4096),
         }
       : {}),
   };
