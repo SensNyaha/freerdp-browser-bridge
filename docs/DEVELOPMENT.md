@@ -1352,7 +1352,10 @@ original restricted bookworm images without build-prefix mounts. This catches
 the initial Ubuntu-built bundle's `GLIBC_2.38` dependency mismatch rather than
 raising the verification runtime's baseline. Both OS jobs finish independently.
 The local builder/UID1000 smoke passes, including Node/glibc/compiler and the
-pinned vcpkg/Meson tools; the complete cold hosted build remains pending. Actual
+pinned vcpkg/Meson tools. The first cold hosted run identified missing `zip`
+before vcpkg bootstrap. The builder now explicitly installs curl/zip/unzip/tar;
+a source-only bootstrap with no pre-existing vcpkg binary passes as UID1000.
+The complete cold dependency/SDK and hosted runtime build remains pending. Actual
 Astra/RED OS application and installed-runtime acceptance stays separate.
 
 The separate [exact GCC 8.3 foundation workflow](../.github/workflows/gcc83.yml)

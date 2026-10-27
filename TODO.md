@@ -112,7 +112,12 @@ Eight focused checks and full Windows 1225/71 skips / Linux UID1000/CapEff=0
 non-square opaque, representable alpha and near-16-MiB conversion without OS/RDP.
 The initial bundled-native Linux clean runtime fails because Ubuntu-built
 dependencies require GLIBC_2.38; Windows is cancelled by fail-fast. Portable
-builder repair and corrected-source hosted checks remain open. Main, release
+builder repair remains open. The next checkpoint `677ba6f` passes all foundation,
+sanitizer/fuzz and exact GCC 8.3 jobs. Its cold bundled Linux bootstrap identifies
+missing `zip`; explicit prerequisites are corrected and a source-only vcpkg
+bootstrap now passes locally. Full hosted bundled acceptance remains open.
+The user defers real RDP tests after another application becomes active in the
+lab session; the unused Linux application container is removed. Main, release
 tags and published 0.4.0 inputs remain unchanged.
 [Compiler/hosted checkpoint](docs/CLIPBOARD_BROWSER.md#image-gcc-11-and-hosted-checkpoint).
 

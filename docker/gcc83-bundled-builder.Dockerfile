@@ -4,7 +4,7 @@ COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 RUN printf '%s\n' 'deb https://archive.debian.org/debian buster main' > /etc/apt/sources.list \
     && rm -f /etc/apt/sources.list.d/* \
     && apt-get -o Acquire::Check-Valid-Until=false update \
-    && apt-get install -y --no-install-recommends nasm bison autoconf-archive libltdl-dev pkg-config python3 \
+    && apt-get install -y --no-install-recommends curl zip unzip tar nasm bison autoconf-archive libltdl-dev pkg-config python3 \
     && rm -rf /var/lib/apt/lists/*
 COPY node.tar.xz cmake.whl ninja.whl /tmp/tools/
 RUN echo 'fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6  /tmp/tools/node.tar.xz' | sha256sum --check \

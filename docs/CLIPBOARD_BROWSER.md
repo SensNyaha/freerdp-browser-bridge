@@ -1263,3 +1263,18 @@ test context, preserving all assertions, the screenshot and existing deadlines.
 All three unchanged text scenarios pass locally with joined cleanup. This adds
 diagnostic evidence for a repeat rather than claiming a root cause for that
 timeout; the original hosted log is retained.
+
+The next public source checkpoint `677ba6f` passes all four
+[foundation jobs](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40461624829)
+and [exact GCC 8.3](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40461625113).
+The new bundled Linux job reaches its cold vcpkg bootstrap and identifies a
+missing `zip`; the builder's explicit prerequisites are corrected and a local
+source-only bootstrap passes without a pre-existing vcpkg binary. The independent
+Windows bundled job continues. This does not yet accept the complete bundled
+Linux dependency/SDK/runtime chain.
+
+The user subsequently defers actual RDP testing. A retry on the generated image
+page does not complete the initial receipt, and a private diagnostic frame
+shows another active application. No image transfer is accepted. The unused
+Linux application container is removed after exact ID/name/label checks; its
+server never starts. Actual RDP testing waits for a later operator-ready window.
