@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { lstat, opendir } from 'node:fs/promises';
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, resolve, toNamespacedPath } from 'node:path';
 import { ProcessQueryGate } from './process-query-gate.js';
 import { probeRuntimeOwner } from './runtime-owner.js';
 import {
@@ -76,7 +76,10 @@ export async function runRuntimeRecoveryHelper(
         process.env[key] === undefined ? [] : [[key, process.env[key]!]],
       ),
     );
-    const child = spawn(helper, [root, component], {
+    // realpath may remove the extended-length prefix from a verified cohort.
+    const executable =
+      process.platform === 'win32' ? toNamespacedPath(helper) : helper;
+    const child = spawn(executable, [root, component], {
       windowsHide: true,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],

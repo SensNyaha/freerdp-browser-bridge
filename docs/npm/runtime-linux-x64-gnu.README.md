@@ -31,13 +31,13 @@ Source support targets GCC 8.3 for Astra Linux 1.7.5 and retains RED OS 7.3/GCC
 11. Compiler checks, runtime relocation and actual RDP acceptance remain
 separate evidence; this does not promise every Linux/security profile.
 
-## HTML clipboard in 0.4.0
+## HTML clipboard
 
 The matching runtime advertises `clipboardHtml` when its CLIPRDR support is
 available. HTML remains opt-in per session, with shared HTML/Unicode item limits
 and explicit browser actions. Runtime installation alone does not access the
-host clipboard or enable file/image clipboard. See the
-[HTML profile and acceptance](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
+host clipboard or automatically enable file/image clipboard. See the
+[HTML profile and acceptance](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance).
 Versioned runtime/installer acceptance is separate from compiler/source results.
 
 ## Usage
@@ -58,16 +58,19 @@ global library-path overrides. Credentials reach workers only over private IPC,
 never argv/environment. Certificates are strict by default. Use the adapter
 lifecycle for joined worker cleanup.
 
-## Image clipboard in development
+## Image clipboard in 0.5.0
 
-The source feature advertises `clipboardImage` only with its native image hooks.
+During release preparation, use the complete verified 0.5.0 JS/native archive
+cohort; a source version alone does not establish registry availability.
+
+Version 0.5.0 advertises `clipboardImage` only with its native image hooks.
 It remains opt-in per session through matching JS packages, with negotiated
 DIB/DIBV5 conversion, RGBA8 handoff, finite encoded/decoded item limits and
 shared text/HTML/image revoke. Installation does not read the OS clipboard.
 Published 0.4.0 does not include this image runtime. Use verified matching
-development artifacts and inspect concrete capabilities; file clipboard and
+0.5.0 artifacts and inspect concrete capabilities; file clipboard and
 arbitrary image formats remain separate. See the
-[application profiles and limits](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
+[application profiles and limits](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
 
 ## Limitations
 

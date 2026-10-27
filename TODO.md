@@ -11,7 +11,28 @@ also passes on an unchanged retry after Edge/OpenSSL tool timeouts; the failed
 log is retained and all four source jobs are successful.
 [Current delivery, hashes and limits](docs/CLIPBOARD_BROWSER.md#040-public-delivery).
 
-Current functional branch: `feature/image-clipboard`, based on completed shared
+Release preparation is now on `release/0.5.0`, after accepted image merge
+`a1909bd`. Ten exact npm archives and both production locks are aligned; all
+four external consumers pass on each OS with installed image capability/assets,
+codec/quota checks and strict TypeScript. Full checks pass Windows 1230/71 skips
+and Linux UID1000/CapEff=0 1186/120 skips, zero failures/cancellations; fresh native
+CTest passes 40/41 respectively. Windows recovery long-path fix `adcde20` has a
+failing-before native test and nine focused passes. Windows candidate MSI/ZIP
+are built and payload 10/10 plus portable relocation pass. Hosted release,
+versioned RDP, installed upgrades and npm/standalone publication remain open;
+0.4.0 is still public stable. [Release status](docs/VERSIONING.md).
+
+Image **source feature acceptance is complete** at private `f922a9a` / public
+`794f9b7`: all foundation, exact GCC 8.3, sanitizer/fuzz and both bundled jobs
+pass. Linked CTest is Windows 40/40 and Linux 41/41; linked Node is Windows
+1229/71 skips and Linux 1186/119 skips, zero failures. The final hosted Linux
+service/runtime and full image SPDX checks pass, together with the three named
+actual PNG RDP profiles. This accepts the image source feature for merging;
+**0.5.0 npm/standalone release acceptance and publication remain open**.
+[Source acceptance and limits](docs/CLIPBOARD_BROWSER.md#image-source-feature-acceptance).
+The following image checkpoints retain their historical scope/status.
+
+Image development branch: `feature/image-clipboard`, based on completed shared
 0.4.0. Verified component checkpoint `696f1c8` implements bounded, allocation-free packed DIB/DIBV5 and
 RGBA conversion. Full Windows foundation check passes 1065/137 skips/zero failures;
 native CTest passes Windows 23, GCC 8.3/GCC 11/Clang 24, plus 170,987 sanitized
@@ -2301,7 +2322,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
   [Public delivery](docs/CLIPBOARD_BROWSER.md#040-public-delivery),
   [source acceptance](docs/CLIPBOARD_BROWSER.md#html-source-feature-acceptance),
   [contract](docs/CLIPBOARD_TEXT.md#html-codec-in-development).
-- [ ] Image clipboard where negotiated.
+- [x] Image clipboard where negotiated — Opt-in bounded DIB/DIBV5/RGBA native,
+  private/public transport and explicit PNG reference UI are source accepted at
+  private `f922a9a` / public `794f9b7`. Three named Windows/Edge application
+  profiles pass both directions/new revisions with Windows and Linux
+  RWS1/framed workers. All current required local/hosted/compiler/fuzz/runtime
+  gates pass; published 0.4.0 has no image support and separate 0.5.0 npm/
+  standalone distribution acceptance remains open. Full Stage 7, total-resource
+  and arbitrary color/browser/server matrices remain separate.
+  [Source acceptance](docs/CLIPBOARD_BROWSER.md#image-source-feature-acceptance).
 - [ ] Session sandbox and safe path resolver.
 - [ ] Streaming file upload/download REST API.
 - [ ] RDPDR managed drive redirection.

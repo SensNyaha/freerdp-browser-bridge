@@ -4,6 +4,11 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Preserve Windows extended-length executable paths when launching the verified
+  runtime recovery helper. A deeply installed npm runtime can be readable after
+  canonicalization but fail CreateProcess with ENOENT without its path prefix.
+  Recovery ownership, cohort hashes, deadlines and joined cleanup are unchanged.
+
 - Add opt-in negotiated image clipboard alongside text/HTML. Allocation-free
   packed DIB/DIBV5 inspection and RGBA8 conversion, canonical DIBV5 writes,
   bounded C++/TypeScript inner records and versioned worker negotiation feed

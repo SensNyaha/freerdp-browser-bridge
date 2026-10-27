@@ -13,6 +13,15 @@ Current delivery criteria and evidence boundaries are in
 
 ## Current functional work
 
+The image source feature is now accepted at private `f922a9a` / public `794f9b7`:
+all required foundation, GCC 8.3, sanitizer/fuzz and Windows/Linux bundled jobs
+pass. The Linux final full-image SBOM gate passes after the measured size-budget
+correction. The explicit cache save also succeeds after checked native builds
+and before packaging; its restore was a miss, so a subsequent cache-hit speedup
+is not yet measured. The [acceptance record](CLIPBOARD_BROWSER.md#image-source-feature-acceptance)
+separates named real RDP, compiler, runtime and upcoming 0.5.0 installer/npm gates.
+The earlier checkpoints below retain their historical scope.
+
 HTML clipboard **0.4.0** is publicly delivered: ten exact npm packages, five
 GitHub Releases, stable standalone installers/source companions, four fresh
 registry-only consumers per OS and final public Astra/RED OS upgrades pass.

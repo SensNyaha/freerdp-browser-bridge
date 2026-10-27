@@ -1401,3 +1401,45 @@ or RDP-server combinations, or versioned installer/publication acceptance.
 All four current hosted foundation jobs pass at public `b13f706`; the separate
 cold Linux dependency/SDK/runtime job is still running. The feature remains on
 its branch until the remaining required gates pass.
+
+
+### Image source feature acceptance
+
+The image source feature is accepted at private `f922a9a` / public
+`794f9b798547f9f7451be3bf5463af1d15d4dab9`. The
+[foundation matrix and sanitizers](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486671724),
+[exact GCC 8.3 foundation](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486671726)
+and [both bundled runtimes](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486679359)
+all finish successfully on that exact exported source. Linked native CTest is
+Windows 40/40 and Linux 41/41; full linked Node checks are Windows **1229 passed,
+71 skipped, 1300 total** and Linux **1186 passed, 119 skipped, 1305 total**,
+with zero failures/cancellations. Foundation-only native checks remain 23/24;
+they are distinct from those linked results. Thirteen sanitizer fuzz targets
+complete 13,462,443 runs without an error. Packaging relocation passes on both
+OSes; its 15 standalone skips per OS remain separate installer gates.
+
+The Linux job builds the pinned dependencies and FreeRDP at GCC 8.3/glibc 2.28,
+then verifies the artifact-only native runtime, clean offline Node assembly,
+application/native inventories and restricted complete API/native service.
+The final hash-pinned Syft scan now passes with a schema-validated 300-package
+SPDX report for the exact 312,430,340-byte hosted image. Checked dependency
+binaries are saved before packaging; no future cache-hit timing is claimed.
+This supersedes the prior pre-scan size refusal without erasing it.
+
+The three [actual RDP application profiles](#actual-image-rdp-application-checkpoint)
+remain source-identical for their browser/helpers and 398 native inputs.
+The current audit also verifies all 126 exported changed files against the
+private commit, four Windows native artifact hashes, 134 retained historical
+evidence files, named PNG conversion profiles and Astra/RED OS runtime and
+RED OS GCC 11 linked evidence. Local
+`build/current-validation/image-source-feature-acceptance.json` binds the source,
+terminal jobs/logs, supporting receipts and final image inventory. Earlier
+component receipts keep their original partial scope.
+
+This closes the image **source** item in Stage 7 and permits its feature merge.
+It does not close all of Stage 7/V1, total decoder CPU/RSS acceptance, arbitrary
+alpha/color-space/browser/server combinations, or file clipboard. Product
+manifests still identify development 0.4.0; the published immutable 0.4.0 does
+not contain image support. The next minor **0.5.0** requires its separate release
+branch, exact npm consumers, versioned RDP/installer upgrades and public delivery
+acceptance before it is described as released.

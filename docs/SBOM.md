@@ -183,6 +183,19 @@ This is an SBOM artifact budget; session memory targets and the 16 MiB clipboard
 item quota are independent. A passing model fixture does not accept the hosted
 full scan, which still needs its corrected-source execution.
 
+Corrected-source public `794f9b7` subsequently passes the full hosted scan in
+[run 40486679359](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40486679359).
+The exact image is 312,430,340 inspect bytes with seven layers; image/config ID
+is `sha256:dda8a68f5670ee1dd5a9db471942ee02e886057e73b285300637a6ec516eb4c2`.
+Syft 1.54.1 produces 300 packages (88 Debian, 209 npm, two binary), 3241 files
+and 3890 relationships with schema validation. Report SHA-256 is
+`0caeaefb653d07a1b02401887b1d5551181485525a1f090cc769fe22b5124698`;
+saved-archive SHA-256 is
+`62cd212eb0e38558e1313d478482e1be3a58a3e56983a698e3d5d0e812fe2012`.
+`build/current-validation/image-size-hosted-linux-acceptance.json` binds the
+terminal log and exact receipt. This accepts the corrected inventory gate;
+versioned 0.5.0 installer/npm delivery remains separate.
+
 Published files are build/packages/freerdp-bridge-runtime.spdx.json and
 build/packages/freerdp-bridge-runtime-sbom.json, the latter containing the image
 ID, config digest, archive/report SHA-256, scanner version/archive hash and counts.

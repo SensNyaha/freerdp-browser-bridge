@@ -10,6 +10,7 @@ import {
   type RdpBridgeExpressHandle,
 } from '@freerdp-bridge/express';
 import { referenceBrowserDirectory } from '@freerdp-bridge/express/browser';
+import type { SessionManager, SessionCreate } from '@freerdp-bridge/express';
 
 async function host() {
   const app = express();
@@ -56,3 +57,26 @@ async function recoverBeforeListen(options: RuntimeRecoveryOptions) {
   return report;
 }
 void recoverBeforeListen;
+
+// Compile the installed adapter declarations, including the new image surface.
+type ClipboardLease = ReturnType<SessionManager['attach']>;
+async function imageClipboard(lease: ClipboardLease) {
+  const rgba = Buffer.from([19, 41, 63, 255]);
+  try {
+    await lease.writeClipboardImage({ width: 1, height: 1, rgba });
+    const read = await lease.readClipboardImage(1n);
+    read.item?.rgba.fill(0);
+    // @ts-expect-error Geometry is mandatory in the installed image API.
+    await lease.writeClipboardImage({ width: 1, rgba });
+    // @ts-expect-error Image reads use exact bigint revisions.
+    await lease.readClipboardImage(1);
+  } finally {
+    rgba.fill(0);
+  }
+}
+const imagePolicy: NonNullable<SessionCreate['clipboard']> = {
+  mode: 'bidirectional',
+  maxItemBytes: 65536,
+  images: true,
+};
+void [imageClipboard, imagePolicy];

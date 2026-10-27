@@ -1,5 +1,28 @@
 # Product versions and release branches
 
+Current release preparation is **`release/0.5.0`**, based on accepted image merge
+`a1909bd`. Product/native manifests are now aligned at 0.5.0. Ten exact npm
+archives and both standalone production locks agree, retaining the external
+dependency graph and explicit immutable 0.4.0 upgrade predecessor. Four
+independent exact-archive consumers pass on each OS, including image capability,
+installed PNG assets, quota/codec checks, strict TypeScript and runtime recovery.
+Full source-identical checks pass Windows 1230/71 skips and Linux
+UID1000/CapEff=0 1186/120 skips, zero failures/cancellations; fresh linked CTest
+passes Windows 40/40 and GCC 8.3 Linux 41/41. A proven Windows recovery long-path
+failure is fixed in `adcde20`; its nine focused checks pass before the full runs.
+Local `build/current-validation/image05-cohort-checks-acceptance.json` binds the
+1380-file snapshot, source hashes, logs and consumer receipts. Windows candidate
+MSI/ZIP are built; payload 10/10 and ZIP relocation/joined shutdown pass.
+Hosted release checks, versioned RDP and installed upgrades/public delivery
+remain open. **0.5.0 is not yet published or tagged**; public stable remains
+0.4.0. The following checkpoints retain their historical preparation scope.
+
+Image source acceptance passes at private `f922a9a` / public `794f9b7`, including
+all required hosted jobs and the final full Linux runtime image scan.
+[Source acceptance](CLIPBOARD_BROWSER.md#image-source-feature-acceptance)
+permits merging the feature before preparing `release/0.5.0`; it does not
+claim a versioned installer, npm publication or a new stable tag.
+
 The developing image clipboard capability targets the next minor **0.5.0**
 under the capability rule below. Its standalone upgrade predecessor is explicitly
 **`v0.4.0`**. Seed/candidate/manifest tests require that exact predecessor in

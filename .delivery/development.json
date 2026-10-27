@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "branch": "feature/image-clipboard",
+  "branch": "release/0.5.0",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "f922a9af08108fd7964d77251ad076a814ac6351",
+  "privateSourceCommit": "3d055c641d10a124b66a033973805e3bdcb9b6d9",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
-  "actualImageRdpAccepted": true,
+  "actualImageRdpAccepted": false,
   "existingPublishedVersion": "0.4.0",
   "sources": {
     ".github/workflows/ci.yml": {
@@ -13,20 +13,20 @@
       "sha256": "baf8ead8ef7214f1ecdababa35fd223c4d961b6b5a45c1be573ef222cb587dd4"
     },
     "CHANGELOG.md": {
-      "bytes": 18091,
-      "sha256": "4f65478c7097d12a0df45406084c9ae7e307d3fa3a314aff1a859a4bc782579d"
+      "bytes": 18412,
+      "sha256": "78a77186e542a068c2b96be5171d0f6130bb653b9401386281d7b18dac25146d"
     },
     "CMakeLists.txt": {
       "bytes": 49670,
-      "sha256": "b808ddbc3d60bc8d038a21e1fb9807b110fd72a649f2f7a24a4121eca8d5450b"
+      "sha256": "79c6735a50f20f2bbaba789a8340a97eba202a97fb2bf989c91e47eafcd9cf8f"
     },
     "PROTOCOL.md": {
       "bytes": 32476,
       "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
     },
     "TODO.md": {
-      "bytes": 240863,
-      "sha256": "cd4b87ccb3b11b855d2972a3a7c3b6247dc0ce6ca070d26a4e84723f2e59fc87"
+      "bytes": 242986,
+      "sha256": "de2593c75fc92bca697ac756aa6e9713cd906ac3a28872c88957345ea466a2b9"
     },
     "apps/bridge-api/src/clipboard.ts": {
       "bytes": 6634,
@@ -73,8 +73,8 @@
       "sha256": "a7d650226992e44b9aa08b4a4283120bcb2d7408239a2ef535d2c2c32e229d24"
     },
     "docs/CLIPBOARD_BROWSER.md": {
-      "bytes": 91241,
-      "sha256": "4188f9380699a9dba899d7d2198b54b927f5f0a2ac369e11329e7934f0aaddc6"
+      "bytes": 93954,
+      "sha256": "df4c88e5f8aaf9b7741f4b5da669befe22f60a0eef0ffe5f8a33c28e811353bc"
     },
     "docs/CLIPBOARD_CONTROL.md": {
       "bytes": 12464,
@@ -433,16 +433,16 @@
       "sha256": "77d58012cc255da56cbee39d937b565e57e204468c92cb2ec90f13f92c955c94"
     },
     "docs/DEVELOPMENT.md": {
-      "bytes": 87181,
-      "sha256": "e438164f778afdcd9473fd637580437d8b298d9e7d8279744c5ae8b631cc16f0"
+      "bytes": 87827,
+      "sha256": "0148a002077894a140d1be8b3e5135b53ff47562b22d6e4a081b1df00c3a684f"
     },
     "tests/integration/clipboard-viewer.test.mjs": {
       "bytes": 13194,
       "sha256": "8440ef4d827eac91b546656789db5fd7b2d4b5f4bb5e75dd31392e9fbd0dbddf"
     },
     "docs/VERSIONING.md": {
-      "bytes": 11428,
-      "sha256": "42ba06879f6db81be9e192e21c5cfe6498982a63311ab4db4deb59894eb471b7"
+      "bytes": 13041,
+      "sha256": "2f238e4195542b9e2d8672403798ccaabf2ff6e0f307f710457c849e11addebc"
     },
     "scripts/standalone/upgrade-seed.mjs": {
       "bytes": 908,
@@ -457,8 +457,8 @@
       "sha256": "84aa0da383f35334ee785e242fa612fdb1e09adb3c4677ca4cf64eaeacd0a2d0"
     },
     "docs/SBOM.md": {
-      "bytes": 12941,
-      "sha256": "4808149f020384a91e861f57aad654e055256c01286395a6d18b5ef00e3aa11f"
+      "bytes": 13789,
+      "sha256": "88a3f0371851e0a307d7fc065e5c961802a5c23dda340a23579819002a8a8dea"
     },
     "scripts/image-sbom-model.mjs": {
       "bytes": 3029,
@@ -469,49 +469,139 @@
       "sha256": "b5f696545babaec0e5aeb7b1147eec804637dc3b5de5b177a9a467dbf88d5e17"
     },
     "apps/bridge-api/README.md": {
-      "bytes": 4897,
-      "sha256": "dc8768991e69093e4e110723640d3e1758d19866f8ea2c8f114c53af56181ac8"
+      "bytes": 4997,
+      "sha256": "72c86f2bb0dce97a146f1427d488622211f755800237471323c50d46678fc060"
     },
     "apps/standalone/README.md": {
       "bytes": 1244,
       "sha256": "8be8a54d6077aeeeb2797d85f5724e0dba35a00874c49c1609d701e7d5a8c243"
     },
     "docs/npm/runtime-linux-x64-gnu.README.md": {
-      "bytes": 4091,
-      "sha256": "7355aba74e90d3d20ede89b358f0576026769952c0e611a048e456ff5b2e9d73"
+      "bytes": 4214,
+      "sha256": "122ec5bcd5e53a0c7d5a8df06f881cb5239c50ae2c4c6be17213e0fb769df61a"
     },
     "docs/npm/runtime-win32-x64.README.md": {
-      "bytes": 3839,
-      "sha256": "d46c4f46a319362f40f732e08d3d0a4c1523c5e9e368937ee88f9d72d4004130"
+      "bytes": 3962,
+      "sha256": "07fe4e75640260ac13be095a63115ab3cf9ffcf6544fc76236dfa7485bd8a49c"
     },
     "packages/config/README.md": {
-      "bytes": 2815,
-      "sha256": "ebb3434e5e5b394e69742bc3ceb989c3178f68a08f625dd76f1e3af44dcbe13a"
+      "bytes": 2941,
+      "sha256": "92e76b933246118d9bea336bf32675a119a18fda1e0d2cb479545440bd12ddc1"
     },
     "packages/express/README.md": {
-      "bytes": 6275,
-      "sha256": "850dc3fb71b4c150deae920fb0634e8bbb65e9ed9a24a110c7f1ce52a09ef859"
+      "bytes": 6375,
+      "sha256": "d29e50b551d82e0fce76448ed13f74204f70b48e95e2e96e6fb30a50954c2c77"
     },
     "packages/fastify/README.md": {
-      "bytes": 5950,
-      "sha256": "59556acf80f0b1a68ca37ec794d18e15594293fb44fbb6f7f4bce564095aa4bc"
+      "bytes": 6050,
+      "sha256": "83fd6dd04e16422d3fda21bf06cf340531e0f87d00eb4b2ecedc06867f731ad6"
     },
     "packages/http/README.md": {
-      "bytes": 5402,
-      "sha256": "25c700d6e8fda802718ee6c6a2f3be81420a33f30986af713732f498a5a4b2be"
+      "bytes": 5502,
+      "sha256": "9e690bc4061b6426ff0aa93d2864f9ec8a45d71b0fcb63814ac03498bfefd1bf"
     },
     "packages/nestjs/README.md": {
-      "bytes": 5652,
-      "sha256": "79c212752d5b7a13eb3d08b0b2524c1102e8061c3cd25126a3848cabf878fa44"
+      "bytes": 5752,
+      "sha256": "f0c1a692084e14a53d445406ede4399906864f462e4a7005fb4338902aeb13f6"
     },
     "packages/node-bridge/README.md": {
-      "bytes": 4860,
-      "sha256": "63105e0645991ea4557e8f23692fc789e413eb575e1c062557b2023124d0f36b"
+      "bytes": 4995,
+      "sha256": "86de5a5447d3146b81dda357e51fd27cb8f5a5b08bdbfe08172e76caf561d909"
     },
     "packages/protocol/README.md": {
-      "bytes": 2828,
-      "sha256": "3f313a431ae57392740623c134cd66ce27a1f2cd5af9dc713a3a4b2e36011a5a"
+      "bytes": 2948,
+      "sha256": "b718a8372cf03ca18b01681bdeaa233a806019e7a2e0dae32aa44f03338905af"
+    },
+    "apps/bridge-api/package.json": {
+      "bytes": 1033,
+      "sha256": "c62a49a7ddcc96da717dfc2d7675d9cd43555225e9e01e8f9813d90d9357d76d"
+    },
+    "apps/standalone/package.json": {
+      "bytes": 464,
+      "sha256": "5be66c00e856157282acd52a7981e275b0520dab5c4aceaf7003b7bd9b849230"
+    },
+    "docs/RUNTIME_RECOVERY.md": {
+      "bytes": 48915,
+      "sha256": "2a28bc1f4f7e5061fd3ebc094d8b78613dc414baccbbc355eba37afbe102da61"
+    },
+    "package.json": {
+      "bytes": 1844,
+      "sha256": "66bb59ed38f5bc9d4a625e76d82454db3eaef5c6a1255a8c47dd73cc2461a93a"
+    },
+    "packages/config/package.json": {
+      "bytes": 514,
+      "sha256": "9f152252db99834c1637a2149042a9ec163670fe1cd60b79cae9a09e9fd4329f"
+    },
+    "packages/express/package.json": {
+      "bytes": 721,
+      "sha256": "76ae56395d006327b59fb7b72e661dbad8adc5dbea6156a6a5382df41dd67a84"
+    },
+    "packages/fastify/package.json": {
+      "bytes": 690,
+      "sha256": "0c072cd77c24d2b626e806c9216933171b5d8974a929afeee74fd985eeafce27"
+    },
+    "packages/http/package.json": {
+      "bytes": 655,
+      "sha256": "8bf3891919475d10869769357a6657a7d4aafa1241a6652f7aa5c3da2fcda7d7"
+    },
+    "packages/nestjs/package.json": {
+      "bytes": 785,
+      "sha256": "29ff46ce7baf5b91e6229614e674058c07c0a95a68c3b7355eb0689e89cc1e3f"
+    },
+    "packages/node-bridge/package.json": {
+      "bytes": 568,
+      "sha256": "be62f1c9f7f0aef5fe59dd337422c8d785f047a4a7ef7cb7801d0fc55b754880"
+    },
+    "packages/node-bridge/src/runtime-recovery.ts": {
+      "bytes": 9282,
+      "sha256": "615e45d1e09ec94a12e1d57700d942e5b743850831ffb9cf1c03d27befc18228"
+    },
+    "packages/protocol/package.json": {
+      "bytes": 456,
+      "sha256": "ade71a90931087fcc995c266a61a9315929743db3a4cf37bb302c14cddbc1177"
+    },
+    "packaging/standalone/locks/linux-x64-gnu.json": {
+      "bytes": 28666,
+      "sha256": "2f89a1e459236a74aae50d1dc711b37428b77028c87006618bff788e72c386b1"
+    },
+    "packaging/standalone/locks/win32-x64.json": {
+      "bytes": 28318,
+      "sha256": "6902623ec0ae43ff0c4a309c13b58256bfb754b9f64d447ca9685e628963bd57"
+    },
+    "tests/fixtures/express-package-consumer.ts": {
+      "bytes": 2888,
+      "sha256": "6c601eae0a0c94993bc3140618db68e18c0bbaef5433edb7dfb428a2cdeb2977"
+    },
+    "tests/fixtures/fastify-package-consumer.ts": {
+      "bytes": 2549,
+      "sha256": "47a6f61a34f9f7e81725584b16ee6aba3467e5df5274d444dcf044c82f6ffad9"
+    },
+    "tests/fixtures/http-package-consumer.ts": {
+      "bytes": 2803,
+      "sha256": "5e506814ba1ca4d8eb3aa5bb6822a83da78b5aadd54a8f615d837f3f230df689"
+    },
+    "tests/fixtures/nestjs-package-consumer.ts": {
+      "bytes": 3623,
+      "sha256": "91124afd13bbce69b91489771dccb978bcbe6d533fe5612a8eef9050fcbc982d"
+    },
+    "tests/fixtures/package-runtime-recovery.mjs": {
+      "bytes": 6261,
+      "sha256": "17ef257ca3cc2a2b1f592b5d46fbd198898ccf926e0e79fe25e5f1b501beede7"
+    },
+    "tests/integration/runtime-recovery-long-path.test.mjs": {
+      "bytes": 2064,
+      "sha256": "7cd34659ebe85c91ea8077047314b3de99b3232613d611c5ebd6040f1ec588dc"
     }
   },
-  "actualImageRdpScope": "Owned opaque 32x32 PNG / Edge156 / Windows worker and Linux GCC8.3 RWS1+framed workers / Windows RDP server / both directions and newer revision / joined revoke and cleanup"
+  "productVersion": "0.5.0",
+  "imageSourceAccepted": true,
+  "imageSourceAcceptanceCommit": "f922a9af08108fd7964d77251ad076a814ac6351",
+  "imageSourceMergeCommit": "a1909bd7d0d64b6e05eb96308fc6df92f432884b",
+  "sourceActualImageRdpAccepted": true,
+  "sourceActualImageRdpScope": "Owned opaque 32x32 PNG / Edge156 / Windows worker and Linux GCC8.3 RWS1+framed workers / Windows RDP server / both directions and newer revision / joined revoke and cleanup; development0.4 binaries, not versioned0.5 acceptance",
+  "remaining": [
+    "Hosted release checks",
+    "Versioned actual RDP and installed upgrades",
+    "Public npm and standalone delivery"
+  ]
 }

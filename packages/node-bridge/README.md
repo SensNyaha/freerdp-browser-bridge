@@ -53,9 +53,12 @@ Resolution validates version, inventory, hashes and worker/IPC compatibility.
 Do not strip returned Windows namespace prefixes. A custom `packageDirectory`
 must reference the complete installed runtime and come from trusted host config.
 
-## Image clipboard in development
+## Image clipboard in 0.5.0
 
-The source feature adds typed `ClipboardImageItem`, image read/write results
+During release preparation, use the complete verified 0.5.0 JS/native archive
+cohort; a source version alone does not establish registry availability.
+
+Version 0.5.0 adds typed `ClipboardImageItem`, image read/write results
 and shared session control methods. Explicitly select `clipboard.images: true`
 and require `clipboardImage`, `clipboardText` and `clipboardRevoke`. Custom
 worker factories must pass the whole frozen limits object, including
@@ -64,9 +67,9 @@ Wait for the clipboard-ready snapshot and acquire the current control grant;
 connection alone is insufficient. Returned RGBA8 buffers belong to the consumer
 and must be wiped after use. One text/HTML/image transfer and revoke owner is
 shared; canonical DIBV5 header overhead counts toward native write admission.
-Published 0.4.0 does not contain this feature. Use matching verified development
+Published 0.4.0 does not contain this feature. Use matching verified 0.5.0
 JS/native artifacts and the
-[application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/feature/image-clipboard/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
+[application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
 for readiness, exact control API examples, quotas and named acceptance scope.
 
 ## Limitations
@@ -76,8 +79,8 @@ session policy and require the actual `clipboardHtml` capability. A custom
 `workerFactory` must pass the entire frozen session limits object, including
 `clipboardHtml`, to `NativeSessionWorker`. Both formats share one operation and
 revoke owner; buffers returned to custom consumers must be wiped after use.
-See the [HTML contract](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.4.0/docs/CLIPBOARD_IPC.md#private-worker-html-negotiation-and-handoff-in-development).
-This does not add file/image clipboard or automatic OS clipboard access.
+See the [HTML contract](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_IPC.md#private-worker-html-negotiation-and-handoff-in-development).
+HTML selection does not enable image/file clipboard or OS clipboard access automatically.
 
 Version 0.3.0 adds explicit `recoverRuntimeSessions` before application listener
 startup. It preserves active sessions, legacy/unknown contents and uncertain
