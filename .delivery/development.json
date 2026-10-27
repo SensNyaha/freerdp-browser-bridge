@@ -2,7 +2,7 @@
   "schema": 1,
   "branch": "release/0.5.0",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "2f0bbf74959ffcf6c870dadeea535e11d1eb48d0",
+  "privateSourceCommit": "807126c08b641a0359924cc65466c3ff3864212b",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
   "actualImageRdpAccepted": false,
@@ -73,8 +73,8 @@
       "sha256": "a7d650226992e44b9aa08b4a4283120bcb2d7408239a2ef535d2c2c32e229d24"
     },
     "docs/CLIPBOARD_BROWSER.md": {
-      "bytes": 93954,
-      "sha256": "df4c88e5f8aaf9b7741f4b5da669befe22f60a0eef0ffe5f8a33c28e811353bc"
+      "bytes": 95580,
+      "sha256": "d808ce3b78d3031b194c1903490779f6387ce4835e87d6b10b6637f55e14aad0"
     },
     "docs/CLIPBOARD_CONTROL.md": {
       "bytes": 12464,
@@ -221,8 +221,8 @@
       "sha256": "8eb3ebb097e06feff9913e69f101c4cb2f8c6aff71c4faabc45122cd8522181e"
     },
     "scripts/linux-image-lab-profile.mjs": {
-      "bytes": 3093,
-      "sha256": "ee3fd92b439d3d939221c1448b70bf169f1d77f9b1febed23a929e8de26acc58"
+      "bytes": 4324,
+      "sha256": "f1f967b5e71cad448cd992ff73b1bff09ea3cd805d319c648f8eea4af6885a73"
     },
     "scripts/linux-viewer-bootstrap.mjs": {
       "bytes": 1857,
@@ -261,8 +261,8 @@
       "sha256": "48559f454a4c0204179be25ddc68d90f0c3bd2413c2fb8f3b49b0ea6ffe45cb3"
     },
     "scripts/test-linux-image-rdp.mjs": {
-      "bytes": 18618,
-      "sha256": "3e6e8538fcc9210cade6e2cd803791d37e9e26d2a2ee173dcfe75fff2a473e79"
+      "bytes": 18439,
+      "sha256": "6917cd8f7a27a940e228e46bacb0de98d609c13f7c3b3c722c98787857040a7b"
     },
     "scripts/test-linux-viewer-bootstrap.mjs": {
       "bytes": 6301,
@@ -409,8 +409,8 @@
       "sha256": "cae0ab473d9b382fd1274bb1beea49f4f80408ee0b6df5cb442a871a6cdf3447"
     },
     "tests/unit/linux-image-lab-profile.test.mjs": {
-      "bytes": 4874,
-      "sha256": "75e08b95f276ca9e45712cde5e176d569dfad9f8326318b024b7b12836f19575"
+      "bytes": 7953,
+      "sha256": "405b3201f3a3010a17dede98325c1e5b020ebf5e0f3e80714b585a10557f4764"
     },
     "tests/unit/linux-viewer-bootstrap.test.mjs": {
       "bytes": 3311,
@@ -608,5 +608,7 @@
     "Versioned actual RDP and installed upgrades",
     "Public npm and standalone delivery"
   ],
-  "candidateTag": "standalone-candidate-0.5.0-51bc17eb4f1a"
+  "candidateTag": "standalone-candidate-0.5.0-51bc17eb4f1a",
+  "versionedImageBootstrapAccepted": true,
+  "versionedActualImageRdpAccepted": false
 }

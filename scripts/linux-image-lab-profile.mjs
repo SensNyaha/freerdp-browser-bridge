@@ -47,18 +47,52 @@ export function linuxImageLabArguments(args) {
   };
 }
 
+/** Verify the concrete native build before loading lab credentials. */
+export function requireLinuxImageLabBuild(value, transport, container) {
+  if (
+    !value ||
+    !['auto', 'framed-pipes'].includes(transport) ||
+    value.os !== 'linux' ||
+    value.arch !== 'x64' ||
+    value.freeRdpVersion !== '3.32.1' ||
+    value.targetFreeRdpVersion !== '3.32.1' ||
+    value.transport !==
+      (transport === 'auto' ? 'unix-seqpacket-rws1' : 'framed-pipes') ||
+    (container?.productVersion !== undefined &&
+      (container.productVersion !== '0.5.0' ||
+        value.bridgeVersion !== container.productVersion))
+  )
+    throw invalid();
+}
+
 /** Validate the actual dedicated container before creating/sending credentials. */
 export function requireLinuxImageLabContainer(value) {
   try {
     assertLoopbackViewerPorts(value?.HostConfig?.PortBindings);
     const mounts = value.Mounts,
-      env = value.Config?.Env;
+      env = value.Config?.Env,
+      productVersion =
+        value.Config?.Labels?.['freerdp-bridge.image-product-version'];
+    const profile =
+      productVersion === undefined
+        ? {
+            source: '/bridge/image-linux-node-source',
+            binary: '/bridge/image-handoff-source-gcc83/build/gcc83',
+          }
+        : productVersion === '0.5.0'
+          ? {
+              source: '/bridge/image05-release-source-v1',
+              binary:
+                '/bridge/image05-release-source-v1/build/native-stage-release/bin',
+            }
+          : undefined;
     if (
       !/^sha256:[0-9a-f]{64}$/.test(value.Image ?? '') ||
       !/^[0-9a-f]{64}$/.test(value.Id ?? '') ||
       value.Config?.Image !== linuxImageLabImage ||
       value.Config?.User !== '1000:1000' ||
-      value.Config?.WorkingDir !== '/bridge/image-linux-node-source' ||
+      !profile ||
+      value.Config?.WorkingDir !== profile.source ||
       value.Config?.Labels?.['freerdp-bridge.image-acceptance'] !== '1' ||
       value.HostConfig.Privileged !== false ||
       value.HostConfig.ReadonlyRootfs !== true ||
@@ -80,7 +114,7 @@ export function requireLinuxImageLabContainer(value) {
       env
         .filter((item) => item.startsWith('BRIDGE_TEST_BINARY_DIR='))
         .join() !==
-        'BRIDGE_TEST_BINARY_DIR=/bridge/image-handoff-source-gcc83/build/gcc83'
+        'BRIDGE_TEST_BINARY_DIR=' + profile.binary
     )
       throw invalid();
     return {
@@ -88,6 +122,7 @@ export function requireLinuxImageLabContainer(value) {
       image: value.Image,
       uid: 1000,
       volume: mounts[0].Name,
+      ...(productVersion === undefined ? {} : { productVersion }),
     };
   } catch {
     throw invalid();

@@ -1443,3 +1443,30 @@ manifests still identify development 0.4.0; the published immutable 0.4.0 does
 not contain image support. The next minor **0.5.0** requires its separate release
 branch, exact npm consumers, versioned RDP/installer upgrades and public delivery
 acceptance before it is described as released.
+
+
+### Versioned 0.5.0 image application preparation
+
+The manual Linux image helper now admits an additional explicit release lab
+profile: label `freerdp-bridge.image-product-version=0.5.0`, working directory
+`/bridge/image05-release-source-v1`, and installed worker stage
+`/bridge/image05-release-source-v1/build/native-stage-release/bin`. All three
+must agree. The existing development profile remains separate. Unknown versions,
+mixed source/native paths, duplicate overrides, mutable/foreign mounts, wildcard
+ports and loader hooks are refused before lab credentials. The build response
+must also identify 0.5.0 and the selected RWS1/framed carrier before credentials
+are loaded. CLI document/clipboard/certificate opt-ins remain unchanged.
+
+A release-profile fixture fails before admission is implemented. Eleven focused
+image/container/bootstrap checks then pass; both actual Linux native bootstrap
+profiles report version 0.5.0, image hooks, loaded browser assets and joined
+empty-runtime cleanup. These are headless, use mocked Clipboard APIs that deny
+access, and make no RDP connection. Actual application acceptance still requires
+the operator-ready owned document; no application is launched by the helper.
+
+The two local reports are bound in
+`build/current-validation/image05-linux-release-profile-acceptance.json`.
+The separately accepted exact npm cohort and complete Windows/Linux checks
+precede this manual-helper extension; production sources, native binaries,
+package archives and lock integrities are unchanged by it. This preparation does
+not accept a versioned image roundtrip or an installed OS upgrade.

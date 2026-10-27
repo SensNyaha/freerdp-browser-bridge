@@ -9,6 +9,7 @@ import {
   linuxImageLabArguments,
   requireLinuxImageLabContainer,
   requireLinuxImageLabCapabilities,
+  requireLinuxImageLabBuild,
 } from './linux-image-lab-profile.mjs';
 import { parseImageLabReceipt } from './image-rdp-lab-fixture.mjs';
 
@@ -307,14 +308,7 @@ try {
   requireLinuxImageLabCapabilities(capabilities);
   report.nativeImageCapability = true;
   const build = await request('/v1/build');
-  requireResult(
-    build.os === 'linux' &&
-      build.arch === 'x64' &&
-      build.freeRdpVersion === '3.32.1' &&
-      build.targetFreeRdpVersion === '3.32.1' &&
-      build.transport ===
-        (profile.transport === 'auto' ? 'unix-seqpacket-rws1' : 'framed-pipes'),
-  );
+  requireLinuxImageLabBuild(build, profile.transport, ownedContainer);
   report.native = Object.fromEntries(
     [
       'os',

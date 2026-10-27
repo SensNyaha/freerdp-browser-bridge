@@ -6,6 +6,7 @@ import {
   requireLinuxImageLabContainer,
   linuxImageLabImage,
   requireLinuxImageLabCapabilities,
+  requireLinuxImageLabBuild,
 } from '../../scripts/linux-image-lab-profile.mjs';
 
 const args = [
@@ -175,4 +176,103 @@ test('Linux image lab refuses wildcard publication, root/privileged workers, mut
       () => requireLinuxImageLabContainer(value),
       /LINUX_IMAGE_LAB_PROFILE_REFUSED/,
     );
+});
+
+const releaseContainer = () => {
+  const value = container();
+  value.Config.WorkingDir = '/bridge/image05-release-source-v1';
+  value.Config.Labels['freerdp-bridge.image-product-version'] = '0.5.0';
+  value.Config.Env = [
+    'BRIDGE_TEST_BINARY_DIR=/bridge/image05-release-source-v1/build/native-stage-release/bin',
+  ];
+  return value;
+};
+test('Linux image release-profile 0.5.0 admits only its explicitly paired source and installed native stage', () => {
+  const admitted = requireLinuxImageLabContainer(releaseContainer());
+  assert.equal(admitted.uid, 1000);
+  assert.equal(admitted.productVersion, '0.5.0');
+  for (const change of [
+    (v) => {
+      delete v.Config.Labels['freerdp-bridge.image-product-version'];
+    },
+    (v) => {
+      v.Config.Labels['freerdp-bridge.image-product-version'] = '0.5.1';
+    },
+    (v) => {
+      v.Config.WorkingDir = '/bridge/image-linux-node-source';
+    },
+    (v) => {
+      v.Config.Env = container().Config.Env;
+    },
+    (v) => {
+      v.Config.Env.push(v.Config.Env[0]);
+    },
+    (v) => {
+      v.Mounts[0].RW = true;
+    },
+    (v) => {
+      v.Config.Env.push('LD_PRELOAD=foreign');
+    },
+    (v) => {
+      v.HostConfig.PortBindings['47999/tcp'][0].HostIp = '0.0.0.0';
+    },
+  ]) {
+    const value = releaseContainer();
+    change(value);
+    assert.throws(
+      () => requireLinuxImageLabContainer(value),
+      /LINUX_IMAGE_LAB_PROFILE_REFUSED/,
+    );
+  }
+  const mixed = container();
+  mixed.Config.Labels['freerdp-bridge.image-product-version'] = '0.5.0';
+  assert.throws(
+    () => requireLinuxImageLabContainer(mixed),
+    /LINUX_IMAGE_LAB_PROFILE_REFUSED/,
+  );
+});
+
+test('Linux image release-profile validates 0.5.0 HELLO and carrier before credentials, retaining old development checks', () => {
+  const build = {
+    os: 'linux',
+    arch: 'x64',
+    bridgeVersion: '0.5.0',
+    freeRdpVersion: '3.32.1',
+    targetFreeRdpVersion: '3.32.1',
+    transport: 'unix-seqpacket-rws1',
+  };
+  const owner = requireLinuxImageLabContainer(releaseContainer());
+  requireLinuxImageLabBuild(build, 'auto', owner);
+  requireLinuxImageLabBuild(
+    { ...build, transport: 'framed-pipes' },
+    'framed-pipes',
+    owner,
+  );
+  requireLinuxImageLabBuild(
+    { ...build, bridgeVersion: '0.4.0' },
+    'auto',
+    requireLinuxImageLabContainer(container()),
+  );
+  for (const value of [
+    null,
+    { ...build, bridgeVersion: '0.4.0' },
+    { ...build, bridgeVersion: '0.5.1' },
+    { ...build, os: 'windows' },
+    { ...build, arch: 'arm64' },
+    { ...build, freeRdpVersion: '3.32.0' },
+    { ...build, targetFreeRdpVersion: '3.32.0' },
+    { ...build, transport: 'framed-pipes' },
+  ])
+    assert.throws(
+      () => requireLinuxImageLabBuild(value, 'auto', owner),
+      /LINUX_IMAGE_LAB_PROFILE_REFUSED/,
+    );
+  assert.throws(
+    () => requireLinuxImageLabBuild(build, 'implicit', owner),
+    /LINUX_IMAGE_LAB_PROFILE_REFUSED/,
+  );
+  assert.throws(
+    () => requireLinuxImageLabBuild(build, 'auto', { productVersion: '0.6.0' }),
+    /LINUX_IMAGE_LAB_PROFILE_REFUSED/,
+  );
 });
