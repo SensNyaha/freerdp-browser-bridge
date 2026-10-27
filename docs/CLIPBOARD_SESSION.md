@@ -10,7 +10,7 @@ accepts explicit text selection with a matching item reservation and both
 `clipboardText` / `clipboardRevoke` HELLO capabilities (Iteration 237).
 
 Selection requires an explicit direction mode, text enabled, no unsupported
-images/files and a finite item maximum (default 1 MiB, range 1..16 MiB).
+formats/files and a finite item maximum (default 1 MiB, range 1..16 MiB).
 Missing backend read/write/revoke/source hooks refuse before backend start.
 Omitted/off selection requires none of these hooks. Current control attachment
 methods are `clipboardSnapshot`, `onClipboard`, `startClipboard`, `stopClipboard`,
@@ -101,3 +101,54 @@ Synthetic ownership/manager fixtures and actual socket tests cover HTML/text
 flight exclusion, controller replacement, native ACK barriers, quota refusal,
 known-field metadata and late buffer wiping. Actual RDP HTML application and
 browser acceptance remain required on this same feature branch.
+
+## Shared image authority in development
+
+After private handoff checkpoint `5b419f1`, `feature/image-clipboard` adds
+explicit `images:true` to managed session selection. The factory receives a
+frozen `clipboardImage:true` reservation with its finite `clipboardItemBytes`;
+`NativeSessionWorker` requires an exact match and HELLO `clipboardImage` in
+addition to baseline text/revoke before CONFIGURE/SECRET. Missing read/write
+image hooks refuse before backend start. HTML selection and its hooks remain
+independent. Files and disabling baseline Unicode remain unsupported.
+
+The adapter reserves one selected item with the larger of the selected HTML
+32-byte or image 16-byte inner metadata overhead, capped by the existing 16 MiB
+payload maximum, plus existing envelope/queue allowance. Simultaneous format
+selection does not add their item budgets or create another content queue.
+An explicit insufficient host `maxWriteBytes` is refused, never silently raised.
+
+Current control leases add `readClipboardImage(revision)` and
+`writeClipboardImage({width,height,rgba})`; media and stale leases cannot use
+them. Images share the text/HTML grant, flight, dirty state and native revoke
+barrier. A write must produce a current accepted image source; text/HTML writes
+must not leave image acceptance set. Image source selection is immutable and
+copied as known scalar fields only. Policy downgrade or malformed source fails
+the session rather than dropping image metadata.
+
+Accepted reads transfer owned checked compact top-down straight-alpha sRGB
+RGBA8 with only width/height/pixels. Unknown backend metadata is never copied.
+Malformed, over-quota, stale, detached and late results wipe their owned pixels.
+Caller write buffers remain caller-owned; the backend must copy synchronously.
+Consumers wipe accepted read pixels after use. Native image quota validation
+includes the complete DIBV5 overhead before dispatch. No host clipboard API or
+image library is called by these owners.
+
+Image-only retirement retains the existing 15-second budget covering the
+seven-second private operation and revoke; selecting HTML retains 20 seconds
+for its paired read. Host overrides and session shutdown retain their existing
+limits. Replacement controllers cannot acquire until drain and actual no-format
+revoke completion. Uncertain retirement fails closed, and late pixels cannot
+revive authority.
+
+Focused ownership/native-adapter checks pass **34/34**, including existing HTML
+ownership, the synthetic private Node process and actual native image selection
+against a strict-TLS refusal peer. Public transport checks are in
+[the image control contract](CLIPBOARD_CONTROL.md#image-control-extension-in-development).
+Full linked `pnpm check` passes Windows **1178 passed / 71 skipped** and Linux
+UID1000/CapEff=0 **1149 passed / 108 skipped**, zero failures. Native sources
+are unchanged from the accepted private handoff (Windows CTest 40/40,
+GCC 8.3/Clang 41/41; GCC 11 foundation 24/24 plus three SDK modules).
+These are source/ownership/lifecycle checks, not physical OS clipboard or
+actual RDP image application acceptance. The local receipt is
+`build/current-validation/image-public-acceptance.json`.

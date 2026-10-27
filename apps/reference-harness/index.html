@@ -59,7 +59,8 @@
         margin: 12px 0;
       }
       #clipboard-text,
-      #clipboard-html {
+      #clipboard-html,
+      #clipboard-image {
         max-width: 920px;
         padding: 16px;
         border: 1px solid #374151;
@@ -82,15 +83,25 @@
         border-radius: 4px;
       }
       #clipboard-text button,
-      #clipboard-html button {
+      #clipboard-html button,
+      #clipboard-image button {
         margin-bottom: 8px;
       }
       #clipboard-text [role='status'],
-      #clipboard-html [role='status'] {
+      #clipboard-html [role='status'],
+      #clipboard-image [role='status'] {
         display: block;
       }
-      #clipboard-html [hidden] {
+      #clipboard-html [hidden],
+      #clipboard-image [hidden] {
         display: none;
+      }
+      #clipboard-image canvas {
+        display: block;
+        max-width: 100%;
+        margin: 8px 0;
+        border: 1px solid #6b7280;
+        background: #fff;
       }
       #certificate:not([hidden]) {
         padding: 16px;
@@ -219,7 +230,7 @@
               </select>
             </label>
             <label
-              >Лимит одного текста, байт
+              >Лимит одного элемента, байт
               <input
                 name="clipboardMax"
                 type="number"
@@ -234,11 +245,16 @@
               ><input type="checkbox" name="clipboardHtml" disabled /> HTML с
               форматированием</label
             >
+            <label
+              ><input type="checkbox" name="clipboardImages" disabled />
+              Изображения</label
+            >
           </div>
           <p>
-            Явные операции с текстом Unicode. HTML включается отдельно и требует
-            поддержки удалённого приложения и браузера. Лимит общий для HTML и
-            текстовой версии.
+            Текст Unicode, HTML и изображения передаются явными действиями. HTML
+            и изображения включаются отдельно и требуют поддержки удалённого
+            приложения и браузера. Лимит учитывает представление элемента в
+            удалённом буфере обмена.
           </p>
         </details>
         <details>
@@ -456,6 +472,54 @@
         удалённого рабочего стола.
       </p>
     </form>
+    <section id="clipboard-image" aria-label="Буфер изображений" hidden>
+      <p>
+        Изображения. Вставка, отправка, получение и копирование выполняются
+        отдельными кнопками.
+      </p>
+      <p>
+        Черновик: <span data-image-clipboard-draft-info>Изображения нет</span>
+      </p>
+      <canvas
+        data-image-clipboard-draft
+        width="0"
+        height="0"
+        aria-label="Предпросмотр изображения для RDP"
+        hidden
+      ></canvas>
+      <button data-image-clipboard="paste" disabled>
+        Вставить изображение из локального буфера
+      </button>
+      <button data-image-clipboard="send" disabled>
+        Предложить изображение в RDP
+      </button>
+      <button data-image-clipboard="read" disabled>
+        Получить изображение из RDP
+      </button>
+      <p>
+        Получено:
+        <span data-image-clipboard-received-info>Изображения нет</span>
+      </p>
+      <canvas
+        data-image-clipboard-received
+        width="0"
+        height="0"
+        aria-label="Предпросмотр изображения из RDP"
+        hidden
+      ></canvas>
+      <button data-image-clipboard="copy" disabled>
+        Скопировать полученное изображение
+      </button>
+      <button data-image-clipboard="clear" disabled>
+        Очистить локальные изображения
+      </button>
+      <span role="status">Буфер изображений выключен</span>
+      <p>
+        Скопируйте изображение в своём приложении и нажмите «Вставить
+        изображение». После отправки в RDP используйте команду «Вставить» в
+        удалённом приложении. Копирование файлов здесь не поддерживается.
+      </p>
+    </section>
     <section id="clipboard-html" aria-label="HTML-буфер обмена" hidden>
       <p>
         HTML с форматированием. Получение, отправка и копирование выполняются

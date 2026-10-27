@@ -4,8 +4,15 @@ import {
   ClipboardOwnership,
   type ClipboardGrant,
 } from './clipboard-ownership.js';
-import type { ClipboardReadResult, ClipboardHtmlReadResult } from './index.js';
-import { wipeClipboardHtml } from './clipboard-ownership.js';
+import type {
+  ClipboardReadResult,
+  ClipboardHtmlReadResult,
+  ClipboardImageReadResult,
+} from './index.js';
+import {
+  wipeClipboardHtml,
+  wipeClipboardImage,
+} from './clipboard-ownership.js';
 import type {
   MicrophoneIngress,
   MicrophoneAdmission,
@@ -55,6 +62,7 @@ import type {
   ClipboardState,
   ClipboardStatus,
   ClipboardHtmlItem,
+  ClipboardImageItem,
 } from '@freerdp-bridge/protocol';
 
 const failures = {
@@ -260,6 +268,8 @@ export interface SessionWorker {
   writeClipboardText?(text: Buffer): Promise<ClipboardStatus>;
   readClipboardHtml?(revision: bigint): Promise<ClipboardHtmlReadResult>;
   writeClipboardHtml?(item: ClipboardHtmlItem): Promise<ClipboardStatus>;
+  readClipboardImage?(revision: bigint): Promise<ClipboardImageReadResult>;
+  writeClipboardImage?(item: ClipboardImageItem): Promise<ClipboardStatus>;
   revokeClipboardText?(): Promise<ClipboardStatus>;
   sendMicrophone?(packet: MicrophonePcmPacket): Promise<MicrophoneResult>;
   sendMicrophoneOpus?(packet: MicrophoneOpusPacket): Promise<MicrophoneResult>;
@@ -293,6 +303,7 @@ export interface SessionManagerOptions {
 export interface SessionWorkerLimits {
   readonly clipboardItemBytes?: number;
   readonly clipboardHtml?: true;
+  readonly clipboardImage?: true;
 }
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
@@ -301,6 +312,7 @@ type Entry = {
     fromServer: boolean;
     maximum: number;
     html?: true;
+    image?: true;
   };
   clipboard?: ClipboardState;
   clipboardOwnership?: ClipboardOwnership;
@@ -540,6 +552,9 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                 ...(config.clipboard.html
                   ? { clipboardHtml: true as const }
                   : {}),
+                ...(config.clipboard.images
+                  ? { clipboardImage: true as const }
+                  : {}),
               }
             : {}),
         }),
@@ -559,6 +574,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                 fromServer: config.clipboard.mode !== 'browser-to-server',
                 maximum: config.clipboard.maxItemBytes ?? 1048576,
                 ...(config.clipboard.html ? { html: true as const } : {}),
+                ...(config.clipboard.images ? { image: true as const } : {}),
               },
             }
           : {}),
@@ -759,7 +775,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
             selected.text === false ||
             (selected.html &&
               (!worker.readClipboardHtml || !worker.writeClipboardHtml)) ||
-            selected.images ||
+            (selected.images &&
+              (!worker.readClipboardImage || !worker.writeClipboardImage)) ||
             selected.files ||
             !worker.onClipboard ||
             !worker.readClipboardText ||
@@ -780,6 +797,14 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                 }
               : {}),
             revoke: () => worker.revokeClipboardText!(),
+            ...(selected.images
+              ? {
+                  readImage: (revision: bigint) =>
+                    worker.readClipboardImage!(revision),
+                  writeImage: (item: ClipboardImageItem) =>
+                    worker.writeClipboardImage!(item),
+                }
+              : {}),
             terminate: () => {
               if (
                 !entry.released &&
@@ -812,6 +837,9 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                   html,
                   remoteHtml,
                   localHtmlAccepted,
+                  image,
+                  remoteImage,
+                  localImageAccepted,
                 } = value;
                 const state = {
                   generation,
@@ -831,6 +859,13 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                         localHtmlAccepted: localHtmlAccepted!,
                       }
                     : {}),
+                  ...(image
+                    ? {
+                        image: true as const,
+                        remoteImage: remoteImage!,
+                        localImageAccepted: localImageAccepted!,
+                      }
+                    : {}),
                 };
                 const old = entry.clipboard,
                   policy = entry.clipboardPolicy!;
@@ -842,6 +877,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
                   state.toServer !== policy.toServer ||
                   state.fromServer !== policy.fromServer ||
                   state.html !== policy.html ||
+                  state.image !== policy.image ||
                   (old &&
                     (state.generation !== old.generation ||
                       state.revision < old.revision ||
@@ -1272,6 +1308,8 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     writeClipboardText: (text: Buffer) => Promise<ClipboardStatus>;
     readClipboardHtml: (revision: bigint) => Promise<ClipboardHtmlReadResult>;
     writeClipboardHtml: (item: ClipboardHtmlItem) => Promise<ClipboardStatus>;
+    readClipboardImage: (revision: bigint) => Promise<ClipboardImageReadResult>;
+    writeClipboardImage: (item: ClipboardImageItem) => Promise<ClipboardStatus>;
     sendMicrophone: (bytes: Buffer) => Promise<MicrophoneAdmission>;
     resizeDisplay: (
       request: DisplayResizeRequest,
@@ -1450,6 +1488,35 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
         const grant = entry.clipboardGrant;
         if (clipboardFailed || grant?.control !== lease) return 'unavailable';
         const result = await grant.grant.writeHtml(item);
+        return entry.attachments.get('control') === lease &&
+          entry.clipboardGrant === grant &&
+          entry.snapshot.state === 'connected' &&
+          !entry.released
+          ? result
+          : 'disconnected';
+      },
+      readClipboardImage: async (revision) => {
+        requireClipboardLease();
+        const grant = entry.clipboardGrant;
+        if (clipboardFailed || grant?.control !== lease)
+          return { status: 'unavailable' };
+        const result = await grant.grant.readImage(revision);
+        if (
+          entry.attachments.get('control') !== lease ||
+          entry.clipboardGrant !== grant ||
+          entry.snapshot.state !== 'connected' ||
+          entry.released
+        ) {
+          wipeClipboardImage(result.item);
+          return { status: 'disconnected' };
+        }
+        return result;
+      },
+      writeClipboardImage: async (item) => {
+        requireClipboardLease();
+        const grant = entry.clipboardGrant;
+        if (clipboardFailed || grant?.control !== lease) return 'unavailable';
+        const result = await grant.grant.writeImage(item);
         return entry.attachments.get('control') === lease &&
           entry.clipboardGrant === grant &&
           entry.snapshot.state === 'connected' &&

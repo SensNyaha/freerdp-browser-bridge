@@ -3,12 +3,19 @@ import {
   validateClipboardText,
   validateClipboardHtmlItem,
   validateClipboardHtmlWrite,
+  validateClipboardImageItem,
+  validateClipboardImageWrite,
   clipboardStatuses,
   type ClipboardState,
   type ClipboardStatus,
   type ClipboardHtmlItem,
+  type ClipboardImageItem,
 } from '@freerdp-bridge/protocol';
-import type { ClipboardReadResult, ClipboardHtmlReadResult } from './index.js';
+import type {
+  ClipboardReadResult,
+  ClipboardHtmlReadResult,
+  ClipboardImageReadResult,
+} from './index.js';
 
 export interface ClipboardOwnershipBackend {
   source(): ClipboardState | undefined;
@@ -18,6 +25,8 @@ export interface ClipboardOwnershipBackend {
   write(text: Buffer): Promise<ClipboardStatus>;
   readHtml?(revision: bigint): Promise<ClipboardHtmlReadResult>;
   writeHtml?(item: ClipboardHtmlItem): Promise<ClipboardStatus>;
+  readImage?(revision: bigint): Promise<ClipboardImageReadResult>;
+  writeImage?(item: ClipboardImageItem): Promise<ClipboardStatus>;
   revoke(): Promise<ClipboardStatus>;
   /** Host joins process retirement. Every backend operation has a finite deadline. */
   terminate(): void | Promise<void>;
@@ -27,6 +36,8 @@ export interface ClipboardGrant {
   write(text: Buffer): Promise<ClipboardStatus>;
   readHtml(revision: bigint): Promise<ClipboardHtmlReadResult>;
   writeHtml(item: ClipboardHtmlItem): Promise<ClipboardStatus>;
+  readImage(revision: bigint): Promise<ClipboardImageReadResult>;
+  writeImage(item: ClipboardImageItem): Promise<ClipboardStatus>;
 }
 type Owner = {
   grant: ClipboardGrant;
@@ -40,7 +51,16 @@ const negative = (status: ClipboardStatus): ClipboardReadResult => ({
   status,
   text: Buffer.alloc(0),
 });
-type ItemResult = ClipboardReadResult & { item?: ClipboardHtmlItem };
+type ItemResult = ClipboardReadResult & {
+  item?: ClipboardHtmlItem | ClipboardImageItem;
+};
+export function wipeClipboardImage(item: ClipboardImageItem | undefined): void {
+  try {
+    if (Buffer.isBuffer(item?.rgba)) item.rgba.fill(0);
+  } catch {
+    /* Backend fault. */
+  }
+}
 /** Clears owned content only; never metadata or diagnostics. Also used for late results. */
 export function wipeClipboardHtml(item: ClipboardHtmlItem | undefined): void {
   try {
@@ -121,14 +141,33 @@ export class ClipboardOwnership {
         write: async (text: Buffer) =>
           (await this.transfer(owner, 0n, text)).status,
         readHtml: async (revision: bigint) => {
-          const result = await this.transfer(owner, revision, undefined, true);
+          const result = await this.transfer(
+            owner,
+            revision,
+            undefined,
+            'html',
+          );
           return {
             status: result.status,
-            ...(result.item ? { item: result.item } : {}),
+            ...(result.item ? { item: result.item as ClipboardHtmlItem } : {}),
           };
         },
         writeHtml: async (item: ClipboardHtmlItem) =>
-          (await this.transfer(owner, 0n, item, true)).status,
+          (await this.transfer(owner, 0n, item, 'html')).status,
+        readImage: async (revision: bigint) => {
+          const result = await this.transfer(
+            owner,
+            revision,
+            undefined,
+            'image',
+          );
+          return {
+            status: result.status,
+            ...(result.item ? { item: result.item as ClipboardImageItem } : {}),
+          };
+        },
+        writeImage: async (item: ClipboardImageItem) =>
+          (await this.transfer(owner, 0n, item, 'image')).status,
       }),
     };
     this.owner = owner;
@@ -210,9 +249,18 @@ export class ClipboardOwnership {
               localHtmlAccepted: value.localHtmlAccepted!,
             }
           : {}),
+        ...(value.image
+          ? {
+              image: true as const,
+              remoteImage: value.remoteImage!,
+              localImageAccepted: value.localImageAccepted!,
+            }
+          : {}),
       };
       validateClipboardState(state);
       if (state.html && (!this.backend.readHtml || !this.backend.writeHtml))
+        throw new Error();
+      if (state.image && (!this.backend.readImage || !this.backend.writeImage))
         throw new Error();
       if (owner) {
         const old = owner.source;
@@ -222,6 +270,7 @@ export class ClipboardOwnership {
           state.toServer !== old.toServer ||
           state.fromServer !== old.fromServer ||
           state.html !== old.html ||
+          state.image !== old.image ||
           state.revision < old.revision ||
           !state.ready
         )
@@ -253,19 +302,27 @@ export class ClipboardOwnership {
   private async transfer(
     owner: Owner,
     revision: bigint,
-    input?: Buffer | ClipboardHtmlItem,
-    html = false,
+    input?: Buffer | ClipboardHtmlItem | ClipboardImageItem,
+    format: 'text' | 'html' | 'image' = 'text',
   ): Promise<ItemResult> {
     if (!this.live(owner)) return negative('unavailable');
     if (owner.flight) return negative('busy');
     const source = this.snapshot(owner);
     if (!source?.ready || !this.live(owner)) return negative('unavailable');
-    if (html && !source.html) return negative('unavailable');
+    const html = format === 'html',
+      image = format === 'image';
+    if ((html && !source.html) || (image && !source.image))
+      return negative('unavailable');
     const writing = input !== undefined;
     if (writing) {
       if (!source.toServer || source.localPending) return negative('refused');
       try {
-        if (html)
+        if (image)
+          validateClipboardImageWrite(
+            input as ClipboardImageItem,
+            source.maximum,
+          );
+        else if (html)
           validateClipboardHtmlWrite(
             input as ClipboardHtmlItem,
             source.maximum,
@@ -284,7 +341,11 @@ export class ClipboardOwnership {
       if (revision !== source.revision) return negative('stale');
       if (
         !source.fromServer ||
-        (html ? !source.remoteHtml : !source.remoteText) ||
+        (image
+          ? !source.remoteImage
+          : html
+            ? !source.remoteHtml
+            : !source.remoteText) ||
         source.remotePending
       )
         return negative('refused');
@@ -296,15 +357,33 @@ export class ClipboardOwnership {
     owner.flight = flight;
     let result: ItemResult | undefined;
     let returnedHtml: ClipboardHtmlItem | undefined;
+    let returnedImage: ClipboardImageItem | undefined;
     let transferred = false;
     try {
       if (writing) {
         owner.dirty = true; // Includes uncertain or refused writes; no optimistic transfer.
         result = negative(
-          await (html
-            ? this.backend.writeHtml!(input as ClipboardHtmlItem)
-            : this.backend.write(input as Buffer)),
+          await (image
+            ? this.backend.writeImage!(input as ClipboardImageItem)
+            : html
+              ? this.backend.writeHtml!(input as ClipboardHtmlItem)
+              : this.backend.write(input as Buffer)),
         );
+      } else if (image) {
+        const reply = await this.backend.readImage!(revision);
+        returnedImage = reply.item;
+        result = {
+          ...negative(reply.status),
+          ...(returnedImage !== undefined
+            ? {
+                item: {
+                  width: returnedImage.width,
+                  height: returnedImage.height,
+                  rgba: returnedImage.rgba,
+                },
+              }
+            : {}),
+        };
       } else if (html) {
         const reply = await this.backend.readHtml!(revision);
         returnedHtml = reply.item;
@@ -327,7 +406,16 @@ export class ClipboardOwnership {
       )
         throw new Error();
       if (!writing && result.status === 'accepted') {
-        if (html) validateClipboardHtmlItem(result.item!, source.maximum);
+        if (image)
+          validateClipboardImageItem(
+            result.item as ClipboardImageItem,
+            source.maximum,
+          );
+        else if (html)
+          validateClipboardHtmlItem(
+            result.item as ClipboardHtmlItem,
+            source.maximum,
+          );
         else validateClipboardText(result.text, source.maximum);
       }
       if (!this.live(owner)) return negative('disconnected');
@@ -338,9 +426,12 @@ export class ClipboardOwnership {
         result.status === 'accepted' &&
         (!current.localAccepted ||
           current.localPending ||
-          (html
-            ? !current.localHtmlAccepted
-            : current.localHtmlAccepted === true))
+          (image
+            ? !current.localImageAccepted
+            : html
+              ? !current.localHtmlAccepted
+              : current.localHtmlAccepted === true) ||
+          (!image && current.localImageAccepted === true))
       )
         throw new Error();
       if (!writing && current.revision !== revision) return negative('stale');
@@ -352,6 +443,7 @@ export class ClipboardOwnership {
     } finally {
       if (!transferred && Buffer.isBuffer(result?.text)) result.text.fill(0);
       if (!transferred) wipeClipboardHtml(returnedHtml);
+      if (!transferred) wipeClipboardImage(returnedImage);
       if (owner.flight === flight) delete owner.flight;
       drained();
     }

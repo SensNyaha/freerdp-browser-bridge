@@ -2,6 +2,40 @@
 
 Product release versions follow [the version policy](docs/VERSIONING.md).
 
+## Unreleased
+
+- Add explicit image ClipboardItem paste/send/get/copy/clear actions, bounded
+  previews and independent image selection in the reference connection form.
+  PNG conversion uses one disposable browser worker with cancellation/deadline;
+  a named actual Windows/Edge opaque PNG OS profile passes. Actual RDP image
+  application and release acceptance remain open.
+  [Actions contract](docs/CLIPBOARD_BROWSER.md#explicit-image-actions-in-development).
+- Add the independent browser RGBA codec and negotiated image byte client, sharing
+  text/HTML transfer authority, bounded credit and cleanup. Explicit ClipboardItem
+  actions and actual OS/RDP image application acceptance remain open.
+  [Browser contract](docs/CLIPBOARD_BROWSER.md#image-byte-client-in-development).
+
+- Start the Stage 7 image clipboard feature with allocation-free packed DIB /
+  DIBV5 inspection and RGBA8 conversion. This component does not enable a new
+  clipboard capability or constitute browser/RDP image acceptance.
+  [Development contract](docs/CLIPBOARD_TEXT.md#image-codec-in-development).
+- Add independent bounded C++/TypeScript codecs for the image RGBA8 inner item,
+  with a fixed 16-byte header, exact geometry checks and native DIBV5 write
+  admission. Outer commands, negotiation and live image dispatch remain pending.
+  [Inner wire contract](docs/CLIPBOARD_IPC.md#image-inner-item-in-development).
+- Add opt-in image handling to the shared native CLIPRDR callback owner: one
+  remote text/HTML/image flight, canonical DIBV5 local replacement and the
+  existing revoke barrier. Worker/public/browser selection remains pending.
+  [Native owner contract](docs/CLIPBOARD_TEXT.md#shared-native-image-owner-in-development).
+- Connect the shared native image owner to versioned private worker/Node
+  negotiation, bounded binary commands and typed image read/write methods.
+  Public managed image selection and browser/application acceptance remain open.
+  [Private handoff contract](docs/CLIPBOARD_IPC.md#private-image-handoff-in-development).
+- Add shared public image controller authority, exact adapter reservations and
+  bounded RWC1 image transfer on the existing control WebSocket. Browser image
+  actions and actual OS/RDP application acceptance remain open.
+  [Public contract](docs/CLIPBOARD_CONTROL.md#image-control-extension-in-development).
+
 ## 0.4.0 — 2026-10-26
 
 HTML implementation and versioned distribution acceptance pass. All ten exact

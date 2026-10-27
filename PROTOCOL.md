@@ -27,6 +27,22 @@ RWC1 version-1 byte chunks fit the existing 4 KiB message bound.
 
 ## 1. API versioning
 
+Image clipboard development adds an independently checked
+[RGBA inner item](docs/CLIPBOARD_IPC.md#image-inner-item-in-development).
+Private image handoff now adds HELLO bit 512, CONFIGURE schema 14 and outer
+clipboard schema 4, with unchanged text/HTML layouts and reservation limits.
+[Negotiation and ownership](docs/CLIPBOARD_IPC.md#private-image-handoff-in-development).
+Public managed selection and the
+[RWC1 image control extension](docs/CLIPBOARD_CONTROL.md#image-control-extension-in-development)
+are now implemented in source with focused and full Windows/Linux checks.
+The [browser byte client](docs/CLIPBOARD_BROWSER.md#image-byte-client-in-development)
+now implements the same opt-in descriptor and shared transfer owner with focused
+composition/Edge and full Windows/Linux checks. Explicit image ClipboardItem
+actions now pass focused and full Windows/Linux checks plus a named actual
+Windows/Edge opaque PNG OS profile. Actual RDP image application and broader
+platform/feature acceptance remain open. Accepting inner bytes alone
+grants no authority.
+
 All public endpoints use `/v1`. Protocol version is independent of application semantic version. Breaking changes require `/v2` or an explicit negotiated protocol version.
 
 ## 2. REST API

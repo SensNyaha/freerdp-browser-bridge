@@ -1,0 +1,420 @@
+{
+  "schema": 1,
+  "branch": "feature/image-clipboard",
+  "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
+  "privateSourceCommit": "ef70a0baf2d98bc216645c59c475803ce2c7c8b0",
+  "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
+  "releaseAccepted": false,
+  "actualImageRdpAccepted": false,
+  "existingPublishedVersion": "0.4.0",
+  "sources": {
+    ".github/workflows/ci.yml": {
+      "bytes": 4885,
+      "sha256": "baf8ead8ef7214f1ecdababa35fd223c4d961b6b5a45c1be573ef222cb587dd4"
+    },
+    "CHANGELOG.md": {
+      "bytes": 18622,
+      "sha256": "91e1cfda6630882503b709f13604df2ed74dd656716beaf68ecbe3753945dffa"
+    },
+    "CMakeLists.txt": {
+      "bytes": 49670,
+      "sha256": "b808ddbc3d60bc8d038a21e1fb9807b110fd72a649f2f7a24a4121eca8d5450b"
+    },
+    "PROTOCOL.md": {
+      "bytes": 32476,
+      "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
+    },
+    "TODO.md": {
+      "bytes": 234689,
+      "sha256": "8304347d2a1eb07eb97ba2cd5fd8d477fd9df5f8a86546071ee31c80800ab54a"
+    },
+    "apps/bridge-api/src/clipboard.ts": {
+      "bytes": 6634,
+      "sha256": "28b94cd1309460765286b5e99d58277e0b4b9d14b801356441c2c87dfc95efa7"
+    },
+    "apps/bridge-api/src/websockets.ts": {
+      "bytes": 19273,
+      "sha256": "fa85ff047a470f750e5219a473b363cca3ba3b76d5309647aaa8a3cb74a39d27"
+    },
+    "apps/reference-harness/clipboard-client.js": {
+      "bytes": 18030,
+      "sha256": "b91420c0fe360821acb836f17aa4dc99ca424d63871a5ed2dfc755fa8e9adf2c"
+    },
+    "apps/reference-harness/clipboard-image-conversion.js": {
+      "bytes": 4169,
+      "sha256": "b6eef4f4e8ef4f29361c9e3c04309c5141f11b1b2d5726becc31412cbdbd7000"
+    },
+    "apps/reference-harness/clipboard-image-view.js": {
+      "bytes": 13747,
+      "sha256": "4a8a33044fbec6cf82b2b28781e8c24a0b5bc63886a3e862940b31a8da352a23"
+    },
+    "apps/reference-harness/clipboard-image-worker.js": {
+      "bytes": 3625,
+      "sha256": "efac96b02e68e50d216231121dbae9fc4481f64bc2bbd6f7f68cabe77f3b67b9"
+    },
+    "apps/reference-harness/clipboard-image.js": {
+      "bytes": 3692,
+      "sha256": "a751935add7e5ca2391a109fa0d41454216dd3fcb77c49a59cc6c7ec28e482e7"
+    },
+    "apps/reference-harness/connection-config.js": {
+      "bytes": 5248,
+      "sha256": "8125f663e5fac0a7893b996fb9ccd9d2ee15c238b820a3380bdf152583efc2b8"
+    },
+    "apps/reference-harness/index.html": {
+      "bytes": 24648,
+      "sha256": "d99da51dffb78634b21ba15916c8fd7a1e91754ab023cf2863bece99bb1db319"
+    },
+    "apps/reference-harness/session-form.js": {
+      "bytes": 8693,
+      "sha256": "c3f573536cd474fc69dad7d972a3b4f8d0210110ee5475b6949a05882d2c006c"
+    },
+    "apps/reference-harness/viewer.js": {
+      "bytes": 39814,
+      "sha256": "a7d650226992e44b9aa08b4a4283120bcb2d7408239a2ef535d2c2c32e229d24"
+    },
+    "docs/CLIPBOARD_BROWSER.md": {
+      "bytes": 76595,
+      "sha256": "9fddf4be086dfccdb7847b4a3c4ceebbf873d54aead76871eb0a50956cf9883b"
+    },
+    "docs/CLIPBOARD_CONTROL.md": {
+      "bytes": 12464,
+      "sha256": "84507fc79d0e6e1b6f0e2d4641e3020e2ad7718aefeecad330536adfa167c67d"
+    },
+    "docs/CLIPBOARD_IPC.md": {
+      "bytes": 33488,
+      "sha256": "5d5d8142aff59c79fe3bdc6e9c1b723b05b69fe212b7454654cefd7a4558cdff"
+    },
+    "docs/CLIPBOARD_SESSION.md": {
+      "bytes": 9965,
+      "sha256": "0095593b40fc1734fe63e406c7a2165bea04f22fd2f987a2f1811796e096be03"
+    },
+    "docs/CLIPBOARD_TEXT.md": {
+      "bytes": 14885,
+      "sha256": "cd60d57c6c21ebd668436d122297cf87156db3a1e4d8a9e6295087fe9864b2e7"
+    },
+    "native/audio/audin_provider_tests.cpp": {
+      "bytes": 93845,
+      "sha256": "e708f554cd3e8eeec72a715788cbd879f01ff4495a1edd939ca9bb36e5add43b"
+    },
+    "native/clipboard/image.cpp": {
+      "bytes": 7246,
+      "sha256": "46bd98cf3bb138585c139b5bd56bf360491245401d5183f104d5f792293194c1"
+    },
+    "native/clipboard/image.hpp": {
+      "bytes": 1996,
+      "sha256": "9780958019be8a3d3ff8a42e8a46dfdd3c1f82b9df6c3a9a821dd9aebecd0f2f"
+    },
+    "native/clipboard/image_fuzz.cpp": {
+      "bytes": 2853,
+      "sha256": "4207c76bb69ebab65fca2a1dceb2726a392f260df189c4c19133758e79a162c0"
+    },
+    "native/clipboard/image_session_tests.cpp": {
+      "bytes": 13421,
+      "sha256": "7d41e2194f2522a97b29577403b484e7d88a3a460d50dab4014a7426b09b3b3a"
+    },
+    "native/clipboard/image_tests.cpp": {
+      "bytes": 10898,
+      "sha256": "087c7f4f6f5f66770fb12e19dd480cc0103e5e26b6aa4f70e073ddad22dd7345"
+    },
+    "native/clipboard/image_worker_tests.cpp": {
+      "bytes": 8697,
+      "sha256": "7651f8cc9b0027e0675b218a09e47d4fb17672c9f3cbae3080a1f08a1a3a9c16"
+    },
+    "native/clipboard/text_session.cpp": {
+      "bytes": 24531,
+      "sha256": "483d174424ab3ace32086e10a62af23e5ea5d522df7575faeabcbd13f4963ac4"
+    },
+    "native/clipboard/text_session.hpp": {
+      "bytes": 5686,
+      "sha256": "8bb112a5a84aa375a846773b900cd688c52e255e4ff0d9e0f19598e3ae8bc993"
+    },
+    "native/clipboard/worker_session.cpp": {
+      "bytes": 16859,
+      "sha256": "28e8df1981e66ce2e032296bee4786e28f2623f8f8e8b42578dcd6848c24f605"
+    },
+    "native/clipboard/worker_session.hpp": {
+      "bytes": 2927,
+      "sha256": "a413b98c6d63585cfbb68b2928329771ce6e470f56bfd24ead0d35bfea1dbe79"
+    },
+    "native/ipc/clipboard.cpp": {
+      "bytes": 6793,
+      "sha256": "2de808634207377ef972d36ce12f740463313c3fc2fba25c658ffe3690bd6e0b"
+    },
+    "native/ipc/clipboard.hpp": {
+      "bytes": 2249,
+      "sha256": "4ed6a3572cbe29ddb57ea4ce1b6ddc7088f5ae4651668e57347b0b071a682a5e"
+    },
+    "native/ipc/clipboard_fuzz.cpp": {
+      "bytes": 1114,
+      "sha256": "bf3ba3c818901dd76c12ce5727e027235e8d0816a5a160ad2ad8f57076fd2362"
+    },
+    "native/ipc/clipboard_image.cpp": {
+      "bytes": 2656,
+      "sha256": "ff063153e5eb48b62c01379c3398e8e830c4d4195ca6ef5675d74e6c24a2b472"
+    },
+    "native/ipc/clipboard_image.hpp": {
+      "bytes": 1200,
+      "sha256": "edb9d831e5dd14ba03f85fea5f9076df99b7f63fbd29c03b50f656a041b7c4a7"
+    },
+    "native/ipc/clipboard_image_tests.cpp": {
+      "bytes": 8744,
+      "sha256": "2b0cecc4f44799a02c4c2ddda36ab734788d2f1c6b2d6e855212c2d49bf4c8fa"
+    },
+    "native/ipc/connection_config.cpp": {
+      "bytes": 6847,
+      "sha256": "aceccbd68e80479a9f7214d04e24e2392cd6061bd771ea38fd665ed92dd715d9"
+    },
+    "native/ipc/connection_config.hpp": {
+      "bytes": 1455,
+      "sha256": "e41c05295a39d0bed4e27eb10a140c61313856017deaa0d44e1c867b83885321"
+    },
+    "native/ipc/tests.cpp": {
+      "bytes": 28373,
+      "sha256": "65c3f1a901d4f0fd03de82aace1c5625f3e1833b75a9eec858f983630a3325e1"
+    },
+    "native/rdp-worker/connection.cpp": {
+      "bytes": 70141,
+      "sha256": "2ed526118ddb924b81264670ec5100f1ad26ef5b3d71c806727424273d644046"
+    },
+    "native/rdp-worker/main.cpp": {
+      "bytes": 19709,
+      "sha256": "0b6590f4b2e9d25f39dd24e513ec831b20f22e3f7caa555d19f99a8a32e6749e"
+    },
+    "packages/node-bridge/src/clipboard-ownership.ts": {
+      "bytes": 15735,
+      "sha256": "6e52046cf6aafa43c0c98d92db196dd576896fa639d710cc70a26c8483829be8"
+    },
+    "packages/node-bridge/src/clipboard-transfer.ts": {
+      "bytes": 17806,
+      "sha256": "0398c365263559323ac4760e85577fe76236b9c32ecb9ee3b9a0ff152f61bda5"
+    },
+    "packages/node-bridge/src/index.ts": {
+      "bytes": 78146,
+      "sha256": "b9215045df7431d724c70b2ea2943fdc0d4f58b0288a908b1a3d564e5c398fbb"
+    },
+    "packages/node-bridge/src/native-session.ts": {
+      "bytes": 19793,
+      "sha256": "35f200741bd29ddead76f2f3619c8316d4efbfe7effd0b7462b769b3810a8246"
+    },
+    "packages/node-bridge/src/session-manager.ts": {
+      "bytes": 76849,
+      "sha256": "dcd71c82ffb88d45f7a8e609fdf9739af7717507ba07172528cf676f860b4703"
+    },
+    "packages/protocol/src/clipboard-image.ts": {
+      "bytes": 3070,
+      "sha256": "e4cd5976b92063a6501abd1196b7d8eda663e3ef941b477c951c6b097f1a7032"
+    },
+    "packages/protocol/src/clipboard.ts": {
+      "bytes": 9829,
+      "sha256": "a571875235da77903ccff30480fdc605a95e53e7d6a420537865080796302667"
+    },
+    "packages/protocol/src/index.ts": {
+      "bytes": 25959,
+      "sha256": "060203bd6820cf8a519f93f303f08bc0fb281ddd071a218deae5658027535e35"
+    },
+    "scripts/image-rdp-lab-fixture.mjs": {
+      "bytes": 2701,
+      "sha256": "83a0cdc134186f3d9dcbe735df69c1fc38d3e49d74299a9cff8c5cff0c5d43d4"
+    },
+    "scripts/image-rdp-lab-profile.mjs": {
+      "bytes": 891,
+      "sha256": "8eb3ebb097e06feff9913e69f101c4cb2f8c6aff71c4faabc45122cd8522181e"
+    },
+    "scripts/linux-image-lab-profile.mjs": {
+      "bytes": 3093,
+      "sha256": "ee3fd92b439d3d939221c1448b70bf169f1d77f9b1febed23a929e8de26acc58"
+    },
+    "scripts/linux-viewer-bootstrap.mjs": {
+      "bytes": 1857,
+      "sha256": "48ae475f73a6ef97c7561a484e6af9afe650761054fbca18c1a6109de6308b69"
+    },
+    "scripts/linux-xrdp-viewer-server.mjs": {
+      "bytes": 9990,
+      "sha256": "5cefc580ea191d7af42ea306ff38cad721252b8878cafcaf2b8eee9e7a04084b"
+    },
+    "scripts/seed-clipboard-image-fuzz.mjs": {
+      "bytes": 1676,
+      "sha256": "9bb485e005ac6f295d28c6b5bc308a184101bc4a1d54050411aa63c06af718d2"
+    },
+    "scripts/seed-clipboard-wire-fuzz.mjs": {
+      "bytes": 2971,
+      "sha256": "0218bf7b807cb03f823207af426f435c65320eab6d2d4aaf3b4056ee8e99a6a3"
+    },
+    "scripts/seed-fuzz.mjs": {
+      "bytes": 8007,
+      "sha256": "f30f8c844472612037f841fbe8a01b544a85ac9cc8fffef416b926332fd07b57"
+    },
+    "scripts/start-reference-harness.mjs": {
+      "bytes": 4064,
+      "sha256": "0f9da32a357ab6332cd0749a4e1b73d3aaace49f6d2fb529f939357fb767c3a9"
+    },
+    "scripts/test-html-rdp-clipboard.mjs": {
+      "bytes": 17670,
+      "sha256": "5cebf87c098944cf000685f6b6a063e0a43e04ede8e8aafa7e79ceb6023243b0"
+    },
+    "scripts/test-image-os-clipboard.mjs": {
+      "bytes": 7720,
+      "sha256": "9a9250a03a78074acc28e5d4bb4e53ff5de926e4d7cbf76098990aeeba6647f4"
+    },
+    "scripts/test-image-rdp-clipboard.mjs": {
+      "bytes": 17348,
+      "sha256": "48559f454a4c0204179be25ddc68d90f0c3bd2413c2fb8f3b49b0ea6ffe45cb3"
+    },
+    "scripts/test-linux-image-rdp.mjs": {
+      "bytes": 18618,
+      "sha256": "3e6e8538fcc9210cade6e2cd803791d37e9e26d2a2ee173dcfe75fff2a473e79"
+    },
+    "scripts/test-linux-viewer-bootstrap.mjs": {
+      "bytes": 6301,
+      "sha256": "697f91f5b99d091f9d7d7807c1deb977435a97f204108a01e1e2f435940e505f"
+    },
+    "scripts/test-rdp-performance-form-lab.mjs": {
+      "bytes": 9781,
+      "sha256": "36a478fa9f7bf4b40a2acd23f5e874814d6a980d5a5f6addfa1c62ebf684fcf2"
+    },
+    "scripts/test-xrdp-viewer.mjs": {
+      "bytes": 43305,
+      "sha256": "c974679e342c435c4db3c09743f8e44b29e97f6ff9dab7a330e6ea11e6bd7b41"
+    },
+    "tests/fixtures/clipboard-client.mjs": {
+      "bytes": 6965,
+      "sha256": "af7fb806f48ece8ffbab438732a9c2141ed5a58754d71e4cf92fa0f358ea6a0b"
+    },
+    "tests/fixtures/clipboard-image-browser.html": {
+      "bytes": 3738,
+      "sha256": "247588c96ba6dd18efd762ace3f976e2d407b6455d25c2f9634c2277a063cb5b"
+    },
+    "tests/fixtures/clipboard-worker.mjs": {
+      "bytes": 8988,
+      "sha256": "295d88690d704244864003b27d5b381f7de65c4a16e5ba086165c270e478ab1f"
+    },
+    "tests/fixtures/image-os-clipboard.html": {
+      "bytes": 4939,
+      "sha256": "59d1a64a361ed6919a1c4c9a28dd49e3d6fd69bc9ec67e1e0f1535bf1f758f4f"
+    },
+    "tests/fixtures/image-rdp-application.html": {
+      "bytes": 5466,
+      "sha256": "6c2c205330d814359edc39ca9170fe7359469b06e26740f64e37419a7ec8107f"
+    },
+    "tests/fixtures/image-rdp-client.html": {
+      "bytes": 7723,
+      "sha256": "1dcac7fdc9df6ee866cfa80ce4bee5c02794d62a0f0a1809ffcaa60638343815"
+    },
+    "tests/fixtures/image-session-worker.mjs": {
+      "bytes": 3569,
+      "sha256": "5e5fae14ca686326666e5d57abf9113b32564db28939608e42a8e994db2610fd"
+    },
+    "tests/integration/clipboard-control.test.mjs": {
+      "bytes": 25226,
+      "sha256": "872a225a694e4bf2f57b9bafff28060566ef7b4c0bb1d1a539487f8c2964689d"
+    },
+    "tests/integration/clipboard-html-browser.test.mjs": {
+      "bytes": 7296,
+      "sha256": "52d73b68c69c18cdc466c1d22a57b2ad424e1ffbe9fb05aa9ffb165f8aade7d7"
+    },
+    "tests/integration/clipboard-image-browser.test.mjs": {
+      "bytes": 6518,
+      "sha256": "44b4e29c110fc117b655181e3d6884e9f475b9884d5a99b9e077a8f50924d3ab"
+    },
+    "tests/integration/clipboard-image-native-adapter.test.mjs": {
+      "bytes": 5132,
+      "sha256": "4d58533dc5aedb78a64da79f1d033629323b884a55316f693bcf2e6d919c9417"
+    },
+    "tests/integration/clipboard-image-view.test.mjs": {
+      "bytes": 6968,
+      "sha256": "cc3ce28a5c808120700172ba97b76b98449f4d091dded8417f939a9184285366"
+    },
+    "tests/integration/clipboard-image-viewer.test.mjs": {
+      "bytes": 17699,
+      "sha256": "139a0a5e8193e1044a91f846bd70be291a7b6be2e62f7c6fb576ff3df5a0e9ee"
+    },
+    "tests/integration/clipboard-native-session.test.mjs": {
+      "bytes": 6957,
+      "sha256": "66a5f0f2a4068802ce1c4ec48e13be39a9f9c62d4513d32d8280142619b499db"
+    },
+    "tests/integration/clipboard-permission.test.mjs": {
+      "bytes": 5810,
+      "sha256": "0e954d113d0080bd9d340768a7aa1254279c9f07fabf68fecff6c9b9adbd5eee"
+    },
+    "tests/integration/clipboard-worker-native.test.mjs": {
+      "bytes": 12558,
+      "sha256": "ffcb1f095d416712bca8f40519c2e4b30013549105919373a556450743173188"
+    },
+    "tests/integration/clipboard-worker.test.mjs": {
+      "bytes": 23977,
+      "sha256": "f27107c863eed608b51b6be2771eac6c5d5b0fe76f7f8603a1635fdfd7f38ef9"
+    },
+    "tests/integration/connection-form-browser.test.mjs": {
+      "bytes": 11832,
+      "sha256": "86c7eaaeb79bd3f5129c2660bed96124a7e22ef1fe253ad678fd0c54a0275fc4"
+    },
+    "tests/integration/html-rdp-lab-fixture.test.mjs": {
+      "bytes": 9876,
+      "sha256": "4e05086e8f460a3a921353118af8abd9ea20d633872f16d31b9d860e173ab3e7"
+    },
+    "tests/integration/image-rdp-lab-fixture.test.mjs": {
+      "bytes": 11779,
+      "sha256": "d9d1c39389669df2e31c329497800f7daf12ef164fc87842b1e8e52abf4c5c8d"
+    },
+    "tests/unit/clipboard-html-ownership.test.mjs": {
+      "bytes": 7331,
+      "sha256": "618e67c74f51a33dc97eab29ab3981b29a96969a6879cd876ddd6c330c5a4084"
+    },
+    "tests/unit/clipboard-html-wire.test.mjs": {
+      "bytes": 6045,
+      "sha256": "0c1e42543e2b898b5a7e882843a65e5b18e2d5b9b95ccc198d187db9c85acd4a"
+    },
+    "tests/unit/clipboard-image-browser.test.mjs": {
+      "bytes": 14923,
+      "sha256": "b5503d1943048539c28e3ac6d927080f793b0c8be9fd313ce2ebf991d37aa5d8"
+    },
+    "tests/unit/clipboard-image-conversion.test.mjs": {
+      "bytes": 4412,
+      "sha256": "e1152fcce6db6380a14b4530251da29962514f3dee1ca0d3429ecd4f1df74513"
+    },
+    "tests/unit/clipboard-image-item.test.mjs": {
+      "bytes": 4438,
+      "sha256": "ce34615212245e5cefd3af2a9e2036fb37deeb28dece1dd08b7385270bb05edb"
+    },
+    "tests/unit/clipboard-image-manager.test.mjs": {
+      "bytes": 5659,
+      "sha256": "ee6d778991f5ca41927368231ec73beea486ed141f207431310e29e4841966f4"
+    },
+    "tests/unit/clipboard-image-ownership.test.mjs": {
+      "bytes": 6751,
+      "sha256": "eadac7831cc703d2131661ceebf8027590457814dec841774f02d1beb86dae5f"
+    },
+    "tests/unit/clipboard-image-transfer.test.mjs": {
+      "bytes": 7192,
+      "sha256": "0b94c061bdd3030d5629ce5ef8c2ed62a2c989d94b98ce65705fd3c08c327496"
+    },
+    "tests/unit/clipboard-image-wire.test.mjs": {
+      "bytes": 7162,
+      "sha256": "7d3ecdcaa1dadf779b721ae1cb3ef4a8e96c5b8d55afdd34975a40aa79d7676c"
+    },
+    "tests/unit/clipboard-image-worker.test.mjs": {
+      "bytes": 4643,
+      "sha256": "33cba2630d6057486e84f08301705df2c62fc6270223004ae9742d0494c6f219"
+    },
+    "tests/unit/connection-form.test.mjs": {
+      "bytes": 13125,
+      "sha256": "5211a4271b8e85cd9efef8cb6cf9f1b22b5c75ff2ceb73b2bb8865a4fb499976"
+    },
+    "tests/unit/image-rdp-lab-fixture.test.mjs": {
+      "bytes": 2327,
+      "sha256": "43a43a9fd65e038481c860a8c4b0bdd224cad64d06ffa0d42a8c0da66faac930"
+    },
+    "tests/unit/image-rdp-lab-profile.test.mjs": {
+      "bytes": 2199,
+      "sha256": "cae0ab473d9b382fd1274bb1beea49f4f80408ee0b6df5cb442a871a6cdf3447"
+    },
+    "tests/unit/linux-image-lab-profile.test.mjs": {
+      "bytes": 4874,
+      "sha256": "75e08b95f276ca9e45712cde5e176d569dfad9f8326318b024b7b12836f19575"
+    },
+    "tests/unit/linux-viewer-bootstrap.test.mjs": {
+      "bytes": 3311,
+      "sha256": "2399e0beccae26d778cc507cc58cca6c985840405a78c07078572a01bb738599"
+    }
+  }
+}

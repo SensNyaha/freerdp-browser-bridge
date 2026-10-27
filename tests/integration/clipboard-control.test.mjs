@@ -13,8 +13,14 @@ import {
   decodeClipboardChunk,
   encodeClipboardHtmlItem,
   decodeClipboardHtmlItem,
+  encodeClipboardImageItem,
+  decodeClipboardImageItem,
 } from '../../packages/protocol/dist/index.js';
 import { HtmlSessionWorker } from '../fixtures/html-session-worker.mjs';
+import {
+  ImageSessionWorker,
+  imageItem,
+} from '../fixtures/image-session-worker.mjs';
 import { FakeSessionWorker, eventually } from '../fixtures/session-worker.mjs';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
@@ -87,9 +93,18 @@ class Backend extends FakeSessionWorker {
     this.inputs.push(event);
   }
 }
-async function fixture(run, mode = 'bidirectional', html = false) {
+async function fixture(
+  run,
+  mode = 'bidirectional',
+  html = false,
+  image = false,
+) {
   const root = await mkdtemp(join(tmpdir(), 'rdp-clipboard-ws-')),
-    worker = html ? new HtmlSessionWorker() : new Backend(),
+    worker = image
+      ? new ImageSessionWorker()
+      : html
+        ? new HtmlSessionWorker()
+        : new Backend(),
     logs = [],
     sockets = [];
   const server = await createSessionServer({
@@ -123,6 +138,7 @@ async function fixture(run, mode = 'bidirectional', html = false) {
           text: true,
           maxItemBytes: 1048576,
           ...(html ? { html: true } : {}),
+          ...(image ? { images: true } : {}),
         },
       },
     });
@@ -201,7 +217,10 @@ async function fixture(run, mode = 'bidirectional', html = false) {
   } finally {
     for (const ws of sockets) ws.terminate();
     await server.close();
-    if (html) {
+    if (image) {
+      worker.image.rgba.fill(0);
+      worker.written?.rgba.fill(0);
+    } else if (html) {
       worker.htmlBody.fill(0);
       worker.plain.fill(0);
       worker.written?.body.fill(0);
@@ -217,8 +236,12 @@ async function fixture(run, mode = 'bidirectional', html = false) {
     await rm(absolute, { recursive: true, force: true, maxRetries: 3 });
   }
 }
-async function upload(client, bytes, html = false) {
-  const prefix = html ? 'clipboard.html.' : 'clipboard.';
+async function upload(client, bytes, html = false, image = false) {
+  const prefix = image
+    ? 'clipboard.image.'
+    : html
+      ? 'clipboard.html.'
+      : 'clipboard.';
   const seq = client.send(prefix + 'set', {
     generation: '1',
     bytes: bytes.length,
@@ -255,8 +278,12 @@ async function upload(client, bytes, html = false) {
   }
   return client.event(prefix + 'set.result', seq);
 }
-async function download(client, html = false) {
-  const prefix = html ? 'clipboard.html.' : 'clipboard.';
+async function download(client, html = false, image = false) {
+  const prefix = image
+    ? 'clipboard.image.'
+    : html
+      ? 'clipboard.html.'
+      : 'clipboard.';
   const seq = client.send(prefix + 'request', {
     generation: '1',
     revision: '1',
@@ -295,6 +322,143 @@ async function download(client, html = false) {
   );
   return bytes;
 }
+test('fake image RDP / actual control WS: explicit RGBA descriptor multi-window bytes and revoke share the session', async () => {
+  await fixture(
+    async ({ worker, open, status, logs }) => {
+      const client = await open(),
+        offer = await client.event('clipboard.offer');
+      assert.deepEqual(offer.image, {
+        version: 1,
+        itemMetadataBytes: 16,
+        pixelFormat: 'rgba8-srgb-straight',
+      });
+      assert.equal(offer.html, undefined);
+      const rgba = Buffer.alloc(40000, 65);
+      Buffer.from('private image test canary').copy(rgba);
+      const item = { width: 100, height: 100, rgba };
+      const encoded = encodeClipboardImageItem(item);
+      assert.equal(
+        (await upload(client, encoded, false, true)).status,
+        'accepted',
+      );
+      assert.deepEqual(worker.written.rgba, rgba);
+      worker.image = { ...item, rgba: Buffer.from(rgba) };
+      const received = await download(client, false, true);
+      assert.deepEqual(decodeClipboardImageItem(received), item);
+      assert.ok(worker.returned[0].rgba.every((b) => b === 0));
+      assert.equal(
+        JSON.stringify(await status()).includes('private image'),
+        false,
+      );
+      assert.equal(logs.join('').includes('private image'), false);
+      client.ws.close();
+      await once(client.ws, 'close');
+      await eventually(() => worker.revokes === 1);
+      assert.ok(worker.written.rgba.every((b) => b === 0));
+      assert.equal((await status()).state, 'connected');
+      received.fill(0);
+      encoded.fill(0);
+      rgba.fill(0);
+    },
+    'bidirectional',
+    false,
+    true,
+  );
+});
+test('fake image RDP / actual control WS: malformed pixels refuse atomically and direction policy prevents dispatch', async () => {
+  await fixture(
+    async ({ worker, open }) => {
+      const client = await open(),
+        encoded = encodeClipboardImageItem(imageItem());
+      encoded.writeUInt32BE(0, 4);
+      assert.equal(
+        (await upload(client, encoded, false, true)).status,
+        'invalid',
+      );
+      assert.equal(worker.writes, 0);
+      assert.equal(
+        (
+          await upload(
+            client,
+            encodeClipboardImageItem(imageItem()),
+            false,
+            true,
+          )
+        ).status,
+        'accepted',
+      );
+      assert.equal(worker.writes, 1);
+    },
+    'bidirectional',
+    false,
+    true,
+  );
+  await fixture(
+    async ({ worker, open }) => {
+      const client = await open(),
+        seq = client.send('clipboard.image.set', {
+          generation: '1',
+          bytes: 24,
+        });
+      assert.equal(
+        (await client.event('clipboard.image.set.result', seq)).status,
+        'refused',
+      );
+      assert.equal(worker.writes, 0);
+    },
+    'server-to-browser',
+    false,
+    true,
+  );
+});
+test('fake image RDP / actual control WS: controller replacement waits for old image write and revoke ACK', async () => {
+  await fixture(
+    async ({ worker, open }) => {
+      const write = deferred(),
+        revoke = deferred();
+      worker.writeGate = write.promise;
+      worker.revokeGate = revoke.promise;
+      const first = await open(),
+        encoded = encodeClipboardImageItem(imageItem());
+      const seq = first.send('clipboard.image.set', {
+        generation: '1',
+        bytes: encoded.length,
+      });
+      await first.event('clipboard.image.set.ready', seq);
+      first.ws.send(
+        encodeClipboardChunk({ requestSeq: seq, offset: 0, bytes: encoded }),
+      );
+      await eventually(() => worker.writes === 1);
+      first.ws.close();
+      await once(first.ws, 'close');
+      const second = await open(true);
+      const request = second.send('clipboard.image.request', {
+        generation: '1',
+        revision: '1',
+      });
+      assert.equal(
+        (await second.event('clipboard.image.data', request)).status,
+        'unavailable',
+      );
+      write.resolve();
+      await eventually(() => worker.revokes === 1);
+      revoke.resolve();
+      await eventually(() =>
+        second.messages.some(
+          (m) => m.type === 'clipboard.offer' && !m.data.retiring,
+        ),
+      );
+      const received = await download(second, false, true);
+      assert.deepEqual(decodeClipboardImageItem(received), imageItem());
+      received.fill(0);
+      encoded.fill(0);
+    },
+    'bidirectional',
+    false,
+    true,
+  );
+});
+
 test('fake HTML RDP / actual control WS: explicit rich item uses bounded chunks and content-free status/logs', async () => {
   await fixture(
     async ({ worker, open, status, logs }) => {

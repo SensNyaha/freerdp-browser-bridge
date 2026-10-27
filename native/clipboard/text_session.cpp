@@ -1,5 +1,5 @@
-#include "../compat/span.hpp"
 #include "text_session.hpp"
+#include "../compat/span.hpp"
 #include "ingress.hpp"
 #include <algorithm>
 #include <array>
@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <utility>
 #include <winpr/error.h>
+#include <winpr/user.h>
 
 namespace bridge::clipboard {
 namespace {
@@ -54,12 +55,13 @@ UINT16 TextSession::resolve_channel(freerdp *instance) {
   return freerdp_channels_get_id_by_name(instance, "cliprdr");
 }
 TextSession::TextSession(TextPolicy policy, Offer offer, Reply reply, Clock clock, Resolve resolve,
-                         HtmlReply html_reply)
+                         HtmlReply html_reply, ImageReply image_reply)
     : policy_(policy), offer_(std::move(offer)), reply_(std::move(reply)),
-      html_reply_(std::move(html_reply)), clock_(std::move(clock)),
-      resolve_(resolve) {
+      html_reply_(std::move(html_reply)), image_reply_(std::move(image_reply)),
+      clock_(std::move(clock)), resolve_(resolve) {
   if (!policy.maximum || policy.maximum > max_item_bytes || !offer_ || !reply_ || !clock_ ||
-      !resolve_ || (policy.html && policy.from_server && !html_reply_))
+      !resolve_ || (policy.html && policy.from_server && !html_reply_) ||
+      (policy.image && policy.from_server && !image_reply_))
     throw std::invalid_argument("Invalid clipboard text owner");
 }
 TextSession::~TextSession() {
@@ -70,17 +72,21 @@ TextSession::~TextSession() {
 void TextSession::wipe_local() noexcept {
   wipe(local_);
   wipe(local_html_);
+  wipe(local_image_);
   state_.local_accepted = false;
   state_.local_html_accepted = false;
+  state_.local_image_accepted = false;
 }
 void TextSession::release() noexcept {
   wipe_local();
   request_ = request_revision_ = 0;
   remote_html_id_ = 0;
-  request_html_ = false;
+  remote_image_id_ = 0;
+  request_format_ = Format::text;
   state_.ready = state_.remote_text = state_.awaiting_local = state_.awaiting_remote = false;
   state_.local_response_ok = false;
   state_.remote_html = false;
+  state_.remote_image = false;
   if (context_ && context_->custom == this) {
     context_->ServerCapabilities = saved_.ServerCapabilities;
     context_->MonitorReady = saved_.MonitorReady;
@@ -165,10 +171,12 @@ TextSession *TextSession::owner(CliprdrClientContext *c) noexcept {
 }
 UINT TextSession::advertise() noexcept {
   char name[] = "HTML Format";
-  std::array<CLIPRDR_FORMAT, 2> formats{};
+  std::array<CLIPRDR_FORMAT, 3> formats{};
   CLIPRDR_FORMAT_LIST list{};
   list.common.msgType = CB_FORMAT_LIST;
   if (policy_.to_server) {
+    if (policy_.image && !local_image_.empty())
+      formats[list.numFormats++] = {CF_DIBV5, nullptr};
     if (policy_.html && !local_html_.empty())
       formats[list.numFormats++] = {local_html, name};
     if (!local_.empty())
@@ -178,6 +186,7 @@ UINT TextSession::advertise() noexcept {
   state_.awaiting_local = true;
   state_.local_accepted = false;
   state_.local_html_accepted = false;
+  state_.local_image_accepted = false;
   state_.local_response_ok = false;
   local_deadline_ = now_ + timeout_ms;
   try {
@@ -267,8 +276,8 @@ UINT TextSession::set_local_html(
   const auto html_size = encode_html_clipboard(fragment, {}, policy_.maximum);
   if (html_size.status != TextStatus::capacity)
     return ERROR_INVALID_DATA;
-  const auto text_size = text ? encode_unicode_text(*text, {}, policy_.maximum)
-                              : TextResult{TextStatus::capacity, 0};
+  const auto text_size =
+      text ? encode_unicode_text(*text, {}, policy_.maximum) : TextResult{TextStatus::capacity, 0};
   if (text_size.status != TextStatus::capacity ||
       text_size.bytes > policy_.maximum - html_size.bytes)
     return ERROR_INVALID_DATA;
@@ -289,6 +298,29 @@ UINT TextSession::set_local_html(
   wipe_local();
   local_ = std::move(value);
   local_html_ = std::move(html);
+  return advertise();
+}
+UINT TextSession::set_local_image(::bridge::compat::span<const std::uint8_t> rgba,
+                                  std::uint32_t width, std::uint32_t height) noexcept {
+  Operation op(*this);
+  if (!op || !state_.ready || !policy_.to_server || !policy_.image || state_.awaiting_local)
+    return ERROR_INVALID_STATE;
+  const auto measured = encode_dibv5_clipboard(rgba, width, height, {}, policy_.maximum);
+  if (measured.status != ImageStatus::capacity)
+    return ERROR_INVALID_DATA;
+  std::vector<std::uint8_t> value;
+  try {
+    value.resize(measured.bytes);
+  } catch (...) {
+    return ERROR_NOT_ENOUGH_MEMORY;
+  }
+  if (encode_dibv5_clipboard(rgba, width, height, value, policy_.maximum).status !=
+      ImageStatus::ok) {
+    wipe(value);
+    return ERROR_INVALID_DATA;
+  }
+  wipe_local();
+  local_image_ = std::move(value);
   return advertise();
 }
 UINT TextSession::revoke_local() noexcept {
@@ -348,9 +380,10 @@ UINT TextSession::acknowledged(CliprdrClientContext *c,
   s->state_.awaiting_local = false;
   s->state_.local_response_ok = r->common.msgFlags == CB_RESPONSE_OK;
   s->state_.local_accepted =
-      s->state_.local_response_ok && (!s->local_.empty() || !s->local_html_.empty());
-  s->state_.local_html_accepted =
-      s->state_.local_response_ok && !s->local_html_.empty();
+      s->state_.local_response_ok &&
+      (!s->local_.empty() || !s->local_html_.empty() || !s->local_image_.empty());
+  s->state_.local_html_accepted = s->state_.local_response_ok && !s->local_html_.empty();
+  s->state_.local_image_accepted = s->state_.local_response_ok && !s->local_image_.empty();
   if (!s->state_.local_accepted)
     s->wipe_local();
   return CHANNEL_RC_OK;
@@ -368,7 +401,9 @@ UINT TextSession::formats(CliprdrClientContext *c, const CLIPRDR_FORMAT_LIST *r)
   ++s->state_.revision;
   s->state_.remote_text = false;
   s->state_.remote_html = false;
+  s->state_.remote_image = false;
   s->remote_html_id_ = 0;
+  s->remote_image_id_ = 0;
   for (UINT32 i = 0; i < r->numFormats; ++i)
     if (r->formats[i].formatId == unicode_text && s->policy_.from_server)
       s->state_.remote_text = true;
@@ -388,6 +423,23 @@ UINT TextSession::formats(CliprdrClientContext *c, const CLIPRDR_FORMAT_LIST *r)
     }
     s->state_.remote_html = s->remote_html_id_ != 0;
   }
+  if (s->policy_.image && s->policy_.from_server) {
+    UINT32 dib = 0, dibv5 = 0;
+    for (UINT32 i = 0; i < r->numFormats; ++i) {
+      const auto &format = r->formats[i];
+      if (format.formatId != CF_DIB && format.formatId != CF_DIBV5)
+        continue;
+      // These are fixed standard IDs, never peer-registered named formats.
+      if ((format.formatName && *format.formatName) || format.formatId == s->remote_html_id_)
+        return s->fail();
+      auto &selected = format.formatId == CF_DIBV5 ? dibv5 : dib;
+      if (selected)
+        return s->fail();
+      selected = format.formatId;
+    }
+    s->remote_image_id_ = dibv5 ? dibv5 : dib;
+    s->state_.remote_image = s->remote_image_id_ != 0;
+  }
   CLIPRDR_FORMAT_LIST_RESPONSE response{{CB_FORMAT_LIST_RESPONSE, CB_RESPONSE_OK, 0}};
   try {
     if (c->ClientFormatListResponse(c, &response) != CHANNEL_RC_OK)
@@ -400,24 +452,33 @@ UINT TextSession::formats(CliprdrClientContext *c, const CLIPRDR_FORMAT_LIST *r)
   return CHANNEL_RC_OK;
 }
 UINT TextSession::request(std::uint64_t revision, std::uint64_t id) noexcept {
-  return request_format(revision, id, false);
+  return request_format(revision, id, Format::text);
 }
 UINT TextSession::request_html(std::uint64_t revision, std::uint64_t id) noexcept {
-  return request_format(revision, id, true);
+  return request_format(revision, id, Format::html);
 }
-UINT TextSession::request_format(std::uint64_t revision, std::uint64_t id, bool html) noexcept {
+UINT TextSession::request_image(std::uint64_t revision, std::uint64_t id) noexcept {
+  return request_format(revision, id, Format::image);
+}
+UINT TextSession::request_format(std::uint64_t revision, std::uint64_t id, Format format) noexcept {
   Operation op(*this);
-  if (!op || !id || !state_.ready || !policy_.from_server ||
-      (html ? (!policy_.html || !state_.remote_html) : !state_.remote_text) ||
-      state_.awaiting_remote || revision != state_.revision)
+  if (!op)
+    return ERROR_INVALID_STATE;
+  const bool available = format == Format::html    ? policy_.html && state_.remote_html
+                         : format == Format::image ? policy_.image && state_.remote_image
+                                                   : state_.remote_text;
+  if (!id || !state_.ready || !policy_.from_server || !available || state_.awaiting_remote ||
+      revision != state_.revision)
     return ERROR_INVALID_STATE;
   request_ = id;
   request_revision_ = revision;
-  request_html_ = html;
+  request_format_ = format;
   state_.awaiting_remote = true;
   remote_deadline_ = now_ + timeout_ms;
-  CLIPRDR_FORMAT_DATA_REQUEST r{{CB_FORMAT_DATA_REQUEST, 0, 4},
-                                html ? remote_html_id_ : unicode_text};
+  const auto id_format = format == Format::html    ? remote_html_id_
+                         : format == Format::image ? remote_image_id_
+                                                   : unicode_text;
+  CLIPRDR_FORMAT_DATA_REQUEST r{{CB_FORMAT_DATA_REQUEST, 0, 4}, id_format};
   try {
     const auto rc = context_->ClientFormatDataRequest(context_, &r);
     return rc == CHANNEL_RC_OK ? rc : fail();
@@ -439,9 +500,10 @@ UINT TextSession::requested(CliprdrClientContext *c,
   response.common.msgType = CB_FORMAT_DATA_RESPONSE;
   response.common.msgFlags = CB_RESPONSE_FAIL;
   if (s->policy_.to_server && s->state_.local_accepted && !s->state_.awaiting_local) {
-    const auto *value = r->requestedFormatId == unicode_text ? &s->local_
+    const auto *value = r->requestedFormatId == unicode_text                    ? &s->local_
                         : s->policy_.html && r->requestedFormatId == local_html ? &s->local_html_
-                                                                              : nullptr;
+                        : s->policy_.image && r->requestedFormatId == CF_DIBV5  ? &s->local_image_
+                                                                                : nullptr;
     if (value && !value->empty()) {
       response.common.msgFlags = CB_RESPONSE_OK;
       response.common.dataLen = static_cast<UINT32>(value->size());
@@ -470,16 +532,20 @@ UINT TextSession::received(CliprdrClientContext *c,
   const auto id = s->request_;
   s->request_ = 0;
   s->state_.awaiting_remote = false;
-  if (s->request_html_) {
-    s->request_html_ = false;
+  const auto format = s->request_format_;
+  s->request_format_ = Format::text;
+  if (format == Format::html) {
     return s->received_html(*r, id);
   }
+  if (format == Format::image)
+    return s->received_image(*r, id);
   std::vector<std::uint8_t> text;
   auto status = TextReply::refused;
   if (s->request_revision_ != s->state_.revision)
     status = TextReply::stale;
   else if (r->common.msgFlags == CB_RESPONSE_OK) {
-    const ::bridge::compat::span<const std::uint8_t> wire{r->requestedFormatData, r->common.dataLen};
+    const ::bridge::compat::span<const std::uint8_t> wire{r->requestedFormatData,
+                                                          r->common.dataLen};
     const auto measured = decode_unicode_text(wire, {}, s->policy_.maximum);
     if (measured.status != TextStatus::capacity && measured.status != TextStatus::ok &&
         measured.status != TextStatus::too_large)
@@ -514,9 +580,13 @@ UINT TextSession::received_html(const CLIPRDR_FORMAT_DATA_RESPONSE &r, std::uint
     if (inspection.status != TextStatus::ok)
       return fail();
     view = {wire.subspan(inspection.body_offset, inspection.body_bytes),
-            inspection.fragment_offset - inspection.body_offset, inspection.fragment_bytes,
+            inspection.fragment_offset - inspection.body_offset,
+            inspection.fragment_bytes,
             inspection.selection ? inspection.selection_offset - inspection.body_offset : 0,
-            inspection.selection_bytes, inspection.context, inspection.selection, wire.size()};
+            inspection.selection_bytes,
+            inspection.context,
+            inspection.selection,
+            wire.size()};
     status = TextReply::ok;
   }
   bool accepted = false;
@@ -524,6 +594,40 @@ UINT TextSession::received_html(const CLIPRDR_FORMAT_DATA_RESPONSE &r, std::uint
     accepted = html_reply_(id, status, view);
   } catch (...) { /* Consumer fault retires both formats below. */
   }
+  return accepted ? CHANNEL_RC_OK : fail();
+}
+UINT TextSession::received_image(const CLIPRDR_FORMAT_DATA_RESPONSE &r, std::uint64_t id) noexcept {
+  ImageView view;
+  std::vector<std::uint8_t> pixels;
+  auto status = TextReply::refused;
+  if (request_revision_ != state_.revision)
+    status = TextReply::stale;
+  else if (r.common.msgFlags == CB_RESPONSE_OK) {
+    const ::bridge::compat::span<const std::uint8_t> wire{r.requestedFormatData, r.common.dataLen};
+    const auto measured = decode_dib_clipboard(wire, {}, policy_.maximum);
+    if (measured.status != ImageStatus::capacity && measured.status != ImageStatus::unsupported &&
+        measured.status != ImageStatus::too_large)
+      return fail();
+    if (measured.status == ImageStatus::capacity) {
+      try {
+        pixels.resize(measured.bytes);
+      } catch (...) {
+        return fail();
+      }
+      if (decode_dib_clipboard(wire, pixels, policy_.maximum).status != ImageStatus::ok) {
+        wipe(pixels);
+        return fail();
+      }
+      view = {measured.width, measured.height, pixels, wire.size()};
+      status = TextReply::ok;
+    }
+  }
+  bool accepted = false;
+  try {
+    accepted = image_reply_(id, status, view);
+  } catch (...) { /* Consumer faults retire shared ownership below. */
+  }
+  wipe(pixels);
   return accepted ? CHANNEL_RC_OK : fail();
 }
 bool TextSession::poll() noexcept {

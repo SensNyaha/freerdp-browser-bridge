@@ -43,6 +43,9 @@ test('private Linux viewer bootstrap rejects oversized/unknown/ambiguous selecti
     { bearer, extra: true },
     { bearer, soak: 'yes' },
     { bearer, htmlClipboard: 1 },
+    { bearer, imageClipboard: 1 },
+    { bearer, soak: true, imageClipboard: true },
+    { bearer, htmlClipboard: true, imageClipboard: true },
     { bearer, soak: true, htmlClipboard: true },
     { bearer, ipcTransport: 'framed-pipes' },
     { bearer, htmlClipboard: true, ipcTransport: 'arbitrary' },
@@ -66,4 +69,26 @@ test('private Linux viewer bootstrap rejects oversized/unknown/ambiguous selecti
   await assert.rejects(readLinuxViewerBootstrap(['unexpected text']), {
     message: 'Invalid Linux viewer bootstrap',
   });
+});
+
+test('private Linux image bootstrap selects only explicit image/carrier mode and wipes fragmented input', async () => {
+  for (const ipcTransport of ['auto', 'framed-pipes']) {
+    const input = Buffer.from(
+      JSON.stringify({ bearer, imageClipboard: true, ipcTransport }),
+    );
+    assert.deepEqual(
+      await readLinuxViewerBootstrap([
+        input.subarray(0, 13),
+        input.subarray(13),
+      ]),
+      {
+        bearer,
+        soak: false,
+        htmlClipboard: false,
+        imageClipboard: true,
+        ipcTransport,
+      },
+    );
+    assert.ok(input.every((value) => !value));
+  }
 });

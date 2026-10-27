@@ -1,0 +1,259 @@
+<!doctype html><meta charset="utf-8" /><title>
+  Owned actual RDP image client
+</title>
+<style>
+  body {
+    font: 16px sans-serif;
+    margin: 24px;
+  }
+  button {
+    padding: 8px;
+    margin: 4px;
+  }
+  [hidden] {
+    display: none;
+  }
+</style>
+<p>
+  Owned PNG application acceptance. Real control WebSocket and ClipboardItem
+  API.
+</p>
+<button id="seed">Write owned source PNG</button
+><button id="inspect">Inspect owned OS result</button
+><button id="clear-os">Clear owned OS clipboard</button>
+<!--REFERENCE_PANEL-->
+<script type="module">
+  import { ClipboardClient } from '/clipboard-client.js';
+  import { installClipboardImageView } from '/clipboard-image-view.js';
+  import { ClipboardImageConversion } from '/clipboard-image-conversion.js';
+  import { imageLabPixels } from '/image-lab-pixels.js';
+  const id = new URL(location.href).searchParams.get('id');
+  if (!/^[0-9a-f]{32}$/.test(id ?? ''))
+    throw new Error('Invalid owned image client');
+  let ws,
+    client,
+    view,
+    timer,
+    prompt,
+    connected = false,
+    disposed = false,
+    sequence = 0,
+    failures = 0,
+    writes = 0,
+    readNumber = 0;
+  const codec = new ClipboardImageConversion(),
+    fixture = {
+      seeded: false,
+      cleared: false,
+      inspection: undefined,
+      expectedSource: 1,
+    };
+  const changed = () => {
+    clearTimeout(timer);
+    const deadline = client?.nextDeadline;
+    if (deadline !== undefined)
+      timer = setTimeout(
+        () => client.service(),
+        Math.max(1, Math.ceil(deadline - performance.now())),
+      );
+    view?.changed();
+  };
+  function send(type, data) {
+    if (ws?.readyState !== WebSocket.OPEN)
+      throw new Error('Owned control unavailable');
+    const seq = sequence++;
+    ws.send(JSON.stringify({ v: 1, type, seq, ts: Date.now(), data }));
+    return seq;
+  }
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    connected = false;
+    view?.dispose();
+    client?.dispose();
+    codec.dispose();
+    clearTimeout(timer);
+    ws?.close();
+  }
+  Object.defineProperties(
+    fixture,
+    Object.getOwnPropertyDescriptors({
+      attach(created) {
+        if (ws || disposed) throw new Error('Owned control already attached');
+        ws = new WebSocket(
+          'ws://' +
+            location.host +
+            '/v1/sessions/' +
+            created.sessionId +
+            '/control?token=' +
+            encodeURIComponent(created.attach.control.token),
+          ['freerdp-bridge-v1'],
+        );
+        ws.binaryType = 'arraybuffer';
+        client = new ClipboardClient({
+          authorized: () => connected && ws.readyState === WebSocket.OPEN,
+          bufferedAmount: () => ws.bufferedAmount,
+          changed,
+          failed: () => {
+            ++failures;
+            dispose();
+          },
+          sendControl(type, data) {
+            if (type === 'clipboard.image.set') ++writes;
+            return send(type, data);
+          },
+          sendBinary(bytes) {
+            ws.send(bytes);
+            return true;
+          },
+        });
+        view = installClipboardImageView(
+          document.querySelector('#clipboard-image'),
+          client,
+        );
+        ws.addEventListener('message', (event) => {
+          if (event.data instanceof ArrayBuffer) {
+            client.binary(event.data);
+            return;
+          }
+          const message = JSON.parse(event.data);
+          if (message.type === 'session.state') {
+            connected = message.data.state === 'connected';
+            client.service();
+          } else if (message.type === 'certificate.prompt')
+            prompt = message.data;
+          else if (message.type === 'session.error') {
+            ++failures;
+            dispose();
+          } else client.message(message.type, message.data);
+        });
+        ws.addEventListener('close', dispose);
+      },
+      get snapshot() {
+        return client?.snapshot;
+      },
+      get failures() {
+        return failures;
+      },
+      get writes() {
+        return writes;
+      },
+      get hasPrompt() {
+        return Boolean(prompt);
+      },
+      accept(fingerprint) {
+        if (!prompt || fingerprint !== prompt.fingerprint) return false;
+        send('certificate.response', {
+          challenge: prompt.challenge,
+          fingerprint,
+          accept: true,
+        });
+        prompt = undefined;
+        return true;
+      },
+      press(codes) {
+        if (
+          !connected ||
+          !Array.isArray(codes) ||
+          !(
+            (codes.length === 1 &&
+              ['F2', 'F5', 'F8', 'F9'].includes(codes[0])) ||
+            (codes.length === 2 &&
+              codes[0] === 'ControlLeft' &&
+              ['KeyC', 'KeyV', 'KeyW'].includes(codes[1]))
+          )
+        )
+          throw new Error('Invalid owned image key');
+        for (const code of codes)
+          send('input.key', { code, down: true, repeat: false });
+        for (const code of [...codes].reverse())
+          send('input.key', { code, down: false, repeat: false });
+      },
+      async receipt() {
+        if (++readNumber > 3) throw new Error('Owned receipt limit');
+        const result = await client.read();
+        if (result.status !== 'accepted')
+          throw new Error('Owned receipt unavailable');
+        return result.text;
+      },
+      dispose,
+    }),
+  );
+  document.querySelector('#seed').addEventListener('click', (event) => {
+    if (!event.isTrusted || fixture.seeded || disposed) return;
+    const rgba = imageLabPixels(id, 'browser', 0),
+      png = codec
+        .run('encode', { width: 32, height: 32, rgba }, 8192)
+        .then((result) => {
+          if (result.status !== 'accepted')
+            throw new Error('Owned PNG unavailable');
+          return result.blob;
+        });
+    rgba.fill(0);
+    void navigator.clipboard
+      .write([new ClipboardItem({ 'image/png': png })])
+      .then(
+        () => {
+          fixture.seeded = true;
+        },
+        () => {
+          ++failures;
+        },
+      );
+  });
+  document.querySelector('#inspect').addEventListener('click', (event) => {
+    if (!event.isTrusted || disposed) return;
+    fixture.inspection = undefined;
+    const reading = navigator.clipboard.read();
+    void reading.then(
+      async (items) => {
+        let item, expected;
+        try {
+          if (
+            !Array.isArray(items) ||
+            items.length !== 1 ||
+            !items[0].types.includes('image/png') ||
+            ![1, 2].includes(fixture.expectedSource)
+          )
+            throw new Error();
+          const result = await codec.run(
+            'decode',
+            await items[0].getType('image/png'),
+            8192,
+          );
+          item = result.item;
+          if (result.status !== 'accepted' || disposed) throw new Error();
+          expected = imageLabPixels(id, 'remote', fixture.expectedSource);
+          fixture.inspection = {
+            source: fixture.expectedSource,
+            knownPixels:
+              item.width === 32 &&
+              item.height === 32 &&
+              item.rgba.length === 4096 &&
+              item.rgba.every((v, n) => v === expected[n]),
+          };
+        } catch {
+          fixture.inspection = { failed: true };
+        } finally {
+          item?.rgba.fill(0);
+          expected?.fill(0);
+        }
+      },
+      () => {
+        fixture.inspection = { failed: true };
+      },
+    );
+  });
+  document.querySelector('#clear-os').addEventListener('click', (event) => {
+    if (!event.isTrusted) return;
+    void navigator.clipboard.writeText('').then(
+      () => {
+        fixture.cleared = true;
+      },
+      () => {
+        ++failures;
+      },
+    );
+  });
+  window.fixture = fixture;
+</script>

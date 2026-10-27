@@ -61,6 +61,7 @@ for (const mode of ['bidirectional', 'server-to-browser', 'browser-to-server'])
       for (const name of [
         'clipboard-client.js',
         'clipboard-html.js',
+        'clipboard-image.js',
         'clipboard-text.js',
         'clipboard-wire.js',
       ]) {

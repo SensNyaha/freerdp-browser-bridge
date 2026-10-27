@@ -10,6 +10,7 @@ export * from './microphone.js';
 export * from './microphone-opus.js';
 export * from './clipboard.js';
 export * from './clipboard-html.js';
+export * from './clipboard-image.js';
 export * from './clipboard-chunk.js';
 import {
   MICROPHONE_OPUS_MIN_BYTES,
@@ -359,6 +360,7 @@ export interface WorkerBuild {
     clipboardText: boolean;
     clipboardRevoke: boolean;
     clipboardHtml?: true;
+    clipboardImage?: true;
     performanceSettings: boolean;
     ipSettings: boolean;
     processResourceBatch?: true;
@@ -416,7 +418,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~511) !== 0 ||
+      (extensions & ~1023) !== 0 ||
       ((extensions & 1) !== 0 && !(capabilities & 32768)) ||
       ((extensions & 2) !== 0 && (!(extensions & 1) || !(capabilities & 4))) ||
       ((extensions & 4) !== 0 && !(capabilities & 4096)) ||
@@ -427,6 +429,8 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       ((extensions & 64) !== 0 && !(capabilities & 4)) ||
       ((extensions & 128) !== 0 && os !== 'windows') ||
       ((extensions & 256) !== 0 &&
+        ((extensions & 24) !== 24 || !(capabilities & 4))) ||
+      ((extensions & 512) !== 0 &&
         ((extensions & 24) !== 24 || !(capabilities & 4)))
     )
       throw new ProtocolError();
@@ -462,6 +466,7 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       clipboardText: Boolean(extensions & 8),
       clipboardRevoke: Boolean(extensions & 16),
       ...((extensions & 256) !== 0 ? { clipboardHtml: true as const } : {}),
+      ...((extensions & 512) !== 0 ? { clipboardImage: true as const } : {}),
       performanceSettings: Boolean(extensions & 32),
       ipSettings: Boolean(extensions & 64),
       ...((extensions & 128) !== 0
@@ -582,6 +587,7 @@ export interface ConnectionSettings {
     fromServer: boolean;
     maximum: number;
     html?: boolean;
+    image?: boolean;
   };
   performance?: { mask: number; values: number };
   ip?: { mask: number; preferIPv6: number; forceIpVersion: number };
@@ -618,7 +624,10 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
       !Number.isInteger(c.clipboard.maximum) ||
       c.clipboard.maximum < 1 ||
       c.clipboard.maximum > 16777216 ||
-      (c.clipboard.html !== undefined && typeof c.clipboard.html !== 'boolean'))
+      (c.clipboard.html !== undefined &&
+        typeof c.clipboard.html !== 'boolean') ||
+      (c.clipboard.image !== undefined &&
+        typeof c.clipboard.image !== 'boolean'))
   )
     throw new ProtocolError();
   if (c.clipboard !== undefined && !c.clipboard) throw new ProtocolError();
@@ -651,31 +660,33 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
   )
     throw new ProtocolError();
   const schema =
-    c.clipboard?.html === true
-      ? 13
-      : c.ip !== undefined
-        ? 12
-        : c.performance !== undefined
-          ? 11
-          : c.clipboard
-            ? 10
-            : c.audioBuffer200
-              ? 9
-              : c.opusInput
-                ? 8
-                : c.pcmInput
-                  ? 7
-                  : c.opusOutput
-                    ? 6
-                    : c.pcmOutput
-                      ? 5
-                      : c.touch
-                        ? 4
-                        : c.dynamicResolution
-                          ? 3
-                          : c.videoQuality
-                            ? 2
-                            : 1;
+    c.clipboard?.image === true
+      ? 14
+      : c.clipboard?.html === true
+        ? 13
+        : c.ip !== undefined
+          ? 12
+          : c.performance !== undefined
+            ? 11
+            : c.clipboard
+              ? 10
+              : c.audioBuffer200
+                ? 9
+                : c.opusInput
+                  ? 8
+                  : c.pcmInput
+                    ? 7
+                    : c.opusOutput
+                      ? 6
+                      : c.pcmOutput
+                        ? 5
+                        : c.touch
+                          ? 4
+                          : c.dynamicResolution
+                            ? 3
+                            : c.videoQuality
+                              ? 2
+                              : 1;
   const parts: Buffer[] = [Buffer.from([0, schema])];
   for (const [value, maximum] of [
     [c.host, 253],
@@ -774,7 +785,8 @@ export function encodeConnectionSettings(c: ConnectionSettings): Buffer {
         (c.audioBuffer200 ? 64 : 0) |
         (c.clipboard?.toServer ? 128 : 0) |
         (c.clipboard?.fromServer ? 256 : 0) |
-        (c.clipboard?.html ? 512 : 0),
+        (c.clipboard?.html ? 512 : 0) |
+        (c.clipboard?.image ? 1024 : 0),
     );
     parts.push(flags);
   }

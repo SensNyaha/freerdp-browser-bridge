@@ -6,6 +6,7 @@ import {
   type WorkerOptions,
   type ClipboardReadResult,
   type ClipboardHtmlReadResult,
+  type ClipboardImageReadResult,
 } from './index.js';
 import {
   SessionError,
@@ -19,6 +20,7 @@ import {
   CLIPBOARD_MAX_TEXT_BYTES,
   CLIPBOARD_METADATA_BYTES,
   CLIPBOARD_HTML_ITEM_METADATA_BYTES,
+  CLIPBOARD_IMAGE_ITEM_METADATA_BYTES,
   HEADER_BYTES,
 } from '@freerdp-bridge/protocol';
 import type {
@@ -42,6 +44,7 @@ import type {
   ClipboardState,
   ClipboardStatus,
   ClipboardHtmlItem,
+  ClipboardImageItem,
 } from '@freerdp-bridge/protocol';
 
 /** Map the small, documented FreeRDP ERRINFO subset to stable public failures. */
@@ -137,6 +140,7 @@ export class NativeSessionWorker implements SessionWorker {
   private readonly worker: WorkerProcess;
   private readonly clipboardMaximum: number | undefined;
   private readonly clipboardHtml: boolean;
+  private readonly clipboardImage: boolean;
   private readonly events = new EventEmitter();
   private startup: Promise<void> | undefined;
   private closing = false;
@@ -152,6 +156,8 @@ export class NativeSessionWorker implements SessionWorker {
     if (
       (limits.clipboardHtml !== undefined && limits.clipboardHtml !== true) ||
       (limits.clipboardHtml === true && maximum === undefined) ||
+      (limits.clipboardImage !== undefined && limits.clipboardImage !== true) ||
+      (limits.clipboardImage === true && maximum === undefined) ||
       (maximum !== undefined &&
         (!Number.isInteger(maximum) ||
           maximum < 1 ||
@@ -167,7 +173,10 @@ export class NativeSessionWorker implements SessionWorker {
           Math.min(
             CLIPBOARD_MAX_TEXT_BYTES,
             maximum +
-              (limits.clipboardHtml ? CLIPBOARD_HTML_ITEM_METADATA_BYTES : 0),
+              Math.max(
+                limits.clipboardHtml ? CLIPBOARD_HTML_ITEM_METADATA_BYTES : 0,
+                limits.clipboardImage ? CLIPBOARD_IMAGE_ITEM_METADATA_BYTES : 0,
+              ),
           );
     if (
       required !== undefined &&
@@ -177,6 +186,7 @@ export class NativeSessionWorker implements SessionWorker {
       throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
     this.clipboardMaximum = maximum;
     this.clipboardHtml = limits.clipboardHtml === true;
+    this.clipboardImage = limits.clipboardImage === true;
     this.worker = this.createWorkerProcess({
       ...options,
       ...(required === undefined
@@ -244,7 +254,7 @@ export class NativeSessionWorker implements SessionWorker {
         selectedClipboard &&
         (!clipboard.mode ||
           clipboard.text === false ||
-          clipboard.images ||
+          Boolean(clipboard.images) !== this.clipboardImage ||
           clipboard.files ||
           Boolean(clipboard.html) !== this.clipboardHtml ||
           this.clipboardMaximum !== (clipboard.maxItemBytes ?? 1048576))
@@ -261,7 +271,8 @@ export class NativeSessionWorker implements SessionWorker {
         selectedClipboard &&
         (!build.capabilities.clipboardText ||
           !build.capabilities.clipboardRevoke ||
-          (clipboard.html && !build.capabilities.clipboardHtml))
+          (clipboard.html && !build.capabilities.clipboardHtml) ||
+          (clipboard.images && !build.capabilities.clipboardImage))
       )
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       if (
@@ -411,6 +422,16 @@ export class NativeSessionWorker implements SessionWorker {
     return this.closing
       ? Promise.resolve('unavailable')
       : this.worker.writeClipboardHtml(item);
+  }
+  readClipboardImage(revision: bigint): Promise<ClipboardImageReadResult> {
+    return this.closing
+      ? Promise.resolve({ status: 'unavailable' })
+      : this.worker.readClipboardImage(revision);
+  }
+  writeClipboardImage(item: ClipboardImageItem): Promise<ClipboardStatus> {
+    return this.closing
+      ? Promise.resolve('unavailable')
+      : this.worker.writeClipboardImage(item);
   }
   revokeClipboardText(): Promise<ClipboardStatus> {
     return this.closing

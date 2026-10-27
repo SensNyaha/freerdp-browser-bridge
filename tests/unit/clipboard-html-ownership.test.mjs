@@ -66,6 +66,23 @@ function fixture() {
   };
   return { state, calls, backend, owner: new ClipboardOwnership(backend, 50) };
 }
+test('Public clipboard ownership refuses selected image state without complete image hooks', async () => {
+  const f = fixture();
+  Object.assign(f.state, {
+    image: true,
+    remoteImage: true,
+    localImageAccepted: false,
+  });
+  assert.equal(
+    f.owner.acquire(() => true),
+    undefined,
+  );
+  assert.equal(f.calls.terminate, 1);
+  assert.equal(f.calls.read, 0);
+  assert.equal(f.calls.write, 0);
+  await f.owner.close();
+});
+
 test('HTML ownership: exclusive shared flight drains write and both-format revoke before replacement', async () => {
   const f = fixture(),
     write = deferred(),

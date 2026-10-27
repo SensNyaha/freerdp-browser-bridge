@@ -40,6 +40,8 @@ try {
     {},
     { htmlClipboard: true },
     { htmlClipboard: true, ipcTransport: 'framed-pipes' },
+    { imageClipboard: true },
+    { imageClipboard: true, ipcTransport: 'framed-pipes' },
   ]) {
     const bearer = randomBytes(32).toString('base64url'),
       child = spawn(
@@ -107,15 +109,37 @@ try {
       assert.equal((await request('/lab/stats', false)).status, 401);
       const caps = await (await request('/v1/capabilities')).json();
       assert.equal(caps.clipboardHtml, true);
+      assert.equal(caps.clipboardImage, true);
+      const build = await (await request('/v1/build')).json();
+      assert.equal(
+        build.transport,
+        profile.ipcTransport === 'framed-pipes'
+          ? 'framed-pipes'
+          : 'unix-seqpacket-rws1',
+      );
       const page = await request('/html-lab/');
       assert.equal(page.status, profile.htmlClipboard ? 200 : 404);
-      if (profile.htmlClipboard) {
-        assert.ok((await page.text()).includes('data-html-clipboard'));
+      const imagePage = await request('/image-lab/');
+      assert.equal(imagePage.status, profile.imageClipboard ? 200 : 404);
+      if (profile.imageClipboard) {
+        assert.ok((await imagePage.text()).includes('data-image-clipboard'));
+        for (const path of [
+          '/image-lab-pixels.js',
+          '/clipboard-image-view.js',
+          '/clipboard-image-conversion.js',
+          '/clipboard-image-worker.js',
+        ])
+          assert.equal((await request(path)).status, 200);
+      }
+      if (profile.htmlClipboard || profile.imageClipboard) {
+        if (profile.htmlClipboard)
+          assert.ok((await page.text()).includes('data-html-clipboard'));
         assert.equal((await request('/clipboard-client.js')).status, 200);
         const stats = await (await request('/lab/stats')).json();
         assert.equal(stats.htmlReads, 0);
         assert.equal(stats.textReads, 0);
         assert.equal(stats.writes, 0);
+        if (profile.imageClipboard) assert.equal(stats.imageReads, 0);
       } else
         assert.deepEqual(await (await request('/lab/stats')).json(), {
           requested: 0,
@@ -124,15 +148,21 @@ try {
       assert.equal((await request('/lab/stop', true, 'POST')).status, 202);
       assert.equal(await exited, 0);
       assert.equal(closed.cleanup, true);
-      if (profile.htmlClipboard) {
+      if (profile.htmlClipboard || profile.imageClipboard) {
         assert.equal(closed.pidRetired, true);
         assert.equal(closed.clipboard.htmlReads, 0);
+        if (profile.imageClipboard)
+          assert.equal(closed.clipboard.imageReads, 0);
       }
       report.profiles.push({
-        mode: profile.htmlClipboard
-          ? (profile.ipcTransport ?? 'auto')
-          : 'legacy',
+        mode: profile.imageClipboard
+          ? 'image-' + (profile.ipcTransport ?? 'auto')
+          : profile.htmlClipboard
+            ? (profile.ipcTransport ?? 'auto')
+            : 'legacy',
         htmlCapability: true,
+        imageCapability: true,
+        transport: build.transport,
         ready: true,
         authenticated: true,
         cleanup: true,

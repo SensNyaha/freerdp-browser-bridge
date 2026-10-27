@@ -30,9 +30,15 @@ async function removeOwned(root) {
 }
 
 test('native clipboard adapter: legacy and read/set-only HELLO refuse before CONFIGURE or SECRET', async () => {
-  for (const profile of ['legacy', 'no-revoke', 'html-unavailable']) {
+  for (const profile of [
+    'legacy',
+    'no-revoke',
+    'html-unavailable',
+    'image-unavailable',
+  ]) {
     const html = profile === 'html-unavailable';
-    const mode = html ? 'valid' : profile;
+    const image = profile === 'image-unavailable';
+    const mode = html || image ? 'valid' : profile;
     const runtimeRoot = await mkdtemp(join(tmpdir(), 'rdp-clip-adapter-'));
     let connects = 0,
       processOwner;
@@ -62,7 +68,11 @@ test('native clipboard adapter: legacy and read/set-only HELLO refuse before CON
     }
     const native = new Adapter(
       { workerPath, runtimeRoot, ipcTransport: 'framed-pipes' },
-      { clipboardItemBytes: 1024, ...(html ? { clipboardHtml: true } : {}) },
+      {
+        clipboardItemBytes: 1024,
+        ...(html ? { clipboardHtml: true } : {}),
+        ...(image ? { clipboardImage: true } : {}),
+      },
     );
     try {
       await assert.rejects(
@@ -74,6 +84,7 @@ test('native clipboard adapter: legacy and read/set-only HELLO refuse before CON
               mode: 'bidirectional',
               maxItemBytes: 1024,
               ...(html ? { html: true } : {}),
+              ...(image ? { images: true } : {}),
             },
           },
           new AbortController().signal,
@@ -82,7 +93,10 @@ test('native clipboard adapter: legacy and read/set-only HELLO refuse before CON
       );
       assert.equal(connects, 0);
       assert.equal(processOwner.state, 'ready');
-      assert.equal(processOwner.build.capabilities.clipboardRevoke, html);
+      assert.equal(
+        processOwner.build.capabilities.clipboardRevoke,
+        html || image,
+      );
       if (html)
         assert.equal(processOwner.build.capabilities.clipboardHtml, undefined);
       await native.close();
@@ -101,9 +115,13 @@ for (const profile of [
   'html-bidirectional',
   'html-server-to-browser',
   'html-browser-to-server',
+  'image-bidirectional',
+  'image-server-to-browser',
+  'image-browser-to-server',
 ]) {
   const html = profile.startsWith('html-');
-  const mode = html ? profile.slice(5) : profile;
+  const image = profile.startsWith('image-');
+  const mode = html ? profile.slice(5) : image ? profile.slice(6) : profile;
   for (const ipcTransport of process.platform === 'linux'
     ? ['auto', 'framed-pipes']
     : ['auto'])
@@ -140,6 +158,7 @@ for (const profile of [
                 text: true,
                 maxItemBytes: 65536,
                 ...(html ? { html: true } : {}),
+                ...(image ? { images: true } : {}),
               },
               timeouts: { connectMs: 5000 },
             },
@@ -162,6 +181,7 @@ for (const profile of [
             assert.equal(source.toServer, mode !== 'server-to-browser');
             assert.equal(source.fromServer, mode !== 'browser-to-server');
             if (html) assert.equal(source.html, true);
+            if (image) assert.equal(source.image, true);
           }
           assert.equal(
             (await native.readClipboardText(1n)).status,
@@ -173,6 +193,10 @@ for (const profile of [
           );
           if (html)
             assert.deepEqual(await native.readClipboardHtml(1n), {
+              status: 'unavailable',
+            });
+          if (image)
+            assert.deepEqual(await native.readClipboardImage(1n), {
               status: 'unavailable',
             });
           await manager.shutdown();

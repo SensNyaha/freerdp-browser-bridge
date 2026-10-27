@@ -1,5 +1,5 @@
-#include "../compat/span.hpp"
 #include "worker_session.hpp"
+#include "../compat/span.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -57,7 +57,9 @@ bool WorkerSession::start(std::uint64_t generation) noexcept {
     text_ = std::make_unique<TextSession>(
         policy_, [](auto, auto) { return true; },
         [this](auto id, auto status, auto bytes) { return reply(id, status, bytes); }, clock_,
-        resolve_, [this](auto id, auto status, HtmlView view) { return reply_html(id, status, view); });
+        resolve_,
+        [this](auto id, auto status, HtmlView view) { return reply_html(id, status, view); },
+        [this](auto id, auto status, ImageView view) { return reply_image(id, status, view); });
   } catch (...) {
     return false;
   }
@@ -80,6 +82,16 @@ std::optional<wire::Status> WorkerSession::submit(std::uint64_t id,
       return wire::Status::invalid;
     if (wire::is_html(c.operation) && !policy_.html)
       return wire::Status::unavailable;
+    if (wire::is_image(c.operation) && !policy_.image)
+      return wire::Status::unavailable;
+    if (c.operation == wire::Operation::set_image) {
+      try {
+        wire::validate_image_write(wire::decode_image_item(c.text, policy_.maximum),
+                                   policy_.maximum);
+      } catch (const ipc::ProtocolError &) {
+        return wire::Status::refused;
+      }
+    }
     if (c.operation == wire::Operation::set &&
         encode_unicode_text(c.text, {}, policy_.maximum).status != TextStatus::capacity)
       return wire::Status::refused;
@@ -113,8 +125,12 @@ std::optional<wire::Status> WorkerSession::submit(std::uint64_t id,
       return wire::Status::busy;
     if (wire::is_read(c.operation)
             ? (!policy_.from_server || admitted_->remote_pending ||
-               (c.operation == wire::Operation::read_html ? !admitted_->remote_html : !admitted_->remote_text))
-            : (((c.operation == wire::Operation::set || c.operation == wire::Operation::set_html) && !policy_.to_server) ||
+               (c.operation == wire::Operation::read_image  ? !admitted_->remote_image
+                : c.operation == wire::Operation::read_html ? !admitted_->remote_html
+                                                            : !admitted_->remote_text))
+            : (((c.operation == wire::Operation::set || c.operation == wire::Operation::set_html ||
+                 c.operation == wire::Operation::set_image) &&
+                !policy_.to_server) ||
                admitted_->local_pending))
       return wire::Status::refused;
     queued_.emplace(
@@ -125,7 +141,8 @@ std::optional<wire::Status> WorkerSession::submit(std::uint64_t id,
     return wire::Status::invalid;
   }
 }
-bool WorkerSession::complete(wire::Status status, ::bridge::compat::span<const std::uint8_t> bytes) noexcept {
+bool WorkerSession::complete(wire::Status status,
+                             ::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (!active_ || !result_.empty())
     return false;
   try {
@@ -144,7 +161,8 @@ bool WorkerSession::complete(wire::Status status, ::bridge::compat::span<const s
 bool WorkerSession::reply(std::uint64_t id, TextReply status,
                           ::bridge::compat::span<const std::uint8_t> bytes) noexcept {
   if (!current_thread() || !active_ || active_->id != id ||
-      !wire::is_read(active_->operation))
+      (active_->operation != wire::Operation::read &&
+       active_->operation != wire::Operation::read_html))
     return false;
   if (active_->operation == wire::Operation::read_html) {
     if (!observe() || !html_deadline_ || now_ >= html_deadline_)
@@ -192,8 +210,14 @@ bool WorkerSession::reply_html(std::uint64_t id, TextReply status, HtmlView view
     return false;
   if (status != TextReply::ok)
     return complete(status == TextReply::stale ? wire::Status::stale : wire::Status::refused);
-  const wire::HtmlItem item{view.body, view.fragment_offset, view.fragment_bytes,
-                            view.selection_offset, view.selection_bytes, view.context, view.selection, {}};
+  const wire::HtmlItem item{view.body,
+                            view.fragment_offset,
+                            view.fragment_bytes,
+                            view.selection_offset,
+                            view.selection_bytes,
+                            view.context,
+                            view.selection,
+                            {}};
   html_wire_bytes_ = view.wire_bytes;
   if (!html_fallback_)
     return complete_html(item);
@@ -207,19 +231,45 @@ bool WorkerSession::reply_html(std::uint64_t id, TextReply status, HtmlView view
     return false;
   }
 }
+bool WorkerSession::reply_image(std::uint64_t id, TextReply status, ImageView view) noexcept {
+  if (!current_thread() || !active_ || active_->id != id ||
+      active_->operation != wire::Operation::read_image)
+    return false;
+  if (status != TextReply::ok)
+    return complete(status == TextReply::stale ? wire::Status::stale : wire::Status::refused);
+  try {
+    if (view.wire_bytes > policy_.maximum)
+      return complete(wire::Status::refused);
+    auto encoded = wire::encode_image_item({view.width, view.height, view.rgba}, policy_.maximum);
+    const auto accepted = complete(wire::Status::accepted, encoded);
+    wipe(encoded);
+    return accepted;
+  } catch (const ipc::ProtocolError &) {
+    return complete(wire::Status::refused);
+  } catch (...) {
+    return false;
+  }
+}
 bool WorkerSession::publish(const TextSnapshot &s) {
-  const wire::State state{generation_,
-                          s.revision,
-                          static_cast<std::uint32_t>(policy_.maximum),
-                          s.ready,
-                          policy_.to_server,
-                          policy_.from_server,
-                          s.ready && s.remote_text,
-                          s.ready && s.local_accepted,
-                          s.ready && policy_.to_server && s.awaiting_local,
-                          s.ready && policy_.from_server &&
-                              (s.awaiting_remote || (active_ && active_->operation == wire::Operation::read_html && result_.empty())),
-                          policy_.html, s.ready && s.remote_html, s.ready && s.local_html_accepted};
+  const wire::State state{
+      generation_,
+      s.revision,
+      static_cast<std::uint32_t>(policy_.maximum),
+      s.ready,
+      policy_.to_server,
+      policy_.from_server,
+      s.ready && s.remote_text,
+      s.ready && s.local_accepted,
+      s.ready && policy_.to_server && s.awaiting_local,
+      s.ready && policy_.from_server &&
+          (s.awaiting_remote ||
+           (active_ && active_->operation == wire::Operation::read_html && result_.empty())),
+      policy_.html,
+      s.ready && s.remote_html,
+      s.ready && s.local_html_accepted,
+      policy_.image,
+      s.ready && s.remote_image,
+      s.ready && s.local_image_accepted};
   const auto bytes = wire::encode_state(state);
   if (published_ && *published_ == bytes)
     return true;
@@ -266,9 +316,12 @@ bool WorkerSession::pump() noexcept {
         else if (job.generation != generation_ ||
                  (wire::is_read(job.operation) && job.revision != s->revision))
           refusal = wire::Status::stale;
-        else if (wire::is_read(job.operation) ?
-                     (job.operation == wire::Operation::read_html ? !s->remote_html : !s->remote_text) || s->awaiting_remote
-                                                        : s->awaiting_local)
+        else if (wire::is_read(job.operation)
+                     ? (job.operation == wire::Operation::read_image  ? !s->remote_image
+                        : job.operation == wire::Operation::read_html ? !s->remote_html
+                                                                      : !s->remote_text) ||
+                           s->awaiting_remote
+                     : s->awaiting_local)
           refusal = wire::Status::busy;
         if (refusal != wire::Status::accepted) {
           if (!complete(refusal))
@@ -279,14 +332,21 @@ bool WorkerSession::pump() noexcept {
             html_fallback_ = s->remote_text;
             html_deadline_ = now_ + html_read_ms;
             rc = text_->request_html(job.revision, job.id);
-          } else if (job.operation == wire::Operation::read)
+          } else if (job.operation == wire::Operation::read_image)
+            rc = text_->request_image(job.revision, job.id);
+          else if (job.operation == wire::Operation::read)
             rc = text_->request(job.revision, job.id);
           else if (job.operation == wire::Operation::set_html) {
             const auto item = wire::decode_html_item(
                 ::bridge::compat::span(job.payload).subspan(wire::metadata_bytes), policy_.maximum);
             rc = text_->set_local_html(item.body, item.text);
+          } else if (job.operation == wire::Operation::set_image) {
+            const auto item = wire::decode_image_item(
+                ::bridge::compat::span(job.payload).subspan(wire::metadata_bytes), policy_.maximum);
+            rc = text_->set_local_image(item.rgba, item.width, item.height);
           } else if (job.operation == wire::Operation::set)
-            rc = text_->set_local(::bridge::compat::span(job.payload).subspan(wire::metadata_bytes));
+            rc =
+                text_->set_local(::bridge::compat::span(job.payload).subspan(wire::metadata_bytes));
           else
             rc = text_->revoke_local();
           // The delegate may synchronously complete a read into result_.
@@ -311,8 +371,7 @@ bool WorkerSession::pump() noexcept {
         if (!s || s->failed)
           return false;
       }
-      if (active_ && !wire::is_read(active_->operation) && result_.empty() &&
-          !s->awaiting_local &&
+      if (active_ && !wire::is_read(active_->operation) && result_.empty() && !s->awaiting_local &&
           !complete(s->local_response_ok ? wire::Status::accepted : wire::Status::refused))
         return false;
       // An offered value can change while an encoded result awaits output.

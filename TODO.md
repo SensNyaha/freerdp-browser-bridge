@@ -10,6 +10,94 @@ desktop evidence retains its explicit scope. Additional main Windows foundation
 also passes on an unchanged retry after Edge/OpenSSL tool timeouts; the failed
 log is retained and all four source jobs are successful.
 [Current delivery, hashes and limits](docs/CLIPBOARD_BROWSER.md#040-public-delivery).
+
+Current functional branch: `feature/image-clipboard`, based on completed shared
+0.4.0. Verified component checkpoint `696f1c8` implements bounded, allocation-free packed DIB/DIBV5 and
+RGBA conversion. Full Windows foundation check passes 1065/137 skips/zero failures;
+native CTest passes Windows 23, GCC 8.3/GCC 11/Clang 24, plus 170,987 sanitized
+image fuzz runs. Image negotiation,
+shared ownership/IPC, browser actions, actual OS/RDP roundtrips and full feature
+acceptance remain open. The image checkbox below is deliberately still open.
+[Component contract](docs/CLIPBOARD_TEXT.md#image-codec-in-development).
+An independent C++/TypeScript RGBA inner-item codec is now implemented with a
+16-byte header and the existing byte ceiling. Focused Node/legacy item checks
+pass 11/11 on each OS. Full Windows `pnpm check` passes 1070/137 skips/zero
+failures; native CTest passes Windows 23/23 and GCC 8.3/GCC 11/Clang 24/24.
+Clang ASan/UBSan wire fuzz completes 795,134 runs without errors. This does not
+enable image dispatch or a new capability. A later independent main Windows CI
+Edge launch timeout remains recorded separately from these component results.
+[Developing wire contract](docs/CLIPBOARD_IPC.md#image-inner-item-in-development).
+The shared native CLIPRDR callback owner now implements opt-in image reads and
+canonical DIBV5 writes alongside text/HTML. Eight new Windows pinned-plugin /
+simulated-transport cases pass 829 assertions per platform. Full linked native
+CTest passes Windows 40/40, GCC 8.3 and Clang ASan/UBSan 41/41; Windows linked
+`pnpm check` passes 1136/71 skips/zero failures. RED OS GCC 11.4.1 compiles the
+production owner/codec objects separately; linked/actual GCC 11 acceptance remains
+open. Worker/public/browser image negotiation and actual
+OS/RDP image application acceptance remain open.
+[Native owner contract](docs/CLIPBOARD_TEXT.md#shared-native-image-owner-in-development).
+Private image handoff now implements HELLO bit 512, CONFIGURE schema 14, schema-4
+commands/state, shared worker scheduling and typed Node image read/write/revoke.
+Focused checks pass 57/57; full Windows linked `pnpm check` passes 1152/71 skips,
+Linux UID1000/CapEff=0 passes 1120/108 skips, zero failures. Linked CTest passes
+Windows 40/40 and GCC 8.3/Clang ASan/UBSan 41/41; RED OS GCC 11 foundation passes
+24/24 and three SDK modules compile. Wire/IPC fuzz passes 686,165/581,671 runs.
+Public managed selection/browser
+integration and actual image application acceptance remain open; the image
+checkbox is not checked by these internal components.
+[Handoff contract](docs/CLIPBOARD_IPC.md#private-image-handoff-in-development).
+Public shared image ownership, exact native-adapter reservations and RWC1 image
+control operations are now implemented. Focused ownership/adapter checks pass
+34/34 and combined control checks 35/35, including actual WebSocket multi-window
+RGBA with synthetic RDP. Full linked public `pnpm check` passes Windows
+1178/71 skips and Linux UID1000/CapEff=0 1149/108 skips, zero failures.
+Native sources are unchanged from the accepted private handoff. Browser
+actions/permissions and actual OS/RDP image application acceptance remain open.
+[Public contract](docs/CLIPBOARD_CONTROL.md#image-control-extension-in-development).
+The browser byte client now negotiates the explicit RGBA descriptor and shares
+the existing text/HTML flight, credit, deadlines and controller cleanup. Focused
+pure composition checks pass 25/25, including the full 16 MiB ceiling; actual
+Edge/WebSocket image and retained HTML helper checks pass 8/8 with synthetic
+RDP and no OS clipboard access. Full linked `pnpm check` passes Windows
+1191/71 skips and Linux UID1000/CapEff=0 1159/111 skips, zero failures. The
+initial Linux run omitted Docker init and failed five parent-death checks;
+an independent zombie/reaper probe and all five unchanged cases confirm the
+environment correction before the passing full rerun. Browser ClipboardItem
+actions and actual image application acceptance remain open.
+[Browser contract](docs/CLIPBOARD_BROWSER.md#image-byte-client-in-development).
+Explicit reference image ClipboardItem actions and independent image selection
+are now implemented with disposable PNG conversion workers and fixed-size
+previews. Pure conversion/config checks pass 19/19; actual Edge/viewer/control
+checks with synthetic RDP pass 13/13, and preview/real permission-refusal checks
+pass 4/4 without OS clipboard reads. Full linked `pnpm check` passes Windows
+1207/71 skips and Linux UID1000/CapEff=0 1170/116 skips, zero failures.
+A separate actual Windows/Edge 156 opaque 32x32 PNG profile passes local
+paste/send, exact independent-browser-process OS readback, a new revision and
+owned cleanup. This uses a synthetic session API, not RDP. Actual RDP image,
+broader color/resource/platform and hosted/release acceptance remain open;
+the Stage 7 checkbox stays open.
+[Actions contract](docs/CLIPBOARD_BROWSER.md#explicit-image-actions-in-development).
+Reproducible manual PNG OS and prepared-document actual-RDP helpers are now
+implemented. Bounded document/receipt/CLI and actual-WS/synthetic-backend checks
+pass 8/8. A fresh source-only Windows linked build passes CTest 40/40 and its
+native/process/clipboard Node subset 60/2 skips. Full helper regression passes
+Windows 1215/71 skips and Linux UID1000/CapEff=0 1176/118 skips, zero failures;
+the tracked OS helper also passes the independent browser-process PNG scenario.
+Actual image RDP remains open: after the unavailable TCP preflight the user
+requested retry no earlier than 2026-10-27 09:58 Samara. No certificate was
+accepted and the preflight runtime was cleaned.
+[Prepared application procedure](docs/CLIPBOARD_BROWSER.md#prepared-image-application-helper).
+Linux image application preparation now adds a bounded private image bootstrap,
+separate read-only UID1000 container admission and actual-carrier preflight for
+RWS1/framed IPC. Eleven focused image/legacy bootstrap/profile checks, five
+linked Linux server profiles and both Windows-to-Linux browser bootstrap profiles
+pass. Full regression passes Windows 1220/71 skips and Linux UID1000/CapEff=0
+1181/118 skips, zero failures; native sources remain unchanged. Browser bootstrap
+is headless with Clipboard APIs mocked to refuse access and creates no RDP
+session. Actual remote application gates remain open; no RDP access is attempted
+before the user's retry time.
+[Linux preparation](docs/CLIPBOARD_BROWSER.md#linux-image-application-preparation).
+
 The earlier preparation checkpoints below retain their historical scope.
 
 The Stage 1 schema-1 runtime recovery feature is completed and published as

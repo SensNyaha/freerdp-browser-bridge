@@ -39,9 +39,13 @@ for (const profile of [
   'html-bidirectional',
   'html-server-to-browser',
   'html-browser-to-server',
+  'image-bidirectional',
+  'image-server-to-browser',
+  'image-browser-to-server',
 ]) {
   const html = profile.startsWith('html-');
-  const mode = html ? profile.slice(5) : profile;
+  const image = profile.startsWith('image-');
+  const mode = html ? profile.slice(5) : image ? profile.slice(6) : profile;
   test(
     'actual typed native clipboard: ' +
       profile +
@@ -61,6 +65,7 @@ for (const profile of [
         assert.equal((await worker.start()).capabilities.clipboardText, true);
         assert.equal(worker.build.capabilities.clipboardRevoke, true);
         if (html) assert.equal(worker.build.capabilities.clipboardHtml, true);
+        if (image) assert.equal(worker.build.capabilities.clipboardImage, true);
         await worker.connect({
           target: { host: '127.0.0.1', port: endpoint.port },
           auth: { username: 'synthetic', password: 'synthetic IPC sentinel' },
@@ -71,6 +76,7 @@ for (const profile of [
             text: true,
             maxItemBytes: 1024,
             ...(html ? { html: true } : {}),
+            ...(image ? { images: true } : {}),
           },
         });
         const deadline = Date.now() + 6000;
@@ -89,10 +95,15 @@ for (const profile of [
           assert.equal(source.toServer, mode !== 'server-to-browser');
           assert.equal(source.fromServer, mode !== 'browser-to-server');
           if (html) assert.equal(source.html, true);
+          if (image) assert.equal(source.image, true);
         }
         assert.equal(worker.clipboardState, undefined);
         if (html)
           assert.deepEqual(await worker.readClipboardHtml(1n), {
+            status: 'unavailable',
+          });
+        if (image)
+          assert.deepEqual(await worker.readClipboardImage(1n), {
             status: 'unavailable',
           });
         assert.equal(await worker.revokeClipboardText(), 'unavailable');
