@@ -1175,3 +1175,71 @@ the test condition is corrected, and the five profiles and full suites pass
 after the correction. Evidence is bound in the ignored local
 `build/current-validation/image-linux-acceptance.json` report. Actual image
 application acceptance, including both Linux carriers, remains open.
+
+### Image GCC 11 and hosted checkpoint
+
+The native sources used by `ef70a0b` pass a fresh out-of-tree Release build with
+**GCC 11.4.1 on RED OS 7.3**, followed by **CTest 41/41**. The linked worker reports
+FreeRDP 3.32.1 and the image/HTML/revoke hooks. The source digest matches the
+accepted clean Windows/native sources; the local
+`build/current-validation/image-redos-gcc11-linked-v3.json` report binds the
+source/archive/SDK inputs and output worker, with the terminal CTest log beside
+it. Build and tests run as an unprivileged user in their own temporary directory.
+
+This is a linked bridge compiler check using the unchanged pinned SDK built with
+GCC 8.3. It does not rebuild FreeRDP with GCC 11. `BRIDGE_NODE_IPC=OFF` leaves the
+Node addon outside this check, and no remote RDP/application operation is made.
+It therefore extends the earlier GCC 11 foundation/object evidence without
+accepting the image feature or all RED OS deployment scenarios.
+
+Public development commit `3115593e104f5912e6f0ea54dc03d73edb09af90` on
+`SensNyaha/freerdp-browser-bridge:feature/image-clipboard` contains the exact
+102 feature file changes from private base `233b811` through `ef70a0b`. Its
+`.delivery/development.json` binds those source bytes and explicitly leaves
+release and actual image RDP acceptance false. Published 0.4.0 delivery inputs,
+main and release tags are unchanged. The
+[foundation run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40451978659)
+passes Windows, default Linux and sanitizers, but its GCC 12 job fails the
+synthetic adapter test's connected-before-clipboard-ready ordering described
+below. The [GCC 8.3 run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40451978578)
+passes. The separate
+[Windows/Linux bundled-native run](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40452353162)
+passes the Linux linked build and full Node checks, then fails in the existing
+restricted bookworm runtime: Ubuntu-built private dependencies require
+`GLIBC_2.38`, which that runtime does not provide. Its Windows job is cancelled
+by fail-fast during Node checks. Neither failure is a passing hosted gate.
+The runtime's baseline must remain intact while the builder is repaired.
+These workflows publish no packages or releases.
+
+### Automatic named PNG profiles and source readiness
+
+`tests/integration/clipboard-image-conversion-browser.test.mjs` now automatically
+exercises real disposable Edge PNG workers with three owned profiles: opaque
+257×19, representable alpha 33×17 and opaque 2048×2047. The last contains
+16,769,024 RGBA bytes (16,769,148 with DIBV5 overhead) under the 16 MiB item cap.
+Each profile checks exact pixels/geometry, unchanged borrowed input, refusal at
+one byte below the required DIBV5 quota, one active worker, joined termination
+and explicit owned-array wiping. Transparent pixels canonicalize to zero RGB;
+the selected nonzero alpha colors use full-intensity/zero RGB and remain exactly
+representable. Arbitrary translucent RGB, other color spaces and total browser
+decoder CPU/RSS are separate concerns. Clipboard APIs are mocked to refuse all
+access; these are PNG conversion tests, not OS clipboard or RDP acceptance.
+
+The synthetic native-adapter manager test now explicitly waits for
+`clipboardSnapshot.state.ready`. Connected and clipboard-ready arrive as
+independent events; the initial hosted GCC 12 failure assumed they arrived
+together. A deterministic second case holds one scalar source snapshot until
+after connection, verifies permission is refused while the source is absent,
+publishes that source, then checks normal image read/write and joined revoke.
+It adds no scheduling sleep, permission relaxation or production change.
+
+Eight focused checks pass. Full linked regression passes Windows **1225 passed /
+71 skipped** and Linux UID1000/CapEff=0 **1182 passed / 119 skipped**, zero
+failures. The earlier Windows run retained six TLS/setup deadline failures,
+including an explicit OpenSSL startup timeout. Tool initialization and the
+unchanged targeted TLS subset pass 14/14 before the passing full rerun; the
+original logs and timeouts are preserved. Native sources/artifacts are unchanged.
+`build/current-validation/image-png-ready-acceptance.json` binds the final source
+snapshot, terminal suites, held-source counterexample and initial hosted failures.
+Corrected-source hosted checks, the bundled Linux ABI repair and actual image
+RDP application acceptance remain open.

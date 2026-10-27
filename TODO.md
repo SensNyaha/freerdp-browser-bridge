@@ -97,6 +97,21 @@ is headless with Clipboard APIs mocked to refuse access and creates no RDP
 session. Actual remote application gates remain open; no RDP access is attempted
 before the user's retry time.
 [Linux preparation](docs/CLIPBOARD_BROWSER.md#linux-image-application-preparation).
+The same native sources now also pass a fresh linked Release build and CTest
+41/41 on RED OS 7.3/GCC 11.4.1. This reuses the pinned GCC 8.3 SDK; FreeRDP was
+not rebuilt with GCC 11, the Node addon is disabled, and no RDP session is tested.
+Public development commit `3115593` contains the exact 102 feature file changes.
+Its GCC 8.3, Windows/default-Linux foundation and sanitizer jobs pass; the GCC 12
+job exposes a test assumption that connected implies clipboard readiness. This
+is now corrected with explicit readiness and a deterministic held-source case.
+Eight focused checks and full Windows 1225/71 skips / Linux UID1000/CapEff=0
+1182/119 skips pass, zero failures. New automatic Edge PNG profiles cover
+non-square opaque, representable alpha and near-16-MiB conversion without OS/RDP.
+The initial bundled-native Linux clean runtime fails because Ubuntu-built
+dependencies require GLIBC_2.38; Windows is cancelled by fail-fast. Portable
+builder repair and corrected-source hosted checks remain open. Main, release
+tags and published 0.4.0 inputs remain unchanged.
+[Compiler/hosted checkpoint](docs/CLIPBOARD_BROWSER.md#image-gcc-11-and-hosted-checkpoint).
 
 The earlier preparation checkpoints below retain their historical scope.
 

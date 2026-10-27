@@ -2,7 +2,7 @@
   "schema": 1,
   "branch": "feature/image-clipboard",
   "privateBaseCommit": "233b811df3ff2750b8eef6d030cfde184004fa34",
-  "privateSourceCommit": "ef70a0baf2d98bc216645c59c475803ce2c7c8b0",
+  "privateSourceCommit": "a0fa5e49b67773c56350fb1474275553e87e67a7",
   "publicBaseCommit": "90ee3982cad9a07304168251ca2b18bc4423a5bc",
   "releaseAccepted": false,
   "actualImageRdpAccepted": false,
@@ -25,8 +25,8 @@
       "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
     },
     "TODO.md": {
-      "bytes": 234689,
-      "sha256": "8304347d2a1eb07eb97ba2cd5fd8d477fd9df5f8a86546071ee31c80800ab54a"
+      "bytes": 235853,
+      "sha256": "3589874c23d4c65a6bed9942fb14a6e4e7f5a3257f95f01431e4db53667257e8"
     },
     "apps/bridge-api/src/clipboard.ts": {
       "bytes": 6634,
@@ -73,8 +73,8 @@
       "sha256": "a7d650226992e44b9aa08b4a4283120bcb2d7408239a2ef535d2c2c32e229d24"
     },
     "docs/CLIPBOARD_BROWSER.md": {
-      "bytes": 76595,
-      "sha256": "9fddf4be086dfccdb7847b4a3c4ceebbf873d54aead76871eb0a50956cf9883b"
+      "bytes": 81084,
+      "sha256": "bb1fb13d6a6e5c092fdd8c38df826f4e38fb67134aef16e53b9a6f090254c7aa"
     },
     "docs/CLIPBOARD_CONTROL.md": {
       "bytes": 12464,
@@ -317,8 +317,8 @@
       "sha256": "44b4e29c110fc117b655181e3d6884e9f475b9884d5a99b9e077a8f50924d3ab"
     },
     "tests/integration/clipboard-image-native-adapter.test.mjs": {
-      "bytes": 5132,
-      "sha256": "4d58533dc5aedb78a64da79f1d033629323b884a55316f693bcf2e6d919c9417"
+      "bytes": 6320,
+      "sha256": "cf2e67ce1920c0d90af81e04e1e439850085a6efc90623f24fb0507ad3e04105"
     },
     "tests/integration/clipboard-image-view.test.mjs": {
       "bytes": 6968,
@@ -415,6 +415,10 @@
     "tests/unit/linux-viewer-bootstrap.test.mjs": {
       "bytes": 3311,
       "sha256": "2399e0beccae26d778cc507cc58cca6c985840405a78c07078572a01bb738599"
+    },
+    "tests/integration/clipboard-image-conversion-browser.test.mjs": {
+      "bytes": 7621,
+      "sha256": "a7616414ced80e039850a1b888edd47e35bc70eb8b5e2af378ff960113cfb2c2"
     }
   }
 }

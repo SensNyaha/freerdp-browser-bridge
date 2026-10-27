@@ -82,41 +82,69 @@ test('Synthetic image private process plus actual native adapter: exact reservat
     unsubscribe();
   });
 });
-test('Synthetic image private process plus manager: immutable reservation reaches control ownership and joins revoke', async () => {
-  await fixture(async ({ native }) => {
-    const principal = { id: 'image-adapter' },
-      manager = new SessionManager({
-        workerFactory: (limits) => {
-          assert.deepEqual(limits, {
-            clipboardItemBytes: 1024,
-            clipboardImage: true,
+for (const delayedSource of [false, true])
+  test(`Synthetic image private process plus manager: ${delayedSource ? 'connected before clipboard source' : 'ordinary source ordering'} preserves reservation and joins revoke`, async () => {
+    await fixture(async ({ native }) => {
+      let sourceHeld, publishSource;
+      if (delayedSource) {
+        const subscribe = native.onClipboard.bind(native);
+        let held = true;
+        native.onClipboard = (listener) =>
+          subscribe((state) => {
+            if (!held) return listener(state);
+            // Hold one scalar snapshot, rather than relying on pipe chunking or a
+            // scheduling delay to expose connected-before-clipboard ordering.
+            sourceHeld = { ...state };
+            publishSource = () => {
+              held = false;
+              listener(sourceHeld);
+              sourceHeld = undefined;
+            };
           });
-          return native;
-        },
-      });
-    try {
-      const session = manager.create(config, principal, 'image-adapter');
-      await eventually(
-        () => manager.get(session.sessionId, principal).state === 'connected',
-      );
-      const control = manager.attach(
-        session.sessionId,
-        manager.mintToken(session.sessionId, principal, 'control').token,
-        'control',
-      );
-      assert.equal(control.startClipboard(), true);
-      const image = await control.readClipboardImage(1n);
-      assert.deepEqual(image.item, imageItem());
-      assert.equal(await control.writeClipboardImage(imageItem()), 'accepted');
-      assert.equal(await control.stopClipboard(), true);
-      assert.equal(control.clipboardSnapshot.state.localImageAccepted, false);
-      image.item.rgba.fill(0);
-      control.release();
-    } finally {
-      await manager.shutdown();
-    }
+      }
+      const principal = { id: 'image-adapter' },
+        manager = new SessionManager({
+          workerFactory: (limits) => {
+            assert.deepEqual(limits, {
+              clipboardItemBytes: 1024,
+              clipboardImage: true,
+            });
+            return native;
+          },
+        });
+      try {
+        const session = manager.create(config, principal, 'image-adapter');
+        await eventually(
+          () => manager.get(session.sessionId, principal).state === 'connected',
+        );
+        const control = manager.attach(
+          session.sessionId,
+          manager.mintToken(session.sessionId, principal, 'control').token,
+          'control',
+        );
+        if (delayedSource) {
+          await eventually(() => sourceHeld?.ready === true);
+          assert.notEqual(control.clipboardSnapshot.state?.ready, true);
+          assert.equal(control.startClipboard(), false);
+          publishSource();
+        }
+        await eventually(() => control.clipboardSnapshot.state?.ready === true);
+        assert.equal(control.startClipboard(), true);
+        const image = await control.readClipboardImage(1n);
+        assert.deepEqual(image.item, imageItem());
+        assert.equal(
+          await control.writeClipboardImage(imageItem()),
+          'accepted',
+        );
+        assert.equal(await control.stopClipboard(), true);
+        assert.equal(control.clipboardSnapshot.state.localImageAccepted, false);
+        image.item.rgba.fill(0);
+        control.release();
+      } finally {
+        await manager.shutdown();
+      }
+    });
   });
-});
 test('Native image adapter: missing or mismatched reservation refuses before spawning a child', async () => {
   for (const limits of [
     {},
