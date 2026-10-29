@@ -8,6 +8,8 @@ import {
   realpath,
   rm,
   statfs,
+  open,
+  unlink,
 } from 'node:fs/promises';
 import { Writable } from 'node:stream';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
@@ -53,9 +55,13 @@ for (const [platform, transport] of [
         assert.ok(filesystem.bavail * filesystem.bsize >= mountedBytes - 65536);
       }
       const initialFreeBytes = filesystem.bavail * filesystem.bsize;
-      const quotaBytes = windows ? 33554432 : 8388608;
-      const fileBytes = windows ? 16777216 : 4194304;
+      const quotaBytes = windows ? 4194304 : 8388608;
+      const fileBytes = windows ? 2097152 : 4194304;
       const runtimeRoot = await mkdtemp(join(fullRoot, 'bridge-http-full-'));
+      const pressurePath = join(fullRoot, 'owned-volume-pressure.bin');
+      let pressureCreated = false;
+      let pressureBytes = 0;
+      let attemptFreeBytes = initialFreeBytes;
       const workers = [];
       const server = await createSessionServer({
         worker: {
@@ -103,7 +109,6 @@ for (const [platform, transport] of [
               ...headers,
             },
             ...(body === undefined ? {} : { body }),
-            ...(body?.[Symbol.asyncIterator] ? { duplex: 'half' } : {}),
           });
         const created = await req(
           'POST',
@@ -149,15 +154,43 @@ for (const [platform, transport] of [
           'managed-files',
           '.uploads',
         );
-        async function* fullWindowsBody() {
-          const block = Buffer.alloc(65536, 0x5a);
-          for (let n = 0; n < 256; n++) yield block;
+        if (windows) {
+          // Keep the declared body modest: continuing a large/chunked body
+          // after early refusal may legitimately lose the response to TCP RST.
+          // Pressure only this verified private VHD, outside native accounting.
+          const pressure = await open(pressurePath, 'wx', 0o600);
+          pressureCreated = true;
+          try {
+            const block = Buffer.alloc(65536, 0x3c);
+            for (let n = 0; n < 256; n++) {
+              const fs = await statfs(runtimeRoot);
+              const remaining = fs.bavail * fs.bsize - 524288;
+              if (remaining < fs.bsize) break;
+              const bytes = Math.min(
+                block.length,
+                Math.floor(remaining / fs.bsize) * fs.bsize,
+              );
+              assert.equal(
+                (await pressure.write(block, 0, bytes)).bytesWritten,
+                bytes,
+              );
+              pressureBytes += bytes;
+            }
+            await pressure.sync();
+          } finally {
+            await pressure.close();
+          }
+          const fs = await statfs(runtimeRoot);
+          attemptFreeBytes = fs.bavail * fs.bsize;
+          assert.ok(pressureBytes > 0 && pressureBytes <= mountedBytes);
+          assert.ok(attemptFreeBytes >= 524288 && attemptFreeBytes <= 589824);
         }
+        const fullBody = Buffer.alloc(windows ? 1048576 : 2097152, 0x5a);
         for (let attempt = 0; attempt < 12; ++attempt) {
           const response = await req(
             'POST',
             files + '?name=too-large-for-owned-volume.bin',
-            windows ? fullWindowsBody() : Buffer.alloc(2097152, 0x5a),
+            fullBody,
             { 'content-type': 'application/octet-stream' },
           );
           assert.equal(response.status, 507);
@@ -174,7 +207,7 @@ for (const [platform, transport] of [
           const available = await statfs(runtimeRoot);
           assert.ok(
             available.bavail * available.bsize >=
-              (windows ? initialFreeBytes - 1048576 : 524288),
+              (windows ? attemptFreeBytes - 65536 : 524288),
           );
         }
         assert.ok(successfulNativeWriteBytes > quotaBytes);
@@ -211,13 +244,22 @@ for (const [platform, transport] of [
             successfulNativeWriteBytes,
             quotaBytes,
             maximumFreeBytesAtFull,
+            ...(windows ? { pressureBytes, attemptFreeBytes } : {}),
           }),
         );
       } finally {
-        await server.close();
-        assert.deepEqual(await readdir(runtimeRoot), []);
-        assert.equal((await lstat(runtimeRoot)).isSymbolicLink(), false);
-        await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
+        try {
+          await server.close();
+          assert.deepEqual(await readdir(runtimeRoot), []);
+          assert.equal((await lstat(runtimeRoot)).isSymbolicLink(), false);
+          await rm(runtimeRoot, {
+            recursive: true,
+            force: true,
+            maxRetries: 3,
+          });
+        } finally {
+          if (pressureCreated) await unlink(pressurePath);
+        }
       }
     },
   );
