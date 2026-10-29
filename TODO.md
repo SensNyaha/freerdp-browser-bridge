@@ -2518,8 +2518,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
   both the source worker and exact published npm 0.6.0 runtime: twelve 507
   responses, zero physical free bytes, repeated quota refund, fresh IO and
   detached/empty cleanup. RDP state is synthetic in that Windows fixture;
-  connected Windows RDPDR disk-full and broader installed resource acceptance
+  exact public DEB/RPM installed services now also pass on Astra/RED OS:
+  twelve connected HTTP 507 responses, independently observed zero physical
+  free bytes, subsequent real RDPDR CRUD/read-only and complete uninstall /
+  configuration / bounded-mount cleanup. Actual installed RDPDR-initiated exhaustion also passes both platforms:
+  strict-SSH free space zero, verified native partial bytes, cross-HTTP 507,
+  owned delete/stale-ID/space recovery and subsequent CRUD. Broader Windows /
+  MSI / service resource acceptance and connected Windows RDPDR disk-full
   remain open; this checkbox stays open.
+  [Installed Linux scope](docs/FILES.md#installed-astra-and-red-os-disk-full-acceptance).
   [Windows physical scope](docs/FILES.md#bounded-windows-ntfs-disk-full-check).
   [Connected public scope](docs/FILES.md#connected-public-standalone-disk-full-acceptance).
   [Bounded test and evidence](docs/FILES.md#bounded-http-disk-full-acceptance).

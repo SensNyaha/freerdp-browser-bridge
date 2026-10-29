@@ -581,6 +581,77 @@ archive bytes or immutable tags change in this test-only branch.
 Receipts and test logs, excluding the mutated image, use the workflow's
 `windows-files-full-evidence` artifact.
 
+### Installed Astra and RED OS disk-full acceptance
+
+The explicit `--managed-files-full` mode in `scripts/standalone/rdp-lab-server.py`
+requires the fixed managed-file test policy and a verified absent bridge service.
+It installs the exact public **0.6.0 DEB/RPM**, checks the dedicated service UID,
+and mounts a new **1 MiB tmpfs** only at its previously absent runtime directory.
+Mount admission checks the unique source, exact mount point, tmpfs type,
+`nodev,nosuid,noexec`, owner, private permissions and physical size. It never
+fills the ordinary host filesystem.
+
+The installed unit's executable and command stay unchanged. A new runtime-only
+`RuntimeDirectoryPreserve=yes` drop-in retains the mount until the fixture can
+stop the service and explicitly unmount it. Both target systemd versions support
+[this documented option](https://www.freedesktop.org/software/systemd/man/256/systemd.exec.html#RuntimeDirectoryPreserve=).
+A constant-memory sampler observes the bounded volume while the real service,
+private Node and actual native worker connect to the same lab's RDP server.
+
+`--owned-managed-files-full-installed-rdp` in the existing client keeps JWT and
+RDP credentials in private input/memory. It verifies **twelve declared 1 MiB
+uploads returning 507 `FILE_DISK_FULL`**, unchanged seed listings and a connected
+session after each refusal, under the 4 MiB total / 2 MiB file quota. The original
+real RDPDR Unicode CRUD, 65599-byte exact readback, 131111-byte chunked upload,
+read-only refusals, stale IDs and joined close then run as before.
+
+Both **Astra 1.7.5** and **RED OS 7.3** pass using public installed packages:
+
+| Platform | Public package SHA256 | Observed minimum free bytes | Final bounded free bytes |
+| --- | --- | ---: | ---: |
+| Astra 1.7.5 | `87fa1831b5b5d8de28708d44c1f57b545125297a1f4e95efc9cf6580e06bccdf` | 0 | 1048576 |
+| RED OS 7.3 | `48e4da49bdfb0803322a21b01bd42e0a5f7dd848aff83fabc700b83c184162a0` | 0 | 1048576 |
+
+Both use native worker SHA256
+`c282e1e3ca304fee0c95dd38754231a1c7e954acbe7736c0ab5b3342ba853079`.
+After each run the service PID is zero, its runtime is empty, the exact owned
+mount is removed, the test drop-in is deleted, original configuration is
+restored, the package is uninstalled, and the verified transferred payload is
+removed nonrecursively. The RDP shares are also confirmed absent.
+
+The ten pure mount/policy/private-sudo controls and both private-client
+EOF/readiness controls now run through `pnpm check` when Python is available.
+They do not install a service or make network requests. The fixture code is
+private `7dc4d15` / public `92b3f201`; final
+[foundation CI 40955661650](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40955661650)
+and [GCC 8.3 CI 40955661663](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40955661663)
+both pass on exact public `92b3f201`, including Windows/MSVC, two Linux
+foundation jobs, native CTest and sanitizer/fuzz checks. Actual lab receipts and source/log hashes
+are retained under `build/current-validation/files-installed-resource-actual-acceptance.json`
+and `files-resource-public-installed-{astra,redos}-acceptance.json`.
+The later final profiles also perform an **RDPDR-initiated full write** through
+the installed service. The owned remote probe writes at most 2 MiB to its
+nonce-verified share. XRDP returns EIO; a separate strict-SSH `statvfs` observation
+confirms **zero physical free bytes** while the partial file remains present.
+The client verifies all **1032192 native partial bytes** through HTTP, and a
+concurrent 64 KiB HTTP upload receives 507. XRDP's acknowledged/cached size is
+**983040 bytes**; that transport limitation is recorded separately and is not
+mistaken for the native file size.
+
+After the remote probe removes only its owned file, strict SSH measures
+**1032192 free bytes**, the old locator returns 404, and ordinary real RDPDR
+CRUD/read-only checks pass. Both exact installed packages pass this final
+composition: **13 HTTP 507 responses per platform**, physical exhaustion from
+the drive, partial-content verification, delete/refund/recovery and full cleanup.
+The final report flags both connected HTTP and drive disk-full as verified.
+Receipts are `files-resource-public-installed-drive-final-{astra,redos}-acceptance.json`
+and `files-installed-resource-drive-final-acceptance.json` under the same local
+evidence directory; the earlier HTTP-only receipts remain preserved.
+
+This accepts installed Linux **HTTP and RDPDR physical-full plus recovery**.
+Connected Windows full-drive, Windows MSI disk exhaustion and complete
+resource/soak acceptance remain separate gates.
+
 ## Native drive backend in development
 
 `ScopedSandbox` and `DriveSession` now implement the native storage backend for
