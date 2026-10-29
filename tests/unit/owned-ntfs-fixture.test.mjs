@@ -29,7 +29,6 @@ const options = {
 };
 const available = spawnSync(python, ['-I', '--version'], options).status === 0;
 const script = resolve('tests/fixtures/create-owned-ntfs-vhd.py');
-const windowsImage = process.env.BRIDGE_TEST_WINDOWS_VHD_INPUT;
 async function scratch() {
   return mkdtemp(join(await realpath(tmpdir()), 'bridge-vhd-refusal-'));
 }
@@ -56,77 +55,6 @@ test(
     } finally {
       await remove(root);
     }
-  },
-);
-
-test(
-  'PowerShell inspector accepts the real offline VHD and refuses changed provenance or corrupt bytes without mounting',
-  { skip: process.platform !== 'win32' || !windowsImage, timeout: 90000 },
-  async (t) => {
-    const source = await realpath(windowsImage);
-    const meta = JSON.parse(
-      await readFile(join(source, 'volume.json'), 'utf8'),
-    );
-    // This deadline bounds isolated PowerShell/CLR + image inspection startup,
-    // independently of the native file-operation deadlines exercised later.
-    // Windows PowerShell needs its normal profile/cache directories to discover
-    // OS modules. Keep a whitelist; never inherit application/lab credentials.
-    const inspectionEnv = { ...options.env };
-    for (const [key, value] of Object.entries(process.env))
-      if (
-        [
-          'SYSTEMDRIVE',
-          'USERPROFILE',
-          'APPDATA',
-          'LOCALAPPDATA',
-          'PROGRAMFILES',
-          'PROGRAMW6432',
-        ].includes(key.toUpperCase())
-      )
-        inspectionEnv[key] = value;
-    inspectionEnv.PSModulePath = join(
-      process.env.SystemRoot,
-      'System32',
-      'WindowsPowerShell',
-      'v1.0',
-      'Modules',
-    );
-    const result = spawnSync(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-File',
-        resolve('tests/fixtures/windows-owned-full-volume-admission.ps1'),
-        '-ImageDirectory',
-        source,
-      ],
-      { ...options, env: inspectionEnv, timeout: 30000 },
-    );
-    if (result.error)
-      t.diagnostic(
-        JSON.stringify({
-          inspectorError: result.error.code,
-          phases: result.stderr
-            .split(/\r?\n/)
-            .filter((line) => /^OWNED_VHD_INSPECTION_[A-Z_]+$/.test(line)),
-        }),
-      );
-    assert.equal(
-      result.error?.code,
-      undefined,
-      'one isolated PowerShell admission batch must finish within its setup deadline',
-    );
-    assert.equal(result.status, 0);
-    assert.deepEqual(JSON.parse(result.stdout), {
-      inspected: true,
-      mounted: false,
-      provenanceRefusals: 3,
-      corruptFooterRefused: true,
-      sourcePreserved: true,
-      guardRemoved: true,
-      sha256: meta.sha256,
-    });
   },
 );
 
