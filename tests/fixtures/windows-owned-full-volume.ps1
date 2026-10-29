@@ -29,6 +29,22 @@ function Big-Number($Bytes, [int]$Offset, [int]$Count) {
     return $value
 }
 function Hex($Bytes) { return [BitConverter]::ToString($Bytes).Replace('-', '').ToLowerInvariant() }
+function File-Sha256([string]$Path) {
+    Inspection-Phase 'HASH_ALGORITHM'
+    $hasher = New-Object Security.Cryptography.SHA256Managed
+    $inputFile = $null
+    try {
+        Inspection-Phase 'HASH_OPEN'
+        $inputFile = [IO.File]::OpenRead($Path)
+        Inspection-Phase 'HASH_READ'
+        $digest = $hasher.ComputeHash($inputFile)
+        Inspection-Phase 'HASH_DONE'
+        return Hex $digest
+    } finally {
+        if ($inputFile) { $inputFile.Dispose() }
+        $hasher.Dispose()
+    }
+}
 function Assert-Disk($Disk, $Before, [UInt32]$Signature) {
     Require ($Disk.Size -eq 16777216 -and -not $Disk.IsBoot -and -not $Disk.IsSystem)
     Require ($Disk.PartitionStyle -eq 'MBR' -and $Disk.Signature -eq $Signature)
@@ -69,7 +85,7 @@ Require ($meta.partitionStartSector -eq 2048 -and $meta.partitionSectors -eq 307
 Require ($meta.sourceDeviceOpened -eq $false -and $meta.hostMountPerformed -eq $false)
 Require ($meta.sha256 -cmatch '^[0-9a-f]{64}$' -and $meta.vhdIdentifier -cmatch '^[0-9a-f]{32}$')
 Inspection-Phase 'MANIFEST'
-Require ((Get-FileHash -LiteralPath $imagePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $meta.sha256)
+Require ((File-Sha256 $imagePath) -ceq $meta.sha256)
 Inspection-Phase 'HASH'
 $stream = [IO.File]::OpenRead($imagePath)
 try {
@@ -101,7 +117,7 @@ if ($InspectOnly) {
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 Require ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
 $binary = Join-Path ([IO.Path]::GetFullPath($BinaryDirectory)) 'rdp-worker.exe'
-$workerSha256 = (Get-FileHash -LiteralPath $binary -Algorithm SHA256).Hash.ToLowerInvariant()
+$workerSha256 = File-Sha256 $binary
 $before = @(Get-Disk | Select-Object -ExpandProperty ObjectId)
 $beforeLetters = @(Get-Volume | Where-Object DriveLetter | Select-Object -ExpandProperty DriveLetter)
 $context = Join-Path $build ('owned-vhd-run-'+[Guid]::NewGuid().ToString('N'))
@@ -116,7 +132,7 @@ foreach ($identity in @($sid,(New-Object Security.Principal.SecurityIdentifier('
 [void][IO.Directory]::CreateDirectory($context,$security)
 $copy = Join-Path $context 'owned-full.vhd'
 [IO.File]::Copy($imagePath,$copy,$false)
-Require ((Get-FileHash -LiteralPath $copy -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $meta.sha256)
+Require ((File-Sha256 $copy) -ceq $meta.sha256)
 $mounted = $false
 $root = $null
 $code = 1
@@ -161,7 +177,7 @@ try {
     if ($mounted) { Dismount-DiskImage -ImagePath $copy -StorageType VHD }
 }
 Require (-not (Get-DiskImage -ImagePath $copy).Attached)
-Require ((Get-FileHash -LiteralPath $imagePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $meta.sha256)
+Require ((File-Sha256 $imagePath) -ceq $meta.sha256)
 # The mutated private image remains under build for inspection; no recursive
 # deletion or filesystem repair is performed by this coordinator.
 $acceptance = @{ windowsPhysicalFull=($code -eq 0); detached=$true; imageSha256=$meta.sha256;

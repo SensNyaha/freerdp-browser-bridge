@@ -103,7 +103,7 @@ test(
             phases: result.stderr
               .split(/\r?\n/)
               .filter((line) =>
-                /^OWNED_VHD_INSPECTION_(STARTED|PATHS|MANIFEST|HASH|LAYOUT)$/.test(
+                /^OWNED_VHD_INSPECTION_(STARTED|PATHS|MANIFEST|HASH|HASH_ALGORITHM|HASH_OPEN|HASH_READ|HASH_DONE|LAYOUT)$/.test(
                   line,
                 ),
               ),
