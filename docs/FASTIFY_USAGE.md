@@ -4,7 +4,12 @@
 явные действия браузера, общие лимиты и ограничения описаны в
 [image clipboard](CLIPBOARD_BROWSER.md#versioned-050-image-application-acceptance).
 
-Этот документ описывает Fastify-реализацию релиза **0.2.1**, принятую через
+Текущий набор **0.6.0** опубликован и проверен. Управляемые файлы и RDP-диски
+включаются доверенной настройкой `sessions.files`; файловый Ctrl+C/Ctrl+V
+остаётся отдельной задачей (`clipboardFiles: false`).
+[Файловый API и настройка](FILES.md), [публичная приёмка](RELEASE_0_6_0.md#public-delivery).
+
+Первая Fastify-реализация релиза **0.2.1** принята через
 отдельные `feature/fastify-0.2.1` и `release/0.2.1`. Стабильная 0.2.0 не
 содержит этого plugin. JS/native-артефакты имеют согласованную версию 0.2.1;
 [release-проверки](ITERATION_424.md) и
@@ -32,11 +37,11 @@ Windows/Linux consumers проходят strict TypeScript, HTTP/WS, assets и n
 TLS/lifecycle. [Публикация](RELEASE_0_5_0.md#public-delivery). Установка:
 
 ```sh
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.5.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.6.0
 # Выберите один native runtime той же версии для ОС сервера приложения:
-npm install @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
+npm install @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
 # Windows x64 вместо Linux runtime:
-# npm install @freerdp-bridge/runtime-win32-x64@0.5.0
+# npm install @freerdp-bridge/runtime-win32-x64@0.6.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 

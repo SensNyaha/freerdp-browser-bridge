@@ -89,9 +89,75 @@ binds the receipts; `managed06-native-source*.json` retains source inventories.
 | `@freerdp-bridge/runtime-linux-x64-gnu@0.6.0` | 76693374 | `4b32018732fca6a3e25669f7ac6d19789d562458cb316c4b0212a04d601b0d85` |
 | `@freerdp-bridge/runtime-win32-x64@0.6.0` | 7044572 | `edaac8a08fe1de278134c2d18964a852cbd2af88eccf63a120d7f3fba5a97589` |
 
-These hashes identify the accepted archives. Public registry integrity, five
-GitHub deliveries, final registry-built standalone artifacts and fresh public
-consumer/install checks still require their own receipts.
+These hashes match the exact published npm archives, their latest tags and
+the GitHub release assets. Final public acceptance follows.
+
+## Public delivery
+
+Release 0.6.0 is published and verified. Private immutable tag `v0.6.0`
+identifies `98b8f46a83c54158973e67d4203431862310bfe9`; the independent public
+core tag identifies `21b4091ea51c7174da5c353b7f694ec2c228bf5b`. Existing tags
+were not moved. All ten registry latest tags have the exact accepted integrities.
+All five repository releases and their exact delivery manifests/assets pass
+readback. Publication uses OIDC, without a new manual npm approval queue.
+
+| Repository | Public source | Successful OIDC run |
+| --- | --- | --- |
+| [freerdp-browser-bridge](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.6.0) | `21b4091` | [40908817255](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40908817255) |
+| [freerdp-bridge-fastify](https://github.com/SensNyaha/freerdp-bridge-fastify/releases/tag/v0.6.0) | `d469018` | [40915461998](https://github.com/SensNyaha/freerdp-bridge-fastify/actions/runs/40915461998) |
+| [freerdp-bridge-nestjs](https://github.com/SensNyaha/freerdp-bridge-nestjs/releases/tag/v0.6.0) | `940aa70` | [40915512559](https://github.com/SensNyaha/freerdp-bridge-nestjs/actions/runs/40915512559) |
+| [freerdp-bridge-http](https://github.com/SensNyaha/freerdp-bridge-http/releases/tag/v0.6.0) | `7eb38ae` | [40915571162](https://github.com/SensNyaha/freerdp-bridge-http/actions/runs/40915571162) |
+| [freerdp-bridge-express](https://github.com/SensNyaha/freerdp-bridge-express/releases/tag/v0.6.0) | `edd162a` | [40916466656](https://github.com/SensNyaha/freerdp-bridge-express/actions/runs/40916466656) |
+
+The release source passes [foundation CI](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40915307310)
+and [GCC 8.3 CI](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40915307286).
+The initial tag-triggered Windows attempt exposed a fake-display peer ordering
+race; its failed log is retained. An independent test-only correction does not
+change the accepted production workers or immutable release archives.
+
+Eight fresh registry-only consumer projects pass on Windows/Linux: strict
+TypeScript, framework/server matrix, installed browser assets, HTML/image
+capabilities, recovery and 15 native managed-file profiles. Those profiles
+use synthetic RDP state; the actual application/platform RDP checks above
+remain separate evidence.
+
+Final registry-built standalone [workflow 40915307138](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40915307138)
+passes Windows/Ubuntu build, portable/installed upgrade acceptance, aggregate
+verification and publication. All seven public files below were downloaded
+and checked against the final manifest, GitHub digest and checksums.
+`candidateOnly` is false; the source is the public core tag above.
+
+| Final public file | Bytes | SHA256 |
+| --- | --- | --- |
+| `freerdp-bridge_0.6.0_amd64.deb` | 122226690 | `87fa1831b5b5d8de28708d44c1f57b545125297a1f4e95efc9cf6580e06bccdf` |
+| `freerdp-bridge-0.6.0-1.x86_64.rpm` | 122801498 | `48e4da49bdfb0803322a21b01bd42e0a5f7dd848aff83fabc700b83c184162a0` |
+| `freerdp-bridge-0.6.0-corresponding-source-linux-x64-gnu.tar.gz` | 4008558 | `c6d2778d55aeebfecb91efb02f533a79777975751ee6c015e25deebd23778d8d` |
+| `freerdp-bridge-0.6.0-corresponding-source-win32-x64.tar.gz` | 440163 | `6c06e60bfa72fb440bcc278a19d222a8682f50c87c47318b6515b25b9da5f005` |
+| `freerdp-bridge-0.6.0-linux-x64-gnu.tar.gz` | 122563827 | `442ad3fb30c09496d889b3661c1fb6b5dd1d5db31ecdb29f76bf94abd5453908` |
+| `freerdp-bridge-0.6.0-win32-x64.msi` | 36837695 | `8019d33db826150488cc3eaa8c4fdb2f3f1bb5a5963d08ec6c8d6aea78dc1666` |
+| `freerdp-bridge-0.6.0-win32-x64.zip` | 47875625 | `e92ac4190d3ddac88a4fcda50b410af74dd8ecd9e03a8e956708d451b4013281` |
+
+Final public DEB/RPM upgrade from the exact public 0.5.0 seed passes on Astra
+Linux 1.7.5 and RED OS 7.3: non-root service, strict native TLS refusal,
+crash recovery, configuration retention, reinstall and uninstall. Both final
+installed services also pass actual HTTP/RDPDR file transfers, read-only
+refusals, ownership/lifecycle cleanup, configuration restoration and uninstall.
+These are separate from hosted Windows/Ubuntu acceptance.
+
+The final Linux portable has 4253 byte-and-mode-identical entries to the
+accepted candidate. The Windows portable has 4136 matching file identities
+except the rebuilt `bridge-service.exe`; its service wrapper is covered by
+the final hosted Windows installation tests. Service JS, private Node and
+native runtime bytes are identical, preserving the earlier actual portable
+RDP evidence. Native workers retain the two SHA256 identities above.
+
+Local evidence: `managed06-final-public-delivery-acceptance.json`,
+`managed06-public-registry-consumers.json`,
+`managed06-{windows,linux}-public-package-equivalence.json`,
+`managed06-public-installed-labs/` and
+`managed06-public-files-installed-{astra,redos}-acceptance.json`.
+Original failures and source/platform/compiler boundaries remain recorded;
+this release does not complete all Stage 7 or enable file clipboard.
 
 ## Remaining scope
 

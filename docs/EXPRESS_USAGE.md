@@ -4,10 +4,14 @@
 явные действия браузера, общие лимиты и ограничения описаны в
 [image clipboard](CLIPBOARD_BROWSER.md#versioned-050-image-application-acceptance).
 
-Адаптер принят в **0.2.4**; текущий набор **0.5.0** опубликован в npm и GitHub.
+В **0.6.0** управляемые файлы и RDP-диски включаются доверенной настройкой
+`sessions.files`. Файловый Ctrl+C/Ctrl+V остаётся отдельной задачей
+(`clipboardFiles: false`). [Файловый API и настройка](FILES.md).
+
+Адаптер принят в **0.2.4**; текущий набор **0.6.0** опубликован в npm и GitHub.
 Все десять согласованных
 пакетов имеют принятый integrity; чистые Windows/Linux consumers проходят
-strict TypeScript и 11/11 проверок. [Публикация](RELEASE_0_5_0.md#public-delivery),
+strict TypeScript и 11/11 проверок. [Публикация](RELEASE_0_6_0.md#public-delivery),
 [release-приёмка](ITERATION_438.md), [контракт](EXPRESS_PLUGIN.md).
 
 ## Установка и структура приложения
@@ -16,7 +20,7 @@ strict TypeScript и 11/11 проверок. [Публикация](RELEASE_0_5_
 Установка в существующем проекте:
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.5.0 @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
+npm install express@5.3.0 @freerdp-bridge/express@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -27,7 +31,7 @@ npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 `"type": "module"`. Не копируйте workspace-исходники в `node_modules`.
 
 На Windows x64 вместо Linux runtime явно установите
-`@freerdp-bridge/runtime-win32-x64@0.5.0`. На Windows x64 и Linux x64 glibc
+`@freerdp-bridge/runtime-win32-x64@0.6.0`. На Windows x64 и Linux x64 glibc
 `resolveNativeRuntime()` выбирает уже установленный пакет нужной платформы,
 проверяет версию, FreeRDP pin, inventory и hashes. Resolver не скачивает runtime.
 Общие JS-пакеты http/api/node/config/protocol устанавливаются автоматически

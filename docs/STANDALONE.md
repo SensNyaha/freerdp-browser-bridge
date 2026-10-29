@@ -1,12 +1,12 @@
 # Standalone service and installers
 
-Standalone **0.5.0** is publicly released: ten exact npm packages, five GitHub
+Standalone **0.6.0** is publicly released: ten exact npm packages, five GitHub
 Releases and MSI/DEB/RPM/ZIP/TGZ/source companions. All four fresh registry-only
-consumers pass on Windows and Linux. Final published DEB/RPM upgrades from 0.4.0
+consumers pass on Windows and Linux. Final published DEB/RPM upgrades from 0.5.0
 pass on Astra 1.7.5 and RED OS 7.3; final hosted Windows/Ubuntu installation,
 upgrade/recovery/config retention and uninstall also pass.
-[Release acceptance and limits](RELEASE_0_5_0.md#public-delivery).
-[Download 0.5.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.5.0).
+[Release acceptance and limits](RELEASE_0_6_0.md#public-delivery).
+[Download 0.6.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.6.0).
 For ready-made distributions, start with the concise
 [installation and operations guide](STANDALONE_INSTALL.md).
 
@@ -161,9 +161,11 @@ unless access to every approved destination is intended.
 Privileged host devices/paths and unfinished channels remain subject to the
 existing configuration policy and actual native capability gates.
 
-## Managed files in the unreleased development branch
+<a id="managed-files-in-the-unreleased-development-branch"></a>
 
-Published 0.5.0 does not contain the managed-file API. The current development
+## Managed files in 0.6.0
+
+Version 0.6.0 supplies the managed-file API. The standalone
 server accepts an optional administrator-controlled top-level `files` object
 in its public configuration. For example, add:
 
@@ -199,12 +201,12 @@ a separate trusted compatibility opt-in described there; strict deletion is
 the default. File-manager Ctrl+C/Ctrl+V remains deferred with
 `clipboardFiles: false`.
 
-Local unpublished portable candidates now have named real JWT/HTTP/RDPDR
-roundtrip evidence against Astra and RED OS, using private packaged Node and
-the ordinary launchers. This is separate from the final installed-service and
-public-release gates. New unpublished DEB/RPM also pass the real file workflow
-through their installed systemd service account on Astra/RED OS and then
-restore configuration and uninstall. Linux packaging gives public program
+Portable 0.6.0 has named real JWT/HTTP/RDPDR roundtrip evidence against Astra
+and RED OS, with final public file inventories preserving the accepted private
+Node, service and native bytes. Final public DEB/RPM also pass the real file
+workflow through their installed systemd service account on Astra/RED OS,
+then restore configuration and uninstall. This remains separate from hosted
+Windows/Ubuntu installer acceptance. Linux packaging gives public program
 directories/executables 0755 and other program files 0644, independently of a
 private build checkout; configuration remains 0750/0640 and runtime is private.
 [Installed evidence](DEVELOPMENT.md#installed-linux-managed-files-and-program-permissions),

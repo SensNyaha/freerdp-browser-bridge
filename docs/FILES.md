@@ -1,24 +1,19 @@
 # Managed files
 
-This is the **unreleased `feature/managed-drives` implementation**. Published
-0.5.0 does not provide this API. HTTP automation uses actual native files with
-synthetic RDP state; separate named Astra runs now verify the complete HTTP /
-NativeSessionWorker / real RDPDR path. Guarded drive wiring, dead-owner cleanup
-and automatic live-Node retirement are implemented and have named acceptance
-below. The full remote application/platform matrix and final npm/installer
-acceptance remain open.
+Managed files and redirected sandbox drives are published in **0.6.0** for
+all four Node adapters and the standalone server. Ten exact npm packages,
+eight fresh public registry projects, final installers and actual public
+DEB/RPM HTTP/RDPDR transfers pass their named acceptance. The dedicated
+Windows application and Linux RWS1/framed profiles retain exact native bytes.
+[Public delivery, profiles and limits](RELEASE_0_6_0.md#public-delivery).
 
-The accepted feature is now merged into local shared `master` at `aa4b7de`.
-Versioned 0.6.0 npm/application, standalone file and four-platform installer
-upgrade acceptance now pass. Public npm/stable standalone delivery remains
-pending; published 0.5.0 does not gain these APIs. See the
-[release acceptance](RELEASE_0_6_0.md) and
-[versioned checkpoint](DEVELOPMENT.md#versioned-060-managed-file-checkpoint)
-for the exact Windows application profiles and remaining delivery gates.
+The wider resource/quota/soak and arbitrary server/device matrices remain
+open. Managed storage and HTTP transfer do not implement OS file clipboard.
+The original source checkpoints below retain their historical test scope.
 
 ## File clipboard is deferred
 
-The unreleased Node HTTP API explicitly returns **`clipboardFiles: false`** in
+The Node HTTP API explicitly returns **`clipboardFiles: false`** in
 `GET /v1/capabilities`. This marks the later file-clipboard capability from
 SPECIFICATION 2.7 as deferred. Clients must hide or disable file copy/paste when
 this flag is false or absent. It is a public API capability, not a new native
@@ -227,7 +222,7 @@ returns session-not-found 404. Important file failures are:
 | 502 | `FILE_FAILED` |
 | 507 | `FILE_DISK_FULL` |
 
-For an upload refused during header admission, the unreleased API discards a
+For an upload refused during header admission, the API discards a
 declared body of at most 4 MiB for at most 250 ms before returning its original
 error. It never buffers that body, creates a native upload or expands a quota.
 `Connection: close` remains set. This bounded discard reduces the TCP reset
@@ -327,7 +322,7 @@ scope and continue covering cancellation, deadlines and backend faults.
 
 ## Windows namespace deletion
 
-The unreleased deletion candidate uses `FileDispositionInfoEx` with POSIX
+The Windows deletion implementation uses `FileDispositionInfoEx` with POSIX
 semantics on an already verified DELETE handle. Closing it removes the name;
 an independent shared-delete reader can retain its existing data handle.
 [Microsoft's disposition contract](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_disposition_information_ex).

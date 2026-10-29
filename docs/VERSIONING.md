@@ -1,5 +1,24 @@
 # Product versions and release branches
 
+Current public capability release: **0.6.0**, managed HTTP files and redirected
+sandbox drives. Private immutable `v0.6.0` is `98b8f46`; the public core tag is
+`21b4091`. All ten exact npm packages are latest 0.6.0, all five OIDC workflows
+and GitHub Releases pass, and eight fresh registry-only projects pass on
+Windows/Linux (15 native file profiles, synthetic RDP state explicitly named).
+Seven final standalone files are downloaded and verified. Public DEB/RPM
+0.5.0 upgrades and actual installed-service file/RDP checks pass Astra 1.7.5 /
+RED OS 7.3, separately from hosted Windows/Ubuntu installer acceptance.
+Named Windows application and portable/XRDP evidence retains exact native
+byte identities. [Public delivery, hashes and limits](RELEASE_0_6_0.md#public-delivery).
+Full Stage 7/V1, OS file clipboard and unaccepted resource/device gates remain open.
+
+The accepted 0.6.0 standalone upgrade predecessor is exactly **v0.5.0**.
+Unknown future minor seeds remain refused.
+
+## Earlier release checkpoints
+
+The following retains the prepublication scope; it is not the current status.
+
 Current public capability release: **0.5.0**, negotiated image clipboard.
 Feature/release branches are merged into shared `master`; immutable private
 `v0.5.0` is `cec3b8e`, public core tag is `31dcee4`. All ten exact npm packages
@@ -28,6 +47,7 @@ actual standalone file profiles and native RED OS/GCC 11.4.1 CTest 43/43 pass.
 delivery and verification remain pending. Public stable remains 0.5.0.
 Managed drives and HTTP transfer do not supply OS file clipboard; the explicit
 `clipboardFiles: false` deferral and wider Stage 7 gates remain visible.
+
 
 ## Earlier delivery checkpoints
 

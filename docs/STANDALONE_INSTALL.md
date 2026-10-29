@@ -1,4 +1,4 @@
-# Установка и обслуживание standalone 0.5.0
+# Установка и обслуживание standalone 0.6.0
 
 Для интеграции Java/Python/Go/.NET backend, VM-портала или внутреннего web-портала
 bridge устанавливается отдельной службой. Подробные сценарии, JWT/API и
@@ -6,28 +6,28 @@ bridge устанавливается отдельной службой. Под�
 
 ## Выбор и проверка файла
 
-Скачайте файлы из [Release v0.5.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.5.0).
+Скачайте файлы из [Release v0.6.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.6.0).
 Все дистрибутивы содержат приватный Node.js и native runtime: системные npm,
 FreeRDP и компилятор для запуска не требуются.
 
 | Хост | Файл | Режим |
 | --- | --- | --- |
-| Windows x64 | `freerdp-bridge-0.5.0-win32-x64.msi` | Автоматическая Windows-служба |
-| Windows x64 | `freerdp-bridge-0.5.0-win32-x64.zip` | Запуск обычным пользователем |
-| Linux x64/glibc, DEB | `freerdp-bridge_0.5.0_amd64.deb` | systemd-служба |
-| Linux x64/glibc, RPM | `freerdp-bridge-0.5.0-1.x86_64.rpm` | systemd-служба |
-| Linux x64/glibc | `freerdp-bridge-0.5.0-linux-x64-gnu.tar.gz` | Запуск обычным пользователем |
+| Windows x64 | `freerdp-bridge-0.6.0-win32-x64.msi` | Автоматическая Windows-служба |
+| Windows x64 | `freerdp-bridge-0.6.0-win32-x64.zip` | Запуск обычным пользователем |
+| Linux x64/glibc, DEB | `freerdp-bridge_0.6.0_amd64.deb` | systemd-служба |
+| Linux x64/glibc, RPM | `freerdp-bridge-0.6.0-1.x86_64.rpm` | systemd-служба |
+| Linux x64/glibc | `freerdp-bridge-0.6.0-linux-x64-gnu.tar.gz` | Запуск обычным пользователем |
 
-Сверьте SHA-256 скачанного файла с `freerdp-bridge-0.5.0-standalone-SHA256SUMS.txt`
-и таблицей [финальной приёмки](RELEASE_0_5_0.md#public-delivery). Сохраните source companions и
+Сверьте SHA-256 скачанного файла с `freerdp-bridge-0.6.0-standalone-SHA256SUMS.txt`
+и таблицей [финальной приёмки](RELEASE_0_6_0.md#public-delivery). Сохраните source companions и
 notices вместе с дистрибутивом. Для проверки файла:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\freerdp-bridge-0.5.0-win32-x64.msi
+Get-FileHash -Algorithm SHA256 .\freerdp-bridge-0.6.0-win32-x64.msi
 ```
 
 ```sh
-sha256sum freerdp-bridge_0.5.0_amd64.deb
+sha256sum freerdp-bridge_0.6.0_amd64.deb
 ```
 
 Автоматическая проверка установщиков пройдена на Windows Server 2025 и Ubuntu
@@ -63,10 +63,10 @@ Get-Service FreeRDPBridge
 
 ```sh
 # Astra/Debian-подобный хост, выбран DEB:
-sudo dpkg -i ./freerdp-bridge_0.5.0_amd64.deb
+sudo dpkg -i ./freerdp-bridge_0.6.0_amd64.deb
 
 # RED OS/RPM-хост, выбран RPM:
-sudo rpm -Uvh ./freerdp-bridge-0.5.0-1.x86_64.rpm
+sudo rpm -Uvh ./freerdp-bridge-0.6.0-1.x86_64.rpm
 ```
 
 Не отключайте проверки зависимостей: при ошибке установщика сначала устраните
@@ -126,7 +126,7 @@ launcher — в [portable README](../packaging/standalone/portable/README.md).
 завершите пользовательские подключения и сохраните свою публичную конфигурацию.
 Устанавливайте новую проверенную согласованную версию выбранным package manager
 или MSI; portable заменяйте целиком при остановленном процессе. Переход
-0.4.0 → 0.5.0 проверен; произвольный downgrade не является принятой процедурой.
+0.5.0 → 0.6.0 проверен; произвольный downgrade не является принятой процедурой.
 
 MSI/DEB сохраняют публичную конфигурацию при обычном удалении. RPM может оставить
 изменённый файл как `bridge.json.rpmsave`; перед переустановкой проверьте и

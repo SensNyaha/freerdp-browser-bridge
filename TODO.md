@@ -1,5 +1,21 @@
 # TODO — implementation plan
 
+Current public capability release: **0.6.0**, managed HTTP files and redirected
+sandbox drives. Private immutable `v0.6.0` is `98b8f46`; the public core tag is
+`21b4091`. All ten exact npm packages are latest 0.6.0, all five OIDC workflows
+and GitHub Releases pass, and eight fresh registry-only projects pass on
+Windows/Linux (15 native file profiles, synthetic RDP state explicitly named).
+Seven final standalone files are downloaded and verified. Public DEB/RPM
+0.5.0 upgrades and actual installed-service file/RDP checks pass Astra 1.7.5 /
+RED OS 7.3, separately from hosted Windows/Ubuntu installer acceptance.
+Named Windows application and portable/XRDP evidence retains exact native
+byte identities. [Public delivery, hashes and limits](docs/RELEASE_0_6_0.md#public-delivery).
+Full Stage 7/V1, OS file clipboard and unaccepted resource/device gates remain open.
+
+## Earlier delivery checkpoints
+
+The following preparation checkpoints retain their historical scope.
+
 Current public capability release: **0.5.0**, negotiated image clipboard.
 Feature/release branches are merged into shared `master`; immutable private
 `v0.5.0` is `cec3b8e`, public core tag is `31dcee4`. All ten exact npm packages
@@ -26,10 +42,6 @@ Astra/RED OS; native RED OS/GCC 11.4.1 linked CTest passes 43/43. Public npm and
 stable standalone delivery remain pending. This closes the named managed-file
 capability slice, not all Stage 7 or file clipboard.
 [Scope, exact archives and evidence](docs/RELEASE_0_6_0.md).
-
-## Earlier delivery checkpoints
-
-The following preparation checkpoints retain their historical scope.
 
 Previous public capability release: **0.4.0**, HTML clipboard. Feature and release
 branches are merged into shared `master`; the immutable private tag is `53b5edb`
@@ -2233,6 +2245,16 @@ compatibility profile; it does not establish total latency or waive the ordinary
 profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 7 — clipboard and managed drives
+
+- [x] DONE for the named 0.6.0 managed-file release slice — opt-in HTTP
+  storage and redirected sandbox drives pass the dedicated Windows application,
+  Linux RWS1/framed and Astra/RED OS profiles. Ten exact npm packages, five
+  GitHub Releases, eight fresh registry projects and final standalone files
+  are public and verified. Final DEB/RPM upgrade and installed-service file/RDP
+  checks pass both named Linux platforms. This closes the versioned release
+  slice; the wider original matrix, OS file clipboard and Stage 7 remain open.
+  Private release commit `98b8f46`, public core commit `21b4091`.
+  [Final acceptance and exact hashes](docs/RELEASE_0_6_0.md#public-delivery).
 
 - [x] DONE for named owned XRDP 0.10.1/Tk Unicode clipboard slice — Windows
   Release producer and real headed Edge Clipboard API pass Cyrillic/Japanese/

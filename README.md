@@ -4,12 +4,15 @@
 Node.js для HTTP/WebSocket API. FreeRDP выполняется вне процесса Node.js.
 Можно встроить bridge в существующий backend или установить отдельную службу.
 
-Текущий публичный релиз — **0.5.0**. Все десять npm-пакетов и пять GitHub
+Текущий публичный релиз — **0.6.0**. Все десять npm-пакетов и пять GitHub
 Releases опубликованы; чистые установки четырёх адаптеров проверены на Windows
 и Linux. Standalone MSI/DEB/RPM/ZIP/TGZ автоматически опубликованы по push в
 `main`; обновления проверены на Windows Server 2025, Ubuntu 24.04,
 Astra Linux 1.7.5 и RED OS 7.3.
-[Приёмка и границы поддержки](docs/RELEASE_0_5_0.md#public-delivery).
+[Приёмка и границы поддержки](docs/RELEASE_0_6_0.md#public-delivery).
+В 0.6.0 добавлены управляемое файловое хранилище с HTTP-передачей и
+перенаправляемые RDP-диски. [Настройка, примеры и ограничения](docs/FILES.md).
+Файловый Ctrl+C/Ctrl+V остаётся отдельной незавершённой возможностью.
 В 0.5.0 добавлен отдельно включаемый буфер изображений; проверенные PNG-профили
 и ограничения перечислены в отчёте.
 
@@ -17,7 +20,7 @@ Astra Linux 1.7.5 и RED OS 7.3.
 
 | Задача | С чего начать |
 | --- | --- |
-| Установить отдельный web-сервер с приватным Node.js | [Standalone: установка и эксплуатация](docs/STANDALONE.md), [скачать 0.5.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.5.0) |
+| Установить отдельный web-сервер с приватным Node.js | [Standalone: установка и эксплуатация](docs/STANDALONE.md), [скачать 0.6.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.6.0) |
 | Подключить к Fastify | [Реальный проект Fastify](docs/FASTIFY_USAGE.md) |
 | Подключить к NestJS | [Реальный проект NestJS](docs/NESTJS_USAGE.md) |
 | Подключить к Node HTTP/HTTPS | [Реальный проект node:http](docs/NODE_HTTP_USAGE.md) |
@@ -29,10 +32,10 @@ Astra Linux 1.7.5 и RED OS 7.3.
 Например, Express на Linux x64/glibc:
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.5.0 @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
+npm install express@5.3.0 @freerdp-bridge/express@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
 ```
 
-На Windows x64 выбирайте `@freerdp-bridge/runtime-win32-x64@0.5.0`.
+На Windows x64 выбирайте `@freerdp-bridge/runtime-win32-x64@0.6.0`.
 Готовым npm/standalone комплектам не нужен системный FreeRDP или компилятор.
 Для standalone не нужен и глобальный Node.js. macOS, ARM и musl этими
 проверками не приняты.
@@ -66,6 +69,6 @@ environment, логи или артефакты; [безопасность](SECU
 
 [Changelog](CHANGELOG.md) сохраняет историю версий. 0.2.3 оставлена архивной:
 семь отсутствующих JS npm-версий не допубликовываются по решению пользователя;
-полные 0.2.4/0.2.5, 0.4.0 и 0.5.0 доступны. [Решение и очистка](docs/ITERATION_458.md).
+полные 0.2.4/0.2.5, 0.4.0, 0.5.0 и 0.6.0 доступны. [Решение и очистка](docs/ITERATION_458.md).
 [Предыдущий подробный README](docs/history/README_BEFORE_458.md) сохранён;
 нормативные документы и исторические отчёты не удалены.

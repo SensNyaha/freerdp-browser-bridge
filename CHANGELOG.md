@@ -6,8 +6,10 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## 0.6.0 — 2026-10-29
 
-Managed files and redirected drives pass prepublication acceptance. Public npm
-and stable standalone delivery remain pending; 0.5.0 is still public stable.
+Managed files and redirected drives are published in ten exact npm packages,
+five GitHub Releases and final standalone distributions. Fresh Windows/Linux
+registry consumers, four-platform installer acceptance and actual final
+Astra/RED OS installed-service file/RDP checks pass.
 [Accepted scope and exact archives](docs/RELEASE_0_6_0.md).
 
 - Add opt-in session-managed storage and streaming HTTP file routes with

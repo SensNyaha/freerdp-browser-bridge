@@ -8,9 +8,9 @@ Windows/Linux проверены в [426](history/iterations/401-450.md#iteratio
 в [итерации 420](history/iterations/401-450.md#iteration-420) и [итерации 421](history/iterations/401-450.md#iteration-421);
 они не переименовываются в релизные архивы 0.2.1.
 
-Текущий согласованный npm-набор — **0.5.0**: десять точных архивов публичны,
+Текущий согласованный npm-набор — **0.6.0**: десять точных архивов публичны,
 все четыре adapter проходят свежие Windows/Linux registry-only consumers.
-[Публикация](RELEASE_0_5_0.md#public-delivery). Ниже обычная установка использует этот набор;
+[Публикация](RELEASE_0_6_0.md#public-delivery). Ниже обычная установка использует этот набор;
 первоначальная приёмка 0.2.1 выше сохранена как история.
 
 ## Установка в приложении
@@ -29,10 +29,10 @@ CMake, compiler, system FreeRDP или сетевой `postinstall`. Node.js и 
 
 ```sh
 # Linux x64 / glibc
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.5.0 @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
 
 # Windows x64
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.5.0 @freerdp-bridge/runtime-win32-x64@0.5.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.6.0 @freerdp-bridge/runtime-win32-x64@0.6.0
 ```
 
 Для ещё неопубликованного development-снимка установите соответствующие локальные

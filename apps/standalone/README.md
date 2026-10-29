@@ -1,10 +1,11 @@
 # Standalone service
 
 Private assembly entry point for the standalone distribution. This is not a
-separately published npm package. Public stable 0.5.0 includes negotiated
-text/HTML/image clipboard in its accepted profiles. The release/0.6.0 branch
-prepares opt-in managed files and redirected sandbox drives; versioned
-installers and upgrades from public v0.5.0 still require their own acceptance.
+separately published npm package. Public stable 0.6.0 includes negotiated
+text/HTML/image clipboard and opt-in managed files with redirected sandbox
+drives in its accepted profiles. Final installers and upgrades from public
+v0.5.0 pass hosted Windows/Ubuntu and named Astra/RED OS acceptance.
+See [public delivery and limits](../../docs/RELEASE_0_6_0.md#public-delivery).
 
 Node.js 24 runs the HTTP service; each session still has a separate native
 C++ worker. Configuration contains only public deployment settings and public
