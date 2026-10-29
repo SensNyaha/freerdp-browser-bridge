@@ -2,10 +2,15 @@ param(
     [Parameter(Mandatory=$true)][string]$ImageDirectory,
     [string]$NodeExecutable = 'node',
     [string]$BinaryDirectory = 'build/foundation',
-    [switch]$InspectOnly
+    [switch]$InspectOnly,
+    [switch]$InspectionDiagnostics
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+function Inspection-Phase([string]$Phase) {
+    if ($InspectionDiagnostics) { [Console]::Error.WriteLine('OWNED_VHD_INSPECTION_'+$Phase) }
+}
+Inspection-Phase 'STARTED'
 # Storage identity APIs: https://learn.microsoft.com/powershell/module/storage/get-diskimage
 # This coordinator mounts only a new private copy of the offline 16 MiB fixture.
 # It never initializes or formats a Windows disk.
@@ -43,6 +48,7 @@ $manifestPath = Join-Path $directory 'volume.json'
 $imagePath = Join-Path $directory 'owned-full.vhd'
 $manifestFile = Get-Item -LiteralPath $manifestPath
 $imageFile = Get-Item -LiteralPath $imagePath
+Inspection-Phase 'PATHS'
 Require (-not ($manifestFile.Attributes -band [IO.FileAttributes]::ReparsePoint))
 Require (-not ($imageFile.Attributes -band [IO.FileAttributes]::ReparsePoint))
 Require ($manifestFile.Length -gt 0 -and $manifestFile.Length -le 8192 -and $imageFile.Length -eq 16777728)
@@ -62,7 +68,9 @@ Require ($meta.diskBytes -eq 16777216 -and $meta.fileBytes -eq 16777728)
 Require ($meta.partitionStartSector -eq 2048 -and $meta.partitionSectors -eq 30720)
 Require ($meta.sourceDeviceOpened -eq $false -and $meta.hostMountPerformed -eq $false)
 Require ($meta.sha256 -cmatch '^[0-9a-f]{64}$' -and $meta.vhdIdentifier -cmatch '^[0-9a-f]{32}$')
+Inspection-Phase 'MANIFEST'
 Require ((Get-FileHash -LiteralPath $imagePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq $meta.sha256)
+Inspection-Phase 'HASH'
 $stream = [IO.File]::OpenRead($imagePath)
 try {
     $mbr = Read-At $stream 0 512
@@ -85,6 +93,7 @@ try {
     Require ((Big-Number $footer 64 4) -eq (4294967295 - $sum))
     $signature = [BitConverter]::ToUInt32($mbr,440)
 } finally { $stream.Dispose() }
+Inspection-Phase 'LAYOUT'
 if ($InspectOnly) {
     @{ inspected=$true; diskBytes=16777216; fixedVhd=$true; ntfs=$true; mounted=$false; sha256=$meta.sha256 } | ConvertTo-Json -Compress
     return

@@ -63,10 +63,6 @@ jobs:
         with:
           name: windows-owned-ntfs-fixture
           path: build/windows-volume-input
-      - run: pnpm install --frozen-lockfile
-      - run: cmake --preset foundation -DCMAKE_CXX_COMPILER=cl -DBRIDGE_NODE_IPC=OFF
-      - run: pnpm build:native
-      - run: pnpm build
       - name: Image admission and rejection controls without mounting
         shell: powershell
         run: |
@@ -77,6 +73,10 @@ jobs:
           node --test tests/unit/owned-ntfs-fixture.test.mjs tests/unit/windows-full-root.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Remove-Item Env:BRIDGE_TEST_WINDOWS_VHD_INPUT
+      - run: pnpm install --frozen-lockfile
+      - run: cmake --preset foundation -DCMAKE_CXX_COMPILER=cl -DBRIDGE_NODE_IPC=OFF
+      - run: pnpm build:native
+      - run: pnpm build
       - name: Actual source worker NTFS disk-full and quota refund
         shell: powershell
         run: |

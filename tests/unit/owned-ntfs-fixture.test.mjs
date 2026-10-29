@@ -67,7 +67,7 @@ test(
 test(
   'PowerShell inspector accepts the real offline VHD and refuses changed provenance or corrupt bytes without mounting',
   { skip: process.platform !== 'win32' || !windowsImage, timeout: 90000 },
-  async () => {
+  async (t) => {
     const source = await realpath(windowsImage);
     const meta = JSON.parse(
       await readFile(join(source, 'volume.json'), 'utf8'),
@@ -86,6 +86,7 @@ test(
           '-ImageDirectory',
           directory,
           '-InspectOnly',
+          '-InspectionDiagnostics',
         ],
         {
           ...options,
@@ -95,6 +96,19 @@ test(
           ),
         },
       );
+      if (result.error)
+        t.diagnostic(
+          JSON.stringify({
+            inspectorError: result.error.code,
+            phases: result.stderr
+              .split(/\r?\n/)
+              .filter((line) =>
+                /^OWNED_VHD_INSPECTION_(STARTED|PATHS|MANIFEST|HASH|LAYOUT)$/.test(
+                  line,
+                ),
+              ),
+          }),
+        );
       assert.equal(
         result.error?.code,
         undefined,
