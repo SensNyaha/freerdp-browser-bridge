@@ -9,14 +9,9 @@ import {
   rm,
   symlink,
   writeFile,
-  copyFile,
-  unlink,
-  rmdir,
-  open,
 } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createHash } from 'node:crypto';
 
 const python = process.platform === 'win32' ? 'python' : 'python3';
 const options = {
@@ -74,7 +69,6 @@ test(
     );
     // This deadline bounds isolated PowerShell/CLR + image inspection startup,
     // independently of the native file-operation deadlines exercised later.
-    const deadline = performance.now() + 85000;
     // Windows PowerShell needs its normal profile/cache directories to discover
     // OS modules. Keep a whitelist; never inherit application/lab credentials.
     const inspectionEnv = { ...options.env };
@@ -97,108 +91,42 @@ test(
       'v1.0',
       'Modules',
     );
-    const inspect = (directory) => {
-      const result = spawnSync(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-NonInteractive',
-          '-File',
-          resolve('tests/fixtures/windows-owned-full-volume.ps1'),
-          '-ImageDirectory',
-          directory,
-          '-InspectOnly',
-          '-InspectionDiagnostics',
-        ],
-        {
-          ...options,
-          env: inspectionEnv,
-          timeout: Math.max(
-            1,
-            Math.min(30000, Math.floor(deadline - performance.now())),
-          ),
-        },
+    const result = spawnSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-File',
+        resolve('tests/fixtures/windows-owned-full-volume-admission.ps1'),
+        '-ImageDirectory',
+        source,
+      ],
+      { ...options, env: inspectionEnv, timeout: 30000 },
+    );
+    if (result.error)
+      t.diagnostic(
+        JSON.stringify({
+          inspectorError: result.error.code,
+          phases: result.stderr
+            .split(/\r?\n/)
+            .filter((line) => /^OWNED_VHD_INSPECTION_[A-Z_]+$/.test(line)),
+        }),
       );
-      if (result.error)
-        t.diagnostic(
-          JSON.stringify({
-            inspectorError: result.error.code,
-            phases: result.stderr
-              .split(/\r?\n/)
-              .filter((line) =>
-                /^OWNED_VHD_INSPECTION_(STARTED|PATHS|MANIFEST|HASH|HASH_ALGORITHM|HASH_OPEN|HASH_READ|HASH_DONE|LAYOUT)$/.test(
-                  line,
-                ),
-              ),
-          }),
-        );
-      assert.equal(
-        result.error?.code,
-        undefined,
-        'owned VHD inspector must finish within its independent setup deadline',
-      );
-      return result;
-    };
-    const good = inspect(source);
-    assert.equal(good.status, 0);
-    assert.deepEqual(JSON.parse(good.stdout), {
+    assert.equal(
+      result.error?.code,
+      undefined,
+      'one isolated PowerShell admission batch must finish within its setup deadline',
+    );
+    assert.equal(result.status, 0);
+    assert.deepEqual(JSON.parse(result.stdout), {
       inspected: true,
-      diskBytes: 16777216,
-      fixedVhd: true,
-      ntfs: true,
       mounted: false,
+      provenanceRefusals: 3,
+      corruptFooterRefused: true,
+      sourcePreserved: true,
+      guardRemoved: true,
       sha256: meta.sha256,
     });
-    const build = await realpath('build');
-    const root = await mkdtemp(join(build, 'owned-vhd-guard-'));
-    const image = join(root, 'owned-full.vhd');
-    try {
-      await copyFile(join(source, 'owned-full.vhd'), image);
-      for (const changed of [
-        { ...meta, sourceDeviceOpened: true },
-        { ...meta, diskBytes: 33554432 },
-        { ...meta, sha256: '0'.repeat(64) },
-      ]) {
-        await writeFile(join(root, 'volume.json'), JSON.stringify(changed));
-        const result = inspect(root);
-        assert.equal(result.status, 1);
-        assert.match(result.stderr, /OWNED_VHD_REFUSED/);
-      }
-      const file = await open(image, 'r+');
-      try {
-        await file.write(Buffer.from([1]), 0, 1, 16777727);
-      } finally {
-        await file.close();
-      }
-      const corrupt = createHash('sha256')
-        .update(await readFile(image))
-        .digest('hex');
-      assert.notEqual(corrupt, meta.sha256);
-      await writeFile(
-        join(root, 'volume.json'),
-        JSON.stringify({ ...meta, sha256: corrupt }),
-      );
-      const result = inspect(root);
-      assert.equal(result.status, 1);
-      assert.match(result.stderr, /OWNED_VHD_REFUSED/);
-      assert.equal(
-        createHash('sha256')
-          .update(await readFile(join(source, 'owned-full.vhd')))
-          .digest('hex'),
-        meta.sha256,
-      );
-      assert.deepEqual((await readdir(root)).sort(), [
-        'owned-full.vhd',
-        'volume.json',
-      ]);
-    } finally {
-      assert.equal(await realpath(root), root);
-      assert.equal(dirname(root), build);
-      assert.match(basename(root), /^owned-vhd-guard-[A-Za-z0-9]+$/);
-      for (const name of ['owned-full.vhd', 'volume.json'])
-        await unlink(join(root, name));
-      await rmdir(root);
-    }
   },
 );
 

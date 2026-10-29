@@ -8,6 +8,7 @@ on:
       - apps/bridge-api/**
       - tests/fixtures/create-owned-ntfs-vhd.py
       - tests/fixtures/windows-owned-full-volume.ps1
+      - tests/fixtures/windows-owned-full-volume-admission.ps1
       - tests/fixtures/windows-full-root.mjs
       - tests/fixtures/file-worker.mjs
       - tests/integration/files-disk-full.test.mjs
