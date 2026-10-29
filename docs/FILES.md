@@ -673,7 +673,7 @@ and `files-installed-resource-drive-final-acceptance.json` under the same local
 evidence directory; the earlier HTTP-only receipts remain preserved.
 
 This accepts installed Linux **HTTP and RDPDR physical-full plus recovery**.
-Connected Windows full-drive, Windows MSI disk exhaustion and complete
+Connected Windows-worker/NTFS full-drive, Windows MSI disk exhaustion and complete
 resource/soak acceptance remain separate gates.
 
 ### Connected Windows-server RDPDR disk-full acceptance
@@ -712,6 +712,12 @@ Both **RWS1 and framed IPC** pass, followed by an independent RWS1 repeat:
 
 These three complete runs cover **39 HTTP 507 responses**. Focused Windows
 helper checks pass **13/13**; Linux preflight passes **10 / 3 PowerShell skips**.
+Exact public fixture source `e4d8bc4` also passes
+[foundation CI 40963168512](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40963168512)
+(Windows/MSVC, both Linux compilers, sanitizers/fuzz) and
+[GCC 8.3 CI 40963168586](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40963168586),
+including the required workspace checks and native CTest. The corresponding
+private source is `dcbb6ce`; later acceptance documentation changes no code.
 The initial attempt had already proved disk-full/refund but failed an unlocalized
 assertion during final ordinary-file cleanup. Its failed receipt/log are retained;
 the subsequent runs add precise phases and bounded owned-entry diagnostics,

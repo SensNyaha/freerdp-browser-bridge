@@ -13,6 +13,15 @@ Current delivery criteria and evidence boundaries are in
 
 ## Prepared Windows managed-file application check
 
+Current accepted public **0.6.0** profiles and their scope are recorded in
+[managed files](FILES.md#accepted-managed-file-capabilities). The additional
+[Windows-server disk-full check](FILES.md#connected-windows-server-rdpdr-disk-full-acceptance)
+uses `--owned-windows-managed-files-full --prepared-powershell` and adds
+`fullRoot` to the private bootstrap below. It requires an admitted fresh private
+1 MiB Linux tmpfs and the same operator-confirmed window and certificate;
+the helper does not provision a mount. Ordinary filesystems refuse before any
+worker or remote input. The earlier source checkpoints below remain historical.
+
 The final corrected public source `95c9fc5` passes foundation run
 `40879990951` and GCC 8.3 foundation run `40879991017`, including the sanitizer
 job. A separate fixture correction in `d5af615` handles legal transient codec
