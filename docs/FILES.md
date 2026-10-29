@@ -507,7 +507,79 @@ and `files-resource-*-pnpm-check*.log` under local `build/current-validation`.
 
 This closes the named Linux portable connected-HTTP/RDPDR physical-full case.
 Windows physical disk-full and broader installed/resource acceptance remain
-open. It does not accept a Windows VHD test or the complete Stage 7 matrix.
+open at this Linux checkpoint. It does not accept a Windows VHD test or the
+complete Stage 7 matrix.
+
+### Bounded Windows NTFS disk-full check
+
+`.github/workflows/windows-files-full.yml` builds an offline **16 MiB fixed VHD**
+on Linux using `tests/fixtures/create-owned-ntfs-vhd.py`. The non-root generator
+opens only new private regular files, formats the partition file with `mkntfs`,
+and verifies an exact raw/VHD/raw roundtrip. No host device is opened or mounted.
+The artifact contains only the image and its bounded public test manifest.
+
+On the isolated Windows CI runner, `windows-owned-full-volume.ps1` verifies
+manifest types, SHA256, MBR, NTFS boot fields, VHD identity and footer checksum.
+It attaches only a **new private copy**, without initializing or formatting a
+Windows disk. The disk must be absent from the initial inventory, match its
+signature and exact size, have one expected partition, and be neither a boot nor
+system disk. The coordinator assigns a new drive letter and creates a private
+root. Node requires the parent's PID-bound proof containing the volume identity,
+a canonical root and a filesystem between 8 and 16 MiB before allocating a runtime.
+The image is detached in `finally`; the original image hash is checked again.
+
+The volume must initially have at least 4 MiB available after NTFS metadata.
+Once the worker starts, a new pressure file outside its accounting leaves
+512 KiB available on this private volume. Twelve declared 1 MiB HTTP uploads
+use a 4 MiB total / 2 MiB file quota; confirmed native writes must exceed the
+total quota across failures. Small declared bodies avoid relying on a clean
+response while a client continues a large/chunked body after refusal.
+The complete filesystem stays bounded by the 16 MiB image, and the pressure
+file is removed during cleanup. Acceptance requires native physical disk-full,
+HTTP 507, staging/listing cleanup, refunded space and quota, subsequent exact
+64 KiB upload/download/delete, heartbeat and joined empty-runtime close.
+RDP state is **synthetic**. The workflow tests the source foundation worker and,
+when the exact product version is already public, separately downloads its npm
+Windows runtime and verifies the archive against the production lock integrity.
+A prepublication 404 explicitly records source-only scope.
+
+The admission controls run directly in a bounded PowerShell CI step before
+compilation. They check the real image, three changed provenance/size/hash
+manifests, and a corrupted footer with its manifest hash recomputed. The
+original image must remain unchanged and only the new guard copy is removed.
+For a generated fixture already beneath this checkout's `build` directory,
+these controls also run locally without administrator rights or mounting:
+
+```powershell
+& tests/fixtures/windows-owned-full-volume-admission.ps1 -ImageDirectory build/windows-volume-fixture-check
+```
+
+Local offline admission and corruption/provenance controls pass without mounting.
+Both source and **published npm 0.6.0 Windows runtime** pass in
+[CI run 40951431559](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40951431559)
+at public source `e50add57` / private `00b2097`. Each profile records twelve
+client 507 responses, zero free bytes at native failure, **6352600 successful
+native write bytes across a 4194304-byte total quota**, fresh IO and detached,
+empty-runtime cleanup. The published worker SHA256 is
+`8f5b7c6b70f77dbf8ea586cdc87d49032dc77f94161c003a499f63f8d9e333a5`;
+the downloaded npm archive matches the production lock SHA512. This is actual
+Windows NTFS/native/HTTP acceptance with **synthetic RDP state**. It does not
+establish connected Windows RDPDR disk-full or installed-service exhaustion.
+The earlier failed preparation/CI logs remain retained separately.
+
+Local full checks pass Windows **1306 / 84 skips / 1390 total**, Linux
+**1274 / 139 skips / 1413 total**, with native CTest **42/42** and GCC 8.3
+**43/43**. Those full runs precede the final optional harness changes. Final
+[foundation CI 40951431566](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40951431566)
+passes Windows/MSVC, both Linux foundation jobs and sanitizer/fuzz checks on
+exact public `e50add57`; [GCC 8.3 CI 40951431502](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/40951431502)
+also passes. Both Linux physical-full transport regressions pass again after
+the Windows pressure fixture change. Local receipts are
+`build/current-validation/windows-full-source-public-physical-acceptance.json`
+and `windows-full-local-checkpoint.json`. No production sources, published
+archive bytes or immutable tags change in this test-only branch.
+Receipts and test logs, excluding the mutated image, use the workflow's
+`windows-files-full-evidence` artifact.
 
 ## Native drive backend in development
 

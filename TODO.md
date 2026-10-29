@@ -2514,8 +2514,13 @@ profile's target, microphone, recovery, resource or platform acceptance.
   refunds and a real redirected-drive write that exhausts a private 1 MiB
   tmpfs against both Astra and RED OS. Native partial-content verification,
   cross-HTTP 507, delete/stale-ID/space recovery, subsequent real CRUD/read-only
-  and joined cleanup pass. Windows physical disk-full and broader installed
-  resource acceptance remain open; this checkbox stays open.
+  and joined cleanup pass. Actual Windows NTFS/HTTP disk-full now passes
+  both the source worker and exact published npm 0.6.0 runtime: twelve 507
+  responses, zero physical free bytes, repeated quota refund, fresh IO and
+  detached/empty cleanup. RDP state is synthetic in that Windows fixture;
+  connected Windows RDPDR disk-full and broader installed resource acceptance
+  remain open; this checkbox stays open.
+  [Windows physical scope](docs/FILES.md#bounded-windows-ntfs-disk-full-check).
   [Connected public scope](docs/FILES.md#connected-public-standalone-disk-full-acceptance).
   [Bounded test and evidence](docs/FILES.md#bounded-http-disk-full-acceptance).
 
