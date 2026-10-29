@@ -11,6 +11,18 @@ Three named PNG application profiles use the exact published native bytes.
 [Public delivery, hashes and limits](RELEASE_0_5_0.md#public-delivery).
 Full Stage 7/V1, file clipboard and unaccepted resource/device gates remain open.
 
+The next managed-file capability targets **0.6.0** under the new-capability
+minor rule and the user's delegated release numbering. Its explicit standalone
+upgrade predecessor is **v0.5.0**, the current public release. Both platform
+receipts must prove that exact upgrade; mixed, older, absent or same-version
+predecessors remain refused. Unknown future minor seeds remain refused.
+The failing-before manifest control and related standalone/version controls
+pass on Windows (47) and Linux UID1000 (46) in `b52396e`.
+This prepares release tooling only: product/native manifests are still 0.5.0
+and no 0.6.0 archive, tag, npm publication or installer is accepted yet.
+Managed drives and HTTP transfer do not supply OS file clipboard; the explicit
+`clipboardFiles: false` deferral and wider Stage 7 gates remain visible.
+
 ## Earlier delivery checkpoints
 
 The following preparation checkpoints retain their historical scope.

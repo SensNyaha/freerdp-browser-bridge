@@ -48,7 +48,7 @@ test('0.3.0 distribution binds the real 0.2.5 predecessor and exact candidate/ar
     ref: 'v0.3.0',
   });
   assert.throws(
-    () => standaloneUpgradeSeed('0.6.0'),
+    () => standaloneUpgradeSeed('0.7.0'),
     /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
   );
   assert.equal(
@@ -78,7 +78,22 @@ test('0.4.0 distribution upgrades from the published 0.3.0 line without guessing
     ref: 'v0.4.0',
   });
   assert.throws(
-    () => standaloneUpgradeSeed('0.6.0'),
+    () => standaloneUpgradeSeed('0.7.0'),
+    /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
+  );
+});
+
+test('0.6.0 managed-file distribution upgrades the published 0.5.0 line without guessing future minor seeds', () => {
+  assert.deepEqual(standaloneUpgradeSeed('0.6.0'), {
+    version: '0.5.0',
+    ref: 'v0.5.0',
+  });
+  assert.deepEqual(standaloneUpgradeSeed('0.6.1'), {
+    version: '0.6.0',
+    ref: 'v0.6.0',
+  });
+  assert.throws(
+    () => standaloneUpgradeSeed('0.7.0'),
     /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
   );
 });
@@ -93,7 +108,7 @@ test('0.5.0 image distribution explicitly upgrades the published 0.4.0 line and 
     ref: 'v0.5.0',
   });
   assert.throws(
-    () => standaloneUpgradeSeed('0.6.0'),
+    () => standaloneUpgradeSeed('0.7.0'),
     /STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED/,
   );
   const pointer = {

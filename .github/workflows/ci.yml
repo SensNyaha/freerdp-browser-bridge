@@ -78,7 +78,7 @@ jobs:
       - run: pnpm test
         env:
           BRIDGE_TEST_BINARY_DIR: build/sanitizers
-      - run: cmake --preset fuzz -DCMAKE_CXX_COMPILER=clang++-18 && cmake --build --preset fuzz && node scripts/seed-fuzz.mjs && build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=32768
+      - run: cmake --preset fuzz -DCMAKE_CXX_COMPILER=clang++-18 && cmake --build --preset fuzz && node scripts/seed-fuzz.mjs && build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=65600
       - run: node scripts/seed-audin-fuzz.mjs && build/fuzz/audin-fuzz build/fuzz/audin-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
       - run: node scripts/seed-dvc-bounds-fuzz.mjs && build/fuzz/dvc-bounds-fuzz build/fuzz/dvc-bounds-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
       - run: node scripts/seed-dvc-svc-fuzz.mjs && build/fuzz/dvc-svc-fuzz build/fuzz/dvc-svc-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384

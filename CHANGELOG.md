@@ -4,7 +4,29 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-No additional changes since the accepted 0.5.0 release snapshot.
+Planned capability release: **0.6.0**, managed files and redirected drives.
+Source and local development archives are under acceptance; 0.5.0 remains the
+public stable release.
+
+- Add opt-in session-managed storage and streaming HTTP file routes with
+  authenticated ownership, opaque locators, bounded quotas, cancellation and
+  worker-owned cleanup. Configure the policy in each Node adapter or the
+  standalone server.
+- Redirect selected sandbox scopes through guarded RDPDR drives, including
+  the `thinclientDrives` alias and independently enforced read-only shares.
+  Preserve Unicode file paths/content and bounded full share names.
+- Support the tested Windows and XRDP file workflows: create/read/write,
+  resize, rename, directory operations and deletion. Windows compatibility
+  handles empty-root CREATE, standard NO_RECALL/no-follow opens and terminated
+  preferred aliases. With audio off, Windows receives a guarded zero-format
+  RDPSND companion without host sound, sample queues or audio publication.
+- Keep OS file-manager Ctrl+C/Ctrl+V explicitly deferred:
+  `clipboardFiles: false`. Managed drives and HTTP transfer do not implement
+  file clipboard. Whole Stage 7, arbitrary-server compatibility and exact
+  0.6.0 npm/installer acceptance remain open.
+
+[Configuration, API and limits](docs/FILES.md),
+[source and application evidence](docs/DEVELOPMENT.md#prepared-windows-managed-file-application-check).
 
 ## 0.5.0 — 2026-10-27
 

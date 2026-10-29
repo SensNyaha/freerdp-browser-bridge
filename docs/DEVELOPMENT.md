@@ -13,6 +13,18 @@ Current delivery criteria and evidence boundaries are in
 
 ## Prepared Windows managed-file application check
 
+The first hosted source checkpoint `85b0b2b` passes both Linux foundation
+compiler jobs and Windows foundation, but its sanitizer job cannot link
+`ipc-fuzz`: the new drive-name validator, path validator and file-record codec
+were missing from that target. The separate `fix/managed-files-fuzz-link`
+branch adds those instrumented sources, keeps warning-as-error policy, directly
+fuzzes file commands/results and seeds maximum schema-15 configuration plus
+full 64 KiB file chunks. The IPC input bound is 65600 bytes (24-byte header,
+40-byte metadata, 65536-byte chunk); timeout and RSS limits remain unchanged.
+A local Clang 18 ASan/UBSan run completes 160539 executions in 21 seconds with
+the new corpus; hosted acceptance of the correction is still required. The
+failed job log is retained separately.
+
 The separate `test/windows-managed-drive-application` branch prepares the
 remaining actual Windows RDP-server application check for SPECIFICATION 2.8.
 `scripts/test-windows-managed-files.mjs` requires both
@@ -89,6 +101,27 @@ verification. The source/binary/log bindings are retained in
 `build/current-validation/windows-managed-interop-acceptance.json`.
 These source checks remain separate from exact published-package and installer
 acceptance. No whole Stage 7 checkbox is accepted by these passes.
+
+The fixes are committed as `5032fec`, integrated into `feature/managed-drives`
+at `96a1435`. A fresh package repeat now passes four independent projects on
+each OS: five Windows and ten Linux native-file profiles, strict TypeScript,
+producer-before-EOF streaming and captured-PID cleanup. These installed package
+tests use synthetic RDP state, separately from the actual desktop matrix above.
+Their current runtime archives are development 0.5.0 candidates, never
+replacements for published 0.5.0. Full Linux UID1000 / no-capabilities
+`pnpm check` passes 1275 / 124 skips / 1399 total on the same source checkpoint.
+Two earlier CMake admission controls failed because the consumer PATH omitted
+builder CMake; both controls and the full run pass with the complete tool PATH.
+
+Public source-only checkpoint `85b0b2b` is on
+[`feature/managed-drives-source`](https://github.com/SensNyaha/freerdp-browser-bridge/tree/feature/managed-drives-source).
+Its hosted foundation/compiler/fuzz and bundled jobs are separate pending gates;
+the branch push changes no main ref, release tag or npm version. Local package
+and full-Linux evidence is bound in
+`build/current-validation/managed-interop-package-source-acceptance.json`.
+The next minor upgrade seed is independently prepared in `b52396e`: 0.6.0
+must upgrade v0.5.0, with 47 standalone/version controls passing. Product
+manifests remain 0.5.0 until the versioned release branch is prepared.
 
 Burst Unicode console input also failed during investigation. Physical
 US-layout delivery is independently reconstructed by a unit control and used
