@@ -8,6 +8,3 @@ native/vcpkg/ports/**/*.patch whitespace=-blank-at-eol,-blank-at-eof
 native/vcpkg/ports/cups/002-client-as-needed-link.patch whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
 # Unified diff context precedes the pinned libusb source's tab indentation.
 native/sanitizers/libusb/interface-ownership.patch whitespace=-space-before-tab
-
-# Preserve the accepted source bytes on every checkout platform.
-* -text

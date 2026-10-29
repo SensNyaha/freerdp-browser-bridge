@@ -8,6 +8,7 @@ import {
   RuntimeRecoveryError,
   selectRuntimeCohort,
   type RecoveryBudget,
+  type RuntimeCohort,
 } from './runtime-cohort.js';
 
 export interface RuntimeRecoveryOptions {
@@ -32,6 +33,47 @@ const gate = new ProcessQueryGate(4, 64, 2000);
 // Logical timeout must not authorize more OS children while a previous helper's
 // termination/stdio closure remains unconfirmed. Retain these slots until close.
 const helperChildren = new Set<ChildProcess>();
+
+/** Internal retirement of one already-owned session, after its worker and
+ * endpoint have joined. Revalidate the startup cohort; never scan sibling
+ * sessions or substitute a different helper after an installation changes.
+ */
+export async function recoverOwnedRuntimeDirectory(
+  expected: RuntimeCohort,
+  root: string,
+  component: string,
+  timeoutMs: number,
+): Promise<HelperStatus> {
+  if (
+    !/^worker-[a-f0-9]{32}-1-[a-f0-9]{32}$/.test(component) ||
+    !isAbsolute(root) ||
+    root.includes('\0') ||
+    root.length > 32767 ||
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > 60000
+  )
+    throw new RuntimeRecoveryError('RUNTIME_RECOVERY_INVALID');
+  const budget = { due: performance.now() + timeoutMs };
+  return gate.run(undefined, async () => {
+    checkRecoveryBudget(budget);
+    const current = await selectRuntimeCohort(expected.workerPath, budget);
+    if (
+      !current ||
+      current.workerPath !== expected.workerPath ||
+      current.helperPath !== expected.helperPath ||
+      current.workerSha256 !== expected.workerSha256 ||
+      current.helperSha256 !== expected.helperSha256
+    )
+      throw new RuntimeRecoveryError('RUNTIME_RECOVERY_MISMATCH');
+    return runRuntimeRecoveryHelper(
+      current.helperPath,
+      root,
+      component,
+      budget,
+    );
+  });
+}
 
 export function parseRuntimeRecoveryReceipt(bytes: Buffer): HelperStatus {
   if (!Buffer.isBuffer(bytes) || bytes.length < 1 || bytes.length > 128)

@@ -2,6 +2,7 @@
 #include "audio.hpp"
 #include "cursor.hpp"
 #include "output_queue.hpp"
+#include "files.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <memory>
 using namespace bridge::ipc;
@@ -164,19 +165,23 @@ TEST_CASE("Output refusal validates limits and direction before ownership; exact
   const auto clipboard_reply = clipboard::encode_result(
       {clipboard::Operation::read, clipboard::Status::accepted, 1, 1, text});
   REQUIRE(queue->push(Kind::clipboard_result, 77, clipboard_reply) == EnqueueStatus::accepted);
+  const auto file_reply = files::encode({files::Operation::read, bridge::files::StoreStatus::ok,
+                                         0, 1, 0, 65536, std::vector<std::uint8_t>(65536)}, true);
+  REQUIRE(queue->push(Kind::file_result, 78, file_reply) == EnqueueStatus::accepted);
+  REQUIRE(queue->push(Kind::file_result, 79, file_reply) == EnqueueStatus::full);
   for (std::size_t i = 0; i < OutputQueue::control_capacity; ++i)
     REQUIRE(queue->push(Kind::hello_ack, i, std::array<std::uint8_t, 4096>{}) ==
             EnqueueStatus::accepted);
   REQUIRE(queue->stats().records == OutputQueue::max_records);
-  REQUIRE(queue->stats().bytes == 26025595);
-  REQUIRE(queue->stats().high_water_bytes == 26025595);
+  REQUIRE(queue->stats().bytes == 26091195);
+  REQUIRE(queue->stats().high_water_bytes == 26091195);
   std::optional<Packet> final;
   while (auto record = queue->take())
     final = std::move(record);
   REQUIRE(final->kind == Kind::frame_avc);
   REQUIRE(final->payload[0] == 0); // Producer mutation did not change owned output.
   REQUIRE(queue->stats().bytes == 0);
-  REQUIRE(queue->stats().high_water_bytes == 26025595);
+  REQUIRE(queue->stats().high_water_bytes == 26091195);
 }
 TEST_CASE("Clipboard output owns one correlated result and latest scalar state outside control "
           "capacity") {

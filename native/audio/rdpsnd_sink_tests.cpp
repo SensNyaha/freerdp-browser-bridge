@@ -21,6 +21,23 @@ UINT play(rdpsndDevicePlugin &device, ::bridge::compat::span<const std::uint8_t>
 }
 } // namespace
 
+TEST_CASE("Silent RDPSND device refuses formats and samples without a PCM pipeline") {
+  RdpsndSink sink(OutputBufferProfile::low_latency, false);
+  auto &device = sink.device();const auto pcm = format();
+  REQUIRE_FALSE(sink.capture_enabled());
+  REQUIRE_FALSE(device.FormatSupported(&device, &pcm));
+  REQUIRE_FALSE(device.Open(&device, &pcm, 0));
+  AUDIO_FORMAT candidate{};
+  REQUIRE_FALSE(device.DefaultFormat(&device, &pcm, &candidate));
+  std::array<std::uint8_t, 4> bytes{1, 2, 3, 4};
+  REQUIRE(play(device, bytes) == 0);
+  REQUIRE_FALSE(sink.ready());REQUIRE_FALSE(sink.publication_deadline());
+  REQUIRE(sink.stats()->queue.accepted_frames == 0);
+  REQUIRE(sink.stats()->queue.queued_frames == 0);
+  REQUIRE(sink.stats()->availability == SourceAvailability::unavailable);
+  REQUIRE(sink.retire());REQUIRE(sink.retire());
+  REQUIRE(sink.stats()->availability == SourceAvailability::closed);
+}
 TEST_CASE("RDPSND compatibility buffer retains a whole 186 ms XRDP callback") {
   RdpsndSink sink(OutputBufferProfile::compatibility);
   auto &device = sink.device();

@@ -13,18 +13,20 @@ void increment(std::uint64_t &counter) noexcept {
 AudioSession::AudioSession(rdpContext &context, PcmPublisher::TrySend send,
                            PcmPublisher::TryDiscard discard, Drain drain,
                            std::uint64_t retire_window_us, ipc::OutputAudioCodec codec,
-                           OutputBufferProfile buffer)
-    : source_(buffer), gate_(context, source_), send_(std::move(send)), drain_(std::move(drain)),
+                           OutputBufferProfile buffer, bool capture_enabled)
+    : source_(buffer, capture_enabled), gate_(context, source_), send_(std::move(send)), drain_(std::move(drain)),
       thread_(std::this_thread::get_id()), retire_window_us_(retire_window_us), codec_(codec) {
-  if (!send_ || !context.instance || retire_window_us_ < ipc::audio::interval_us ||
+  if ((capture_enabled && !send_) || !context.instance || retire_window_us_ < ipc::audio::interval_us ||
       retire_window_us_ > 1000000 ||
       (codec_ != ipc::OutputAudioCodec::pcm && codec_ != ipc::OutputAudioCodec::opus))
     throw std::invalid_argument("Invalid audio session owner");
-  // Exactly one capture/publisher owner; PCM does not instantiate a codec SDK.
-  if (codec_ == ipc::OutputAudioCodec::opus)
-    opus_publisher_ = std::make_unique<OpusPublisher>(source_, std::move(discard));
-  else
-    pcm_publisher_ = std::make_unique<PcmPublisher>(source_, std::move(discard), 0, 0);
+  // A silent compatibility channel owns no sample queue, codec or publisher.
+  if (capture_enabled) {
+    if (codec_ == ipc::OutputAudioCodec::opus)
+      opus_publisher_ = std::make_unique<OpusPublisher>(source_, std::move(discard));
+    else
+      pcm_publisher_ = std::make_unique<PcmPublisher>(source_, std::move(discard), 0, 0);
+  }
   if (!drain_)
     drain_ = [&context] {
       return freerdp_channels_process_pending_messages(context.instance) == 1;
@@ -34,6 +36,7 @@ AudioSession::AudioSession(rdpContext &context, PcmPublisher::TrySend send,
 }
 bool AudioSession::on_thread() const noexcept { return thread_ == std::this_thread::get_id(); }
 PublishStatus AudioSession::publish(std::uint64_t now) noexcept {
+  if (!source_.capture_enabled()) return PublishStatus::idle;
   return pcm_publisher_ ? pcm_publisher_->pump(now, send_) : opus_publisher_->pump(now, send_);
 }
 bool AudioSession::observe(std::uint64_t now) noexcept {
@@ -58,12 +61,14 @@ PublishStatus AudioSession::pump(std::uint64_t now) noexcept {
   return result;
 }
 std::optional<std::uint64_t> AudioSession::publication_deadline() const noexcept {
+  if (!source_.capture_enabled()) return {};
   if (!on_thread() || busy_ || publication_blocked_ || stats_.publication_failed ||
       stats_.retirement != RetireStatus::active)
     return {};
   return source_.publication_deadline();
 }
 bool AudioSession::reset() noexcept {
+  if (!source_.capture_enabled()) return false;
   if (!on_thread() || busy_ || stats_.retirement != RetireStatus::active ||
       stats_.publication_failed || source_.retired())
     return false;
@@ -137,7 +142,7 @@ std::optional<SessionStats> AudioSession::stats() const noexcept {
     if (!publisher)
       return {};
     result.publisher = *publisher;
-  } else {
+  } else if (opus_publisher_) {
     const auto publisher = opus_publisher_->stats();
     if (!publisher)
       return {};

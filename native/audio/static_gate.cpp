@@ -311,7 +311,7 @@ void VCAPITYPE AudioStaticGate::open_event(LPVOID opaque, DWORD handle, UINT eve
       increment(gate->stats_.waves);
     if (pdu->kind == AudioPduKind::formats) {
       std::array<BYTE, max_pcm_offer_bytes> candidate{};
-      const auto selected = select_pcm_offers(joined.bytes, candidate);
+      const auto selected = select_pcm_offers(joined.bytes, candidate, gate->sink_.capture_enabled());
       if (!selected) {
         gate->fail(6);
         return;

@@ -6,6 +6,8 @@ import {
   writeFile,
   readFile,
   access,
+  chmod,
+  lstat,
   rm,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -27,6 +29,19 @@ test('Linux distribution staging fixture shares immutable service bytes and refu
       'synthetic staging fixture, never executed',
     );
     await writeFile(join(source, 'node/LICENSE'), 'synthetic license');
+    await mkdir(join(source, 'service/dist'), { mode: 0o700 });
+    await writeFile(
+      join(source, 'service/dist/main.js'),
+      'synthetic public entry point',
+      { mode: 0o600 },
+    );
+    await mkdir(join(native, 'runtime/bin'), { recursive: true, mode: 0o700 });
+    await writeFile(
+      join(native, 'runtime/bin/rdp-worker'),
+      'synthetic executable',
+      { mode: 0o700 },
+    );
+    await chmod(join(source, 'node'), 0o700);
     const manifest = {
       name: '@freerdp-bridge/standalone',
       private: true,
@@ -58,6 +73,30 @@ test('Linux distribution staging fixture shares immutable service bytes and refu
       await access(
         join(root, unitRoot, 'systemd/system/freerdp-bridge.service'),
       );
+      if (process.platform === 'linux') {
+        for (const [name, mode] of [
+          ['opt/freerdp-bridge/node', 0o755],
+          ['opt/freerdp-bridge/node/node', 0o755],
+          ['opt/freerdp-bridge/service/dist', 0o755],
+          ['opt/freerdp-bridge/service/dist/main.js', 0o644],
+          [
+            'opt/freerdp-bridge/service/node_modules/@freerdp-bridge/runtime-linux-x64-gnu/runtime/bin/rdp-worker',
+            0o755,
+          ],
+          ['etc/freerdp-bridge', 0o750],
+          ['etc/freerdp-bridge/bridge.json', 0o640],
+        ])
+          assert.equal(
+            (await lstat(join(root, name))).mode & 0o777,
+            mode,
+            name,
+          );
+        assert.equal(
+          (await lstat(join(source, 'service/dist/main.js'))).mode & 0o777,
+          0o600,
+        );
+        assert.equal((await lstat(join(source, 'node'))).mode & 0o777, 0o700);
+      }
       assert.deepEqual(
         JSON.parse(
           await readFile(join(root, 'etc/freerdp-bridge/bridge.json'), 'utf8'),

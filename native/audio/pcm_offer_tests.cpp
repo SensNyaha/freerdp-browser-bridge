@@ -26,6 +26,18 @@ std::vector<std::uint8_t> packet(::bridge::compat::span<const std::uint8_t> desc
 }
 } // namespace
 
+TEST_CASE("Silent compatibility negotiation validates input but offers no audio format") {
+  const auto input = packet(stereo48, 2);
+  std::array<std::uint8_t, max_pcm_offer_bytes> output{};
+  const auto selected = select_pcm_offers(input, output, false);
+  REQUIRE(selected);REQUIRE(selected->count == 0);REQUIRE(selected->bytes.size() == 24);
+  REQUIRE(selected->bytes[2] == 20);REQUIRE(selected->bytes[3] == 0);
+  REQUIRE(selected->bytes[18] == 0);REQUIRE(selected->bytes[19] == 0);
+  auto malformed = input;malformed.pop_back();
+  output.fill(0x5a);
+  REQUIRE_FALSE(select_pcm_offers(malformed, output, false));
+  REQUIRE(std::all_of(output.begin(), output.end(), [](auto value) { return value == 0x5a; }));
+}
 TEST_CASE("PCM offer selection preserves supported source descriptors and metadata") {
   auto input = packet(stereo48, 2);
   std::copy(mono8.begin(), mono8.end(), input.data() + 24 + stereo48.size());

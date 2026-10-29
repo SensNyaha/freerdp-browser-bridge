@@ -12,7 +12,7 @@ import {
   rm,
   stat,
 } from 'node:fs/promises';
-import { join, basename, dirname, isAbsolute } from 'node:path';
+import { join, basename, dirname, isAbsolute, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { RuntimeOwner } from '../../packages/node-bridge/dist/runtime-owner.js';
 import { recoverRuntimeSessions } from '../../packages/node-bridge/dist/index.js';
@@ -187,15 +187,35 @@ test(
   },
 );
 
-async function withOwnerProcess(run) {
+async function withOwnerProcess(
+  run,
+  { managed = false, transport = 'framed-pipes' } = {},
+) {
   const parent = spawn(
     process.execPath,
     [
       fileURLToPath(
-        new URL('../fixtures/runtime-recovery-parent.mjs', import.meta.url),
+        new URL(
+          managed
+            ? '../fixtures/managed-files-recovery-parent.mjs'
+            : '../fixtures/runtime-recovery-parent.mjs',
+          import.meta.url,
+        ),
       ),
+      ...(managed ? [transport] : []),
     ],
-    { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] },
+    {
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: managed
+        ? {
+            ...process.env,
+            BRIDGE_TEST_BINARY_DIR: resolve(
+              process.env.BRIDGE_FILE_TEST_BINARY_DIR,
+            ),
+          }
+        : process.env,
+    },
   );
   parent.stdin.on('error', () => {});
   const closed = once(parent, 'close');
@@ -246,7 +266,13 @@ async function withOwnerProcess(run) {
       parent.kill('SIGKILL');
     await closed;
     if (owned) {
-      if (alive(owned.pid)) process.kill(owned.pid, 'SIGKILL');
+      if (alive(owned.pid)) {
+        try {
+          process.kill(owned.pid, 'SIGKILL');
+        } catch (error) {
+          if (error.code !== 'ESRCH') throw error;
+        }
+      }
       await eventually(() => !alive(owned.pid), 3000);
       await rm(owned.root, { recursive: true, force: true, maxRetries: 3 });
     }
@@ -302,3 +328,98 @@ test(
       assert.deepEqual(await readdir(owned.root), []);
     }),
 );
+
+for (const transport of process.platform === 'linux'
+  ? ['framed-pipes', 'unix-seqpacket-rws1']
+  : ['framed-pipes'])
+  test(
+    `native managed-files recovery / ${transport}: simultaneous hard kill reclaims committed Unicode and partial binary uploads`,
+    { skip: !process.env.BRIDGE_FILE_TEST_BINARY_DIR, timeout: 25000 },
+    async () =>
+      withOwnerProcess(
+        async ({ parent, closed, owned, output }) => {
+          const workerPath = join(
+            resolve(process.env.BRIDGE_FILE_TEST_BINARY_DIR),
+            'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
+          );
+          const directory = join(owned.root, owned.name);
+          const committed = join(
+            directory,
+            'managed-files',
+            '.data',
+            'nested',
+            'owned-\u0416\u65e5\u672c\u8a9e\ud83d\ude00.bin',
+          );
+          const options = { workerPath, runtimeRoot: owned.root };
+          assert.equal((await recoverRuntimeSessions(options)).active, 1);
+          assert.equal((await stat(committed)).size, 131111);
+          parent.stdin.write('hold\n');
+          await eventually(() => output().includes('\nholding\n'), 3000);
+          process.kill(owned.pid, 'SIGKILL');
+          // Native lock is gone, but the blocked Node owner still prevents cleanup.
+          const stillOwned = await recoverRuntimeSessions(options);
+          assert.equal(stillOwned.active, 1);
+          assert.equal(stillOwned.removed, 0);
+          parent.kill('SIGKILL');
+          await closed;
+          await eventually(() => !alive(owned.pid), 3000);
+          assert.equal((await stat(committed)).size, 131111);
+          const stagedNames = await readdir(
+            join(directory, 'managed-files', '.uploads'),
+          );
+          assert.equal(stagedNames.length, 1);
+          assert.match(stagedNames[0], /^[0-9a-f]{16}$/);
+          assert.equal(
+            (
+              await stat(
+                join(directory, 'managed-files', '.uploads', stagedNames[0]),
+              )
+            ).size,
+            65536,
+          );
+          assert.equal(
+            (await stat(join(directory, '.managed-files-owned'))).size,
+            56,
+          );
+          const unknown = join(directory, 'unknown');
+          await writeFile(unknown, 'owned negative-control data');
+          const retained = await recoverRuntimeSessions(options);
+          assert.equal(retained.retained, 1);
+          assert.equal(retained.removed, 0);
+          assert.equal((await stat(committed)).size, 131111);
+          assert.equal(
+            await readFile(unknown, 'utf8'),
+            'owned negative-control data',
+          );
+          await rm(unknown);
+          assert.deepEqual(await recoverRuntimeSessions(options), {
+            supported: true,
+            complete: true,
+            scanned: 1,
+            removed: 1,
+            active: 0,
+            retained: 0,
+          });
+          assert.deepEqual(await readdir(owned.root), []);
+        },
+        { managed: true, transport },
+      ),
+  );
+
+for (const transport of process.platform === 'linux'
+  ? ['framed-pipes', 'unix-seqpacket-rws1']
+  : ['framed-pipes'])
+  test(
+    `native managed-files recovery / ${transport}: parent-only hard kill joins native file and claim cleanup`,
+    { skip: !process.env.BRIDGE_FILE_TEST_BINARY_DIR, timeout: 20000 },
+    async () =>
+      withOwnerProcess(
+        async ({ parent, closed, owned }) => {
+          parent.kill('SIGKILL');
+          await closed;
+          await eventually(() => !alive(owned.pid), 3000);
+          assert.deepEqual(await readdir(owned.root), []);
+        },
+        { managed: true, transport },
+      ),
+  );

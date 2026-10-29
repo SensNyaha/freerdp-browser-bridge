@@ -6,6 +6,7 @@ records only. SSH keys must already be pinned; no automatic key acceptance.
 import base64
 import hashlib
 import ipaddress
+import inspect
 import json
 import logging
 import posixpath
@@ -52,6 +53,21 @@ def sudo_handshake(channel, write, password, clock=time.monotonic, pause=time.sl
         pause(.02)
 
 
+def validate_managed_files(settings, enabled):
+    """Only the explicitly selected, fixed owned-lab policy reaches root."""
+    assert type(enabled) is bool
+    if not enabled:
+        assert 'files' not in settings
+        return
+    expected = {'maxTotalBytes': 4194304, 'maxFileBytes': 2097152,
+                'maxEntries': 64, 'xrdpLegacyDelete': True}
+    assert type(settings.get('files')) is dict
+    assert set(settings['files']) == set(expected)
+    for name, value in expected.items():
+        assert type(settings['files'][name]) is type(value)
+        assert settings['files'][name] == value
+
+
 ROOT_PROGRAM = r'''
 import hashlib,json,os,re,resource,select,signal,subprocess,sys,urllib.request
 from pathlib import Path
@@ -94,7 +110,9 @@ if parent.exists():
  assert retained.is_file() and not retained.is_symlink() and retained.stat().st_uid==0
  original=retained.read_bytes();assert len(original)<=65536 and json.loads(original)==default
 settings=data['configuration']
-assert set(settings)=={'schemaVersion','listen','allowedOrigins','targets','limits','auth'}
+managed_files=data.get('managedFiles',False)
+validate_managed_files(settings,managed_files)
+assert set(settings)=={'schemaVersion','listen','allowedOrigins','targets','limits','auth'}|({'files'} if managed_files else set())
 assert settings['schemaVersion']==1 and settings['listen']=={'host':'127.0.0.1','port':8080}
 assert settings['targets']==[data['approvedTarget']]
 assert settings['limits']=={'maxSessions':1,'maxPerPrincipal':1}
@@ -142,12 +160,17 @@ finally:
   if astra or retained.exists(): assert retained.read_bytes()==original
  if clean: print('STANDALONE_LAB_CLEAN',flush=True)
 '''
+# Share the exact pure validator with the privileged fixture and unit controls.
+ROOT_PROGRAM = inspect.getsource(validate_managed_files) + '\n' + ROOT_PROGRAM
 
 
 def main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) not in (6, 7):
         raise ValueError('usage')
-    lab, package, digest, version, port_text = sys.argv[1:]
+    lab, package, digest, version, port_text = sys.argv[1:6]
+    managed_files = len(sys.argv) == 7
+    if managed_files:
+        assert sys.argv[6] == '--managed-files'
     assert lab in ('astra', 'redos')
     assert re.fullmatch(r'[a-f0-9]{64}', digest)
     assert re.fullmatch(r'0\.(?:0|[1-9][0-9]{0,5})\.(?:0|[1-9][0-9]{0,5})', version)
@@ -205,6 +228,7 @@ def main():
         settings_line = sys.stdin.buffer.readline(65537)
         assert 0 < len(settings_line) <= 65536
         settings = json.loads(settings_line)
+        validate_managed_files(settings, managed_files)
         phase = 'service-install'
         root_input, root_output, root_error = client.exec_command("sudo -S -p STANDALONE_LAB_SUDO_PASSWORD: -- /usr/bin/python3 " + shlex.quote(script), timeout=300)
         channel = root_output.channel
@@ -221,7 +245,7 @@ def main():
         rdp = json.loads((private / 'astra-xrdp-lab.json').read_text('utf8')) if lab == 'astra' else config
         assert rdp['host'] == config['host']
         approved = {'host': rdp['host'], 'port': int(rdp.get('port', 3389))}
-        public = {'lab': lab, 'package': package, 'sha256': digest, 'version': version, 'configuration': settings, 'approvedTarget': approved}
+        public = {'lab': lab, 'package': package, 'sha256': digest, 'version': version, 'configuration': settings, 'approvedTarget': approved, 'managedFiles': managed_files}
         root_input.write(json.dumps(public) + '\n')
         root_input.flush()
         assert record() == 'STANDALONE_READY'
@@ -269,6 +293,19 @@ def main():
         root_input.channel.shutdown_write()
         assert record() == 'STANDALONE_LAB_CLEAN'
         assert channel.recv_exit_status() == 0
+        # Remove only this invocation's exact public helper after root exits.
+        # Unknown entries are retained, never recursively deleted.
+        sftp = client.open_sftp()
+        try:
+            assert sftp.listdir(context) == ['service.py']
+            info = sftp.lstat(script)
+            assert stat.S_ISREG(info.st_mode) and info.st_size == len(ROOT_PROGRAM.encode('utf8'))
+            with sftp.file(script, 'rb') as source:
+                assert source.read(65537) == ROOT_PROGRAM.encode('utf8')
+            sftp.remove(script)
+            sftp.rmdir(context)
+        finally:
+            sftp.close()
         print(json.dumps({'code': 'STANDALONE_LAB_CLEAN'}), flush=True)
     except Exception:
         failed = True

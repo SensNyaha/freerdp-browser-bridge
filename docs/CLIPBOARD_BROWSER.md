@@ -1,5 +1,10 @@
 # Explicit reference browser clipboard
 
+File clipboard remains deferred in the unreleased managed-drives branch. The
+public HTTP capability is explicitly `clipboardFiles: false`; a missing flag
+also means unavailable. File-manager Ctrl+C/Ctrl+V is not provided by HTTP file
+uploads or RDPDR drives. [Selection refusal and future acceptance](FILES.md#file-clipboard-is-deferred).
+
 Current HTML source status, 2026-10-26: implementation, named Windows/Linux
 application profiles and all required hosted checks pass.
 [Final source acceptance](#html-source-feature-acceptance). Public 0.3.0 remains

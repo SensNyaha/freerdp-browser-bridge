@@ -1,4 +1,13 @@
 import { EventEmitter } from 'node:events';
+import {
+  ManagedFiles,
+  FileError,
+  resolveManagedFilesPolicy,
+  type ManagedFilesOptions,
+  type ManagedFilesPolicy,
+} from './managed-files.js';
+import type { NativeFileCommand } from './index.js';
+import type { FileRecord } from '@freerdp-bridge/protocol';
 import { MicrophoneOwnership } from './microphone-ownership.js';
 import {
   ClipboardOwnership,
@@ -66,6 +75,33 @@ import type {
 } from '@freerdp-bridge/protocol';
 
 const failures = {
+  FILES_NOT_IMPLEMENTED: [
+    501,
+    'Managed files are unavailable in this backend',
+    false,
+  ],
+  FILES_NOT_CONNECTED: [409, 'Managed files require a connected session', true],
+  FILE_NOT_FOUND: [404, 'File was not found', false],
+  FILE_INVALID: [400, 'File request is invalid', false],
+  FILE_QUOTA_EXCEEDED: [413, 'Session file quota exceeded', false],
+  FILE_DISK_FULL: [507, 'File storage is full', true],
+  FILE_EXISTS: [409, 'A file with this name already exists', false],
+  FILE_BUSY: [429, 'A file operation is already active', true],
+  FILE_DENIED: [403, 'File operation is denied', false],
+  FILE_TIMEOUT: [408, 'File transfer deadline exceeded', true],
+  FILE_FAILED: [502, 'File operation failed', false],
+  FILE_NOT_EMPTY: [409, 'Directory is not empty', false],
+  FILE_SIZE_MISMATCH: [
+    400,
+    'File length does not match its declaration',
+    false,
+  ],
+  FILE_UNAVAILABLE: [409, 'File transfer is no longer active', false],
+  FILE_CONTENT_TYPE: [
+    415,
+    'File transfers require unencoded application/octet-stream',
+    false,
+  ],
   CLIPBOARD_NOT_IMPLEMENTED: [
     501,
     'Clipboard is unavailable in this backend',
@@ -196,6 +232,7 @@ export class SessionError extends Error {
 }
 export function publicSessionError(error: unknown): SessionError {
   if (error instanceof SessionError) return error;
+  if (error instanceof FileError) return new SessionError(error.code);
   if (error instanceof ConfigError)
     return new SessionError('INVALID_SESSION_CONFIG');
   return new SessionError('INTERNAL_ERROR');
@@ -250,6 +287,8 @@ export interface CertificateResponse {
 }
 /** Trusted backend boundary. Stage 3 supplies native config/state IPC; tests use explicit fakes. */
 export interface SessionWorker {
+  /** Exclusive session-manager use when a host file reservation is supplied. */
+  fileCommand?(command: NativeFileCommand): Promise<FileRecord>;
   start(config: SessionCreate, signal: AbortSignal): Promise<void>;
   close(): Promise<void>;
   /** A returned promise resolves after forced termination/resource retirement. */
@@ -284,6 +323,8 @@ export interface SessionWorker {
   sendInput?(event: InputEvent): Promise<void>;
 }
 export interface SessionManagerOptions {
+  /** Trusted host opt-in; session/browser input cannot enlarge these limits. */
+  files?: ManagedFilesOptions;
   workerFactory?: (limits: Readonly<SessionWorkerLimits>) => SessionWorker;
   maxSessions?: number;
   maxPerPrincipal?: number;
@@ -301,12 +342,14 @@ export interface SessionManagerOptions {
 }
 /** Nonsecret immutable reservations supplied before backend construction. */
 export interface SessionWorkerLimits {
+  readonly files?: ManagedFilesPolicy;
   readonly clipboardItemBytes?: number;
   readonly clipboardHtml?: true;
   readonly clipboardImage?: true;
 }
 type Token = { channel: SessionChannel; expiresAt: number };
 type Entry = {
+  files?: ManagedFiles;
   clipboardPolicy?: {
     toServer: boolean;
     fromServer: boolean;
@@ -438,9 +481,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
   private readonly ownedWorkers = new WeakSet<SessionWorker>();
   private readonly rates = new Map<string, { count: number; until: number }>();
   private readonly options: Required<
-    Omit<SessionManagerOptions, 'workerFactory'>
+    Omit<SessionManagerOptions, 'workerFactory' | 'files'>
   >;
   private readonly factory: SessionManagerOptions['workerFactory'];
+  private readonly filesPolicy: ManagedFilesPolicy | undefined;
   private readonly sweep: NodeJS.Timeout;
   private stopping = false;
   private shutdownPromise: Promise<void> | undefined;
@@ -449,6 +493,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
   constructor(options: SessionManagerOptions = {}) {
     super();
     this.factory = options.workerFactory;
+    this.filesPolicy =
+      options.files === undefined
+        ? undefined
+        : resolveManagedFilesPolicy(options.files);
     this.options = {
       maxSessions: options.maxSessions ?? 32,
       maxPerPrincipal: options.maxPerPrincipal ?? 4,
@@ -546,6 +594,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       const now = this.options.now();
       const worker = this.factory(
         Object.freeze({
+          ...(this.filesPolicy ? { files: this.filesPolicy } : {}),
           ...(config.clipboard && config.clipboard.mode !== 'off'
             ? {
                 clipboardItemBytes: config.clipboard.maxItemBytes ?? 1048576,
@@ -614,6 +663,23 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       this.entries.set(entry.snapshot.sessionId, entry);
       this.totals.created++;
       try {
+        if (this.filesPolicy) {
+          if (!worker.fileCommand)
+            throw new SessionError('FILES_NOT_IMPLEMENTED');
+          entry.files = new ManagedFiles(
+            this.filesPolicy,
+            (command) => worker.fileCommand!(command),
+            () => {
+              if (
+                this.stopping ||
+                entry.released ||
+                entry.snapshot.state !== 'connected'
+              )
+                throw new FileError('FILES_NOT_CONNECTED');
+            },
+            () => this.fail(entry, 'FILE_FAILED'),
+          );
+        }
         entry.unsubscribers.push(
           worker.onState((state) => this.workerState(entry, state)),
         );
@@ -1157,6 +1223,7 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
     entry.tokens.clear();
     const microphoneClose = entry.microphoneOwnership?.close();
     const clipboardClose = entry.clipboardOwnership?.close();
+    const filesClose = entry.files?.close();
     delete entry.clipboardGrant;
     delete entry.clipboard;
     delete entry.clipboardListener;
@@ -1181,7 +1248,10 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
       let retired = false;
       let termination: Promise<void> | undefined;
       const graceful = Promise.all([
-        Promise.resolve().then(() => entry.worker.close()),
+        Promise.resolve().then(async () => {
+          await filesClose;
+          await entry.worker.close();
+        }),
         microphoneClose,
         clipboardClose,
       ]);
@@ -1238,6 +1308,13 @@ export class SessionManager extends EventEmitter<{ event: [SessionEvent] }> {
   get(id: string, principal: Principal): SessionSnapshot {
     this.prune();
     return structuredClone(this.entry(id, principal).snapshot);
+  }
+  /** Returns session-bound authority; every operation/IO checks live state. */
+  files(id: string, principal: Principal): ManagedFiles {
+    const entry = this.entry(id, principal);
+    if (!entry.files) throw new SessionError('FILES_NOT_IMPLEMENTED');
+    entry.files.authorize();
+    return entry.files;
   }
   async close(id: string, principal: Principal): Promise<SessionSnapshot> {
     const entry = this.entry(id, principal);

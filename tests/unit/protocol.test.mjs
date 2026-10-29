@@ -474,7 +474,7 @@ test('connection IPC: independent golden settings, byte limits and no legacy sec
       ProtocolError,
     );
   for (const [kind, length] of [
-    [Kind.Configure, 2049],
+    [Kind.Configure, 16385],
     [Kind.Secret, 4097],
     [Kind.State, 7],
     [Kind.Certificate, 41],

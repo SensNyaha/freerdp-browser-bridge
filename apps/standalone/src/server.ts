@@ -1,6 +1,7 @@
 import Fastify, { LogController } from 'fastify';
 import {
   rdpBridgePlugin,
+  resolveManagedFilesPolicy,
   type WorkerOptions,
   type SessionCreate,
 } from '@freerdp-bridge/api/fastify';
@@ -14,12 +15,20 @@ export async function createStandaloneServer(
   worker: WorkerOptions,
 ) {
   const config = validateStandaloneConfig(input);
+  const filePolicy =
+    config.files === undefined
+      ? undefined
+      : resolveManagedFilesPolicy(config.files);
   const server = Fastify({
     logger: false,
     logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: 65536,
-    connectionTimeout: 10000,
-    requestTimeout: 10000,
+    connectionTimeout: filePolicy
+      ? filePolicy.progressTimeoutMs + filePolicy.nativeTimeoutMs + 1000
+      : 10000,
+    requestTimeout: filePolicy
+      ? filePolicy.transferTimeoutMs + filePolicy.nativeTimeoutMs + 1000
+      : 10000,
     routerOptions: { maxParamLength: 128 },
   });
   server.server.maxConnections = 128;
@@ -44,7 +53,10 @@ export async function createStandaloneServer(
       worker,
       authenticate: createStandaloneAuthenticator(config),
       allowedOrigins: config.allowedOrigins,
-      sessions: config.limits,
+      sessions: {
+        ...config.limits,
+        ...(filePolicy ? { files: filePolicy } : {}),
+      },
     });
     await server.ready();
     return server;

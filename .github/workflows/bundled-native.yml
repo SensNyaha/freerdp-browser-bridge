@@ -72,6 +72,8 @@ jobs:
         if: runner.os == 'Windows'
         env:
           BRIDGE_TEST_BINARY_DIR: build/bundled
+          BRIDGE_FILE_TEST_BINARY_DIR: build/bundled
+          BRIDGE_MANAGED_DRIVE_TEST_BINARY_DIR: build/bundled
       - name: Build and check Linux native closure at the GCC 8.3 ABI baseline
         if: runner.os == 'Linux'
         env:
@@ -95,6 +97,8 @@ jobs:
               pnpm build:freerdp
               pnpm build:bundled
               BRIDGE_TEST_BINARY_DIR=build/bundled \
+                BRIDGE_FILE_TEST_BINARY_DIR=build/bundled \
+                BRIDGE_MANAGED_DRIVE_TEST_BINARY_DIR=build/bundled \
                 LD_LIBRARY_PATH="$PWD/.deps/freerdp-install/lib:$PWD/.deps/installed/x64-linux-bundled/lib" \
                 pnpm check
             '
@@ -105,6 +109,11 @@ jobs:
           path: .tools/vcpkg-cache
           key: ${{ steps.linux-dependencies.outputs.cache-primary-key }}
       - run: pnpm test:bundle
+      - name: Prepare pinned Windows package consumer tooling
+        if: runner.os == 'Windows'
+        run: npm install --prefix .tools --ignore-scripts --no-audit --no-fund --logs-max=0 pnpm@10.11.0
+      - name: Verify installed adapter packages with native file streaming
+        run: node scripts/test-managed-files-packages.mjs build/native-stage
       - name: Inventory exact Windows native archive and packaged CRT
         if: runner.os == 'Windows'
         run: |

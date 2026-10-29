@@ -7,6 +7,7 @@
 #include "microphone_opus.hpp"
 #include "ownership.hpp"
 #include "protocol.hpp"
+#include "../files/service.hpp"
 #include <algorithm>
 #include <csignal>
 #include <cstdio>
@@ -68,6 +69,7 @@ public:
     std::filesystem::remove(path_,
                             ec); // Empty directory only; never recursively delete arbitrary cwd.
   }
+  bool owned() const noexcept { return !path_.empty(); }
 };
 #if defined(__linux__)
 volatile std::sig_atomic_t parent_lost = 0;
@@ -124,8 +126,14 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
                             platform, arch, transport})
     append_string(bytes, value);
   unsigned extensions = 0;
+#if defined(_WIN32) || defined(__linux__)
+  extensions |= 1024; // Private native file service; does not advertise RDPDR.
+#endif
 #ifdef BRIDGE_WITH_FREERDP
   extensions |= 32 | 64;
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPDR_CLIENT) && defined(CHANNEL_DRIVE_CLIENT) && defined(CHANNEL_RDPSND_CLIENT)
+  extensions |= 2048 | 4096; // Managed drives and explicit trusted-host XRDP delete compatibility.
+#endif
 #if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_AUDIN_CLIENT)
   extensions |= 3;
 #endif
@@ -169,7 +177,7 @@ void send_sync(const Packet &packet) {
     throw ProtocolError();
 }
 #endif
-int run(int packet_fd = -1) {
+int run(bool owned_runtime, int packet_fd = -1) {
   (void)packet_fd;
 #ifdef _WIN32
   WindowsPipeOutput output(reinterpret_cast<void *>(_get_osfhandle(_fileno(stdout))));
@@ -240,6 +248,7 @@ int run(int packet_fd = -1) {
   };
   // All connection producers retire before finishing/destroying output ownership.
   const auto control = [&]() {
+    bridge::files::FileService files(std::filesystem::current_path(), owned_runtime);
 #ifdef BRIDGE_WITH_FREERDP
     if (!WLog_SetLogLevel(WLog_GetRoot(), WLOG_OFF))
       throw std::runtime_error("FreeRDP logging initialization failed");
@@ -262,7 +271,7 @@ int run(int packet_fd = -1) {
           if (result == DispatchAdmission::busy || result == DispatchAdmission::full)
             return false;
           throw ProtocolError();
-        });
+        }, &files);
 #else
     bridge::Connection connection(send);
 #endif
@@ -284,7 +293,7 @@ int run(int packet_fd = -1) {
       } wiper{payload, header.kind == Kind::secret || header.kind == Kind::input_text ||
                            header.kind == Kind::microphone_pcm ||
                            header.kind == Kind::microphone_opus ||
-                           header.kind == Kind::clipboard_command};
+                           header.kind == Kind::clipboard_command || header.kind == Kind::file_command};
       (void)read(payload, false);
       if (header.kind == Kind::hello && !ready) {
         try {
@@ -297,6 +306,10 @@ int run(int packet_fd = -1) {
         send({Kind::hello_ack, header.request_id, build_payload(transport)});
       } else if (header.kind == Kind::heartbeat && ready) {
         send({Kind::heartbeat_ack, header.request_id, {}});
+      } else if (header.kind == Kind::file_command && ready) {
+        Packet response{Kind::file_result, header.request_id, files.command(payload)};
+        SecretWiper response_wiper{response.payload, true};
+        send(response);
       } else if (header.kind == Kind::audio_reset && ready) {
 #ifdef BRIDGE_WITH_FREERDP
         connection.enqueue_audio_reset(header.request_id, payload);
@@ -343,8 +356,12 @@ int run(int packet_fd = -1) {
 #endif
       } else if (header.kind == Kind::shutdown && ready) {
 #ifdef BRIDGE_WITH_FREERDP
-        connection.stop();
+        connection.stop_and_join();
 #endif
+        if (files.shutdown() != bridge::files::StoreStatus::ok) {
+          error(header.request_id, 6);
+          return 2;
+        }
         send({Kind::shutdown_ack, header.request_id, {}});
         return 0;
 #ifdef BRIDGE_WITH_FREERDP
@@ -449,6 +466,13 @@ int main(int argc, char **argv) {
 #ifdef _WIN32
                  "\"processResourceBatch\":true,"
 #endif
+#if defined(_WIN32) || defined(__linux__)
+                 "\"fileService\":true,"
+#endif
+#if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPDR_CLIENT) && defined(CHANNEL_DRIVE_CLIENT) && defined(CHANNEL_RDPSND_CLIENT)
+                 "\"managedDrives\":true,"
+                 "\"xrdpLegacyDelete\":true,"
+#endif
                  "\"connectCore\":"
 #ifdef BRIDGE_WITH_FREERDP
                  "true,\"performanceSettings\":true,\"ipSettings\":true,\"jpegCapture\":true,"
@@ -516,7 +540,7 @@ int main(int argc, char **argv) {
 #endif
   try {
     const RuntimeGuard runtime;
-    return run(packet_fd);
+    return run(runtime.owned(), packet_fd);
   } catch (const std::exception &) {
     std::fputs("Worker IPC failure\n", stderr);
     return 2;

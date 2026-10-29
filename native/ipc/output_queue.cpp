@@ -3,6 +3,7 @@
 #include "audio.hpp"
 #include "audio_reset.hpp"
 #include "cursor.hpp"
+#include "files.hpp"
 #include "microphone.hpp"
 #include "opus_audio.hpp"
 #include <limits>
@@ -112,6 +113,10 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
       Packet packet{kind, request_id, {bytes.begin(), bytes.end()}};
       control_[(head_ + count_) % control_capacity] = std::move(packet);
       ++count_;
+    } else if (kind == Kind::file_result) {
+      (void)files::decode(bytes, true);
+      if (file_result_) return EnqueueStatus::full;
+      file_result_ = Packet{kind, request_id, {bytes.begin(), bytes.end()}};
     } else if (kind == Kind::clipboard_state) {
       const auto state = clipboard::decode_state(bytes);
       if (clipboard_observed_ && (state.generation != clipboard_observed_->generation ||
@@ -228,7 +233,7 @@ std::optional<Packet> OutputQueue::take() {
     --count_;
   } else {
     for (auto *slot : {&clipboard_state_, &audio_config_, &audio_pcm_, &clipboard_result_,
-                       &cursor_shape_, &cursor_meta_, &video_}) {
+                       &file_result_, &cursor_shape_, &cursor_meta_, &video_}) {
       if (*slot) {
         result = std::move(*slot);
         slot->reset();
@@ -257,6 +262,11 @@ void OutputQueue::discard_all() noexcept {
   video_.reset();
   clipboard_state_.reset();
   clipboard_result_.reset();
+  if (file_result_) {
+    volatile std::uint8_t *data = file_result_->payload.data();
+    for (std::size_t i = 0; i < file_result_->payload.size(); ++i) data[i] = 0;
+  }
+  file_result_.reset();
   refresh();
 }
 void OutputQueue::refresh() noexcept {
@@ -271,7 +281,7 @@ void OutputQueue::refresh() noexcept {
   for (const auto &slot : control_)
     add(slot);
   for (const auto *slot : {&clipboard_state_, &audio_config_, &audio_pcm_, &clipboard_result_,
-                           &cursor_shape_, &cursor_meta_, &video_})
+                           &file_result_, &cursor_shape_, &cursor_meta_, &video_})
     add(*slot);
   if (stats_.bytes > stats_.high_water_bytes)
     stats_.high_water_bytes = stats_.bytes;

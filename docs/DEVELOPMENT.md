@@ -11,7 +11,741 @@ worker executable available again.
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
+## Prepared Windows managed-file application check
+
+The separate `test/windows-managed-drive-application` branch prepares the
+remaining actual Windows RDP-server application check for SPECIFICATION 2.8.
+`scripts/test-windows-managed-files.mjs` requires both
+`--owned-windows-managed-files --prepared-powershell`. Run it only after the
+operator opens and confirms an empty active PowerShell window with an English
+keyboard in the dedicated Windows VM. It sends one fixed command through
+physical US-layout keys into that window; it does not launch
+an application, change execution policy, or use either OS clipboard.
+
+The runner consumes one bounded JSON record over private stdin, never argv or
+environment: `id` (32 lowercase hex digits), private IPv4 `host`, integer
+`port`, `testCertificateConfirmedByUser: true`, approved `fingerprint`
+(`sha256:` plus 64 lowercase hex digits), `credentials`, `workerPath`,
+`workerSha256`, and `ipcTransport` (`framed-pipes` or
+`unix-seqpacket-rws1`). The worker must resolve beneath this checkout's `build`
+directory and match the supplied hash. Obtain approval for the VM's certificate
+before setting the confirmation field. A changed certificate is refused.
+Keep lab credentials only in the authorized ignored local profile and send
+this bootstrap through the parent's pipe. Do not paste a credential-bearing
+record into a terminal command or save it as an artifact.
+
+Through the real HTTP/native/RDPDR path the runner uploads its fixed owned
+PowerShell script and seeds into session-managed RW/RO shares. The remote
+script attempts three forbidden RO mutations, creates a 131111-byte synthetic
+Unicode file, truncates it to 65599 bytes, moves it into a directory and writes
+a bounded scalar receipt. The HTTP client verifies the exact file bytes and
+uploads a new chunked 131111-byte file. A nonce-bound continuation lets the
+remote application verify it and remove only the enumerated owned entries,
+including its script. The client verifies the retained RO seed, stale ID/owner
+refusal, final receipt deletion, captured worker PID exit and empty runtime.
+The Windows profile keeps `xrdpLegacyDelete: false`.
+
+Ten local Windows helper controls pass, including PowerShell parsing,
+independent command reconstruction, pattern/hash, bounded file reading and
+command/refusal checks and bounded failure-receipt parsing. The updated Linux
+UID1000 / no-capabilities helper repeat passes eight controls with two
+PowerShell-specific skips.
+These controls do not connect to RDP or prove remote application acceptance.
+The former shared Windows lab is in use by other users; a new dedicated VM
+is now reachable with its separately approved certificate.
+
+The `fix/managed-drives-windows-announce` candidate now passes the complete
+owned Windows RDP-server application scenario with the MSVC Release worker
+`071a1fa6284797c17f8c06542a33fbe1f2496268a767429c24f4fdc4522f6857`.
+The exact Unicode 65599-byte rename/readback, 131111-byte chunked upload,
+three RO refusals, owner/stale-ID refusal, captured-PID exit and empty runtime
+all pass. Audio remains off with zero audio events; the XRDP delete quirk
+remains false. The certificate is separately operator-approved.
+
+Both GCC 8.3 Linux carriers also pass the same real Windows application
+scenario with worker
+`14d4aead81e1ff016fc55709c327d074c94a6e687f25beb26b2f4837d3035250`.
+The Windows worker additionally passes the whole scenario with two distinct
+64-byte full share names; short PreferredDosName aliases do not silently
+reduce the full-name field. The actual pinned SDK test now exercises a
+64-byte name too. XRDP uses the preferred alias, so both local and SSH
+fixtures use names of at most seven bytes.
+
+Initial runs exposed missing RDPSND dependency, zero-length root CREATE,
+standard Windows NO_RECALL/no-follow opens and a nonterminated preferred DOS
+alias. These now have native regressions; the focused suites pass 21 drive
+cases / 1458 assertions and 82 audio cases / 496167 assertions. Full Windows
+foundation / linked CTest passes 25/25 and 42/42; GCC 8.3 Release passes 43/43.
+The strengthened SDK-name test passes again on both compilers. Full Windows
+`pnpm check` passes 1303 / 73 skips / 1376 total, with all three native,
+file-service and managed-drive selectors enabled. ASan/UBSan passes all five
+changed-owner/IPC/safe-root/recovery suites.
+
+The current workers additionally pass all six actual HTTP/native/XRDP profiles
+against Astra and RED OS (Windows and Linux RWS1/framed on each). Both distro
+component repeats pass 95 cases / 8704 assertions with explicit GCC 8.3 /
+GCC 11 scope. Private payloads are removed only after full owner/hash inventory
+verification. The source/binary/log bindings are retained in
+`build/current-validation/windows-managed-interop-acceptance.json`.
+These source checks remain separate from exact published-package and installer
+acceptance. No whole Stage 7 checkbox is accepted by these passes.
+
+Burst Unicode console input also failed during investigation. Physical
+US-layout delivery is independently reconstructed by a unit control and used
+only for this prepared lab fixture. The broader Unicode/console input gap
+remains open. Failed runs also join the worker and clean their runtime.
+
+## Installed Linux managed files and program permissions
+
+`fix/standalone-linux-program-modes` addresses an installed-service failure
+exposed by the first managed-file DEB run on Astra. Private build inputs had
+JS mode 0600 and directories 0700. The portable launcher ran as their owner,
+but the installed root-owned copy was unreadable to the separate
+`freerdp-bridge` service UID. The journal's fixed error counters show EACCES;
+the program path and package are absent after the failed fixture's uninstall.
+The failed unit and installed-service logs are retained.
+
+Linux staging now normalizes only its newly copied public program tree:
+directories and previously executable files become 0755, other regular files
+0644. The bounded walker refuses links/special files. Configuration remains
+0750/0640 and runtime stays private; source files retain their original
+0600/0700 modes. The real Linux staging regression fails before and passes
+after. Independent DEB/RPM checks now verify program access modes in addition
+to their existing exact-byte, owner, protected-config and package metadata
+checks. Neither Node nor native/FreeRDP bytes change.
+
+New unpublished DEB SHA256
+`5f285b89ab6b61aaf698405beb379170f515f20c18016438caa10487f9f2c60b`
+and RPM SHA256
+`f0f60085ab808babd0807d966438aaa32494630748afcb8c3c992837867d6cfb`
+pass actual clean installation and real JWT/HTTP/RDPDR file composition on
+Astra 1.7.5 and RED OS 7.3 respectively. The ordinary systemd unit launches
+private packaged Node/native as a non-root service account. Each checks
+Unicode/binary CRUD, read-only shares, a chunked 131111-byte upload, 65599-byte
+readback, owner/anonymous refusal, quota and stale-ID refusal, then observes
+an empty runtime, removes the package and restores the public configuration.
+Owned shares and payload/helper files are gone. The initial failed Astra
+payload is separately removed by exact owner/inventory/hash checks
+(129855444 bytes); unknown entries are retained.
+
+The shared lab client gains an explicit installed-service mode; portable mode
+passes again after the extension. The root helper accepts only an explicitly
+selected fixed bounded file policy; eight pure Python controls and the Node
+public-key/EOF-before-readiness control pass. Credentials and signing private
+keys remain in memory/private IPC. These tests use local development archives
+still marked 0.5.0, not published 0.5.0 packages; the Linux native runtime is
+the preceding Debug-linked candidate. Production Release/versioned artifacts,
+upgrades, Windows installed-service/RDP-server and hosted CI remain separate.
+Full Windows `pnpm check` passes **1293 / 73 skips / 1366 total** with all three
+native/file/managed-drive selectors enabled, zero failures/cancellations.
+The final test-only DEB/RPM access-mode assertions pass independently; their
+addition does not change the production inputs of the full check. Targeted
+ESLint/Prettier and the two Node/eight Python helper controls pass. Native
+sources/binaries are unchanged, so their accepted CTest scope is retained.
+Both Windows and Linux portable modes also pass again after extending the
+shared lab client. This accepts the named program-mode fix and the two local
+Linux installed-service profiles; it does not accept the complete Stage 7 or
+future public distributions. Logs and manifests use
+`build/current-validation/managed-files-installed-*` and
+`standalone-modes-*`.
+
+The verified block `8a76da7` is integrated into `feature/managed-drives`,
+including its installed-test branch. The shared delivery branch and published
+distributions remain unchanged.
+
+## Portable connected-file check and early refusal
+
+The owned-lab runner `tests/fixtures/standalone-files-rdp-client.mjs` extracts
+and verifies a selected portable archive, launches its actual private Node
+through the normal launcher, then uses JWT and the packaged HTTP API for real
+RDPDR file transfer. It never installs a synthetic backend. Credentials arrive
+through bounded private stdin and reach the session only in the POST body and
+private native IPC; the disk configuration contains only public keys/policy.
+Only the already authorized lab certificate fingerprint can be accepted.
+
+Initial unpublished Windows ZIP and Linux TGZ runs pass both directions,
+Unicode CRUD, read-only refusal, JWT principal isolation, stale-ID refusal and
+launcher/runtime cleanup against Astra and RED OS in named passing runs.
+The initial Windows/Astra run and one subsequent repeat fail during an eager
+2097153-byte quota probe. Those failures remain retained and prevent claiming
+stable packaged acceptance. Adding phase diagnostics alone does not fix them.
+A separate plain Node HTTP server with immediate 413 and no bridge reproduces
+the reset (one fetch failure in 30 requests; two incomplete `node:http`
+responses in 60). This reference distinguishes the transport race from RDPDR.
+
+`fix/file-upload-early-refusal` adds a bounded, unbuffered discard before the
+original header-admission error: at most 4 MiB and 250 ms, with no native
+mutation. Unknown/large/Expect framing and slow peers keep their refusal.
+A saved real HTTP/native regression first fails with `ECONNRESET`; after the
+change its forty declared oversized requests all return a complete 413 with
+unchanged native call count. Four unit controls cover listener release,
+framing/size refusal, stalled production and peer failure. Windows HTTP plus
+five adapter checks pass **14/14**; Linux GCC 8.3 checks including both IPC
+transports pass **25/25**. Native/compiler inputs are unchanged.
+
+Fresh Windows ZIP SHA256
+`8cb68f1f09b6633f0d66eb565bd32c7cc48544d0194981d61491ca4955694fdd`
+passes five sequential Astra runs and one RED OS run. Linux TGZ SHA256
+`1f17eb42062cb3cc9e6985a4e814f3498196675957f2eee9e7d4fb6ecbf02c3c`
+passes Astra and RED OS. All eight use private packaged Node, the normal
+launcher, JWT, actual RDPDR and exact archive inventories. They verify binary
+readback (65599 bytes), a chunked 131111-byte upload read remotely, Unicode
+rename/truncate/delete, three read-only refusals, foreign-owner and anonymous
+refusal, a complete 413 for the 2097153-byte declared quota probe, stale-ID
+refusal, launcher exit and an empty runtime. Installed-service acceptance in
+this earlier checkpoint and future Release/public archives remain separate;
+the newer Linux installed checks above bind their own package hashes/scope.
+
+The Linux install step relocates the ELF RPATH: its packaged worker hash is
+`1076619b74c7e3ca35fe456be55b4a68aad9406287dc0ef0728733533cb04612`;
+the preceding build-directory worker was `88fba1bc...`. The archive's manifest
+and each new run bind the installed bytes; no byte-equality claim is made
+between pre-install and relocated ELF. Windows packaged worker remains
+`c1366b02...`. Detailed source/archive/log bindings and preserved earlier
+failures are in `build/current-validation/early-refusal-acceptance.json`.
+Full Windows `pnpm check` now passes **1287 / 78 skips / 1365 total**, zero
+failures/cancellations. Five additional skips versus the preceding full run
+come from an omitted `BRIDGE_MANAGED_DRIVE_TEST_BINARY_DIR` selector. Those
+exact five cases are then selected explicitly and pass **5/5** on Windows;
+the corresponding Linux profiles pass **10/10** through both IPC transports.
+The bundled-native workflow now sets that selector alongside the existing
+native/file selectors, so hosted runs select these controls. This CI-only
+delta passes formatting; hosted execution remains separate. No production
+input changes after the full check. The bounded refusal fix passes its named
+local/compiler/native/portable-RDP scope; full managed-drive/public release
+and Windows installed-service acceptance remain open. Newer named Linux
+installed results are recorded above.
+
+The verified block is committed as `6f6d5a9` and integrated into
+`feature/managed-drives`, including the portable test branch. The shared delivery
+branch and public 0.5.0 distributions are unchanged.
+
+## Installed package checks
+
+The test branch `test/managed-files-package-consumers` extends the four existing
+independent npm installation checks with native file streaming and strict
+file-policy/drive TypeScript examples. Windows passes **4 installed projects /
+5 file profiles**, including NestJS on both host frameworks. The first Fastify
+attempt correctly refuses a test example that puts `prefix` inside the plugin
+options type; the corrected example passes. The final recovery fixture also
+checks HELLO against the installed adapter's package version rather than a
+hard-coded 0.5.0, and passes again in all four installed Windows projects.
+
+Linux GCC 8.3 passes the complete aggregate command: **4 installed projects /
+10 file profiles**, with both IPC transports and all five host variants. Its
+fresh native archive has SHA256
+`fe793c11d3bf805b83fef4b4d4972b1f58849a6b150b6a2c03ab2d3e6d143020`;
+Windows uses
+`96a6f225eb7f21eccdcb086a1c6d47aecc03fe3085739249eb956b515c841b70`.
+These are unpublished development archives. Linux uses the current Debug linked
+test build; Windows uses the compatible Release SDK/build. Future release
+artifacts still require their own Release builds and exact-archive checks.
+Linux preparation attempts that lacked workspace links/browser assets are
+retained as failed setup records; the final complete run succeeds. The
+tooling unit checks pass **2/2**, and the changed JavaScript passes ESLint and
+Prettier. Native/production code is unchanged in this block, so its earlier
+full `pnpm check` and CTest evidence retains its original scope.
+
+The [complete command and evidence scope](FILES.md#installed-npm-consumer-checks)
+are saved in source and wired into the bundled-native workflow. These use local
+unpublished development archives, with actual native files/IPC and synthetic
+RDP state. Hosted CI, exact future published npm archives, standalone installers
+and current real-RDP/platform
+repeats remain open. This test-only block does not change the native candidate
+or accept the full managed-drive feature.
+
+## Standalone managed-file startup checks
+
+`test/standalone-managed-files-startup` extends the existing portable acceptance
+test with file mode, mandatory from 0.6.0. For a local unpublished 0.5.0
+development candidate, set `BRIDGE_PORTABLE_MANAGED_FILES=1` explicitly alongside
+`BRIDGE_PORTABLE_TEST_ROOT` before running
+`node --test tests/packaging/standalone-portable.test.mjs`.
+
+Both Windows and GCC 8.3 Linux portable candidates pass after relocation, using
+their own private Node and native runtime. The server reads a trusted file
+policy, creates an actual native `.data`/`.uploads` sandbox and reaches the
+unapproved local TLS certificate prompt. File requests require JWT, another
+principal receives 404, and the owner receives 409 `FILES_NOT_CONNECTED` for
+listing and a 131111-byte binary upload. Both trees remain empty. Launcher
+shutdown joins native cleanup and leaves no runtime entries; the existing
+recovery, unchanged-byte inventory and unsafe-runtime refusal controls pass.
+No certificate is approved and no RDP desktop or connected file transfer is
+claimed by this test.
+
+Windows ZIP SHA256 is
+`eb3dcd5faa1a54aa797bbc5f710019dd24928ba2a5c1b54870f8093e91cdbaaa`;
+Linux TGZ SHA256 is
+`aa0d6e61e6a91a3e2e15e654a8e0e0d2365cf13135e6afe42c2b6a9e3f9762ca`.
+Each is built from its five verified local core/runtime npm archives with
+`candidateOnly: true` in an isolated source copy. The project's production locks
+and published 0.5.0 artifacts remain unchanged. Linux uses the current Debug
+linked test runtime; release builds still need their own exact-artifact tests.
+Windows first stopped before extraction because PowerShell read a UTF-8 JSON
+path in its legacy encoding; explicit UTF-8 fixes the invocation, without a
+product change. Logs are `managed-files-standalone-portable-windows-v2.log`
+and `managed-files-standalone-linux-build-test.log` in `build/current-validation`.
+Complete connected-file, installed-service and future public-artifact
+acceptance remains open.
+
 ## Current functional work
+
+The candidate on `fix/windows-managed-delete` joins Windows pending namespace
+deletion using the same verified DELETE handle. An independent shared-delete
+reader regression fails against the old backend and passes **22 assertions /
+1 case** after POSIX disposition. Actual HTTP diagnostics show a further case:
+successful extended file disposition followed by Win32 error 145 for a directory
+with zero visible children. The candidate permits at most eight additional
+disposition attempts within a 2 ms monotonic window, only after bounded empty
+enumeration. Visible children, unsafe/failed enumeration and other failure
+classes retain their immediate refusal. No path reopen, child deletion, HTTP
+retry or IPC timeout change is introduced. [Policy and remaining limits](FILES.md#windows-namespace-deletion).
+
+The completion-policy controls pass **67 assertions / 3 cases**. Windows
+foundation/linked CTest passes **25/25 + 42/42**, GCC 8.3 **25/25 + 43/43**,
+and ASan/UBSan **4/4**. The original eighty Fastify lifecycle sequences and
+five adapter variants pass **85/85**, without HTTP deletion retries. The saved
+`tests/integration/files-frameworks.test.mjs` covers HTTP, Express, Fastify and
+both NestJS adapters with real native files and synthetic RDP state; the Linux
+HTTP/file/runtime subset including both transports passes **100 / 4 skips /
+104 total**. Full Windows `pnpm check` passes **1285 / 73 skips / 1358 total**.
+After that full check, the new adapter test gains a stricter producer barrier
+and explicit PID-exit assertion: the remaining body is withheld until the first
+native write is dispatched. The affected Windows **5/5** and Linux **10/10**
+cases pass again. This is a test-only delta; production/native and other test
+inputs are unchanged, and the full-check receipt retains its preceding test
+body hash. Detailed bindings are in
+`build/current-validation/managed-delete-window-local-evidence.json`.
+
+Earlier POSIX-only HTTP failures and the kernel/physical/logical diagnostic
+records remain in `build/current-validation/managed-delete-*`. A passing
+fifty-session diagnostic alone did not erase those failures. Temporary scalar
+stderr instrumentation is removed from the candidate. Source-v2 contains
+790 compiler/context inputs; current native inputs and binaries are pinned in
+`managed-delete-window-candidate.json` and `managed-delete-window-linux-binaries.json`.
+The first source-v2 Docker run failed because Docker Desktop had stopped; the
+same checks pass after restoring it. After the labs restart, RED OS 7.3 /
+GCC 11.4.1 component repeats pass **95 cases / 8704 assertions** against the
+same 48 native inputs. Its private test directory is removed only after exact
+owner/inventory/SHA256 checks (54 files / 3643927 bytes). The new test driver's
+first attempt calls an unavailable Paramiko SFTP method; the corrected bounded
+SSH `os.statvfs` query preserves the 64 MiB free-space guard. Current Windows
+worker and Linux framed/RWS1 workers also pass the complete real HTTP/RDPDR
+composition against RED OS XRDP: 131111-byte remote creation, truncate/Unicode
+rename and 65599-byte HTTP readback, a separate chunked 131111-byte HTTP upload
+read remotely, three read-only refusals, remote deletion/stale-ID refusal,
+mandatory captured-PID exit and disappearance of the owned shares. Worker
+hashes remain the current `c1366b02...` / `88fba1bc...` candidate. RED OS's
+certificate is bound to its previously approved pinned SSH host; the actual
+prompt fingerprint must match it. Drivers now capture PID before close, so the
+exit assertion cannot be skipped because close cleared the PID. These repeats
+use actual workers, not synthetic RDP state. Astra repeats now also pass:
+**87 cases / 8634 assertions** for the file component plus **8 / 70** for
+runtime recovery, followed by the same three real HTTP/RDPDR profiles.
+Its four payload files are removed after exact owner/hash checks. Both platforms
+therefore pass **95 cases / 8704 assertions** with different compiler profiles.
+
+The current two-server crash/isolation repeat also passes all three worker
+profiles: nine actual RDP connections, two concurrent sessions per profile,
+independent quota/namespace authority, worker death during an unfinished upload,
+continued remote sibling reads and a real replacement connection. Every owned
+share disappears and each Node driver exits zero without stderr. Together with
+the six single-server composition profiles this is **15 actual connections**
+against the current worker hashes. Evidence is bound in
+`managed-delete-window-platform-rdp-evidence.json`; the local native/full-check
+receipt retains its original scope. The namespace-deletion fix has its named
+integration checks; Windows RDP-server and complete managed-drive/public npm/
+installed-standalone gates remain open. No release or complete managed-drive
+acceptance is claimed.
+
+The named namespace fix `2b3d01d`, installed-package checks `729a47f` and
+portable-startup checks `a06eb8e` are now integrated into `feature/managed-drives`.
+The feature remains unreleased; this integration does not merge it into the
+shared delivery branch or complete the remaining Stage 7/product gates.
+
+The latest API block makes the Stage 7 file-clipboard deferral explicit through
+public HTTP capability **`clipboardFiles: false`**. Existing enabled-file
+selection refusal is now specifically checked for all three directions: HTTP
+returns immediate 501 `RDP_SETTING_NOT_IMPLEMENTED` before backend start or
+configuration handoff; direct `NativeSessionWorker` refuses before process
+start. No native HELLO/CLI bit, file clipboard messages or selection behavior
+changes are introduced. [Contract and remaining requirement](FILES.md#file-clipboard-is-deferred).
+
+Focused checks pass **2/2**. Full Windows `pnpm check` passes **1280 / 73 skips /
+1353 total**, with no failures/cancellations. The Linux HTTP/Fastify/file/runtime/
+capability subset passes **90 / 4 skips / 94 total**, including existing native
+file tests through both transports. The four skips are the foundation-only
+refusal case on a linked worker, two unselected tmpfs cases and the distinct-UID
+recovery case. An earlier test assumed asynchronous 202/failure; only its
+expectation was corrected to the existing synchronous 501 and the failed log
+is retained. Native inputs/binaries remain identical to `f641efd`, whose CTest
+and platform results keep their earlier scope. Source, client archive, binaries
+and check bindings use `build/current-validation/managed-files-deferred-acceptance.json`.
+Only the TODO's explicit-deferral alternative is accepted; file-manager copy/
+paste, the complete managed-drive feature and packaged release remain open.
+
+The latest integration checkpoint verifies two simultaneous actual RDP sessions
+to Astra 1.7.5 and RED OS 7.3 through production HTTP, authentication and
+`NativeSessionWorker`. Windows framed IPC and GCC 8.3 Linux framed/RWS1 each
+pass separate worker PIDs, session quotas and opaque IDs, third-session refusal,
+remote Unicode readback and sibling survival after a staged-upload worker crash.
+Joined cleanup releases capacity for a **real replacement RDP connection**;
+the sibling stays connected and readable through its redirected drive before
+the crash, after it and after replacement. Final close joins all three workers
+and removes their runtime directories and unique remote shares.
+[Scenario, certificate trust and limits](FILES.md#two-server-session-isolation).
+
+The final three profiles pass **9 actual connections**, with **2 concurrent
+sessions per profile**. An earlier Windows pass is retained separately. No
+production/native/test source changes follow `346b040` / `f641efd`; their full
+checks retain their recorded scope. The client archive matches 180 local built
+SDK/protocol/API files. Helper, source, binary and terminal/cleanup evidence is
+bound in `build/current-validation/managed-files-isolation-acceptance.json`.
+No V1 CPU/RSS/latency, Windows RDP-server or packaged feature acceptance is
+inferred. Those remaining gates still prevent feature merge/release.
+
+The preceding test block saves bounded real HTTP/native disk-full automation in
+`tests/integration/files-disk-full.test.mjs`, sharing the existing actual file
+worker fixture with the HTTP regression suite. Framed IPC and RWS1 each pass
+twelve real ENOSPC/HTTP 507 attempts on a disposable 1 MiB tmpfs. Native write
+bytes exceed the 8 MiB quota across those failed transfers, while abort returns
+space/entries and a fresh 64 KiB upload/download/delete still passes. No RDP
+connection is claimed; only its connected state is synthetic.
+[Invocation, safeguards and scope](FILES.md#bounded-http-disk-full-acceptance).
+
+The ordinary Linux file/HTTP/runtime subset passes **71 / 3 skips / 74 total**,
+followed by the two enabled tmpfs cases **2/2**. Windows HTTP regression passes
+**8 / 2 skips / 10 total**. An unsafe-root control verifies refusal at the
+filesystem guard without allocating a runtime or changing root entries; its
+first wrapper had an obsolete source-line expectation after formatting, now
+derived from the saved source. Linux foundation CI now provisions a private
+1 MiB tmpfs and runs both cases automatically after ordinary checks, then
+unmounts it. Workflow formatting and the exact bash step syntax pass; hosted
+execution of this changed workflow remains pending. Lint/format and diff
+checks pass. Production and
+native inputs/binaries remain those accepted at `f641efd`; that commit's full
+`pnpm check` and native/platform/RDP checks retain their original scope.
+Evidence is bound in `build/current-validation/managed-files-http-full-acceptance.json`.
+Windows/connected-RDP disk-full, complete resource/isolation and packaged
+acceptance remain open.
+
+The preceding implementation selects `MAXIMUM_ALLOWED` after resolving each
+entry's share and virtual attributes. An existing read-only entry on a writable
+share now opens with read/basic-metadata authority, without data write, append,
+rename or delete rights. Explicit forbidden rights remain refused even when
+maximum access is selected. Sharing checks and future operations use the fixed
+granted mask, so clearing the flag cannot upgrade an existing handle. No
+RDPDR/private IPC layout or host ACL changes are introduced.
+[Rights and limits](FILES.md#session-file-metadata).
+
+Both new wire regressions fail against the preceding backend and pass after
+the change (**117 assertions / 2 cases** on Windows). Full Windows foundation
+CTest passes **25/25**, linked **42/42**, GCC 8.3 foundation **25/25**, linked
+**43/43** and ASan/UBSan **4/4**. File tests pass **9234 assertions / 81 cases**
+on Windows and **8550 / 83** on GCC 8.3 and actual Astra 1.7.5. Public SDK
+DEVICE/IRP tests pass **1179 / 18**. Astra's runtime component remains **70 / 8**;
+native GCC 11.4.1 on RED OS 7.3 passes combined file/runtime **8620 / 91**.
+Remote payloads are removed by exact owner/hash checks. A first SDK-test build
+exposed a signed `NTSTATUS` comparison; correcting the test's parameter type
+keeps warnings-as-errors intact. Both failed compile logs are retained.
+
+The rebuilt Windows/Linux workers repeat the actual HTTP/NativeSessionWorker/
+Astra RDPDR scenario through all three worker/transport profiles. This is
+general real-server regression: the actual `MAXIMUM_ALLOWED` selector is
+proven by wire and public SDK tests, not an assertion that XRDP emitted it.
+The unchanged Linux Node/file/HTTP/runtime subset passes **71 / 1 skip / 72
+total** with the new worker. Full Windows `pnpm check` passes **1278 / 71 skips /
+1349 total**, with zero failures or cancellations. Source, binaries, logs and cleanup bindings use
+`build/current-validation/managed-drives-maximum-allowed-acceptance.json`.
+Windows-server, complete read-only/resource/isolation and packaged feature
+acceptance remain open; the Windows server currently refuses RDP/SSH connections.
+
+The preceding acceptance checkpoint verifies the complete production HTTP /
+NativeSessionWorker / actual Astra XRDP/FUSE path. Windows framed IPC and
+GCC 8.3 Linux framed/RWS1 all pass HTTP uploads observed through remote drives,
+remote Unicode/binary CRUD downloaded through HTTP opaque IDs, exact headers,
+chunked upload, cross-principal/unauthenticated refusal, stale locator refusal,
+three read-only mutation refusals and joined HTTP session/PID/runtime/share
+cleanup. Certificate approval uses the real control WebSocket and the existing
+approved fingerprint. No synthetic RDP state, direct native file shortcut or
+new production source/binary is used by this checkpoint.
+[Scenario and remaining limits](FILES.md#actual-http-and-astra-rdp-composition).
+
+The worker/client source is unchanged from `d6df964`; its full Windows
+`pnpm check` **1278 / 71 skips / 1349 total**, native CTest **25/25 + 42/42**
+and Linux file/HTTP/runtime **71 / 1 skip / 72 total** retain their exact scope.
+Logs, helper input/source bindings and final binaries are recorded in
+`build/current-validation/managed-files-http-rdp-acceptance.json`.
+Windows-server, HTTP disk-full, remaining share-policy/resource/isolation and
+packaged acceptance still prevent a full managed-drive feature merge/release.
+
+The preceding block joins verified managed-file cleanup into worker retirement
+while the Node server remains alive. It preserves the startup cohort, joins
+worker/IPC/probes, closes the session's ownership endpoint and invokes one
+bounded native helper for that directory. Unknown content, changed helper,
+unsafe root or uncertain completion preserve both files and session capacity.
+Manager waiting deadlines do not release the slot before joined cleanup.
+[Automatic retirement contract](RUNTIME_RECOVERY.md#automatic-worker-retirement-with-a-live-node-server).
+
+Actual registry tests crash a file worker while preserving a live sibling,
+hold recovery past both manager waiting deadlines, verify admission refusal,
+then confirm cleanup, sibling readback and replacement admission. Negative
+cases preserve a committed **131111-byte Unicode file**, a **65536-byte staged
+upload** and capacity. The HTTP case loses a backend completion after actual
+native write/worker termination; the real file deadline revokes authority,
+returns fixed errors and permits replacement under a one-session limit.
+Its RDP state is synthetic. The Linux subset passes **71 / 1 skip / 72 total**
+with framed and RWS1 transports. Windows focused native-file/registry cases
+pass **5/5**, and the focused HTTP lost-completion case passes **1/1**.
+The full Windows `pnpm check` passes **1278 / 71 skips / 1349 total**, with
+zero failures or cancellations and the current linked worker selected.
+
+Separate connected Astra XRDP/FUSE crash runs pass Windows framed IPC and
+Linux framed/RWS1. Before the crash each verifies Unicode/binary remote CRUD,
+three read-only refusals and native readback. Committed remote/host files
+and a staged upload are reclaimed; the old native file authority is refused,
+Node remains alive, a replacement lifecycle worker starts and joins, and the
+owned remote shares disappear. This does not claim an HTTP/real-RDP composition
+or a second connected RDP session. The first helper attempt raced an explicit
+close with crash observation; waiting for the actual failure event fixes the
+test without changing production behavior. The failed log and subsequent
+read-only confirmation that its owned shares vanished remain recorded.
+
+Native source and binaries remain those accepted at `9ad453d`; rerunning the
+Windows foundation and matching-CRT linked CTest passes **25/25** and **42/42**.
+No new compiler/platform component result is inferred from the Node changes.
+Source, client archive, binaries, crash profiles and checks are bound in
+`build/current-validation/managed-files-live-retirement-acceptance.json`.
+Full HTTP/real-RDP composition, Windows-server, remaining share-policy/resource
+and packaged acceptance stay open. This is still the unreleased feature branch.
+
+The preceding block adds verified native cleanup of declared managed-file trees
+after both the Node owner and worker have died. A private, immutable 56-byte
+ownership declaration binds the runtime and managed-container identities.
+Bounded inventories are checked twice before deletion; unknown runtime siblings,
+foreign or linked content, live owners and uncertain ownership retain the tree.
+Normal shutdown removes the declaration after joining file users and removing
+the managed container. [Format, trust boundary and recovery API](RUNTIME_RECOVERY.md#claimed-managed-file-trees-unreleased).
+
+Real Node/native tests hard-kill owners with a **131111-byte committed Unicode
+file** and a **65536-byte pending upload**, verify live-owner and unknown-sibling
+retention, then reclaim the declared tree. Parent-only kill separately verifies
+native self-cleanup. Windows framed IPC passes **2/2** focused cases; the Linux
+file/HTTP/runtime subset passes **63 / 1 skip / 64 total** through framed and
+RWS1 transports. These crash tests do not establish connected-RDP crash cleanup.
+
+MSVC foundation passes **25/25**, matching-CRT linked **42/42**, GCC 8.3 foundation
+**25/25**, GCC 8.3 linked **43/43** and ASan/UBSan **4/4**. File cases pass
+**9117 assertions / 79 cases** on Windows and **8443 / 81** on GCC 8.3 and actual
+Astra 1.7.5. Astra's separate runtime component passes **70 / 8**; native GCC
+11.4.1 on RED OS 7.3 passes combined file/runtime **8513 / 89**. Completed remote
+test payloads are removed using their exact owner/hash inventories. The final
+full Windows `pnpm check`, selecting the fresh linked worker for general native
+regression too, passes **1274 / 71 skips / 1345 total**, with zero failures or
+cancellations. An earlier full run's unchanged synthetic microphone startup
+timeout remains recorded; its isolated repeat and final full run both pass.
+
+The final Windows/Linux workers also pass graceful Astra XRDP/FUSE CRUD and
+file-transfer regression, including three read-only refusals, joined cleanup,
+both Linux transports and a Windows strict-default deletion refusal. This is
+separate from the credential-free crash tests and distro component checks.
+Source, binary, test and remote-cleanup bindings are recorded in
+`build/current-validation/managed-files-recovery-acceptance.json`. Live-owner
+file-fault retirement/capacity return, connected crash, full HTTP/RDP composition,
+Windows-server and packaged acceptance remain open; this checkpoint is neither
+a feature merge nor a release.
+
+The preceding block adds trusted-host `files.xrdpLegacyDelete`, default false,
+with private HELLO/initialize negotiation. It handles Astra XRDP's metadata-only
+unlink and abandoned mkdir handle without granting data/rename/security access
+or retiring active/alias handles. Regression tests fail before the mkdir fix
+and pass after it. Empty wildcard scans also return a virtual self entry;
+unmatched filters and traversal refusals retain their original behavior.
+[Policy and interoperability limits](FILES.md#xrdp-legacy-delete-policy).
+
+The final Windows and Linux workers pass actual Astra XRDP/FUSE Unicode/binary CRUD,
+including file/directory deletion, empty final listing, native file transfer
+in both directions, read-only refusals and joined cleanup. The identical
+Windows binary separately passes the strict-default refusal control. Linux
+passes both RWS1 and framed IPC with Docker init/reaping enabled. This is a
+named Astra-server checkpoint; Windows-server, full HTTP/RDP composition,
+managed-content orphan recovery and packaged acceptance gates remain open.
+
+Current component checks pass Windows foundation **25/25**, matching-CRT
+Windows linked **42/42**, GCC 8.3 foundation **25/25**, GCC 8.3 linked **43/43**
+and ASan/UBSan **3/3**. File tests pass **8588 assertions / 69 cases** on MSVC
+and **8002 / 71** on GCC 8.3, actual Astra 1.7.5 and native GCC 11.4.1 on
+RED OS 7.3. The fresh Linux Node/HTTP/runtime subset passes **52/52** through
+both transports. Completed platform payloads are removed using exact owner/hash
+inventories. Source, binaries, actual RDP profiles and logs are bound in
+`build/current-validation/managed-drives-legacy-delete-acceptance.json`.
+The complete Windows `pnpm check` passes **1272 / 71 skips / 1343 total**,
+with zero failures or cancellations. General linked regression still selects
+accepted 0.5.0; the managed-drive tests select the fresh worker separately.
+
+The preceding checkpoint corrects RDPDR clock-domain admission and XRDP CREATE rights
+after actual Windows-worker to Astra XRDP/FUSE testing. The SVC gate now polls
+its own callback clock; a clock exception fails closed. Recognized `WRITE_DAC`
+open hints do not authorize file data, basic metadata, owner or security-IRP
+mutation. The regression with actual XRDP mask `0x0016019f` fails before the
+fix and passes after it. [Real-server scope and remaining DELETE mismatch](FILES.md#actual-xrdp-interoperability-checkpoint).
+
+That checkpoint passed **25/25** on MSVC/GCC 8.3, **42/42** Windows linked,
+**43/43** GCC 8.3 linked and **3/3** ASan/UBSan. File tests pass **8228 / 63**
+on MSVC and **7707 / 65** on GCC 8.3. Public SDK tests pass **1106 / 17**.
+The same file tests pass **7707 / 65** on actual Astra 1.7.5 and RED OS 7.3;
+RED OS compiles them with GCC 11.4.1, while Astra runs the exact GCC 8.3
+executable. Both completed payload directories are removed by owner/hash checks.
+The rebuilt Linux worker/addon and unchanged Node file/HTTP/runtime subset pass
+**48/48**, including both IPC transports. The actual Astra RDP test verifies
+owned Unicode/binary create/read/write/truncate/rename and both transfer
+directions, read-only refusals and joined cleanup. Its strict DELETE refusal
+is an explicit negative control; it does not close the remote CRUD gate.
+Source and evidence are retained under `build/current-validation/managed-drives-xrdp-*`.
+The complete Windows `pnpm check` passes **1269 / 71 skips / 1340 total**.
+Current source, binaries, platform cleanup and the actual strict-profile RDP
+run are bound in `build/current-validation/managed-drives-xrdp-acceptance.json`.
+
+The preceding block wires managed sandbox drives into the actual worker and
+expands `thinclientDrives` through the same bounded descriptor validation.
+The private managed-drive capability requires the initialized file owner;
+CONFIGURE schema 15 carries only approved relative shares. Shutdown joins the
+RDP thread and releases share/handle pins before owner cleanup. The selected
+loader prevents automatic host-media and fake-audio additions while preserving
+network settings. [Runtime selection and limits](FILES.md#runtime-selection-in-this-development-branch).
+
+Current native checks pass **25/25** on MSVC and GCC 8.3, **42/42** for matching
+Release-CRT Windows linked tests, **43/43** for Linux linked tests, and **3/3**
+under ASan/UBSan (the cached SDK itself remains uninstrumented). The new actual
+worker tests pass **4/4** on Windows and **8/8** on Linux across framed/RWS1:
+audio off, PCM, Opus and immediate cancellation. These use a synthetic TLS
+endpoint to verify strict certificate refusal and joined sandbox cleanup;
+they are not remote file CRUD. The current Linux Node file/config/HTTP/runtime
+subset passes **48/48** with no skips. Source/binary/log bindings are retained
+in `build/current-validation/managed-drives-runtime-acceptance.json`.
+Full Windows `pnpm check` also passes: **1269 passed / 71 skipped / 1340 total**;
+the new current-worker cases are enabled explicitly alongside the existing
+accepted-0.5.0 linked regression.
+The earlier failed Debug/Release allocator run, initial runtime compile errors
+and Linux addon PIC failure retain their logs. The PIC dependency is now built
+correctly for the paired Linux worker/addon. Public drive capability, network
+application CRUD, managed-content recovery and release acceptance remain open.
+
+The preceding block implements session VFS basic metadata and restricts the SDK
+IO capability response to implemented operations.
+[Metadata, per-handle time controls and persistence boundaries](FILES.md#session-file-metadata).
+Actual filesystem tests pass **8198 assertions / 62 cases** on MSVC and
+**7682 / 64** on GCC 8.3, actual Astra 1.7.5 and RED OS 7.3 (native GCC 11.4.1).
+MSVC/GCC 8.3 foundation CTest passes **25/25**; matching-CRT Windows linked CTest
+passes **42/42**. Public SDK tests pass **998 / 15** on both compilers, including
+actual RDPDR handshake/capability filtering and basic metadata IRPs over a
+synthetic SVC host/server. ASan/UBSan passes **3/3**; the rebuilt Linux worker
+and RWS1 adapter pass **35/35** HTTP/file/config tests in both transports.
+These results do not establish network RDP, persistence/orphan recovery or
+packaged-product acceptance. Public drive activation and Stage 7 remain open.
+Both completed platform payloads are removed by exact owner/hash checks.
+Evidence is bound in
+`build/current-validation/managed-drives-metadata-acceptance.json`.
+Full Windows `pnpm check` passes **1260 / 71 skips / 1331 total**. Existing
+linked RDP regression still uses accepted 0.5.0; current metadata SDK tests and
+fresh foundation HTTP tests retain their separate scopes. The retained initial
+direct fixture run encountered delayed NTFS directory deletion and left four
+empty private directories in the source root, causing ESLint's ACL scan to
+refuse. They were individually verified and removed; the fixture now retries
+only its exact known non-reparse directories for a bounded interval. Subsequent
+direct case runs use the native build working directory. The final complete
+workspace and native checks pass without disabling any assertion or relaxing
+production filesystem checks.
+
+The preceding SVC block bounds RDPDR writes before the SDK queue and retains
+ownership through acknowledged or joined completion.
+[Limits, SDK pool handling and acceptance boundaries](FILES.md#bounded-rdpdr-svc-component).
+MSVC/GCC 8.3 foundation CTest passes **25/25**, and the complete matching-CRT
+Windows linked CTest passes **42/42**. Foundation files/budget tests pass
+**7809 assertions / 57 cases** on MSVC and **7313 / 59** on GCC 8.3 and both
+actual Astra/RED OS labs (RED OS compiles with GCC 11.4.1). Public SDK tests pass
+**972 / 15** on MSVC and GCC 8.3. ASan/UBSan passes **3/3**, including the
+wrapper and actual pinned RDPDR plugin with synthetic SVC/server packets.
+The real owned filesystem is used; these are not network RDP results.
+Both platform payloads are removed through exact owner/hash inventories.
+The rebuilt Linux worker/RWS1 pair passes the unchanged HTTP/file/config subset
+**35/35** in both transports. Source and evidence bindings are retained in
+`build/current-validation/managed-drives-svc-acceptance.json`.
+Full Windows `pnpm check` passes **1260 / 71 skips / 1331 total**. Its existing
+linked-RDP regression uses accepted 0.5.0; current SDK/SVC tests are the native
+component checks above. These scopes do not establish current network drive or
+installed-product acceptance.
+The runtime does not yet install this component; public `drives` and Stage 7
+acceptance remain unchanged.
+
+The preceding block adds the internal RDPDR wire codec, public SDK device adapter,
+context-bound device loader and scalar receive admission guard.
+[Implementation and remaining activation requirements](FILES.md#rdpdr-codec-and-public-sdk-adapter-in-development).
+MSVC foundation CTest passes **25/25**, with **7580 assertions / 51 cases** in
+the file suite. GCC 8.3 foundation CTest passes **25/25**, with **7084 / 53**.
+The public SDK adapter tests pass **122 assertions / 5 cases** on both compilers.
+These use real filesystem operations and the SDK's public ABI with a synthetic
+device manager/IRPs; they are not remote RDP acceptance. No runtime activation,
+public capability or Stage 7 checkbox changes in this block.
+The same foundation file suite passes **7084 / 53** on actual Astra 1.7.5
+(exact SDK GCC 8.3 binary) and RED OS 7.3 (native GCC 11.4.1 build).
+ASan/UBSan file and IPC CTest passes **2/2**. Both completed lab payloads are
+removed through exact owner/hash inventories. The rebuilt Linux file worker
+and RWS1 adapter pass the unchanged HTTP/file/protocol/config subset **35/35**.
+Source and evidence bindings are retained in
+`build/current-validation/managed-drives-wire-acceptance.json`.
+Full Windows `pnpm check` passes **1260 / 71 skips / 1331 total**. The initial
+run exposed a test race after peer cancellation: observing dispatch of native
+`abort` did not establish receipt of its acknowledgement. The HTTP test now
+waits for the public operation lease to be released, still requiring an empty
+list and successful quota reuse. The complete check passes after that fix.
+Full linked Windows CTest passes **42/42** in the SDK's Release profile. The
+Debug-only CRT report control remains covered by the separate **25/25**
+foundation run; it is not a Release test and was not suppressed.
+
+The preceding managed-drive block implements scoped native shares and the drive
+handle backend. [Current details](FILES.md#native-drive-backend-in-development).
+Actual filesystem tests pass **3096 assertions / 42 cases** on MSVC and
+**2640 / 44** on GCC 8.3 and both actual Astra/RED OS labs (RED OS compiles with
+GCC 11.4.1). Full MSVC/GCC 8.3 native CTest passes **25/25**, and ASan/UBSan
+file/IPC checks pass **2/2**. These are backend component results: FreeRDP
+device/IRP wiring, remote CRUD and final linked/product acceptance remain open.
+Full Windows `pnpm check` passes **1260 / 71 skips / 1331 total**, and HTTP/file
+regression on a rebuilt Linux worker/packet pair passes **35/35**. Both owned
+platform payloads are removed by exact owner/hash checks. Source and evidence
+bindings are in `build/current-validation/managed-drives-backend-acceptance.json`.
+The following HTTP and earlier component checkpoints retain their original scope.
+
+Windows linked builds must match the CRT profile of their SDK. The cached
+FreeRDP/WinPR SDK is Release, so use `-DCMAKE_BUILD_TYPE=Release` for linked
+checks; foundation-only builds can use Debug independently. A full experimental
+Debug linked run exposed allocator-boundary assertions in DVC/GFX/GDI fixtures
+which exchange allocated objects with the SDK. PE imports confirm debug CRT
+in the test and release CRT in the DLL. The failed log and import inventory
+are retained as `managed-drives-wire-linked-windows-full.log` and
+`managed-drives-linked-crt-mismatch.log` under `build/current-validation`.
+Disabling CRT assertions is not a remedy; use a matching SDK/build profile.
+
+The unreleased managed-drives branch now adds an opt-in
+[streaming file API](FILES.md), with session-owned opaque IDs, native quota
+ownership, upload cancellation and bounded download leases. This work extends
+the accepted private file IPC at `e33f9ab`; it does not yet provide a redirected
+RDP drive or managed-content orphan recovery. HTTP integration uses a real file
+worker with synthetic connected RDP state. Source configuration for standalone
+is implemented; installer/product acceptance remains open. The historical
+component checkpoints below retain their original scope and numbers.
+
+The HTTP block passes full Windows `pnpm check` **1260 / 71 skips / 1331 total**
+and MSVC foundation CTest **25/25**. Focused file/config tests pass **27/27** on
+Windows; Linux's combined file/protocol/config subset passes **35/35**, including
+actual HTTP and both framed/RWS1 file transports with UID 1000, no capabilities
+and no network. The unchanged native sources retain the preceding GCC 8.3 and
+Astra/RED OS component evidence. Existing linked-RDP regression still selects
+accepted 0.5.0; fresh linked file/RDP and installer tests remain open. Source
+hashes, logs and boundaries are in
+`build/current-validation/managed-files-api-acceptance.json`. The first Linux
+run's missing temporary fixture directory is retained; the final run adds that
+directory and uses the same application/test inputs. Stage 7 remains unchecked.
 
 Image clipboard **0.5.0 is publicly delivered**, including ten exact npm
 packages, five successful OIDC workflows, eight fresh registry consumers and
@@ -20,6 +754,241 @@ seven final standalone files. Public Astra/RED OS 0.4.0 upgrades pass.
 the session sandbox/safe resolver, then streaming file APIs and managed drive
 redirection. These file capabilities are not accepted by the image release.
 Keep their implementation on a new feature branch and close each actual gate.
+
+Implementation resumes the existing `feature/managed-drives` branch and its
+internal `SafeRoot` foundation (`e94891b`), updated by merging accepted `master`
+at `4d94bab`; it does not start a competing implementation. The original
+[foundation report](history/iterations/401-450.md#iteration-406) is retained
+verbatim in the historical volume. Browser file IDs, REST streaming, session
+quotas, RDPDR CRUD and drive policy are still required before feature acceptance.
+
+Port commit `6b7f96a` uses the existing borrowed-span compatibility API and no
+longer requires C++20 `string_view::starts_with`. Its Linux syscall wrapper
+uses the stable [Linux openat2 ABI](https://github.com/torvalds/linux/blob/v5.6/include/uapi/linux/openat2.h)
+with the [x86-64 syscall number](https://github.com/torvalds/linux/blob/v5.6/arch/x86/entry/syscalls/syscall_64.tbl)
+when old GCC 8.3 SDK headers lack the declaration. It retains the same
+beneath/no-symlink/no-magiclink/no-cross-mount rules. It never substitutes an
+ordinary pathname open if the kernel lacks the syscall. A Linux child-only
+seccomp test returns `ENOSYS` for that syscall and verifies that both new roots
+and all file-open modes return `unavailable` without changing the owned file.
+This is an internal filesystem component, not an advertised runtime capability.
+
+Current local component checks pass MSVC warnings-as-errors/static analysis
+with **24/24** full foundation CTest and exact GCC **8.3.0** with **25/25**,
+including the kernel-refusal test. The GCC build/test runs as UID 1000 without
+capabilities or network in the prepared SDK. Receipts and source hashes are in
+`build/current-validation/managed-drives-foundation-source.json`,
+`managed-drives-windows-foundation.log` and `managed-drives-gcc83-ctest.log`.
+The first GCC test command has a retained CRLF harness error after the complete
+build; CTest alone then passes without a rebuild. Full Windows `pnpm check`
+then passes **1232 / 71 skips / 1303 total**, zero failures/cancellations. Its
+native lifecycle regression uses the unchanged accepted 0.5.0 linked worker;
+the new filesystem library is tested separately above and is not yet linked
+into that worker. The earlier workspace attempt pointed at the wrong worker
+parent directory and was terminated; its failed log remains retained. The
+source-bound component receipt is
+`build/current-validation/managed-drives-port-acceptance.json`.
+The user-approved, source/hash-checked platform payload then passes **152
+assertions / 5 cases** on each actual lab: Astra 1.7.5/kernel 6.1.50 with the
+GCC 8.3 SDK-built executable, and RED OS 7.3/kernel 6.1.180 with a fresh native
+GCC 11.4.1 build. Each runs as UID 1000 in a new private test directory.
+`managed-drives-astra-acceptance.json` and `managed-drives-redos-acceptance.json`
+bind the source archive, executable and test log hashes. These are filesystem
+component checks; they do not establish Node, RDPDR or installer integration.
+
+Commit `b432f94` adds one-entry directory creation/removal
+and atomic rename. It keeps parent directories anchored by handles, rejects
+recursive deletion and implicit parent creation, defaults to exclusive commit
+and permits replacing only a regular single-link file through an explicit mode.
+Immutable `RootAccess::read_only` refuses write/create, resize, mkdir, removal
+and both rename modes; it does not change host permissions. Trusted share
+policy must select it before the backend is given to a remote caller.
+
+Windows follows the [relative rename contract](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information)
+through [NtSetInformationFile](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntsetinformationfile)
+with DELETE access and a held destination-directory handle. A separate owned
+control observes Win32 `SetFileInformationByHandle` error 87 and Native API
+success for the same relative buffer/handles; no absolute-path fallback is used.
+Linux uses `renameat2` and never emulates no-replace with a check-then-rename or
+copy/delete sequence. Missing syscall support returns `unavailable`.
+
+The final local checks pass **24/24** MSVC foundation CTest with **1607 assertions
+/ 9 file cases**, and **25/25** exact GCC 8.3 CTest with **1280 assertions / 11
+file cases**. Every ordinary file suite includes 64 independent competing
+commits. An extra Windows stress profile passes **1024 races / 16 processes**.
+Full `pnpm check` passes **1232 / 71 skips / 1303 total**, zero failures. The
+workspace checks cover unchanged JS/TS and the accepted 0.5.0 linked runtime;
+later changes only strengthen the separately tested native test harness.
+Node file APIs and RDPDR still have no integration with this library.
+
+Retained failed controls exposed Windows fixture cleanup error 145 after
+successful entry removals; subsequent inspection found the owned root empty.
+The fixture now retries only that exact directory and its parent for at most
+500 ms each, never deleting unknown children or recursing. Persistent failure
+still fails the test. Test-only CRT reporting exits on assertions/errors rather
+than opening a dialog; a deliberately failing child verifies exit code 120.
+The evidence does not identify which OS component held the transient entry.
+The temporary automatic-approval usage failure was resolved before these checks.
+The final strengthened suite separately passes **1280 assertions / 11 cases**
+on both actual Astra and RED OS, including 64 competing commits and both
+syscall-refusal controls. Its 747-file source archive has SHA-256
+`2021b8149bde5b9fdf65987fea63b1cfdf8adbf8a497715d6abd27a81bf22fae`.
+`build/current-validation/managed-drives-namespace-acceptance.json` binds the
+source, full-check logs, platform executables and stress/CRT controls. Platform
+metadata and the earlier 152/335-assertion checkpoints retain their earlier
+scope; they do not substitute for this final suite.
+All six owned lab test directories from the portability/namespace runs are
+removed after bounded inventories, owner checks and exact per-file SHA-256
+verification. Logs and receipts remain local; existing installed services,
+runtime inputs and lab toolchains are preserved. The three empty Windows
+directories left by failed fixture controls are also removed without recursion.
+All additions stay on the feature branch; no Stage 7 checkbox, runtime
+capability, version or public release is accepted by this component checkpoint.
+
+Commit `9a14683` adds one shared internal `FileQuota` authority per
+sandbox, with logical byte, per-file size and entry-count limits. Entries include
+directories and temporary uploads. Its defaults (256 MiB total, 64 MiB per file,
+1024 entries) are internal constructor defaults, not a newly enabled public
+server policy. Entry count is capped at 65536 and byte arithmetic at `INT64_MAX`.
+Refused entry admission allocates no per-entry record; growth reservation itself
+does not allocate. One mutation may be pending on each allocation.
+
+The future sole sandbox owner must reserve before filesystem mutation, report
+native-verified size after joined IO and release only after physical removal
+and closure of every IO handle. Dropping an allocation never silently refunds
+a file that might remain on disk. A lost operation result charges its admitted
+upper bound; an impossible completion retires the whole authority. Destruction
+or explicit retirement of its owner refuses new work while late results and
+confirmed cleanup can settle. No browser claim of size/deletion is proof.
+This layer contains no paths, credentials or file contents.
+
+Component tests cover shared-byte and entry boundaries, integer overflow,
+concurrent admission, pending/busy ownership, partial completion, shrink,
+orphaned results and move/retirement behavior. Actual bounded `SafeRoot` IO
+checks quota refusal before further writes and counts sparse logical growth.
+A separate Linux profile runs `[.disk-full-control]` only on a private tmpfs
+of at most 256 KiB. The measured 128-KiB Docker tmpfs reaches actual filesystem
+exhaustion and reports the native `disk_full` status. The profile verifies partial
+completion accounting and capacity recovery after truncation and deletion.
+That hidden profile cannot pass on an ordinary host filesystem.
+Full local native CTest passes **24/24** MSVC and **25/25** GCC 8.3; file/quota
+suites pass **1884 assertions / 18 cases** and **1552 / 20**, respectively.
+Actual Astra and RED OS separately pass the same **1552 / 20** component suite.
+The real-full profile passes **40 assertions / 1 case** without filling either
+lab disk. These are not HTTP upload, RDPDR or installed-server quota tests.
+Full `pnpm check` also passes **1232 / 71 skips / 1303 total**, zero failures.
+Source, compiler/full-check/platform logs and the separate disk-full profile
+are bound in `build/current-validation/managed-drives-quota-acceptance.json`.
+Both owned lab payload directories are removed after exact owner/file/hash
+checks, retaining their receipts and logs locally.
+The quota authority still requires a bounded entry registry and sole filesystem
+owner integration; its calls are not exposed through npm or public HTTP.
+
+The bounded-full scenario is also wired into the ordinary GCC 8.3 GitHub job:
+it runs the same source-only image as its foundation CTest, with UID 1000,
+no capabilities/network/host runtime mounts and a fresh 128-KiB tmpfs. The
+Windows Debug foundation now includes the deliberate CRT-error child as a
+bounded CTest; all **25/25** local Windows tests pass. The exact GCC CI Docker
+fixture is built offline from the pinned compiler/Catch2 and checked cached
+CMake/Ninja inputs, then locally passes **25/25** plus the **40-assertion**
+full profile with the workflow arguments. Actionlint, YAML formatting and
+**12** delivery/export guards pass. This verifies the CI recipe locally; no
+hosted GitHub run is claimed for the unfinished feature branch. Production
+quota code is unchanged by this test-wiring follow-up.
+
+The next component is the native `Sandbox` owner (`native/files/sandbox.*`).
+It accepts only a trusted empty private root and creates separate data/upload
+directories. Its bounded registry owns the existing safe resolver and one shared
+quota allocation per physical file, directory or pending upload. Regular-file
+views share that owner and serialize filesystem operations; a view must outlive
+its IO, and its close/move must be serialized with its own IO. Native IDs are
+monotonic session-local keys, not paths or authorization tokens. An eventual
+authenticated adapter must bind unpredictable public IDs to the owning session.
+
+Uploads remain absent from ordinary lookup/list/open until the writer closes
+and an atomic rename publishes them. Exclusive publication is the default;
+replacement is explicit, file-only and refused while either file has an open
+view. Moving a directory preserves descendant IDs and the logical destination
+of a pending upload. Listing is capped at 64 entries per page, file views at
+256 per sandbox, transfers at 64 KiB, and stored name/path metadata at 1 MiB by
+default with a 4-MiB hard limit. Entry/byte quota admission precedes physical
+creation or growth. Windows name collisions use ordinal case-insensitive
+comparison; Linux preserves case-sensitive names.
+
+Held-handle metadata uses the OS file identity and verified size rather than a
+caller-reported byte count. Unexpected identity/size changes retire the owner.
+Explicit cleanup first retires new work, waits for every file view to close,
+then removes only registered, identity-verified objects in child-first order.
+Charges are released after physical removal and joined handle closure. Unknown
+or substituted objects are retained; cleanup never recursively removes unknown
+content. The outer private directory belongs to its lifecycle host. Destruction
+alone retires the owner and does not claim physical cleanup. As with `SafeRoot`,
+this does not claim isolation from a malicious process with the service UID or
+privileged access to the host.
+
+The source-bound native checkpoint passes **25/25** full foundation CTest on
+both MSVC and GCC 8.3. File/quota/owner cases pass **2431 assertions / 28 cases**
+on Windows and **2045 / 30** on GCC 8.3 and each actual Astra/RED OS lab. RED OS
+uses its native GCC 11.4.1; Astra runs the GCC 8.3 SDK-built executable. The GCC
+8.3 ASan/UBSan file suite also passes. The actual 128-KiB tmpfs profile now tests
+both direct quota accounting and the sandbox upload path: **76 assertions / 2
+cases**, including native disk-full, partial-size settlement, hidden partial
+upload and confirmed cleanup. Both profiles are selected by the GCC CI job.
+The two owned lab payload directories are removed after exact owner/hash checks.
+Local logs and hashes are retained under
+`build/current-validation/managed-drives-owner-*`.
+
+The full workspace attempt completes with **1231 passed / 71 skipped / 1
+cancelled / 1303 total**: the unchanged synthetic image browser fixture exceeds
+its 25-second test deadline. That exact fixture passes an isolated repeat
+(1/1, 3.4 seconds). Its cause is not established; this is not a green full
+`pnpm check`. Both logs are retained. Version/readme/build/lint/format checks
+pass, and JS/TS plus the linked 0.5.0 worker are unchanged by this native block.
+A green complete workspace run remains required before feature merge/release.
+
+At that checkpoint this owner remained an internal component, not wired into the worker, Node file
+API or RDPDR. Authenticated streaming, scoped share/read-only policy, worker
+shutdown/orphan recovery with managed contents, actual remote CRUD and feature
+acceptance remain open. Stage 7, runtime capabilities and public version 0.5.0
+are unchanged by this checkpoint.
+
+The next follow-up wires the owner into the actual worker's private file service.
+`WorkerProcess.nativeFileCommand` streams bounded binary blocks through RWI1
+commands/results, with explicit initialization, staged upload/commit/abort,
+stable download leases, listing, directory creation and removal. Initialization
+requires an owned private runtime and exclusively creates its fixed container;
+there is no host pathname in a command. Publication verifies held-handle OS size
+as well as accumulated bytes. A download pin refuses writes/resize even from
+writers opened before it. Native cleanup refusal is preserved: Node removes
+only an empty managed runtime and `close()` reports `FILE_CONTENTS_RETAINED`
+when unknown contents survive. It never replaces that refusal with recursive rm.
+[Wire and lifecycle contract](../PROTOCOL.md#private-managed-file-worker-service-schema-1-in-development).
+
+Full local native CTest passes **25/25** on MSVC and GCC 8.3. File suites pass
+**2520 assertions / 31 cases** on Windows and **2119 / 33** on GCC 8.3 and each
+actual Astra/RED OS lab. ASan/UBSan file and IPC suites pass **2/2**; the separate
+bounded tmpfs quota/full profile passes **76 assertions / 2 cases**. Actual Node
+to worker file transfer, visibility, Unicode/binary readback, correlation,
+retirement and unknown-content preservation pass on Windows framed IPC and on
+both Linux framed/RWS1 with a newly built, hash-paired packet adapter. Linux's
+combined file/protocol/HTML compatibility subset passes **21/21** as UID 1000,
+CapEff=0 and no network. Final `pnpm check` passes **1238 / 71 skips / 1309
+total**, with zero failures/cancellations. The earlier image fixture timeout and
+the first full attempt's obsolete HELLO-bit assertion remain in their logs;
+the final full run is green. Existing linked-RDP workspace regression still
+uses the accepted 0.5.0 worker; the new file worker is tested separately above.
+
+Foundation and bundled CI now select the file integration tests explicitly;
+Linux foundation also builds its packet adapter, so both transports are covered.
+Workflow formatting and Actionlint pass locally; no hosted run is claimed here.
+Both final lab payloads are removed by exact owner/hash inventories. Evidence is
+retained in `build/current-validation/managed-files-ipc-*` and
+`managed-drives-file-ipc-v4-*`. This remains on `feature/managed-drives`.
+Authenticated public HTTP streaming, unpredictable session-bound public IDs,
+scoped/read-only RDPDR drives, managed-content orphan recovery, actual remote
+CRUD and current linked/package acceptance remain open. The public managed-drive
+and file-clipboard capabilities, Stage 7 gate and public version 0.5.0 remain
+unchanged; private HELLO `fileService` is a separate implementation flag.
 
 The source/preparation checkpoints below retain their historical scope.
 

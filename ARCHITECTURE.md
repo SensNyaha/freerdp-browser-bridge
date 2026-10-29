@@ -120,7 +120,63 @@ Mouse move events are coalesced in Node/worker; clicks and key transitions are n
 
 Browser file upload is not sent through clipboard as one giant payload. Node writes uploads into a per-session sandbox using streaming I/O. The native worker exposes explicitly configured subdirectories as RDPDR drives. Browser downloads from that sandbox use a separate authenticated HTTP streaming endpoint.
 
+For the managed-file implementation, Node owns the HTTP stream and forwards
+bounded binary chunks through the existing private IPC to the session worker.
+That worker is the sole owner of filesystem mutation and quota accounting for
+both HTTP and RDPDR. Node does not perform parallel pathname writes beside it.
+This refines the streaming-I/O description above; it does not move FreeRDP into
+Node or introduce another worker. The private file service is in development;
+its implementation does not by itself establish the HTTP/RDPDR acceptance gate.
+
 A drive config never contains an arbitrary host path from a non-admin browser request. Logical names map to policy-approved roots.
+
+The native drive backend uses `ScopedSandbox` pins over that same owner.
+Share roots and immutable read-only policy are checked under the owner's mutex
+for each final operation; a previously resolved key cannot bypass subtree
+membership after a namespace change. `DriveSession` shares one bounded handle
+and delete-pending registry across all drive aliases. Connection setup obtains
+scopes before channel producers start, serialized with file-service setup;
+subsequent scoped operations synchronize with HTTP through the sandbox owner.
+Channel producers and their views/pins must join before owner cleanup. This
+backend does not yet establish the FreeRDP device/IRP or real RDP acceptance.
+
+Managed file timestamps and DOS attributes belong to the session VFS owner.
+They are common to HTTP file views and every drive alias, initialized at entry
+creation and checked/updated under the same namespace mutex. They do not
+rewrite host permissions, POSIX ctime or OS file attributes. RDP file handles
+keep independent automatic-time suppression state; that state cannot suppress
+updates made through another handle. Read-only file attributes constrain
+existing writers, replacement, rename and deletion, while owner cleanup keeps
+its separate verified reclamation authority. Download pins also block metadata
+changes.
+
+`MAXIMUM_ALLOWED` is a separate internal open selector, expanded after resolving
+the entry's share and virtual read-only attributes. Explicit forbidden rights
+still refuse the open. Sharing and subsequent operations use the fixed granted
+mask; clearing an attribute cannot upgrade a handle. This neither grants host
+ACL/security rights nor changes the existing RDPDR/private IPC wire layouts.
+The metadata is live session state, not persistent profile storage;
+the dead-owner cleanup implementation uses a separate native declaration bound
+to the runtime/container directory identities. It owns only the private fixed
+`.data`/`.uploads` trees and requires complete bounded preflight, an absent owner
+endpoint and joined worker leases before deletion. Unknown runtime siblings
+retain all content. It does not reconstruct the VFS or introduce a profile
+store. Automatic retirement while Node remains alive joins the worker, IPC and
+probes, closes that session's endpoint, revalidates the startup cohort and runs
+the helper for only that owned directory. Registry capacity follows confirmed
+cleanup, including completion after public waiting deadlines; uncertain cleanup
+retains files and capacity. Full recovery/product acceptance remains separate.
+[Recovery contract](docs/RUNTIME_RECOVERY.md#claimed-managed-file-trees-unreleased).
+
+Trusted file policy may opt into XRDP legacy deletion before the connection
+starts. The default retains strict requested-access semantics. The optional
+adapter recognizes an exact metadata-only unlink selector and grants only
+disposition after ordinary root, read-only, sharing and pin checks. It also
+joins never-used handles from the same device's exact XRDP mkdir selector
+only after an authorized legacy disposition for that entry. Any attempted use
+of such a creator makes it an ordinary live handle; alias and other live
+handles retain last-close ownership. This peer compatibility rule changes no
+host ACL, native sandbox membership, quota or cleanup authority.
 
 ## 9. Printer architecture
 

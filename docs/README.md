@@ -62,6 +62,9 @@ private signing keys в публичном config. Capabilities и резуль�
 
 ## 4. Архитектура и контракты
 
+[Managed file API (unreleased)](FILES.md): streaming uploads/downloads,
+session-owned file IDs, limits and current acceptance boundaries.
+
 [Specification](../SPECIFICATION.md) задаёт требования;
 [architecture](../ARCHITECTURE.md) — процессную модель;
 [protocol](../PROTOCOL.md) — HTTP/WS/IPC;

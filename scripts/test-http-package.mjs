@@ -12,10 +12,18 @@ import { resolve, join, sep, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { productVersion } from './product-version.mjs';
+import {
+  managedFilesArguments,
+  prepareManagedFilesConsumer,
+  consumerNpmCli,
+} from './managed-files-consumer.mjs';
 import { checkNpmArchiveReadme } from './npm-readme.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const args = process.argv.slice(2);
+const { args, managedFiles } = managedFilesArguments(
+  process.argv.slice(2),
+  productVersion,
+);
 const registryOnly = args[0] === '--registry-only';
 if (registryOnly) args.shift();
 const exactArchives =
@@ -252,10 +260,8 @@ await writeFile(
     2,
   ) + '\n',
 );
-const npmCli =
-  process.platform === 'win32'
-    ? resolve('.tools/node-v24.21.0-win-x64/node_modules/npm/bin/npm-cli.js')
-    : resolve(process.execPath, '../../lib/node_modules/npm/bin/npm-cli.js');
+if (managedFiles) await prepareManagedFilesConsumer(consumer, 'http');
+const npmCli = consumerNpmCli();
 console.log(
   JSON.stringify({
     externalProject: relative(project, consumer).replaceAll('\\', '/'),
@@ -291,6 +297,12 @@ await copyFile(
   join(consumer, 'runtime-recovery.mjs'),
 );
 run(process.execPath, ['runtime-recovery.mjs', 'http'], consumer);
+if (managedFiles)
+  run(
+    process.execPath,
+    ['managed-files.mjs', 'http', productVersion],
+    consumer,
+  );
 const report = {
   productVersion,
   targetAdapterVersion: '0.2.3',
@@ -299,6 +311,8 @@ const report = {
   developmentArtifacts: !registryOnly,
   exactPublicationArchives: !!publicationArchives,
   strictTypeScript: true,
+  managedFiles,
+  managedFilesRdpState: managedFiles ? 'synthetic' : null,
   checkoutImports: false,
   nativeRuntimePackage: true,
   httpAndHttps: true,

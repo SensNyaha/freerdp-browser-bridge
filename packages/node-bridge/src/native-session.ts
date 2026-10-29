@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { selectManagedDrives } from './drive-selection.js';
 import type { CursorState } from '@freerdp-bridge/protocol';
 import {
   WorkerProcess,
@@ -7,6 +8,7 @@ import {
   type ClipboardReadResult,
   type ClipboardHtmlReadResult,
   type ClipboardImageReadResult,
+  type NativeFileCommand,
 } from './index.js';
 import {
   SessionError,
@@ -16,6 +18,11 @@ import {
 } from './session-manager.js';
 import type { SessionCreate } from '@freerdp-bridge/config';
 import type { SessionAudioEvent } from './session-audio.js';
+import {
+  resolveManagedFilesPolicy,
+  type ManagedFilesPolicy,
+} from './managed-files.js';
+import type { FileRecord } from '@freerdp-bridge/protocol';
 import {
   CLIPBOARD_MAX_TEXT_BYTES,
   CLIPBOARD_METADATA_BYTES,
@@ -141,6 +148,7 @@ export class NativeSessionWorker implements SessionWorker {
   private readonly clipboardMaximum: number | undefined;
   private readonly clipboardHtml: boolean;
   private readonly clipboardImage: boolean;
+  private readonly filesPolicy: ManagedFilesPolicy | undefined;
   private readonly events = new EventEmitter();
   private startup: Promise<void> | undefined;
   private closing = false;
@@ -153,6 +161,10 @@ export class NativeSessionWorker implements SessionWorker {
     limits: Readonly<SessionWorkerLimits> = {},
   ) {
     const maximum = limits.clipboardItemBytes;
+    this.filesPolicy =
+      limits.files === undefined
+        ? undefined
+        : resolveManagedFilesPolicy(limits.files);
     if (
       (limits.clipboardHtml !== undefined && limits.clipboardHtml !== true) ||
       (limits.clipboardHtml === true && maximum === undefined) ||
@@ -164,7 +176,7 @@ export class NativeSessionWorker implements SessionWorker {
           maximum > CLIPBOARD_MAX_TEXT_BYTES))
     )
       throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
-    const required =
+    const clipboardRequired =
       maximum === undefined
         ? undefined
         : 65536 +
@@ -178,6 +190,9 @@ export class NativeSessionWorker implements SessionWorker {
                 limits.clipboardImage ? CLIPBOARD_IMAGE_ITEM_METADATA_BYTES : 0,
               ),
           );
+    const required = this.filesPolicy
+      ? Math.max(131072, clipboardRequired ?? 0)
+      : clipboardRequired;
     if (
       required !== undefined &&
       options.maxWriteBytes !== undefined &&
@@ -267,6 +282,37 @@ export class NativeSessionWorker implements SessionWorker {
         throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
       signal.addEventListener('abort', abort, { once: true });
       const build = await this.worker.start();
+      let drives;
+      try {
+        drives = selectManagedDrives(config);
+      } catch {
+        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+      }
+      if (drives && (!this.filesPolicy || !build.capabilities.managedDrives))
+        throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+      if (this.filesPolicy) {
+        if (!build.capabilities.fileService)
+          throw new SessionError('FILES_NOT_IMPLEMENTED');
+        if (
+          this.filesPolicy.xrdpLegacyDelete &&
+          !build.capabilities.xrdpLegacyDelete
+        )
+          throw new SessionError('RDP_SETTING_NOT_IMPLEMENTED');
+        const policy = this.filesPolicy;
+        const result = await this.worker.nativeFileCommand({
+          operation: 'initialize',
+          id: BigInt(policy.maxTotalBytes),
+          argument: BigInt(policy.maxFileBytes),
+          value: BigInt(policy.maxEntries),
+          ...(policy.xrdpLegacyDelete ? { flags: 1 } : {}),
+        });
+        try {
+          if (result.status !== 'ok')
+            throw new SessionError('FILES_NOT_IMPLEMENTED');
+        } finally {
+          result.data.fill(0);
+        }
+      }
       if (
         selectedClipboard &&
         (!build.capabilities.clipboardText ||
@@ -303,6 +349,7 @@ export class NativeSessionWorker implements SessionWorker {
           'WORKER_MEMORY_LIMIT',
           'WORKER_CPU_LIMIT',
           'WORKER_RESOURCE_UNAVAILABLE',
+          'FILES_NOT_IMPLEMENTED',
         ].includes(error.code)
       )
         throw new SessionError(error.code as SessionErrorCode);
@@ -321,6 +368,11 @@ export class NativeSessionWorker implements SessionWorker {
     )
       await this.worker.sendInput({ type: 'reset' }).catch(() => {});
     await this.worker.close();
+  }
+  fileCommand(command: NativeFileCommand): Promise<FileRecord> {
+    if (!this.filesPolicy || this.closing)
+      return Promise.reject(new SessionError('FILES_NOT_IMPLEMENTED'));
+    return this.worker.nativeFileCommand(command);
   }
   async terminate(): Promise<void> {
     this.closing = true;

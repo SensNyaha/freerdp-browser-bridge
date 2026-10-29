@@ -8,6 +8,7 @@
 #include "ip_settings.hpp"
 #include "performance_settings.hpp"
 #include "publication_wait.hpp"
+#include "../files/rdpdr_loader.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -93,19 +94,25 @@ BOOL Connection::receive_delegated(freerdp *instance, UINT16 channel, const BYTE
       !(flags & (CHANNEL_FLAG_SUSPEND | CHANNEL_FLAG_RESUME)) &&
       !self.dvc_channels_->admit({data, size}, now))
     return FALSE;
-  const auto accepted =
-      self.clipboard_receive_
-          ? self.clipboard_receive_->receive(channel, data, size, flags, total, now)
-          : self.receive_original_(instance, channel, data, size, flags, total);
+  const auto accepted = self.drive_receive_
+      ? self.drive_receive_->receive(channel, data, size, flags, total, now)
+      : receive_clipboard(instance, channel, data, size, flags, total);
   // Negative CREATE and some close paths leave the SDK global error zero.
   return accepted && self.dvc_channels_->poll(audio_time_us() / 1000) &&
          !self.dvc_plugins_->stats().failed;
 }
+BOOL Connection::receive_clipboard(freerdp *instance, UINT16 channel, const BYTE *data,
+                                   std::size_t size, UINT32 flags, std::size_t total) {
+  auto &self = owner(instance);
+  return self.clipboard_receive_
+      ? self.clipboard_receive_->receive(channel, data, size, flags, total, audio_time_us() / 1000)
+      : self.receive_original_(instance, channel, data, size, flags, total);
+}
 Connection::Connection(std::function<void(const Packet &)> send,
                        bridge::audio::PcmPublisher::TrySend audio_send,
                        bridge::audio::PcmPublisher::TryDiscard audio_discard,
-                       bridge::clipboard::WorkerSession::Send clipboard_send)
-    : context_(nullptr, freerdp_client_context_free), send_(std::move(send)),
+                       bridge::clipboard::WorkerSession::Send clipboard_send, bridge::files::FileService *files)
+    : context_(nullptr, freerdp_client_context_free), files_(files), send_(std::move(send)),
       audio_send_(std::move(audio_send)), audio_discard_(std::move(audio_discard)),
       clipboard_send_(std::move(clipboard_send)), cursor_(send_) {
   RDP_CLIENT_ENTRY_POINTS entry{};
@@ -144,9 +151,7 @@ Connection::Connection(std::function<void(const Packet &)> send,
     throw ProtocolError();
 }
 Connection::~Connection() {
-  stop();
-  if (thread_.joinable())
-    thread_.join();
+  stop_and_join();
   if (media_event_ && !CloseHandle(media_event_))
     reason_ = RdpError::protocol;
   erase_password();
@@ -277,6 +282,31 @@ void Connection::configure(::bridge::compat::span<const std::uint8_t> payload) {
   boolean(FreeRDP_SynchronousStaticChannels, TRUE);
   boolean(FreeRDP_AsyncChannels, FALSE);
   boolean(FreeRDP_AsyncUpdate, FALSE);
+  if (!c.drives.empty()) {
+#if (defined(_WIN32) || defined(__linux__)) && defined(CHANNEL_RDPDR_CLIENT) && defined(CHANNEL_DRIVE_CLIENT) && defined(CHANNEL_RDPSND_CLIENT)
+    if (!files_ || freerdp_settings_get_uint32(s, FreeRDP_DeviceCount)) throw ProtocolError();
+    std::vector<bridge::files::ScopedSandbox> shares;
+    shares.reserve(c.drives.size());
+    std::vector<std::string> names;
+    names.reserve(c.drives.size());
+    for (const auto &drive : c.drives) {
+      auto scoped = files_->scope(drive.subdir, drive.read_only ? bridge::files::RootAccess::read_only : bridge::files::RootAccess::read_write);
+      if (scoped.first != bridge::files::StoreStatus::ok) throw ProtocolError();
+      shares.push_back(std::move(scoped.second));names.push_back(drive.name);
+      // Required vendor descriptor selector only. The managed factory ignores
+      // this fixed Path; it never maps a peer name/path to a host filesystem.
+      const char *args[]{drive.name.c_str(), "."};
+      auto *device = freerdp_device_new(RDPDR_DTYP_FILESYSTEM, 2, args);
+      if (!device) throw ProtocolError();
+      if (!freerdp_device_collection_add(s, device)) { freerdp_device_free(device);throw ProtocolError(); }
+    }
+    drives_ = std::make_shared<bridge::files::DriveSession>(std::move(shares), 128, files_->xrdp_legacy_delete());
+    drive_registration_ = std::make_unique<bridge::files::rdpdr::Registration>(*context_, drives_, std::move(names));
+    // Keep RedirectDrives false: the generic loader otherwise adds host media.
+#else
+    throw ProtocolError();
+#endif
+  }
   boolean(FreeRDP_RemoteApplicationMode, FALSE);
   boolean(FreeRDP_BitmapCachePersistEnabled, FALSE);
   boolean(FreeRDP_GfxSmallCache, TRUE);
@@ -324,7 +354,7 @@ BOOL Connection::pre_connect(freerdp *instance) {
   if (PubSub_SubscribeChannelDisconnected(pubsub, channel_disconnected) < 0)
     return FALSE;
   self.subscribed_disconnected_ = true;
-  if (self.config_->pcm_output || self.config_->opus_output) {
+  if (self.config_->pcm_output || self.config_->opus_output || self.drives_) {
     const char *args[] = {"rdpsnd"}; // Provider supplies fixed browser/PCM arguments.
     if (!freerdp_client_add_static_channel(instance->context->settings, 1, args))
       return FALSE;
@@ -332,8 +362,9 @@ BOOL Connection::pre_connect(freerdp *instance) {
   return TRUE; // The core replaces channels after PreConnect, then invokes LoadChannels.
 }
 BOOL Connection::load_channels(freerdp *instance) {
-  const auto loaded =
-      freerdp_client_load_addins(instance->context->channels, instance->context->settings);
+  const auto loaded = owner(instance).drives_
+      ? bridge::files::rdpdr::load_managed_channels(*instance->context)
+      : freerdp_client_load_addins(instance->context->channels, instance->context->settings);
   if (!loaded)
     owner(instance).reason_ = RdpError::protocol;
   return loaded;
@@ -1178,6 +1209,13 @@ void Connection::stop() noexcept {
   if (started_ && !finished_ && !freerdp_abort_connect_context(context_.get()))
     reason_ = RdpError::protocol;
 }
+void Connection::stop_and_join() noexcept {
+  stop();
+  if (thread_.joinable()) thread_.join();
+  if (drives_) {
+    try { drives_->retire(); } catch (...) { std::terminate(); }
+  }
+}
 void Connection::run() noexcept {
   auto terminal_state = RdpState::failed;
   auto terminal_error = RdpError::protocol;
@@ -1234,6 +1272,7 @@ void Connection::run() noexcept {
 #ifdef CHANNEL_RDPEI_CLIENT
   touch::AddinProvider touch_provider;
 #endif
+  bridge::files::rdpdr::Provider drive_provider;
   try {
     if (!freerdp_settings_get_bool(context_->settings, FreeRDP_SynchronousDynamicChannels) ||
         freerdp_settings_get_bool(context_->settings, FreeRDP_AsyncChannels) ||
@@ -1243,6 +1282,10 @@ void Connection::run() noexcept {
     dvc_channels_ = std::make_unique<channels::DvcChannelRegistry>(clock);
     dvc_plugins_ = std::make_unique<channels::DvcPluginRegistry>(*dvc_channels_, clock);
     receive_original_ = receive_delegate;
+    if (drives_) {
+      drive_gate_ = std::make_unique<bridge::files::rdpdr::StaticGate>(*context_);
+      drive_receive_ = std::make_unique<bridge::files::rdpdr::ReceiveGuard>(*context_->instance, receive_clipboard);
+    }
     if (clipboard_) {
       if (!clipboard_->start(1))
         throw ProtocolError();
@@ -1263,7 +1306,9 @@ void Connection::run() noexcept {
     if (config_->touch)
       touch_contacts_ = std::make_unique<touch::Contacts>(touch_registration_);
 #endif
-    if (config_->pcm_output || config_->opus_output)
+    if (drives_ && drive_provider.bind(*context_, *drive_registration_, drive_gate_.get()) != CHANNEL_RC_OK)
+      throw ProtocolError();
+    if (config_->pcm_output || config_->opus_output || drives_)
       audio_ = std::make_unique<bridge::audio::AudioSession>(
           *context_,
           [this](Kind kind, ::bridge::compat::span<const std::uint8_t> bytes) {
@@ -1283,7 +1328,8 @@ void Connection::run() noexcept {
           audio_discard_, bridge::audio::AudioSession::Drain{}, 1000000,
           config_->opus_output ? OutputAudioCodec::opus : OutputAudioCodec::pcm,
           config_->audio_buffer_200 ? bridge::audio::OutputBufferProfile::compatibility
-                                    : bridge::audio::OutputBufferProfile::low_latency);
+                                    : bridge::audio::OutputBufferProfile::low_latency,
+          config_->pcm_output || config_->opus_output);
     if (config_->pcm_input || config_->opus_input)
       microphone_ =
           std::make_unique<bridge::audio::MicrophoneSession>(*context_, publish_microphone, this);
@@ -1387,6 +1433,8 @@ void Connection::run() noexcept {
         if (!dvc_receive_->poll(audio_time_us() / 1000) ||
             !dvc_channels_->poll(audio_time_us() / 1000) || dvc_plugins_->stats().failed)
           throw ProtocolError();
+        if ((drive_gate_ && !drive_gate_->poll()) ||
+            (drive_receive_ && !drive_receive_->poll(audio_time_us() / 1000))) throw ProtocolError();
         if (clipboard_receive_ && !clipboard_receive_->poll(audio_time_us() / 1000))
           throw ProtocolError();
         diagnostic_stage = 2;
@@ -1607,6 +1655,14 @@ void Connection::run() noexcept {
     terminal_state = RdpState::failed;
     terminal_error = RdpError::protocol;
   }
+  if (drive_receive_) drive_receive_->close();
+  if (drive_gate_ && drive_gate_->retire() != CHANNEL_RC_OK) {
+    terminal_state = RdpState::failed;terminal_error = RdpError::protocol;
+  }
+  if (drive_provider.close() != CHANNEL_RC_OK) {
+    terminal_state = RdpState::failed;terminal_error = RdpError::protocol;
+  }
+  if (drives_) drives_->retire();
 #ifdef CHANNEL_RDPEI_CLIENT
   // Retire delegated input resources before the RDP thread exits. Context may be
   // freed later on the owner thread; only the wrapper's published no-op survives.

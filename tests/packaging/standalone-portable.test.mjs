@@ -24,8 +24,12 @@ import {
   readStandalonePayloadFile,
 } from '../../scripts/standalone/payload.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
+import { managedFilesArguments } from '../../scripts/managed-files-consumer.mjs';
 
 const source = process.env.BRIDGE_PORTABLE_TEST_ROOT;
+const fileMode = process.env.BRIDGE_PORTABLE_MANAGED_FILES;
+if (fileMode !== undefined && fileMode !== '1')
+  throw new Error('PORTABLE_MANAGED_FILES_MODE_INVALID');
 const windows = process.platform === 'win32';
 const run = promisify(execFile);
 const delay = () => new Promise((done) => setTimeout(done, 25));
@@ -81,12 +85,31 @@ test(
       const { publicKey, privateKey } = generateKeyPairSync('rsa', {
         modulusLength: 2048,
       });
+      const packagedVersion = JSON.parse(
+        await readFile(join(root, 'service/package.json'), 'utf8'),
+      ).version;
+      const { managedFiles } = managedFilesArguments(
+        fileMode === '1' ? ['--managed-files'] : [],
+        packagedVersion,
+      );
       const config = {
         schemaVersion: 1,
         listen: { host: '127.0.0.1', port },
         allowedOrigins: [],
         targets: [{ host: '127.0.0.1', port: endpoint.port }],
         limits: { maxSessions: 1, maxPerPrincipal: 1 },
+        ...(managedFiles
+          ? {
+              files: {
+                maxTotalBytes: 262144,
+                maxFileBytes: 196608,
+                maxEntries: 16,
+                nativeTimeoutMs: 2000,
+                progressTimeoutMs: 5000,
+                transferTimeoutMs: 10000,
+              },
+            }
+          : {}),
         auth: {
           issuer: 'https://issuer.example.test',
           audience: 'bridge',
@@ -111,9 +134,6 @@ test(
           (windows ? 'win32-x64' : 'linux-x64-gnu'),
         'runtime/bin',
       );
-      const packagedVersion = JSON.parse(
-        await readFile(join(root, 'service/package.json'), 'utf8'),
-      ).version;
       const [major, minor] = packagedVersion.split('.').map(Number);
       let recoveryCapable = false;
       try {
@@ -253,6 +273,13 @@ test(
         .setProtectedHeader({ alg: 'RS256', kid: 'synthetic', typ: 'at+jwt' })
         .sign(privateKey);
       const headers = { authorization: 'Bearer ' + token };
+      if (managedFiles) {
+        const capabilities = await fetch(base + '/rdp/v1/capabilities', {
+          headers,
+        });
+        assert.equal(capabilities.status, 200);
+        assert.equal((await capabilities.json()).clipboardFiles, false);
+      }
       const response = await fetch(base + '/rdp/v1/sessions', {
         method: 'POST',
         headers: { ...headers, 'content-type': 'application/json' },
@@ -280,6 +307,50 @@ test(
           throw new Error('PORTABLE_NATIVE_PROMPT_MISSING');
         await delay();
       }
+      if (managedFiles) {
+        // This is a real native session held at the unapproved certificate.
+        // File authority must exist but remain unusable before RDP connects.
+        const url = base + '/rdp/v1/sessions/' + sessionId + '/files';
+        const denied = await fetch(url);
+        assert.equal(denied.status, 401);
+        await denied.arrayBuffer();
+        const another = await new SignJWT({
+          sub: 'synthetic-other',
+          scope: 'rdp:connect',
+          iss: config.auth.issuer,
+          aud: 'bridge',
+          iat: now,
+          exp: now + 120,
+        })
+          .setProtectedHeader({ alg: 'RS256', kid: 'synthetic', typ: 'at+jwt' })
+          .sign(privateKey);
+        const foreign = await fetch(url, {
+          headers: { authorization: 'Bearer ' + another },
+        });
+        assert.equal(foreign.status, 404);
+        assert.equal((await foreign.json()).code, 'SESSION_NOT_FOUND');
+        const refused = await fetch(url, { headers });
+        assert.equal(refused.status, 409);
+        assert.equal((await refused.json()).code, 'FILES_NOT_CONNECTED');
+        const upload = await fetch(url + '?name=before-connect.bin', {
+          method: 'POST',
+          headers: { ...headers, 'content-type': 'application/octet-stream' },
+          body: Buffer.alloc(131111, 17),
+        });
+        assert.equal(upload.status, 409);
+        assert.equal((await upload.json()).code, 'FILES_NOT_CONNECTED');
+        const entries = (await readdir(runtime)).filter((name) =>
+          /^worker-[0-9a-f]{32}-/.test(name),
+        );
+        assert.equal(entries.length, 1);
+        const sandbox = join(runtime, entries[0], 'managed-files');
+        assert.deepEqual((await readdir(sandbox)).sort(), [
+          '.data',
+          '.uploads',
+        ]);
+        for (const child of ['.data', '.uploads'])
+          assert.deepEqual(await readdir(join(sandbox, child)), []);
+      }
       if (windows) child.stdin.end(Buffer.from([1]));
       else child.kill('SIGTERM');
       const stopDeadline = Date.now() + 15000;
@@ -293,6 +364,18 @@ test(
       assert.equal(endpoint.applicationBytes, 0);
       assert.equal(output.includes(token), false);
       assert.equal(output.includes('synthetic-portable-memory-only'), false);
+      if (managedFiles)
+        console.log(
+          JSON.stringify({
+            portableManagedFilesStartup: true,
+            packagedVersion,
+            actualNativeFileInitialization: true,
+            certificateApproved: false,
+            beforeConnectFileOperationsRefused: true,
+            ownedSandboxCleanupJoined: true,
+            actualConnectedFileTransfer: false,
+          }),
+        );
       // Existing permissive scratch directories must not be silently repaired.
       if (!windows) {
         await chmod(runtime, 0o755);

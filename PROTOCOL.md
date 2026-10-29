@@ -58,10 +58,28 @@ POST   /v1/sessions
 GET    /v1/sessions/:id
 DELETE /v1/sessions/:id
 POST   /v1/sessions/:id/attach-token
+GET    /v1/sessions/:id/files            # bounded directory page
 POST   /v1/sessions/:id/files            # streaming upload into sandbox
 GET    /v1/sessions/:id/files/:fileId    # streaming download
+POST   /v1/sessions/:id/files/directories
+DELETE /v1/sessions/:id/files/:fileId
 GET    /v1/sessions/:id/print-jobs/:jobId
 ```
+
+The managed file endpoints are implemented on the unreleased managed-drives
+branch and require trusted host opt-in plus session ownership. Binary requests
+and responses stream through bounded private file IPC; browser IDs are opaque
+session locators. The [file API contract](docs/FILES.md) defines request shapes,
+pagination, limits, cancellation and error codes. RDPDR and final product
+acceptance remain open; public 0.5.0 does not expose this API.
+
+On the managed-drives development branch, `GET /v1/capabilities` additionally
+returns `clipboardFiles: false`: file clipboard is explicitly deferred under
+SPECIFICATION 2.7. This additive public API flag is independent of drive/file
+service capabilities and adds no native HELLO bit or clipboard wire messages.
+Clients treat false or absence as unavailable. Selecting files in an enabled
+clipboard direction returns `RDP_SETTING_NOT_IMPLEMENTED` before backend start.
+[File copy/paste scope and alternatives](docs/FILES.md#file-clipboard-is-deferred).
 
 `POST /v1/sessions` returns only runtime identifiers and non-secret normalized capability data. It never echoes passwords/tokens.
 
@@ -566,6 +584,106 @@ capture remain unactivated. [Private input codec](docs/MICROPHONE_PCM_WIRE.md).
 Iteration 105 prepares private RWI1 MICROPHONE_STATE kind 41, fixed schema-1
 input readiness with zero unsolicited ID. No worker/public emission or capture
 activation is added. [Input status contract](docs/MICROPHONE_STATE.md).
+
+### Private managed-file worker service (schema 1, in development)
+
+The unreleased managed-drive runtime adds HELLO extension bit **2048**. It
+requires bit 1024, `connectCore` and Windows/Linux; it identifies the internal
+guarded adapter, not completed public drive acceptance. Public `drives` stays
+false until the remote application and packaged acceptance matrix passes.
+
+HELLO extension bit **4096** advertises the optional trusted-host XRDP legacy
+delete policy. It requires bit 2048 and its prerequisites. Initialize-command
+flag **1** enables that policy for the file owner's lifetime; zero preserves
+strict access and handle semantics. Older workers must be refused before this
+flag or connection credentials are sent. It is not a session/browser option.
+
+CONFIGURE **schema 15** carries the existing schema-14 fixed fields (image is
+optional in schema 15), followed by a big-endian u16 drive count **1..32**.
+Each descriptor contains u16 byte length + ASCII name, u16 byte length + ASCII
+logical subdirectory, u8 read-only policy **0/1**, and u8 reserved **0**. Names
+are 1..64 bytes (`A-Z a-z 0-9 _ -` and spaces), subject to portable filename
+rules both in full and in their first seven bytes. The case-insensitive first
+seven bytes must be unique across all descriptors; PreferredDosName reserves
+its eighth byte for NUL. The full configured ASCII name is retained separately
+from that preferred alias. This corrects the unreleased schema-15 validation;
+descriptor field sizes and envelope bounds do not change. Subdirectories are 1..253
+bytes, at most 31 slash-separated components containing only alphanumerics,
+underscore and hyphen; reserved device names are refused. Neither field is a
+host path, addin argument or authorization token.
+
+Only CONFIGURE's envelope limit increases to **16384 bytes**, checked before
+body allocation. Schemas 1..14 retain their **2048-byte** decoder bound and
+unchanged encoding when drives are omitted. Native file-service initialization
+must succeed before selected drives may be configured. Unknown capability,
+missing trusted host file policy or an unsupported redirection selection must
+refuse before CONFIGURE/SECRET. Shutdown joins RDP producers and releases all
+share pins before file-owner cleanup.
+
+RWI1 kinds **48/49** carry file command/result records. Both require a nonzero
+correlation ID and a body of **40..65576 bytes**, checked before allocation.
+HELLO schema-1 extension bit **1024** advertises this private service on Windows
+and Linux independently of RDPDR. It does not advertise usable managed drives,
+HTTP file endpoints or file clipboard. Older workers remain unsupported.
+
+| Offset | Width | Field |
+| --- | --- | --- |
+| 0 | 2 | Schema: 1 |
+| 2 | 2 | Operation: 1..12 |
+| 4 | 2 | Status; commands require 0 |
+| 6 | 2 | Flags; initialize permits XRDP legacy-delete bit 1, commit permits replace-file bit 1 |
+| 8 | 8 | Private native entry ID / initialization total-byte limit |
+| 16 | 8 | Offset, parent/cursor or initialization per-file-byte limit |
+| 24 | 8 | Count, size or initialization entry limit |
+| 32 | 4 | Exact trailing data length: 0..65536 |
+| 36 | 4 | Reserved: 0 |
+
+All integers are unsigned big-endian. Operations are initialize, begin-upload,
+write, commit, abort, open-download, read, close-download, list, mkdir, remove,
+retire, numbered in that order. Status codes 0..12 are ok, invalid, missing,
+exists, denied, busy, limit, disk-full, unavailable, retired, retained, io,
+not-empty. Invalid encodings terminate IPC; ordinary admitted filesystem
+refusals return a typed result. Results carry zero flags; refused results have
+no data. Decoders enforce operation-specific canonical zero fields and limits.
+Limits/offset arithmetic is capped at `INT64_MAX`; entry limits at 65536.
+
+Initialize may be attempted only once and contains no pathname. The worker
+must have an owned private runtime and creates its fixed `managed-files`
+container exclusively. Its optional XRDP policy is captured only after successful
+initialization and cannot be renegotiated. Results always carry zero flags;
+all other command flags and unknown bits are refused. Begin-upload/mkdir carry a single UTF-8 base name of
+1..255 bytes and a private parent ID; portable name rules are enforced by the
+native owner. IDs are monotonically allocated native keys, never public
+browser IDs or authorization. An authenticated session adapter must map
+unpredictable public IDs to these private keys before dispatch.
+
+There is at most one upload and one download lease per worker service, and one
+pending file RPC in the Node adapter. Upload writes use the exact next offset;
+commit requires the verified accumulated size, closes the writer and publishes
+atomically. A failed commit retains the staged upload until retry/abort/cleanup.
+Downloads pin the entry against writes/resize and namespace changes until close,
+including writes from handles opened before the download. Reads use the exact
+next offset and return at most the requested 1..65536 bytes (zero at EOF).
+The existing Node write-queue budget remains binding: a 64-KiB data command
+needs at least **65600 bytes** including both headers, or smaller chunks.
+
+List takes a parent ID, exclusive native-ID cursor and page size 1..64. Its result
+contains the next cursor (0 at end), entry count and a sequence of 32-byte entry
+headers followed by bounded names: ID u64, parent u64, logical bytes u64, kind
+u16 (0 file / 1 directory), name length u16, reserved-zero u32, UTF-8 name.
+Node validates parent, strict ID order and cursor correlation before use.
+
+File results have one dedicated output slot, never an unbounded control queue.
+File command/result storage is wiped after dispatch/consumption or discard.
+Graceful shutdown retires transfers, joins handles and deletes verified owned
+entries. Node never substitutes recursive removal after managed cleanup refuses
+or a worker result is unknown. Unknown/dead-process managed contents are retained;
+managed-content orphan recovery and HTTP/RDPDR acceptance remain required.
+
+The internal RDPDR codec/public device adapter is described in
+[the file implementation guide](docs/FILES.md#rdpdr-codec-and-public-sdk-adapter-in-development).
+It is not installed by the runtime yet. Its bounded request layouts do not
+change CONFIGURE, HELLO, public capabilities or the private file IPC above.
 
 ## 7. Error model
 

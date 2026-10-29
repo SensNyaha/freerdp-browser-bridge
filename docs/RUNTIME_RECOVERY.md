@@ -1,5 +1,164 @@
 # Runtime recovery
 
+## Claimed managed-file trees (unreleased)
+
+The `feature/managed-drives` branch adds native cleanup of managed content after
+both the Node owner endpoint and worker leases are absent. Published 0.5.0
+retains its existing empty-runtime scope. The branch also joins this helper into
+automatic worker retirement while the Node server remains alive, as described
+below. Full HTTP/RDP composition, Windows-server and packaged feature acceptance
+remain separate.
+
+### Automatic worker retirement with a live Node server
+
+After the actual child `close` event, the SDK joins IPC and resource probes,
+then closes that session's Node ownership endpoint. If managed contents remain,
+it invokes the native helper for exactly its owned directory. It does not scan
+other sessions or recursively remove files in Node. The startup worker/helper
+hashes are retained and reverified before dispatch; a changed installation does
+not authorize substituting a different cleanup helper. Admission uses the shared
+bounded recovery gate and existing physical-child capacity control. Cohort
+verification and helper execution share a bounded retirement budget, capped at
+60 seconds and otherwise using the worker's shutdown timeout.
+
+The runtime root must satisfy the existing native ownership/permission contract.
+In particular, an unsafe inherited Windows ACL is not repaired during cleanup.
+Provision a private root using the installed private-directory helper or the
+deployment's equivalent ACL setup. An uncertain root, unknown content, missing
+or changed helper, timeout or unjoined child retains `FILE_CONTENTS_RETAINED`.
+Its session capacity remains reserved. Repeated close calls share the same
+completion; they do not launch an automatic retry loop. An operator's later
+startup sweep does not by itself acknowledge an already-retained registry slot.
+
+Only confirmed native removal, or confirmed absence after a concurrent verified
+sweep, resolves file retirement. The existing session manager then releases the
+slot. If its public shutdown/termination waiting deadlines expire first, the
+slot remains held until the original joined completion succeeds. Failed sessions
+and their old file locators remain unavailable; cleanup never resurrects them.
+
+Actual Node/native registry tests keep a sibling active, crash a worker with a
+131111-byte Unicode file and a 65536-byte staged upload, and hold helper dispatch
+past both manager deadlines. They verify blocked admission before cleanup,
+replacement admission afterward and sibling readback. Unknown runtime siblings
+and mismatched startup-cohort bindings preserve files and capacity. An HTTP test
+holds a backend write completion after actual native IO and kills that worker;
+the real file deadline revokes authority, reports fixed `FILE_FAILED`, joins
+native cleanup and permits a replacement under a one-session limit. RDP state
+in that HTTP test is explicitly synthetic.
+
+Separate actual Astra XRDP/FUSE runs create/read/write/rename Unicode/binary
+files and verify three read-only refusals before crashing the connected worker.
+Windows framed IPC and Linux framed/RWS1 all reclaim committed remote/host
+files and a pending upload, refuse the old native file authority, keep Node
+alive, join a replacement lifecycle worker and verify the owned remote shares
+disappear. These are named Astra-server crash results, not Windows-server,
+HTTP/real-RDP composition or installed-product acceptance. Evidence is bound in
+`build/current-validation/managed-files-live-retirement-acceptance.json`.
+
+Use the existing trusted-host API with a matching worker/helper cohort:
+
+```ts
+import { recoverRuntimeSessions } from '@freerdp-bridge/node';
+
+const report = await recoverRuntimeSessions({
+  workerPath,
+  runtimeRoot,
+  timeoutMs: 60000,
+  maxEntries: 128,
+});
+```
+
+`maxEntries` bounds the outer runtime scan, not the managed files inside one
+session. The total deadline includes cohort verification and native children;
+timeout does not authorize uncertain cleanup or another unjoined child. The
+existing report, fixed helper status and CLI arguments are unchanged.
+
+### Ownership declaration
+
+An eligible native file service exclusively creates `managed-files`, then an
+immutable `.managed-files-owned` file in the session runtime, before creating
+its user-data namespace. It contains exactly 56 bytes, with no credentials,
+logical filenames, file contents or user-profile data:
+
+| Offset | Width | Value |
+| --- | --- | --- |
+| 0 | 8 | ASCII `BRMF0001` |
+| 8 | 8 | Runtime directory volume ID, unsigned big-endian |
+| 16 | 16 | Runtime directory file ID |
+| 32 | 8 | Managed container volume ID, unsigned big-endian |
+| 40 | 16 | Managed container file ID |
+
+File IDs use the native `FileIdentity` representation: Windows' 16 raw ID bytes;
+Linux's inode in eight little-endian bytes followed by eight zero bytes. The
+record is private ownership metadata, not an authentication token or a per-file
+journal. It explicitly declares the private `.data` and `.uploads` trees as
+disposable session content. `.uploads` admits only flat 16-digit lowercase hex
+native keys; logical names occur under `.data`. A browser selecting a reserved
+basename creates a logical file inside `.data`, never the runtime declaration.
+
+Full records must match both held directory identities. A valid startup prefix
+or an absent record authorizes only an empty managed container. A partially
+removed container can be rescanned while its full record remains. If the
+container is already gone, only matching parent-bound metadata remains to be
+removed. Malformed, oversized, nonprivate, linked or foreign records are
+retained. Older nonempty containers without this declaration are retained too.
+
+### Cleanup boundary
+
+The helper first verifies the existing owner endpoint and directory/marker
+locks, OS ownership and private permissions. Before touching content it rejects
+any runtime entry other than `.rdp-worker-owned`, `.managed-files-owned` and
+`managed-files`. An unknown sibling retains all managed content as well.
+
+The managed root is opened relative to a duplicate of the already-held native
+lifecycle handle. Windows keeps its original non-delete-sharing guard; cleanup
+never solves a sharing conflict by relaxing that guard or reopening its path.
+Linux retains the original dev/inode binding when refreshing the directory link
+count changed by removing the declared managed child.
+
+Preflight inventories the complete tree with at most **65540 entries**, **4 MiB
+of stored pathname bytes**, **32 components**, **4096 bytes per path** and **255
+bytes per UTF-8 component**. Count and string budgets are checked before
+allocation. All entries must have private ownership, remain on the same
+filesystem and be ordinary single-link files or directories. Symlinks,
+reparses, mount escapes, hardlinks, devices, FIFOs, sockets, invalid names and
+unrecognized container-level entries refuse the plan. File contents are not
+read. Native Windows file creation now applies the root's explicit private
+owner/DACL so these files can be independently verified after a crash.
+
+The owner endpoint is checked again after preparation. Before the first
+removal, the entire inventory and declaration are revalidated. Validation
+refusals return no partial deletion plan. Physical removal can still fail after
+some declared entries have been deleted; remaining content and its declaration
+are retained for another verified recovery attempt. Children are removed before
+parents with expected file-ID checks. The declaration is removed only after the
+managed container, followed by the ordinary runtime marker and empty runtime.
+The existing same-OS-user trust boundary remains unchanged.
+
+### Verification and remaining acceptance
+
+Actual Node/native tests create a **131111-byte committed Unicode file** and a
+**65536-byte unfinished upload**. A blocked live Node owner preserves them after
+worker hard kill. After Node is also killed, the helper removes the claimed
+content and runtime. An unknown runtime sibling first forces retention of every
+owned file. A separate parent-only kill verifies native self-cleanup. Windows
+framed IPC and Linux framed/RWS1 execute these cases without RDP or credentials.
+Native tests additionally cover foreign declarations, bounded scans, partial
+startup/finalization, changes after preflight, private modes, links and the
+original live-lease controls.
+
+Windows initially exposed a conflicting path reopen against the held DELETE
+guard; handle duplication fixes it. Linux exposed the legitimate parent link
+count change after managed-child deletion. RED OS exposed a legacy C++ fixture
+inheriting SSH umask `0002`; that fixture now creates its marker as `0600`, like
+production, without weakening ownership checks. Prior failures remain recorded.
+
+Logs/source and binary bindings use `managed-files-recovery-*` under
+`build/current-validation`, with actual distro component receipts under
+`managed-drives-recovery-*`. This named dead-owner scope remains separate from
+the subsequently verified automatic retirement above, full HTTP/RDP composition,
+Windows-server, installed npm/standalone and full Stage 7 acceptance.
+
 ## Windows long installation paths in 0.5.0 preparation
 
 An actual independent 0.5.0 npm consumer exposed a canonical helper path of

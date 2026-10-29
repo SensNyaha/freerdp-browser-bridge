@@ -1,5 +1,6 @@
 #include "recovery.hpp"
 #include "ownership.hpp"
+#include "../files/recovery.hpp"
 #include <array>
 #include <cerrno>
 #include <chrono>
@@ -23,6 +24,7 @@ namespace bridge::runtime {
 namespace {
 constexpr std::string_view marker_bytes = "runtime-v1";
 enum class OwnerStatus { absent, live, unknown };
+RecoveryResult clean_managed_files(files::SafeRoot, const RuntimeIdentity &);
 bool known_marker(const std::array<char, 11> &bytes, std::size_t size) noexcept {
   return size <= marker_bytes.size() &&
          std::string_view(bytes.data(), size) == marker_bytes.substr(0, size);
@@ -61,11 +63,11 @@ bool directory_information(HANDLE handle, bool root) {
          !(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
          private_runtime_owner(handle, !root, root);
 }
-bool known_contents(HANDLE directory, bool has_marker) {
+bool known_contents(HANDLE directory, bool has_marker, bool &has_managed) {
   // Bounded handle-relative enumeration; never traverse any returned path.
   alignas(FILE_ID_BOTH_DIR_INFO) std::array<BYTE, 4096> storage{};
   std::size_t entries = 0;
-  bool marker_found = false;
+  bool marker_found = false, container_found = false, claim_found = false;
   for (int page = 0; page < 4; ++page) {
     if (!GetFileInformationByHandleEx(directory, FileIdBothDirectoryInfo, storage.data(),
                                       static_cast<DWORD>(storage.size())))
@@ -73,7 +75,7 @@ bool known_contents(HANDLE directory, bool has_marker) {
     std::size_t offset = 0;
     for (;;) {
       constexpr auto header_size = offsetof(FILE_ID_BOTH_DIR_INFO, FileName);
-      if (offset > storage.size() - header_size || ++entries > 4)
+      if (offset > storage.size() - header_size || ++entries > 7)
         return false;
       const auto *entry = reinterpret_cast<const FILE_ID_BOTH_DIR_INFO *>(storage.data() + offset);
       if (entry->FileNameLength % sizeof(wchar_t) ||
@@ -81,9 +83,10 @@ bool known_contents(HANDLE directory, bool has_marker) {
         return false;
       const std::wstring_view name(entry->FileName, entry->FileNameLength / sizeof(wchar_t));
       if (name != L"." && name != L"..") {
-        if (name != L".rdp-worker-owned" || marker_found || !has_marker)
-          return false;
-        marker_found = true;
+        if (name == L".rdp-worker-owned" && !marker_found && has_marker) marker_found = true;
+        else if (name == L"managed-files" && !container_found) container_found = has_managed = true;
+        else if (name == L".managed-files-owned" && !claim_found) claim_found = has_managed = true;
+        else return false;
       }
       if (!entry->NextEntryOffset)
         break;
@@ -149,8 +152,15 @@ RecoveryResult recover(const std::filesystem::path &root, const std::filesystem:
         used != info.nFileSizeLow || !known_marker(bytes, used))
       return RecoveryResult::retained;
   }
-  if (!known_contents(directory.value, has_marker))
+  bool has_managed = false;
+  if (!known_contents(directory.value, has_marker, has_managed))
     return RecoveryResult::retained;
+  if (has_managed) {
+    auto borrowed = files::SafeRoot::duplicate_private(reinterpret_cast<std::uintptr_t>(directory.value));
+    if (borrowed.first != files::Status::ok) return RecoveryResult::retained;
+    const auto cleaned = clean_managed_files(std::move(borrowed.second), identity);
+    if (cleaned != RecoveryResult::removed) return cleaned;
+  }
   const auto final_status = owner_status(identity);
   if (final_status != OwnerStatus::absent)
     return final_status == OwnerStatus::live ? RecoveryResult::busy : RecoveryResult::retained;
@@ -219,7 +229,7 @@ OwnerStatus owner_status(const RuntimeIdentity &identity) {
     return socket_result(error);
   }
 }
-bool known_contents(int directory, bool has_marker) {
+bool known_contents(int directory, bool has_marker, bool &has_managed) {
   const auto duplicate = ::fcntl(directory, F_DUPFD_CLOEXEC, 0);
   if (duplicate < 0)
     return false;
@@ -230,8 +240,8 @@ bool known_contents(int directory, bool has_marker) {
     return false;
   }
   bool result = false;
-  bool marker_found = false;
-  for (int count = 0; count < 5; ++count) {
+  bool marker_found = false, container_found = false, claim_found = false;
+  for (int count = 0; count < 8; ++count) {
     errno = 0;
     const auto *entry = ::readdir(stream);
     if (!entry) {
@@ -241,9 +251,10 @@ bool known_contents(int directory, bool has_marker) {
     const std::string_view name(entry->d_name);
     if (name == "." || name == "..")
       continue;
-    if (name != ".rdp-worker-owned" || marker_found || !has_marker)
-      break;
-    marker_found = true;
+    if (name == ".rdp-worker-owned" && !marker_found && has_marker) marker_found = true;
+    else if (name == "managed-files" && !container_found) container_found = has_managed = true;
+    else if (name == ".managed-files-owned" && !claim_found) claim_found = has_managed = true;
+    else break;
   }
   if (::closedir(stream) != 0)
     return false;
@@ -300,8 +311,24 @@ RecoveryResult recover(const std::filesystem::path &root, const std::filesystem:
         !known_marker(bytes, static_cast<std::size_t>(used)))
       return RecoveryResult::retained;
   }
-  if (!known_contents(directory.value, has_marker))
+  bool has_managed = false;
+  if (!known_contents(directory.value, has_marker, has_managed))
     return RecoveryResult::retained;
+  if (has_managed) {
+    auto borrowed = files::SafeRoot::duplicate_private(static_cast<std::uintptr_t>(directory.value));
+    if (borrowed.first != files::Status::ok) return RecoveryResult::retained;
+    const auto cleaned = clean_managed_files(std::move(borrowed.second), identity);
+    if (cleaned != RecoveryResult::removed) return cleaned;
+    // Removing our managed child changes the parent's link count on Unix.
+    // Refresh that one mutable field from the locked handle, preserving the
+    // original dev/inode binding used by the final name-to-handle check.
+    struct stat after{};
+    if (::fstat(directory.value, &after) != 0 || !S_ISDIR(after.st_mode) ||
+        after.st_uid != directory_info.st_uid || (after.st_mode & 0777) != 0700 ||
+        after.st_dev != directory_info.st_dev || after.st_ino != directory_info.st_ino)
+      return RecoveryResult::retained;
+    directory_info.st_nlink = after.st_nlink;
+  }
   const auto final_status = owner_status(identity);
   if (final_status != OwnerStatus::absent)
     return final_status == OwnerStatus::live ? RecoveryResult::busy : RecoveryResult::retained;
@@ -313,6 +340,19 @@ RecoveryResult recover(const std::filesystem::path &root, const std::filesystem:
   return ::unlinkat(root_handle.value, component.c_str(), AT_REMOVEDIR) == 0
              ? RecoveryResult::removed
              : RecoveryResult::retained;
+}
+#endif
+#if defined(_WIN32) || defined(__linux__)
+RecoveryResult clean_managed_files(files::SafeRoot root, const RuntimeIdentity &identity) {
+  auto plan = files::ManagedFilesRecovery::prepare(std::move(root));
+  if (plan.first != files::Status::ok)
+    return plan.first == files::Status::busy ? RecoveryResult::busy : RecoveryResult::retained;
+  const auto status = owner_status(identity);
+  if (status != OwnerStatus::absent)
+    return status == OwnerStatus::live ? RecoveryResult::busy : RecoveryResult::retained;
+  const auto applied = plan.second.apply();
+  return applied == files::Status::ok ? RecoveryResult::removed :
+      applied == files::Status::busy ? RecoveryResult::busy : RecoveryResult::retained;
 }
 #endif
 } // namespace

@@ -5,6 +5,7 @@ import {
   SessionManager,
   SessionError,
   publicSessionError,
+  resolveManagedFilesPolicy,
   type Principal,
   type SessionManagerOptions,
   type WorkerOptions,
@@ -15,6 +16,7 @@ import type { DestinationStream } from 'pino';
 import { SessionCreateSchema } from '@freerdp-bridge/config';
 import { createSessionMetrics } from './metrics.js';
 import { installSessionWebSockets } from './websockets.js';
+import { registerFileRoutes } from './files.js';
 
 export interface SessionServerOptions {
   worker: WorkerOptions;
@@ -89,6 +91,10 @@ const createResponse = Type.Object(
 );
 
 export async function createSessionServer(options: SessionServerOptions) {
+  const filePolicy =
+    options.sessions?.files === undefined
+      ? undefined
+      : resolveManagedFilesPolicy(options.sessions.files);
   const allowedOrigins = new Set(options.allowedOrigins ?? []);
   for (const origin of allowedOrigins) {
     const parsed = new URL(origin);
@@ -110,8 +116,12 @@ export async function createSessionServer(options: SessionServerOptions) {
         useDefaults: false,
       },
     },
-    connectionTimeout: 10000,
-    requestTimeout: 10000,
+    connectionTimeout: filePolicy
+      ? filePolicy.progressTimeoutMs + filePolicy.nativeTimeoutMs + 1000
+      : 10000,
+    requestTimeout: filePolicy
+      ? filePolicy.transferTimeoutMs + filePolicy.nativeTimeoutMs + 1000
+      : 10000,
     clientErrorHandler: (_error, socket) => {
       socket.end(
         'HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n',
@@ -294,6 +304,12 @@ export async function registerSessionRoutes(
           identity(request.raw),
           request.body.channel,
         ),
+    );
+    registerFileRoutes(
+      server,
+      manager,
+      identity,
+      options.sessions?.files !== undefined,
     );
     server.get(
       '/metrics',

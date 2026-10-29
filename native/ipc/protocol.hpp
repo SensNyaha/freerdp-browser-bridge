@@ -56,7 +56,9 @@ enum class Kind : std::uint16_t {
   microphone_opus = 44,
   clipboard_state = 45,
   clipboard_command = 46,
-  clipboard_result = 47
+  clipboard_result = 47,
+  file_command = 48,
+  file_result = 49
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

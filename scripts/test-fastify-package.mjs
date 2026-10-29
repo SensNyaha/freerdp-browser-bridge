@@ -12,11 +12,19 @@ import { resolve, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { productVersion } from './product-version.mjs';
+import {
+  managedFilesArguments,
+  prepareManagedFilesConsumer,
+  consumerNpmCli,
+} from './managed-files-consumer.mjs';
 import { checkNpmArchiveReadme } from './npm-readme.mjs';
 import { tarManifest } from './github-delivery/manifest.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
-const args = process.argv.slice(2);
+const { args, managedFiles } = managedFilesArguments(
+  process.argv.slice(2),
+  productVersion,
+);
 const registryOnly = args[0] === '--registry-only';
 const npmConsumer = registryOnly || args[0] === '--npm';
 if (npmConsumer) args.shift();
@@ -203,15 +211,13 @@ await writeFile(
     include: ['consumer.ts'],
   }),
 );
+if (managedFiles) await prepareManagedFilesConsumer(fixture, 'fastify');
 if (npmConsumer) {
   const userConfig = join(root, 'empty-npmrc'),
     globalConfig = join(root, 'empty-global-npmrc');
   await writeFile(userConfig, '');
   await writeFile(globalConfig, '');
-  const cli =
-    process.platform === 'win32'
-      ? resolve('.tools/node-v24.21.0-win-x64/node_modules/npm/bin/npm-cli.js')
-      : resolve(process.execPath, '../../lib/node_modules/npm/bin/npm-cli.js');
+  const cli = consumerNpmCli();
   run(
     process.execPath,
     [
@@ -256,6 +262,12 @@ await copyFile(
   join(fixture, 'runtime-recovery.mjs'),
 );
 run(process.execPath, ['runtime-recovery.mjs', 'fastify'], fixture);
+if (managedFiles)
+  run(
+    process.execPath,
+    ['managed-files.mjs', 'fastify', productVersion],
+    fixture,
+  );
 const report = {
   packageConsumer: true,
   version: productVersion,
@@ -264,6 +276,8 @@ const report = {
   developmentArtifacts: !registryOnly,
   checkoutImports: false,
   strictTypeScript: true,
+  managedFiles,
+  managedFilesRdpState: managedFiles ? 'synthetic' : null,
   nativeRuntimePackage: Boolean(runtimeArchive) || registryOnly,
   exactPublicationArchives: Boolean(publicationArchives),
   packageManager: npmConsumer ? 'npm' : 'pnpm',

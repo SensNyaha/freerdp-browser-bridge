@@ -1,6 +1,7 @@
 #include "connection_config.hpp"
 #include "../compat/span.hpp"
 #include <algorithm>
+#include "../files/drive_descriptor.hpp"
 
 namespace bridge::ipc {
 namespace {
@@ -44,7 +45,7 @@ bool utf8(::bridge::compat::span<const std::uint8_t> bytes) {
 }
 } // namespace
 ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint8_t> bytes) {
-  if (bytes.size() > 2048)
+  if (bytes.size() > maximum_configure_bytes)
     throw ProtocolError();
   std::size_t offset = 0;
   const auto number = [&](std::size_t count) {
@@ -65,7 +66,7 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
     return std::string(slice.begin(), slice.end());
   };
   const auto schema = number(2);
-  if (schema < 1 || schema > 14)
+  if (schema < 1 || schema > 15 || (schema < 15 && bytes.size() > 2048))
     throw ProtocolError();
   ConnectionConfig config{};
   config.host = text(253);
@@ -148,6 +149,24 @@ ConnectionConfig decode_connection_config(::bridge::compat::span<const std::uint
     config.force_ip_version = static_cast<std::uint8_t>(number(1));
     if (!valid_ip_settings(config.ip_mask, config.prefer_ipv6, config.force_ip_version))
       throw ProtocolError();
+  }
+  if (schema == 15) {
+    const auto count = number(2);
+    if (!count || count > files::maximum_drives) throw ProtocolError();
+    config.drives.reserve(static_cast<std::size_t>(count));
+    std::vector<std::string> keys;
+    keys.reserve(static_cast<std::size_t>(count));
+    for (std::uint64_t i = 0; i < count; ++i) {
+      ManagedDrive drive;
+      drive.name = text(files::maximum_drive_name);
+      drive.subdir = text(files::maximum_drive_subdir);
+      const auto policy = number(1), padding = number(1);
+      if (policy > 1 || padding || !files::valid_drive_name(drive.name) || !files::valid_drive_subdir(drive.subdir)) throw ProtocolError();
+      auto key = files::drive_dos_key(drive.name);
+      if (std::find(keys.begin(), keys.end(), key) != keys.end()) throw ProtocolError();
+      keys.push_back(std::move(key));drive.read_only = policy != 0;
+      config.drives.push_back(std::move(drive));
+    }
   }
   if (offset != bytes.size() || config.host.empty() ||
       std::any_of(config.host.begin(), config.host.end(),

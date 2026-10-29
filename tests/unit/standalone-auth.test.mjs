@@ -41,6 +41,34 @@ const base = () => ({
 const request = (token) => ({
   headers: { authorization: 'Bearer ' + token },
 });
+test('standalone file policy is opt-in, bounded and copied independently of caller input', () => {
+  assert.equal(validateStandaloneConfig(base()).files, undefined);
+  const input = {
+    ...base(),
+    files: { maxTotalBytes: 100, maxFileBytes: 50, maxEntries: 4 },
+  };
+  const checked = validateStandaloneConfig(input);
+  input.files.maxFileBytes = 99;
+  assert.equal(checked.files.maxFileBytes, 50);
+  assert.equal(
+    validateStandaloneConfig({ ...base(), files: { xrdpLegacyDelete: true } })
+      .files.xrdpLegacyDelete,
+    true,
+  );
+  for (const files of [
+    { path: '/tmp' },
+    { maxEntries: 65537 },
+    { maxTotalBytes: 10, maxFileBytes: 20 },
+    { progressTimeoutMs: 10 },
+    { nativeTimeoutMs: 30001 },
+    { maxFileBytes: -1 },
+    { xrdpLegacyDelete: 'true' },
+  ])
+    assert.throws(
+      () => validateStandaloneConfig({ ...base(), files }),
+      /STANDALONE_CONFIG_INVALID/,
+    );
+});
 async function token(claims = {}, header = {}, signingKey = privateKey) {
   const now = Math.floor(Date.now() / 1000);
   return new SignJWT({
