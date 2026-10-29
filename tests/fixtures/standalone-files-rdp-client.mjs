@@ -572,18 +572,27 @@ try {
       packageSha256: input.packageSha256,
     });
   }
-  if (diskFull) {
-    assert.equal((await next()).command, 'verify-drive-full');
+  if (diskFull || installedFull) {
+    const confirmation = await next();
+    assert.equal(confirmation.command, 'verify-drive-full');
     phase = 'drive-physical-disk-full';
-    const full = await statfs(runtime);
-    const freeBytes = full.bavail * full.bsize;
-    assert.ok(freeBytes <= fullMount.blockBytes);
+    let freeBytes;
+    const mountedBytes = installedFull ? 1048576 : fullMount.mountedBytes;
+    if (installedFull) {
+      // The strict-SSH coordinator reads statvfs on the actual installed host;
+      // the browser-side HTTP client cannot inspect that filesystem locally.
+      assert.equal(confirmation.mountedBytes, 1048576);
+      assert.equal(confirmation.freeBytes, 0);
+      freeBytes = confirmation.freeBytes;
+    } else {
+      const full = await statfs(runtime);
+      freeBytes = full.bavail * full.bsize;
+      assert.ok(freeBytes <= fullMount.blockBytes);
+    }
     const partial = (await page(a.fileId)).entries.find(
       (entry) => entry.name === 'owned-resource-full.bin',
     );
-    assert.ok(
-      partial && partial.size > 0 && partial.size <= fullMount.mountedBytes,
-    );
+    assert.ok(partial && partial.size > 0 && partial.size <= mountedBytes);
     const data = await req('GET', files + '/' + partial.fileId);
     assert.equal(data.status, 200);
     const bytes = Buffer.from(await data.arrayBuffer());
@@ -613,17 +622,30 @@ try {
       httpStatus: 507,
       actualRdp: true,
       syntheticRdp: false,
+      ...(installedFull
+        ? { actualInstalledService: true, measurement: 'strict-ssh-statvfs' }
+        : {}),
     });
-    assert.equal((await next()).command, 'verify-drive-clean');
+    const cleanup = await next();
+    assert.equal(cleanup.command, 'verify-drive-clean');
     phase = 'drive-full-refund';
     assert.equal((await page(a.fileId)).entries.length, 1);
     const stale = await req('GET', files + '/' + partial.fileId);
     assert.equal(stale.status, 404);
     assert.equal((await stale.json()).code, 'FILE_NOT_FOUND');
-    const recovered = await statfs(runtime);
-    assert.ok(
-      recovered.bavail * recovered.bsize >= fullMount.mountedBytes - 131072,
-    );
+    if (installedFull) {
+      assert.equal(cleanup.mountedBytes, 1048576);
+      assert.ok(
+        Number.isInteger(cleanup.freeBytes) &&
+          cleanup.freeBytes >= 1048576 - 131072 &&
+          cleanup.freeBytes <= 1048576,
+      );
+    } else {
+      const recovered = await statfs(runtime);
+      assert.ok(
+        recovered.bavail * recovered.bsize >= fullMount.mountedBytes - 131072,
+      );
+    }
     send({ event: 'drive-disk-full-cleaned', staleLocatorRefused: true });
   }
   assert.equal((await next()).command, 'verify-remote');
@@ -714,7 +736,8 @@ try {
     installedServiceRetired: installed,
     runtimeEmpty: true,
     maxFileQuotaRefused: true,
-    connectedHttpDiskFull: diskFull,
+    connectedHttpDiskFull: diskFull || installedFull,
+    connectedDriveDiskFull: diskFull || installedFull,
     portableSha256: receipt?.sha256,
     packageSha256: installed ? input.packageSha256 : undefined,
     workerSha256,
