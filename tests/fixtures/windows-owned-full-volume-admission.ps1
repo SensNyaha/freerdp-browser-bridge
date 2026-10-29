@@ -10,9 +10,11 @@ function Sha256([string]$Path) {
 }
 $checker = Join-Path $PSScriptRoot 'windows-owned-full-volume.ps1'
 $source = (Resolve-Path -LiteralPath $ImageDirectory).Path
+$good = (& $checker -ImageDirectory $source -InspectOnly -InspectionDiagnostics) | ConvertFrom-Json
+$manifestFile = Get-Item -LiteralPath (Join-Path $source 'volume.json')
+Require ($manifestFile.Length -gt 0 -and $manifestFile.Length -le 8192)
 $json = [IO.File]::ReadAllText((Join-Path $source 'volume.json'))
 $meta = $json | ConvertFrom-Json
-$good = (& $checker -ImageDirectory $source -InspectOnly -InspectionDiagnostics) | ConvertFrom-Json
 Require ($good.inspected -and -not $good.mounted -and $good.sha256 -ceq $meta.sha256)
 $build = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../build'))
 $root = Join-Path $build ('owned-vhd-guard-'+[Guid]::NewGuid().ToString('N'))

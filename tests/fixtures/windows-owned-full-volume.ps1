@@ -15,7 +15,11 @@ Inspection-Phase 'STARTED'
 # This coordinator mounts only a new private copy of the offline 16 MiB fixture.
 # It never initializes or formats a Windows disk.
 function Require([bool]$Condition) {
-    if (-not $Condition) { throw 'OWNED_VHD_REFUSED' }
+    if (-not $Condition) {
+        $caller = @(Get-PSCallStack)[1]
+        [Console]::Error.WriteLine('OWNED_VHD_REFUSED_LINE_'+$caller.ScriptLineNumber)
+        throw 'OWNED_VHD_REFUSED'
+    }
 }
 function Read-At($Stream, [long]$Offset, [int]$Count) {
     [void]$Stream.Seek($Offset, [IO.SeekOrigin]::Begin)
@@ -145,14 +149,23 @@ try {
     $disks = @($image | Get-Disk)
     Require ($disks.Count -eq 1)
     $disk = $disks[0]
+    [Console]::Error.WriteLine((@{ phase='owned-disk'; size=$disk.Size; style=[string]$disk.PartitionStyle;
+        signature=$disk.Signature; expectedSignature=$signature; boot=$disk.IsBoot;
+        system=$disk.IsSystem; readOnly=$disk.IsReadOnly; offline=$disk.IsOffline;
+        existed=($disk.ObjectId -in $before) } | ConvertTo-Json -Compress))
     Assert-Disk $disk $before $signature
     $partitions = @($disk | Get-Partition)
     Require ($partitions.Count -eq 1)
     $part = $partitions[0]
+    [Console]::Error.WriteLine((@{ phase='owned-partition'; offset=$part.Offset; size=$part.Size;
+        letter=[string]$part.DriveLetter } | ConvertTo-Json -Compress))
     Require ($part.Offset -eq 1048576 -and $part.Size -eq 15728640 -and -not $part.DriveLetter)
     $part | Add-PartitionAccessPath -AssignDriveLetter
     $part = Get-Partition -DiskNumber $disk.Number -PartitionNumber $part.PartitionNumber
     $volume = $part | Get-Volume
+    [Console]::Error.WriteLine((@{ phase='owned-volume'; fs=$volume.FileSystem;
+        label=$volume.FileSystemLabel; size=$volume.Size; free=$volume.SizeRemaining;
+        letter=[string]$volume.DriveLetter } | ConvertTo-Json -Compress))
     Require ($volume.FileSystem -eq 'NTFS' -and $volume.FileSystemLabel -eq 'BRIDGEFULL')
     Require ($volume.Size -le 16777216 -and $volume.SizeRemaining -ge 8388608)
     Require ($volume.DriveLetter -and $volume.DriveLetter -notin $beforeLetters)
