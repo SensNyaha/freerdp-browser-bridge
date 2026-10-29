@@ -2479,9 +2479,15 @@ profile's target, microphone, recovery, resource or platform acceptance.
   [Two-server isolation scope](docs/FILES.md#two-server-session-isolation).
   [Interoperability checkpoint](docs/FILES.md#actual-xrdp-interoperability-checkpoint),
   [explicit compatibility policy](docs/FILES.md#xrdp-legacy-delete-policy).
-- [ ] `thinclientDrives` alias mapped to sandbox drive descriptors.
+- [x] `thinclientDrives` alias mapped to sandbox drive descriptors.
   Runtime expansion and shared validation are implemented and pass synthetic
-  IPC / actual-worker strict-TLS tests. Final real-drive acceptance remains open.
+  IPC / actual-worker strict-TLS tests. Final 0.6.0 Windows application and
+  public npm/standalone profiles use the alias for the actual read-only share;
+  all ten exact packages, installers and both target-server profiles pass.
+  The connected public portable resource tests repeat the alias together with
+  an explicit RW drive, real CRUD and three read-only refusals.
+  [Versioned evidence](docs/RELEASE_0_6_0.md#public-delivery),
+  [resource evidence](docs/FILES.md#connected-public-standalone-disk-full-acceptance).
 - [ ] Read-only drive enforcement.
   Share-policy and per-entry attribute enforcement are implemented. Maximum
   allowed access now selects a reduced immutable grant for read-only entries;
@@ -2503,7 +2509,14 @@ profile's target, microphone, recovery, resource or platform acceptance.
   twelve real ENOSPC failures return 507, join abort, refund space/quota and
   allow fresh upload/download. Unsafe roots refuse before allocation; ordinary
   test runs skip without the explicit small tmpfs. Windows, connected-RDP and
-  packaged resource acceptance remain open.
+  packaged resource acceptance were separate gates at that checkpoint.
+  Actual **public 0.6.0 Linux portable** now passes twelve connected HTTP 507
+  refunds and a real redirected-drive write that exhausts a private 1 MiB
+  tmpfs against both Astra and RED OS. Native partial-content verification,
+  cross-HTTP 507, delete/stale-ID/space recovery, subsequent real CRUD/read-only
+  and joined cleanup pass. Windows physical disk-full and broader installed
+  resource acceptance remain open; this checkbox stays open.
+  [Connected public scope](docs/FILES.md#connected-public-standalone-disk-full-acceptance).
   [Bounded test and evidence](docs/FILES.md#bounded-http-disk-full-acceptance).
 
 **Gate:** Unicode clipboard + remote file CRUD through redirected drive; traversal/symlink tests pass.

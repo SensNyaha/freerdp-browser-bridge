@@ -2,7 +2,15 @@
 // Runs the real relocated launcher/private Node; never substitutes a backend.
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, writeFile, readdir, realpath, rm } from 'node:fs/promises';
+import {
+  mkdtemp,
+  writeFile,
+  readdir,
+  realpath,
+  rm,
+  rmdir,
+  statfs,
+} from 'node:fs/promises';
 import { resolve, join, dirname, basename, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
@@ -15,8 +23,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 assert.equal(process.argv.length, 3);
 const installed = process.argv[2] === '--owned-managed-files-installed-rdp';
+const diskFull = process.argv[2] === '--owned-managed-files-full-portable-rdp';
 assert.ok(
-  installed || process.argv[2] === '--owned-managed-files-portable-rdp',
+  installed ||
+    diskFull ||
+    process.argv[2] === '--owned-managed-files-portable-rdp',
 );
 const { standalonePayloadInventory, readStandalonePayloadFile } = await import(
   pathToFileURL(resolve('scripts/standalone/payload.mjs')).href
@@ -72,6 +83,8 @@ const pattern = () =>
   Buffer.from(Array.from({ length: 131111 }, (_, i) => (i * 31 + 17) & 255));
 let scratch,
   runtime,
+  fullRoot,
+  fullMount,
   child,
   terminal,
   ws,
@@ -122,6 +135,17 @@ try {
       input.port <= 65535,
   );
   sensitive.push(input.credentials.password);
+  if (diskFull) {
+    assert.equal(windows, false);
+    fullRoot = input.fullRoot;
+    const { disposableLinuxFullRoot } = await import(
+      './disposable-full-root.mjs'
+    );
+    fullMount = await disposableLinuxFullRoot(fullRoot);
+    // Twelve partial writes must exceed the configured 4 MiB quota. This named
+    // profile therefore requires exactly 1 MiB, not an arbitrary small mount.
+    assert.equal(fullMount.mountedBytes, 1048576);
+  } else assert.equal(input.fullRoot, undefined);
   let root, receipt, workerSha256;
   if (!installed) {
     const build = await realpath(resolve('build'));
@@ -155,7 +179,9 @@ try {
     scratch = await mkdtemp(
       join(await realpath(tmpdir()), 'bridge-portable-files-'),
     );
-    runtime = join(scratch, 'runtime');
+    runtime = diskFull
+      ? await mkdtemp(join(fullRoot, 'bridge-portable-full-'))
+      : join(scratch, 'runtime');
     phase = 'extract';
     await run(
       windows ? join(process.env.SystemRoot, 'System32/tar.exe') : 'tar',
@@ -452,6 +478,49 @@ try {
   const unauth = await fetch(origin + files);
   assert.equal(unauth.status, 401);
   await unauth.arrayBuffer();
+  if (diskFull) {
+    phase = 'connected-http-disk-full';
+    const before = (await page(a.fileId)).entries;
+    const names = await readdir(runtime);
+    assert.equal(names.length, 1);
+    assert.match(names[0], /^worker-[0-9a-f]{32}-1-[0-9a-f]{32}$/);
+    const staging = join(runtime, names[0], 'managed-files', '.uploads');
+    const initial = await statfs(runtime);
+    const initialFree = initial.bavail * initial.bsize;
+    assert.ok(initialFree >= fullMount.mountedBytes - 131072);
+    for (let attempt = 0; attempt < 12; ++attempt) {
+      const full = await req(
+        'POST',
+        files +
+          '?' +
+          new URLSearchParams({ parentId: a.fileId, name: 'owned-full.bin' }),
+        Buffer.alloc(2097152, 0x5a),
+        { 'content-type': 'application/octet-stream' },
+      );
+      assert.equal(full.status, 507);
+      assert.equal((await full.json()).code, 'FILE_DISK_FULL');
+      assert.deepEqual((await page(a.fileId)).entries, before);
+      assert.deepEqual(await readdir(staging), []);
+      const after = await statfs(runtime);
+      assert.ok(
+        after.bavail * after.bsize >= initialFree - 2 * fullMount.blockBytes,
+      );
+      assert.equal((await json('GET', path)).state, 'connected');
+    }
+    send({
+      event: 'connected-http-disk-full-verified',
+      attempts: 12,
+      mountedBytes: fullMount.mountedBytes,
+      maxTotalBytes: config.files.maxTotalBytes,
+      maxFileBytes: config.files.maxFileBytes,
+      httpStatus: 507,
+      actualRdp: true,
+      actualPortable: true,
+      syntheticRdp: false,
+      workerSha256,
+      portableSha256: receipt.sha256,
+    });
+  }
   send({
     event: 'connected',
     rw,
@@ -464,6 +533,60 @@ try {
     portableSha256: receipt?.sha256,
     packageSha256: installed ? input.packageSha256 : undefined,
   });
+  if (diskFull) {
+    assert.equal((await next()).command, 'verify-drive-full');
+    phase = 'drive-physical-disk-full';
+    const full = await statfs(runtime);
+    const freeBytes = full.bavail * full.bsize;
+    assert.ok(freeBytes <= fullMount.blockBytes);
+    const partial = (await page(a.fileId)).entries.find(
+      (entry) => entry.name === 'owned-resource-full.bin',
+    );
+    assert.ok(
+      partial && partial.size > 0 && partial.size <= fullMount.mountedBytes,
+    );
+    const data = await req('GET', files + '/' + partial.fileId);
+    assert.equal(data.status, 200);
+    const bytes = Buffer.from(await data.arrayBuffer());
+    assert.equal(bytes.length, partial.size);
+    assert.ok(
+      bytes.every((value, index) => value === ((index * 17 + 83) & 255)),
+    );
+    bytes.fill(0);
+    const blocked = await req(
+      'POST',
+      files +
+        '?' +
+        new URLSearchParams({
+          parentId: a.fileId,
+          name: 'while-drive-full.bin',
+        }),
+      Buffer.alloc(65536, 17),
+      { 'content-type': 'application/octet-stream' },
+    );
+    assert.equal(blocked.status, 507);
+    assert.equal((await blocked.json()).code, 'FILE_DISK_FULL');
+    assert.equal((await json('GET', path)).state, 'connected');
+    send({
+      event: 'drive-disk-full-verified',
+      freeBytes,
+      partialBytes: partial.size,
+      httpStatus: 507,
+      actualRdp: true,
+      syntheticRdp: false,
+    });
+    assert.equal((await next()).command, 'verify-drive-clean');
+    phase = 'drive-full-refund';
+    assert.equal((await page(a.fileId)).entries.length, 1);
+    const stale = await req('GET', files + '/' + partial.fileId);
+    assert.equal(stale.status, 404);
+    assert.equal((await stale.json()).code, 'FILE_NOT_FOUND');
+    const recovered = await statfs(runtime);
+    assert.ok(
+      recovered.bavail * recovered.bsize >= fullMount.mountedBytes - 131072,
+    );
+    send({ event: 'drive-disk-full-cleaned', staleLocatorRefused: true });
+  }
   assert.equal((await next()).command, 'verify-remote');
   phase = 'http-readback';
   const folder = (await page(a.fileId)).entries.find(
@@ -552,6 +675,7 @@ try {
     installedServiceRetired: installed,
     runtimeEmpty: true,
     maxFileQuotaRefused: true,
+    connectedHttpDiskFull: diskFull,
     portableSha256: receipt?.sha256,
     packageSha256: installed ? input.packageSha256 : undefined,
     workerSha256,
@@ -607,6 +731,16 @@ try {
       }).catch(() => {});
     else child.kill('SIGKILL');
     await terminal.catch(() => {});
+  }
+  if (diskFull && runtime) {
+    assert.equal(dirname(runtime), fullRoot);
+    assert.match(basename(runtime), /^bridge-portable-full-[A-Za-z0-9]+$/);
+    try {
+      // Never recursively delete an unjoined session tree after a failure.
+      await rmdir(runtime);
+    } catch {
+      failed = true;
+    }
   }
   if (scratch) {
     assert.equal(dirname(scratch), await realpath(tmpdir()));

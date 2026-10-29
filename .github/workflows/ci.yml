@@ -60,7 +60,7 @@ jobs:
           trap 'sudo umount -- "$full_root"; rmdir -- "$full_root"' EXIT
           BRIDGE_FILE_TEST_FULL_ROOT="$full_root" \
             BRIDGE_FILE_TEST_BINARY_DIR="$GITHUB_WORKSPACE/build/foundation" \
-            node --test --test-concurrency=1 tests/integration/files-disk-full.test.mjs
+            node --test --test-concurrency=1 tests/unit/disposable-full-root.test.mjs tests/integration/files-disk-full.test.mjs
   sanitizers:
     runs-on: ubuntu-24.04
     steps:

@@ -455,6 +455,60 @@ client archive, binary and log bindings use
 Windows disk-full, actual connected-RDP disk-full and packaged acceptance remain
 separate gates.
 
+### Connected public standalone disk-full acceptance
+
+The later resource acceptance uses the **published 0.6.0 Linux portable**,
+its ordinary launcher/private Node and native worker
+`c282e1e3ca304fee0c95dd38754231a1c7e954acbe7736c0ab5b3342ba853079`.
+The archive SHA256 is
+`442ad3fb30c09496d889b3661c1fb6b5dd1d5db31ecdb29f76bf94abd5453908`.
+The bridge runs as UID 1000 without capabilities in an isolated Linux container;
+Astra 1.7.5 and RED OS 7.3 are the two actual RDP servers, not claims of
+installed-service disk exhaustion on those platforms.
+
+`tests/fixtures/standalone-files-rdp-client.mjs` adds the explicit mode
+`--owned-managed-files-full-portable-rdp`. Its bounded private-stdin input
+additionally supplies `fullRoot`. The coordinator must provision a fresh,
+private **1 MiB tmpfs** and match the public archive/build/inventory receipts.
+The read-only admission helper refuses ordinary filesystems, symlinks,
+noncanonical paths, shared subdirectories, foreign owners, unsafe permissions,
+nonempty or larger mounts before creating a runtime. It never creates mounts
+or repairs permissions. The portable extraction stays outside that filesystem.
+
+With the pinned actual RDP connection established, twelve admitted 2 MiB HTTP
+uploads fail with **507 `FILE_DISK_FULL`** under a 4 MiB total / 2 MiB file quota.
+Each abort leaves staging empty, existing seed entries unchanged, physical space
+restored and the session connected. This proves physical failure rather than
+the separate 413 quota-admission refusal.
+
+The coordinator then runs `tests/fixtures/xrdp-managed-files-full.py` on the
+owned target through private SSH stdin. The helper accepts only the generated
+seven-character RW/RO aliases, verifies both run-specific seed hashes and writes
+at most 2 MiB to one exclusively created test file. It cannot select a host path.
+The `fill` phase must fail. XRDP reports EIO in both named runs; the client
+independently measures **zero physical free bytes**, reads and verifies all
+**1032192 native partial bytes**, and proves a concurrent HTTP upload gets 507.
+XRDP caches a shorter 983040-byte size after the failed write; that is recorded
+separately from native/API metadata and is not advertised as matching readback.
+
+After `verify-drive-full`, the coordinator sends the helper's `clean` phase,
+then `verify-drive-clean`. The old locator is refused and physical space returns.
+The normal remote Unicode CRUD/read-only scenario and 131111-byte chunked
+HTTP upload still pass, followed by joined launcher/runtime/share cleanup.
+The probe's input caps, extra-root/path injection and mount-boundary refusal
+have automated controls: Windows 3 pass / 3 platform skips; the explicit Linux
+tmpfs run passes all 6.
+
+Full checks on these test sources pass Windows **1309 / 76 skips / 1385 total**
+and Linux **1282 / 126 skips / 1408 total**. Existing linked native CTest passes
+Windows 42/42 and GCC 8.3 Linux 43/43. Native sources and public archives are
+unchanged. Receipts use `files-resource-public-{astra,redos}-drive-final-acceptance.json`
+and `files-resource-*-pnpm-check*.log` under local `build/current-validation`.
+
+This closes the named Linux portable connected-HTTP/RDPDR physical-full case.
+Windows physical disk-full and broader installed/resource acceptance remain
+open. It does not accept a Windows VHD test or the complete Stage 7 matrix.
+
 ## Native drive backend in development
 
 `ScopedSandbox` and `DriveSession` now implement the native storage backend for
