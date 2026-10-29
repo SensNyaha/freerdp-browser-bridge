@@ -11,6 +11,30 @@ The wider resource/quota/soak and arbitrary server/device matrices remain
 open. Managed storage and HTTP transfer do not implement OS file clipboard.
 The original source checkpoints below retain their historical test scope.
 
+## Accepted managed-file capabilities
+
+The original individual Stage 7 requirements and SPECIFICATION §2.8 now have
+accepted implementations in public **0.6.0** on the named supported profiles.
+The original preparation checkpoints below remain historical evidence.
+
+| Capability | Evidence supporting the accepted feature |
+| --- | --- |
+| Per-session sandbox and safe resolver | Retained native roots, opaque IDs, traversal/namespace/link/hardlink/special-object refusal and read-only mutation guards; Windows junction and Linux symlink/FIFO controls; actual owner/cleanup profiles. |
+| Streaming HTTP upload/download | Eight fresh registry-only projects across all four adapters and both OSes; 15 actual native IO profiles verify 131111-byte producer-before-EOF streaming and joined PID cleanup. RDP state is synthetic in these package checks. |
+| Managed RDPDR drives | Three actual Windows application profiles (Windows worker, Linux RWS1 and Linux framed) verify Unicode CRUD, 65599-byte readback and 131111-byte transfer; exact public installed DEB/RPM profiles pass Astra/RED OS separately. |
+| Read-only share enforcement | Native reduced/immutable access grants and three actual remote mutation refusals in every named Windows and installed Linux profile, with the configured alias-backed read-only share. |
+
+[Public release and exact artifacts](RELEASE_0_6_0.md#public-delivery) bind the
+accepted native bytes and eight external consumers. The audit rereads the
+per-profile events, original log hashes, native tests and unchanged native /
+package / application code since the accepted release. Its local binding is
+`build/current-validation/stage7-capability-acceptance-audit.json`.
+
+Quota/disk-full Windows qualification, broader resource/soak/device/server
+matrices and the complete Stage 7/V1 acceptance remain open below. The explicit
+file-clipboard deferral is unchanged; HTTP/RDPDR file transfer supplies a
+separate capability.
+
 ## File clipboard is deferred
 
 The Node HTTP API explicitly returns **`clipboardFiles: false`** in

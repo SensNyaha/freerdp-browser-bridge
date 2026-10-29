@@ -2,6 +2,13 @@
 
 ## Status
 
+**0.6.0 is published and verified:** all ten npm packages, five GitHub Releases
+and the final standalone distributions pass public delivery acceptance.
+[Public artifacts, exact identities and installed profiles](#public-delivery)
+are authoritative for the current release. Broader Stage 7/V1 gates remain open.
+
+### Historical prepublication checkpoint
+
 **Prepublication acceptance has passed. Public npm and stable standalone delivery
 are pending.** Public stable remains 0.5.0 until final publication is verified.
 This is a capability release for managed files and redirected sandbox drives;

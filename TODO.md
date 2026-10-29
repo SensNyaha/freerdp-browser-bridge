@@ -2246,6 +2246,12 @@ profile's target, microphone, recovery, resource or platform acceptance.
 
 ## Stage 7 — clipboard and managed drives
 
+Current individual capability statuses include the verified public 0.6.0
+release and later resource checks. Original preparation checkpoints below
+retain their historical scope; their then-pending publication checks are
+superseded by the linked public acceptance. Broader resource/platform gates
+remain explicit under quota/disk-full and the final V1 qualification.
+
 - [x] DONE for the named 0.6.0 managed-file release slice — opt-in HTTP
   storage and redirected sandbox drives pass the dedicated Windows application,
   Linux RWS1/framed and Astra/RED OS profiles. Ten exact npm packages, five
@@ -2394,7 +2400,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Published 0.4.0 has no image support. Full Stage 7, total-resource
   and arbitrary color/browser/server matrices remain separate.
   [Source acceptance](docs/CLIPBOARD_BROWSER.md#image-source-feature-acceptance).
-- [ ] Session sandbox and safe path resolver.
+- [x] Session sandbox and safe path resolver.
+  Accepted for the supported 0.6.0 paths: retained-root traversal/link/special
+  object controls, public package native IO, actual Windows application and
+  installed Astra/RED OS ownership/cleanup profiles pass.
+  [Current capability acceptance](docs/FILES.md#accepted-managed-file-capabilities).
   Internal native owner and bounded worker file IPC now pass Windows/Linux
   transport and Astra/RED OS component checks. Authenticated opaque IDs and
   scoped native drives are implemented. Native cleanup of declared managed
@@ -2422,7 +2432,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   accepted by those passes.
   [Dead-owner cleanup scope](docs/RUNTIME_RECOVERY.md#claimed-managed-file-trees-unreleased).
   [Current implementation and evidence](docs/DEVELOPMENT.md#current-functional-work).
-- [ ] Streaming file upload/download REST API.
+- [x] Streaming file upload/download REST API.
+  Accepted in public 0.6.0: eight independent registry projects pass 15 native
+  profiles with 131111-byte producer-before-EOF streaming and joined cleanup;
+  actual installed HTTP/RDPDR profiles pass separately.
+  [Current capability acceptance](docs/FILES.md#accepted-managed-file-capabilities).
   Unreleased opt-in HTTP routes and session-scoped opaque IDs are implemented;
   actual HTTP/native worker tests use synthetic connected RDP state. Separate
   Windows/Linux workers now pass actual HTTP/NativeSessionWorker/Astra RDPDR
@@ -2452,7 +2466,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   Windows-server/disk-full and final published/installer acceptance remain open. Live-Node file
   fault retirement/capacity now passes actual-worker tests with synthetic RDP.
   [API and acceptance boundaries](docs/FILES.md).
-- [ ] RDPDR managed drive redirection.
+- [x] RDPDR managed drive redirection.
+  Accepted in public 0.6.0: three dedicated Windows application profiles and
+  exact installed Astra/RED OS packages pass Unicode CRUD, readback and cleanup.
+  XRDP legacy deletion remains an explicit trusted-host compatibility policy.
+  [Current capability acceptance](docs/FILES.md#accepted-managed-file-capabilities).
   Native scoped shares and a session-wide bounded drive-handle backend are
   implemented, including read-only, sharing modes, deferred deletion and the
   HTTP quota/download-pin boundary. A bounded wire codec and public FreeRDP
@@ -2488,7 +2506,11 @@ profile's target, microphone, recovery, resource or platform acceptance.
   an explicit RW drive, real CRUD and three read-only refusals.
   [Versioned evidence](docs/RELEASE_0_6_0.md#public-delivery),
   [resource evidence](docs/FILES.md#connected-public-standalone-disk-full-acceptance).
-- [ ] Read-only drive enforcement.
+- [x] Read-only drive enforcement.
+  Accepted in public 0.6.0: native immutable-rights guards and three actual
+  remote mutation refusals pass on all named Windows and installed Linux
+  profiles, including the alias-backed read-only share.
+  [Current capability acceptance](docs/FILES.md#accepted-managed-file-capabilities).
   Share-policy and per-entry attribute enforcement are implemented. Maximum
   allowed access now selects a reduced immutable grant for read-only entries;
   explicit forbidden rights remain refused. Wire and public SDK regressions
