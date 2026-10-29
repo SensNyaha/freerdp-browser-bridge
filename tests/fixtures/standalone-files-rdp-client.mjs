@@ -22,7 +22,10 @@ import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 
 assert.equal(process.argv.length, 3);
-const installed = process.argv[2] === '--owned-managed-files-installed-rdp';
+const installedFull =
+  process.argv[2] === '--owned-managed-files-full-installed-rdp';
+const installed =
+  installedFull || process.argv[2] === '--owned-managed-files-installed-rdp';
 const diskFull = process.argv[2] === '--owned-managed-files-full-portable-rdp';
 assert.ok(
   installed ||
@@ -533,6 +536,42 @@ try {
     portableSha256: receipt?.sha256,
     packageSha256: installed ? input.packageSha256 : undefined,
   });
+  if (installedFull) {
+    assert.equal((await next()).command, 'verify-installed-http-full');
+    phase = 'installed-connected-http-disk-full';
+    const before = (await page(a.fileId)).entries;
+    const body = Buffer.alloc(1048576, 0x5a);
+    for (let attempt = 0; attempt < 12; ++attempt) {
+      const full = await req(
+        'POST',
+        files +
+          '?' +
+          new URLSearchParams({
+            parentId: a.fileId,
+            name: 'owned-full.bin',
+          }),
+        body,
+        { 'content-type': 'application/octet-stream' },
+      );
+      assert.equal(full.status, 507);
+      assert.equal((await full.json()).code, 'FILE_DISK_FULL');
+      assert.deepEqual((await page(a.fileId)).entries, before);
+      assert.equal((await json('GET', path)).state, 'connected');
+    }
+    body.fill(0);
+    send({
+      event: 'installed-connected-http-disk-full-verified',
+      attempts: 12,
+      maxTotalBytes: config.files.maxTotalBytes,
+      maxFileBytes: config.files.maxFileBytes,
+      httpStatus: 507,
+      actualRdp: true,
+      syntheticRdp: false,
+      actualInstalledService: true,
+      workerSha256,
+      packageSha256: input.packageSha256,
+    });
+  }
   if (diskFull) {
     assert.equal((await next()).command, 'verify-drive-full');
     phase = 'drive-physical-disk-full';

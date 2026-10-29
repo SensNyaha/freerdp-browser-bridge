@@ -68,8 +68,34 @@ def validate_managed_files(settings, enabled):
         assert settings['files'][name] == value
 
 
+def validate_full_volume(enabled, managed_files):
+    assert type(enabled) is bool and type(managed_files) is bool
+    assert not enabled or managed_files
+
+
+def validate_full_mount(records, source, uid, gid, info):
+    """Admit only the new fixed test mount, never a parent/root filesystem."""
+    assert re.fullmatch(r'bridge-owned-full-[0-9a-f]{12}', source)
+    matches = []
+    for line in records.splitlines():
+        fields = line.split()
+        if len(fields) >= 10 and fields[4] == '/run/freerdp-bridge':
+            matches.append(fields)
+    assert len(matches) == 1
+    fields = matches[0]
+    at = fields.index('-')
+    assert fields[3] == '/' and fields[at + 1:at + 3] == ['tmpfs', source]
+    assert {'rw', 'nosuid', 'nodev', 'noexec'} <= set(fields[5].split(','))
+    assert set(info) == {'uid', 'gid', 'mode', 'bytes', 'blockBytes', 'freeBytes'}
+    assert all(type(value) is int for value in info.values())
+    assert info['uid'] == uid and info['gid'] == gid and info['mode'] == 0o700
+    assert info['bytes'] == 1048576 and 512 <= info['blockBytes'] <= 65536
+    assert 0 <= info['freeBytes'] <= info['bytes']
+
+
 ROOT_PROGRAM = r'''
 import hashlib,json,os,re,resource,select,signal,subprocess,sys,urllib.request
+import pwd,stat,threading,time
 from pathlib import Path
 resource.setrlimit(resource.RLIMIT_CORE,(0,0));os.umask(0o077)
 def invoke(args,timeout=90):
@@ -112,6 +138,8 @@ if parent.exists():
 settings=data['configuration']
 managed_files=data.get('managedFiles',False)
 validate_managed_files(settings,managed_files)
+full_volume=data.get('fullVolume',False)
+validate_full_volume(full_volume,managed_files)
 assert set(settings)=={'schemaVersion','listen','allowedOrigins','targets','limits','auth'}|({'files'} if managed_files else set())
 assert settings['schemaVersion']==1 and settings['listen']=={'host':'127.0.0.1','port':8080}
 assert settings['targets']==[data['approvedTarget']]
@@ -121,13 +149,47 @@ assert set(settings['auth'])=={'issuer','audience','jwks'} and set(settings['aut
 assert settings['auth']['issuer']=='https://standalone-lab.example.test' and settings['auth']['audience']=='bridge'
 keys=settings['auth']['jwks']['keys'];assert len(keys)==1
 assert set(keys[0])=={'kty','n','e','kid','alg','use'} and keys[0]['kty']=='RSA' and keys[0]['alg']=='RS256'
-installed=False;clean=False
+installed=False;clean=False;mounted=False;override_created=False;runtime_created=False
+runtime=Path('/run/freerdp-bridge')
+override=Path('/run/systemd/system/freerdp-bridge.service.d')
+override_file=override/'10-owned-full.conf'
+source='bridge-owned-full-'+context.name.rsplit('-',1)[-1]
+sampling_stop=threading.Event();sampler=None
+samples={'count':0,'minimumFreeBytes':1048576,'failed':False}
+
+def volume_info():
+ info=runtime.lstat();v=os.statvfs(str(runtime))
+ value={'uid':info.st_uid,'gid':info.st_gid,'mode':stat.S_IMODE(info.st_mode),
+        'bytes':v.f_blocks*v.f_frsize,'blockBytes':v.f_frsize,'freeBytes':v.f_bavail*v.f_frsize}
+ assert stat.S_ISDIR(info.st_mode) and not runtime.is_symlink()
+ validate_full_mount(Path('/proc/self/mountinfo').read_text(),source,service_uid,service_gid,value)
+ return value
+
+def sample_volume():
+ try:
+  while not sampling_stop.is_set():
+   v=os.statvfs(str(runtime));size=v.f_blocks*v.f_frsize;free=v.f_bavail*v.f_frsize
+   assert size==1048576 and 0<=free<=size
+   samples['count']+=1;samples['minimumFreeBytes']=min(samples['minimumFreeBytes'],free)
+   sampling_stop.wait(.001)
+ except Exception:samples['failed']=True
 def interrupted(_signal,_frame): raise SystemExit(2)
 for number in (signal.SIGHUP,signal.SIGTERM,signal.SIGINT): signal.signal(number,interrupted)
 try:
  invoke(['dpkg','--install',str(package)] if astra else ['rpm','--upgrade',str(package)],120)
  installed=True
  invoke(['systemctl','stop','freerdp-bridge.service'])
+ if full_volume:
+  assert not os.path.lexists(str(runtime)) and not os.path.lexists(str(override))
+  account=pwd.getpwnam('freerdp-bridge');service_uid=account.pw_uid;service_gid=account.pw_gid
+  assert service_uid!=0 and service_gid!=0
+  runtime.mkdir(mode=0o700);runtime_created=True;os.chown(str(runtime),service_uid,service_gid)
+  invoke(['mount','-t','tmpfs','-o','size=1048576,mode=700,uid='+str(service_uid)+',gid='+str(service_gid)+',nodev,nosuid,noexec',source,str(runtime)])
+  mounted=True;assert volume_info()['freeBytes']==1048576
+  override.mkdir(mode=0o700);override_created=True
+  with override_file.open('x') as f:f.write('[Service]\nRuntimeDirectoryPreserve=yes\n')
+  invoke(['systemctl','daemon-reload'])
+  sampler=threading.Thread(target=sample_volume,daemon=True);sampler.start()
  if original is None: original=configuration.read_bytes()
  assert json.loads(original)==default
  configuration.write_text(json.dumps(settings))
@@ -147,21 +209,45 @@ try:
  print('STANDALONE_READY',flush=True)
  assert select.select([sys.stdin.buffer],[],[],240)[0]
  stop=sys.stdin.buffer.read(1);assert stop in (b'',b'\x01')
- assert list(Path('/run/freerdp-bridge').iterdir())==[]
+ assert list(runtime.iterdir())==[]
  clean=True
 finally:
  if installed:
   invoke(['systemctl','stop','freerdp-bridge.service'])
   assert invoke(['systemctl','show','freerdp-bridge.service','--property=MainPID','--value'])=='0'
+  sampling_stop.set()
+  if sampler:sampler.join(timeout=5);assert not sampler.is_alive()
+  full_evidence=None
+  if mounted:
+   final=volume_info();empty=list(runtime.iterdir())==[]
+   full_evidence={'code':'STANDALONE_FULL_ROOT_ACCEPTED','mountedBytes':final['bytes'],
+                  'finalFreeBytes':final['freeBytes'],'runtimeEmpty':empty,
+                  'samples':samples['count'],'minimumFreeBytes':samples['minimumFreeBytes'],
+                  'samplingFailed':samples['failed'],'installedService':True}
+   invoke(['umount',str(runtime)]);mounted=False
+  if override_created:
+   assert override_file.is_file() and not override_file.is_symlink()
+   assert override_file.read_text()=='[Service]\nRuntimeDirectoryPreserve=yes\n'
+   override_file.unlink();override.rmdir();invoke(['systemctl','daemon-reload'])
+  if runtime_created:
+   assert runtime.is_dir() and not runtime.is_symlink();runtime.rmdir()
   if original is not None: configuration.write_bytes(original)
   invoke(['dpkg','--remove','freerdp-bridge'] if astra else ['rpm','--erase','freerdp-bridge'],120)
   assert not Path('/opt/freerdp-bridge/node/node').exists()
   retained=configuration if astra else Path(str(configuration)+'.rpmsave')
   if astra or retained.exists(): assert retained.read_bytes()==original
- if clean: print('STANDALONE_LAB_CLEAN',flush=True)
+ if clean:
+  if full_volume:
+   assert full_evidence and full_evidence['runtimeEmpty'] and full_evidence['finalFreeBytes']==1048576
+   assert full_evidence['samples']>0 and full_evidence['minimumFreeBytes']==0 and not full_evidence['samplingFailed']
+   full_evidence['unmounted']=True;full_evidence['overrideRemoved']=True
+   print(json.dumps(full_evidence),flush=True)
+  print('STANDALONE_LAB_CLEAN',flush=True)
 '''
 # Share the exact pure validator with the privileged fixture and unit controls.
-ROOT_PROGRAM = inspect.getsource(validate_managed_files) + '\n' + ROOT_PROGRAM
+ROOT_PROGRAM = ('\n'.join(inspect.getsource(f) for f in
+                [validate_managed_files, validate_full_volume, validate_full_mount])
+                + '\n' + ROOT_PROGRAM)
 
 
 def main():
@@ -169,8 +255,10 @@ def main():
         raise ValueError('usage')
     lab, package, digest, version, port_text = sys.argv[1:6]
     managed_files = len(sys.argv) == 7
+    full_volume = managed_files and sys.argv[6] == '--managed-files-full'
     if managed_files:
-        assert sys.argv[6] == '--managed-files'
+        assert sys.argv[6] in ('--managed-files', '--managed-files-full')
+    validate_full_volume(full_volume, managed_files)
     assert lab in ('astra', 'redos')
     assert re.fullmatch(r'[a-f0-9]{64}', digest)
     assert re.fullmatch(r'0\.(?:0|[1-9][0-9]{0,5})\.(?:0|[1-9][0-9]{0,5})', version)
@@ -245,7 +333,7 @@ def main():
         rdp = json.loads((private / 'astra-xrdp-lab.json').read_text('utf8')) if lab == 'astra' else config
         assert rdp['host'] == config['host']
         approved = {'host': rdp['host'], 'port': int(rdp.get('port', 3389))}
-        public = {'lab': lab, 'package': package, 'sha256': digest, 'version': version, 'configuration': settings, 'approvedTarget': approved, 'managedFiles': managed_files}
+        public = {'lab': lab, 'package': package, 'sha256': digest, 'version': version, 'configuration': settings, 'approvedTarget': approved, 'managedFiles': managed_files, 'fullVolume': full_volume}
         root_input.write(json.dumps(public) + '\n')
         root_input.flush()
         assert record() == 'STANDALONE_READY'
@@ -291,6 +379,18 @@ def main():
         root_input.write('\x01')
         root_input.flush()
         root_input.channel.shutdown_write()
+        if full_volume:
+            evidence = json.loads(record())
+            assert set(evidence) == {'code', 'mountedBytes', 'finalFreeBytes', 'runtimeEmpty',
+                                     'samples', 'minimumFreeBytes', 'samplingFailed',
+                                     'installedService', 'unmounted', 'overrideRemoved'}
+            assert evidence['code'] == 'STANDALONE_FULL_ROOT_ACCEPTED'
+            assert evidence['mountedBytes'] == evidence['finalFreeBytes'] == 1048576
+            assert evidence['minimumFreeBytes'] == 0 and evidence['samples'] > 0
+            assert all(evidence[key] is True for key in
+                       ['runtimeEmpty', 'installedService', 'unmounted', 'overrideRemoved'])
+            assert evidence['samplingFailed'] is False
+            print(json.dumps(evidence), flush=True)
         assert record() == 'STANDALONE_LAB_CLEAN'
         assert channel.recv_exit_status() == 0
         # Remove only this invocation's exact public helper after root exits.

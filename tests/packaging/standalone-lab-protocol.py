@@ -23,6 +23,34 @@ class Channel:
         self.output.append(b'PRIVILEGED_READY\n')
 
 
+class FullVolumeAdmission(unittest.TestCase):
+    def test_full_volume_requires_explicit_managed_files_and_boolean_flags(self):
+        check = module['validate_full_volume']
+        for enabled, managed in [(False, False), (False, True), (True, True)]:
+            check(enabled, managed)
+        for enabled, managed in [(True, False), (1, True), (True, 1), ('true', True)]:
+            with self.assertRaises(AssertionError):
+                check(enabled, managed)
+
+    def test_mount_identity_rejects_parent_foreign_large_or_shared_volumes(self):
+        check = module['validate_full_mount']
+        source = 'bridge-owned-full-0123456789ab'
+        line = '100 90 0:40 / /run/freerdp-bridge rw,nosuid,nodev,noexec - tmpfs '+source+' rw'
+        info = {'uid': 999, 'gid': 998, 'mode': 0o700, 'bytes': 1048576,
+                'blockBytes': 4096, 'freeBytes': 1048576}
+        check(line, source, 999, 998, info)
+        check(line, source, 999, 998, {**info, 'freeBytes': 0})
+        for records, value in [(line+'\n'+line, info), ('', info),
+            (line.replace('/run/freerdp-bridge', '/run'), info),
+            (line.replace(' - tmpfs ', ' - ext4 '), info),
+            (line.replace(source, 'foreign'), info),
+            (line.replace(',noexec', ''), info), (line, {**info, 'bytes': 2097152}),
+            (line, {**info, 'mode': 0o777}), (line, {**info, 'uid': 0}),
+            (line, {**info, 'freeBytes': -1}), (line, {**info, 'bytes': True}),
+            (line, {**info, 'extra': '/foreign'})]:
+            with self.assertRaises(AssertionError):
+                check(records, source, 999, 998, value)
+
 class Protocol(unittest.TestCase):
     def test_file_policy_requires_explicit_selection_and_exact_bounded_values(self):
         policy = {'maxTotalBytes': 4194304, 'maxFileBytes': 2097152,
