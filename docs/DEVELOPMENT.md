@@ -13,6 +13,17 @@ Current delivery criteria and evidence boundaries are in
 
 ## Prepared Windows managed-file application check
 
+The final corrected public source `95c9fc5` passes foundation run
+`40879990951` and GCC 8.3 foundation run `40879991017`, including the sanitizer
+job. A separate fixture correction in `d5af615` handles legal transient codec
+admission with the existing bounded busy retry. GCC 8.3 linked CTest passes
+43/43 plus 25 stream repeats; Clang 18 ASan/UBSan passes 25/25 on a Linux
+filesystem plus 25 repeats each of stream and seqpacket. A Windows bind mount
+cannot provide the required exclusive-rename primitive and is not Linux
+filesystem acceptance. Both corrections are merged with the feature into
+local shared `master` at `aa4b7de`; the original failed checkpoints below are
+retained as history.
+
 The first hosted source checkpoint `85b0b2b` passes both Linux foundation
 compiler jobs and Windows foundation, but its sanitizer job cannot link
 `ipc-fuzz`: the new drive-name validator, path validator and file-record codec
@@ -121,12 +132,56 @@ and full-Linux evidence is bound in
 `build/current-validation/managed-interop-package-source-acceptance.json`.
 The next minor upgrade seed is independently prepared in `b52396e`: 0.6.0
 must upgrade v0.5.0, with 47 standalone/version controls passing. Product
-manifests remain 0.5.0 until the versioned release branch is prepared.
+manifests remained 0.5.0 at that checkpoint. The subsequent versioned branch
+is tracked in [VERSIONING](VERSIONING.md).
 
 Burst Unicode console input also failed during investigation. Physical
 US-layout delivery is independently reconstructed by a unit control and used
 only for this prepared lab fixture. The broader Unicode/console input gap
 remains open. Failed runs also join the worker and clean their runtime.
+
+## Versioned 0.6.0 managed-file checkpoint
+
+Full versioned checks pass Windows **1306 / 73 skips / 1379 total** and Linux
+**1278 / 124 skips / 1402 total**, with no failures or cancellations. Eight
+independent installed npm consumer projects pass across the four adapters and
+both OS builds, including strict TypeScript and actual native file operations
+with synthetic RDP. Native versioned CTest passes Windows foundation 25/25,
+Windows linked 42/42 and GCC 8.3 linked 43/43.
+
+On the dedicated Windows RDP VM, the exact 0.6.0 Windows npm worker and the
+installed Linux npm worker pass the prepared PowerShell file application
+check: Windows framed, Linux RWS1 and Linux framed. A fourth run uses the
+fully installed Windows npm API/node/protocol/runtime with two 64-byte share
+names. Each verifies 131111-byte chunked upload/readback, a 65599-byte Unicode
+rename/truncate workflow, three read-only refusals, foreign/stale authority
+refusals, native PID exit and empty private runtime cleanup. Audio publication
+and host OS clipboard access stay off. These are actual RDP application
+profiles, separate from synthetic consumer controls.
+
+Windows npm worker SHA256:
+`8f5b7c6b70f77dbf8ea586cdc87d49032dc77f94161c003a499f63f8d9e333a5`.
+Linux installed npm worker SHA256:
+`c282e1e3ca304fee0c95dd38754231a1c7e954acbe7736c0ab5b3342ba853079`.
+Linux CMake installation changes ELF RPATH; its pre-install build worker has
+different bytes and is not substituted for npm acceptance. Local evidence is
+retained in `build/current-validation/managed06-native-archive-worker-proof.json`,
+the `managed06-rdp-*` and `managed06-win64-*` receipts and logs.
+
+All ten archives are prepared. Four adapter README installation commands now
+select 0.6.0; every compiled JS entry remains byte-identical to the accepted
+consumer cohort. The four core archives and both native archives retain their
+accepted bytes, so both production locks remain unchanged. The final archive
+audit is `managed06-final-archive-code-equivalence.json`.
+
+Candidate MSI, Windows ZIP, DEB, RPM and Linux TGZ are built. WiX cabinet
+creation needs a temporary short workspace alias in this long Unicode checkout;
+the alias is removed after building. Building a package does not accept its
+installation: hosted Windows/Ubuntu and named Astra/RED OS 0.5.0-to-0.6.0
+upgrades, versioned installed service/RDP checks, public npm/standalone delivery
+and fresh public-byte verification remain open. No 0.6.0 stable tag or release
+is claimed. File-manager clipboard and the full Stage 7/resource matrix remain
+open.
 
 ## Installed Linux managed files and program permissions
 

@@ -9,7 +9,7 @@ The adapter delegates bounded routing and lifecycle to `@freerdp-bridge/http`.
 ## Installation
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.5.0 @freerdp-bridge/runtime-linux-x64-gnu@0.5.0
+npm install express@5.3.0 @freerdp-bridge/express@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
 ```
 
 For an unpublished source snapshot, use complete local tarballs instead; a
@@ -83,8 +83,8 @@ for API policy and limitations. Until publication, use complete verified local
 
 ## Image clipboard in 0.5.0
 
-During release preparation, use the complete verified 0.5.0 JS/native archive
-cohort; a source version alone does not establish registry availability.
+Image clipboard was introduced in the accepted 0.5.0 release. Keep JS and
+native runtime versions matched when using it in later releases.
 
 Version 0.5.0 adds `clipboard.images: true` with a direction, `text: true`
 and finite `maxItemBytes`. Require native `clipboardImage`, `clipboardText` and
@@ -98,6 +98,17 @@ JS/native artifacts. See the
 [application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
 for session JSON, readiness, typed control methods, buffer wiping and exact
 browser/RDP acceptance limits.
+
+## Managed files in 0.6.0
+
+Enable trusted server-side `sessions.files` limits to expose authenticated
+streaming file routes and select session-sandbox drives in session JSON.
+`thinclientDrives` is an alias for those descriptors, including read-only
+shares. Use matching 0.6.0 JS/native packages; published 0.5.0 does not
+provide these file APIs. Session input cannot select an arbitrary host path.
+
+OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
+See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
 ## Limitations
 

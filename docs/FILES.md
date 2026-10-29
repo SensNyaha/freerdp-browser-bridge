@@ -8,6 +8,12 @@ and automatic live-Node retirement are implemented and have named acceptance
 below. The full remote application/platform matrix and final npm/installer
 acceptance remain open.
 
+The accepted feature is now merged into local shared `master` at `aa4b7de`.
+Release preparation continues on `release/0.6.0`; this does not establish npm
+availability or installed-service acceptance. See the
+[versioned checkpoint](DEVELOPMENT.md#versioned-060-managed-file-checkpoint)
+for the exact Windows application profiles and remaining delivery gates.
+
 ## File clipboard is deferred
 
 The unreleased Node HTTP API explicitly returns **`clipboardFiles: false`** in

@@ -54,8 +54,8 @@ RDP certificate verification is strict by default.
 
 ## Image clipboard in 0.5.0
 
-During release preparation, use the complete verified 0.5.0 JS/native archive
-cohort; a source version alone does not establish registry availability.
+Image clipboard was introduced in the accepted 0.5.0 release. Keep JS and
+native runtime versions matched when using it in later releases.
 
 Version 0.5.0 advertises `clipboardImage` only with its native image hooks.
 It remains opt-in per session through matching JS packages, with negotiated
@@ -65,6 +65,17 @@ Published 0.4.0 does not include this image runtime. Use verified matching
 0.5.0 artifacts and inspect concrete capabilities; file clipboard and
 arbitrary image formats remain separate. See the
 [application profiles and limits](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_BROWSER.md#actual-image-rdp-application-checkpoint).
+
+## Managed files in 0.6.0
+
+Use this runtime with matching 0.6.0 JS packages for managed files and
+selected sandbox drives. The trusted server must explicitly enable a file
+policy; compiled channels do not grant arbitrary host-file access. On the
+tested Windows profile, audio-off drive sessions use guarded zero-format
+RDPSND without a host sound backend or audio publication.
+
+OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
+See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
 ## Limitations
 

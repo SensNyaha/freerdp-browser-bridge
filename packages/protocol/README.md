@@ -43,8 +43,8 @@ connection records may contain sensitive data.
 
 ## Image clipboard in 0.5.0
 
-During release preparation, use the complete verified 0.5.0 JS/native archive
-cohort; a source version alone does not establish registry availability.
+Image clipboard was introduced in the accepted 0.5.0 release. Keep JS and
+native runtime versions matched when using it in later releases.
 
 Version 0.5.0 adds a bounded RGBA8 inner image record and optional
 `clipboardImage` worker negotiation. Geometry, exact byte length and complete
@@ -55,6 +55,15 @@ The codecs grant no OS clipboard access and do not enable file clipboard.
 Published 0.4.0 does not contain this extension. Use matching 0.5.0
 JS/native artifacts and the
 [private handoff contract](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_IPC.md#private-image-handoff-in-development).
+
+## Managed files in 0.6.0
+
+Version 0.6.0 adds bounded session-sandbox drive descriptors and file-policy
+types. Applications enable storage through their adapter or standalone
+configuration; session JSON cannot choose an arbitrary host directory.
+
+OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
+See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
 ## Limitations
 

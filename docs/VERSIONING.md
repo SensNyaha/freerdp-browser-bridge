@@ -18,8 +18,12 @@ receipts must prove that exact upgrade; mixed, older, absent or same-version
 predecessors remain refused. Unknown future minor seeds remain refused.
 The failing-before manifest control and related standalone/version controls
 pass on Windows (47) and Linux UID1000 (46) in `b52396e`.
-This prepares release tooling only: product/native manifests are still 0.5.0
-and no 0.6.0 archive, tag, npm publication or installer is accepted yet.
+The local `release/0.6.0` branch now aligns all ten product manifests and
+the native project at 0.6.0. Versioned full checks, exact archives/production
+locks, installed npm consumers and four actual Windows file application
+profiles pass. MSI/DEB/RPM/ZIP/TGZ candidates are built; installed upgrade and
+public delivery acceptance remain open. No stable 0.6.0 tag or npm publication
+is claimed. Public stable remains 0.5.0.
 Managed drives and HTTP transfer do not supply OS file clipboard; the explicit
 `clipboardFiles: false` deferral and wider Stage 7 gates remain visible.
 
