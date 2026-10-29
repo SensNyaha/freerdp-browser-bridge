@@ -75,6 +75,28 @@ test(
     // This deadline bounds isolated PowerShell/CLR + image inspection startup,
     // independently of the native file-operation deadlines exercised later.
     const deadline = performance.now() + 85000;
+    // Windows PowerShell needs its normal profile/cache directories to discover
+    // OS modules. Keep a whitelist; never inherit application/lab credentials.
+    const inspectionEnv = { ...options.env };
+    for (const [key, value] of Object.entries(process.env))
+      if (
+        [
+          'SYSTEMDRIVE',
+          'USERPROFILE',
+          'APPDATA',
+          'LOCALAPPDATA',
+          'PROGRAMFILES',
+          'PROGRAMW6432',
+        ].includes(key.toUpperCase())
+      )
+        inspectionEnv[key] = value;
+    inspectionEnv.PSModulePath = join(
+      process.env.SystemRoot,
+      'System32',
+      'WindowsPowerShell',
+      'v1.0',
+      'Modules',
+    );
     const inspect = (directory) => {
       const result = spawnSync(
         'powershell.exe',
@@ -90,6 +112,7 @@ test(
         ],
         {
           ...options,
+          env: inspectionEnv,
           timeout: Math.max(
             1,
             Math.min(30000, Math.floor(deadline - performance.now())),
