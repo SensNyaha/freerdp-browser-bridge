@@ -5,7 +5,15 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { spawn } from 'node:child_process';
-import { mkdtemp, writeFile, realpath, rm } from 'node:fs/promises';
+import {
+  mkdtemp,
+  writeFile,
+  realpath,
+  rm,
+  readFile,
+  readdir,
+  rmdir,
+} from 'node:fs/promises';
 import { join, basename, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { physicalScancode } from '../../packages/protocol/dist/input.js';
@@ -97,64 +105,82 @@ test(
   'Windows file runner refuses unconfirmed use and missing worker before any session or remote input',
   { timeout: 15000 },
   async () => {
-    for (const prepared of [false, true]) {
-      const child = spawn(
-        process.execPath,
-        [
-          'scripts/test-windows-managed-files.mjs',
-          '--owned-windows-managed-files',
-          ...(prepared ? ['--prepared-powershell'] : []),
-        ],
-        { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] },
-      );
-      const result = new Promise((done, reject) => {
-        child.once('error', reject);
-        child.once('close', done);
-      });
-      let output = '',
-        diagnostic = '';
-      child.stdout.on('data', (chunk) => {
-        output += chunk.toString();
-        if (output.length > 8192) child.kill();
-      });
-      child.stderr.on('data', (chunk) => {
-        diagnostic += chunk.toString();
-        if (diagnostic.length > 8192) child.kill();
-      });
-      child.stdin.on('error', () => {});
-      child.stdin.end(
-        JSON.stringify({
-          id,
-          ...target,
-          ipcTransport: 'framed-pipes',
-          workerPath: 'build/PRIVATE-nonexistent-owned-worker/rdp-worker.exe',
-          workerSha256: 'a'.repeat(64),
-          credentials: {
-            username: 'synthetic',
-            password: 'PRIVATE-test-password',
-          },
-        }),
-      );
-      const timer = setTimeout(() => child.kill(), 6000);
-      try {
-        assert.equal(await result, 1);
-        assert.equal(diagnostic, '');
-        assert.equal(output.includes('PRIVATE'), false);
-        const events = output
-          .trim()
-          .split('\n')
-          .map((line) => JSON.parse(line));
-        assert.equal(events[0].event, 'failed');
-        assert.equal(events[0].phase, prepared ? 'worker-binding' : 'input');
-        assert.deepEqual(events[1], { event: 'closed', clean: true });
-        assert.equal(events.length, 2);
-      } finally {
-        clearTimeout(timer);
-        if (child.exitCode === null) {
-          child.kill();
-          await result;
+    const ordinary = await mkdtemp(
+      join(await realpath(tmpdir()), 'bridge-files-admission-'),
+    );
+    try {
+      for (const diskFull of [false, true])
+        for (const prepared of [false, true]) {
+          const child = spawn(
+            process.execPath,
+            [
+              'scripts/test-windows-managed-files.mjs',
+              diskFull
+                ? '--owned-windows-managed-files-full'
+                : '--owned-windows-managed-files',
+              ...(prepared ? ['--prepared-powershell'] : []),
+            ],
+            { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] },
+          );
+          const result = new Promise((done, reject) => {
+            child.once('error', reject);
+            child.once('close', done);
+          });
+          let output = '',
+            diagnostic = '';
+          child.stdout.on('data', (chunk) => {
+            output += chunk.toString();
+            if (output.length > 8192) child.kill();
+          });
+          child.stderr.on('data', (chunk) => {
+            diagnostic += chunk.toString();
+            if (diagnostic.length > 8192) child.kill();
+          });
+          child.stdin.on('error', () => {});
+          child.stdin.end(
+            JSON.stringify({
+              id,
+              ...target,
+              ipcTransport: 'framed-pipes',
+              ...(diskFull ? { fullRoot: ordinary } : {}),
+              workerPath:
+                'build/PRIVATE-nonexistent-owned-worker/rdp-worker.exe',
+              workerSha256: 'a'.repeat(64),
+              credentials: {
+                username: 'synthetic',
+                password: 'PRIVATE-test-password',
+              },
+            }),
+          );
+          const timer = setTimeout(() => child.kill(), 6000);
+          try {
+            assert.equal(await result, 1);
+            assert.equal(diagnostic, '');
+            assert.equal(output.includes('PRIVATE'), false);
+            const events = output
+              .trim()
+              .split('\n')
+              .map((line) => JSON.parse(line));
+            assert.equal(events[0].event, 'failed');
+            assert.equal(
+              events[0].phase,
+              prepared && !diskFull ? 'worker-binding' : 'input',
+            );
+            if (prepared && diskFull)
+              assert.equal(events[0].code, 'DISPOSABLE_FULL_ROOT_REFUSED');
+            assert.deepEqual(events[1], { event: 'closed', clean: true });
+            assert.equal(events.length, 2);
+          } finally {
+            clearTimeout(timer);
+            if (child.exitCode === null) {
+              child.kill();
+              await result;
+            }
+          }
         }
-      }
+    } finally {
+      assert.deepEqual(await readdir(ordinary), []);
+      await rmdir(ordinary);
     }
   },
 );
@@ -182,6 +208,54 @@ test('owned Windows file command selects only its uploaded script and validated 
   const source = await windowsManagedFilesScript();
   assert.ok(source.length > 2048 && source.length <= 16384);
   assert.match(source.toString(), /Get-OwnedPattern/);
+  assert.equal(
+    windowsManagedFilesCommand(id, true),
+    windowsManagedFilesCommand(id) + ' -DiskFull',
+  );
+  for (const mode of [null, 0, 1, 'true', {}, []])
+    assert.throws(
+      () => windowsManagedFilesCommand(id, mode),
+      /FILES_LAB_MODE_REFUSED/,
+    );
+});
+
+test('Windows full-disk receipt binds identity, real Windows disk-full errno and bounded acknowledged blocks', () => {
+  const full = {
+    v: 1,
+    id,
+    phase: 'full',
+    ok: true,
+    errno: 112,
+    acknowledgedBytes: 655360,
+  };
+  assert.deepEqual(
+    parseWindowsFilesReceipt(
+      JSON.stringify(full) + ' '.repeat(100),
+      id,
+      'full',
+    ),
+    full,
+  );
+  assert.equal(
+    parseWindowsFilesReceipt(JSON.stringify({ ...full, errno: 39 }), id, 'full')
+      .errno,
+    39,
+  );
+  for (const invalid of [
+    { ...full, id: 'b'.repeat(32) },
+    { ...full, errno: 5 },
+    { ...full, errno: 0 },
+    { ...full, acknowledgedBytes: 0 },
+    { ...full, acknowledgedBytes: 2097152 },
+    { ...full, acknowledgedBytes: 65537 },
+    { ...full, acknowledgedBytes: true },
+    { ...full, extraPath: '/private' },
+    { ...full, ok: false },
+  ])
+    assert.throws(
+      () => parseWindowsFilesReceipt(JSON.stringify(invalid), id, 'full'),
+      /FILES_LAB_RECEIPT_REFUSED/,
+    );
 });
 
 test('Windows file input requires a confirmed private target and a user-prepared window before any input', async () => {
@@ -211,82 +285,89 @@ test('Windows file input requires a confirmed private target and a user-prepared
     dispatchWindowsManagedFiles(send, target, 'bad', true),
     /FILES_LAB_ID_REFUSED/,
   );
+  await assert.rejects(
+    dispatchWindowsManagedFiles(send, target, id, true, async () => {}, 'true'),
+    /FILES_LAB_MODE_REFUSED/,
+  );
   assert.equal(calls, 0);
 });
 
-test('owned Windows file dispatch reconstructs the exact US-layout command with balanced keys and no application launch', async () => {
-  const events = [],
-    waits = [];
-  await dispatchWindowsManagedFiles(
-    async (value) => {
-      events.push(value);
-    },
-    target,
-    id,
-    true,
-    async (ms) => {
-      waits.push(ms);
-    },
-  );
-  assert.deepEqual(events[0], { type: 'reset' });
-  assert.deepEqual(events.at(-1), { type: 'reset' });
-  assert.equal(
-    events.some((event) => event.type === 'text'),
-    false,
-  );
-  const table = new Map();
-  for (const char of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    table.set(physicalScancode('Key' + char), [char.toLowerCase(), char]);
-  for (const char of '0123456789')
-    table.set(physicalScancode('Digit' + char), [
-      char,
-      { 0: ')', 7: '&', 9: '(' }[char],
-    ]);
-  for (const [code, plain, shifted] of [
-    ['Space', ' '],
-    ['BracketLeft', '['],
-    ['BracketRight', ']'],
-    ['Semicolon', ';', ':'],
-    ['Period', '.'],
-    ['Quote', "'"],
-    ['Backslash', '\\'],
-    ['Minus', '-'],
-  ])
-    table.set(physicalScancode(code), [plain, shifted]);
-  let command = '',
-    started = false;
-  const heldForDecode = new Set();
-  for (const event of events) {
-    if (event.type !== 'key') continue;
-    if (!event.down) {
-      heldForDecode.delete(event.scancode);
-      if (event.scancode === physicalScancode('ControlLeft')) started = true;
-      continue;
+for (const diskFull of [false, true])
+  test(`owned Windows file dispatch mode ${diskFull} reconstructs the exact US-layout command with balanced keys and no application launch`, async () => {
+    const events = [],
+      waits = [];
+    await dispatchWindowsManagedFiles(
+      async (value) => {
+        events.push(value);
+      },
+      target,
+      id,
+      true,
+      async (ms) => {
+        waits.push(ms);
+      },
+      diskFull,
+    );
+    assert.deepEqual(events[0], { type: 'reset' });
+    assert.deepEqual(events.at(-1), { type: 'reset' });
+    assert.equal(
+      events.some((event) => event.type === 'text'),
+      false,
+    );
+    const table = new Map();
+    for (const char of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+      table.set(physicalScancode('Key' + char), [char.toLowerCase(), char]);
+    for (const char of '0123456789')
+      table.set(physicalScancode('Digit' + char), [
+        char,
+        { 0: ')', 7: '&', 9: '(' }[char],
+      ]);
+    for (const [code, plain, shifted] of [
+      ['Space', ' '],
+      ['BracketLeft', '['],
+      ['BracketRight', ']'],
+      ['Semicolon', ';', ':'],
+      ['Period', '.'],
+      ['Quote', "'"],
+      ['Backslash', '\\'],
+      ['Minus', '-'],
+    ])
+      table.set(physicalScancode(code), [plain, shifted]);
+    let command = '',
+      started = false;
+    const heldForDecode = new Set();
+    for (const event of events) {
+      if (event.type !== 'key') continue;
+      if (!event.down) {
+        heldForDecode.delete(event.scancode);
+        if (event.scancode === physicalScancode('ControlLeft')) started = true;
+        continue;
+      }
+      heldForDecode.add(event.scancode);
+      if (!started || event.scancode === physicalScancode('ShiftLeft'))
+        continue;
+      if (event.scancode === physicalScancode('Enter')) break;
+      const char = table.get(event.scancode)?.[
+        heldForDecode.has(physicalScancode('ShiftLeft')) ? 1 : 0
+      ];
+      assert.equal(typeof char, 'string');
+      command += char;
     }
-    heldForDecode.add(event.scancode);
-    if (!started || event.scancode === physicalScancode('ShiftLeft')) continue;
-    if (event.scancode === physicalScancode('Enter')) break;
-    const char = table.get(event.scancode)?.[
-      heldForDecode.has(physicalScancode('ShiftLeft')) ? 1 : 0
-    ];
-    assert.equal(typeof char, 'string');
-    command += char;
-  }
-  assert.equal(command, windowsManagedFilesCommand(id));
-  assert.ok(events.length <= 4 * command.length + 20);
-  assert.ok(waits.length >= command.length);
-  const held = new Set();
-  for (const event of events) {
-    if (event.type === 'reset') held.clear();
-    else if (event.type === 'key') {
-      if (event.down) {
-        assert.equal(held.has(event.scancode), false);
-        held.add(event.scancode);
-      } else assert.equal(held.delete(event.scancode), true);
+    assert.equal(command, windowsManagedFilesCommand(id, diskFull));
+    assert.ok(events.length <= 4 * command.length + 20);
+    assert.ok(waits.length >= command.length);
+    const held = new Set();
+    for (const event of events) {
+      if (event.type === 'reset') held.clear();
+      else if (event.type === 'key') {
+        if (event.down) {
+          assert.equal(held.has(event.scancode), false);
+          held.add(event.scancode);
+        } else assert.equal(held.delete(event.scancode), true);
+      }
     }
-  }
-  assert.equal(held.size, 0);
-});
+    assert.equal(held.size, 0);
+  });
 
 test('failed Windows file input releases key state without disclosing the transport cause', async () => {
   const events = [];
@@ -521,6 +602,81 @@ test(
           basename(target).startsWith('bridge-files-unit-'),
       );
       await rm(target, { recursive: true });
+    }
+  },
+);
+
+test(
+  'reserved Windows full-volume receipts overwrite only their existing fixed pages and refuse size, growth and sharing violations',
+  { skip: process.platform !== 'win32', timeout: 20000 },
+  async () => {
+    const parent = await realpath(tmpdir());
+    const directory = await mkdtemp(join(parent, 'bridge-files-receipt-'));
+    const literal = (value) => "'" + value.replaceAll("'", "''") + "'";
+    try {
+      await writeFile(
+        join(directory, 'receipt-full.json'),
+        Buffer.alloc(2048, 32),
+      );
+      await writeFile(
+        join(directory, 'receipt-failed.json'),
+        Buffer.alloc(64, 88),
+      );
+      const source = fileURLToPath(
+        new URL('../fixtures/windows-managed-files.ps1', import.meta.url),
+      );
+      const command = [
+        "$ErrorActionPreference='Stop'; $tokens=$null; $errors=$null",
+        '$ast=[Management.Automation.Language.Parser]::ParseFile(' +
+          literal(source) +
+          ',[ref]$tokens,[ref]$errors)',
+        "if($errors.Count){throw 'PARSE'}",
+        "$function=$ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Write-OwnedReservedReceipt'},$true)",
+        "if($function.Count -ne 1){throw 'FUNCTION'}",
+        '. ([scriptblock]::Create($function[0].Extent.Text))',
+        '$rw=' + literal(directory),
+        "$value=@{v=1;id='" +
+          id +
+          "';phase='full';ok=$true;errno=112;acknowledgedBytes=655360}",
+        "Write-OwnedReservedReceipt 'receipt-full.json' $value",
+        "$refused=0; try { Write-OwnedReservedReceipt 'receipt-failed.json' $value; throw 'ALLOWED' } catch { if($_.Exception.Message -cne 'OWNED_RESERVED_RECEIPT'){throw}; $refused++ }",
+        "$check=[IO.File]::Open((Join-Path $rw 'receipt-failed.json'),[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None); $check.Dispose()",
+        "try { Write-OwnedReservedReceipt 'receipt-full.json' @{extra=('x'*3000)}; throw 'ALLOWED' } catch { if($_.Exception.Message -cne 'OWNED_BOUND'){throw}; $refused++ }",
+        "$reader=[IO.File]::Open((Join-Path $rw 'receipt-full.json'),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)",
+        "try { try { Write-OwnedReservedReceipt 'receipt-full.json' $value; throw 'ALLOWED' } catch { if($_.Exception.Message -cne 'OWNED_RECEIPT_BUSY'){throw}; $refused++ } } finally { $reader.Dispose() }",
+        "Write-OwnedReservedReceipt 'receipt-full.json' $value",
+        '@{refusals=$refused;closed=$true}|ConvertTo-Json -Compress',
+      ].join('; ');
+      const output = execFileSync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', command],
+        {
+          encoding: 'utf8',
+          windowsHide: true,
+          timeout: 15000,
+          maxBuffer: 8192,
+        },
+      );
+      assert.deepEqual(JSON.parse(output), { refusals: 3, closed: true });
+      const receipt = await readFile(join(directory, 'receipt-full.json'));
+      assert.equal(receipt.length, 2048);
+      assert.equal(
+        parseWindowsFilesReceipt(receipt.toString('utf8'), id, 'full').errno,
+        112,
+      );
+      assert.deepEqual(
+        await readFile(join(directory, 'receipt-failed.json')),
+        Buffer.alloc(64, 88),
+      );
+      assert.deepEqual((await readdir(directory)).sort(), [
+        'receipt-failed.json',
+        'receipt-full.json',
+      ]);
+    } finally {
+      assert.equal(await realpath(directory), directory);
+      assert.ok(directory.startsWith(parent + sep));
+      assert.match(basename(directory), /^bridge-files-receipt-/);
+      await rm(directory, { recursive: true, force: true });
     }
   },
 );

@@ -55,6 +55,10 @@ export async function readWindowsFilesLabInput(stream) {
       input.workerPath.length > 4096 ||
       typeof input.workerSha256 !== 'string' ||
       !/^[0-9a-f]{64}$/.test(input.workerSha256) ||
+      (input.fullRoot !== undefined &&
+        (typeof input.fullRoot !== 'string' ||
+          !input.fullRoot.length ||
+          input.fullRoot.length > 4096)) ||
       !input.credentials ||
       typeof input.credentials.username !== 'string' ||
       !input.credentials.username.length ||
@@ -87,20 +91,22 @@ export async function windowsManagedFilesScript() {
   return source;
 }
 
-export function windowsManagedFilesCommand(id) {
+export function windowsManagedFilesCommand(id, diskFull = false) {
   if (!validId(id)) throw new Error('FILES_LAB_ID_REFUSED');
+  if (typeof diskFull !== 'boolean') throw new Error('FILES_LAB_MODE_REFUSED');
   return (
     "& ([scriptblock]::Create([IO.File]::ReadAllText('\\\\tsclient\\RW" +
     id.slice(0, 5) +
     "\\owned-check.ps1'))) '" +
     id +
-    "'"
+    "'" +
+    (diskFull ? ' -DiskFull' : '')
   );
 }
 
 // Fixed US-keyboard lab launcher. This does not implement layout translation
 // for the product; Unicode filenames are constructed inside the owned script.
-export function windowsManagedFilesKeys(id) {
+export function windowsManagedFilesKeys(id, diskFull = false) {
   const punctuation = {
     ' ': ['Space', false],
     '&': ['Digit7', true],
@@ -114,7 +120,7 @@ export function windowsManagedFilesKeys(id) {
     '\\': ['Backslash', false],
     '-': ['Minus', false],
   };
-  return Array.from(windowsManagedFilesCommand(id), (char) => {
+  return Array.from(windowsManagedFilesCommand(id, diskFull), (char) => {
     if (/^[a-z]$/i.test(char))
       return {
         code: 'Key' + char.toUpperCase(),
@@ -137,11 +143,12 @@ export async function dispatchWindowsManagedFiles(
   id,
   preparedWindow,
   pause = delay,
+  diskFull = false,
 ) {
   if (!confirmedTarget(target)) throw new Error('FILES_LAB_TARGET_REFUSED');
   if (preparedWindow !== true)
     throw new Error('FILES_LAB_WINDOW_NOT_CONFIRMED');
-  const keys = windowsManagedFilesKeys(id);
+  const keys = windowsManagedFilesKeys(id, diskFull);
   const key = (code, down) =>
     sendInput({
       type: 'key',
@@ -192,7 +199,7 @@ export async function dispatchWindowsManagedFiles(
 export function parseWindowsFilesReceipt(text, id, phase) {
   if (
     !validId(id) ||
-    !['created', 'clean', 'failed'].includes(phase) ||
+    !['created', 'clean', 'failed', 'full'].includes(phase) ||
     typeof text !== 'string' ||
     Buffer.byteLength(text) > 2048
   )
@@ -216,6 +223,9 @@ export function parseWindowsFilesReceipt(text, id, phase) {
             'wait-host',
             'host-readback',
             'delete',
+            'receipt-reserve',
+            'disk-full',
+            'wait-full-host',
           ].includes(value.phase)
         : value.phase !== phase)
     )
@@ -227,6 +237,16 @@ export function parseWindowsFilesReceipt(text, id, phase) {
         !Number.isInteger(value.errno) ||
         value.errno < 0 ||
         value.errno > 65535
+      )
+        throw refused();
+    } else if (phase === 'full') {
+      if (
+        keys !== 'acknowledgedBytes,errno,id,ok,phase,v' ||
+        ![39, 112].includes(value.errno) ||
+        !Number.isInteger(value.acknowledgedBytes) ||
+        value.acknowledgedBytes < 65536 ||
+        value.acknowledgedBytes >= 2097152 ||
+        value.acknowledgedBytes % 65536 !== 0
       )
         throw refused();
     } else if (phase === 'created') {

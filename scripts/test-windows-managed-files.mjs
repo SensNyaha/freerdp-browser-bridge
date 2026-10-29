@@ -8,6 +8,7 @@ import {
   realpath,
   rmdir,
   writeFile,
+  statfs,
 } from 'node:fs/promises';
 import { resolve, dirname, basename, sep } from 'node:path';
 import { execFile } from 'node:child_process';
@@ -24,6 +25,7 @@ import {
   dispatchWindowsManagedFiles,
   parseWindowsFilesReceipt,
 } from './windows-managed-files-lab.mjs';
+import { disposableLinuxFullRoot } from '../tests/fixtures/disposable-full-root.mjs';
 
 const { WebSocket } = createRequire(
   new URL('../apps/bridge-api/package.json', import.meta.url),
@@ -36,11 +38,19 @@ let runtimeRoot, server, ws, nativePid;
 let phase = 'input',
   failed = false;
 try {
+  const diskFull = process.argv[2] === '--owned-windows-managed-files-full';
   assert.deepEqual(process.argv.slice(2), [
-    '--owned-windows-managed-files',
+    diskFull
+      ? '--owned-windows-managed-files-full'
+      : '--owned-windows-managed-files',
     '--prepared-powershell',
   ]);
   const input = await readWindowsFilesLabInput(process.stdin);
+  let fullMount;
+  if (diskFull) {
+    fullMount = await disposableLinuxFullRoot(input.fullRoot);
+    assert.equal(fullMount.mountedBytes, 1048576);
+  } else assert.equal(input.fullRoot, undefined);
   phase = 'worker-binding';
   const build = await realpath(resolve('build'));
   const workerPath = await realpath(resolve(input.workerPath));
@@ -50,7 +60,9 @@ try {
   assert.equal(hash(binary), input.workerSha256);
   binary.fill(0);
   runtimeRoot = await mkdtemp(
-    resolve('build/current-validation/windows-files-owned-'),
+    diskFull
+      ? resolve(input.fullRoot, 'windows-files-owned-')
+      : resolve('build/current-validation/windows-files-owned-'),
   );
   if (process.platform === 'win32') {
     await rmdir(runtimeRoot);
@@ -71,6 +83,8 @@ try {
   };
   const natives = [];
   let audioEvents = 0;
+  let diskFullReplies = 0,
+    successfulNativeWriteBytes = 0;
   server = await createSessionServer({
     worker: options,
     allowedOrigins: [origin],
@@ -91,6 +105,20 @@ try {
       },
       workerFactory: (limits) => {
         const worker = new NativeSessionWorker(options, limits);
+        if (diskFull) {
+          const call = worker.fileCommand.bind(worker);
+          worker.fileCommand = async (command) => {
+            const reply = await call(command);
+            if (command.operation === 'write' && reply.status === 'ok')
+              successfulNativeWriteBytes += Number(reply.value);
+            if (reply.status === 'disk-full') {
+              ++diskFullReplies;
+              const full = await statfs(runtimeRoot);
+              assert.ok(full.bavail * full.bsize <= fullMount.blockBytes);
+            }
+            return reply;
+          };
+        }
         worker.onAudio(() => {
           ++audioEvents;
         });
@@ -239,7 +267,15 @@ try {
     assert.match(entry.fileId, /^[0-9a-f]{32}$/);
     return entry;
   };
-  const download = async (entry) => {
+  const download = async (entry, maximum = 131111) => {
+    assert.ok(
+      Number.isSafeInteger(maximum) && maximum > 0 && maximum <= 1048576,
+    );
+    assert.ok(
+      Number.isSafeInteger(entry.size) &&
+        entry.size >= 0 &&
+        entry.size <= maximum,
+    );
     const reply = await request('GET', files + '/' + entry.fileId);
     assert.equal(reply.status, 200);
     assert.equal(reply.headers.get('content-length'), String(entry.size));
@@ -249,15 +285,15 @@ try {
       reply.headers.get('content-disposition'),
       /filename\*=UTF-8''/,
     );
-    const parts = [];
+    const output = Buffer.alloc(entry.size);
     let size = 0;
     for await (const part of reply.body) {
       size += part.byteLength;
-      assert.ok(size <= 131111);
-      parts.push(Buffer.from(part));
+      assert.ok(size <= output.length);
+      output.set(part, size - part.byteLength);
     }
     assert.equal(size, entry.size);
-    return Buffer.concat(parts, size);
+    return output;
   };
   const seed = Buffer.from(
     'Bridge owned seed ' + input.id + ' \u0416\u65e5\u672c\u8a9e\ud83d\ude00',
@@ -281,6 +317,49 @@ try {
   });
   assert.equal(unauthenticated.status, 401);
   await unauthenticated.arrayBuffer();
+  if (diskFull) {
+    phase = 'http-disk-full';
+    const before = (await page(a.fileId)).entries;
+    const names = await readdir(runtimeRoot);
+    assert.equal(names.length, 1);
+    assert.match(names[0], /^worker-[0-9a-f]{32}-1-[0-9a-f]{32}$/);
+    const staging = resolve(runtimeRoot, names[0], 'managed-files', '.uploads');
+    const initial = await statfs(runtimeRoot);
+    const initialFree = initial.bavail * initial.bsize;
+    assert.ok(initialFree >= fullMount.mountedBytes - 131072);
+    const body = Buffer.alloc(1048576, 0x5a);
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const full = await request(
+        'POST',
+        files +
+          '?' +
+          new URLSearchParams({
+            parentId: a.fileId,
+            name: 'owned-http-full.bin',
+          }),
+        body,
+        { 'content-type': 'application/octet-stream' },
+      );
+      assert.equal(full.status, 507);
+      assert.equal((await full.json()).code, 'FILE_DISK_FULL');
+      assert.equal(diskFullReplies, attempt + 1);
+      assert.deepEqual((await page(a.fileId)).entries, before);
+      assert.deepEqual(await readdir(staging), []);
+      const fs = await statfs(runtimeRoot);
+      assert.ok(fs.bavail * fs.bsize >= initialFree - 2 * fullMount.blockBytes);
+      assert.equal((await json('GET', path)).state, 'connected');
+    }
+    body.fill(0);
+    assert.ok(successfulNativeWriteBytes > 4194304);
+    send({
+      event: 'windows-connected-http-full-verified',
+      actualRdp: true,
+      attempts: 12,
+      httpStatus: 507,
+      diskFullReplies,
+      successfulNativeWriteBytes,
+    });
+  }
   send({
     event: 'connected',
     actualRdp: true,
@@ -298,6 +377,8 @@ try {
     input,
     input.id,
     true,
+    undefined,
+    diskFull,
   );
   if (process.platform === 'win32') {
     const frame = await natives[0].captureFrame(0n);
@@ -318,44 +399,112 @@ try {
       const failed = entries.find(
         (entry) => entry.name === 'receipt-failed.json',
       );
-      const entry = failed ?? entries.find((entry) => entry.name === name);
-      if (entry?.size > 0) {
-        assert.ok(entry.size <= 2048);
-        const reply = await request('GET', files + '/' + entry.fileId);
-        if (reply.status === 200) {
-          const parts = [];
-          let length = 0;
-          for await (const bytes of reply.body) {
-            length += bytes.byteLength;
-            assert.ok(length <= 2048);
-            parts.push(Buffer.from(bytes));
-          }
-          const value = Buffer.concat(parts, length).toString('utf8');
-          const receipt = parseWindowsFilesReceipt(
-            value,
-            input.id,
-            failed ? 'failed' : expectedPhase,
-          );
-          if (failed) {
-            console.log(
-              JSON.stringify({
-                event: 'owned-application-refused',
-                phase: receipt.phase,
-                errno: receipt.errno,
-              }),
+      for (const entry of [
+        failed,
+        entries.find((entry) => entry.name === name),
+      ].filter(Boolean)) {
+        if (entry?.size > 0) {
+          assert.ok(entry.size <= 2048);
+          const reply = await request('GET', files + '/' + entry.fileId);
+          if (reply.status === 200) {
+            const parts = [];
+            let length = 0;
+            for await (const bytes of reply.body) {
+              length += bytes.byteLength;
+              assert.ok(length <= 2048);
+              parts.push(Buffer.from(bytes));
+            }
+            const value = Buffer.concat(parts, length).toString('utf8');
+            // Full-volume receipts reserve their pages before filling the mount.
+            if (value.trim().length === 0) continue;
+            const receipt = parseWindowsFilesReceipt(
+              value,
+              input.id,
+              entry === failed ? 'failed' : expectedPhase,
             );
-            throw new Error('LAB_REMOTE_FAILED');
+            if (entry === failed) {
+              console.log(
+                JSON.stringify({
+                  event: 'owned-application-refused',
+                  phase: receipt.phase,
+                  errno: receipt.errno,
+                }),
+              );
+              throw new Error('LAB_REMOTE_FAILED');
+            }
+            return { entry, value: receipt };
           }
-          return { entry, value: receipt };
+          // A receipt created by a still-open RDP writer is not yet a result.
+          assert.ok([404, 409, 429].includes(reply.status));
+          await reply.arrayBuffer();
         }
-        // A receipt created by a still-open RDP writer is not yet a result.
-        assert.ok([404, 409, 429].includes(reply.status));
-        await reply.arrayBuffer();
       }
       await delay(200);
     }
     throw new Error('LAB_REMOTE_DEADLINE');
   };
+  if (diskFull) {
+    phase = 'windows-rdpdr-disk-full';
+    const fullReceipt = await waitReceipt('receipt-full.json', 'full');
+    const fs = await statfs(runtimeRoot);
+    assert.equal(fs.bavail * fs.bsize, 0);
+    const partial = (await page(a.fileId)).entries.find(
+      (entry) => entry.name === 'owned-resource-full.bin',
+    );
+    assert.ok(
+      partial &&
+        partial.kind === 'file' &&
+        partial.size > 0 &&
+        partial.size <= fullMount.mountedBytes,
+    );
+    const actual = await download(partial, fullMount.mountedBytes);
+    assert.ok(
+      actual.every((value, index) => value === ((index * 17 + 83) & 255)),
+    );
+    actual.fill(0);
+    const cross = await request(
+      'POST',
+      files +
+        '?' +
+        new URLSearchParams({
+          parentId: a.fileId,
+          name: 'while-drive-full.bin',
+        }),
+      Buffer.alloc(65536, 17),
+      { 'content-type': 'application/octet-stream' },
+    );
+    assert.equal(cross.status, 507);
+    assert.equal((await cross.json()).code, 'FILE_DISK_FULL');
+    assert.equal(diskFullReplies, 13);
+    const removed = await request('DELETE', files + '/' + partial.fileId);
+    assert.equal(removed.status, 204);
+    await removed.arrayBuffer();
+    const stale = await request('GET', files + '/' + partial.fileId);
+    assert.equal(stale.status, 404);
+    assert.equal((await stale.json()).code, 'FILE_NOT_FOUND');
+    const recovered = await statfs(runtimeRoot);
+    assert.ok(
+      recovered.bavail * recovered.bsize >= fullMount.mountedBytes - 131072,
+    );
+    await upload(
+      a.fileId,
+      'continue-full.json',
+      Buffer.from(
+        JSON.stringify({ id: input.id, command: 'resume-after-full' }),
+      ),
+    );
+    send({
+      event: 'windows-rdpdr-full-verified',
+      actualRdp: true,
+      ipcTransport: input.ipcTransport,
+      physicalFreeBytes: 0,
+      partialBytes: partial.size,
+      remoteErrno: fullReceipt.value.errno,
+      acknowledgedBytes: fullReceipt.value.acknowledgedBytes,
+      crossHttpStatus: 507,
+      staleLocatorRefused: true,
+    });
+  }
   const created = await waitReceipt('receipt-created.json', 'created');
   assert.equal(created.value.sha256, hash(pattern().subarray(0, 65599)));
   phase = 'http-readback';
@@ -385,19 +534,49 @@ try {
   );
   phase = 'remote-delete';
   const clean = await waitReceipt('receipt-clean.json', 'clean');
+  phase = 'remote-delete-rw-inventory';
+  const cleanEntries = (await page(a.fileId)).entries;
+  if (diskFull) {
+    const ownedNames = new Set([
+      'receipt-clean.json',
+      'receipt-full.json',
+      'receipt-failed.json',
+      'continue-full.json',
+      'owned-resource-full.bin',
+      'owned-check.ps1',
+      'seed.bin',
+      'node-new.bin',
+      'receipt-created.json',
+      'continue.json',
+      'nested',
+    ]);
+    send({
+      event: 'owned-cleanup-inventory',
+      entries: cleanEntries.map((entry) => ({
+        name: ownedNames.has(entry.name) ? entry.name : 'other-owned-entry',
+        kind: entry.kind,
+        size: entry.size,
+      })),
+    });
+  }
   assert.deepEqual(
-    (await page(a.fileId)).entries.map((entry) => entry.name),
+    cleanEntries.map((entry) => entry.name),
     ['receipt-clean.json'],
   );
+  phase = 'remote-delete-ro-inventory';
   const readonly = (await page(b.fileId)).entries;
   assert.equal(readonly.length, 1);
   assert.equal(readonly[0].name, 'seed.bin');
+  phase = 'remote-delete-ro-readback';
   assert.deepEqual(await download(readonly[0]), seed);
+  phase = 'remote-delete-stale-locator';
   const stale = await request('GET', files + '/' + hostFile.fileId);
   assert.equal(stale.status, 404);
   assert.equal((await stale.json()).code, 'FILE_NOT_FOUND');
+  phase = 'remote-delete-clean-receipt';
   const remove = await request('DELETE', files + '/' + clean.entry.fileId);
   assert.equal(remove.status, 204);
+  phase = 'remote-delete-empty';
   assert.deepEqual((await page(a.fileId)).entries, []);
   phase = 'close';
   const close = await request('DELETE', path);
@@ -421,6 +600,7 @@ try {
     xrdpLegacyDelete: false,
     hostClipboardAccess: false,
     audioEvents,
+    ...(diskFull ? { connectedDiskFull: true, http507s: 13 } : {}),
   });
 } catch (error) {
   failed = true;

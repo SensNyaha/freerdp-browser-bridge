@@ -676,6 +676,55 @@ This accepts installed Linux **HTTP and RDPDR physical-full plus recovery**.
 Connected Windows full-drive, Windows MSI disk exhaustion and complete
 resource/soak acceptance remain separate gates.
 
+### Connected Windows-server RDPDR disk-full acceptance
+
+`scripts/test-windows-managed-files.mjs` has an explicit
+`--owned-windows-managed-files-full --prepared-powershell` mode. The operator
+supplies a dedicated Windows RDP session with its own active PowerShell window;
+the helper runs only its nonce-bound uploaded fixture. It does not start an
+application, change execution policy or access the host clipboard. Credentials
+and the approved certificate pin arrive through bounded private stdin/IPC.
+
+The Linux client requires a fresh, private **1 MiB tmpfs**, admitted before
+starting any worker. The published npm **0.6.0 Linux runtime** is checked against
+its canonical archive: all **192 package files** match, including worker
+`c282e1e3ca304fee0c95dd38754231a1c7e954acbe7736c0ab5b3342ba853079`.
+The SDK volume and helper payload are mounted read-only; SDK library paths are
+removed from the worker environment. This exhausts the disposable client
+sandbox, not the Windows VM's system disk.
+
+Twelve connected HTTP uploads return **507 `FILE_DISK_FULL`**, refund staging,
+space and quota, and preserve the session and existing files. A real Windows
+RDPDR write then exhausts the same filesystem. Two small receipt files reserve
+their pages before filling it; publication overwrites those exact pages without
+growing a file. A separately bounded retry handles only a temporary reader's
+sharing/lock refusal while publishing that test receipt.
+
+Both **RWS1 and framed IPC** pass, followed by an independent RWS1 repeat:
+
+- Windows reports **112 `ERROR_DISK_FULL`**, with **983040 acknowledged bytes**.
+- Native `statfs` reports **zero physical free bytes**. HTTP verifies every one
+  of the **1011712 actual partial bytes**, separately from Windows' acknowledged
+  count; a concurrent 64 KiB HTTP upload also returns 507.
+- HTTP deletion invalidates the old locator and restores space. Real remote
+  Unicode CRUD, 65599-byte readback, 131111-byte chunked HTTP upload, all three
+  read-only refusals and joined worker/runtime cleanup then pass unchanged.
+
+These three complete runs cover **39 HTTP 507 responses**. Focused Windows
+helper checks pass **13/13**; Linux preflight passes **10 / 3 PowerShell skips**.
+The initial attempt had already proved disk-full/refund but failed an unlocalized
+assertion during final ordinary-file cleanup. Its failed receipt/log are retained;
+the subsequent runs add precise phases and bounded owned-entry diagnostics,
+with no relaxed assertions or claimed production fix.
+
+Local evidence is `build/current-validation/windows-rdpdr-full-acceptance.json`,
+with the individual `windows-rdpdr-full-*-diagnostic-v2.json` and
+`windows-rdpdr-full-rws1-repeat-v3.json` receipts. This accepts the named
+**Linux worker to Windows RDP server** case. It does not establish a connected
+Windows-worker/NTFS full-drive case, Windows MSI exhaustion, file clipboard or
+the complete Stage 7 resource/soak matrix. No production code, npm archive,
+standalone artifact or immutable release tag changes in this test-only work.
+
 ## Native drive backend in development
 
 `ScopedSandbox` and `DriveSession` now implement the native storage backend for

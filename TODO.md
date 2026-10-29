@@ -2545,9 +2545,16 @@ remain explicit under quota/disk-full and the final V1 qualification.
   free bytes, subsequent real RDPDR CRUD/read-only and complete uninstall /
   configuration / bounded-mount cleanup. Actual installed RDPDR-initiated exhaustion also passes both platforms:
   strict-SSH free space zero, verified native partial bytes, cross-HTTP 507,
-  owned delete/stale-ID/space recovery and subsequent CRUD. Broader Windows /
-  MSI / service resource acceptance and connected Windows RDPDR disk-full
-  remain open; this checkbox stays open.
+  owned delete/stale-ID/space recovery and subsequent CRUD. The exact public
+  Linux runtime now also passes actual Windows-server RDPDR exhaustion over
+  RWS1 and framed IPC, plus an independent RWS1 repeat: Windows error 112,
+  zero physical free bytes, exact native partial-content verification, 13 HTTP
+  507 responses per run, deletion/refund and subsequent real CRUD/read-only /
+  joined cleanup. The initial final-cleanup assertion failure remains recorded
+  separately; no assertions were relaxed. Connected Windows-worker/NTFS,
+  Windows MSI / service and broader resource/soak acceptance remain open;
+  this checkbox stays open.
+  [Windows-server scope](docs/FILES.md#connected-windows-server-rdpdr-disk-full-acceptance).
   [Installed Linux scope](docs/FILES.md#installed-astra-and-red-os-disk-full-acceptance).
   [Windows physical scope](docs/FILES.md#bounded-windows-ntfs-disk-full-check).
   [Connected public scope](docs/FILES.md#connected-public-standalone-disk-full-acceptance).

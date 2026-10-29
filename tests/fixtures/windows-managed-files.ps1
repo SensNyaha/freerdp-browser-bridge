@@ -1,4 +1,4 @@
-param([string]$RunId)
+param([string]$RunId, [switch]$DiskFull)
 $ErrorActionPreference = 'Stop'
 if ($RunId -cnotmatch '^[0-9a-f]{32}$') { throw 'OWNED_ID' }
 $rw = '\\tsclient\RW' + $RunId.Substring(0, 5)
@@ -33,9 +33,9 @@ function Read-Owned([string]$Path, [int]$Maximum) {
     return ,$result
   } finally { $stream.Dispose() }
 }
-function Assert-OwnedCommand([object]$Command, [string]$ExpectedId) {
+function Assert-OwnedCommand([object]$Command, [string]$ExpectedId, [ValidateSet('cleanup', 'resume-after-full')][string]$ExpectedCommand = 'cleanup') {
   $keys = ($Command.PSObject.Properties.Name | Sort-Object) -join ','
-  if ($keys -cne 'command,id' -or $Command.id -cne $ExpectedId -or $Command.command -cne 'cleanup') { throw 'OWNED_COMMAND' }
+  if ($keys -cne 'command,id' -or $Command.id -cne $ExpectedId -or $Command.command -cne $ExpectedCommand) { throw 'OWNED_COMMAND' }
 }
 function Assert-OwnedDenied([scriptblock]$Operation) {
   try { & $Operation }
@@ -47,7 +47,41 @@ function Assert-OwnedDenied([scriptblock]$Operation) {
   }
   throw 'OWNED_WRITE_ALLOWED'
 }
+function Write-OwnedReservedReceipt([ValidateSet('receipt-full.json', 'receipt-failed.json')][string]$Name, [hashtable]$Value) {
+  $bytes = [Text.Encoding]::UTF8.GetBytes(($Value | ConvertTo-Json -Depth 3 -Compress))
+  if ($bytes.Length -gt 2048) { throw 'OWNED_BOUND' }
+  $padded = [byte[]]::new(2048)
+  for ($i = 0; $i -lt 2048; $i++) { $padded[$i] = 32 }
+  [Array]::Copy($bytes, $padded, $bytes.Length)
+  # HTTP may briefly hold a read pin on the preallocated receipt. Retry only
+  # sharing/lock refusal within a separate fixed lab-publication deadline.
+  $openClock = [Diagnostics.Stopwatch]::StartNew()
+  while ($true) {
+    try {
+      $stream = [IO.File]::Open((Join-Path $rw $Name), [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::None)
+      break
+    } catch {
+      $cause = $_.Exception
+      while ($cause.InnerException) { $cause = $cause.InnerException }
+      if (($cause.HResult -band 65535) -notin @(32, 33)) { throw }
+      if ($openClock.ElapsedMilliseconds -ge 2000) { throw 'OWNED_RECEIPT_BUSY' }
+      Start-Sleep -Milliseconds 10
+    }
+  }
+  try {
+    if ($stream.Length -ne 2048) { throw 'OWNED_RESERVED_RECEIPT' }
+    $stream.Write($padded, 0, 2048); $stream.Flush()
+  } finally {
+    $stream.Dispose()
+    [Array]::Clear($bytes, 0, $bytes.Length)
+    [Array]::Clear($padded, 0, $padded.Length)
+  }
+}
 function Write-OwnedReceipt([ValidateSet('receipt-created.json', 'receipt-clean.json', 'receipt-failed.json')][string]$Name, [hashtable]$Value) {
+  if ($DiskFull -and $Name -ceq 'receipt-failed.json' -and [IO.File]::Exists((Join-Path $rw $Name))) {
+    Write-OwnedReservedReceipt $Name $Value
+    return
+  }
   $bytes = [Text.Encoding]::UTF8.GetBytes(($Value | ConvertTo-Json -Depth 3 -Compress))
   if ($bytes.Length -gt 2048) { throw 'OWNED_BOUND' }
   $stream = [IO.File]::Open((Join-Path $rw $Name), [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
@@ -70,6 +104,51 @@ try {
   Assert-OwnedDenied { $s = [IO.File]::Open((Join-Path $ro 'seed.bin'), [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None); $s.Dispose() }
   $phase = 'read-only-delete'
   Assert-OwnedDenied { [IO.File]::Delete((Join-Path $ro 'seed.bin')) }
+  if ($DiskFull) {
+    $phase = 'receipt-reserve'
+    $padding = [byte[]]::new(2048)
+    for ($i = 0; $i -lt $padding.Length; $i++) { $padding[$i] = 32 }
+    foreach ($name in @('receipt-full.json', 'receipt-failed.json')) {
+      $reserve = [IO.File]::Open((Join-Path $rw $name), [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+      try { $reserve.Write($padding, 0, $padding.Length); $reserve.Flush() }
+      finally { $reserve.Dispose() }
+    }
+    [Array]::Clear($padding, 0, $padding.Length)
+    $phase = 'disk-full'
+    $fullPath = Join-Path $rw 'owned-resource-full.bin'
+    $fullBlock = [byte[]]::new(65536)
+    for ($i = 0; $i -lt $fullBlock.Length; $i++) { $fullBlock[$i] = [byte](($i * 17 + 83) -band 255) }
+    $acknowledged = 0
+    $fullError = 0
+    $stream = [IO.File]::Open($fullPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+    try {
+      while ($acknowledged -lt 2097152) {
+        $stream.Write($fullBlock, 0, $fullBlock.Length)
+        $acknowledged += $fullBlock.Length
+      }
+      $stream.Flush()
+    } catch {
+      $cause = $_.Exception
+      while ($cause.InnerException) { $cause = $cause.InnerException }
+      $fullError = $cause.HResult -band 65535
+    } finally {
+      $stream.Dispose()
+      [Array]::Clear($fullBlock, 0, $fullBlock.Length)
+    }
+    if ($fullError -notin @(39, 112) -or $acknowledged -lt 65536 -or $acknowledged -ge 2097152) { throw 'OWNED_WRONG_FULL_REFUSAL' }
+    Write-OwnedReservedReceipt 'receipt-full.json' @{ v=1; id=$RunId; phase='full'; ok=$true; errno=$fullError; acknowledgedBytes=$acknowledged }
+    $phase = 'wait-full-host'
+    $resume = Join-Path $rw 'continue-full.json'
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    while (-not [IO.File]::Exists($resume)) {
+      if ($clock.ElapsedMilliseconds -gt 60000) { throw 'OWNED_DEADLINE' }
+      Start-Sleep -Milliseconds 100
+    }
+    $command = [Text.Encoding]::UTF8.GetString((Read-Owned $resume 4096)) | ConvertFrom-Json
+    Assert-OwnedCommand $command $RunId 'resume-after-full'
+    if ([IO.File]::Exists($fullPath)) { throw 'OWNED_FULL_FILE_REMAINS' }
+    foreach ($name in @('continue-full.json', 'receipt-full.json', 'receipt-failed.json')) { [IO.File]::Delete((Join-Path $rw $name)) }
+  }
   $phase = 'create-write'
   $unicode = [string][char]0x0416 + [char]0x65e5 + [char]0x672c + [char]0x8a9e + [char]::ConvertFromUtf32(128512)
   $original = Join-Path $rw ('remote-' + $unicode + '.bin')
@@ -116,5 +195,5 @@ try {
   try { Write-OwnedReceipt 'receipt-failed.json' @{ v = 1; id = $RunId; phase = $phase; ok = $false; errno = ($cause.HResult -band 65535) } } catch { }
   Write-Output 'OWNED_MANAGED_FILES_CHECK_FAILED'
 } finally {
-  foreach ($array in @($bytes, $prefix, $actual, $seedA, $seedB, $hostBytes)) { if ($array) { [Array]::Clear($array, 0, $array.Length) } }
+  foreach ($array in @($bytes, $prefix, $actual, $seedA, $seedB, $hostBytes, $padding, $fullBlock)) { if ($array) { [Array]::Clear($array, 0, $array.Length) } }
 }
