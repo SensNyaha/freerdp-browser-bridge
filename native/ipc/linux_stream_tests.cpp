@@ -35,14 +35,18 @@ struct Pair {
         std::terminate();
   }
 };
-DispatchAdmission send(LinuxStreamOutput &output, const Packet &packet) {
+template <class Admit> DispatchAdmission admit_until_ready(Admit admit) {
   const auto due = std::chrono::steady_clock::now() + 1s;
   for (;;) {
-    const auto result = output.try_send(packet.kind, packet.request_id, packet.payload);
+    const auto result = admit();
     if (result != DispatchAdmission::busy || std::chrono::steady_clock::now() >= due)
       return result;
     std::this_thread::yield();
   }
+}
+DispatchAdmission send(LinuxStreamOutput &output, const Packet &packet) {
+  return admit_until_ready(
+      [&] { return output.try_send(packet.kind, packet.request_id, packet.payload); });
 }
 bool read_exact(int fd, ::bridge::compat::span<std::uint8_t> bytes, ::bridge::compat::stop_token stop = {}) {
   const auto due = std::chrono::steady_clock::now() + 5s;
@@ -207,7 +211,9 @@ TEST_CASE(
   for (unsigned i = 0; i < 20; ++i) {
     Pair pair(i % 2 != 0);
     LinuxStreamOutput output(pair.ends[1]);
-    REQUIRE(output.try_select_audio_codec(OutputAudioCodec::opus) == DispatchAdmission::accepted);
+    // The writer briefly shares the dispatcher lock during startup.
+    REQUIRE(admit_until_ready([&] { return output.try_select_audio_codec(OutputAudioCodec::opus); }) ==
+            DispatchAdmission::accepted);
     const auto config = audio::opus::encode_config({1, 312});
     REQUIRE(send(output, {Kind::audio_config, 0, {config.begin(), config.end()}}) ==
             DispatchAdmission::accepted);

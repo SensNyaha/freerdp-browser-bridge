@@ -31,6 +31,11 @@ process if it cannot join safely. Codec selection/discard remains the existing
 bounded dispatcher contract; the fixture's Opus choice is not Linux audio
 activation.
 
+The acceptance fixture retries `DispatchAdmission::busy` under a one-second
+steady-clock deadline for record admission and codec selection. The writer can
+briefly hold the dispatcher mutex during startup. All other admission results
+return immediately; a persistent busy result still fails the acceptance check.
+
 Six real FIFO/socketpair cases verify fragmented byte preservation, graceful /
 repeated close, descriptor flags, producer progress under a stalled peer,
 whole-record/drain deadlines, broken peers, signal-mask preservation, invalid
