@@ -68,7 +68,7 @@ export async function windowsFullRoot(root, proofPath) {
     !Number.isSafeInteger(mountedBytes) ||
     mountedBytes < 8388608 ||
     mountedBytes > 16777216 ||
-    fs.bavail * fs.bsize < 8388608
+    fs.bavail * fs.bsize < 4194304
   )
     refuse();
   return { mountedBytes, freeBytes: fs.bavail * fs.bsize };

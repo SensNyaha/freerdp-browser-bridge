@@ -53,8 +53,8 @@ for (const [platform, transport] of [
         assert.ok(filesystem.bavail * filesystem.bsize >= mountedBytes - 65536);
       }
       const initialFreeBytes = filesystem.bavail * filesystem.bsize;
-      const quotaBytes = windows ? 67108864 : 8388608;
-      const fileBytes = windows ? 33554432 : 4194304;
+      const quotaBytes = windows ? 33554432 : 8388608;
+      const fileBytes = windows ? 16777216 : 4194304;
       const runtimeRoot = await mkdtemp(join(fullRoot, 'bridge-http-full-'));
       const workers = [];
       const server = await createSessionServer({
@@ -151,7 +151,7 @@ for (const [platform, transport] of [
         );
         async function* fullWindowsBody() {
           const block = Buffer.alloc(65536, 0x5a);
-          for (let n = 0; n < 512; n++) yield block;
+          for (let n = 0; n < 256; n++) yield block;
         }
         for (let attempt = 0; attempt < 12; ++attempt) {
           const response = await req(

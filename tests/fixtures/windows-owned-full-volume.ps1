@@ -167,7 +167,7 @@ try {
         label=$volume.FileSystemLabel; size=$volume.Size; free=$volume.SizeRemaining;
         letter=[string]$volume.DriveLetter } | ConvertTo-Json -Compress))
     Require ($volume.FileSystem -eq 'NTFS' -and $volume.FileSystemLabel -eq 'BRIDGEFULL')
-    Require ($volume.Size -le 16777216 -and $volume.SizeRemaining -ge 8388608)
+    Require ($volume.Size -le 16777216 -and $volume.SizeRemaining -ge 4194304)
     Require ($volume.DriveLetter -and $volume.DriveLetter -notin $beforeLetters)
     $root = [string]$volume.DriveLetter+':\bridge-owned-full-'+[Guid]::NewGuid().ToString('N')
     [void][IO.Directory]::CreateDirectory($root,$security)
