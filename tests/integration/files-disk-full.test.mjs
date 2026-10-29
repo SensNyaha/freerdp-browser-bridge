@@ -13,18 +13,27 @@ import { Writable } from 'node:stream';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { NativeFileWorker } from '../fixtures/file-worker.mjs';
 import { eventually } from '../fixtures/session-worker.mjs';
+import { windowsFullRoot } from '../fixtures/windows-full-root.mjs';
 
 const binaryDir = process.env.BRIDGE_FILE_TEST_BINARY_DIR;
 const fullRoot = process.env.BRIDGE_FILE_TEST_FULL_ROOT;
-const enabled = process.platform === 'linux' && binaryDir && fullRoot;
 
-// Explicitly provision a disposable tmpfs of at most 1 MiB. This suite never
+// Explicitly provision a disposable tmpfs of at most 1 MiB or use the Windows
+// coordinator's new, verified private 16 MiB NTFS VHD. This suite never
 // fills the normal temporary directory, creates mounts, changes permissions
 // or starts RDP. Missing opt-in skips; an unsafe opt-in fails before allocation.
-for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
+for (const [platform, transport] of [
+  ['linux', 'framed-pipes'],
+  ['linux', 'unix-seqpacket-rws1'],
+  ['win32', 'framed-pipes'],
+]) {
+  const windows = platform === 'win32';
   test(
-    `HTTP bounded tmpfs / ${transport}: real native ENOSPC returns 507, repeatedly refunds quota and permits fresh IO; synthetic RDP`,
-    { skip: !enabled, timeout: 20000 },
+    `HTTP ${windows ? 'owned NTFS VHD' : 'bounded tmpfs'} / ${transport}: real native ENOSPC returns 507, repeatedly refunds quota and permits fresh IO; synthetic RDP`,
+    {
+      skip: process.platform !== platform || !binaryDir || !fullRoot,
+      timeout: windows ? 120000 : 20000,
+    },
     async (t) => {
       assert.ok(isAbsolute(fullRoot));
       assert.equal(await realpath(fullRoot), fullRoot);
@@ -32,15 +41,28 @@ for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
       assert.equal(base.isDirectory(), true);
       assert.equal(base.isSymbolicLink(), false);
       const filesystem = await statfs(fullRoot);
-      assert.equal(filesystem.type, 0x01021994);
       const mountedBytes = filesystem.bsize * filesystem.blocks;
-      assert.ok(mountedBytes >= 131072 && mountedBytes <= 1048576);
-      assert.ok(filesystem.bavail * filesystem.bsize >= mountedBytes - 65536);
+      if (windows) {
+        await windowsFullRoot(
+          fullRoot,
+          process.env.BRIDGE_FILE_TEST_WINDOWS_VOLUME_PROOF,
+        );
+      } else {
+        assert.equal(filesystem.type, 0x01021994);
+        assert.ok(mountedBytes >= 131072 && mountedBytes <= 1048576);
+        assert.ok(filesystem.bavail * filesystem.bsize >= mountedBytes - 65536);
+      }
+      const initialFreeBytes = filesystem.bavail * filesystem.bsize;
+      const quotaBytes = windows ? 67108864 : 8388608;
+      const fileBytes = windows ? 33554432 : 4194304;
       const runtimeRoot = await mkdtemp(join(fullRoot, 'bridge-http-full-'));
       const workers = [];
       const server = await createSessionServer({
         worker: {
-          workerPath: resolve(binaryDir, 'rdp-worker'),
+          workerPath: resolve(
+            binaryDir,
+            'rdp-worker' + (windows ? '.exe' : ''),
+          ),
           runtimeRoot,
         },
         authenticate: (request) =>
@@ -51,8 +73,8 @@ for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
           maxSessions: 1,
           maxPerPrincipal: 1,
           files: {
-            maxTotalBytes: 8388608,
-            maxFileBytes: 4194304,
+            maxTotalBytes: quotaBytes,
+            maxFileBytes: fileBytes,
             maxEntries: 16,
             nativeTimeoutMs: 1000,
             progressTimeoutMs: 2000,
@@ -81,6 +103,7 @@ for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
               ...headers,
             },
             ...(body === undefined ? {} : { body }),
+            ...(body?.[Symbol.asyncIterator] ? { duplex: 'half' } : {}),
           });
         const created = await req(
           'POST',
@@ -114,7 +137,7 @@ for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
             const full = await statfs(runtimeRoot);
             const free = full.bavail * full.bsize;
             maximumFreeBytesAtFull = Math.max(maximumFreeBytesAtFull, free);
-            assert.ok(free <= 65536);
+            assert.ok(free <= (windows ? mountedBytes / 8 : 65536));
           }
           return reply;
         };
@@ -126,11 +149,15 @@ for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
           'managed-files',
           '.uploads',
         );
+        async function* fullWindowsBody() {
+          const block = Buffer.alloc(65536, 0x5a);
+          for (let n = 0; n < 512; n++) yield block;
+        }
         for (let attempt = 0; attempt < 12; ++attempt) {
           const response = await req(
             'POST',
-            files + '?name=too-large-for-owned-tmpfs.bin',
-            Buffer.alloc(2097152, 0x5a),
+            files + '?name=too-large-for-owned-volume.bin',
+            windows ? fullWindowsBody() : Buffer.alloc(2097152, 0x5a),
             { 'content-type': 'application/octet-stream' },
           );
           assert.equal(response.status, 507);
@@ -145,9 +172,12 @@ for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
           });
           assert.deepEqual(await readdir(uploads), []);
           const available = await statfs(runtimeRoot);
-          assert.ok(available.bavail * available.bsize >= 524288);
+          assert.ok(
+            available.bavail * available.bsize >=
+              (windows ? initialFreeBytes - 1048576 : 524288),
+          );
         }
-        assert.ok(successfulNativeWriteBytes > 8388608);
+        assert.ok(successfulNativeWriteBytes > quotaBytes);
         const payload = Buffer.alloc(65536, 0xa5);
         const upload = await req(
           'POST',
@@ -179,7 +209,7 @@ for (const transport of ['framed-pipes', 'unix-seqpacket-rws1']) {
             attempts: 12,
             diskFullReplies,
             successfulNativeWriteBytes,
-            quotaBytes: 8388608,
+            quotaBytes,
             maximumFreeBytesAtFull,
           }),
         );

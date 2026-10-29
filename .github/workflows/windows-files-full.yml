@@ -1,0 +1,133 @@
+name: Windows file disk full
+on:
+  push:
+    paths:
+      - native/files/**
+      - native/lifecycle/**
+      - packages/node-bridge/**
+      - apps/bridge-api/**
+      - tests/fixtures/create-owned-ntfs-vhd.py
+      - tests/fixtures/windows-owned-full-volume.ps1
+      - tests/fixtures/windows-full-root.mjs
+      - tests/fixtures/file-worker.mjs
+      - tests/integration/files-disk-full.test.mjs
+      - tests/unit/owned-ntfs-fixture.test.mjs
+      - tests/unit/windows-full-root.test.mjs
+      - CMakeLists.txt
+      - CMakePresets.json
+      - package.json
+      - .github/workflows/windows-files-full.yml
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-files-full-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+jobs:
+  fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install offline regular-file fixture tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-utils ntfs-3g
+      - name: Generate and roundtrip the private 16 MiB NTFS VHD
+        run: python3 tests/fixtures/create-owned-ntfs-vhd.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-owned-ntfs-fixture
+          path: |
+            build/owned-ntfs-*/owned-full.vhd
+            build/owned-ntfs-*/volume.json
+          if-no-files-found: error
+          retention-days: 7
+  windows:
+    needs: fixture
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-owned-ntfs-fixture
+          path: build/windows-volume-input
+      - run: pnpm install --frozen-lockfile
+      - run: cmake --preset foundation -DCMAKE_CXX_COMPILER=cl -DBRIDGE_NODE_IPC=OFF
+      - run: pnpm build:native
+      - run: pnpm build
+      - name: Image admission and rejection controls without mounting
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifests = @(Get-ChildItem -LiteralPath build/windows-volume-input -Filter volume.json -Recurse -File)
+          if ($manifests.Count -ne 1) { throw 'OWNED_VHD_INPUT_REQUIRED' }
+          $env:BRIDGE_TEST_WINDOWS_VHD_INPUT = $manifests[0].DirectoryName
+          node --test tests/unit/owned-ntfs-fixture.test.mjs tests/unit/windows-full-root.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:BRIDGE_TEST_WINDOWS_VHD_INPUT
+      - name: Actual source worker NTFS disk-full and quota refund
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifests = @(Get-ChildItem -LiteralPath build/windows-volume-input -Filter volume.json -Recurse -File)
+          if ($manifests.Count -ne 1) { throw 'OWNED_VHD_INPUT_REQUIRED' }
+          & tests/fixtures/windows-owned-full-volume.ps1 -ImageDirectory $manifests[0].DirectoryName -BinaryDirectory (Resolve-Path build/foundation).Path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Actual published runtime NTFS disk-full when its exact version is public
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($version -cnotmatch '^0\.[0-9]+\.[0-9]+$') { throw 'PRODUCT_VERSION_REQUIRED' }
+          try {
+            $metadata = Invoke-RestMethod -Uri "https://registry.npmjs.org/@freerdp-bridge%2Fruntime-win32-x64/$version"
+          } catch {
+            if ($_.Exception.Response.StatusCode.value__ -eq 404) {
+              Write-Output 'PUBLIC_RUNTIME_NOT_YET_AVAILABLE_SOURCE_ACCEPTANCE_ONLY'
+              exit 0
+            }
+            throw
+          }
+          $lock = Get-Content packaging/standalone/locks/win32-x64.json -Raw | ConvertFrom-Json
+          $integrity = $lock.packages.'node_modules/@freerdp-bridge/runtime-win32-x64'.integrity
+          if ($metadata.version -cne $version -or $metadata.dist.integrity -cne $integrity) { throw 'PUBLIC_RUNTIME_INTEGRITY_REQUIRED' }
+          $destination = New-Item -ItemType Directory -Path build/public-full-runtime
+          $result = & npm pack "@freerdp-bridge/runtime-win32-x64@$version" --ignore-scripts --loglevel=error --json --pack-destination $destination.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $packed = @($result | Out-String | ConvertFrom-Json)
+          if ($packed.Count -ne 1 -or $packed[0].integrity -cne $integrity -or $packed[0].filename -cne "freerdp-bridge-runtime-win32-x64-$version.tgz") { throw 'PUBLIC_RUNTIME_ARCHIVE_REQUIRED' }
+          $file = Join-Path $destination.FullName $packed[0].filename
+          if ((Get-Item -LiteralPath $file).Length -gt 16777216) { throw 'PUBLIC_RUNTIME_ARCHIVE_BOUND' }
+          $stream = [IO.File]::OpenRead($file)
+          $hash = [Security.Cryptography.SHA512]::Create()
+          try { $actual = 'sha512-'+[Convert]::ToBase64String($hash.ComputeHash($stream)) }
+          finally { $stream.Dispose(); $hash.Dispose() }
+          if ($actual -cne $integrity) { throw 'PUBLIC_RUNTIME_ARCHIVE_INTEGRITY' }
+          & tar -xf $file -C $destination.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $manifests = @(Get-ChildItem -LiteralPath build/windows-volume-input -Filter volume.json -Recurse -File)
+          if ($manifests.Count -ne 1) { throw 'OWNED_VHD_INPUT_REQUIRED' }
+          & tests/fixtures/windows-owned-full-volume.ps1 -ImageDirectory $manifests[0].DirectoryName -BinaryDirectory (Join-Path $destination.FullName 'package/runtime/bin')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-files-full-evidence
+          path: |
+            build/owned-vhd-run-*/proof.json
+            build/owned-vhd-run-*/acceptance.json
+            build/owned-vhd-run-*/native-http-test.log
+          if-no-files-found: warn
+          retention-days: 7
