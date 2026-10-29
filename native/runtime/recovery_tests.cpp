@@ -1,5 +1,6 @@
 #include "ownership.hpp"
 #include "recovery.hpp"
+#include "../files/recovery.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <fstream>
@@ -46,6 +47,12 @@ struct Fixture {
     output.close();
     if (!output)
       throw RuntimeOwnershipError();
+#ifndef _WIN32
+    // Model the production Node marker's explicit 0600 mode independently of
+    // the invoking shell's umask (RED OS SSH defaults to group-writable 0002).
+    if (::chmod((directory / ".rdp-worker-owned").c_str(), 0600) != 0)
+      throw RuntimeOwnershipError();
+#endif
   }
   RecoveryResult recover() const { return recover_runtime_directory(root, name); }
   ~Fixture() {
@@ -99,6 +106,44 @@ TEST_CASE("Recovery preserves unknown files and nested directories with the owne
     CHECK(std::filesystem::exists(fixture.directory / "unknown"));
     CHECK(std::filesystem::file_size(fixture.directory / ".rdp-worker-owned") == 10);
   }
+}
+TEST_CASE("Recovery reclaims a claimed managed tree only after both ownership guards are absent") {
+  struct ManagedFixture : Fixture {
+    ~ManagedFixture() {
+      for (const auto &path : {directory / "managed-files/.data/file", directory / "managed-files/.data",
+          directory / "managed-files/.uploads/0000000000000001", directory / "managed-files/.uploads",
+          directory / "managed-files", directory / ".managed-files-owned"}) {
+        std::error_code ignored;std::filesystem::remove(path, ignored);
+      }
+    }
+  } fixture;
+  fixture.marker();
+  {
+    namespace files = bridge::files;
+    auto runtime = files::SafeRoot::open(fixture.directory);REQUIRE(runtime.first == files::Status::ok);
+    REQUIRE(runtime.second.create_directory(files::managed_files_component) == files::Status::ok);
+    const auto identity = runtime.second.inspect(files::managed_files_component, files::EntryKind::directory);
+    REQUIRE(identity.status == files::Status::ok);
+    REQUIRE(files::create_managed_files_claim(runtime.second, identity.identity).status == files::Status::ok);
+    auto data = runtime.second.open_directory(files::managed_files_component);REQUIRE(data.first == files::Status::ok);
+    REQUIRE(data.second.create_directory(".data") == files::Status::ok);
+    REQUIRE(data.second.create_directory(".uploads") == files::Status::ok);
+    for (const auto name : {".data/file", ".uploads/0000000000000001"}) {
+      auto file = data.second.open_file(name, files::OpenMode::create_new);REQUIRE(file.status == files::Status::ok);
+      REQUIRE(file.file.write(0, std::array<std::uint8_t, 1>{7}).bytes == 1);
+    }
+  }
+  {
+    RuntimeLease lease(fixture.directory);
+    REQUIRE(fixture.recover() == RecoveryResult::busy);
+  }
+  { std::ofstream stream(fixture.directory / "unknown");stream << "preserve"; }
+  REQUIRE(fixture.recover() == RecoveryResult::retained);
+  REQUIRE(std::filesystem::file_size(fixture.directory / "managed-files/.data/file") == 1);
+  REQUIRE(std::filesystem::file_size(fixture.directory / "managed-files/.uploads/0000000000000001") == 1);
+  REQUIRE(std::filesystem::remove(fixture.directory / "unknown"));
+  REQUIRE(fixture.recover() == RecoveryResult::removed);
+  REQUIRE(std::filesystem::is_empty(fixture.root));
 }
 TEST_CASE("Recovery rejects legacy traversal and hard-linked marker objects") {
   Fixture fixture;

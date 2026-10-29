@@ -36,6 +36,15 @@ test(
       assert.ok(
         listing.every((line) => /^[-d][rwx-]+ root\/root\s/.test(line)),
       );
+      const program = listing.filter((line) =>
+        line.includes(' ./opt/freerdp-bridge'),
+      );
+      assert.ok(program.length > 5);
+      assert.ok(
+        program.every((line) =>
+          /^(?:drwxr-xr-x|-rwxr-xr-x|-rw-r--r--) root\/root\s/.test(line),
+        ),
+      );
       await run(
         'dpkg-deb',
         ['--raw-extract', build.output, extracted],

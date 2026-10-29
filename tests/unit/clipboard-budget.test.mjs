@@ -16,6 +16,45 @@ const workerOptions = {
   runtimeRoot: resolve('build/clipboard-budget-never-started'),
 };
 
+test('deferred file clipboard: native adapter refuses every enabled direction before process start', async () => {
+  let starts = 0;
+  class NeverStarted extends WorkerProcess {
+    start() {
+      ++starts;
+      assert.fail('Deferred file clipboard must not start a native process');
+    }
+  }
+  class Adapter extends NativeSessionWorker {
+    createWorkerProcess(options) {
+      return new NeverStarted(options);
+    }
+  }
+  for (const mode of [
+    'bidirectional',
+    'server-to-browser',
+    'browser-to-server',
+  ]) {
+    const native = new Adapter(workerOptions, { clipboardItemBytes: 1024 });
+    try {
+      await assert.rejects(
+        native.start(
+          {
+            target: { host: 'synthetic' },
+            auth: { password: 'synthetic deferred clipboard credential' },
+            clipboard: { mode, files: true, maxItemBytes: 1024 },
+          },
+          new AbortController().signal,
+        ),
+        { code: 'RDP_SETTING_NOT_IMPLEMENTED' },
+      );
+      assert.equal(starts, 0);
+      assert.equal(native.pid, undefined);
+    } finally {
+      await native.close();
+    }
+  }
+});
+
 test('clipboard reservation: exact finite item-plus-envelope-and-control budget, defaults and host refusal', async () => {
   let captured,
     constructed = 0;

@@ -455,6 +455,16 @@ latency acceptance claim. The source generation, policy and item maximum remain
 immutable in a queue lifetime; source revisions cannot go backward. No priority
 can preempt bytes already being written. [Current clipboard evidence](history/iterations/201-250.md#iteration-228).
 
+The in-development private file service adds one independently bounded,
+nonreplaceable file-result slot after the clipboard result and before cursor
+and video. Its 64-KiB data maximum adds 65,600 wire bytes: the combined queue
+can hold **72 records / 26,091,195 wire bytes**, plus one writer-owned record.
+File commands are refused by the output queue. A second pending file result
+returns full; control capacity and the existing media/clipboard limits remain
+fixed. File-result storage is wiped on consumption, discard and destruction.
+This describes the feature-branch implementation, not the public 0.5.0 runtime.
+[Private managed-file contract](../PROTOCOL.md#private-managed-file-worker-service-schema-1-in-development).
+
 ## Producer/writer ownership foundation (Iteration 55)
 
 `OutputDispatcher` shares the queue between producers and one external consumer.

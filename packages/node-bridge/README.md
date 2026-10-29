@@ -55,8 +55,8 @@ must reference the complete installed runtime and come from trusted host config.
 
 ## Image clipboard in 0.5.0
 
-During release preparation, use the complete verified 0.5.0 JS/native archive
-cohort; a source version alone does not establish registry availability.
+Image clipboard was introduced in the accepted 0.5.0 release. Keep JS and
+native runtime versions matched when using it in later releases.
 
 Version 0.5.0 adds typed `ClipboardImageItem`, image read/write results
 and shared session control methods. Explicitly select `clipboard.images: true`
@@ -71,6 +71,16 @@ Published 0.4.0 does not contain this feature. Use matching verified 0.5.0
 JS/native artifacts and the
 [application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
 for readiness, exact control API examples, quotas and named acceptance scope.
+
+## Managed files in 0.6.0
+
+Use matching 0.6.0 JS/native packages for managed-file IPC and redirected
+sandbox drives. The adapter/session manager supplies frozen file limits,
+verified ownership and joined cleanup. This lower-level library does not
+create an authenticated HTTP file service by itself.
+
+OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
+See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
 ## Limitations
 

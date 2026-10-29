@@ -45,8 +45,8 @@ unknown fields. Limit transport bodies before parsing untrusted JSON.
 
 ## Image clipboard in 0.5.0
 
-During release preparation, use the complete verified 0.5.0 JS/native archive
-cohort; a source version alone does not establish registry availability.
+Image clipboard was introduced in the accepted 0.5.0 release. Keep JS and
+native runtime versions matched when using it in later releases.
 
 Version 0.5.0 adds explicit `clipboard.images: true`, disabled by default.
 Combine it with `text: true`, an allowed direction and finite `maxItemBytes`.
@@ -57,6 +57,15 @@ Published 0.4.0 does not contain this feature; use matching 0.5.0 packages.
 See the
 [application guide](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.5.0/docs/CLIPBOARD_SESSION.md#application-integration-for-the-developing-image-feature)
 for session JSON and runtime capability requirements.
+
+## Managed files in 0.6.0
+
+Version 0.6.0 adds bounded session-sandbox drive descriptors and file-policy
+types. Applications enable storage through their adapter or standalone
+configuration; session JSON cannot choose an arbitrary host directory.
+
+OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
+See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
 ## Limitations
 

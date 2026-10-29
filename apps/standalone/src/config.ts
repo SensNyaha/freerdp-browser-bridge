@@ -2,6 +2,7 @@ import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { Type, type Static, type TProperties } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
+import { resolveManagedFilesPolicy } from '@freerdp-bridge/api/fastify';
 
 const object = <T extends TProperties>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
@@ -41,6 +42,27 @@ export const StandaloneConfigSchema = object({
     maxSessions: Type.Integer({ minimum: 1, maximum: 32 }),
     maxPerPrincipal: Type.Integer({ minimum: 1, maximum: 4 }),
   }),
+  files: Type.Optional(
+    object({
+      xrdpLegacyDelete: Type.Optional(Type.Boolean()),
+      maxTotalBytes: Type.Optional(
+        Type.Integer({ minimum: 0, maximum: 2 ** 40 }),
+      ),
+      maxFileBytes: Type.Optional(
+        Type.Integer({ minimum: 0, maximum: 2 ** 40 }),
+      ),
+      maxEntries: Type.Optional(Type.Integer({ minimum: 0, maximum: 65536 })),
+      transferTimeoutMs: Type.Optional(
+        Type.Integer({ minimum: 10, maximum: 600000 }),
+      ),
+      progressTimeoutMs: Type.Optional(
+        Type.Integer({ minimum: 10, maximum: 600000 }),
+      ),
+      nativeTimeoutMs: Type.Optional(
+        Type.Integer({ minimum: 10, maximum: 30000 }),
+      ),
+    }),
+  ),
   auth: Type.Optional(
     object({
       issuer: text(256),
@@ -58,6 +80,13 @@ const invalid = () => new Error('STANDALONE_CONFIG_INVALID');
 export function validateStandaloneConfig(value: unknown): StandaloneConfig {
   if (!checked.Check(value)) throw invalid();
   if (value.limits.maxPerPrincipal > value.limits.maxSessions) throw invalid();
+  if (value.files !== undefined) {
+    try {
+      resolveManagedFilesPolicy(value.files);
+    } catch {
+      throw invalid();
+    }
+  }
   if (
     value.auth &&
     new Set(value.auth.jwks.keys.map((key) => key.kid)).size !==

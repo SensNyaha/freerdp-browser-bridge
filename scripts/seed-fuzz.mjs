@@ -16,9 +16,95 @@ import {
   encodeClipboardCommand,
   encodeClipboardResult,
   encodeClipboardImageItem,
+  encodeFileRecord,
 } from '../packages/protocol/dist/index.js';
 
 await mkdir('build/fuzz/corpus', { recursive: true });
+const fileSettings = {
+  host: 'localhost',
+  username: 'u',
+  domain: '',
+  port: 3389,
+  width: 1024,
+  height: 768,
+  colorDepth: 32,
+  security: 2,
+  certificatePolicy: 0,
+  minimumTls: 2,
+  connectMs: 5000,
+  tcpAckMs: 1000,
+  drives: Array.from({ length: 32 }, (_, i) => ({
+    name: 'D' + String(i).padStart(2, '0') + '_' + 'x'.repeat(60),
+    subdir: 'a'.repeat(253),
+    readOnly: i % 2 === 1,
+  })),
+};
+await writeFile(
+  'build/fuzz/corpus/configure-managed-drives-maximum',
+  encodePacket({
+    kind: Kind.Configure,
+    requestId: 1n,
+    payload: encodeConnectionSettings(fileSettings),
+  }),
+);
+const fileBase = {
+  status: 'ok',
+  flags: 0,
+  id: 0n,
+  argument: 0n,
+  value: 0n,
+  data: Buffer.alloc(0),
+};
+for (const [name, response, record] of [
+  [
+    'initialize',
+    false,
+    { operation: 'initialize', id: 131072n, argument: 65536n, value: 8n },
+  ],
+  [
+    'initialize-xrdp',
+    false,
+    {
+      operation: 'initialize',
+      flags: 1,
+      id: 131072n,
+      argument: 65536n,
+      value: 8n,
+    },
+  ],
+  [
+    'mkdir-unicode',
+    false,
+    { operation: 'mkdir', data: Buffer.from('Ж日本語😀') },
+  ],
+  [
+    'write-maximum',
+    false,
+    { operation: 'write', id: 1n, data: Buffer.alloc(65536, 0x5a) },
+  ],
+  [
+    'read-maximum',
+    true,
+    {
+      operation: 'read',
+      id: 1n,
+      value: 65536n,
+      data: Buffer.alloc(65536, 0xa5),
+    },
+  ],
+  ['list-empty', true, { operation: 'list' }],
+  ['remove-denied', true, { operation: 'remove', status: 'denied', id: 1n }],
+]) {
+  const kind = response ? Kind.FileResult : Kind.FileCommand;
+  await writeFile(
+    'build/fuzz/corpus/files-' + name,
+    encodePacket({
+      kind,
+      requestId: 1n,
+      payload: encodeFileRecord({ ...fileBase, ...record }, response),
+    }),
+  );
+}
 const imageInner = encodeClipboardImageItem({
   width: 2,
   height: 1,

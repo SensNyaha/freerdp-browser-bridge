@@ -72,6 +72,11 @@ test(
       assert.ok(!path.split('/').includes('..'));
       const type = Number(mode) & 0o170000;
       assert.ok(type === 0o100000 || type === 0o040000);
+      if (path.startsWith('/opt/freerdp-bridge')) {
+        const permissions = Number(mode) & 0o7777;
+        if (type === 0o040000) assert.equal(permissions, 0o755, path);
+        else assert.ok([0o644, 0o755].includes(permissions), path);
+      }
       assert.equal(owner, 'root');
       assert.equal(
         group,

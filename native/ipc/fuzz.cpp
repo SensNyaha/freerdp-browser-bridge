@@ -3,6 +3,7 @@
 #include "audio_reset.hpp"
 #include "connection_config.hpp"
 #include "display.hpp"
+#include "files.hpp"
 #include "input.hpp"
 #include "microphone.hpp"
 #include "microphone_opus.hpp"
@@ -25,6 +26,12 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
       const auto header = decode_header(bytes.first(header_bytes));
       if (size == header_bytes + header.length) {
         const auto payload = bytes.subspan(header_bytes);
+        // Commands are not output-queue messages, but their bounded grammar
+        // must still be fuzzed independently of queue admission.
+        if (header.kind == Kind::file_command)
+          (void)files::decode(payload, false);
+        else if (header.kind == Kind::file_result)
+          (void)files::decode(payload, true);
         // Explicit Opus profile keeps codec-specific records in the matching queue.
         OutputQueue opus_output{OutputAudioCodec::opus};
         if (header.kind == Kind::audio_opus) {

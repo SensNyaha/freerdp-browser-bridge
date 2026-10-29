@@ -22,8 +22,10 @@ void increment(std::uint64_t &counter) noexcept {
     ++counter;
 }
 } // namespace
-RdpsndSink::RdpsndSink(OutputBufferProfile profile)
-    : pipeline_(std::make_unique<Pipeline>(profile)), thread_(std::this_thread::get_id()) {
+RdpsndSink::RdpsndSink(OutputBufferProfile profile, bool capture_enabled)
+    : pipeline_(capture_enabled ? std::make_unique<Pipeline>(profile) : nullptr),
+      thread_(std::this_thread::get_id()), capture_enabled_(capture_enabled) {
+  if (!capture_enabled_) stats_.availability = SourceAvailability::unavailable;
   device_.FormatSupported = supported;
   device_.Open = open;
   device_.GetVolume = get_volume;
@@ -44,9 +46,11 @@ bool RdpsndSink::usable() const noexcept {
 void RdpsndSink::discontinuity(SourceAvailability next) noexcept {
   increment(stats_.stream_revision);
   stats_.availability = next;
-  pipeline_->pcm.reset();
-  pipeline_->queue.reset();
-  pipeline_->packets.reset();
+  if (pipeline_) {
+    pipeline_->pcm.reset();
+    pipeline_->queue.reset();
+    pipeline_->packets.reset();
+  }
 }
 BOOL RdpsndSink::supported(rdpsndDevicePlugin *device, const AUDIO_FORMAT *format) noexcept {
   auto *sink = owner(device);
@@ -217,8 +221,10 @@ bool RdpsndSink::retire() noexcept {
     return false;
   opened_ = false;
   discontinuity(SourceAvailability::closed);
-  stats_.queue = pipeline_->queue.stats();
-  stats_.packets = pipeline_->packets.stats();
+  if (pipeline_) {
+    stats_.queue = pipeline_->queue.stats();
+    stats_.packets = pipeline_->packets.stats();
+  }
   pipeline_.reset();
   retired_.store(true, std::memory_order_release);
   return true;

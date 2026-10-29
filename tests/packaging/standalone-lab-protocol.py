@@ -5,6 +5,7 @@ from pathlib import Path
 
 module = runpy.run_path(str(Path(__file__).resolve().parents[2] / 'scripts/standalone/rdp-lab-server.py'))
 handshake, prompt = module['sudo_handshake'], module['SUDO_PROMPT']
+validate_files = module['validate_managed_files']
 
 
 class Channel:
@@ -23,6 +24,27 @@ class Channel:
 
 
 class Protocol(unittest.TestCase):
+    def test_file_policy_requires_explicit_selection_and_exact_bounded_values(self):
+        policy = {'maxTotalBytes': 4194304, 'maxFileBytes': 2097152,
+                  'maxEntries': 64, 'xrdpLegacyDelete': True}
+        validate_files({}, False)
+        validate_files({'files': policy}, True)
+        for settings, enabled in [({'files': policy}, False), ({}, True),
+                                  ({'files': {}}, True), ({}, 1),
+                                  ({'files': {**policy, 'maxEntries': True}}, True),
+                                  ({'files': {**policy, 'maxTotalBytes': 4194305}}, True),
+                                  ({'files': {**policy, 'hostPath': '/private'}}, True)]:
+            with self.assertRaises(AssertionError):
+                validate_files(settings, enabled)
+
+    def test_root_fixture_uses_the_same_file_policy_validator(self):
+        namespace = {}
+        source = module['ROOT_PROGRAM'].split('import hashlib,json,os,re,resource,select,signal,subprocess,sys,urllib.request')[0]
+        exec(source, namespace)
+        with self.assertRaises(AssertionError):
+            namespace['validate_managed_files']({'files': {}}, True)
+        namespace['validate_managed_files']({}, False)
+
     def test_cached_or_nopasswd_never_receives_a_password(self):
         channel = Channel(output=[b'PRIVILEGED_', b'READY\n'])
         handshake(channel, channel.write, 'synthetic-memory-only', pause=lambda _: None)

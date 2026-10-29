@@ -9,6 +9,9 @@
 #include "../channels/dvc_receive_guard.hpp"
 #include "../clipboard/receive_guard.hpp"
 #include "../clipboard/worker_session.hpp"
+#include "../files/service.hpp"
+#include "../files/rdpdr_device.hpp"
+#include "../files/rdpdr_static.hpp"
 #include "certificate.hpp"
 #include "connection_config.hpp"
 #include "contacts.hpp"
@@ -76,7 +79,13 @@ class Connection {
   pReceiveChannelData receive_original_ = nullptr;
   std::unique_ptr<clipboard::WorkerSession> clipboard_;
   std::unique_ptr<clipboard::ClipboardReceiveGuard> clipboard_receive_;
+  // SDK callbacks must see these owners through context_ destruction.
+  std::shared_ptr<files::DriveSession> drives_;
+  std::unique_ptr<files::rdpdr::Registration> drive_registration_;
+  std::unique_ptr<files::rdpdr::StaticGate> drive_gate_;
+  std::unique_ptr<files::rdpdr::ReceiveGuard> drive_receive_;
   ContextPtr context_;
+  files::FileService *files_ = nullptr; // Trusted caller outlives this Connection.
   std::function<void(const ipc::Packet &)> send_;
   audio::PcmPublisher::TrySend audio_send_;
   audio::PcmPublisher::TryDiscard audio_discard_;
@@ -157,6 +166,7 @@ class Connection {
   static Connection &owner(freerdp *instance);
   static BOOL receive_channels(freerdp *, UINT16, const BYTE *, std::size_t, UINT32, std::size_t);
   static BOOL receive_delegated(freerdp *, UINT16, const BYTE *, std::size_t, UINT32, std::size_t);
+  static BOOL receive_clipboard(freerdp *, UINT16, const BYTE *, std::size_t, UINT32, std::size_t);
   static BOOL pre_connect(freerdp *instance);
   static BOOL load_channels(freerdp *instance);
   static void channel_connected(void *context, const ChannelConnectedEventArgs *event);
@@ -175,7 +185,7 @@ public:
   explicit Connection(std::function<void(const ipc::Packet &)> send,
                       audio::PcmPublisher::TrySend audio_send = {},
                       audio::PcmPublisher::TryDiscard audio_discard = {},
-                      clipboard::WorkerSession::Send clipboard_send = {});
+                      clipboard::WorkerSession::Send clipboard_send = {}, files::FileService *files = nullptr);
   ~Connection();
   void configure(::bridge::compat::span<const std::uint8_t> payload);
   void secret(::bridge::compat::span<const std::uint8_t> payload);
@@ -193,5 +203,6 @@ public:
   void enqueue_clipboard(std::uint64_t request, std::vector<std::uint8_t> &payload);
   std::vector<std::uint8_t> pipeline_stats();
   void stop() noexcept;
+  void stop_and_join() noexcept;
 };
 } // namespace bridge

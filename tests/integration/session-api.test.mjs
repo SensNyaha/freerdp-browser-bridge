@@ -9,7 +9,11 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { createSessionServer } from '../../apps/bridge-api/dist/session-server.js';
 import { createSecureLogger } from '../../apps/bridge-api/dist/logging.js';
-import { eventually, fakeFactory } from '../fixtures/session-worker.mjs';
+import {
+  eventually,
+  fakeFactory,
+  FakeSessionWorker,
+} from '../fixtures/session-worker.mjs';
 const { WebSocket } = createRequire(
   new URL('../../apps/bridge-api/package.json', import.meta.url),
 )('ws');
@@ -74,6 +78,51 @@ async function withServer(options, run) {
     await rm(runtimeRoot, { recursive: true, force: true, maxRetries: 3 });
   }
 }
+test('HTTP capability: deferred file clipboard is false and refuses before fake backend start', async () => {
+  const workers = [];
+  const workerFactory = () => {
+    const worker = new FakeSessionWorker();
+    Object.assign(worker, {
+      onClipboard: () => () => {},
+      readClipboardText: async () => ({ status: 'unavailable' }),
+      writeClipboardText: async () => 'unavailable',
+      revokeClipboardText: async () => 'accepted',
+    });
+    workers.push(worker);
+    return worker;
+  };
+  await withServer(
+    { sessions: { workerFactory } },
+    async ({ request, logs }) => {
+      const capabilities = await request('GET', '/v1/capabilities');
+      assert.equal(capabilities.statusCode, 200);
+      assert.equal(capabilities.json().clipboardFiles, false);
+      for (const mode of [
+        'bidirectional',
+        'server-to-browser',
+        'browser-to-server',
+      ]) {
+        const input = {
+          target: { host: 'synthetic' },
+          auth: { password: randomBytes(24).toString('hex') },
+          clipboard: { mode, files: true, maxItemBytes: 1024 },
+        };
+        const created = await request('POST', '/v1/sessions', input);
+        assert.equal(created.statusCode, 501);
+        assert.equal(created.json().code, 'RDP_SETTING_NOT_IMPLEMENTED');
+        assert.equal(created.json().sessionId, undefined);
+        const worker = workers.at(-1);
+        await eventually(() => worker.closed > 0);
+        assert.equal(worker.started, 0);
+        assert.equal(worker.received, undefined);
+        assert.ok(!created.body.includes(input.auth.password));
+        assert.ok(!logs.join('').includes(input.auth.password));
+      }
+      assert.equal(workers.length, 3);
+    },
+  );
+});
+
 async function open(wsBase, id, channel, token, header = false) {
   const ws = new WebSocket(
     wsBase +

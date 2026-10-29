@@ -18,6 +18,16 @@ import { pathToFileURL } from 'node:url';
 
 const kind = process.argv[2];
 assert.ok(['fastify', 'nestjs', 'http', 'express'].includes(kind));
+const manifest = JSON.parse(
+  await readFile(
+    new URL('../package.json', import.meta.resolve('@freerdp-bridge/' + kind)),
+    'utf8',
+  ),
+);
+assert.match(
+  manifest.version,
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/,
+);
 const {
   resolveNativeRuntime,
   recoverRuntimeSessions,
@@ -78,7 +88,7 @@ try {
   const processOwner = new WorkerProcess(worker);
   try {
     const build = await processOwner.start();
-    assert.equal(build.bridgeVersion, '0.5.0');
+    assert.equal(build.bridgeVersion, manifest.version);
     assert.equal(build.capabilities.clipboardImage, true);
     assert.equal(build.capabilities.clipboardHtml, true);
     assert.equal(build.capabilities.clipboardText, true);

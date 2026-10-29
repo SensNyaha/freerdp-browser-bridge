@@ -161,6 +161,55 @@ unless access to every approved destination is intended.
 Privileged host devices/paths and unfinished channels remain subject to the
 existing configuration policy and actual native capability gates.
 
+## Managed files in the unreleased development branch
+
+Published 0.5.0 does not contain the managed-file API. The current development
+server accepts an optional administrator-controlled top-level `files` object
+in its public configuration. For example, add:
+
+```json
+{
+  "files": {
+    "maxTotalBytes": 268435456,
+    "maxFileBytes": 67108864,
+    "maxEntries": 1024,
+    "transferTimeoutMs": 600000,
+    "progressTimeoutMs": 30000,
+    "nativeTimeoutMs": 8000,
+    "xrdpLegacyDelete": false
+  }
+}
+```
+
+This fragment supplements the existing listener, targets, limits and public
+JWT verification configuration. Omission disables files. A session may select
+relative sandbox drive descriptors or the `thinclientDrives` alias; it cannot
+select arbitrary host paths or enlarge the administrator's quota. The same
+owner JWT is required for `/rdp/v1/sessions/:id/files` and its child routes.
+File operations require a connected session. Close the session when the
+application's allocation ends; its sandbox content is temporary.
+
+Applications on Java, Python, Go and .NET can stream raw bytes through these
+HTTP routes without embedding Node. Keep upload and download bodies streaming,
+URL-encode names, apply backpressure, handle quota/transport failure, and
+disable reverse-proxy buffering for these routes. Do not blindly retry an
+upload whose response was lost: list the owner's entries first. Use the
+[file API examples, error mapping and limits](FILES.md). `xrdpLegacyDelete` is
+a separate trusted compatibility opt-in described there; strict deletion is
+the default. File-manager Ctrl+C/Ctrl+V remains deferred with
+`clipboardFiles: false`.
+
+Local unpublished portable candidates now have named real JWT/HTTP/RDPDR
+roundtrip evidence against Astra and RED OS, using private packaged Node and
+the ordinary launchers. This is separate from the final installed-service and
+public-release gates. New unpublished DEB/RPM also pass the real file workflow
+through their installed systemd service account on Astra/RED OS and then
+restore configuration and uninstall. Linux packaging gives public program
+directories/executables 0755 and other program files 0644, independently of a
+private build checkout; configuration remains 0750/0640 and runtime is private.
+[Installed evidence](DEVELOPMENT.md#installed-linux-managed-files-and-program-permissions),
+[portable evidence](DEVELOPMENT.md#portable-connected-file-check-and-early-refusal).
+
 ## JWT identity
 
 Optional `auth` contains `issuer`, `audience` and `jwks.keys`. It accepts one to

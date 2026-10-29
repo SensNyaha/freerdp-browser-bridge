@@ -31,6 +31,7 @@ class RdpsndSink {
   };
   std::unique_ptr<Pipeline> pipeline_;
   std::thread::id thread_;
+  const bool capture_enabled_;
   std::atomic<bool> retired_{false};
   bool opened_ = false;
   PcmVolume volume_;
@@ -48,7 +49,9 @@ class RdpsndSink {
   static BOOL default_format(rdpsndDevicePlugin *, const AUDIO_FORMAT *, AUDIO_FORMAT *) noexcept;
 
 public:
-  explicit RdpsndSink(OutputBufferProfile profile = OutputBufferProfile::low_latency);
+  explicit RdpsndSink(OutputBufferProfile profile = OutputBufferProfile::low_latency,
+                      bool capture_enabled = true);
+  bool capture_enabled() const noexcept { return capture_enabled_; }
   RdpsndSink(const RdpsndSink &) = delete;
   RdpsndSink &operator=(const RdpsndSink &) = delete;
   rdpsndDevicePlugin &device() noexcept { return device_; }

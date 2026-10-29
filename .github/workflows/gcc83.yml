@@ -48,3 +48,12 @@ jobs:
           --cpus 2 --memory 4g --pids-limit 256 --cap-drop ALL
           --security-opt no-new-privileges
           bridge-gcc83-foundation:${{ github.sha }}
+      - name: Actual bounded filesystem full and quota settlement
+        run: >-
+          docker run --rm --init --platform linux/amd64 --network none
+          --user 1000:1000 --cpus 2 --memory 1g --pids-limit 128 --cap-drop ALL
+          --security-opt no-new-privileges
+          --tmpfs /quota-full:rw,size=128k,mode=0700,uid=1000,gid=1000
+          --workdir /quota-full
+          bridge-gcc83-foundation:${{ github.sha }}
+          /work/build/gcc83/safe-root-tests '[.disk-full-control],[.sandbox-disk-full-control]' --reporter compact

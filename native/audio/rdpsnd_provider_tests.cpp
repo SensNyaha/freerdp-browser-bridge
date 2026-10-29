@@ -1525,6 +1525,36 @@ TEST_CASE("Actual RDPSND source status orders suspend Close recovery and retired
   REQUIRE_FALSE(output.take());
 }
 
+TEST_CASE("Silent RDPSND compatibility session negotiates zero formats and joins without audio publication") {
+  Fixture fixture;
+  const auto previous = freerdp_get_current_addin_provider();
+  unsigned published = 0, discarded = 0;
+  AudioSession owner(*fixture.context,
+      [&](auto, auto) { ++published;return true; },
+      [&] { ++discarded;return true; }, [] { return true; },
+      1000000, bridge::ipc::OutputAudioCodec::pcm, OutputBufferProfile::low_latency, false);
+  StaticHost host(fixture.context.get());
+  host.load(nullptr, true);host.connect();host.defer_writes = true;
+  const auto configuration = formats();
+  host.raw(configuration, static_cast<UINT>(configuration.size()));
+  REQUIRE(getChannelError(fixture.context.get()) == CHANNEL_RC_OK);
+  REQUIRE(owner.stats()->ingress.client_formats == 0);
+  REQUIRE(owner.stats()->ingress.server_formats == 0);
+  REQUIRE(owner.stats()->source.queue.accepted_frames == 0);
+  REQUIRE(owner.pump(1000) == PublishStatus::idle);
+  REQUIRE_FALSE(owner.publication_deadline());REQUIRE_FALSE(owner.reset());
+  REQUIRE(published == 0);REQUIRE(discarded == 0);
+  REQUIRE_FALSE(host.pending.empty());
+  REQUIRE(owner.retire(2000) == RetireStatus::pending);
+  host.complete(CHANNEL_EVENT_WRITE_CANCELLED);
+  REQUIRE(owner.retire(3000) == RetireStatus::done);
+  REQUIRE(owner.stats()->resources_retired);
+  REQUIRE(owner.stats()->publisher.sent_states == 0);
+  REQUIRE(owner.stats()->publisher.sent_packets == 0);
+  REQUIRE(owner.stats()->opus_encoded_packets == 0);
+  REQUIRE(published == 0);REQUIRE(discarded == 0);
+  REQUIRE(freerdp_get_current_addin_provider() == previous);
+}
 TEST_CASE("Opus audio session selects one publisher and retires actual channel confirmations") {
   Fixture fixture;
   const auto previous = freerdp_get_current_addin_provider();

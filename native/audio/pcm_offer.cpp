@@ -27,14 +27,15 @@ void word(::bridge::compat::span<std::uint8_t> bytes, std::size_t at, std::size_
 }
 } // namespace
 std::optional<PcmOffer> select_pcm_offers(::bridge::compat::span<const std::uint8_t> input,
-                                          ::bridge::compat::span<std::uint8_t> output) noexcept {
+                                          ::bridge::compat::span<std::uint8_t> output,
+                                          bool accept_pcm) noexcept {
   AudioPduValidator validator;
   const auto pdu = validator.validate(input);
   if (!pdu || pdu->kind != AudioPduKind::formats)
     return {};
   std::uint16_t selected = 0;
   for (std::size_t i = 0, at = 24; i < pdu->format_count; ++i) {
-    if (supported(input, at))
+    if (accept_pcm && supported(input, at))
       ++selected;
     at += 18 + u16(input, at + 16);
   }
@@ -46,7 +47,7 @@ std::optional<PcmOffer> select_pcm_offers(::bridge::compat::span<const std::uint
   word(output, 18, selected);
   std::size_t written = 24;
   for (std::size_t i = 0, at = 24; i < pdu->format_count; ++i) {
-    if (supported(input, at)) {
+    if (accept_pcm && supported(input, at)) {
       std::copy_n(input.begin() + static_cast<std::ptrdiff_t>(at), 18,
                   output.begin() + static_cast<std::ptrdiff_t>(written));
       written += 18;

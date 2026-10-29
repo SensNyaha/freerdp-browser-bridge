@@ -33,7 +33,8 @@ public:
   AudioSession(rdpContext &, PcmPublisher::TrySend, PcmPublisher::TryDiscard, Drain = {},
                std::uint64_t retire_window_us = 1000000,
                ipc::OutputAudioCodec codec = ipc::OutputAudioCodec::pcm,
-               OutputBufferProfile buffer = OutputBufferProfile::low_latency);
+               OutputBufferProfile buffer = OutputBufferProfile::low_latency,
+               bool capture_enabled = true);
   AudioSession(const AudioSession &) = delete;
   AudioSession &operator=(const AudioSession &) = delete;
   PublishStatus pump(std::uint64_t worker_time_us) noexcept;

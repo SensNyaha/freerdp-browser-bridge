@@ -41,6 +41,8 @@ export async function registerBuildRoutes(
   }));
   server.get('/v1/capabilities', async () => ({
     ...build.capabilities,
+    // SPECIFICATION 2.7: file clipboard is deferred, independently of RDPDR.
+    clipboardFiles: false,
     sessionDiagnostics: 1,
     devices: [],
   }));

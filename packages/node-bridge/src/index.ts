@@ -11,6 +11,7 @@ export * from './microphone-ingress.js';
 export * from './microphone-ownership.js';
 export * from './clipboard-ownership.js';
 export * from './clipboard-transfer.js';
+export * from './managed-files.js';
 export * from './process-resident.js';
 export * from './process-cpu.js';
 export { resolveNativeRuntime, NativeRuntimeError } from './native-runtime.js';
@@ -22,7 +23,13 @@ export type {
   RuntimeRecoveryReport,
 } from './runtime-recovery.js';
 import { RuntimeOwner, RuntimeOwnerError } from './runtime-owner.js';
-import { selectRuntimeCohort, RuntimeRecoveryError } from './runtime-cohort.js';
+import { selectManagedDrives } from './drive-selection.js';
+import {
+  selectRuntimeCohort,
+  RuntimeRecoveryError,
+  type RuntimeCohort,
+} from './runtime-cohort.js';
+import { recoverOwnedRuntimeDirectory } from './runtime-recovery.js';
 import { EventEmitter } from 'node:events';
 import type { Writable } from 'node:stream';
 import { SeqpacketOwner, loadPacketAddon } from './seqpacket-owner.js';
@@ -46,8 +53,9 @@ import {
   writeFile,
   realpath,
   lstat,
+  rmdir,
 } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import {
   Kind,
   PacketDecoder,
@@ -113,6 +121,11 @@ import {
   type CertificatePrompt,
   type Packet,
   type WorkerBuild,
+  encodeFileRecord,
+  decodeFileRecord,
+  decodeFilePage,
+  type FileRecord,
+  ProtocolError,
 } from '@freerdp-bridge/protocol';
 export {
   validateSessionConfig,
@@ -145,6 +158,13 @@ export type {
 } from '@freerdp-bridge/protocol';
 
 type ClipboardSelection = NonNullable<ConnectionSettings['clipboard']>;
+export type NativeFileCommand = Omit<
+  FileRecord,
+  'status' | 'flags' | 'data'
+> & {
+  flags?: number;
+  data?: Buffer;
+};
 export interface ClipboardReadResult {
   status: ClipboardStatus;
   text: Buffer;
@@ -249,6 +269,7 @@ export class WorkerProcess extends EventEmitter {
   private child: ChildProcessWithoutNullStreams | undefined;
   private directory: string | undefined;
   private runtimeOwner: RuntimeOwner | undefined;
+  private runtimeCohort: RuntimeCohort | undefined;
   private releaseRuntimeOwnerListener: (() => void) | undefined;
   private readonly runtimePreparation = new AbortController();
   private pending = new Map<bigint, Pending>();
@@ -398,6 +419,110 @@ export class WorkerProcess extends EventEmitter {
   }
   get build(): WorkerBuild | undefined {
     return this.report ? structuredClone(this.report) : undefined;
+  }
+  private fileRequest = false;
+  private managedFilesAttempted = false;
+  private managedFilesInitialized = false;
+  private fileContentsRetained = false;
+
+  /** Private native service, not a public session/drive authorization API.
+   * Exactly one file RPC may be pending. Read/list data is caller-owned.
+   * Unknown completion fails the worker through the ordinary IPC deadline.
+   */
+  async nativeFileCommand(command: NativeFileCommand): Promise<FileRecord> {
+    if (this.status !== 'ready') throw new WorkerError('INVALID_STATE');
+    if (!this.report?.capabilities.fileService)
+      throw new WorkerError('FILES_NOT_IMPLEMENTED');
+    if (this.fileRequest) throw new WorkerError('FILES_BUSY');
+    const request: FileRecord = {
+      ...command,
+      status: 'ok',
+      flags: command.flags ?? 0,
+      data: command.data ?? Buffer.alloc(0),
+    };
+    const payload = encodeFileRecord(request, false);
+    if (
+      request.operation === 'initialize' &&
+      request.flags & 1 &&
+      !this.report.capabilities.xrdpLegacyDelete
+    )
+      throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
+    this.fileRequest = true;
+    if (request.operation === 'initialize') this.managedFilesAttempted = true;
+    let response: Packet | undefined;
+    try {
+      response = await this.request(Kind.FileCommand, Kind.FileResult, payload);
+      const result = decodeFileRecord(response.payload, true);
+      if (result.operation !== request.operation)
+        throw new WorkerError('IPC_UNEXPECTED_REPLY');
+      if (result.status === 'ok') {
+        switch (request.operation) {
+          case 'initialize':
+            this.managedFilesInitialized = true;
+            break;
+          case 'retire':
+            this.managedFilesInitialized = false;
+            break;
+          case 'begin-upload':
+          case 'mkdir':
+            if (result.argument !== request.id || result.value !== 0n)
+              throw new WorkerError('IPC_UNEXPECTED_REPLY');
+            break;
+          case 'list': {
+            const entries = decodeFilePage(result);
+            let previous = request.argument;
+            if (BigInt(entries.length) > request.value)
+              throw new WorkerError('IPC_UNEXPECTED_REPLY');
+            for (const entry of entries) {
+              if (entry.parent !== request.id || entry.id <= previous)
+                throw new WorkerError('IPC_UNEXPECTED_REPLY');
+              previous = entry.id;
+            }
+            if (
+              result.id !== 0n &&
+              (result.id !== previous ||
+                BigInt(entries.length) !== request.value)
+            )
+              throw new WorkerError('IPC_UNEXPECTED_REPLY');
+            break;
+          }
+          default:
+            if (result.id !== request.id)
+              throw new WorkerError('IPC_UNEXPECTED_REPLY');
+            if (
+              request.operation === 'write' &&
+              (result.value !== BigInt(request.data.length) ||
+                result.argument !== request.argument + result.value)
+            )
+              throw new WorkerError('IPC_UNEXPECTED_REPLY');
+            if (
+              request.operation === 'read' &&
+              (result.argument !== request.argument ||
+                result.value > request.value)
+            )
+              throw new WorkerError('IPC_UNEXPECTED_REPLY');
+            if (
+              request.operation === 'commit' &&
+              result.value !== request.argument
+            )
+              throw new WorkerError('IPC_UNEXPECTED_REPLY');
+        }
+      }
+      return { ...result, data: Buffer.from(result.data) };
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error instanceof ProtocolError ||
+          (error instanceof WorkerError &&
+            error.code === 'IPC_UNEXPECTED_REPLY'))
+      )
+        this.fail('IPC_UNEXPECTED_REPLY');
+      throw error;
+    } finally {
+      payload.fill(0);
+      response?.payload.fill(0);
+      this.fileRequest = false;
+    }
   }
 
   /** Latest private source status; this does not establish browser/audible support. */
@@ -849,6 +974,7 @@ export class WorkerProcess extends EventEmitter {
         });
         this.requireStarting();
         if (cohort) {
+          this.runtimeCohort = cohort;
           this.runtimeOwner = await RuntimeOwner.open();
           this.requireStarting();
           this.releaseRuntimeOwnerListener = this.runtimeOwner.onLost(() =>
@@ -1257,12 +1383,24 @@ export class WorkerProcess extends EventEmitter {
       return;
     }
     if (!pending || packet.kind !== pending.expected) {
-      if (packet.kind === Kind.ClipboardResult) packet.payload.fill(0);
+      if (
+        packet.kind === Kind.ClipboardResult ||
+        packet.kind === Kind.FileResult
+      )
+        packet.payload.fill(0);
       throw new WorkerError('IPC_UNEXPECTED_REPLY');
     }
     if (packet.kind === Kind.ClipboardResult) {
       try {
         decodeClipboardResult(packet.payload);
+      } catch (error) {
+        packet.payload.fill(0);
+        throw error;
+      }
+    }
+    if (packet.kind === Kind.FileResult) {
+      try {
+        decodeFileRecord(packet.payload, true);
       } catch (error) {
         packet.payload.fill(0);
         throw error;
@@ -1318,7 +1456,8 @@ export class WorkerProcess extends EventEmitter {
     const requestId = ++this.sequence;
     const bytes = encodePacket({ kind, requestId, payload });
     if (input.writableLength + bytes.length > this.options.maxWriteBytes) {
-      if (kind === Kind.ClipboardCommand) bytes.fill(0);
+      if (kind === Kind.ClipboardCommand || kind === Kind.FileCommand)
+        bytes.fill(0);
       return Promise.reject(new WorkerError('IPC_QUEUE_FULL'));
     }
     return new Promise<Packet>((done, reject) => {
@@ -1337,7 +1476,8 @@ export class WorkerProcess extends EventEmitter {
           kind === Kind.InputText ||
           kind === Kind.MicrophonePcm ||
           kind === Kind.MicrophoneOpus ||
-          kind === Kind.ClipboardCommand
+          kind === Kind.ClipboardCommand ||
+          kind === Kind.FileCommand
         )
           bytes.fill(0);
         if (error) this.fail('IPC_WRITE_FAILED');
@@ -1833,6 +1973,18 @@ export class WorkerProcess extends EventEmitter {
       throw new WorkerError('RDP_NOT_IMPLEMENTED');
     const config = validateSessionConfig(value);
     try {
+      let drives;
+      try {
+        drives = selectManagedDrives(config);
+      } catch {
+        throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
+      }
+      if (
+        drives &&
+        (!this.report.capabilities.managedDrives ||
+          !this.managedFilesInitialized)
+      )
+        throw new WorkerError('RDP_SETTING_NOT_IMPLEMENTED');
       const clipboard = clipboardSelection(
         config,
         this.report.capabilities.clipboardText,
@@ -1853,6 +2005,7 @@ export class WorkerProcess extends EventEmitter {
         this.report.capabilities.microphoneReset,
         this.report.capabilities.audioBuffer200,
         clipboard,
+        drives,
       );
       const password = Buffer.from(config.auth.password ?? '', 'utf8');
       try {
@@ -1957,9 +2110,26 @@ export class WorkerProcess extends EventEmitter {
       if (this.startCompletion) await this.startCompletion;
       if (this.closedPromise) await this.closedPromise;
     }
+    if (this.fileContentsRetained)
+      throw new WorkerError('FILE_CONTENTS_RETAINED');
     if (this.retirementFailed) throw new WorkerError('IPC_CLOSE_FAILED');
     if (this.residentRetirementFailed || this.cpuRetirementFailed)
       throw new WorkerError('WORKER_RESOURCE_CLOSE_FAILED');
+  }
+
+  /** Trusted retirement seam; ordinary use revalidates the exact startup SDK
+   * and joins one bounded native helper, never recursive Node deletion.
+   */
+  protected recoverManagedRuntimeDirectory(
+    directory: string,
+    cohort: RuntimeCohort,
+  ): Promise<'removed' | 'busy' | 'retained'> {
+    return recoverOwnedRuntimeDirectory(
+      cohort,
+      this.options.runtimeRoot,
+      basename(directory),
+      Math.min(this.options.shutdownTimeoutMs, 60000),
+    );
   }
 
   private async cleanup(): Promise<void> {
@@ -1988,7 +2158,19 @@ export class WorkerProcess extends EventEmitter {
     this.clipboardProfile = undefined;
     this.clipboardLate = undefined;
     this.clipboardTerminal = true;
-    if (this.directory) {
+    if (this.directory && this.managedFilesAttempted) {
+      // The native service removes verified contents on graceful shutdown.
+      // Never replace its refusal/unknown completion with recursive Node rm.
+      this.fileContentsRetained = true;
+      try {
+        await rmdir(this.directory);
+        this.fileContentsRetained = false;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+          this.fileContentsRetained = false;
+      }
+      if (!this.fileContentsRetained) this.directory = undefined;
+    } else if (this.directory) {
       await rm(this.directory, {
         recursive: true,
         force: true,
@@ -2003,6 +2185,32 @@ export class WorkerProcess extends EventEmitter {
       await this.runtimeOwner.close();
       this.runtimeOwner = undefined;
     }
+    if (this.directory && this.managedFilesAttempted && this.runtimeCohort) {
+      // Called only after the child's close event, IPC/resource joins and owner
+      // endpoint closure. The native helper still independently verifies leases,
+      // identities and the complete declaration/inventory before deletion.
+      try {
+        const result = await this.recoverManagedRuntimeDirectory(
+          this.directory,
+          this.runtimeCohort,
+        );
+        if (result === 'removed') this.fileContentsRetained = false;
+        else {
+          // A concurrent verified startup sweep may already have removed it.
+          try {
+            await lstat(this.directory);
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+              this.fileContentsRetained = false;
+          }
+        }
+      } catch {
+        // An unavailable/changed/timed-out helper is not cleanup confirmation.
+      }
+      if (!this.fileContentsRetained) this.directory = undefined;
+    }
+    if (this.fileContentsRetained)
+      throw new WorkerError('FILE_CONTENTS_RETAINED');
     if (this.residentRetirementFailed || this.cpuRetirementFailed)
       throw new WorkerError('WORKER_RESOURCE_CLOSE_FAILED');
   }
@@ -2047,6 +2255,9 @@ function connectionPayload(
   microphoneReset: boolean,
   audioBuffer200: boolean,
   clipboard: ClipboardSelection | undefined,
+  drives:
+    | import('@freerdp-bridge/protocol').ManagedDriveDescriptor[]
+    | undefined,
 ): Buffer {
   const allowed = (value: object | undefined, names: string[]) => {
     if (value && Object.keys(value).some((key) => !names.includes(key)))
@@ -2062,6 +2273,7 @@ function connectionPayload(
     'input',
     'media',
     'clipboard',
+    'redirection',
   ]);
   allowed(config.target, ['host', 'port', 'preferIPv6', 'forceIpVersion']);
   const ipSelected =
@@ -2179,6 +2391,7 @@ function connectionPayload(
     ...(clipboard ? { clipboard } : {}),
     ...(performance ? { performance } : {}),
     ...(ip ? { ip } : {}),
+    ...(drives ? { drives } : {}),
   });
 }
 

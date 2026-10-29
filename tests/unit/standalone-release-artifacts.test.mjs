@@ -79,6 +79,27 @@ test('standalone 0.5.0 requires exact 0.4.0 upgrade evidence for both platform r
     }
 });
 
+test('standalone 0.6.0 managed-file delivery binds public 0.5.0 upgrade evidence on both platforms', () => {
+  const input = receipts('0.6.0', '0.5.0'),
+    before = structuredClone(input),
+    manifest = standaloneReleaseManifest(input);
+  assert.equal(manifest.version, '0.6.0');
+  assert.equal(manifest.files.length, 7);
+  assert.ok(
+    manifest.acceptance.every((value) => value.upgradeFrom === '0.5.0'),
+  );
+  assert.deepEqual(input, before);
+  for (const index of [0, 1])
+    for (const previous of ['0.2.5', '0.3.0', '0.4.0', '0.6.0', null]) {
+      const changed = structuredClone(input);
+      changed[index].acceptance.upgradeFrom = previous;
+      assert.throws(
+        () => standaloneReleaseManifest(changed),
+        /STANDALONE_RELEASE_MANIFEST_INVALID/,
+      );
+    }
+});
+
 test('standalone release requires both exact platform sets, source identity and accepted two-version upgrade without claiming real RDP', () => {
   const input = receipts(),
     before = structuredClone(input);

@@ -1,61 +1,61 @@
 {
   "schema": 1,
   "kind": "core",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "repository": "SensNyaha/freerdp-browser-bridge",
   "upstream": {
-    "tag": "v0.5.0",
-    "commit": "cec3b8e00da849dd524ce55917f76f39fcfe537c",
-    "acceptance": "docs/RELEASE_0_5_0.md"
+    "tag": "v0.6.0",
+    "commit": "98b8f46a83c54158973e67d4203431862310bfe9",
+    "acceptance": "docs/RELEASE_0_6_0.md"
   },
   "packages": [
     {
       "name": "@freerdp-bridge/runtime-win32-x64",
-      "version": "0.5.0",
-      "archive": "freerdp-bridge-runtime-win32-x64-0.5.0.tgz",
-      "bytes": 6938328,
-      "sha256": "22ff3eecf42f57a4472e3486efa4e7d471d0148488a430186e83475b3191de48",
-      "integrity": "sha512-SzrCa8+R71ONWkGMqWaoNF4wl1An3/wF8fLhDMcrytBKXKq9SAapskSanhWKmZj6vGAAWEP+tUwQEs6wz94DiQ=="
+      "version": "0.6.0",
+      "archive": "freerdp-bridge-runtime-win32-x64-0.6.0.tgz",
+      "bytes": 7044572,
+      "sha256": "edaac8a08fe1de278134c2d18964a852cbd2af88eccf63a120d7f3fba5a97589",
+      "integrity": "sha512-/ChiO4PNwsqNcjt3SHIA7zcEiFa28Xd3FvUMSsLEAOWrp9WFkka02+eMzYuVxV15SvpJ1HOwk3HigrMIIXHTxw=="
     },
     {
       "name": "@freerdp-bridge/runtime-linux-x64-gnu",
-      "version": "0.5.0",
-      "archive": "freerdp-bridge-runtime-linux-x64-gnu-0.5.0.tgz",
-      "bytes": 76540142,
-      "sha256": "8c36e55e21de2490d5eb593af08bbf392b10cbe1bbae63f79e1cfa1cd6b2ea30",
-      "integrity": "sha512-MxufX73ARzDz9R/WPY0YbYAa+DcCP7o5pIW/7PZSjy9hu5EP3q+2xPvpDzSU/6CWpT4bjEUeTvNS3F93EGrGrA=="
+      "version": "0.6.0",
+      "archive": "freerdp-bridge-runtime-linux-x64-gnu-0.6.0.tgz",
+      "bytes": 76693374,
+      "sha256": "4b32018732fca6a3e25669f7ac6d19789d562458cb316c4b0212a04d601b0d85",
+      "integrity": "sha512-5YkICOm8a+GuFsRHms0+/sjILddOuoJN9NwF/k2rVBj8rAhhe1lNsRN477JFFFBIxVRx7VyjGudvqJLsnXKI2g=="
     },
     {
       "name": "@freerdp-bridge/protocol",
-      "version": "0.5.0",
-      "archive": "freerdp-bridge-protocol-0.5.0.tgz",
-      "bytes": 44113,
-      "sha256": "656627349611e988097559c8c799b0e673da0e79b720899feca1131ff3abbbaf",
-      "integrity": "sha512-BPTKRQy5A5KDp+oPye0u8Euz0+XBfk7jagX8d/VAl1jtfB7+Ph6jbmIrlaFQHD21o3Zsdf2+N4879We4tWSfnQ=="
+      "version": "0.6.0",
+      "archive": "freerdp-bridge-protocol-0.6.0.tgz",
+      "bytes": 49672,
+      "sha256": "4b1e6d3c0650a5dc47bf951862775d45a2e1948ef205332e752518f1653d0408",
+      "integrity": "sha512-0/LkxAGUbf1DSlNGA6heClsOoSZdvDd4EKZZi3Bmh1D+opRmiWWso+cDNmq4a9mMWF0SsCXHFi4ZUcS0R+pQrg=="
     },
     {
       "name": "@freerdp-bridge/config",
-      "version": "0.5.0",
-      "archive": "freerdp-bridge-config-0.5.0.tgz",
-      "bytes": 9954,
-      "sha256": "641888a4826057822d946500d041028b62ba85b10df3940074bec2baf4898d90",
-      "integrity": "sha512-mZuvUvuD20zd2mQH3Yq5xmGpjBKRFmZf2flDsKmNS7a5DqAw84a7oOcGfzUfoVrmG/ZZhb5KQDBrZsQKrrKTzg=="
+      "version": "0.6.0",
+      "archive": "freerdp-bridge-config-0.6.0.tgz",
+      "bytes": 10100,
+      "sha256": "bcf1e3174c711aaeb3b039bf65d156b7c4d65e519d1b22fce020ab7e4c9adc76",
+      "integrity": "sha512-KJZS3eFKDcz+O7dDH9WQakfJl43TYCVOkrCZjMGJVnWVcxmRu4/fDY1QqU0zvziO8mF6Vi7Depxq/rvBzdrnjw=="
     },
     {
       "name": "@freerdp-bridge/node",
-      "version": "0.5.0",
-      "archive": "freerdp-bridge-node-0.5.0.tgz",
-      "bytes": 127822,
-      "sha256": "ad093eb9325468ace12019d7fe3ab6cbd4bd8cbee9a68af97a731969fa990d9b",
-      "integrity": "sha512-gB3oW83PTopYiGQcleabedCq1TqJTwX0bdCGOr++Ryr+uw8A38ftFeze3Hw53GYxN0n+x9LKLMa0tKOy0I90cw=="
+      "version": "0.6.0",
+      "archive": "freerdp-bridge-node-0.6.0.tgz",
+      "bytes": 143126,
+      "sha256": "3401386559ed9d18ef5a0f4c1ca64ec9add0b25c091999b412f18cf67138237f",
+      "integrity": "sha512-ujx8Bq2oAkiPoTn18FkSdiWe56TcRdPEvZpnt9wburRuakx+ERlGfyRYzGlvkKYfC/jMWHqget0HNiliSLknTA=="
     },
     {
       "name": "@freerdp-bridge/api",
-      "version": "0.5.0",
-      "archive": "freerdp-bridge-api-0.5.0.tgz",
-      "bytes": 115494,
-      "sha256": "8a352c934cf9f25d9c95e40a91be35ea3ffc988a9ef26ef88e542f5f311d00b3",
-      "integrity": "sha512-aWF6hhgRqUU9vgg9cpQT62pl8CgNN4koolyTvL0KFcLQh4TsFGhQ6551+bB3YHQusAB+hoj5IR3NB0Gmkn9bfw=="
+      "version": "0.6.0",
+      "archive": "freerdp-bridge-api-0.6.0.tgz",
+      "bytes": 120846,
+      "sha256": "90d283db6aaa38d5e812d2768d5129dc3014c57b85e0e3ea836b304b5d4ff32d",
+      "integrity": "sha512-YvVGkS175122RCCT8tWnH6AuRUqknaBRIoqwuyK/PMS/ZDpQp2vT4lQdaIezFphTScNMFYLFVxLn8KRBJ2rI1A=="
     }
   ],
   "sources": [
@@ -71,18 +71,18 @@
     },
     {
       "path": ".github/workflows/bundled-native.yml",
-      "bytes": 7743,
-      "sha256": "f4ce122d369d3279383568d75e8bf76b2a95c8222cb34d30690953c5c196e7a4"
+      "bytes": 8341,
+      "sha256": "6b7918f35ea9f3e6bacc09d695e484db1118c3f95113d87e925bf7f415e26512"
     },
     {
       "path": ".github/workflows/ci.yml",
-      "bytes": 4885,
-      "sha256": "baf8ead8ef7214f1ecdababa35fd223c4d961b6b5a45c1be573ef222cb587dd4"
+      "bytes": 5743,
+      "sha256": "d5b1687066293493ba5dd0e36d6636ef4692257918da7c76c0406598a4b81917"
     },
     {
       "path": ".github/workflows/gcc83.yml",
-      "bytes": 2657,
-      "sha256": "0787654c8ae2538814d5097e8d8e15b45aeaed29a31bf35015e5a83ac168f201"
+      "bytes": 3203,
+      "sha256": "9c49990e19b5734c12df76061ef28be19e1fcc8ca0ca24fcc9054d9239079c76"
     },
     {
       "path": ".github/workflows/npm-publish.yml",
@@ -121,8 +121,8 @@
     },
     {
       "path": "ARCHITECTURE.md",
-      "bytes": 7714,
-      "sha256": "9663a0b856a278400ae21c60ecc28f26cdf6a07e3db9474a0170ab96825f6755"
+      "bytes": 11582,
+      "sha256": "e0ac0b94fe37d6bb390f1a9e9ba3fc2e7f85d896c66ff7b3b2478ae2f09ee89e"
     },
     {
       "path": "BUILD_AND_DEPLOY.md",
@@ -131,13 +131,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 18879,
-      "sha256": "d77f33b30d22cd9165bda16b501a59f0afd5bd236d7bd68f32c8cd90790fa74d"
+      "bytes": 20450,
+      "sha256": "786f2b422e9cb80b54582e7d0f7b460f27288b1f31b5151f63fbad68433ea9e9"
     },
     {
       "path": "CMakeLists.txt",
-      "bytes": 49670,
-      "sha256": "79c6735a50f20f2bbaba789a8340a97eba202a97fb2bf989c91e47eafcd9cf8f"
+      "bytes": 52802,
+      "sha256": "111f6bf6d89be2ed9808d6cd802793f0ed376ab2ae9785a221e0a7ebf7f1dbbe"
     },
     {
       "path": "CMakePresets.json",
@@ -157,7 +157,7 @@
     {
       "path": "DELIVERY.md",
       "bytes": 1048,
-      "sha256": "7a046f8f699e0aa1c1e17eaa6ba8e96298dc442b1263962b6240e9816ea8e9a8"
+      "sha256": "59329db504f338c1c623016f62480cc1c1e299bd9e7654265f8d016c57abd8c9"
     },
     {
       "path": "DEVICE_REDIRECTION.md",
@@ -191,13 +191,13 @@
     },
     {
       "path": "PROTOCOL.md",
-      "bytes": 32476,
-      "sha256": "794198382e8f6477106e9d1669242642dd393c1bc218576a85909d1638eddc33"
+      "bytes": 39982,
+      "sha256": "0da6a9e6810510a4aa48f1e65635a1497ac8f6873fb278b611e2e3afe9572a7c"
     },
     {
       "path": "README.md",
-      "bytes": 5387,
-      "sha256": "8ef8f4e30e570bafe6145a2084be2cf3d4e2617c34db76c9caad28a261ace6fe"
+      "bytes": 5568,
+      "sha256": "bf9092f78af0fa621871d571fd0d9eba4d046b4e1d89ff04ffb42722d4cb305a"
     },
     {
       "path": "SECURITY.md",
@@ -226,8 +226,8 @@
     },
     {
       "path": "TODO.md",
-      "bytes": 244269,
-      "sha256": "ca44c05f88ccdfecc705c6d55167eebd364434e30d6d0174e05c6f04895740bb"
+      "bytes": 253604,
+      "sha256": "89e16b426bde4a75be089e503445c02fe29df57cb18f62c6738477ac8abed106"
     },
     {
       "path": "TRACEABILITY.md",
@@ -241,13 +241,13 @@
     },
     {
       "path": "apps/bridge-api/README.md",
-      "bytes": 4997,
-      "sha256": "72c86f2bb0dce97a146f1427d488622211f755800237471323c50d46678fc060"
+      "bytes": 5606,
+      "sha256": "0760f8fd869e7e2bd0ddf8949834f0a38f8d0ecf671530548532b8e552ce1bc8"
     },
     {
       "path": "apps/bridge-api/package.json",
       "bytes": 1033,
-      "sha256": "c62a49a7ddcc96da717dfc2d7675d9cd43555225e9e01e8f9813d90d9357d76d"
+      "sha256": "be3cf4afc671644eb54a9e9a09b27b8ab401bc806920e5d6bf44bdfa362fd9d4"
     },
     {
       "path": "apps/bridge-api/src/audio.ts",
@@ -270,9 +270,19 @@
       "sha256": "be52c3c4a95d26bb74a63dfa6fc9f3a9f919ae6d6b57e077f6ac1675796aa030"
     },
     {
+      "path": "apps/bridge-api/src/file-refusal.ts",
+      "bytes": 1458,
+      "sha256": "1637c745c835c17212a634141a28b3937846a3cd479af64f7b0eeb99d23e98de"
+    },
+    {
+      "path": "apps/bridge-api/src/files.ts",
+      "bytes": 10909,
+      "sha256": "1795ba2c852f7c5080ca3bf5e970958c4f297d8b77e88c505d8dc92e7342b057"
+    },
+    {
       "path": "apps/bridge-api/src/index.ts",
-      "bytes": 1242,
-      "sha256": "449cc45b3c1fad3679f61ed0e677a5e8b570c27a3c3d83479bb79e8dc1126112"
+      "bytes": 1347,
+      "sha256": "18093390fd62fa02b9e222f37fbf97c2dbb5268a3a290767e271263d0d061250"
     },
     {
       "path": "apps/bridge-api/src/input.ts",
@@ -306,13 +316,13 @@
     },
     {
       "path": "apps/bridge-api/src/plugin.ts",
-      "bytes": 4966,
-      "sha256": "5f828e09b7e858f092c21eceafa2562728db7c1dd2e67c4b7a4682c2594824c7"
+      "bytes": 5040,
+      "sha256": "eb1e69a0fc8579ff869d597feeb75037abc351c398608e4e335dbd5a13871ae8"
     },
     {
       "path": "apps/bridge-api/src/session-server.ts",
-      "bytes": 10521,
-      "sha256": "441ebf3d4884ce3d27e442c4eb10199e1b18e0342fdf1a64b39693cc11216a86"
+      "bytes": 11044,
+      "sha256": "78d5559921b878cc74b229ca0eec696fa4992eeb13b56aff200c6d19ac3b8be0"
     },
     {
       "path": "apps/bridge-api/src/websockets.ts",
@@ -526,13 +536,13 @@
     },
     {
       "path": "apps/standalone/README.md",
-      "bytes": 1244,
-      "sha256": "8be8a54d6077aeeeb2797d85f5724e0dba35a00874c49c1609d701e7d5a8c243"
+      "bytes": 1434,
+      "sha256": "7b39b338896e277dd418a85f53339b081b88010264774d4790b122ce2195e4fd"
     },
     {
       "path": "apps/standalone/package.json",
       "bytes": 464,
-      "sha256": "5be66c00e856157282acd52a7981e275b0520dab5c4aceaf7003b7bd9b849230"
+      "sha256": "0825f39ea00c1ce5fe991c9be64c0b8aa0816615659fd80a36f444346ea041d2"
     },
     {
       "path": "apps/standalone/src/auth.ts",
@@ -546,8 +556,8 @@
     },
     {
       "path": "apps/standalone/src/config.ts",
-      "bytes": 3323,
-      "sha256": "13d678039f97f3abc1c4bc730cab4a555780cfd3618cfe016172562eeb6953fe"
+      "bytes": 4231,
+      "sha256": "17d9f59dd4a9e60f1e49adc0b1ed737570c202f2c24532b6897388f49bc3572c"
     },
     {
       "path": "apps/standalone/src/main.ts",
@@ -561,8 +571,8 @@
     },
     {
       "path": "apps/standalone/src/server.ts",
-      "bytes": 1821,
-      "sha256": "aa88aef079f244d1f35ef3a83ba634149b5754c3a077c2ab48e6f51c99b84d3c"
+      "bytes": 2229,
+      "sha256": "6f42565254181dc1e9740abcd6604179bcf2ea90523a94f9731375f145024460"
     },
     {
       "path": "apps/standalone/src/supervisor.ts",
@@ -746,8 +756,8 @@
     },
     {
       "path": "docs/CLIPBOARD_BROWSER.md",
-      "bytes": 98311,
-      "sha256": "6dc8e0815f0dd82dee835954380572dda5f2fee43510953c8d99dc964c9130c1"
+      "bytes": 99469,
+      "sha256": "e1bc51fb3cc35c909ff7901b552a8af336c10a28d6fac1798fbd7de843741530"
     },
     {
       "path": "docs/CLIPBOARD_CHUNKS.md",
@@ -816,8 +826,8 @@
     },
     {
       "path": "docs/DEVELOPMENT.md",
-      "bytes": 87827,
-      "sha256": "0148a002077894a140d1be8b3e5135b53ff47562b22d6e4a081b1df00c3a684f"
+      "bytes": 160699,
+      "sha256": "1089e40c27359c73cde105c356b623172e7b311ea12d7c5b0b7dc960ab08be20"
     },
     {
       "path": "docs/DIRTY_REGIONS.md",
@@ -906,8 +916,8 @@
     },
     {
       "path": "docs/EXPRESS_USAGE.md",
-      "bytes": 15752,
-      "sha256": "c36de4ad6b7e4928bcab830058c59189286557f73fb494dbafc6c017d8a00525"
+      "bytes": 16085,
+      "sha256": "d924f668418319e9def0b742f1edf33527b17a591698c1b770dc972c6c4d2556"
     },
     {
       "path": "docs/FASTIFY_PLUGIN.md",
@@ -916,8 +926,13 @@
     },
     {
       "path": "docs/FASTIFY_USAGE.md",
-      "bytes": 19968,
-      "sha256": "0a5451511e8427f4b988ab31a5bb3c1ae583406f8292ea168e8ae81fb01768ae"
+      "bytes": 20301,
+      "sha256": "b2788da4d726032ff25b5496e9adb7f26ae45dad803e61ac2971c4348343ba4b"
+    },
+    {
+      "path": "docs/FILES.md",
+      "bytes": 52857,
+      "sha256": "cc4aa0f45855d1ee6367d1872fe023bca176555c029ffe3d64b7d0e0d8f86fc7"
     },
     {
       "path": "docs/FRAMEWORK_SELECTION.md",
@@ -956,8 +971,8 @@
     },
     {
       "path": "docs/GITHUB_DELIVERY.md",
-      "bytes": 18843,
-      "sha256": "1fdf9cde8b8eae1fde4a1e8e011fe9c73e550594b05a145fcba34e5765b869f7"
+      "bytes": 18835,
+      "sha256": "963a28041ed87a00ad34e42dc9665f097d1f7071c7070c6d91d4c80f4aa823f5"
     },
     {
       "path": "docs/GITHUB_DELIVERY_IMPLEMENTATION.md",
@@ -976,8 +991,8 @@
     },
     {
       "path": "docs/IPC_FOUNDATION.md",
-      "bytes": 44485,
-      "sha256": "59e409790710426f0f3d0371c0df72b9374b83f915c3c8f28b0c9db04a632772"
+      "bytes": 45212,
+      "sha256": "34e6bf86d6d3ef11efc1d14d4903d5450e1b25d0faf528c1386b4aed43c6ba5c"
     },
     {
       "path": "docs/IP_SETTINGS.md",
@@ -1041,8 +1056,8 @@
     },
     {
       "path": "docs/LINUX_STREAM_OUTPUT.md",
-      "bytes": 2534,
-      "sha256": "cd19d9c383ca57a46a53e1ff0d5905fc566b2bf1a4e1a3c750924c17d5d8ff77"
+      "bytes": 2847,
+      "sha256": "0b97369e4380692863c378e31125b362b7a232a51f29b5fdddc426896ccc200d"
     },
     {
       "path": "docs/MEDIA_H264.md",
@@ -1211,8 +1226,8 @@
     },
     {
       "path": "docs/NATIVE_NPM_RUNTIME.md",
-      "bytes": 13189,
-      "sha256": "7fd58fbc996995389ca556d5ddf27d3e41e7255d7a8393cb65a3e486b2975b4d"
+      "bytes": 13181,
+      "sha256": "b354a8e51bf5145fdbe14cf12f93d255643f883ecec37ad2096b018f4c69ac6b"
     },
     {
       "path": "docs/NESTJS_PLUGIN.md",
@@ -1221,8 +1236,8 @@
     },
     {
       "path": "docs/NESTJS_USAGE.md",
-      "bytes": 18031,
-      "sha256": "328f4015862aac699d2a107896dc3b9646617e93767c489f0b79df8c88f4d145"
+      "bytes": 18364,
+      "sha256": "d2dce2e6a3e7876632a5c1855166902ed771544d8106a427d525aad6ede561d3"
     },
     {
       "path": "docs/NODE_HTTP_PLUGIN.md",
@@ -1231,8 +1246,8 @@
     },
     {
       "path": "docs/NODE_HTTP_USAGE.md",
-      "bytes": 16112,
-      "sha256": "76fd4dca16b4abcb2f665f7fec65447225fc9f9dc9d97fcb8f1188f132a16efb"
+      "bytes": 16445,
+      "sha256": "20e31a8a4d0035287868dd2c56c7c9de14e85f1a36d5d262b4fc5eee13dc444a"
     },
     {
       "path": "docs/NODE_SEQPACKET.md",
@@ -1256,13 +1271,13 @@
     },
     {
       "path": "docs/NPM_PUBLISHING.md",
-      "bytes": 20825,
-      "sha256": "5f71df224eebc30431cb6df5c66af1d2082885f5fa5a27d8b2bec6d0649d20c0"
+      "bytes": 20817,
+      "sha256": "c7e06a8acbb6f6d933aed8fdadfd84abc32edd4af7ce0e1f53ac9edc9862fc33"
     },
     {
       "path": "docs/NPM_TRUSTED_PUBLISHING.md",
-      "bytes": 10591,
-      "sha256": "bb874463e572dc80d8c4b9895e2b8da59687c92648cb361be6a37b5db4b8408d"
+      "bytes": 10583,
+      "sha256": "7eee40051f0e604f7cfe120ce24610b5046fed44d0392adaec6cf671a6fba6cb"
     },
     {
       "path": "docs/OWNED_XRDP_LAB.md",
@@ -1331,18 +1346,23 @@
     },
     {
       "path": "docs/README.md",
-      "bytes": 8720,
-      "sha256": "d2c165201c3b8c50d1edb47556b569e543308762ed86f4f802d644c2627ea8d8"
+      "bytes": 8826,
+      "sha256": "9e1994509708a82cf8372d4a4febf5ee4240f119dc81b66a4aa8eecceae95a95"
     },
     {
       "path": "docs/RELEASE_0_5_0.md",
-      "bytes": 7106,
-      "sha256": "57550b6fec8e254cfbde94b1d0610c3689e6833cca89d5fb8ce3443cf799312e"
+      "bytes": 12509,
+      "sha256": "d5a698c666718ede7285feaabc10ad9041339eb3645cd893b3ad0160ad07b809"
+    },
+    {
+      "path": "docs/RELEASE_0_6_0.md",
+      "bytes": 6703,
+      "sha256": "34e73dd3b06a499042007debc6244f32d74f4f668b4b3f6ee5aa63fe3d0b5c6b"
     },
     {
       "path": "docs/RUNTIME_RECOVERY.md",
-      "bytes": 48915,
-      "sha256": "2a28bc1f4f7e5061fd3ebc094d8b78613dc414baccbbc355eba37afbe102da61"
+      "bytes": 58058,
+      "sha256": "e7e2e774b11256b4cb8237128d77b0f2d59b4b73e81c4f07863aa61cf3f5cc6b"
     },
     {
       "path": "docs/SBOM.md",
@@ -1366,13 +1386,13 @@
     },
     {
       "path": "docs/STANDALONE.md",
-      "bytes": 23657,
-      "sha256": "bd257e12acb6387499fcd0c377f9b9ee339708aa5debdb3c562d03b91d7d70de"
+      "bytes": 26147,
+      "sha256": "2ad05a64f7daf35c5a2ee320cdc66d6304764053f8b716b5beab8bf786713e7f"
     },
     {
       "path": "docs/STANDALONE_INSTALL.md",
-      "bytes": 9394,
-      "sha256": "77521c1521a99d998956b51fb518f8ba7a90f3a50f4501aaeb3f2c585f56d577"
+      "bytes": 9386,
+      "sha256": "7853c64f2bfe4b077c4daa8a5222fa136f7be885d7377c922cdcc5daa10d4b66"
     },
     {
       "path": "docs/V1_NEXT_STEPS.md",
@@ -1381,8 +1401,8 @@
     },
     {
       "path": "docs/VERSIONING.md",
-      "bytes": 14144,
-      "sha256": "ef64d0520d722ac7d967923eabecf30586aa7c3261f43fea7cb5c14b76a2606f"
+      "bytes": 15705,
+      "sha256": "7ade6a9c3849e78725238a41fc3d54c5c5211e69dd8832f1f2ec2a46f2a6a500"
     },
     {
       "path": "docs/VIDEO_QUALITY.md",
@@ -1631,8 +1651,8 @@
     },
     {
       "path": "docs/history/iterations/401-450.md",
-      "bytes": 262357,
-      "sha256": "ba841a5af4309c42c09a11fcbeff0faa96f5a3d6c8b9990a79cc54c2911352b2"
+      "bytes": 266237,
+      "sha256": "3c86c35222739e24624a2d8fee35d01913f83eb4c567e2f88a8e2c55213ca59e"
     },
     {
       "path": "docs/history/iterations/451-500.md",
@@ -1641,23 +1661,23 @@
     },
     {
       "path": "docs/history/iterations/README.md",
-      "bytes": 2214,
-      "sha256": "06eb3df3907c2bc814ebf318e8bf6226aef4d49bcc4b459ded2b27d99a121822"
+      "bytes": 2747,
+      "sha256": "deb497c88f0c4f67735d85cb64045015dcf5565714e82e3bbbc63deca1527a6e"
     },
     {
       "path": "docs/history/iterations/index.json",
-      "bytes": 155561,
-      "sha256": "7db956bd1974f91e40324b197a5c5d90f8489f2f42e4525a488da27c2605f6f7"
+      "bytes": 156006,
+      "sha256": "faad5404ba210b5c0f215fd4bd78d16a8a6d83a5a428fa8be407818448658477"
     },
     {
       "path": "docs/npm/runtime-linux-x64-gnu.README.md",
-      "bytes": 4214,
-      "sha256": "122ec5bcd5e53a0c7d5a8df06f881cb5239c50ae2c4c6be17213e0fb769df61a"
+      "bytes": 4802,
+      "sha256": "6b574702d400079bf0d6997454c50af1c8521923d7d658dacea5b378542a9b99"
     },
     {
       "path": "docs/npm/runtime-win32-x64.README.md",
-      "bytes": 3962,
-      "sha256": "07fe4e75640260ac13be095a63115ab3cf9ffcf6544fc76236dfa7485bd8a49c"
+      "bytes": 4550,
+      "sha256": "5ccbcda3c096cf0db2bfca6127e43dc578bd4d24e146ddc08d24c7d66dbbed04"
     },
     {
       "path": "eslint.config.mjs",
@@ -1941,18 +1961,18 @@
     },
     {
       "path": "native/audio/pcm_offer.cpp",
-      "bytes": 2467,
-      "sha256": "db2d40f3b7bc10d39277810ec831957e969cfa8f268c5ac08c3dba773bd10c01"
+      "bytes": 2554,
+      "sha256": "1ce3c0c5fcace69fed3ab91fb792529f94e9daf56d19b86991e43a6e5adb8d9d"
     },
     {
       "path": "native/audio/pcm_offer.hpp",
-      "bytes": 669,
-      "sha256": "61d3d2875cb00c545a106ac0ec448af63ce4ee260f989db88651b643eb9aa616"
+      "bytes": 735,
+      "sha256": "180426f8b1d026c00843212de41a90250a581a5ee65ad5bb1a9813ee5e42428c"
     },
     {
       "path": "native/audio/pcm_offer_tests.cpp",
-      "bytes": 5741,
-      "sha256": "db1bf0844603dabd82243cd0cd2313c6ba69d9e7df1e13b0d93473189180f670"
+      "bytes": 6455,
+      "sha256": "32d6b5be5c6cd18088a19fea772410c28d4582b64c9111144a8e9aa75e91cdc1"
     },
     {
       "path": "native/audio/pcm_tests.cpp",
@@ -2011,23 +2031,23 @@
     },
     {
       "path": "native/audio/rdpsnd_provider_tests.cpp",
-      "bytes": 91608,
-      "sha256": "a5b74ac0eb706d5d1b6b43a49ace00863d9a11fb802fc9f9ad02fe678ff255d1"
+      "bytes": 93239,
+      "sha256": "842827c623f67426d846fd8d16053a447ed8c0c8ec1e818a3bc12b08ce6e7bc4"
     },
     {
       "path": "native/audio/rdpsnd_sink.cpp",
-      "bytes": 9099,
-      "sha256": "b3a60a6c4f5267e11b268f6b28049dfa92f36bc9b2057d5013fef786c5e03509"
+      "bytes": 9326,
+      "sha256": "2bcefe0e33fc96eeefdf9a60cd13a83821c8b387550281df766fe92e9e72f842"
     },
     {
       "path": "native/audio/rdpsnd_sink.hpp",
-      "bytes": 2891,
-      "sha256": "c801a082a2ea06707ca701b78e598d00f9098c9ac01d539639716f125355b1b3"
+      "bytes": 3042,
+      "sha256": "c83f3fbdf321619b9114d4fa4c14c362945f430fa2763ad21d98518d32e14b4a"
     },
     {
       "path": "native/audio/rdpsnd_sink_tests.cpp",
-      "bytes": 18917,
-      "sha256": "dcf0f29ad843eeb79e9c32a8f77ada3b4a89d60f717ee1ced54a66db7cae48ab"
+      "bytes": 19819,
+      "sha256": "3f96cb803463e8af9a74ec19e32f66db41038a1d5e8ba8fa4e4954bb10d6afb5"
     },
     {
       "path": "native/audio/reset_control.cpp",
@@ -2046,18 +2066,18 @@
     },
     {
       "path": "native/audio/session.cpp",
-      "bytes": 5808,
-      "sha256": "b076253c26ff9e9dee456229c5c3c2af1029ba49bf5fed6395e44d266ee8ecb8"
+      "bytes": 6079,
+      "sha256": "2423402c5415d5aab4940b18dcb5ef163f7e564f249bdbdde0fc15565239b392"
     },
     {
       "path": "native/audio/session.hpp",
-      "bytes": 2867,
-      "sha256": "f7dd991f29adce309afd2dbd901eea1ab1d9ea49649546e9250860ac9f577b3e"
+      "bytes": 2911,
+      "sha256": "3036e7ddb77414c4076bac87532d13158ac58a4ad155f21b320c91608feb15e1"
     },
     {
       "path": "native/audio/static_gate.cpp",
-      "bytes": 17909,
-      "sha256": "57bbff19ddbfb564a0be3a909cc69bc67a9a9a7abb7cbda62f42c2e28fad7238"
+      "bytes": 17940,
+      "sha256": "78afb3ab2014c80eb798b64057ccb052bc89dfab0a78403bfcb4a2161698d976"
     },
     {
       "path": "native/audio/static_gate.hpp",
@@ -2565,6 +2585,191 @@
       "sha256": "9f7ce90a2e64353b1e446a1bb6fe0ea0e09db140558b56ad80dfd559f0f2a76f"
     },
     {
+      "path": "native/files/basic.cpp",
+      "bytes": 1170,
+      "sha256": "a89c4c12ab4b8e7b074d93f6cad230f00d2180122702bf4315eeaad092976051"
+    },
+    {
+      "path": "native/files/basic.hpp",
+      "bytes": 1064,
+      "sha256": "b8a1cd523997e22ab0a6a998766777a963f15bcd9bf35286f555b971122c7e7c"
+    },
+    {
+      "path": "native/files/crt_report_control.cmake",
+      "bytes": 790,
+      "sha256": "42825239329cd1471e8482585bf1e8d5ce5578347f6f8c1f2f12e0a7164d969e"
+    },
+    {
+      "path": "native/files/delete_window.hpp",
+      "bytes": 1042,
+      "sha256": "a3a9076e225c684d02f6e5dc447a02de76829267d6d6ee3aebb4f5e99f2b0f2e"
+    },
+    {
+      "path": "native/files/delete_window_tests.cpp",
+      "bytes": 3602,
+      "sha256": "9938f292660f327110585fee127ea42ecd1275630fc35df74de0bc2f1dc03757"
+    },
+    {
+      "path": "native/files/drive.cpp",
+      "bytes": 20860,
+      "sha256": "386f014a0d2732e37cb6c67c822f9f937cf66d1c5bf4ae9917430701d9a30c60"
+    },
+    {
+      "path": "native/files/drive.hpp",
+      "bytes": 4430,
+      "sha256": "9522b7300a6e2818d1e8e57e1937a170bdad128dbbfdc54d4f263f5c0d16013b"
+    },
+    {
+      "path": "native/files/drive_descriptor.cpp",
+      "bytes": 1131,
+      "sha256": "25fbc6dd449a8ceb3313ace582a735dd229594906da1c02fa39e226ae544e64d"
+    },
+    {
+      "path": "native/files/drive_descriptor.hpp",
+      "bytes": 514,
+      "sha256": "d55b40fb8716046aaf8b0ef8cd610079290daae143512a165a031ecb00418051"
+    },
+    {
+      "path": "native/files/linux_openat2.hpp",
+      "bytes": 1284,
+      "sha256": "c887bd89bf9d9d4c090f8a9547a0a6c1a1c77ad0acb391f3fc13355b3e60e1b1"
+    },
+    {
+      "path": "native/files/linux_rename.hpp",
+      "bytes": 1050,
+      "sha256": "4fd2e4bfb3d9064aa34135f228890babcf6c9c137a01b8fa78df62175b1a992b"
+    },
+    {
+      "path": "native/files/path.cpp",
+      "bytes": 2911,
+      "sha256": "958e6f1a6350483a16b868ee37168da363e028c27838bad3a00a3b2e51f75549"
+    },
+    {
+      "path": "native/files/quota.cpp",
+      "bytes": 5171,
+      "sha256": "e0025b329bde0d68be0c1b4022d88e5ead318e4787c92e955229fc93aa0bca4f"
+    },
+    {
+      "path": "native/files/quota.hpp",
+      "bytes": 3729,
+      "sha256": "79a14d9ec9e29cacc0a55608648c4b0da0af5c763e488e93b3443d7326ed1e41"
+    },
+    {
+      "path": "native/files/quota_tests.cpp",
+      "bytes": 8061,
+      "sha256": "3b2ee6331300e6a16249aa22253066fec26486c539e892cb5753977c1346e8a6"
+    },
+    {
+      "path": "native/files/rdpdr_budget.cpp",
+      "bytes": 3040,
+      "sha256": "58e30049199971c4f47fa13aecbffd120566e0a63096201b3c67b2c4e371e013"
+    },
+    {
+      "path": "native/files/rdpdr_budget.hpp",
+      "bytes": 2152,
+      "sha256": "98b961ca3718f453160911e12dd1456a9d420d5240622d4bd1333a218d88bbc8"
+    },
+    {
+      "path": "native/files/rdpdr_budget_tests.cpp",
+      "bytes": 4783,
+      "sha256": "11e96c48af35783d673a9c4b23bb3ba1ced0822835d69070531a80cf8282e4a6"
+    },
+    {
+      "path": "native/files/rdpdr_device.cpp",
+      "bytes": 20740,
+      "sha256": "4c7e279645aad29c61e8fcc3003a47f3b79d01872ad8923e154e0127fe432ac0"
+    },
+    {
+      "path": "native/files/rdpdr_device.hpp",
+      "bytes": 3033,
+      "sha256": "179341e1e8cdf9eaddd5a21f4bdba92e93b9f3e6ac367dfe680280a00a506955"
+    },
+    {
+      "path": "native/files/rdpdr_device_tests.cpp",
+      "bytes": 50581,
+      "sha256": "cfd05f5df63d679de2c47ddeb3f566932c59b943c42fe9df2a397389c86b13a5"
+    },
+    {
+      "path": "native/files/rdpdr_loader.cpp",
+      "bytes": 2557,
+      "sha256": "d525729a3c07ee185db5ec755eb2b5293252976e554ca31be494e6416afc1742"
+    },
+    {
+      "path": "native/files/rdpdr_loader.hpp",
+      "bytes": 274,
+      "sha256": "63bf156b68fbca823e25ad2bfc72c8d4e33c0ad57e59903d18eb0dd2ba4e4836"
+    },
+    {
+      "path": "native/files/rdpdr_static.cpp",
+      "bytes": 15260,
+      "sha256": "ece7a371e7bdf721623a71ce03c10121a5cd73aaf6fd50ffe1062d5e65d1f971"
+    },
+    {
+      "path": "native/files/rdpdr_static.hpp",
+      "bytes": 3086,
+      "sha256": "51ebb4d37db09456026ede547e981286e0a7713609269f7dab869bc28965eea9"
+    },
+    {
+      "path": "native/files/rdpdr_wire.cpp",
+      "bytes": 28792,
+      "sha256": "5ca4044d5596a5b7f0c98ae472551a02ccb1097e9b1b8b20b6539ad742374fa2"
+    },
+    {
+      "path": "native/files/rdpdr_wire.hpp",
+      "bytes": 3526,
+      "sha256": "42af453450d2a3707923888ffc34c8036dc251dca3662e0bc3e1b5d6b7dc5863"
+    },
+    {
+      "path": "native/files/recovery.cpp",
+      "bytes": 7725,
+      "sha256": "07a7164694e3637e052b21fee17e8ae3b2c1033bf0a395abb2bc70360aa5987f"
+    },
+    {
+      "path": "native/files/recovery.hpp",
+      "bytes": 1564,
+      "sha256": "1c05354f3f6318472b0ba871d59470957b34c575f190e26ba530b8d2d651ba39"
+    },
+    {
+      "path": "native/files/safe_root.cpp",
+      "bytes": 44160,
+      "sha256": "48e5abe15971bfb6037ef7787ad5b3f6112d358b4eadc3db3608ebe65a2d69a9"
+    },
+    {
+      "path": "native/files/safe_root.hpp",
+      "bytes": 4930,
+      "sha256": "db264f6f9657f1c4cba24d82a95483189cab7aa86a9db41657590213865336ba"
+    },
+    {
+      "path": "native/files/safe_root_tests.cpp",
+      "bytes": 144338,
+      "sha256": "68f9b90ea9e188e7c549ed0099bc6ed0bf3bf9523f13f4bd96144d02abed4bfb"
+    },
+    {
+      "path": "native/files/sandbox.cpp",
+      "bytes": 39553,
+      "sha256": "a29ac795ec9703a6e59b2ca296a3bf200ee7d5a3cba181290bda8044a4d4a036"
+    },
+    {
+      "path": "native/files/sandbox.hpp",
+      "bytes": 6687,
+      "sha256": "cca93f059f59535f10a767b78ec753aeb8b3b237b504e1ce4d3bfe57241a243f"
+    },
+    {
+      "path": "native/files/service.cpp",
+      "bytes": 9662,
+      "sha256": "a1caef15a1228c759125bfbc61549cdc0486a8b0ba94d117cb43a9670569719b"
+    },
+    {
+      "path": "native/files/service.hpp",
+      "bytes": 1783,
+      "sha256": "bf6ed3bc7f0011e02d428379e1248251184644504742a1139e83240e7fe03d8f"
+    },
+    {
+      "path": "native/files/windows_rename.hpp",
+      "bytes": 1189,
+      "sha256": "7193813ab6cd8b6760ce758422d5758782eef61d6f4b4c4e176f5fb9d1565000"
+    },
+    {
       "path": "native/freerdp-build.cmake",
       "bytes": 2518,
       "sha256": "cc4a96618d90794e9d1da551ae36426ba21039a2af8fce47587132415a1beaca"
@@ -2791,13 +2996,13 @@
     },
     {
       "path": "native/ipc/connection_config.cpp",
-      "bytes": 6847,
-      "sha256": "aceccbd68e80479a9f7214d04e24e2392cd6061bd771ea38fd665ed92dd715d9"
+      "bytes": 7868,
+      "sha256": "696dffb14ac5458ea88c0de40f100f1d52f10446418ca082942a88efc55b2f7f"
     },
     {
       "path": "native/ipc/connection_config.hpp",
-      "bytes": 1455,
-      "sha256": "e41c05295a39d0bed4e27eb10a140c61313856017deaa0d44e1c867b83885321"
+      "bytes": 1632,
+      "sha256": "5b8f2e4d59cb70c1d67fa0e755cadfef044fcf98038b817278932076a02b96e0"
     },
     {
       "path": "native/ipc/cursor.cpp",
@@ -2835,9 +3040,24 @@
       "sha256": "d0c27482aac6929db65f088efbe9c49636fb63907394fcd80f8f7d6e5d312e1d"
     },
     {
+      "path": "native/ipc/files.cpp",
+      "bytes": 7155,
+      "sha256": "b88970015fbeadcc9ca3165bcf11a63941faf069bb2c85ec507edb9b92084307"
+    },
+    {
+      "path": "native/ipc/files.hpp",
+      "bytes": 1077,
+      "sha256": "9cf29c8e3aca6ea2907ed11cf00ebb0020dd66c09ee5c07a8b37442e035a8c8e"
+    },
+    {
+      "path": "native/ipc/files_tests.cpp",
+      "bytes": 3844,
+      "sha256": "21e86c227dd91e9212d8d8ce5c59312571701c93ff674d06f0f3b04ce6a32ce8"
+    },
+    {
       "path": "native/ipc/fuzz.cpp",
-      "bytes": 4237,
-      "sha256": "343c59b34f274e3d844ce7a84a8a9877e5f93bd1872c4829aeb9b915580d9b83"
+      "bytes": 4592,
+      "sha256": "846e40fbfd65b9ce46057e53fc9ad6b65543063720b76086349162666321b93a"
     },
     {
       "path": "native/ipc/input.cpp",
@@ -2891,8 +3111,13 @@
     },
     {
       "path": "native/ipc/linux_stream_tests.cpp",
-      "bytes": 8640,
-      "sha256": "8f46f5b39fb89c6e69d16b00a4d40b93cc72753e05d2b1cf3e155c6a97a47d03"
+      "bytes": 8892,
+      "sha256": "32db0e51e93df724a77a9fc45f724369b82616ca62d5c5ac3e958d649aef831d"
+    },
+    {
+      "path": "native/ipc/managed_drive_tests.cpp",
+      "bytes": 3626,
+      "sha256": "9f8581127e7164e4c86d0161f2e2793cafca6d5c44fab3a74693feecb668355c"
     },
     {
       "path": "native/ipc/microphone.cpp",
@@ -2951,8 +3176,8 @@
     },
     {
       "path": "native/ipc/output_dispatcher.cpp",
-      "bytes": 3838,
-      "sha256": "fe0ad5de32f277c3c6a82b2f388752809733ae6efce5ef95ab6c25e7d6a2facb"
+      "bytes": 4131,
+      "sha256": "b333c01c06e401a3e04edd923c4edd21c4f6426235de2ddb5aae774ce55c9250"
     },
     {
       "path": "native/ipc/output_dispatcher.hpp",
@@ -2966,18 +3191,18 @@
     },
     {
       "path": "native/ipc/output_queue.cpp",
-      "bytes": 10680,
-      "sha256": "03664d4340d2f114be724c3a6e090101b0f3f12e119a515ebae979e0ae2b51b3"
+      "bytes": 11138,
+      "sha256": "4db71de4c61b0555e429a22f0e7313533bb128247e92930e2e9c41679123cc79"
     },
     {
       "path": "native/ipc/output_queue.hpp",
-      "bytes": 1877,
-      "sha256": "b6a9ca1610bdebfe5dee7b0133196f51ed730f6ab834aacac530eeae962c9793"
+      "bytes": 1951,
+      "sha256": "3da5141b604bb85b403341630759dadf553c4483d3349fede59636bf2cb4f55f"
     },
     {
       "path": "native/ipc/output_queue_tests.cpp",
-      "bytes": 11321,
-      "sha256": "44423287b1b3ec655b5dff6c00910a8ac1e27affe67371d6fdb43c175ad8ccc9"
+      "bytes": 11706,
+      "sha256": "c8ef24e7d186338f2ea73070b3cc28987de38b8899ca429743e1000b4668c60b"
     },
     {
       "path": "native/ipc/pipeline_stats.hpp",
@@ -2991,13 +3216,13 @@
     },
     {
       "path": "native/ipc/protocol.cpp",
-      "bytes": 6977,
-      "sha256": "b5b82d8c3679fe0602e5fc1548d4d16f761605a77966d4166c99935eb3ba22cf"
+      "bytes": 7388,
+      "sha256": "57c14acb41b766076c523506a90e98926bf99a6803b3fc6950ca9f6f0b0574f6"
     },
     {
       "path": "native/ipc/protocol.hpp",
-      "bytes": 2397,
-      "sha256": "696cc0a0f7f28f8ab8f468a063bbb3f366c64a3a59f60fcb3d5ed90e469b6830"
+      "bytes": 2438,
+      "sha256": "712cf5d6532a0a5bb1b453ea65dcbb4c2087eba3e127b4221717d455ecfe1eb4"
     },
     {
       "path": "native/ipc/seqpacket.cpp",
@@ -3231,13 +3456,13 @@
     },
     {
       "path": "native/rdp-worker/connection.cpp",
-      "bytes": 70141,
-      "sha256": "2ed526118ddb924b81264670ec5100f1ad26ef5b3d71c806727424273d644046"
+      "bytes": 73435,
+      "sha256": "72d2fcf859a08b1507ddaf513ee08acd79b9febf25083d8ff3a12c6604e5102b"
     },
     {
       "path": "native/rdp-worker/connection.hpp",
-      "bytes": 8793,
-      "sha256": "bbcd385d748ccf9e5f3cf7e0fc9115c4d1eb24ede532dc6f77ff9e026d7dfdb4"
+      "bytes": 9458,
+      "sha256": "bddd7ae1f3a28a9ca09b0e9116b8e849ae27416f3a7cb81471978b10e447bf8c"
     },
     {
       "path": "native/rdp-worker/ip_settings.hpp",
@@ -3251,8 +3476,8 @@
     },
     {
       "path": "native/rdp-worker/main.cpp",
-      "bytes": 19709,
-      "sha256": "0b6590f4b2e9d25f39dd24e513ec831b20f22e3f7caa555d19f99a8a32e6749e"
+      "bytes": 21086,
+      "sha256": "630813b434b28884d1e567f2a4688b5ff294f1e1bfe90339e75ff3d0acf61ff9"
     },
     {
       "path": "native/rdp-worker/performance_settings.hpp",
@@ -3351,13 +3576,13 @@
     },
     {
       "path": "native/runtime/recovery.cpp",
-      "bytes": 14691,
-      "sha256": "1316e6f64f97194b9de0b743700a11fcd459c628f0869322f66ee21a630c3cb8"
+      "bytes": 17404,
+      "sha256": "1666be0fd86de7f84c312c6e997a826726ea9f1460b75dff8796059d42b3e129"
     },
     {
       "path": "native/runtime/recovery.hpp",
-      "bytes": 478,
-      "sha256": "33ce0e2c2a4812ab751fa6ba0ee2417446e9d16b7375c2f20adcda960516da90"
+      "bytes": 559,
+      "sha256": "4f2b2a05a95a25bf7beb83aa7c2e2248f8c6e5d6784e556e89bd78c39da56cc2"
     },
     {
       "path": "native/runtime/recovery_main.cpp",
@@ -3366,8 +3591,8 @@
     },
     {
       "path": "native/runtime/recovery_tests.cpp",
-      "bytes": 7984,
-      "sha256": "a5b8e42ca7dfdff9c18dd0649dfa7d0b849e30cadfde69f8a74b1c757368f2f0"
+      "bytes": 10560,
+      "sha256": "0de9f4cd79ae8739d16706df83c5e5ca7d07fe565c8aaa0b8b8998206d773914"
     },
     {
       "path": "native/runtime/windows_ownership.hpp",
@@ -3607,7 +3832,7 @@
     {
       "path": "package.json",
       "bytes": 1844,
-      "sha256": "66bb59ed38f5bc9d4a625e76d82454db3eaef5c6a1255a8c47dd73cc2461a93a"
+      "sha256": "ecc228008c54a6c67ba60211cef056dbc49870b5cb638678c92f870d50cdff25"
     },
     {
       "path": "packages/config/LICENSE",
@@ -3616,13 +3841,13 @@
     },
     {
       "path": "packages/config/README.md",
-      "bytes": 2941,
-      "sha256": "92e76b933246118d9bea336bf32675a119a18fda1e0d2cb479545440bd12ddc1"
+      "bytes": 3398,
+      "sha256": "320cdcab44f19964892cb22374c389f52fbcd8df6eccfe185d19d25b2e5bb369"
     },
     {
       "path": "packages/config/package.json",
       "bytes": 514,
-      "sha256": "9f152252db99834c1637a2149042a9ec163670fe1cd60b79cae9a09e9fd4329f"
+      "sha256": "81df1cb588eb98bfc96b9fc306543ee11dcc4cedbaf75f91a9950fd05c00cda2"
     },
     {
       "path": "packages/config/src/index.ts",
@@ -3641,13 +3866,13 @@
     },
     {
       "path": "packages/express/README.md",
-      "bytes": 6375,
-      "sha256": "d29e50b551d82e0fce76448ed13f74204f70b48e95e2e96e6fb30a50954c2c77"
+      "bytes": 6984,
+      "sha256": "7ba7ee75f690eac2e38af5cb7b49ed602114176d93c399d0d1fb6892a84cd7ff"
     },
     {
       "path": "packages/express/package.json",
       "bytes": 721,
-      "sha256": "76ae56395d006327b59fb7b72e661dbad8adc5dbea6156a6a5382df41dd67a84"
+      "sha256": "9172455776947f24591d09e0484cb07e6497ac1d3e290af9c1a0c510b8c2b89f"
     },
     {
       "path": "packages/express/src/browser.ts",
@@ -3676,13 +3901,13 @@
     },
     {
       "path": "packages/fastify/README.md",
-      "bytes": 6050,
-      "sha256": "83fd6dd04e16422d3fda21bf06cf340531e0f87d00eb4b2ecedc06867f731ad6"
+      "bytes": 6659,
+      "sha256": "18e8669549f0b5d35db4ee5bed61a0d8d7ddcf00e31f2767f99c3d1eeb4f70ca"
     },
     {
       "path": "packages/fastify/package.json",
       "bytes": 690,
-      "sha256": "0c072cd77c24d2b626e806c9216933171b5d8974a929afeee74fd985eeafce27"
+      "sha256": "a9c3c7db2f86342a5428ab769c3b2f7077839ae7a01b205dc47f896e2476b13b"
     },
     {
       "path": "packages/fastify/src/browser.ts",
@@ -3706,13 +3931,13 @@
     },
     {
       "path": "packages/http/README.md",
-      "bytes": 5502,
-      "sha256": "9e690bc4061b6426ff0aa93d2864f9ec8a45d71b0fcb63814ac03498bfefd1bf"
+      "bytes": 6111,
+      "sha256": "4c5e1ab7721cdc658bafaadb5929c0b395a95b557400769732414f99f11b778a"
     },
     {
       "path": "packages/http/package.json",
       "bytes": 655,
-      "sha256": "8bf3891919475d10869769357a6657a7d4aafa1241a6652f7aa5c3da2fcda7d7"
+      "sha256": "1d98ffc0e20e7e9383f65d21d9c8fa81a6d909b201d89e71a2f0fc1c4a69db16"
     },
     {
       "path": "packages/http/src/browser.ts",
@@ -3741,13 +3966,13 @@
     },
     {
       "path": "packages/nestjs/README.md",
-      "bytes": 5752,
-      "sha256": "f0c1a692084e14a53d445406ede4399906864f462e4a7005fb4338902aeb13f6"
+      "bytes": 6361,
+      "sha256": "d2f70edca14044e5c0a7acac1e5d7259a84c687d8405e602b344baebbad2fc1f"
     },
     {
       "path": "packages/nestjs/package.json",
       "bytes": 785,
-      "sha256": "29ff46ce7baf5b91e6229614e674058c07c0a95a68c3b7355eb0689e89cc1e3f"
+      "sha256": "1e20e43ff24d9e5a8b3aaaba700bdb09134fea9848947fea611dfc761bd6bc50"
     },
     {
       "path": "packages/nestjs/src/browser.ts",
@@ -3776,13 +4001,13 @@
     },
     {
       "path": "packages/node-bridge/README.md",
-      "bytes": 4995,
-      "sha256": "86de5a5447d3146b81dda357e51fd27cb8f5a5b08bdbfe08172e76caf561d909"
+      "bytes": 5506,
+      "sha256": "0d4afd3c55052300989508cac938716c2507b2a01cbf28cf8c45aca37f8e2b99"
     },
     {
       "path": "packages/node-bridge/package.json",
       "bytes": 568,
-      "sha256": "be62f1c9f7f0aef5fe59dd337422c8d785f047a4a7ef7cb7801d0fc55b754880"
+      "sha256": "bd1ba06f219c58db77f121475a128557606b298483cd259b2902811bf89b77e4"
     },
     {
       "path": "packages/node-bridge/src/audio-source.ts",
@@ -3805,14 +4030,24 @@
       "sha256": "71d71ceb98223a3c3e4fe047aed040800b0c5bc58a38c977c729b4ef70c50636"
     },
     {
+      "path": "packages/node-bridge/src/drive-selection.ts",
+      "bytes": 1095,
+      "sha256": "394bb914415d08ec0e936039c96169d7adb9da88b9712b8470f0f5ecef3a2829"
+    },
+    {
       "path": "packages/node-bridge/src/index.ts",
-      "bytes": 78146,
-      "sha256": "b9215045df7431d724c70b2ea2943fdc0d4f58b0288a908b1a3d564e5c398fbb"
+      "bytes": 85755,
+      "sha256": "b1a0bb01f913d4b5cdc64f11f81cc453eb013d9946f02269a686f700fb8c4155"
     },
     {
       "path": "packages/node-bridge/src/ipc-selection.ts",
       "bytes": 4469,
       "sha256": "af70c84b87e6b30348bc162cbba704ca63c56a17be6bb7aa7a1f3ce64128582a"
+    },
+    {
+      "path": "packages/node-bridge/src/managed-files.ts",
+      "bytes": 22980,
+      "sha256": "f7887394331c85e984333da5a06a722f0e879961da9ed4f01cfa1e47dc6c9569"
     },
     {
       "path": "packages/node-bridge/src/microphone-ingress.ts",
@@ -3831,8 +4066,8 @@
     },
     {
       "path": "packages/node-bridge/src/native-session.ts",
-      "bytes": 19793,
-      "sha256": "35f200741bd29ddead76f2f3619c8316d4efbfe7effd0b7462b769b3810a8246"
+      "bytes": 21765,
+      "sha256": "d29bef88b3fe56ffced57a4da500f1844e55bc00df4bbdc10b985f5f5d63bb8b"
     },
     {
       "path": "packages/node-bridge/src/opus-delivery.ts",
@@ -3896,8 +4131,8 @@
     },
     {
       "path": "packages/node-bridge/src/runtime-recovery.ts",
-      "bytes": 9282,
-      "sha256": "615e45d1e09ec94a12e1d57700d942e5b743850831ffb9cf1c03d27befc18228"
+      "bytes": 10642,
+      "sha256": "7391e7714633d32a6e86cc01eb6773cda21f3ef0fd924e79ae2f003c16afe68a"
     },
     {
       "path": "packages/node-bridge/src/seqpacket-owner.ts",
@@ -3911,8 +4146,8 @@
     },
     {
       "path": "packages/node-bridge/src/session-manager.ts",
-      "bytes": 76849,
-      "sha256": "dcd71c82ffb88d45f7a8e609fdf9739af7717507ba07172528cf676f860b4703"
+      "bytes": 79843,
+      "sha256": "0d9af27672c00f8de8977cedb55cbe6fa71a6e714c48cb2a7fb4340ac720e190"
     },
     {
       "path": "packages/node-bridge/tsconfig.json",
@@ -3926,13 +4161,13 @@
     },
     {
       "path": "packages/protocol/README.md",
-      "bytes": 2948,
-      "sha256": "b718a8372cf03ca18b01681bdeaa233a806019e7a2e0dae32aa44f03338905af"
+      "bytes": 3405,
+      "sha256": "a48a08bca99725761983b4504c2c8056a4d764e174b394c76cdbe6da6eeb268a"
     },
     {
       "path": "packages/protocol/package.json",
       "bytes": 456,
-      "sha256": "ade71a90931087fcc995c266a61a9315929743db3a4cf37bb302c14cddbc1177"
+      "sha256": "c404c846c0f50d93d711c293dc8c6b384f1b86df9b5a558d58983d517f07a15c"
     },
     {
       "path": "packages/protocol/src/audio-reset.ts",
@@ -3975,14 +4210,24 @@
       "sha256": "d1bf4c3b09eb1efeef0bc574d7da87552f02a70fe5c1424781f4c0542d251bd4"
     },
     {
+      "path": "packages/protocol/src/files.ts",
+      "bytes": 8077,
+      "sha256": "f202fb43f9bf0d913725d3b1e194039d50bca92da6e5447c102be4f443085468"
+    },
+    {
       "path": "packages/protocol/src/index.ts",
-      "bytes": 25959,
-      "sha256": "060203bd6820cf8a519f93f303f08bc0fb281ddd071a218deae5658027535e35"
+      "bytes": 27909,
+      "sha256": "e8f3510f1366f6481fbe64ae7b57f59f6b2dfdcc33619f060c222776b37930f5"
     },
     {
       "path": "packages/protocol/src/input.ts",
       "bytes": 4576,
       "sha256": "256f158f49fa04298d9955c0736ab17fbb998595f09c212a44948926174fb055"
+    },
+    {
+      "path": "packages/protocol/src/managed-drives.ts",
+      "bytes": 1648,
+      "sha256": "d95fd026a6f95f480e495296b424f7ac39f13626504f21b82a56fb6f7fab7ea1"
     },
     {
       "path": "packages/protocol/src/media.ts",
@@ -4056,13 +4301,13 @@
     },
     {
       "path": "packaging/standalone/locks/linux-x64-gnu.json",
-      "bytes": 28666,
-      "sha256": "2f89a1e459236a74aae50d1dc711b37428b77028c87006618bff788e72c386b1"
+      "bytes": 28714,
+      "sha256": "cc90b4ccaa364cbcec4e62a221edeceafc73bda84e0c168b08fa1821fe56fb5b"
     },
     {
       "path": "packaging/standalone/locks/win32-x64.json",
-      "bytes": 28318,
-      "sha256": "6902623ec0ae43ff0c4a309c13b58256bfb754b9f64d447ca9685e628963bd57"
+      "bytes": 28350,
+      "sha256": "5dcaa87df48e2da51a96d436d62e03aac0736e07cb41261a83f4bc1a333bb1ef"
     },
     {
       "path": "packaging/standalone/notices/README.md",
@@ -4435,6 +4680,11 @@
       "sha256": "f82f06df8ecf7bdb8b859b8d113928c2caf0a9448a94c28998ed6151f20bb776"
     },
     {
+      "path": "scripts/managed-files-consumer.mjs",
+      "bytes": 3090,
+      "sha256": "ecaaec8b31c2daa322172c38cc3ee1f81d538918065bd0c0b2980779f921c8b6"
+    },
+    {
       "path": "scripts/microphone-negotiation-diagnostics.mjs",
       "bytes": 2520,
       "sha256": "b9c5d2ce78733a76e3e86c98d65ffd0a5f4ed816c2e12caf401d99be3af22fbf"
@@ -4646,8 +4896,8 @@
     },
     {
       "path": "scripts/seed-fuzz.mjs",
-      "bytes": 8007,
-      "sha256": "f30f8c844472612037f841fbe8a01b544a85ac9cc8fffef416b926332fd07b57"
+      "bytes": 9824,
+      "sha256": "f0c94360fe41cd64847b38d334a91c649f566efb62567aa255ee74b0b0c794ef"
     },
     {
       "path": "scripts/seed-gfx-pdu-admission-fuzz.mjs",
@@ -4691,8 +4941,8 @@
     },
     {
       "path": "scripts/standalone/linux-stage.mjs",
-      "bytes": 2677,
-      "sha256": "c9723b325568330e7c2017ecc8981752740605aaf49376bf23ae10a27cf1032c"
+      "bytes": 3623,
+      "sha256": "1479fb21cd7838f7d3c2a3a0c00627d186d44f67e4021e6656c343ee55b7e3ca"
     },
     {
       "path": "scripts/standalone/payload.mjs",
@@ -4706,8 +4956,8 @@
     },
     {
       "path": "scripts/standalone/rdp-lab-server.py",
-      "bytes": 14684,
-      "sha256": "fe64938093eca29e4e2f77c713e60c1eec0328ac480653e7bc6b06cf6ac5f841"
+      "bytes": 16422,
+      "sha256": "488c629ea76e759ec49788fc2cf97507a53a1a635b61574d3f7bc90f800877a2"
     },
     {
       "path": "scripts/standalone/read-msi-tables.ps1",
@@ -4761,8 +5011,8 @@
     },
     {
       "path": "scripts/standalone/upgrade-seed.mjs",
-      "bytes": 908,
-      "sha256": "40787452653c228f7bb906a7f2823ee91ac5867680a87c410582695af5564269"
+      "bytes": 986,
+      "sha256": "8e8ce876dafa2fcecf06974bfe5a23c2d56500467b8c5c1fa3ebb22950ee7d0e"
     },
     {
       "path": "scripts/standalone/verify-msi.mjs",
@@ -4791,13 +5041,13 @@
     },
     {
       "path": "scripts/test-express-package.mjs",
-      "bytes": 10394,
-      "sha256": "6c91df5d83c1821a284d520ae31dbdd1f07e4a7b97f054fe42997b86823b4e1d"
+      "bytes": 10680,
+      "sha256": "989965431625fb14abc2c55dc0f9c8de5dc70516e7e3abc82832f8f81a480126"
     },
     {
       "path": "scripts/test-fastify-package.mjs",
-      "bytes": 8658,
-      "sha256": "ffdc04e01343e6ecfed72219e9beff2a839452b186f2133414005c06c3497470"
+      "bytes": 8936,
+      "sha256": "05b42114f2aa2e77f84fa5dfe52e9c3b22805cbc294c8e70cbe5312170b9cebe"
     },
     {
       "path": "scripts/test-html-os-clipboard.mjs",
@@ -4816,8 +5066,8 @@
     },
     {
       "path": "scripts/test-http-package.mjs",
-      "bytes": 10242,
-      "sha256": "efe166339bfc6f50797d4f3bd64a516ffb53a96fa29f735bed1646677438042f"
+      "bytes": 10522,
+      "sha256": "c31ecf2b8cd5643d69dcc631b62a068d5201e51808959b1f63a2bd34b75fc386"
     },
     {
       "path": "scripts/test-image-os-clipboard.mjs",
@@ -4850,14 +5100,19 @@
       "sha256": "b5057915c381423ca991905c55845c6b3f9507a2acf783bc3fd5e53f8143b0ca"
     },
     {
+      "path": "scripts/test-managed-files-packages.mjs",
+      "bytes": 2453,
+      "sha256": "94f188844c8a2bbe0dc659126450074ca18974c10ca7849afbab6d9388e5cbee"
+    },
+    {
       "path": "scripts/test-native-clean-build.mjs",
       "bytes": 18555,
       "sha256": "f7fe6431d237bbc95f8d6842c355c7d3a5c957bae665b041910a72ed70a2a350"
     },
     {
       "path": "scripts/test-nestjs-package.mjs",
-      "bytes": 10497,
-      "sha256": "e9ed2db55b8e20218b430e8971b9036f2e50a71e0acb8f0fd7c2247f7d0e520f"
+      "bytes": 10781,
+      "sha256": "426342b3b546a7e4511765a074932a92d1247f0ba9b2bda0f2c41b2fca6bdd37"
     },
     {
       "path": "scripts/test-node-clean-build.mjs",
@@ -4918,6 +5173,11 @@
       "path": "scripts/test-windows-browser-clipboard.mjs",
       "bytes": 31161,
       "sha256": "e6a6070eefffe675052327f5b2ecff315995eaaed292829ed489e1e713ffde18"
+    },
+    {
+      "path": "scripts/test-windows-managed-files.mjs",
+      "bytes": 14896,
+      "sha256": "ce4462a02a86008c74b8263cc90e2aae6aa18583aa88056fa2685ec9215c9578"
     },
     {
       "path": "scripts/test-xrdp-audio.mjs",
@@ -5020,6 +5280,11 @@
       "sha256": "81a8999e4d14526f0447e77f278b94c9d37a061b8836e75c19a9ae76dac27ec8"
     },
     {
+      "path": "scripts/windows-managed-files-lab.mjs",
+      "bytes": 7658,
+      "sha256": "8ce305513c2abd165bebe7a2c60c8da54762751856c941a6d38e383f11b096c2"
+    },
+    {
       "path": "scripts/windows-runtime-model.mjs",
       "bytes": 1928,
       "sha256": "41947455c36775a323188ab57ea8513c83f1146a593bae2e4a57f4d0c2fba7a5"
@@ -5120,6 +5385,11 @@
       "sha256": "47a6f61a34f9f7e81725584b16ee6aba3467e5df5274d444dcf044c82f6ffad9"
     },
     {
+      "path": "tests/fixtures/file-worker.mjs",
+      "bytes": 1557,
+      "sha256": "d76eb92a16fb7293f655096cf41c937d989150b2e430f8a019ddae741eb3d773"
+    },
+    {
       "path": "tests/fixtures/freerdp-sdk/CMakeLists.txt",
       "bytes": 1176,
       "sha256": "7c6facc0dafac4e7c75e1b8ace70890ebfb28cca0f4d304c6779af24410051df"
@@ -5190,6 +5460,11 @@
       "sha256": "5e5fae14ca686326666e5d57abf9113b32564db28939608e42a8e994db2610fd"
     },
     {
+      "path": "tests/fixtures/managed-files-recovery-parent.mjs",
+      "bytes": 3087,
+      "sha256": "ea029b953ee37f330ab3a59d54152b410a56f86fd60bf01cc24356ce1fe0a64b"
+    },
+    {
       "path": "tests/fixtures/microphone-opus-decode.cpp",
       "bytes": 1835,
       "sha256": "c96045c86cfb541255b3e68c064f8ce06847461620ab03182c344fa4a70630ca"
@@ -5225,9 +5500,14 @@
       "sha256": "c673b4a66ff7bf4a7fc99f6312d30f5f70dfa10e12fb9d4be616e6b0783a99d4"
     },
     {
+      "path": "tests/fixtures/package-managed-files.mjs",
+      "bytes": 11939,
+      "sha256": "041a334b073293154266acb953862895d0abc3ca4146b0a9716828b901605d7c"
+    },
+    {
       "path": "tests/fixtures/package-runtime-recovery.mjs",
-      "bytes": 6261,
-      "sha256": "17ef257ca3cc2a2b1f592b5d46fbd198898ccf926e0e79fe25e5f1b501beede7"
+      "bytes": 6511,
+      "sha256": "7330bce344d61a0ada6b81d10c7bcaa8a6ba3384413c00fbf1e06f69b41c1fcf"
     },
     {
       "path": "tests/fixtures/parent.mjs",
@@ -5270,6 +5550,11 @@
       "sha256": "80480b905fdf461331767b034a6504b6d0f1e1d1a899ab3567f25255e54b82bc"
     },
     {
+      "path": "tests/fixtures/standalone-files-rdp-client.mjs",
+      "bytes": 19371,
+      "sha256": "5c7b9ab53e4ebbe4e4313d8f999bcaa08b1aee7cc018dc795cb546663243b899"
+    },
+    {
       "path": "tests/fixtures/standalone-startup-diagnostic.mjs",
       "bytes": 1469,
       "sha256": "24487dab64705e58ff0f196619a010e3e8247cca3ed41866fbe4597842708c96"
@@ -5283,6 +5568,11 @@
       "path": "tests/fixtures/unresponsive.cpp",
       "bytes": 1460,
       "sha256": "739a291c4d91636272a45bf7523873a45404bf7cf804140a0a406729facf13f4"
+    },
+    {
+      "path": "tests/fixtures/windows-managed-files.ps1",
+      "bytes": 6553,
+      "sha256": "94d92cefc2f14ed02a76e04a7e2068c87f3886ede400257e6cf7d49be86460b4"
     },
     {
       "path": "tests/fixtures/xrdp-lab/Dockerfile",
@@ -5450,6 +5740,31 @@
       "sha256": "ec8894081a9c21576d83277f12475057aa16e6b907b6ed24cd10c92d957a52df"
     },
     {
+      "path": "tests/integration/files-api.test.mjs",
+      "bytes": 21690,
+      "sha256": "7a723f4dd4fe3ee667e6e76863e6986d508700fcea9be997a2f72d9a8ad3e887"
+    },
+    {
+      "path": "tests/integration/files-disk-full.test.mjs",
+      "bytes": 7589,
+      "sha256": "56909835cd8146262d48a5c6d83a0d4465a61907bf80cd688a79570e07ae5568"
+    },
+    {
+      "path": "tests/integration/files-frameworks.test.mjs",
+      "bytes": 11321,
+      "sha256": "cb09548abe8bbff9b81d65f4b09327cd8551bb145e1ca6a175b517419e2c0624"
+    },
+    {
+      "path": "tests/integration/files-retirement.test.mjs",
+      "bytes": 12498,
+      "sha256": "5deafd1d8ffb2a3784d4b2215128ac1bcb28294fa896265c3b6f8f1d223091d4"
+    },
+    {
+      "path": "tests/integration/files-worker.test.mjs",
+      "bytes": 6482,
+      "sha256": "8657145e9e6f9d94187fcf31dee9a01a5e2f5461d9e08a08fef1861183653655"
+    },
+    {
       "path": "tests/integration/html-rdp-lab-fixture.test.mjs",
       "bytes": 9876,
       "sha256": "4e05086e8f460a3a921353118af8abd9ea20d633872f16d31b9d860e173ab3e7"
@@ -5498,6 +5813,11 @@
       "path": "tests/integration/linux-process-resident.test.mjs",
       "bytes": 742,
       "sha256": "3286fb059a6d23eb82ad046d8e5913e660ed0aef98ccab5383cdf1a3b4394a88"
+    },
+    {
+      "path": "tests/integration/managed-drive-worker.test.mjs",
+      "bytes": 4245,
+      "sha256": "f45f7687220f438fe5f1e5aff3a8e74c320392dbea0f3f02b595f81d91ba132d"
     },
     {
       "path": "tests/integration/media.test.mjs",
@@ -5751,8 +6071,8 @@
     },
     {
       "path": "tests/integration/runtime-recovery-worker.test.mjs",
-      "bytes": 10087,
-      "sha256": "45e3c09474de0d46243fdeddd16b7a26d17acad6678de5abb1ec7465892b1e89"
+      "bytes": 14361,
+      "sha256": "64d8b3b7bfd6533af1e59ed59dbba93d60bc1482c5e7e316f03a0a744ba9e722"
     },
     {
       "path": "tests/integration/seqpacket-addon.test.mjs",
@@ -5771,8 +6091,8 @@
     },
     {
       "path": "tests/integration/session-api.test.mjs",
-      "bytes": 24417,
-      "sha256": "95a2df9ff17169653b7cfce805442da02ce8d6bd11dc5b08ff56639dd369142c"
+      "bytes": 26164,
+      "sha256": "6f175e707b35fcbf8cd1f548a81afee526145be790f8cc4dddf66b04a1a46853"
     },
     {
       "path": "tests/integration/session-retirement-capacity.test.mjs",
@@ -5826,8 +6146,8 @@
     },
     {
       "path": "tests/packaging/standalone-deb.test.mjs",
-      "bytes": 3494,
-      "sha256": "03935d9174f670d007ed1e7676a2d7a0379d1c75ff9762a1ae2e702539250147"
+      "bytes": 3779,
+      "sha256": "95b7dbc3455cb7d72ff3559b418ddb52537199eb71d160badacb92af4f511727"
     },
     {
       "path": "tests/packaging/standalone-installed.mjs",
@@ -5836,8 +6156,8 @@
     },
     {
       "path": "tests/packaging/standalone-lab-protocol.py",
-      "bytes": 2894,
-      "sha256": "533224c0ee60de3a34a3f6458e798f3bebdbb0779fa659bee3e146877f800d48"
+      "bytes": 4179,
+      "sha256": "1c5e6d6647c6d5c974f868924a3c6794d37fd929617c3cbd9a14a5067786468a"
     },
     {
       "path": "tests/packaging/standalone-msi.test.mjs",
@@ -5846,8 +6166,8 @@
     },
     {
       "path": "tests/packaging/standalone-portable.test.mjs",
-      "bytes": 13495,
-      "sha256": "0070b96e84729624908afec171a2ea6c0dde11fa83a1bd357e54576f7d7125e3"
+      "bytes": 16822,
+      "sha256": "d942347a1b42321a43500e3c9fca73137485e31cf6a7f21f5f867b75d88be29a"
     },
     {
       "path": "tests/packaging/standalone-rdp.mjs",
@@ -5856,8 +6176,8 @@
     },
     {
       "path": "tests/packaging/standalone-rpm.test.mjs",
-      "bytes": 4605,
-      "sha256": "e3e26adc731e2d1bc15d6a1e57f6a58b725a13de05ca9934f1e915f2d7281c13"
+      "bytes": 4855,
+      "sha256": "0b630dcf0f62e978ff7b9dceed531fa968da17f12df2e1eb51cae8e8f663d548"
     },
     {
       "path": "tests/packaging/standalone-windows.test.mjs",
@@ -5901,8 +6221,8 @@
     },
     {
       "path": "tests/unit/clipboard-budget.test.mjs",
-      "bytes": 5499,
-      "sha256": "c38c88e4fae26ee5cb6c796ac23a365697067e9d7cdffb610b19c3446ad9b51e"
+      "bytes": 6615,
+      "sha256": "37b75f6a5e59bf60b78c9cc70881d3407afb8658923b2787da071058016f5cea"
     },
     {
       "path": "tests/unit/clipboard-chunk.test.mjs",
@@ -5946,8 +6266,8 @@
     },
     {
       "path": "tests/unit/clipboard-html-wire.test.mjs",
-      "bytes": 6045,
-      "sha256": "0c1e42543e2b898b5a7e882843a65e5b18e2d5b9b95ccc198d187db9c85acd4a"
+      "bytes": 6346,
+      "sha256": "ba34393a05ea2ceb8c24db391a01eaf456fe9d47d423373da863d58a4202355c"
     },
     {
       "path": "tests/unit/clipboard-image-browser.test.mjs",
@@ -6063,6 +6383,16 @@
       "path": "tests/unit/display.test.mjs",
       "bytes": 3631,
       "sha256": "ff71cac900341eec128b1af05bfd1746a327ad7a9197cd6281eb39fb9a0da6d6"
+    },
+    {
+      "path": "tests/unit/file-refusal.test.mjs",
+      "bytes": 2384,
+      "sha256": "424575f2c6cfce1d474e734373fd1e0bf2a3816d18ddf79c9e628a9136ba6fd6"
+    },
+    {
+      "path": "tests/unit/files-protocol.test.mjs",
+      "bytes": 6271,
+      "sha256": "16f847cf2bbc98f8b728964182c88800e12122489f5e692f734c81326f81f171"
     },
     {
       "path": "tests/unit/fixture-wait.test.mjs",
@@ -6218,6 +6548,26 @@
       "path": "tests/unit/linux-viewer-container.test.mjs",
       "bytes": 1086,
       "sha256": "aee51385a5f97609b3da272f1e1c8884a4f9e316b8d7639ab4ebe7993287e100"
+    },
+    {
+      "path": "tests/unit/managed-drive-selection.test.mjs",
+      "bytes": 9502,
+      "sha256": "50df8c25c63e9b6b753fbb2915e5ac34f1d47aed7cb5ca284540ac859e9dc897"
+    },
+    {
+      "path": "tests/unit/managed-files-consumer.test.mjs",
+      "bytes": 2831,
+      "sha256": "bc52b7e70c404a324fd45b8688979cf781d04d9ef0f19f2bd3bd88328264ead9"
+    },
+    {
+      "path": "tests/unit/managed-files-fuzz-seeds.test.mjs",
+      "bytes": 2930,
+      "sha256": "b3487ff8347ccf0fdf589e9503348da1fc47e95c4f0d982b4de2748ecd44ea52"
+    },
+    {
+      "path": "tests/unit/managed-files.test.mjs",
+      "bytes": 13155,
+      "sha256": "1a95b3f84585c4615c984735ff676fbe3ec29930fc445723bcd34fa4c1824db7"
     },
     {
       "path": "tests/unit/media-write.test.mjs",
@@ -6546,8 +6896,8 @@
     },
     {
       "path": "tests/unit/protocol.test.mjs",
-      "bytes": 18402,
-      "sha256": "94e926846e537816c15fb3a205b27d93a620db8e68bab8ee1a2eafd593e6b420"
+      "bytes": 18403,
+      "sha256": "2db0fb9c6d901b720bd482f0d73b8a858b27495fc5f619754535fdbddd572451"
     },
     {
       "path": "tests/unit/reference-harness-options.test.mjs",
@@ -6561,8 +6911,8 @@
     },
     {
       "path": "tests/unit/release-versions.test.mjs",
-      "bytes": 3651,
-      "sha256": "5891a4e12b1f1cf7321f96115e20808d1b277d075e66c6714908dc159583b649"
+      "bytes": 4086,
+      "sha256": "02c8109f550a22a361db9eebf96da1c42b4b726d8b7ea408b6627786f59744a0"
     },
     {
       "path": "tests/unit/resource-api-lab.test.mjs",
@@ -6646,8 +6996,8 @@
     },
     {
       "path": "tests/unit/standalone-auth.test.mjs",
-      "bytes": 7157,
-      "sha256": "9db0bfd76ef3d2007c467fa4d21de636d8734b58ff5764054df32b9967901d38"
+      "bytes": 8073,
+      "sha256": "7647a706d32f7978540b60f6eee3ad15eefd7d3684143483d25cd9fec6f035fc"
     },
     {
       "path": "tests/unit/standalone-candidate-archives.test.mjs",
@@ -6660,14 +7010,19 @@
       "sha256": "bc001ec8f7dffdc6b66b1e4f6d3cdb0a21de44c143d4b873e986aaf162b049d9"
     },
     {
+      "path": "tests/unit/standalone-files-lab.test.mjs",
+      "bytes": 2785,
+      "sha256": "175ac123e75bc39287c6e6e214a05258cd1e0630db4d9aac2f97b65b1f41b930"
+    },
+    {
       "path": "tests/unit/standalone-installed-guard.test.mjs",
       "bytes": 934,
       "sha256": "acb78c01ef8a163ee469e51b5cb8af108786e5e498269f46c2c41f553246f164"
     },
     {
       "path": "tests/unit/standalone-linux-stage.test.mjs",
-      "bytes": 3035,
-      "sha256": "6345a38b690f801514ac19538157c13e8df7ea47356910dcdf1ab9778cdf3fb2"
+      "bytes": 4404,
+      "sha256": "62bff9bf3f999b3564697d88faa1cada0b4904b9db5b12dcf3a7f22c1f47a934"
     },
     {
       "path": "tests/unit/standalone-msi.test.mjs",
@@ -6686,8 +7041,8 @@
     },
     {
       "path": "tests/unit/standalone-release-artifacts.test.mjs",
-      "bytes": 3974,
-      "sha256": "84aa0da383f35334ee785e242fa612fdb1e09adb3c4677ca4cf64eaeacd0a2d0"
+      "bytes": 4767,
+      "sha256": "8838d67ea2d4b4297820fcc3952e73296a7d11aa48013e050438bde2cf9c946e"
     },
     {
       "path": "tests/unit/standalone-release-publish.test.mjs",
@@ -6768,6 +7123,11 @@
       "path": "tests/unit/windows-lab-tone.test.mjs",
       "bytes": 5692,
       "sha256": "a287cf6aff82fca5a5c6f07d6a8b3509c5457225f25c3998ced40f8b45c7a521"
+    },
+    {
+      "path": "tests/unit/windows-managed-files-lab.test.mjs",
+      "bytes": 17659,
+      "sha256": "f7eb2e70baaed68d3460fbb05da4e21891f5bd6f692402ae94c42e6667578ef2"
     },
     {
       "path": "tests/unit/windows-runtime-model.test.mjs",

@@ -11,6 +11,22 @@ Three named PNG application profiles use the exact published native bytes.
 [Public delivery, hashes and limits](docs/RELEASE_0_5_0.md#public-delivery).
 Full Stage 7/V1, file clipboard and unaccepted resource/device gates remain open.
 
+Current unreleased managed-drive work: the dedicated Windows RDP-server
+application scenario now passes with Windows and Linux RWS1/framed workers,
+including Unicode CRUD, exact transfers, three read-only refusals and joined
+cleanup with audio off. Full workspace/native checks and six Astra/RED OS
+HTTP/RDP repeats also pass. This closes the named Windows-server source check;
+exact published-package/installer acceptance and the wider Stage 7 matrix
+remain open. [Current evidence](docs/DEVELOPMENT.md#prepared-windows-managed-file-application-check).
+
+Versioned **0.6.0 prepublication acceptance** now passes exact installed npm
+consumers, four Windows application profiles, six npm/XRDP profiles and six
+standalone file profiles. Installed 0.5.0 upgrades pass Windows/Ubuntu CI and
+Astra/RED OS; native RED OS/GCC 11.4.1 linked CTest passes 43/43. Public npm and
+stable standalone delivery remain pending. This closes the named managed-file
+capability slice, not all Stage 7 or file clipboard.
+[Scope, exact archives and evidence](docs/RELEASE_0_6_0.md).
+
 ## Earlier delivery checkpoints
 
 The following preparation checkpoints retain their historical scope.
@@ -2357,12 +2373,116 @@ profile's target, microphone, recovery, resource or platform acceptance.
   and arbitrary color/browser/server matrices remain separate.
   [Source acceptance](docs/CLIPBOARD_BROWSER.md#image-source-feature-acceptance).
 - [ ] Session sandbox and safe path resolver.
+  Internal native owner and bounded worker file IPC now pass Windows/Linux
+  transport and Astra/RED OS component checks. Authenticated opaque IDs and
+  scoped native drives are implemented. Native cleanup of declared managed
+  trees after both owners die now passes actual worker tests. Automatic
+  live-Node retirement and delayed registry-capacity return also pass actual
+  worker/HTTP checks and connected Windows/Linux-worker to Astra crash runs;
+  two simultaneous Astra/RED OS sessions now also pass quota/namespace
+  isolation, staged-upload crash cleanup and a real replacement RDP connection
+  while the sibling remains readable (Windows and both Linux transports).
+  Complete linked/product acceptance remains required.
+  A new Windows adapter stress exposes intermittent `FILE_NOT_EMPTY` after
+  child removal. The bounded same-handle namespace-completion candidate now
+  passes native suites, 85 Windows adapter/lifecycle cases, full workspace
+  check and both Linux transports. Astra/RED OS and actual RDP repeats await
+  reachable lab hosts. RED OS/GCC 11 component repeats now pass 95 cases /
+  8704 assertions with verified private-payload cleanup; current Windows and
+  both Linux transports also pass the complete real HTTP/RDPDR CRUD/read-only
+  composition against RED OS with mandatory captured-PID exit. Astra and
+  Astra repeats now pass the same 95 cases / 8704 assertions and three real
+  HTTP/RDPDR profiles. Current two-server crash/isolation/replacement repeats
+  pass all three worker profiles (nine real connections), with joined cleanup.
+  The namespace-deletion fix passes its named integration scope; Windows
+  RDP-server application checks now pass on all three worker profiles; full
+  product gates remain open, so this whole item is not
+  accepted by those passes.
+  [Dead-owner cleanup scope](docs/RUNTIME_RECOVERY.md#claimed-managed-file-trees-unreleased).
+  [Current implementation and evidence](docs/DEVELOPMENT.md#current-functional-work).
 - [ ] Streaming file upload/download REST API.
+  Unreleased opt-in HTTP routes and session-scoped opaque IDs are implemented;
+  actual HTTP/native worker tests use synthetic connected RDP state. Separate
+  Windows/Linux workers now pass actual HTTP/NativeSessionWorker/Astra RDPDR
+  composition, including both Linux transports. Bounded Linux tmpfs now proves
+  HTTP 507/ENOSPC, repeated quota refund and fresh IO through both transports;
+  actual two-server concurrent quota/ID isolation and crash/replacement pass
+  the same three worker profiles.
+  Local development npm archives now pass four independent installed adapter
+  projects on each OS: five Windows and ten GCC 8.3 Linux file/IPC profiles,
+  including strict TypeScript, producer-before-EOF streaming, owner refusal,
+  host body parsing and joined PID/root cleanup. RDP state is synthetic in
+  these package checks; future exact published archives and installers remain
+  separate gates. [Installed package evidence](docs/DEVELOPMENT.md#installed-package-checks).
+  Local Windows/Linux portable archives also pass real native file-policy
+  initialization, JWT ownership and pre-connect refusal/cleanup; successful
+  connected transfer now also passes against Astra/RED OS in fresh Windows
+  and Linux portable candidates, through real JWT/HTTP/RDPDR with read-only,
+  quotas, stale IDs and joined launcher cleanup. A reproduced early 413 TCP
+  reset is addressed by bounded discard before refusal; eight fresh portable
+  runs and the focused/full workspace checks pass its named scope.
+  [Portable evidence and remaining gates](docs/DEVELOPMENT.md#portable-connected-file-check-and-early-refusal).
+  Fresh local DEB/RPM also pass actual installed systemd service / private Node /
+  JWT / RDPDR file roundtrips on Astra and RED OS, followed by configuration
+  restoration and uninstall. A private-checkout EACCES is fixed by normalizing
+  only public program modes; configuration/runtime privacy stays unchanged.
+  [Installed scope](docs/DEVELOPMENT.md#installed-linux-managed-files-and-program-permissions).
+  Windows-server/disk-full and final published/installer acceptance remain open. Live-Node file
+  fault retirement/capacity now passes actual-worker tests with synthetic RDP.
+  [API and acceptance boundaries](docs/FILES.md).
 - [ ] RDPDR managed drive redirection.
+  Native scoped shares and a session-wide bounded drive-handle backend are
+  implemented, including read-only, sharing modes, deferred deletion and the
+  HTTP quota/download-pin boundary. A bounded wire codec and public FreeRDP
+  device/IRP adapter now pass component tests. Bounded SVC writes, stream-cache
+  limits and joined callbacks also pass with the actual SDK plugin and synthetic
+  SVC/server packets. Session VFS basic metadata and a narrowed IO capability
+  response are implemented. Guarded runtime selection, private CONFIGURE v15
+  and alias expansion are now implemented; the full remote application/platform
+  matrix and packaged acceptance remain open. [Current adapter scope](docs/FILES.md#rdpdr-codec-and-public-sdk-adapter-in-development).
+  Actual Windows-worker to Astra XRDP/FUSE create/read/write/truncate/rename,
+  binary/Unicode transfer and read-only refusal now pass. The observed XRDP
+  delete sequence omits DELETE access; strict refusal preserves the file.
+  A subsequent trusted-host opt-in now passes the same server's complete owned
+  file/directory CRUD, including post-delete enumeration and native-owner
+  readback. The identical worker still refuses legacy deletion under the
+  default strict policy. Linux worker also passes the same real Astra CRUD
+  through RWS1 and framed IPC. Separate real HTTP-to-Astra RDPDR composition
+  also passes all three worker/transport profiles. Windows-server application
+  checks now pass on all three worker profiles; packaged acceptance remains
+  open. Named actual Astra connected-crash
+  recovery now passes on Windows/Linux workers with Node alive.
+  Concurrent Astra/RED OS sessions also preserve the sibling's actual drive
+  readback through crash, joined cleanup and real RDP replacement.
+  [Two-server isolation scope](docs/FILES.md#two-server-session-isolation).
+  [Interoperability checkpoint](docs/FILES.md#actual-xrdp-interoperability-checkpoint),
+  [explicit compatibility policy](docs/FILES.md#xrdp-legacy-delete-policy).
 - [ ] `thinclientDrives` alias mapped to sandbox drive descriptors.
+  Runtime expansion and shared validation are implemented and pass synthetic
+  IPC / actual-worker strict-TLS tests. Final real-drive acceptance remains open.
 - [ ] Read-only drive enforcement.
-- [ ] File clipboard integration or explicit deferred flag.
+  Share-policy and per-entry attribute enforcement are implemented. Maximum
+  allowed access now selects a reduced immutable grant for read-only entries;
+  explicit forbidden rights remain refused. Wire and public SDK regressions
+  pass, with actual Astra HTTP/RDP regression on Windows/Linux workers.
+  The named Windows-server application checks now pass on all three worker
+  profiles; full matrix and packaged acceptance remain open.
+  [Rights and current scope](docs/FILES.md#session-file-metadata).
+- [x] DONE for explicit deferral — public HTTP capabilities return
+  `clipboardFiles: false`. Enabled file clipboard selection in every direction
+  refuses before backend/native process start; actual file-manager Ctrl+C/Ctrl+V
+  remains unimplemented and is not supplied by HTTP/RDPDR. Focused refusal
+  checks pass **2/2**, full Windows `pnpm check` **1280 / 73 skips / 1353 total**,
+  and the Linux HTTP/file/runtime/capability subset **90 / 4 skips / 94 total**.
+  This checks the explicit deferred-flag alternative, not file clipboard itself.
+  [Scope and future acceptance](docs/FILES.md#file-clipboard-is-deferred).
 - [ ] Quota/disk-full handling.
+  Saved opt-in Linux HTTP/native tmpfs tests pass through framed IPC and RWS1:
+  twelve real ENOSPC failures return 507, join abort, refund space/quota and
+  allow fresh upload/download. Unsafe roots refuse before allocation; ordinary
+  test runs skip without the explicit small tmpfs. Windows, connected-RDP and
+  packaged resource acceptance remain open.
+  [Bounded test and evidence](docs/FILES.md#bounded-http-disk-full-acceptance).
 
 **Gate:** Unicode clipboard + remote file CRUD through redirected drive; traversal/symlink tests pass.
 

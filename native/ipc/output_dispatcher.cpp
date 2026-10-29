@@ -62,6 +62,14 @@ DispatchResult OutputDispatcher::write_next(const Write &write) noexcept {
       }
       stats_.in_flight_bytes = header_bytes + record->payload.size();
     }
+    struct FileWiper {
+      Packet &packet;
+      ~FileWiper() {
+        if (packet.kind != Kind::file_result) return;
+        volatile std::uint8_t *data = packet.payload.data();
+        for (std::size_t i = 0; i < packet.payload.size(); ++i) data[i] = 0;
+      }
+    } file_wiper{*record};
     const auto header = encode_header(
         {record->kind, record->request_id, static_cast<std::uint32_t>(record->payload.size())});
     const bool sent = write(header, record->payload);

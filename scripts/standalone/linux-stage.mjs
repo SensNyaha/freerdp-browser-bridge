@@ -1,9 +1,30 @@
-import { cp, mkdir, copyFile, chmod } from 'node:fs/promises';
+import { cp, mkdir, copyFile, chmod, lstat, opendir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   standalonePayloadInventory,
   readStandalonePayloadFile,
 } from './payload.mjs';
+
+/** Program content is public code, installed root-owned for a separate service UID.
+ * A private checkout/umask must not make JS, licenses or native helpers unreadable.
+ * Never apply these modes to configuration or runtime; those live outside program.
+ */
+async function programModes(root) {
+  let entries = 0;
+  async function visit(path, depth) {
+    if (depth > 32 || ++entries > 20000)
+      throw new Error('STANDALONE_LINUX_PROGRAM_MODES_INVALID');
+    const info = await lstat(path);
+    if (info.isSymbolicLink() || (!info.isDirectory() && !info.isFile()))
+      throw new Error('STANDALONE_LINUX_PROGRAM_MODES_INVALID');
+    if (info.isDirectory()) {
+      await chmod(path, 0o755);
+      for await (const entry of await opendir(path))
+        await visit(join(path, entry.name), depth + 1);
+    } else await chmod(path, info.mode & 0o111 ? 0o755 : 0o644);
+  }
+  await visit(root, 0);
+}
 
 /** Shared program/config/unit staging for DEB and RPM; no installation scripts. */
 export async function stageStandaloneLinux(
@@ -60,6 +81,7 @@ export async function stageStandaloneLinux(
     join(repository, 'packaging/standalone/THIRD_PARTY.md'),
     join(program, 'THIRD_PARTY.md'),
   );
+  await programModes(program);
   const configDirectory = join(root, 'etc/freerdp-bridge');
   await mkdir(configDirectory, { recursive: true, mode: 0o750 });
   await copyFile(
