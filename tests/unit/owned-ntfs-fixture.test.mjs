@@ -66,14 +66,17 @@ test(
 
 test(
   'PowerShell inspector accepts the real offline VHD and refuses changed provenance or corrupt bytes without mounting',
-  { skip: process.platform !== 'win32' || !windowsImage, timeout: 30000 },
+  { skip: process.platform !== 'win32' || !windowsImage, timeout: 90000 },
   async () => {
     const source = await realpath(windowsImage);
     const meta = JSON.parse(
       await readFile(join(source, 'volume.json'), 'utf8'),
     );
-    const inspect = (directory) =>
-      spawnSync(
+    // This deadline bounds isolated PowerShell/CLR + image inspection startup,
+    // independently of the native file-operation deadlines exercised later.
+    const deadline = performance.now() + 85000;
+    const inspect = (directory) => {
+      const result = spawnSync(
         'powershell.exe',
         [
           '-NoProfile',
@@ -84,8 +87,21 @@ test(
           directory,
           '-InspectOnly',
         ],
-        options,
+        {
+          ...options,
+          timeout: Math.max(
+            1,
+            Math.min(30000, Math.floor(deadline - performance.now())),
+          ),
+        },
       );
+      assert.equal(
+        result.error?.code,
+        undefined,
+        'owned VHD inspector must finish within its independent setup deadline',
+      );
+      return result;
+    };
     const good = inspect(source);
     assert.equal(good.status, 0);
     assert.deepEqual(JSON.parse(good.stdout), {
