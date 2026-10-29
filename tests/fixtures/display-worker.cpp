@@ -141,10 +141,17 @@ int main() {
                       ++display.generation;
                     ++display.framebuffer_revision;
                     send({Kind::display_update, 0, encode_display_update(display)});
+                    // A completed reply must expose a retired pending request,
+                    // as the real single-threaded display controller does.
+                    busy = false;
                     send({Kind::display_resize_result, request,
                           encode_resize_result(ResizeResult::applied)});
+                    if (config->host == "applied-handoff")
+                      wait.wait_for(lock, std::chrono::milliseconds(100),
+                                    [&] { return stop.stop_requested(); });
                     if (config->host == "applied-close")
                       send({Kind::state, 0, {0, 4, 0, 0, 0, 0, 0, 0}});
+                    return;
                   }
                   busy = false;
                 });

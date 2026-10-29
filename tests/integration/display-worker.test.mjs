@@ -79,7 +79,7 @@ test(
     await fixture(async (worker) => {
       const events = [];
       worker.on('display', (state) => events.push(state));
-      await connect(worker, config());
+      await connect(worker, config('applied-handoff'));
       const initial = worker.display;
       initial.width = 1;
       assert.equal(worker.display.width, 1024);

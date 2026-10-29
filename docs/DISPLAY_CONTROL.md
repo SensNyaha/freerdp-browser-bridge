@@ -1,5 +1,21 @@
 # Display Control: native, private IPC and browser
 
+## Fake-peer completion ownership
+
+The explicit IPC fixture retires its pending resize before flushing an
+`applied` reply, matching the real controller's completion ownership. The
+`applied-handoff` fixture profile keeps its confirmation thread alive for a
+bounded 100 ms after that reply. The existing integration scenario immediately
+requests the same layout and must receive `unchanged`, while a second request
+during the original pending operation still receives `busy`. This exposes the
+previous fixture race deterministically without retrying or relaxing the
+assertion. It is a fake-peer lifecycle check, not actual RDP/display acceptance.
+
+The original final-tag Windows run `40908609344` retains the failure; local
+`display-handoff-failing-before.log` reproduces it. The correction changes only
+test sources; the accepted 0.6.0 npm/runtime archives and production display
+implementation remain unchanged.
+
 Current release scope: [accepted ADR-011](adr/ADR-011-single-display-100-percent.md)
 fixes one primary monitor at 100% desktop/device scale and the existing orientation
 0. This profile is sufficient by explicit user decision; wider layouts are outside
