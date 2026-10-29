@@ -101,8 +101,13 @@ jobs:
             }
             throw
           }
-          $lock = Get-Content packaging/standalone/locks/win32-x64.json -Raw | ConvertFrom-Json
-          $integrity = $lock.packages.'node_modules/@freerdp-bridge/runtime-win32-x64'.integrity
+          $integrity = @'
+          import { readFile } from 'node:fs/promises';
+          const lock = JSON.parse(await readFile('packaging/standalone/locks/win32-x64.json', 'utf8'));
+          console.log(lock.packages['node_modules/@freerdp-bridge/runtime-win32-x64'].integrity);
+          '@ | node --input-type=module
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($integrity -cnotmatch '^sha512-[A-Za-z0-9+/]{86}==$') { throw 'PUBLIC_RUNTIME_LOCK_INTEGRITY_REQUIRED' }
           if ($metadata.version -cne $version -or $metadata.dist.integrity -cne $integrity) { throw 'PUBLIC_RUNTIME_INTEGRITY_REQUIRED' }
           $destination = New-Item -ItemType Directory -Path build/public-full-runtime
           $result = & npm pack "@freerdp-bridge/runtime-win32-x64@$version" --ignore-scripts --loglevel=error --json --pack-destination $destination.FullName
