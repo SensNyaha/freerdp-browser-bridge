@@ -12,7 +12,7 @@ function Own-Plain([string]$Path, [bool]$Directory = $false) {
     Own-Require ($item.PSIsContainer -eq $Directory)
     return $item
 }
-function Own-Json([object]$Value) { return $script:json.Serialize($Value) }
+function Own-Json([object]$Value) { return ConvertTo-OwnedInstalledPublicJson $Value }
 function Own-NewJson([string]$Path, [object]$Value) {
     $bytes = [Text.Encoding]::UTF8.GetBytes((Own-Json $Value))
     Own-Require ($bytes.Length -le 32768)
@@ -127,6 +127,7 @@ try {
             Own-Require ((Own-Hash $copy) -ceq $verifiedMeta.sha256)
             $beforeDisks = @(Get-Disk | Select-Object -ExpandProperty ObjectId)
             $beforeLetters = @(Get-Volume | Where-Object DriveLetter | Select-Object -ExpandProperty DriveLetter)
+            Own-NewJson (Join-Path $script:context 'mount-intent.json') @{id=$script:data.id;copy=$copy;source=$verifiedSource;imageSha256=$verifiedMeta.sha256;signature=$verifiedSignature;beforeDisks=$beforeDisks}
             try {
                 $image = Mount-DiskImage -ImagePath $copy -StorageType VHD -Access ReadWrite -NoDriveLetter -PassThru
                 $disks = @($image | Get-Disk);Own-Require ($disks.Count -eq 1)
@@ -134,7 +135,7 @@ try {
                 $partitions = @($disks[0] | Get-Partition);Own-Require ($partitions.Count -eq 1)
                 $part = $partitions[0]
                 Own-Require ($part.Offset -eq 1048576 -and $part.Size -eq 15728640 -and -not $part.DriveLetter)
-                $part | Add-PartitionAccessPath -AssignDriveLetter
+                $null=$part | Add-PartitionAccessPath -AssignDriveLetter
                 $part = Get-Partition -DiskNumber $disks[0].Number -PartitionNumber $part.PartitionNumber
                 $volume = $part | Get-Volume
                 Own-Require ($volume.DriveLetter -and $volume.DriveLetter -notin $beforeLetters -and $volume.FileSystem -ceq 'NTFS')
@@ -142,27 +143,31 @@ try {
                 $root = [string]$volume.DriveLetter+':\bridge-owned-full-'+$script:data.id
                 Own-PrivateDirectory $root
                 $proofPath = Join-Path $script:context 'proof.json'
-                Own-NewJson $proofPath @{schema=1;kind='owned-windows-vhd-full';coordinatorPid=$parent;root=$root;diskBytes=16777216;imageSha256=$verifiedMeta.sha256;volumeGuid=$volume.UniqueId}
                 $answer = @{id=$script:data.id;root=$root;proofPath=$proofPath;context=$script:context;copy=$copy;source=$verifiedSource;imageSha256=$verifiedMeta.sha256;signature=$verifiedSignature;volumeGuid=$volume.UniqueId}
                 Own-NewJson (Join-Path $script:context 'mount.json') $answer
+                Own-NewJson $proofPath @{schema=1;kind='owned-windows-vhd-full';coordinatorPid=$parent;root=$root;diskBytes=16777216;imageSha256=$verifiedMeta.sha256;volumeGuid=$volume.UniqueId}
             } catch {
-                if ((Get-DiskImage -ImagePath $copy).Attached) { Dismount-DiskImage -ImagePath $copy -StorageType VHD }
+                if ((Get-DiskImage -ImagePath $copy).Attached) { $null=Dismount-DiskImage -ImagePath $copy -StorageType VHD }
                 throw
             }
         }
         'unmount' {
-            $mounted = Own-MountRecord
-            $image = Get-DiskImage -ImagePath $mounted.copy
-            $empty = -not (Test-Path -LiteralPath $mounted.root)
+            $intent=Own-ReadJson (Join-Path $script:context 'mount-intent.json')
+            Own-Require ($intent.id -ceq $script:data.id -and $intent.copy -ceq (Join-Path $script:context 'owned-full.vhd'))
+            $mounted = $null
+            if(Test-Path -LiteralPath (Join-Path $script:context 'mount.json')){$mounted=Own-MountRecord}
+            $image = Get-DiskImage -ImagePath $intent.copy
+            $empty=$true
             if ($image.Attached) {
                 $disks = @($image | Get-Disk);Own-Require ($disks.Count -eq 1)
-                Own-Require ($disks[0].Size -eq 16777216 -and -not $disks[0].IsBoot -and -not $disks[0].IsSystem -and $disks[0].Signature -eq $mounted.signature)
+                Own-Require ($disks[0].Size -eq 16777216 -and -not $disks[0].IsBoot -and -not $disks[0].IsSystem -and $disks[0].Signature -eq $intent.signature -and $disks[0].ObjectId -notin $intent.beforeDisks)
                 $volume = $disks[0] | Get-Partition | Get-Volume
-                Own-Require ($volume.UniqueId -ceq $mounted.volumeGuid)
-                if (Test-Path -LiteralPath $mounted.root) { $empty = @(Get-ChildItem -LiteralPath $mounted.root -Force).Count -eq 0 }
-                Dismount-DiskImage -ImagePath $mounted.copy -StorageType VHD
+                if($mounted){Own-Require ($volume.UniqueId -ceq $mounted.volumeGuid)}
+                $root=[string]$volume.DriveLetter+':\bridge-owned-full-'+$script:data.id
+                if (Test-Path -LiteralPath $root) { $empty = @(Get-ChildItem -LiteralPath $root -Force).Count -eq 0 }
+                $null=Dismount-DiskImage -ImagePath $intent.copy -StorageType VHD
             }
-            $answer = @{detached=(-not (Get-DiskImage -ImagePath $mounted.copy).Attached);rootEmpty=$empty;sourceImagePreserved=((Own-Hash $mounted.source) -ceq $mounted.imageSha256)}
+            $answer = @{detached=(-not (Get-DiskImage -ImagePath $intent.copy).Attached);rootEmpty=$empty;sourceImagePreserved=((Own-Hash $intent.source) -ceq $intent.imageSha256)}
         }
         'rdp-state' {
             $path = 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'

@@ -35,4 +35,9 @@ function Confirm-OwnedInstalledConfiguration([object]$Config) {
     Require-OwnedInstalledConfiguration ($key.n -cmatch '^[A-Za-z0-9_-]{342,683}$')
     return $Config
 }
-Export-ModuleMember -Function Confirm-OwnedInstalledConfiguration
+function ConvertTo-OwnedInstalledPublicJson([object]$Value) {
+    # Public output/markers only: PowerShell unwraps cmdlet-produced PSObjects.
+    # Credential-bearing input continues using the private .NET reader.
+    return ConvertTo-Json -InputObject $Value -Depth 12 -Compress
+}
+Export-ModuleMember -Function Confirm-OwnedInstalledConfiguration,ConvertTo-OwnedInstalledPublicJson

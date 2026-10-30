@@ -21,4 +21,8 @@ for($index=0;$index -lt $cases.Count;$index++){
         $refused++
     }
 }
-[Console]::Out.WriteLine($decoder.Serialize(@{accepted=$accepted;refused=$refused}))
+$publicPath=Join-Path 'C:\owned-fixture' 'proof.json'
+$marker=@{context=$publicPath;source=$publicPath;signature=[uint32]4294967000}
+$roundtrip=$decoder.DeserializeObject((ConvertTo-OwnedInstalledPublicJson $marker))
+if($roundtrip.context -cne $publicPath -or $roundtrip.source -cne $publicPath -or $roundtrip.signature -ne 4294967000){throw 'OWNED_TEST_PUBLIC_MARKER_FAILED'}
+[Console]::Out.WriteLine($decoder.Serialize(@{accepted=$accepted;refused=$refused;publicMarkerRoundtrip=$true}))

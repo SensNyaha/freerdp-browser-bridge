@@ -60,6 +60,7 @@ class OwnedProcess:
         self.stderr_bytes = 0
         self.endpoint_protection_refused = False
         self.reader_failed = False
+        self.reader_failure = None
         self.threads = [threading.Thread(target=self._stdout, daemon=True),
                         threading.Thread(target=self._stderr, daemon=True)]
         for thread in self.threads:
@@ -74,6 +75,7 @@ class OwnedProcess:
                 self.process.kill()
 
     def _stdout(self):
+        stage = 'line-bound'
         try:
             count = 0
             while True:
@@ -84,11 +86,15 @@ class OwnedProcess:
                 require(len(data) <= 32768 and data.endswith(b'\n'))
                 count += 1
                 require(count <= 64)
+                stage = 'json-decode'
                 value = json.loads(data.decode('utf8'))
+                stage = 'record-shape'
                 require(type(value) is dict)
                 self._put(value)
+                stage = 'line-bound'
         except Exception:
             self.reader_failed = True
+            self.reader_failure = stage
             self._put(None)
             if self.process.poll() is None:
                 self.process.kill()
@@ -216,6 +222,9 @@ def main():
             return result['result']
         finally:
             child.stop()
+            if child.reader_failed or child.stderr_bytes:
+                host_failures.append({'action': action, 'readerFailure': child.reader_failure,
+                                      'stderrBytes': child.stderr_bytes})
             if child.endpoint_protection_refused:
                 host_failures.append({'action': action, 'endpointProtectionRefused': True})
 
@@ -324,7 +333,7 @@ def main():
             client.stop()
         for marker, action, key in [('install.json', 'retire', 'installed'),
                                     ('rdp-state.json', 'rdp-retire', 'rdp'),
-                                    ('mount.json', 'unmount', 'volume')]:
+                                    ('mount-intent.json', 'unmount', 'volume')]:
             if (context / marker).exists() and not (action == 'retire' and retired):
                 try:
                     cleanup[key] = host(action)

@@ -471,6 +471,7 @@ test(
     assert.deepEqual(JSON.parse(output), {
       accepted: 1,
       refused: changes.length,
+      publicMarkerRoundtrip: true,
     });
   },
 );
