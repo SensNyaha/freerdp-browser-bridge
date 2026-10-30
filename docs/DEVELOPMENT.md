@@ -100,6 +100,22 @@ exclusive runtime, after verifying the single real native worker. Pure tests
 reject missing/extra entries and malformed/traversing names. A separate fixed
 failure-phase field preserves client failures even after service-stop cleanup.
 
+Attempt `41020419951` reaches connected HTTP exhaustion and fails its observation
+helper; complete installed/account/volume cleanup passes. The native protected
+directory grants data access to LocalService and SYSTEM, not the administrative
+HTTP client. A separate static SYSTEM task now observes only the admitted
+worker's `.uploads` count/size, without reading content or changing its ACL.
+It has at most 24 ordered snapshots, bounded JSON/files/enumeration/time and
+verified private-Node image/SYSTEM identity. Atomic request/reply files live in
+the controller context, outside the bounded volume, and contain no credentials.
+The producer still waits for 393216 staged bytes before EOF, checks empty staging
+after each 507, and requires every observation plus joined task cleanup. The
+task is stopped/unregistered before installed-service retirement. Its final
+count/size receipts are retained as separate evidence. Unstructured PowerShell
+warnings/progress are suppressed on the private JSON pipe; terminating errors
+still refuse. This fixes test observation, not production/session permissions;
+actual resource acceptance remains open.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

@@ -1,5 +1,7 @@
-param([Parameter(Mandatory=$true)][ValidateSet('mount','unmount','rdp-state','rdp-start','account','certificate','install','startup-probe','configure','identity','task','retire','rdp-retire')][string]$Action)
+param([Parameter(Mandatory=$true)][ValidateSet('mount','unmount','rdp-state','rdp-start','account','certificate','install','startup-probe','configure','identity','observer-start','observer-stop','task','retire','rdp-retire')][string]$Action)
 $ErrorActionPreference = 'Stop'
+$WarningPreference = 'SilentlyContinue'
+$ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version Latest
 [Console]::InputEncoding = New-Object Text.UTF8Encoding($false,$true)
 [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false,$true)
@@ -385,6 +387,74 @@ try {
             $sid=Invoke-CimMethod -InputObject $workers[0] -MethodName GetOwnerSid
             Own-Require ($sid.ReturnValue -eq 0 -and $sid.Sid -ceq 'S-1-5-19')
             $answer=@{nativePid=[int]$workers[0].ProcessId;workerSid=$sid.Sid;workerSha256=(Own-Hash $path)}
+        }
+        'observer-start' {
+            $installation=Own-InstallRecord
+            Own-Require ($script:data.component -is [string] -and $script:data.component -cmatch '^worker-[0-9a-f]{32}-1-[0-9a-f]{32}$')
+            $runtime=Join-Path $installation.root 'runtime'
+            $entries=@(Get-ChildItem -LiteralPath $runtime -Force)
+            Own-Require ($entries.Count -eq 2 -and @($entries | Where-Object Name -CEQ $script:data.component).Count -eq 1 -and @($entries | Where-Object Name -CEQ '.bridge-service.lock').Count -eq 1)
+            $directory=Join-Path $script:context 'staging-observer'
+            Own-PrivateDirectory $directory
+            foreach($filename in @('windows-installed-staging-observer.mjs','windows-installed-full-inputs.mjs')){
+                $source=Join-Path $PSScriptRoot $filename;$null=Own-Plain $source
+                $copy=Join-Path $directory $filename
+                [IO.File]::Copy($source,$copy,$false)
+                Own-Require ((Own-Hash $copy) -ceq (Own-Hash $source))
+            }
+            Own-NewJson (Join-Path $directory 'config.json') @{id=$script:data.id;component=$script:data.component;runtimeRoot=$runtime;coordinatorPid=[int]$script:data.coordinatorPid}
+            $name='BridgeOwnedMetadata_'+$script:data.id
+            Own-Require (-not (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue))
+            $node=Join-Path $installation.program 'node\node.exe'
+            $scriptPath=Join-Path $directory 'windows-installed-staging-observer.mjs'
+            Own-NewJson (Join-Path $script:context 'observer.json') @{name=$name;node=$node;script=$scriptPath;hash=(Own-Hash $scriptPath)}
+            $taskAction=New-ScheduledTaskAction -Execute $node -Argument ('"'+$scriptPath+'" --owned-staging-observer') -WorkingDirectory $installation.program
+            $principal=New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
+            $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::FromMinutes(6)) -MultipleInstances IgnoreNew
+            [void](Register-ScheduledTask -TaskName $name -Action $taskAction -Principal $principal -Settings $settings)
+            Start-ScheduledTask -TaskName $name
+            $readyPath=Join-Path $directory 'ready.json';$deadline=[Diagnostics.Stopwatch]::StartNew()
+            while(-not (Test-Path -LiteralPath $readyPath) -and $deadline.ElapsedMilliseconds -lt 30000){Start-Sleep -Milliseconds 100}
+            $ready=Own-ReadJson $readyPath
+            Own-Require ($ready.kind -ceq 'owned-staging-metadata-v1' -and $ready.pid -gt 1)
+            $process=Get-CimInstance Win32_Process -Filter ('ProcessId='+$ready.pid) -Property ProcessId
+            $sid=Invoke-CimMethod -InputObject $process -MethodName GetOwnerSid
+            Own-Require ($sid.ReturnValue -eq 0 -and $sid.Sid -ceq 'S-1-5-18')
+            $image=Get-WmiObject -Class Win32_Process -Filter ('ProcessId='+$ready.pid) -Property ProcessId,ExecutablePath -EnableAllPrivileges
+            Own-Require (Test-OwnedInstalledExecutablePath $image.ExecutablePath $node)
+            $answer=@{directory=$directory;principalSid='S-1-5-18';pid=[int]$ready.pid;ready=$true}
+        }
+        'observer-stop' {
+            $record=Own-ReadJson (Join-Path $script:context 'observer.json')
+            Own-Require ($record.name -ceq ('BridgeOwnedMetadata_'+$script:data.id))
+            Own-Require ($record.node -ceq (Join-Path (Own-InstallRecord).program 'node\node.exe'))
+            Own-Require ($record.script -ceq (Join-Path $script:context 'staging-observer\windows-installed-staging-observer.mjs') -and (Own-Hash $record.script) -ceq $record.hash)
+            $task=Get-ScheduledTask -TaskName $record.name -ErrorAction SilentlyContinue
+            if($task){
+                $arguments='"'+$record.script+'" --owned-staging-observer'
+                Own-Require ($task.Principal.UserId -iin @('S-1-5-18','SYSTEM','NT AUTHORITY\SYSTEM') -and @($task.Actions).Count -eq 1 -and $task.Actions[0].Execute -ceq $record.node -and $task.Actions[0].Arguments -ceq $arguments)
+                Stop-ScheduledTask -TaskName $record.name -ErrorAction SilentlyContinue
+                $deadline=[Diagnostics.Stopwatch]::StartNew()
+                while((Get-ScheduledTask -TaskName $record.name).State -eq 'Running' -and $deadline.ElapsedMilliseconds -lt 5000){Start-Sleep -Milliseconds 100}
+                Own-Require ((Get-ScheduledTask -TaskName $record.name).State -ne 'Running')
+                Unregister-ScheduledTask -TaskName $record.name -Confirm:$false
+            }
+            $readyPath=Join-Path $script:context 'staging-observer\ready.json'
+            if(Test-Path -LiteralPath $readyPath){$ready=Own-ReadJson $readyPath;Own-Require (-not (Get-Process -Id $ready.pid -ErrorAction SilentlyContinue))}
+            $observations=0
+            $summaryPath=Join-Path $script:context 'staging-observer\summary.json'
+            if(Test-Path -LiteralPath $summaryPath){
+                $summary=Own-ReadJson $summaryPath
+                $config=Own-ReadJson (Join-Path $script:context 'staging-observer\config.json')
+                Own-Require ($summary.schema -eq 1 -and $summary.records.Count -eq 24 -and $summary.pid -eq $ready.pid -and $summary.component -ceq $config.component)
+                for($i=0;$i -lt 24;$i++){
+                    $entry=$summary.records[$i];$expected=if($i % 2 -eq 0){1}else{0}
+                    Own-Require ($entry.sequence -eq ($i+1) -and $entry.entries -eq $expected -and $entry.bytes -is [int])
+                    if($expected -eq 0){Own-Require ($entry.bytes -eq 0)}else{Own-Require ($entry.bytes -ge 393216 -and $entry.bytes -le 2097152)}
+                }
+                $observations=24
+            }
+            $answer=@{taskRemoved=$true;processExited=$true;observations=$observations}
         }
         'task' {
             $account=Own-Account;$deadline=[Diagnostics.Stopwatch]::StartNew();$sessions=@()

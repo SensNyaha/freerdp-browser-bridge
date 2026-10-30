@@ -21,6 +21,41 @@ export function windowsInstalledRuntimeComponent(names) {
   return component;
 }
 
+export function windowsInstalledStagingRequest(value, sequence) {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(',') !== 'entries,minimum,sequence' ||
+    !Number.isInteger(sequence) ||
+    sequence < 1 ||
+    sequence > 24 ||
+    value.sequence !== sequence ||
+    ![0, 1].includes(value.entries) ||
+    value.minimum !== (value.entries === 0 ? 0 : 393216)
+  )
+    refuse();
+  return value;
+}
+
+export function windowsInstalledStagingResponse(value, request) {
+  windowsInstalledStagingRequest(request, request.sequence);
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(',') !== 'bytes,entries,sequence' ||
+    value.sequence !== request.sequence ||
+    value.entries !== request.entries ||
+    !Number.isInteger(value.bytes) ||
+    value.bytes < request.minimum ||
+    value.bytes > 2097152 ||
+    (value.entries === 0 && value.bytes !== 0)
+  )
+    refuse();
+  return value;
+}
+
 export function requireWindowsInstalledCi(platform, argv, environment) {
   if (
     platform !== 'win32' ||

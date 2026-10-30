@@ -22,10 +22,63 @@ import {
   windowsInstalledBootstrap,
   windowsInstalledVersion,
   windowsInstalledRuntimeComponent,
+  windowsInstalledStagingRequest,
+  windowsInstalledStagingResponse,
 } from '../fixtures/windows-installed-full-inputs.mjs';
 
 const refused = { message: 'OWNED_INSTALLED_INPUT_REFUSED' };
 const version = '0.6.0';
+test('installed metadata observations require ordered bounded byte/count records', () => {
+  const request = { sequence: 1, entries: 1, minimum: 393216 };
+  assert.equal(windowsInstalledStagingRequest(request, 1), request);
+  const result = { sequence: 1, entries: 1, bytes: 393216 };
+  assert.equal(windowsInstalledStagingResponse(result, request), result);
+  for (const change of [
+    { sequence: 2 },
+    { entries: true },
+    { minimum: 1 },
+    { path: 'PRIVATE-unadmitted' },
+  ])
+    assert.throws(
+      () => windowsInstalledStagingRequest({ ...request, ...change }, 1),
+      refused,
+    );
+  for (const change of [
+    { sequence: 2 },
+    { entries: 0 },
+    { bytes: true },
+    { bytes: 393215 },
+    { bytes: 2097153 },
+    { filename: 'PRIVATE-unadmitted' },
+  ])
+    assert.throws(
+      () => windowsInstalledStagingResponse({ ...result, ...change }, request),
+      refused,
+    );
+  assert.throws(() => windowsInstalledStagingRequest(request, 25), refused);
+  const empty = { sequence: 24, entries: 0, minimum: 0 };
+  assert.deepEqual(
+    windowsInstalledStagingResponse(
+      { sequence: 24, entries: 0, bytes: 0 },
+      empty,
+    ),
+    { sequence: 24, entries: 0, bytes: 0 },
+  );
+});
+
+test('installed SYSTEM metadata observer refuses ordinary invocation without output', () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      'tests/fixtures/windows-installed-staging-observer.mjs',
+      '--owned-staging-observer',
+    ],
+    { windowsHide: true, encoding: 'utf8', timeout: 5000, maxBuffer: 8192 },
+  );
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, '');
+});
 test('installed runtime selection uses the native owner UUID with one exclusive worker directory', () => {
   const component = 'worker-' + 'b'.repeat(32) + '-1-' + 'c'.repeat(32);
   assert.equal(

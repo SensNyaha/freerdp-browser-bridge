@@ -6,11 +6,11 @@ import {
   readFile,
   realpath,
   readdir,
-  stat,
+  rename,
   statfs,
   unlink,
 } from 'node:fs/promises';
-import { resolve, join, sep } from 'node:path';
+import { resolve, join, sep, dirname } from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
@@ -21,6 +21,8 @@ import {
   windowsInstalledPrivateRecords,
   windowsInstalledBootstrap,
   windowsInstalledRuntimeComponent,
+  windowsInstalledStagingRequest,
+  windowsInstalledStagingResponse,
 } from './windows-installed-full-inputs.mjs';
 import {
   standalonePayloadInventory,
@@ -327,7 +329,56 @@ try {
   await unauth.arrayBuffer();
   phase = 'runtime-observation';
   const component = windowsInstalledRuntimeComponent(await readdir(runtime));
-  const staging = join(runtime, component, 'managed-files', '.uploads');
+  send({ event: 'staging-observer-requested', component });
+  const observer = await next();
+  assert.equal(observer.command, 'staging-observer-ready');
+  assert.equal(observer.principalSid, 'S-1-5-18');
+  assert.equal(
+    observer.directory,
+    join(dirname(input.proofPath), 'staging-observer'),
+  );
+  let observationSequence = 0;
+  async function observeStaging(entries, minimum) {
+    const query = windowsInstalledStagingRequest(
+      { sequence: ++observationSequence, entries, minimum },
+      observationSequence,
+    );
+    const requestPath = join(
+      observer.directory,
+      'request-' + observationSequence + '.json',
+    );
+    const responsePath = join(
+      observer.directory,
+      'response-' + observationSequence + '.json',
+    );
+    const file = await open(requestPath + '.new', 'wx');
+    try {
+      await file.writeFile(JSON.stringify(query));
+    } finally {
+      await file.close();
+    }
+    await rename(requestPath + '.new', requestPath);
+    const due = performance.now() + 8000;
+    for (;;) {
+      try {
+        const value = windowsInstalledStagingResponse(
+          JSON.parse(
+            (await readStandalonePayloadFile(responsePath, 1024)).toString(
+              'utf8',
+            ),
+          ),
+          query,
+        );
+        await unlink(requestPath);
+        await unlink(responsePath);
+        return value;
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+      assert.ok(performance.now() < due, 'OWNED_INSTALLED_STREAM_BARRIER');
+      await delay(10);
+    }
+  }
   phase = 'bounded-pressure';
   const ownedPressurePath = join(input.root, 'owned-pressure.bin');
   pressure = await open(ownedPressurePath, 'wx', 0o600);
@@ -357,21 +408,8 @@ try {
   for (let attempt = 0; attempt < 12; attempt++) {
     async function* chunks() {
       yield body.subarray(0, 393216);
-      const due = performance.now() + 5000;
-      for (;;) {
-        const entries = await readdir(staging);
-        assert.ok(entries.length <= 1);
-        if (entries.length === 1) {
-          const path = join(staging, entries[0]);
-          const info = await stat(path);
-          if (info.isFile() && info.size >= 393216) {
-            confirmedWritten += 393216;
-            break;
-          }
-        }
-        assert.ok(performance.now() < due, 'OWNED_INSTALLED_STREAM_BARRIER');
-        await delay(5);
-      }
+      await observeStaging(1, 393216);
+      confirmedWritten += 393216;
       yield body.subarray(393216);
     }
     const full = await request(
@@ -391,7 +429,7 @@ try {
     assert.equal(full.status, 507);
     assert.equal((await full.json()).code, 'FILE_DISK_FULL');
     assert.deepEqual((await page(rw.fileId)).entries, before);
-    assert.deepEqual(await readdir(staging), []);
+    await observeStaging(0, 0);
     const fs = await statfs(runtime);
     assert.ok(fs.bavail * fs.bsize >= initialFree - 8192);
     assert.equal((await json('GET', sessionPath)).state, 'connected');

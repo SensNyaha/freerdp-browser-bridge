@@ -300,7 +300,7 @@ def main():
             name = event.get('event')
             require(type(name) is str)
             phase = name if name in ['service-configuration', 'native-identity-requested',
-                'owned-ci-task-requested', 'service-stop-requested'] else phase
+                'staging-observer-requested', 'owned-ci-task-requested', 'service-stop-requested'] else phase
             if name == 'service-configuration':
                 ready = host('configure', configuration=event['configuration'])
                 client.send(dict(command='service-ready', **ready))
@@ -308,12 +308,21 @@ def main():
                 identity = host('identity')
                 require(identity['workerSha256'] == worker_sha)
                 client.send(dict(command='native-identity', **identity))
+            elif name == 'staging-observer-requested':
+                component = event.get('component')
+                require(type(component) is str and re.fullmatch(r'worker-[0-9a-f]{32}-1-[0-9a-f]{32}', component))
+                observer = host('observer-start', component=component)
+                require(observer.get('principalSid') == 'S-1-5-18' and observer.get('ready') is True)
+                require(observer.get('directory') == str(context / 'staging-observer'))
+                client.send(dict(command='staging-observer-ready', **observer))
             elif name == 'installed-connected-http-full-verified':
                 require(event.get('attempts') == 12 and event.get('httpStatus') == 507)
                 require(type(event.get('confirmedBeforeProducerEofBytes')) is int
                         and 4194304 < event['confirmedBeforeProducerEofBytes'] <= 12582912)
                 events.append({key: event[key] for key in ['event', 'attempts', 'httpStatus',
                               'confirmedBeforeProducerEofBytes']})
+                cleanup['observer'] = host('observer-stop')
+                require(cleanup['observer'].get('observations') == 24)
             elif name == 'owned-ci-task-requested':
                 require(event.get('id') == ident)
                 expected = hashlib.sha256((root / 'tests/fixtures/windows-managed-files.ps1').read_bytes()).hexdigest()
@@ -357,10 +366,11 @@ def main():
     finally:
         if client is not None:
             client.stop()
-        for marker, action, key in [('install.json', 'retire', 'installed'),
+        for marker, action, key in [('observer.json', 'observer-stop', 'observer'),
+                                    ('install.json', 'retire', 'installed'),
                                     ('rdp-state.json', 'rdp-retire', 'rdp'),
                                     ('mount-intent.json', 'unmount', 'volume')]:
-            if (context / marker).exists() and not (action == 'retire' and retired):
+            if (context / marker).exists() and not (action == 'retire' and retired) and not (key == 'observer' and key in cleanup):
                 try:
                     cleanup[key] = host(action)
                 except Exception:
@@ -374,6 +384,8 @@ def main():
                   'startupDiagnostic': startup_diagnostic, 'failurePhase': failure_phase}
         if accepted:
             accepted = (cleanup['installed'].get('uninstalled') is True
+                    and cleanup['observer'].get('taskRemoved') is True
+                    and cleanup['observer'].get('processExited') is True
                     and cleanup['rdp'].get('accountRemoved') is True
                     and cleanup['rdp'].get('rdpStateRestored') is True
                     and all(cleanup['volume'].get(key) is True for key in
