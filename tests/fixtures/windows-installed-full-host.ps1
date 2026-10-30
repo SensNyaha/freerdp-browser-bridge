@@ -151,6 +151,12 @@ try {
             $copy = Join-Path $script:context 'owned-full.vhd'
             [IO.File]::Copy($verifiedSource,$copy,$false)
             Own-Require ((Own-Hash $copy) -ceq $verifiedMeta.sha256)
+            # AttachVirtualDisk(NULL descriptor) inherits this image's DACL.
+            # Authorize LocalService on this disposable device as well as NTFS;
+            # never broaden access to the original image or production storage.
+            $imageSecurity = New-OwnedInstalledImageSecurity ([Security.Principal.WindowsIdentity]::GetCurrent().User)
+            Set-Acl -LiteralPath $copy -AclObject $imageSecurity
+            Own-NewJson (Join-Path $script:context 'image-filter-acl.json') @{sddl=(Get-Acl -LiteralPath $copy).Sddl}
             $beforeDisks = @(Get-Disk | Select-Object -ExpandProperty ObjectId)
             $beforeLetters = @(Get-Volume | Where-Object DriveLetter | Select-Object -ExpandProperty DriveLetter)
             Own-NewJson (Join-Path $script:context 'mount-intent.json') @{id=$script:data.id;copy=$copy;source=$verifiedSource;imageSha256=$verifiedMeta.sha256;signature=$verifiedSignature;beforeDisks=$beforeDisks}

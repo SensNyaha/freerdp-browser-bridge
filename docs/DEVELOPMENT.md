@@ -54,6 +54,18 @@ diagnostic output subdirectory. The task is stopped/unregistered afterward.
 This alternate-process probe diagnoses startup; it cannot establish SCM,
 installed-session or disk-full acceptance.
 
+Attempt `41005712810` runs that diagnostic successfully under SID `S-1-5-19`
+and localizes the failure to **config** (task result 1), before runtime resolve.
+The NTFS file/directory DACLs still admit LocalService. The disposable image
+now explicitly grants that SID read/execute/write on the backing file before
+attachment: the [AttachVirtualDisk contract](https://learn.microsoft.com/en-us/windows/win32/api/virtdisk/nf-virtdisk-attachvirtualdisk)
+uses the image's descriptor when no attachment descriptor is supplied. The
+previous private controller copy did not explicitly admit the service account
+at this separate device-filter layer. Its original source image and all
+production/session ACLs are unchanged. Pure tests verify owner, protection,
+exact principals and bounded rights, without mounting anything locally.
+This is a test-device admission correction; its actual MSI result remains open.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

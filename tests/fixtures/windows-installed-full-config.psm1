@@ -4,6 +4,20 @@ function New-OwnedInstalledDataRootSecurity {
     $security.SetSecurityDescriptorSddlForm('O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;LS)')
     return $security
 }
+function New-OwnedInstalledImageSecurity([Security.Principal.SecurityIdentifier]$Owner) {
+    $security = New-Object Security.AccessControl.FileSecurity
+    $security.SetOwner($Owner)
+    $security.SetAccessRuleProtection($true,$false)
+    foreach($identity in @($Owner,(New-Object Security.Principal.SecurityIdentifier('S-1-5-18')))) {
+        $rule = New-Object Security.AccessControl.FileSystemAccessRule($identity,'FullControl','Allow')
+        $security.AddAccessRule($rule)
+    }
+    $localService = New-Object Security.Principal.SecurityIdentifier('S-1-5-19')
+    $rights = [Security.AccessControl.FileSystemRights]::ReadAndExecute -bor [Security.AccessControl.FileSystemRights]::Write
+    $serviceRule = New-Object Security.AccessControl.FileSystemAccessRule($localService,$rights,'Allow')
+    $security.AddAccessRule($serviceRule)
+    return $security
+}
 function Require-OwnedInstalledConfiguration([bool]$Condition) {
     if (-not $Condition) { throw 'OWNED_INSTALLED_HOST_REFUSED' }
 }
@@ -45,4 +59,4 @@ function ConvertTo-OwnedInstalledPublicJson([object]$Value) {
     # Credential-bearing input continues using the private .NET reader.
     return ConvertTo-Json -InputObject $Value -Depth 12 -Compress
 }
-Export-ModuleMember -Function Confirm-OwnedInstalledConfiguration,ConvertTo-OwnedInstalledPublicJson,New-OwnedInstalledDataRootSecurity
+Export-ModuleMember -Function Confirm-OwnedInstalledConfiguration,ConvertTo-OwnedInstalledPublicJson,New-OwnedInstalledDataRootSecurity,New-OwnedInstalledImageSecurity
