@@ -16,10 +16,10 @@ in public 0.6.0.** Invoke the distribution's private Node directly; the normal
 service/portable launchers retain their server-start contract:
 
 ```sh
-/usr/lib/freerdp-bridge/node/node \
-  /usr/lib/freerdp-bridge/service/dist/main.js \
+/opt/freerdp-bridge/node/node \
+  /opt/freerdp-bridge/service/dist/main.js \
   --inventory printers,smartcards,serial,parallel,usb \
-  --runtime-root /var/lib/freerdp-bridge/inventory --max-devices 16
+  --runtime-root "$HOME/.local/state/freerdp-bridge/inventory" --max-devices 16
 ```
 
 ```powershell
@@ -46,6 +46,14 @@ public logs. Discovery does not authorize or enable physical redirection.
 Source CLI composition passes with the real SDK/native worker and a controlled
 runtime resolver; that is separate from exact installed-distribution acceptance,
 which remains required before this feature is released.
+
+Portable and installed-package tests require this command for versions 0.7.0
+and later, including an upgrade from 0.6.0. They use the distribution's private
+Node, unmodified entry point and automatic packaged runtime resolver, request
+at most three USB metadata records and verify the temporary runtime is empty
+after exit. Installed Linux runs it as `freerdp-bridge`, not root. Evidence
+retains only status/count, never device names. These checks are prepared; their
+exact 0.7.0 distribution acceptance is still pending.
 
 User clarification, 2026-10-23: retain the standalone web server and installers;
 exclude a separate desktop GUI application. The service uses the browser

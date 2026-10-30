@@ -5,10 +5,24 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { readFile, writeFile, access, readdir, lstat } from 'node:fs/promises';
+import {
+  readFile,
+  writeFile,
+  access,
+  readdir,
+  lstat,
+  mkdtemp,
+  chown,
+  rmdir,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
 import { readStandalonePayloadFile } from '../../scripts/standalone/payload.mjs';
+import {
+  checkStandaloneInventory,
+  standaloneInventoryExpected,
+} from '../fixtures/standalone-inventory.mjs';
 import {
   isReleaseVersion,
   compareReleaseVersions,
@@ -329,6 +343,39 @@ try {
     ).json();
     assert.equal(nativeBuild.bridgeVersion, version);
     assert.equal(nativeBuild.nodeVersion, 'v24.21.0');
+    if (standaloneInventoryExpected(version)) {
+      const inventoryRuntime = await mkdtemp(
+        join(tmpdir(), 'bridge-installed-inventory-'),
+      );
+      try {
+        if (!windows) {
+          const uid = Number(await invoke('id', ['-u', 'freerdp-bridge']));
+          const gid = Number(await invoke('id', ['-g', 'freerdp-bridge']));
+          assert.ok(
+            Number.isInteger(uid) &&
+              uid > 0 &&
+              Number.isInteger(gid) &&
+              gid > 0,
+          );
+          await chown(inventoryRuntime, uid, gid);
+        }
+        const snapshot = await checkStandaloneInventory(
+          program,
+          inventoryRuntime,
+          { serviceUser: !windows },
+        );
+        assert.deepEqual(await readdir(inventoryRuntime), []);
+        console.log(
+          JSON.stringify({
+            profile: 'installed-inventory',
+            version,
+            ...snapshot,
+          }),
+        );
+      } finally {
+        await rmdir(inventoryRuntime);
+      }
+    }
   };
   await installedVersion(firstBuild.version);
   assert.equal(

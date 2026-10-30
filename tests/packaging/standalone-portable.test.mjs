@@ -12,6 +12,7 @@ import {
   chmod,
   lstat,
   mkdir,
+  rmdir,
 } from 'node:fs/promises';
 import { join, resolve, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -25,6 +26,10 @@ import {
 } from '../../scripts/standalone/payload.mjs';
 import { createRdpTlsFixture } from '../fixtures/rdp-tls.mjs';
 import { managedFilesArguments } from '../../scripts/managed-files-consumer.mjs';
+import {
+  checkStandaloneInventory,
+  standaloneInventoryExpected,
+} from '../fixtures/standalone-inventory.mjs';
 
 const source = process.env.BRIDGE_PORTABLE_TEST_ROOT;
 const fileMode = process.env.BRIDGE_PORTABLE_MANAGED_FILES;
@@ -88,6 +93,28 @@ test(
       const packagedVersion = JSON.parse(
         await readFile(join(root, 'service/package.json'), 'utf8'),
       ).version;
+      assert.equal(packagedVersion, receipt.version);
+      if (standaloneInventoryExpected(packagedVersion)) {
+        const inventoryRuntime = await mkdtemp(
+          join(tmpdir(), 'bridge-portable-inventory-'),
+        );
+        try {
+          const snapshot = await checkStandaloneInventory(
+            root,
+            inventoryRuntime,
+          );
+          assert.deepEqual(await readdir(inventoryRuntime), []);
+          console.log(
+            JSON.stringify({
+              profile: 'portable-inventory',
+              version: packagedVersion,
+              ...snapshot,
+            }),
+          );
+        } finally {
+          await rmdir(inventoryRuntime);
+        }
+      }
       const { managedFiles } = managedFilesArguments(
         fileMode === '1' ? ['--managed-files'] : [],
         packagedVersion,
