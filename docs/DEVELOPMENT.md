@@ -130,6 +130,18 @@ retained, while owned-session absence, profile unload, account removal and RDP
 settings restoration remain required. This source correction is not accepted
 until the complete live case and cleanup pass.
 
+Attempt `41025154912` passes the complete installed MSI/native/real-RDP file
+scenario: 13 HTTP 507s, independent physical free space zero, Windows error 112,
+757760 verified partial bytes, recovery/Unicode/read-only/quota/stale-ID checks,
+74 exact native package files and native PID exit. MSI, observer and volume
+retirement pass; RDP retirement still fails reading the automatic
+`LASTEXITCODE` variable. The helper now waits on an explicit, owned logoff
+process handle with a deadline and captures its numeric exit code directly.
+Its bounded native output is discarded, never uploaded; fixed admission/result
+metadata records executable presence, bitness and byte counts. Final session,
+profile, account and RDP-settings conditions remain unchanged. Overall MSI
+acceptance remains false until that final cleanup passes.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

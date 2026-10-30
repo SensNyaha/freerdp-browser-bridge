@@ -529,15 +529,27 @@ try {
             $logoffCodes=@()
             if(Test-Path -LiteralPath $accountPath){
                 $account=Own-Account
-                foreach($session in @(Own-Sessions $account.Name)) {
+                $ownedSessions=@(Own-Sessions $account.Name)
+                Own-Require ($ownedSessions.Count -le 16)
+                foreach($session in $ownedSessions) {
                     # A disconnected owned session may vanish before logoff.
                     # Discard native text; retain its code and prove final absence.
-                    $previousPreference=$ErrorActionPreference
+                    $executable=Join-Path $env:SystemRoot 'System32\logoff.exe'
+                    Own-NewJson (Join-Path $script:context ('logoff-admission-'+$session+'.json')) @{sessionId=[int]$session;executablePresent=[bool](Test-Path -LiteralPath $executable);host64Bit=[Environment]::Is64BitProcess}
+                    $null=Own-Plain $executable
+                    $outputPath=Join-Path $script:context ('logoff-'+$session+'.stdout')
+                    $errorPath=Join-Path $script:context ('logoff-'+$session+'.stderr')
+                    Own-Require (-not (Test-Path -LiteralPath $outputPath) -and -not (Test-Path -LiteralPath $errorPath))
+                    $logoff=Start-Process -FilePath $executable -ArgumentList ([string]$session) -PassThru -WindowStyle Hidden -RedirectStandardOutput $outputPath -RedirectStandardError $errorPath
+                    $null=$logoff.Handle
                     try {
-                        $ErrorActionPreference='Continue'
-                        & (Join-Path $env:SystemRoot 'System32\logoff.exe') ([string]$session) *> $null
-                        $logoffCodes+=[int]$LASTEXITCODE
-                    } finally {$ErrorActionPreference=$previousPreference}
+                        if(-not $logoff.WaitForExit(10000)){$logoff.Kill();[void]$logoff.WaitForExit(5000);throw 'OWNED_LOGOFF_DEADLINE'}
+                        $logoffCodes+=[int]$logoff.ExitCode
+                        $output=Own-Plain $outputPath;$errorOutput=Own-Plain $errorPath
+                        Own-Require ($output.Length -le 4096 -and $errorOutput.Length -le 4096)
+                        Own-NewJson (Join-Path $script:context ('logoff-result-'+$session+'.json')) @{sessionId=[int]$session;exitCode=[int]$logoff.ExitCode;stdoutBytes=[int]$output.Length;stderrBytes=[int]$errorOutput.Length}
+                        Remove-Item -LiteralPath $outputPath;Remove-Item -LiteralPath $errorPath
+                    } finally {$logoff.Dispose()}
                 }
                 $deadline=[Diagnostics.Stopwatch]::StartNew()
                 do {$sessions=@(Own-Sessions $account.Name);if(-not $sessions.Count){break};Start-Sleep -Milliseconds 200}while($deadline.ElapsedMilliseconds -lt 20000)

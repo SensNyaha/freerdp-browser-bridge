@@ -125,6 +125,8 @@ jobs:
             build/windows-msi-run-*/proof.json
             build/windows-msi-run-*/image-filter-acl.json
             build/windows-msi-run-*/identity-snapshot.json
+            build/windows-msi-run-*/logoff-admission-*.json
+            build/windows-msi-run-*/logoff-result-*.json
             build/windows-msi-run-*/staging-observer/ready.json
             build/windows-msi-run-*/staging-observer/summary.json
             build/windows-msi-run-*/acceptance.json
