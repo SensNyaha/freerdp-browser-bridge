@@ -4,6 +4,7 @@
 #include "audio_reset.hpp"
 #include "cursor.hpp"
 #include "files.hpp"
+#include "device_inventory.hpp"
 #include "microphone.hpp"
 #include "opus_audio.hpp"
 #include <limits>
@@ -113,8 +114,9 @@ EnqueueStatus OutputQueue::push(Kind kind, std::uint64_t request_id,
       Packet packet{kind, request_id, {bytes.begin(), bytes.end()}};
       control_[(head_ + count_) % control_capacity] = std::move(packet);
       ++count_;
-    } else if (kind == Kind::file_result) {
-      (void)files::decode(bytes, true);
+    } else if (kind == Kind::file_result || kind == Kind::host_inventory_result) {
+      if (kind == Kind::file_result) (void)files::decode(bytes, true);
+      else (void)inventory::decode_report(bytes);
       if (file_result_) return EnqueueStatus::full;
       file_result_ = Packet{kind, request_id, {bytes.begin(), bytes.end()}};
     } else if (kind == Kind::clipboard_state) {

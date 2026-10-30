@@ -8,6 +8,7 @@
 #include "ownership.hpp"
 #include "protocol.hpp"
 #include "../files/service.hpp"
+#include "../devices/inventory.hpp"
 #include <algorithm>
 #include <csignal>
 #include <cstdio>
@@ -127,7 +128,7 @@ std::vector<std::uint8_t> build_payload(const char *transport) {
     append_string(bytes, value);
   unsigned extensions = 0;
 #if defined(_WIN32) || defined(__linux__)
-  extensions |= 1024; // Private native file service; does not advertise RDPDR.
+  extensions |= 1024 | 8192; // Private services; inventory does not advertise device redirection.
 #endif
 #ifdef BRIDGE_WITH_FREERDP
   extensions |= 32 | 64;
@@ -277,6 +278,7 @@ int run(bool owned_runtime, int packet_fd = -1) {
 #endif
 #endif
     bool ready = false;
+    bool inventory_only = false, other_command_seen = false;
     std::array<std::uint8_t, header_bytes> buffer{};
     while (read(buffer, true)) {
       const auto header = decode_header(buffer); // Validate class limit before allocation.
@@ -295,6 +297,14 @@ int run(bool owned_runtime, int packet_fd = -1) {
                            header.kind == Kind::microphone_opus ||
                            header.kind == Kind::clipboard_command || header.kind == Kind::file_command};
       (void)read(payload, false);
+      if (ready) {
+        const bool management = header.kind == Kind::heartbeat || header.kind == Kind::shutdown;
+        if (inventory_only && !management) throw ProtocolError();
+        if (header.kind == Kind::host_inventory) {
+          if (other_command_seen) throw ProtocolError();
+          inventory_only = true;
+        } else if (!management) other_command_seen = true;
+      }
       if (header.kind == Kind::hello && !ready) {
         try {
           validate_hello(payload);
@@ -306,6 +316,11 @@ int run(bool owned_runtime, int packet_fd = -1) {
         send({Kind::hello_ack, header.request_id, build_payload(transport)});
       } else if (header.kind == Kind::heartbeat && ready) {
         send({Kind::heartbeat_ack, header.request_id, {}});
+      } else if (header.kind == Kind::host_inventory && ready) {
+        const auto request = bridge::ipc::inventory::decode_request(payload);
+        Packet response{Kind::host_inventory_result, header.request_id, bridge::devices::discover(request)};
+        SecretWiper response_wiper{response.payload, true};
+        send(response);
       } else if (header.kind == Kind::file_command && ready) {
         Packet response{Kind::file_result, header.request_id, files.command(payload)};
         SecretWiper response_wiper{response.payload, true};
@@ -444,6 +459,9 @@ int main(int argc, char **argv) {
       std::cout << "null";
     std::cout << ",\"targetFreeRdpVersion\":\"3.32.1\",\"capabilities\":{\"lifecycle\":true,"
                  "\"rdp\":false,\"penInput\":false,"
+#if defined(_WIN32) || defined(__linux__)
+                 "\"hostDeviceInventory\":true,"
+#endif
 #if defined(BRIDGE_WITH_FREERDP) && (defined(_WIN32) || defined(__linux__)) &&                     \
     defined(CHANNEL_AUDIN_CLIENT)
                  "\"microphoneReset\":true,\"opusInput\":true,"

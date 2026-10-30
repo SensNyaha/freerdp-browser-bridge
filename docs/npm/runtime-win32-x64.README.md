@@ -77,6 +77,17 @@ RDPSND without a host sound backend or audio publication.
 OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
 See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
+## Host-device inventory (planned 0.7.0)
+
+The matching development SDK exposes `discoverHostDevices` for bounded
+bridge-host printer, PC/SC reader, port and USB metadata. Public 0.6.0 lacks
+this capability; upgrade the JS packages and runtime together. Use the SDK or
+framework adapter, not executable arguments or raw private IPC. Discovery
+performs no RDP connection or device/card open, and does not enable physical
+redirection. Availability depends on this host's libraries, daemons and account
+permissions; an explicit `limit` status is a partial snapshot. [SDK usage and
+tested provider scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/main/DEVICE_REDIRECTION.md#host-inventory-in-the-development-branch).
+
 ## Limitations
 
 This is a platform payload, not an HTTP server, JS RDP client or standalone UI.

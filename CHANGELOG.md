@@ -4,6 +4,18 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+- Add bounded bridge-host device inventory to the private worker and Node SDK,
+  with CUPS/PCSC/libusb/device-node providers, explicit incomplete/refusal states,
+  single-use discovery lifecycle and matching exports in all four adapters.
+  Physical device redirection remains separately gated.
+- Add an operator-only standalone inventory command and prepare portable /
+  installed-upgrade checks for the planned 0.7.0 release. Final versioned
+  distribution and publication acceptance remain pending.
+- Join native download closure before completing HTTP responses, including
+  empty files, so a following operation can reuse the session's file service.
+- Prepare SHA-512-pinned source companions when dependency binaries are restored
+  from cache; preserve strict source/SBOM verification in native npm packaging.
+
 ## 0.6.0 — 2026-10-29
 
 Managed files and redirected drives are published in ten exact npm packages,

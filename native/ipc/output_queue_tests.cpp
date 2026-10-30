@@ -3,9 +3,25 @@
 #include "cursor.hpp"
 #include "output_queue.hpp"
 #include "files.hpp"
+#include "device_inventory.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <memory>
 using namespace bridge::ipc;
+TEST_CASE("Host inventory uses the one bounded private-result slot and validates before copying") {
+  const auto queue = std::make_unique<OutputQueue>();
+  const std::vector<std::uint8_t> report{0,1,0,1,0,0,0,0, 0,1,0,0,0,0,0,0};
+  REQUIRE(queue->push(Kind::host_inventory_result, 11, report) == EnqueueStatus::accepted);
+  REQUIRE(queue->push(Kind::host_inventory_result, 12, report) == EnqueueStatus::full);
+  const auto packet = queue->take();
+  REQUIRE(packet);
+  REQUIRE(packet->kind == Kind::host_inventory_result);
+  REQUIRE(packet->request_id == 11);
+  REQUIRE(packet->payload == report);
+  REQUIRE(queue->push(Kind::host_inventory_result, 0, report) == EnqueueStatus::invalid);
+  auto invalid = report;invalid[15] = 1;
+  REQUIRE(queue->push(Kind::host_inventory_result, 12, invalid) == EnqueueStatus::invalid);
+  REQUIRE_FALSE(queue->take());
+}
 namespace {
 EnqueueStatus push(OutputQueue &queue, const Packet &packet) {
   return queue.push(packet.kind, packet.request_id, packet.payload);

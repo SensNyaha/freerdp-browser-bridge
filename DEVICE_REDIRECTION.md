@@ -22,6 +22,196 @@ does not enable the capability model or satisfy device integration. Current
 USB/serial/parallel/smartcard and host-printer selections remain refused until
 their implementation and policy gates pass.
 
+The development branch starts the Stage 8 inventory with matching bounded
+TypeScript/C++ [binary codecs](PROTOCOL.md#host-device-inventory-grammar-in-development).
+The private worker/SDK inventory path is implemented and source-accepted as
+recorded below; it has no HTTP route and is not yet a released capability.
+Exact 0.7.0 package/installer acceptance is separate from source acceptance.
+Physical redirection remains disabled by its existing gates.
+
+### Host inventory in the development branch
+
+`discoverHostDevices(workerOptions, { classes, maxDevices })` is an opt-in
+trusted-host SDK operation. Classes are `printers`, `smartcards`, `serial`,
+`parallel` and `usb`; the global count is 1..128. Use a dedicated private runtime
+root under the service account and the matching native source build. Published
+0.6.0 lacks this RPC; the development SDK refuses a 0.6.0 worker with
+`DEVICE_INVENTORY_NOT_IMPLEMENTED`. Do not expose
+the function as an unrestricted browser/API endpoint or log its device names.
+Every returned device has `origin: 'bridge-host'`; inventory IDs are metadata,
+not authorizations and not stable across reconnect/reboot.
+
+The same function and `HostInventoryRequest` / `HostInventoryReport` types are
+also exported from each adapter package in the development branch. For example,
+trusted application startup/diagnostics can use the planned 0.7.0 Express API:
+
+```ts
+import { resolve } from 'node:path';
+import { resolveNativeRuntime, discoverHostDevices } from '@freerdp-bridge/express';
+
+const worker = await resolveNativeRuntime({
+  runtimeRoot: resolve('.runtime/operator-inventory'),
+});
+const snapshot = await discoverHostDevices(worker, {
+  classes: ['printers', 'smartcards', 'serial', 'parallel', 'usb'],
+  maxDevices: 16,
+});
+// Consume snapshot inside the trusted application; do not log device names.
+```
+
+Use the corresponding `@freerdp-bridge/http`, `@freerdp-bridge/fastify` or
+`@freerdp-bridge/nestjs` import for the other adapters. This is not available in
+published 0.6.0, creates no browser-facing discovery route and does not change
+the adapter's HTTP/WebSocket server or grant device redirection.
+
+| Source | Implemented discovery | Limits and exclusions |
+| --- | --- | --- |
+| Windows printers | `EnumPrintersW`, level 4, local/connected queue names | 2 MiB API buffer ceiling; no print job, driver loading or printer properties/credentials. |
+| Windows smart cards | System PC/SC context and `SCardListReadersW` | 16384 UTF-16 units; no card open, ATR, PIN or transaction. |
+| Windows ports | `QueryDosDeviceW`, numeric COM/LPT names | 32768 UTF-16 units; names only, no port open or reconfiguration. |
+| Linux serial/parallel | Numeric ttyS/ttyUSB/ttyACM/ttyAMA or ppdev entries and existing `/dev` character nodes | At most 4096 directory entries, no device open, permissions change or symlink/device probing. |
+| Linux PC/SC | Pinned WinPR public `SCardListReadersA` wrapper | 16384 bytes; absent daemon/library is a reported non-ready state, no card access. |
+| Linux CUPS | Pinned CUPS `cupsEnumDests`, one-second enumeration of local configured queues | Fixed `/run/cups/cups.sock`, no caller-supplied server or network discovery, no password prompt, no job submission or option/URI export. |
+| Windows/Linux USB | Pinned libusb list and cached descriptors | At most 4096 library entries scanned; VID/PID/bus/address only, no device open, string/serial queries, interface claim, detach or transfer. |
+
+Library providers are linked only in private SDK builds. Foundation builds
+truthfully return `unsupported` for absent CUPS/WinPR-PCSC/libusb providers;
+Windows native printer/PCSC/port queries and Linux device-node discovery remain
+independent. Returned status is `available`, `unavailable`, `denied`,
+`unsupported`, `limit` or `failure`; `available` may have zero devices and
+`limit` explicitly marks a partial snapshot. A failed class discards its own
+entries while preserving earlier class results. Invalid backend metadata fails
+the class rather than becoming a truncated or replacement-character name.
+
+The bridge owns fixed 128-device metadata storage and a response of at most
+64 KiB. Library enumeration can allocate its own internal lists/caches before
+the bridge sees their counts; the bridge's limits do not constitute a hard
+allocator limit inside CUPS/PCSC/libusb. Discovery runs in the disposable native
+process with the supervisor deadline; existing sampled CPU/RSS policies can
+also be supplied in `workerOptions`. No FreeRDP/device library runs in Node.
+The account/container still needs explicit device/socket permissions; discovering
+a node does not prove that opening or redirecting it is allowed.
+
+The CUPS callback and timeout/filter semantics follow the pinned public
+[2.4.20 header](https://github.com/OpenPrinting/cups/blob/ef80eeaea51430a055948240eea3f28ef5354edf/cups/cups.h)
+and [OpenPrinting programming manual](https://openprinting.github.io/cups/doc/cupspm.html).
+
+The initial development checks pass actual Windows foundation and linked
+worker calls with joined cleanup, native rejection of duplicate/ordinary IO
+outside Node's guards, and a separate selected USB call. The linked host
+snapshot admits four printer queues and four readers under a global limit of
+eight; the selected USB call admits eight metadata records with explicit
+`limit`. Names are not logged. This is inventory, not accepted printer/card/USB
+redirection or a claim that any device can be opened.
+
+MSVC foundation CTest passes 25/25 and linked CTest 42/42. A restricted offline
+GCC 8.3 container passes foundation CTest 25/25 and compiles all library-provider
+branches against the pinned CUPS/WinPR/libusb headers. A separate invocation
+links the exact public 0.6.0 Linux runtime libraries: CUPS/PCSC/parallel report
+unavailable and serial/USB return available-empty with no mapped host devices
+or daemons. This is compiler/library invocation evidence, not Astra/RED OS or
+populated CUPS/PCSC/device acceptance. The source audit is
+`build/current-validation/device-inventory-platform-checkpoint.json`.
+The initial GCC 12 source CI refuses a test's copied structured binding under
+`-Werror=range-loop-construct`; the loop now borrows the pair. Its failure log
+is retained. Corrected hosted gates, populated/emulated Linux backend tests and
+exact installed-consumer acceptance remain open. The standalone operator CLI
+is implemented and source-tested with the real SDK/native worker under a
+controlled runtime resolver; it has not yet passed an installed-distribution
+test. [CLI syntax and scope](docs/STANDALONE.md).
+
+The first corrected-source sanitizer job `41042085443` passes native CTest and
+then fails the inventory Node test's unconditional seqpacket start: that profile
+does not build the Node IPC addon. It now explicitly selects framed-only inventory
+integration with `BRIDGE_INVENTORY_FRAMED_ONLY=1`. The skipped seqpacket case
+states this reason; it is not inferred from absent/broken files. Ordinary Linux
+foundation and bundled jobs retain mandatory framed and seqpacket tests. This
+does not establish ASan-instrumented Node-addon or seqpacket composition acceptance.
+
+The latest hosted source checkpoint `4f163229` passes GCC 8.3, Windows/MSVC,
+default Linux GCC and the declared sanitizer profile. Its GCC 12 Node suite
+exposes a pre-existing HTTP final-body/native-close race; the fix holds the final
+chunk until close completes and adds an actual-native regression with delayed
+close, including an empty file. The bundled Linux build at `ad38cb18` compiles
+and runs native checks but fails a pure coordinator test because its interpreter
+selector chooses Python 2. The selector now verifies Python 3.7 or newer before
+running those controls. Both original job logs and SHA256 are retained in the
+local validation record; corrected hosted acceptance remains pending.
+
+The isolated [daemon fixture](tests/fixtures/device-inventory-lab/README.md)
+passes two fresh, networkless, unprivileged Debian containers. It invokes the
+actual inventory providers using the pinned private library closure from public
+0.6.0, admits one owned local CUPS queue and two virtual PC/SC readers, repeats
+the snapshot and observes unavailable states before and after both daemons exit
+normally. It sends no print job/card operation and maps no host devices. This
+accepts that named metadata component profile, not Astra/RED OS, packaged worker
+composition or physical redirection. These broader gates remain open.
+
+The subsequently authorized exact 16-file/55,235,825-byte component payload
+passes twice on actual Astra 1.7.5 and RED OS 7.3 as UID 1000, using strict saved
+SSH host keys. Astra admits one existing CUPS queue and fifteen serial nodes;
+RED OS admits sixteen serial nodes. The global sixteen-record ceiling produces
+explicit `limit` states for later nonempty classes; these are incomplete
+snapshots, not empty/full USB inventory acceptance. Both runs use the pinned
+public Linux library closure and unchanged GCC 8.3 probe, perform no RDP/device
+open and remove only their new private test directories. This accepts the named
+native component/platform profile; installed npm/standalone composition remains
+separate. The first controller failure was before upload: Paramiko has no
+`statvfs` method. Its retained refusal is followed by a bounded read-only SSH
+capacity query and the successful repeats, without changes to target services.
+
+### Installed-consumer and compiler checkpoint
+
+Bundled workflow `41072347727` at public `704b5f75` passes both complete
+Windows/MSVC and Linux/GCC 8.3 builds, native checks and full Node checks.
+Four fresh npm projects per OS import inventory through the actual HTTP,
+Express, Fastify and NestJS packages, compile strict TypeScript and execute
+native metadata RPCs with automatic packaged-runtime selection. Windows
+passes four framed profiles; Linux passes eight framed/RWS1 profiles. These
+are unpublished development archives retaining the 0.6.0 manifest number,
+not a claim that the published 0.6.0 packages include inventory. No RDP or
+device-open operation is used. Source CLI staging also passes automatic runtime
+resolution; exact 0.7.0 portable and installed CLI acceptance remains separate.
+
+The previously failing Windows binary-cache source-companion step now passes:
+the explicit build phase downloads the pinned public archive, checks its
+SHA512 and prepares the corresponding source before offline packaging. A
+separate cold-cache invocation and network-free warm-cache repeat pass without
+relaxing the source-companion verifier.
+
+Public `41cf7a90` adds an explicit Ubuntu GCC 11 foundation profile. Its native
+CTest passes 25/25, full Node checks pass 1220 with 239 explicit skips, and
+the two native disk-full HTTP transports pass. GCC 8.3, GCC 12, default GCC
+and the declared sanitizer profile also pass. Ubuntu GCC 11 is compiler
+evidence; actual Astra/RED OS component results above remain separate. In that
+run, Windows foundation exceeds the unchanged 25-second limit in one Edge
+image-view test (zero assertion failures, one cancelled test). The identical
+test passes in the bundled Windows suite in 1.95 seconds and in a focused
+local run in 1.36 seconds. The original log is retained; one unchanged full
+Windows retry is pending. Neither the timeout nor the assertions were relaxed.
+This checkpoint preceded the successful repeat and source acceptance below.
+
+### Inventory source feature acceptance
+
+The unchanged Windows retry in run `41074685900`, job `124162197245`, passes
+foundation CTest, actual LocalService isolation and full Node checks:
+1279 pass, 156 explicit skips, zero failures/cancellations. The image-view
+test passes in 2.02 seconds without changing its 25-second limit. Both the
+initial timeout and successful repeat are retained. All five foundation jobs
+in the current attempt, exact GCC 8.3 run `41074686149`, and both bundled
+jobs in `41072347727` are successful. Public `41cf7a90` / private `613ecfa`
+identify the tested executable source; the subsequent `f873542` and `2eeb974`
+changes contain documentation and one comment only.
+
+Together with the named backend/emulator, actual Astra/RED OS metadata,
+Windows metadata, strict codec/lifecycle and installed npm-consumer checks
+above, this accepts the Stage 8 capability-inventory source feature for merge.
+Local `build/current-validation/device-inventory-source-acceptance.json` binds
+the source files, retained logs and terminal job results. It does not accept
+physical redirection, final versioned npm/standalone bytes or publication.
+Those delivery checks proceed separately in `release/0.7.0`; public stable
+remains 0.6.0 until exact delivery is verified.
+
 ## 2. Drives / `thinclient_drives`
 
 ### Bridge-host/session drive

@@ -10,6 +10,56 @@ upgrade/recovery/config retention and uninstall also pass.
 For ready-made distributions, start with the concise
 [installation and operations guide](STANDALONE_INSTALL.md).
 
+The development branch `feature/host-device-inventory` adds an operator-only
+inventory command for the planned 0.7.0 capability release. **It is not present
+in public 0.6.0.** Invoke the distribution's private Node directly; the normal
+service/portable launchers retain their server-start contract:
+
+```sh
+/opt/freerdp-bridge/node/node \
+  /opt/freerdp-bridge/service/dist/main.js \
+  --inventory printers,smartcards,serial,parallel,usb \
+  --runtime-root "$HOME/.local/state/freerdp-bridge/inventory" --max-devices 16
+```
+
+```powershell
+& 'C:\Program Files\FreeRDP Bridge\node\node.exe' `
+  'C:\Program Files\FreeRDP Bridge\service\dist\main.js' `
+  --inventory usb,serial `
+  --runtime-root "$env:LOCALAPPDATA\FreeRDPBridge\inventory" --max-devices 16
+```
+
+Use an absolute private runtime directory under the invoking account, separate
+from a running service's runtime. Run as the account whose device/socket access
+you need to diagnose; another account's inventory may differ. Linux root remains
+refused. Classes and count are mandatory; duplicate/unknown classes, nondecimal
+or out-of-range counts, mixed server/config arguments and relative roots refuse
+before runtime resolution. The command does not read the server configuration,
+create an RDP session or start an HTTP listener. On success it writes one JSON
+report to stdout after joining its native worker/runtime, then exits. Failure
+emits only `STANDALONE_INVENTORY_FAILED` to stderr and exits nonzero.
+
+`available` with no entries is a valid empty snapshot; `limit` means incomplete.
+Names are operator metadata: protect the output rather than collecting it in
+public logs. Discovery does not authorize or enable physical redirection.
+[Device/backend limits and acceptance boundaries](../DEVICE_REDIRECTION.md#host-inventory-in-the-development-branch).
+Source CLI composition passes with the real SDK/native worker and a controlled
+runtime resolver; that is separate from exact installed-distribution acceptance,
+which remains required before this feature is released.
+An additional Windows staging check now passes the unchanged source CLI beside
+an independent installed npm graph, including its declared `jose` dependency,
+through the automatic packaged resolver with no loader hook. Its private Node
+and entry-point hashes are recorded; this is still source/staging evidence,
+not final MSI/ZIP/DEB/RPM acceptance.
+
+Portable and installed-package tests require this command for versions 0.7.0
+and later, including an upgrade from 0.6.0. They use the distribution's private
+Node, unmodified entry point and automatic packaged runtime resolver, request
+at most three USB metadata records and verify the temporary runtime is empty
+after exit. Installed Linux runs it as `freerdp-bridge`, not root. Evidence
+retains only status/count, never device names. These checks are prepared; their
+exact 0.7.0 distribution acceptance is still pending.
+
 User clarification, 2026-10-23: retain the standalone web server and installers;
 exclude a separate desktop GUI application. The service uses the browser
 interface. No desktop application shell is planned.

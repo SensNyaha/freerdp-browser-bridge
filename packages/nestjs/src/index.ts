@@ -9,6 +9,7 @@ export {
   NativeRuntimeError,
   recoverRuntimeSessions,
   RuntimeRecoveryError,
+  discoverHostDevices,
   NativeSessionWorker,
   WorkerProcess,
   SessionManager,
@@ -22,5 +23,7 @@ export type {
   NativeRuntimeOptions,
   RuntimeRecoveryOptions,
   RuntimeRecoveryReport,
+  HostInventoryRequest,
+  HostInventoryReport,
   BridgeHandle,
 } from '@freerdp-bridge/api/fastify';

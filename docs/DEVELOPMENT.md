@@ -11,6 +11,22 @@ worker executable available again.
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
+The bundled builder explicitly prepares corresponding-source archives after
+staging native binaries. A vcpkg binary-cache hit can restore libraries without
+downloading their upstream sources. `scripts/fetch-native-package-sources.mjs`
+reads the staged dependency SBOMs and verifies the pinned SHA-512 archives in
+`.tools/vcpkg-downloads`, fetching only missing bytes from the public upstream
+GitHub source endpoint. Valid cached archives require no network; corrupt or
+foreign entries refuse without replacement. The archives are not extracted or
+executed. Native npm packaging retains its independent source/recipe checks and
+remains an offline operation over the prepared inputs.
+
+The foundation CI matrix explicitly retains GCC 11 alongside GCC 12, the
+default Ubuntu compiler and MSVC; exact GCC 8.3 remains a separate workflow.
+The GCC 11 compiler/foundation job runs on Ubuntu, so its success must not be
+reported as actual RED OS 7.3/GCC 11 platform acceptance. Named runtime/lab
+results retain their own target OS, compiler and artifact identities.
+
 ## Windows MSI physical-full CI
 
 The installed MSI / real RDP / bounded NTFS resource scenario passes in

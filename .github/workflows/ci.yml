@@ -10,6 +10,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-24.04
+            compiler: g++-11
+          - os: ubuntu-24.04
             compiler: g++-12
           - os: ubuntu-24.04
             compiler: g++
@@ -26,9 +28,9 @@ jobs:
           version: 10.11.0
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
-      - name: Install the GCC 12 baseline
-        if: runner.os == 'Linux' && matrix.compiler == 'g++-12'
-        run: sudo apt-get update && sudo apt-get install -y g++-12
+      - name: Install the selected GCC compatibility baseline
+        if: runner.os == 'Linux' && (matrix.compiler == 'g++-11' || matrix.compiler == 'g++-12')
+        run: sudo apt-get -o APT::Update::Error-Mode=any update && sudo apt-get install -y ${{ matrix.compiler }}
       - run: pnpm install --frozen-lockfile
       - run: cmake --preset foundation -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DBRIDGE_NODE_IPC=${{ runner.os == 'Linux' && 'ON' || 'OFF' }}
       - run: pnpm build:native
@@ -78,6 +80,7 @@ jobs:
       - run: pnpm test
         env:
           BRIDGE_TEST_BINARY_DIR: build/sanitizers
+          BRIDGE_INVENTORY_FRAMED_ONLY: '1'
       - run: cmake --preset fuzz -DCMAKE_CXX_COMPILER=clang++-18 && cmake --build --preset fuzz && node scripts/seed-fuzz.mjs && build/fuzz/ipc-fuzz build/fuzz/corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=65600
       - run: node scripts/seed-audin-fuzz.mjs && build/fuzz/audin-fuzz build/fuzz/audin-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
       - run: node scripts/seed-dvc-bounds-fuzz.mjs && build/fuzz/dvc-bounds-fuzz build/fuzz/dvc-bounds-corpus -max_total_time=20 -timeout=5 -rss_limit_mb=512 -max_len=16384
@@ -91,3 +94,4 @@ jobs:
       - run: node scripts/seed-clipboard-image-fuzz.mjs && build/fuzz/clipboard-image-fuzz build/fuzz/clipboard-image-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
       - run: node scripts/seed-clipboard-ingress-fuzz.mjs && build/fuzz/clipboard-ingress-fuzz build/fuzz/clipboard-ingress-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
       - run: node scripts/seed-clipboard-wire-fuzz.mjs && build/fuzz/clipboard-wire-fuzz build/fuzz/clipboard-wire-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
+      - run: node scripts/seed-device-inventory-fuzz.mjs && build/fuzz/device-inventory-fuzz build/fuzz/device-inventory-corpus -max_total_time=20 -timeout=5 -max_len=65536 -rss_limit_mb=512

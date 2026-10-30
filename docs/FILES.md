@@ -11,6 +11,14 @@ The wider resource/quota/soak and arbitrary server/device matrices remain
 open. Managed storage and HTTP transfer do not implement OS file clipboard.
 The original source checkpoints below retain their historical test scope.
 
+Development correction: a download now joins native `close-download` before
+publishing its final bytes, and an empty download closes before HTTP headers.
+This prevents a sequential request after a completed download from racing the
+previous native transaction and receiving `FILE_BUSY`. Streaming keeps one
+bounded chunk; it does not buffer the whole file. The actual-native HTTP test
+holds the close reply to exercise both empty and nonempty downloads; RDP state
+in that test remains synthetic. This change is not yet published in 0.6.0.
+
 ## Accepted managed-file capabilities
 
 The original individual Stage 7 requirements and SPECIFICATION §2.8 now have

@@ -110,6 +110,11 @@ export function nativeSourcePlan(component, sbom) {
   return { component, ...source, recipes: files };
 }
 
+export function nativeSourceComponents(platform) {
+  if (!['linux', 'win32'].includes(platform)) fail();
+  return platform === 'linux' ? Object.keys(sources) : ['libusb'];
+}
+
 export async function readNativeSourceFile(root, file, maximum) {
   if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 8388608)
     fail();
@@ -146,8 +151,7 @@ export async function copyNativePackageSources({
   destination,
   platform,
 }) {
-  if (!['linux', 'win32'].includes(platform)) fail();
-  const selected = platform === 'linux' ? Object.keys(sources) : ['libusb'];
+  const selected = nativeSourceComponents(platform);
   const output = join(destination, 'corresponding-source');
   await mkdir(output); // A fresh package only: never overwrite previous sources.
   const report = [];

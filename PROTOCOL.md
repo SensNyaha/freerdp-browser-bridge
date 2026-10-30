@@ -739,3 +739,55 @@ adds flags bit 2 (4) for `audioBuffer200`, requiring PCM output capability.
 Absent suffix/bit means unsupported. Old strict decoders can reject this new bit;
 upgrade the private Node/native pair together. RWB1 audio records, browser codec
 negotiation, packet credit/ACK and 20 ms frames do not change.
+
+## Host device inventory grammar in development
+
+Stage 8 / SPECIFICATION 2.9 starts with a bounded binary inventory contract.
+The current branch assigns private IPC kinds 50 (request, exactly eight bytes)
+and 51 (response, 16..65536 bytes), both with nonzero correlated request IDs.
+The schema-1 HELLO extension adds bit 8192, `hostDeviceInventory`, only for
+Windows/Linux; omission means unsupported. Upgrade the private Node/native pair
+together: older strict decoders refuse this bit. It reports inventory RPC support,
+never accepted physical-device redirection. Production RDP device capabilities
+and their policy/acceptance gates are unchanged.
+
+One fresh worker handles one inventory request before any ordinary command.
+Thereafter native and Node both permit only heartbeat and shutdown. A worker
+that has received settings, credentials or file IO cannot enumerate devices.
+The trusted-host `discoverHostDevices` SDK function creates that worker and joins
+its PID/runtime on success, refusal or timeout; no HTTP discovery route is added.
+The RPC deadline is at most eight seconds. Scheduled heartbeats are suspended
+for this inventory-only process while an OS call is synchronous; timeout uses
+the ordinary worker failure/retirement path. The existing private result slot
+holds at most one report, validates it before copying and wipes it on dispatch /
+discard. Device classes and the maximum are explicit per-call selectors.
+All devices have the fixed origin `bridge-host` under ADR-006; the TypeScript
+decoder supplies that literal and its encoder refuses other origins. Browser or
+companion discovery requires a separate implementation and authority boundary.
+
+All integers are unsigned big-endian. The eight-byte request contains schema
+`u16=1`, a nonzero `u16` class mask (bits 0..4: printers, smartcards, serial,
+parallel, USB), `u16` maximum devices (1..128 globally), and reserved `u16=0`.
+Only requested classes may appear in the response; they must all appear once.
+
+The response is at most 65536 bytes. Its eight-byte header contains schema
+`u16=1`, class count `u16=1..5`, total device count `u16=0..128`, and reserved
+`u16=0`. Class headers are eight bytes: kind `u16=1..5` in strictly increasing
+order, status `u16`, device count `u16`, reserved `u16=0`. Status values are
+available=0, unavailable=1, denied=2, unsupported=3, limit=4, failure=5. Only
+available/limit may carry entries; limit explicitly marks an incomplete snapshot.
+Backend availability is distinct from accepted RDP redirection support.
+
+Each device has a 16-byte header: ID byte length `u16`, display-name byte length
+`u16`, USB vendor `u16`, product `u16`, bus `u8`, address `u8`, and six reserved
+zero bytes. The ID then name follow as strict UTF-8, each 1..255 bytes with no
+C0/C1 controls, NUL or unpaired surrogates. IDs must be unique within their class.
+USB numbers must be zero for other classes. Counts, truncation, total byte size,
+trailing bytes and request selection are checked independently. Native decoding
+uses fixed arrays and borrowed views into the admitted packet; those views must
+not outlive it. Encoding admits all aggregate bounds before reserving output.
+
+The grammar has no fields for card contents, PINs, ATRs, private keys, device
+serial numbers or printer credentials/URIs. Actual backends must request only
+the permitted metadata. Trusted-host discovery is not authorization to expose
+devices to an API caller or to redirect them.

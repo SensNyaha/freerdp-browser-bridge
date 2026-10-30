@@ -48,6 +48,13 @@ if (!stage.startsWith(resolve('build') + (windows ? '\\' : '/')))
   throw new Error('Invalid native staging directory');
 rmSync(stage, { recursive: true, force: true });
 run('cmake', ['--install', 'build/bundled', '--prefix', stage]);
+// A vcpkg binary-cache hit does not download upstream source tarballs.
+// Keep the source companion mandatory and prepare its pinned bytes explicitly.
+run(process.execPath, [
+  '--use-system-ca',
+  'scripts/fetch-native-package-sources.mjs',
+  stage,
+]);
 if (process.platform === 'linux')
   run(process.execPath, ['scripts/verify-linux-runtime.mjs', stage]);
 run('cpack', [

@@ -58,7 +58,9 @@ enum class Kind : std::uint16_t {
   clipboard_command = 46,
   clipboard_result = 47,
   file_command = 48,
-  file_result = 49
+  file_result = 49,
+  host_inventory = 50,
+  host_inventory_result = 51
 };
 constexpr std::size_t max_jpeg_bytes = 8 * 1024 * 1024;
 constexpr std::size_t frame_metadata_bytes = 24;

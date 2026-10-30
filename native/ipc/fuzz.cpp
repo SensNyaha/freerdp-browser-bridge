@@ -4,6 +4,7 @@
 #include "connection_config.hpp"
 #include "display.hpp"
 #include "files.hpp"
+#include "device_inventory.hpp"
 #include "input.hpp"
 #include "microphone.hpp"
 #include "microphone_opus.hpp"
@@ -32,6 +33,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size
           (void)files::decode(payload, false);
         else if (header.kind == Kind::file_result)
           (void)files::decode(payload, true);
+        else if (header.kind == Kind::host_inventory)
+          (void)inventory::decode_request(payload);
+        else if (header.kind == Kind::host_inventory_result)
+          (void)inventory::decode_report(payload);
         // Explicit Opus profile keeps codec-specific records in the matching queue.
         OutputQueue opus_output{OutputAudioCodec::opus};
         if (header.kind == Kind::audio_opus) {
