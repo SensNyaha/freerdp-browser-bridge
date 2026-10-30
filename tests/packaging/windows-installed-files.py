@@ -212,7 +212,7 @@ def main():
                               str(helper), '-Action', action], root)
         try:
             child.send(dict(base, **values), eof=True)
-            result = child.next(timeout=155)
+            result = child.next(timeout=180)
             code = child.finish()
             if not (code == 0 and result.get('ok') is True and result.get('action') == action):
                 host_failures.append({'action': action, 'exitCode': code,

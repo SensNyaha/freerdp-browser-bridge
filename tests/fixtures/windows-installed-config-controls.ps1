@@ -21,6 +21,16 @@ for($index=0;$index -lt $cases.Count;$index++){
         $refused++
     }
 }
+$security=New-OwnedInstalledDataRootSecurity
+if($security.GetOwner([Security.Principal.SecurityIdentifier]).Value -cne 'S-1-5-32-544' -or -not $security.AreAccessRulesProtected){throw 'OWNED_TEST_DATA_ROOT_OWNER_FAILED'}
+$rules=$security.GetAccessRules($true,$false,[Security.Principal.SecurityIdentifier])
+if($rules.Count -ne 3){throw 'OWNED_TEST_DATA_ROOT_ACL_FAILED'}
+foreach($rule in $rules){
+    $expected=if($rule.IdentityReference.Value -ceq 'S-1-5-19'){
+        [Security.AccessControl.FileSystemRights]::ReadAndExecute -bor [Security.AccessControl.FileSystemRights]::Synchronize
+    }else{[Security.AccessControl.FileSystemRights]::FullControl}
+    if($rule.IdentityReference.Value -cnotmatch '^S-1-5-(18|19|32-544)$' -or $rule.FileSystemRights -ne $expected -or $rule.AccessControlType -ne 'Allow' -or $rule.IsInherited -or $rule.InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit'){throw 'OWNED_TEST_DATA_ROOT_ACL_FAILED'}
+}
 $publicPath=Join-Path 'C:\owned-fixture' 'proof.json'
 $marker=@{context=$publicPath;source=$publicPath;signature=[uint32]4294967000}
 $roundtrip=$decoder.DeserializeObject((ConvertTo-OwnedInstalledPublicJson $marker))

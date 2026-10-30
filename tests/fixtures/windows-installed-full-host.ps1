@@ -40,6 +40,11 @@ function Own-PrivateDirectory([string]$Path) {
     }
     [void][IO.Directory]::CreateDirectory($Path,$security)
 }
+function Own-MsiDataDirectory([string]$Path) {
+    Own-Require (-not (Test-Path -LiteralPath $Path))
+    $security = New-OwnedInstalledDataRootSecurity
+    [void][IO.Directory]::CreateDirectory($Path,$security)
+}
 function Own-MountRecord {
     $record = Own-ReadJson (Join-Path $script:context 'mount.json')
     Own-Require ($record.id -ceq $script:data.id -and $record.copy -ceq (Join-Path $script:context 'owned-full.vhd'))
@@ -86,7 +91,28 @@ function Own-RunMsi([string]$Arguments) {
     $null=$installerProcess.Handle
     try {
         if(-not $installerProcess.WaitForExit(120000)) {
-            $installerProcess.Kill();[void]$installerProcess.WaitForExit(10000)
+            try {
+            $installation=Own-InstallRecord
+            $service=Own-Service $false
+            $permissions=@()
+            foreach($path in @($installation.root,(Join-Path $installation.root 'config'),(Join-Path $installation.root 'config\bridge.json'),(Join-Path $installation.root 'runtime'))){
+                if(Test-Path -LiteralPath $path){$acl=Get-Acl -LiteralPath $path;$permissions+=@{path=$path;owner=$acl.Owner;sddl=$acl.Sddl}}
+            }
+            $diagnostic=@{permissions=$permissions;service=$null}
+            if($service){$diagnostic.service=@{state=$service.State;pid=[int]$service.ProcessId;exitCode=[int]$service.ExitCode;serviceExitCode=[int]$service.ServiceSpecificExitCode;checkPoint=[int]$service.CheckPoint;waitHint=[int]$service.WaitHint}}
+            Own-NewJson (Join-Path $script:context ('service-start-deadline-'+$Action+'.json')) $diagnostic
+            # Terminate only this fresh product's verified service process, so
+            # MSI can observe failed startup and complete its own rollback.
+            if($service -and $service.ProcessId -gt 1){
+                $process=Get-CimInstance Win32_Process -Filter ('ProcessId='+$service.ProcessId) -Property ProcessId,ExecutablePath
+                Own-Require ($process.ExecutablePath -ceq (Join-Path $installation.program 'bridge-service.exe'))
+                $sid=Invoke-CimMethod -InputObject $process -MethodName GetOwnerSid
+                Own-Require ($sid.ReturnValue -eq 0 -and $sid.Sid -ceq 'S-1-5-19')
+                Stop-Process -Id $service.ProcessId -Force
+            }
+            } finally {
+                if(-not $installerProcess.WaitForExit(30000)){$installerProcess.Kill();[void]$installerProcess.WaitForExit(10000)}
+            }
             throw 'OWNED_INSTALLED_MSI_DEADLINE'
         }
         Own-Require ($installerProcess.ExitCode -eq 0)
@@ -141,7 +167,9 @@ try {
                 Own-Require ($volume.DriveLetter -and $volume.DriveLetter -notin $beforeLetters -and $volume.FileSystem -ceq 'NTFS')
                 Own-Require ($volume.FileSystemLabel -ceq 'BRIDGEFULL' -and $volume.Size -le 16777216 -and $volume.SizeRemaining -ge 4194304)
                 $root = [string]$volume.DriveLetter+':\bridge-owned-full-'+$script:data.id
-                Own-PrivateDirectory $root
+                # Match the MSI's administrative data-root ownership contract;
+                # the separate control context remains private to its creator.
+                Own-MsiDataDirectory $root
                 $proofPath = Join-Path $script:context 'proof.json'
                 $answer = @{id=$script:data.id;root=$root;proofPath=$proofPath;context=$script:context;copy=$copy;source=$verifiedSource;imageSha256=$verifiedMeta.sha256;signature=$verifiedSignature;volumeGuid=$volume.UniqueId}
                 Own-NewJson (Join-Path $script:context 'mount.json') $answer

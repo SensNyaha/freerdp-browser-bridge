@@ -31,6 +31,18 @@ that fixture. No generated PowerShell source, execution-policy override or
 antivirus exception is used. This change does not claim positive execution of
 the privileged helper; that remains a CI acceptance requirement.
 
+Hosted attempt `41001988763` passes the fixture controls and reaches the actual
+published MSI's `StartServices` action, then fails its 120-second installation
+deadline. This is not installed acceptance: retirement fails and the detached
+test volume retains diagnostic files, although the temporary RDP account and
+RDP settings are restored. The next diagnostic revision records only public
+SCM state and data/config/runtime ACLs on that deadline. It stops only the
+verified, freshly installed LocalService process to let MSI finish rollback
+before terminating its own installer client. The VHD data-root owner/ACL now
+matches the MSI's administrative data-root contract; its separate controller
+context remains private. Pure tests construct and inspect this security
+descriptor without applying permissions or executing the host helper locally.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in
