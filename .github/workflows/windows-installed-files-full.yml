@@ -18,6 +18,13 @@ on:
       - tests/packaging/windows-installed-*
       - tests/packaging/prepare-windows-installed-inputs.mjs
       - tests/unit/windows-installed-full-inputs.test.mjs
+      - tests/unit/windows-managed-files-lab.test.mjs
+      - tests/fixtures/windows-managed-files.ps1
+      - tests/fixtures/windows-full-root.mjs
+      - tests/fixtures/windows-owned-full-volume.ps1
+      - tests/fixtures/create-owned-ntfs-vhd.py
+      - tests/fixtures/standalone-startup-diagnostic.mjs
+      - scripts/windows-managed-files-lab.mjs
       - .github/workflows/windows-installed-files-full.yml
 permissions:
   contents: read

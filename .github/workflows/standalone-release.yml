@@ -17,6 +17,7 @@ on:
       - package.json
       - pnpm-lock.yaml
       - .github/workflows/standalone-release.yml
+      - .github/workflows/windows-installed-files-full.yml
   workflow_dispatch:
     inputs:
       publish:
@@ -229,3 +230,12 @@ jobs:
       - run: node scripts/standalone/release-publish.mjs build/standalone-resume
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  windows-published-resource-check:
+    name: Published Windows MSI resource qualification
+    needs: [plan, publish, resume]
+    if: always() && needs.plan.outputs.skip != 'true' && (needs.publish.result == 'success' || needs.resume.result == 'success')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/windows-installed-files-full.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}

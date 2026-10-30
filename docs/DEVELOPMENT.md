@@ -11,10 +11,11 @@ worker executable available again.
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
-## Windows MSI physical-full CI preparation
+## Windows MSI physical-full CI
 
-The installed MSI / real RDP / bounded NTFS resource scenario is being prepared
-on `feature/windows-msi-disk-full`; it has not passed actual installed acceptance.
+The installed MSI / real RDP / bounded NTFS resource scenario first passes in
+run `41027120795` on `feature/windows-msi-disk-full`. An independent repeat and
+final source-wide gates remain required before this branch is merged.
 Its privileged host helper is reserved for an isolated Windows CI runner with
 an admitted private 16 MiB VHD and a verified absent product installation.
 Ordinary unit tests import only the pure configuration validator and exercise
@@ -141,6 +142,20 @@ Its bounded native output is discarded, never uploaded; fixed admission/result
 metadata records executable presence, bitness and byte counts. Final session,
 profile, account and RDP-settings conditions remain unchanged. Overall MSI
 acceptance remains false until that final cleanup passes.
+
+Run `41027120795` passes that final cleanup with native logoff exit zero and
+zero output bytes, owned account/task/settings retirement, empty runtime,
+successful MSI uninstall and empty/detached private VHD. Its exact public MSI
+and native hashes, 13 HTTP 507s, zero physical free bytes, verified 757760-byte
+partial file, 74 native package files, Unicode/chunked/read-only/quota/stale-ID
+and native PID proofs are saved separately from all earlier failed attempts.
+The fixture now also runs automatically after successful installer publication
+or publication resume, using the exact published version; this is qualification
+of public bytes, not a prepublication gate. Existing-source checks and their
+candidate/installer gates remain separate. Already-published plan skips do not
+republish or launch this post-publication job. The helper's dependency paths
+also trigger the isolated development workflow. No new product version or
+archive is produced by these test/documentation changes.
 
 ## Prepared Windows managed-file application check
 
