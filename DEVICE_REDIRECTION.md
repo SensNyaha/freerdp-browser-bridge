@@ -22,6 +22,12 @@ does not enable the capability model or satisfy device integration. Current
 USB/serial/parallel/smartcard and host-printer selections remain refused until
 their implementation and policy gates pass.
 
+The development branch starts the Stage 8 inventory with matching bounded
+TypeScript/C++ [binary codecs](PROTOCOL.md#host-device-inventory-grammar-in-development).
+This is a component contract, not live device enumeration or an enabled worker /
+HTTP capability. CUPS/PCSC/libusb/device-node backends, explicit trusted-host
+selection, lifecycle limits and actual platform acceptance remain required.
+
 ## 2. Drives / `thinclient_drives`
 
 ### Bridge-host/session drive

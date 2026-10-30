@@ -91,3 +91,4 @@ jobs:
       - run: node scripts/seed-clipboard-image-fuzz.mjs && build/fuzz/clipboard-image-fuzz build/fuzz/clipboard-image-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
       - run: node scripts/seed-clipboard-ingress-fuzz.mjs && build/fuzz/clipboard-ingress-fuzz build/fuzz/clipboard-ingress-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
       - run: node scripts/seed-clipboard-wire-fuzz.mjs && build/fuzz/clipboard-wire-fuzz build/fuzz/clipboard-wire-corpus -max_total_time=20 -timeout=5 -max_len=16384 -rss_limit_mb=512
+      - run: node scripts/seed-device-inventory-fuzz.mjs && build/fuzz/device-inventory-fuzz build/fuzz/device-inventory-corpus -max_total_time=20 -timeout=5 -max_len=65536 -rss_limit_mb=512

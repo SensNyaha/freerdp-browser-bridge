@@ -14,6 +14,7 @@ export * from './clipboard-image.js';
 export * from './clipboard-chunk.js';
 export * from './files.js';
 export * from './managed-drives.js';
+export * from './device-inventory.js';
 import {
   MAX_CONFIGURE_BYTES,
   managedDriveDescriptors,

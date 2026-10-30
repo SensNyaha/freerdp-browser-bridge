@@ -2570,6 +2570,14 @@ remain explicit under quota/disk-full and the final V1 qualification.
 ## Stage 8 — printer, smartcard, serial, parallel, USB
 
 - [ ] Capability inventory for CUPS/PCSC/libusb/device nodes.
+  Development branch `feature/host-device-inventory` starts with matching
+  TypeScript/native binary codecs: explicit bridge-host origin, five classes,
+  separate availability/refusal states, 128-device / 64-KiB response bounds,
+  strict UTF-8 metadata and request-selection validation. Native decoding uses
+  fixed storage and borrowed views. This does not enumerate actual devices or
+  enable redirection; OS backends, policy, lifecycle and platform acceptance
+  remain required before this checkbox can be checked.
+  [Development contract](PROTOCOL.md#host-device-inventory-grammar-in-development).
 - [ ] Host printer allowlist and RDPDR printer mapping.
 - [ ] Virtual spool printer backend and download event/API.
 - [ ] Smartcard reader enumeration and redirection.
