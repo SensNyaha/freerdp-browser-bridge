@@ -65,7 +65,7 @@ DispatchResult OutputDispatcher::write_next(const Write &write) noexcept {
     struct FileWiper {
       Packet &packet;
       ~FileWiper() {
-        if (packet.kind != Kind::file_result) return;
+        if (packet.kind != Kind::file_result && packet.kind != Kind::host_inventory_result) return;
         volatile std::uint8_t *data = packet.payload.data();
         for (std::size_t i = 0; i < packet.payload.size(); ++i) data[i] = 0;
       }

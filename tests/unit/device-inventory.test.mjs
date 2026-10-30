@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { test, mock } from 'node:test';
 import {
   ProtocolError,
+  Kind,
+  encodePacket,
+  decodeHeader,
   HOST_INVENTORY_MAX_BYTES,
   encodeHostInventoryRequest,
   decodeHostInventoryRequest,
@@ -32,6 +35,21 @@ const report = {
   ],
 };
 test('host inventory agrees with independent fixed request/report vectors', () => {
+  for (const [kind, payload] of [
+    [Kind.HostInventory, Buffer.from('0001001000010000', 'hex')],
+    [Kind.HostInventoryResult, golden],
+  ]) {
+    const packet = encodePacket({ kind, requestId: 7n, payload });
+    assert.deepEqual(decodeHeader(packet.subarray(0, 24)), {
+      kind,
+      requestId: 7n,
+      length: payload.length,
+    });
+    assert.throws(
+      () => encodePacket({ kind, requestId: 0n, payload }),
+      ProtocolError,
+    );
+  }
   const request = { classes: ['usb', 'printers'], maxDevices: 128 };
   const vector = Buffer.from('0001001100800000', 'hex');
   assert.deepEqual(encodeHostInventoryRequest(request), vector);

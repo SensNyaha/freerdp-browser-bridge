@@ -24,9 +24,75 @@ their implementation and policy gates pass.
 
 The development branch starts the Stage 8 inventory with matching bounded
 TypeScript/C++ [binary codecs](PROTOCOL.md#host-device-inventory-grammar-in-development).
-This is a component contract, not live device enumeration or an enabled worker /
-HTTP capability. CUPS/PCSC/libusb/device-node backends, explicit trusted-host
-selection, lifecycle limits and actual platform acceptance remain required.
+The private worker/SDK inventory path is implemented in that branch; it has no
+HTTP route and is not yet a released or fully platform-accepted capability.
+The original inventory checkbox stays open until the actual backend and platform
+matrix passes. Physical redirection remains disabled by its existing gates.
+
+### Host inventory in the development branch
+
+`discoverHostDevices(workerOptions, { classes, maxDevices })` is an opt-in
+trusted-host SDK operation. Classes are `printers`, `smartcards`, `serial`,
+`parallel` and `usb`; the global count is 1..128. Use a dedicated private runtime
+root under the service account and the matching native source build. Published
+0.6.0 lacks this RPC; the development SDK refuses a 0.6.0 worker with
+`DEVICE_INVENTORY_NOT_IMPLEMENTED`. Do not expose
+the function as an unrestricted browser/API endpoint or log its device names.
+Every returned device has `origin: 'bridge-host'`; inventory IDs are metadata,
+not authorizations and not stable across reconnect/reboot.
+
+| Source | Implemented discovery | Limits and exclusions |
+| --- | --- | --- |
+| Windows printers | `EnumPrintersW`, level 4, local/connected queue names | 2 MiB API buffer ceiling; no print job, driver loading or printer properties/credentials. |
+| Windows smart cards | System PC/SC context and `SCardListReadersW` | 16384 UTF-16 units; no card open, ATR, PIN or transaction. |
+| Windows ports | `QueryDosDeviceW`, numeric COM/LPT names | 32768 UTF-16 units; names only, no port open or reconfiguration. |
+| Linux serial/parallel | Numeric ttyS/ttyUSB/ttyACM/ttyAMA or ppdev entries and existing `/dev` character nodes | At most 4096 directory entries, no device open, permissions change or symlink/device probing. |
+| Linux PC/SC | Pinned WinPR public `SCardListReadersA` wrapper | 16384 bytes; absent daemon/library is a reported non-ready state, no card access. |
+| Linux CUPS | Pinned CUPS `cupsEnumDests`, one-second enumeration of local configured queues | Fixed `/run/cups/cups.sock`, no caller-supplied server or network discovery, no password prompt, no job submission or option/URI export. |
+| Windows/Linux USB | Pinned libusb list and cached descriptors | At most 4096 library entries scanned; VID/PID/bus/address only, no device open, string/serial queries, interface claim, detach or transfer. |
+
+Library providers are linked only in private SDK builds. Foundation builds
+truthfully return `unsupported` for absent CUPS/WinPR-PCSC/libusb providers;
+Windows native printer/PCSC/port queries and Linux device-node discovery remain
+independent. Returned status is `available`, `unavailable`, `denied`,
+`unsupported`, `limit` or `failure`; `available` may have zero devices and
+`limit` explicitly marks a partial snapshot. A failed class discards its own
+entries while preserving earlier class results. Invalid backend metadata fails
+the class rather than becoming a truncated or replacement-character name.
+
+The bridge owns fixed 128-device metadata storage and a response of at most
+64 KiB. Library enumeration can allocate its own internal lists/caches before
+the bridge sees their counts; the bridge's limits do not constitute a hard
+allocator limit inside CUPS/PCSC/libusb. Discovery runs in the disposable native
+process with the supervisor deadline; existing sampled CPU/RSS policies can
+also be supplied in `workerOptions`. No FreeRDP/device library runs in Node.
+The account/container still needs explicit device/socket permissions; discovering
+a node does not prove that opening or redirecting it is allowed.
+
+The CUPS callback and timeout/filter semantics follow the pinned public
+[2.4.20 header](https://github.com/OpenPrinting/cups/blob/ef80eeaea51430a055948240eea3f28ef5354edf/cups/cups.h)
+and [OpenPrinting programming manual](https://openprinting.github.io/cups/doc/cupspm.html).
+
+The initial development checks pass actual Windows foundation and linked
+worker calls with joined cleanup, native rejection of duplicate/ordinary IO
+outside Node's guards, and a separate selected USB call. The linked host
+snapshot admits four printer queues and four readers under a global limit of
+eight; the selected USB call admits eight metadata records with explicit
+`limit`. Names are not logged. This is inventory, not accepted printer/card/USB
+redirection or a claim that any device can be opened.
+
+MSVC foundation CTest passes 25/25 and linked CTest 42/42. A restricted offline
+GCC 8.3 container passes foundation CTest 25/25 and compiles all library-provider
+branches against the pinned CUPS/WinPR/libusb headers. A separate invocation
+links the exact public 0.6.0 Linux runtime libraries: CUPS/PCSC/parallel report
+unavailable and serial/USB return available-empty with no mapped host devices
+or daemons. This is compiler/library invocation evidence, not Astra/RED OS or
+populated CUPS/PCSC/device acceptance. The source audit is
+`build/current-validation/device-inventory-platform-checkpoint.json`.
+The initial GCC 12 source CI refuses a test's copied structured binding under
+`-Werror=range-loop-construct`; the loop now borrows the pair. Its failure log
+is retained. Corrected hosted gates, populated/emulated Linux backend tests,
+standalone entry point and exact installed-consumer acceptance remain open.
 
 ## 2. Drives / `thinclient_drives`
 

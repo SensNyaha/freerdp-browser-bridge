@@ -743,9 +743,24 @@ negotiation, packet credit/ACK and 20 ms frames do not change.
 ## Host device inventory grammar in development
 
 Stage 8 / SPECIFICATION 2.9 starts with a bounded binary inventory contract.
-This component does not yet assign outer IPC kinds, advertise a worker capability,
-enumerate actual hardware or enable any redirection. Backend binding, trusted-host
-policy, cancellation/deadline integration and platform acceptance remain required.
+The current branch assigns private IPC kinds 50 (request, exactly eight bytes)
+and 51 (response, 16..65536 bytes), both with nonzero correlated request IDs.
+The schema-1 HELLO extension adds bit 8192, `hostDeviceInventory`, only for
+Windows/Linux; omission means unsupported. Upgrade the private Node/native pair
+together: older strict decoders refuse this bit. It reports inventory RPC support,
+never accepted physical-device redirection. Production RDP device capabilities
+and their policy/acceptance gates are unchanged.
+
+One fresh worker handles one inventory request before any ordinary command.
+Thereafter native and Node both permit only heartbeat and shutdown. A worker
+that has received settings, credentials or file IO cannot enumerate devices.
+The trusted-host `discoverHostDevices` SDK function creates that worker and joins
+its PID/runtime on success, refusal or timeout; no HTTP discovery route is added.
+The RPC deadline is at most eight seconds. Scheduled heartbeats are suspended
+for this inventory-only process while an OS call is synchronous; timeout uses
+the ordinary worker failure/retirement path. The existing private result slot
+holds at most one report, validates it before copying and wipes it on dispatch /
+discard. Device classes and the maximum are explicit per-call selectors.
 All devices have the fixed origin `bridge-host` under ADR-006; the TypeScript
 decoder supplies that literal and its encoder refuses other origins. Browser or
 companion discovery requires a separate implementation and authority boundary.

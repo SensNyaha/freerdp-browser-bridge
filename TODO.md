@@ -2574,9 +2574,13 @@ remain explicit under quota/disk-full and the final V1 qualification.
   TypeScript/native binary codecs: explicit bridge-host origin, five classes,
   separate availability/refusal states, 128-device / 64-KiB response bounds,
   strict UTF-8 metadata and request-selection validation. Native decoding uses
-  fixed storage and borrowed views. This does not enumerate actual devices or
-  enable redirection; OS backends, policy, lifecycle and platform acceptance
-  remain required before this checkbox can be checked.
+  fixed storage and borrowed views. The private worker/SDK implements single-use
+  inventory before any session settings/credentials/IO, with an eight-second
+  maximum RPC deadline and joined cleanup. Windows printer/PCSC/COM/LPT and
+  Linux device-node providers are implemented, with pinned CUPS/WinPR-PCSC/
+  libusb bindings for linked builds. Actual backend/platform and installed-
+  consumer acceptance remain required before this checkbox can be checked;
+  physical redirection stays disabled by its existing gates.
   [Development contract](PROTOCOL.md#host-device-inventory-grammar-in-development).
 - [ ] Host printer allowlist and RDPDR printer mapping.
 - [ ] Virtual spool printer backend and download event/API.

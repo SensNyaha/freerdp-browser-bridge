@@ -21,6 +21,7 @@ import {
   type ManagedDriveDescriptor,
 } from './managed-drives.js';
 import { FILE_METADATA_BYTES, FILE_MAX_RECORD_BYTES } from './files.js';
+import { HOST_INVENTORY_MAX_BYTES } from './device-inventory.js';
 import {
   MICROPHONE_OPUS_MIN_BYTES,
   MICROPHONE_OPUS_MAX_BYTES,
@@ -105,6 +106,8 @@ export enum Kind {
   ClipboardResult = 47,
   FileCommand = 48,
   FileResult = 49,
+  HostInventory = 50,
+  HostInventoryResult = 51,
 }
 
 export interface Packet {
@@ -201,6 +204,10 @@ function payloadLimit(kind: number): number {
     case Kind.FileCommand:
     case Kind.FileResult:
       return FILE_MAX_RECORD_BYTES;
+    case Kind.HostInventory:
+      return 8;
+    case Kind.HostInventoryResult:
+      return HOST_INVENTORY_MAX_BYTES;
     case Kind.FrameAvc:
       return MAX_JPEG_BYTES + 2059 + 28;
     default:
@@ -225,6 +232,9 @@ export function decodeHeader(header: Buffer): {
   const length = header.readUInt32BE(20);
   if (
     length > payloadLimit(kind) ||
+    ((kind === Kind.HostInventory || kind === Kind.HostInventoryResult) &&
+      header.readBigUInt64BE(12) === 0n) ||
+    (kind === Kind.HostInventoryResult && length < 16) ||
     ((kind === Kind.FileCommand || kind === Kind.FileResult) &&
       (length < FILE_METADATA_BYTES || header.readBigUInt64BE(12) === 0n)) ||
     (kind === Kind.MicrophoneState && header.readBigUInt64BE(12) !== 0n) ||
@@ -247,6 +257,7 @@ export function decodeHeader(header: Buffer): {
       Kind.ClipboardResult,
       Kind.FileCommand,
       Kind.FileResult,
+      Kind.HostInventoryResult,
     ].includes(kind) &&
       length !== payloadLimit(kind)) ||
     (kind === Kind.Frame && length < 24) ||
@@ -382,6 +393,7 @@ export interface WorkerBuild {
     fileService?: true;
     managedDrives?: true;
     xrdpLegacyDelete?: true;
+    hostDeviceInventory?: true;
     performanceSettings: boolean;
     ipSettings: boolean;
     processResourceBatch?: true;
@@ -439,7 +451,8 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       throw new ProtocolError();
     extensions = payload.readUInt32BE(offset + 4);
     if (
-      (extensions & ~8191) !== 0 ||
+      (extensions & ~16383) !== 0 ||
+      ((extensions & 8192) !== 0 && !['windows', 'linux'].includes(os)) ||
       ((extensions & 4096) !== 0 && !(extensions & 2048)) ||
       ((extensions & 2048) !== 0 &&
         (!(extensions & 1024) ||
@@ -497,6 +510,9 @@ export function decodeBuild(payload: Buffer): WorkerBuild {
       ...((extensions & 1024) !== 0 ? { fileService: true as const } : {}),
       ...((extensions & 2048) !== 0 ? { managedDrives: true as const } : {}),
       ...((extensions & 4096) !== 0 ? { xrdpLegacyDelete: true as const } : {}),
+      ...((extensions & 8192) !== 0
+        ? { hostDeviceInventory: true as const }
+        : {}),
       performanceSettings: Boolean(extensions & 32),
       ipSettings: Boolean(extensions & 64),
       ...((extensions & 128) !== 0

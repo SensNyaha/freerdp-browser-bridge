@@ -10,6 +10,12 @@ const std::vector<std::uint8_t> golden{
     0,1,0,2,0x12,0x34,0xab,0xcd,2,3,0,0,0,0,0,0, 0x75,0xd0,0x96};
 }
 TEST_CASE("Host inventory agrees with independent request and Unicode USB report vectors") {
+  REQUIRE_NOTHROW(bridge::ipc::validate_header({bridge::ipc::Kind::host_inventory,1,8}));
+  REQUIRE_NOTHROW(bridge::ipc::validate_header({bridge::ipc::Kind::host_inventory_result,1,65536}));
+  REQUIRE_THROWS_AS(bridge::ipc::validate_header({bridge::ipc::Kind::host_inventory,0,8}), ProtocolError);
+  REQUIRE_THROWS_AS(bridge::ipc::validate_header({bridge::ipc::Kind::host_inventory,1,9}), ProtocolError);
+  REQUIRE_THROWS_AS(bridge::ipc::validate_header({bridge::ipc::Kind::host_inventory_result,1,15}), ProtocolError);
+  REQUIRE_THROWS_AS(bridge::ipc::validate_header({bridge::ipc::Kind::host_inventory_result,1,65537}), ProtocolError);
   const std::array<std::uint8_t, 8> request{0,1,0,17,0,128,0,0};
   REQUIRE(wire::encode_request({17,128}) == request);
   REQUIRE(wire::decode_request(request).classes == 17);
@@ -35,7 +41,7 @@ TEST_CASE("Host inventory refuses all truncations and reserved/count/text/metada
     {1,2},{3,0},{3,6},{5,0},{5,129},{7,1},{9,0},{9,6},{11,6},{13,2},
     {15,1},{17,0},{16,1},{19,0},{18,1},{26,1},{31,1},{32,0},{33,0xc0},{34,0xff},
     {21,255},{23,255},{24,255},{25,255},{11,3}}};
-  for (const auto [offset, value] : changes) {
+  for (const auto &[offset, value] : changes) {
     auto bytes = golden;
     bytes[offset] = value;
     if (offset >= 20 && offset <= 25) {

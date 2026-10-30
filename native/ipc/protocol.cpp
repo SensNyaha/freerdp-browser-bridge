@@ -31,6 +31,7 @@ void append_be(std::vector<std::uint8_t> &bytes, std::uint64_t value, std::size_
 static std::uint32_t limit(Kind kind) {
   switch (kind) {
   case Kind::hello:
+  case Kind::host_inventory:
     return 8;
   case Kind::hello_ack:
     return 4096;
@@ -104,6 +105,8 @@ static std::uint32_t limit(Kind kind) {
   case Kind::file_command:
   case Kind::file_result:
     return static_cast<std::uint32_t>(files::max_record_bytes);
+  case Kind::host_inventory_result:
+    return 65536;
   case Kind::frame_avc:
     return static_cast<std::uint32_t>(max_jpeg_bytes + avc_metadata_bytes + max_avc_config_bytes);
   }
@@ -128,8 +131,11 @@ void validate_header(const Header &header) {
                         kind == Kind::cursor_update || kind == Kind::input_text ||
                         kind == Kind::input_touch || kind == Kind::audio_opus ||
                         kind == Kind::microphone_opus || kind == Kind::clipboard_command ||
-                        kind == Kind::clipboard_result || kind == Kind::file_command || kind == Kind::file_result;
+                        kind == Kind::clipboard_result || kind == Kind::file_command || kind == Kind::file_result ||
+                        kind == Kind::host_inventory_result;
   if (length > maximum || (!variable && length != maximum) ||
+      ((kind == Kind::host_inventory || kind == Kind::host_inventory_result) && !header.request_id) ||
+      (kind == Kind::host_inventory_result && length < 16) ||
       ((kind == Kind::file_command || kind == Kind::file_result) &&
        (length < files::metadata_bytes || !header.request_id)) ||
       (kind == Kind::microphone_state && header.request_id) ||

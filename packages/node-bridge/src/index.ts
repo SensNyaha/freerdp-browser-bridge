@@ -12,6 +12,12 @@ export * from './microphone-ownership.js';
 export * from './clipboard-ownership.js';
 export * from './clipboard-transfer.js';
 export * from './managed-files.js';
+export type {
+  HostInventoryRequest,
+  HostInventoryReport,
+  HostInventoryClass,
+  HostInventoryDevice,
+} from '@freerdp-bridge/protocol';
 export * from './process-resident.js';
 export * from './process-cpu.js';
 export { resolveNativeRuntime, NativeRuntimeError } from './native-runtime.js';
@@ -58,6 +64,12 @@ import {
 import { basename, dirname, join, resolve } from 'node:path';
 import {
   Kind,
+  encodeHostInventoryRequest,
+  decodeHostInventoryRequest,
+  decodeHostInventoryReport,
+  validateHostInventorySelection,
+  type HostInventoryRequest,
+  type HostInventoryReport,
   PacketDecoder,
   decodeBuild,
   encodePacket,
@@ -421,16 +433,53 @@ export class WorkerProcess extends EventEmitter {
     return this.report ? structuredClone(this.report) : undefined;
   }
   private fileRequest = false;
+  private inventoryAttempted = false;
   private managedFilesAttempted = false;
   private managedFilesInitialized = false;
   private fileContentsRetained = false;
+
+  /** Trusted-host discovery only. Permanently dedicates this fresh worker to
+   * one inventory request, then heartbeat/shutdown; no session credentials or IO.
+   */
+  async nativeHostInventory(
+    request: HostInventoryRequest,
+  ): Promise<HostInventoryReport> {
+    if (
+      this.status !== 'ready' ||
+      this.connectionRequested ||
+      this.managedFilesAttempted ||
+      this.inventoryAttempted
+    )
+      throw new WorkerError('INVALID_STATE');
+    const payload = encodeHostInventoryRequest(request);
+    if (!this.report?.capabilities.hostDeviceInventory)
+      throw new WorkerError('DEVICE_INVENTORY_NOT_IMPLEMENTED');
+    this.inventoryAttempted = true;
+    // This worker is permanently inventory-only. A synchronous OS provider may
+    // wait; one finite RPC deadline replaces scheduled heartbeat competition.
+    if (this.heartbeat) clearInterval(this.heartbeat);
+    const reply = await this.request(
+      Kind.HostInventory,
+      Kind.HostInventoryResult,
+      payload,
+      Math.min(8000, this.options.requestTimeoutMs),
+    );
+    try {
+      const report = decodeHostInventoryReport(reply.payload);
+      validateHostInventorySelection(report, request);
+      return report;
+    } finally {
+      reply.payload.fill(0);
+    }
+  }
 
   /** Private native service, not a public session/drive authorization API.
    * Exactly one file RPC may be pending. Read/list data is caller-owned.
    * Unknown completion fails the worker through the ordinary IPC deadline.
    */
   async nativeFileCommand(command: NativeFileCommand): Promise<FileRecord> {
-    if (this.status !== 'ready') throw new WorkerError('INVALID_STATE');
+    if (this.status !== 'ready' || this.inventoryAttempted)
+      throw new WorkerError('INVALID_STATE');
     if (!this.report?.capabilities.fileService)
       throw new WorkerError('FILES_NOT_IMPLEMENTED');
     if (this.fileRequest) throw new WorkerError('FILES_BUSY');
@@ -1967,7 +2016,11 @@ export class WorkerProcess extends EventEmitter {
 
   /** Experimental RDP core. Media/input support is gated separately. */
   async connect(value: unknown): Promise<void> {
-    if (this.status !== 'ready' || this.connectionRequested)
+    if (
+      this.status !== 'ready' ||
+      this.connectionRequested ||
+      this.inventoryAttempted
+    )
       throw new WorkerError('INVALID_STATE');
     if (!this.report?.capabilities.connectCore)
       throw new WorkerError('RDP_NOT_IMPLEMENTED');
@@ -2401,6 +2454,27 @@ export async function probeWorkerBuild(
   const worker = new WorkerProcess(options);
   try {
     return await worker.start();
+  } finally {
+    await worker.close();
+  }
+}
+
+/** Opt-in bridge-host metadata discovery. Never expose this function directly
+ * as an untrusted HTTP route. Presence/availability is not redirection support.
+ * A fresh worker and its runtime are joined on success, failure or deadline.
+ */
+export async function discoverHostDevices(
+  options: WorkerOptions,
+  request: HostInventoryRequest,
+): Promise<HostInventoryReport> {
+  // Refuse invalid selectors before allocating a runtime or spawning a process.
+  const selected = decodeHostInventoryRequest(
+    encodeHostInventoryRequest(request),
+  );
+  const worker = new WorkerProcess(options);
+  try {
+    await worker.start();
+    return await worker.nativeHostInventory(selected);
   } finally {
     await worker.close();
   }
