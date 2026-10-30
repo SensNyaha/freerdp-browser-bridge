@@ -37,9 +37,7 @@ if($imageSecurity.GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $
 $imageRules=$imageSecurity.GetAccessRules($true,$false,[Security.Principal.SecurityIdentifier])
 if($imageRules.Count -ne 3){throw 'OWNED_TEST_IMAGE_ACL_FAILED'}
 foreach($rule in $imageRules){
-    $expected=if($rule.IdentityReference.Value -ceq 'S-1-5-19'){
-        [Security.AccessControl.FileSystemRights]::ReadAndExecute -bor [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Synchronize
-    }else{[Security.AccessControl.FileSystemRights]::FullControl}
+    $expected=[Security.AccessControl.FileSystemRights]::FullControl
     if($rule.IdentityReference.Value -cnotin @($imageOwner.Value,'S-1-5-18','S-1-5-19') -or $rule.FileSystemRights -ne $expected -or $rule.AccessControlType -ne 'Allow' -or $rule.IsInherited -or $rule.InheritanceFlags -ne 'None'){throw 'OWNED_TEST_IMAGE_ACL_FAILED'}
 }
 $publicPath=Join-Path 'C:\owned-fixture' 'proof.json'

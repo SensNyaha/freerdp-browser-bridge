@@ -13,7 +13,9 @@ function New-OwnedInstalledImageSecurity([Security.Principal.SecurityIdentifier]
         $security.AddAccessRule($rule)
     }
     $localService = New-Object Security.Principal.SecurityIdentifier('S-1-5-19')
-    $rights = [Security.AccessControl.FileSystemRights]::ReadAndExecute -bor [Security.AccessControl.FileSystemRights]::Write
+    # This is the private test device filter, not a session filesystem DACL.
+    # Match the controller's device access for lock deletion and native ACL IO.
+    $rights = [Security.AccessControl.FileSystemRights]::FullControl
     $serviceRule = New-Object Security.AccessControl.FileSystemAccessRule($localService,$rights,'Allow')
     $security.AddAccessRule($serviceRule)
     return $security

@@ -26,6 +26,9 @@ class Controls(unittest.TestCase):
                 owned.validate_startup_probe(dict(value, **change))
         complete = dict(value, phase='complete', failed=False, taskResult=0)
         self.assertEqual(owned.validate_startup_probe(complete), complete)
+        for phase in ['runtime-write', 'runtime-delete']:
+            changed = dict(value, phase=phase)
+            self.assertEqual(owned.validate_startup_probe(changed), changed)
 
     def test_context(self):
         env = {'GITHUB_ACTIONS': 'true', 'RUNNER_OS': 'Windows'}

@@ -340,7 +340,7 @@ try {
                 if(Test-Path -LiteralPath $resultPath){
                     $result=Own-ReadJson $resultPath
                     Own-Require ($result.v -eq 1 -and $result.failed -is [bool])
-                    Own-Require ($result.phase -cin @('import','config','resolve','recovery','create','listen','close','complete'))
+                    Own-Require ($result.phase -cin @('import','config','runtime-write','runtime-delete','resolve','recovery','create','listen','close','complete'))
                     $answer.available=$true;$answer.phase=$result.phase;$answer.failed=$result.failed
                 }
             } finally {

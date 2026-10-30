@@ -172,7 +172,7 @@ def validate_startup_probe(value):
     require(type(value['available']) is bool and type(value['failed']) is bool)
     require(value['principalSid'] == 'S-1-5-19')
     require(type(value['taskResult']) is int and 0 <= value['taskResult'] <= 4294967295)
-    require(value['phase'] in ['unavailable', 'import', 'config', 'resolve',
+    require(value['phase'] in ['unavailable', 'import', 'config', 'runtime-write', 'runtime-delete', 'resolve',
                               'recovery', 'create', 'listen', 'close', 'complete'])
     require((value['available'] and value['phase'] != 'unavailable')
             or (not value['available'] and value['phase'] == 'unavailable' and value['failed']))

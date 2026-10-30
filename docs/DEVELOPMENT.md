@@ -66,6 +66,18 @@ production/session ACLs are unchanged. Pure tests verify owner, protection,
 exact principals and bounded rights, without mounting anything locally.
 This is a test-device admission correction; its actual MSI result remains open.
 
+Attempt `41006724177` confirms the read-access correction: the unchanged
+installed Node bootstrap now completes under LocalService (task result 0).
+SCM still exits with 1067. Its C++ supervisor additionally creates a private
+runtime lock with `FILE_FLAG_DELETE_ON_CLOSE`; the test image filter's initial
+read/write grant did not include delete or native security operations. The
+private 16 MiB copy now admits full device access for its controller, SYSTEM
+and LocalService only, leaving every production/session NTFS ACL unchanged.
+The failure-only Node diagnostic additionally checks an exclusively created,
+tiny owned runtime file and deletion, with fixed write/delete failure phases.
+Full source foundation and GCC 8.3 checks pass for `373ebb4`; installed SCM and
+the connected resource scenario still require their own positive result.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

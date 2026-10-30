@@ -1,7 +1,7 @@
 // Failure-only probe of the installed payload. Never emit paths, config or errors.
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { writeFile } from 'node:fs/promises';
+import { open, unlink, writeFile } from 'node:fs/promises';
 const localServiceReport = process.argv[5] === '--owned-localservice-result';
 let reportPath;
 let timer;
@@ -36,6 +36,7 @@ async function report(value) {
 }
 let phase = 'import';
 let server;
+let ownedWritePath;
 try {
   const [payload, configuration, runtimeRoot] = process.argv
     .slice(2, 5)
@@ -53,6 +54,21 @@ try {
   );
   phase = 'config';
   const config = await readStandaloneConfig(configuration);
+  if (localServiceReport) {
+    phase = 'runtime-write';
+    const path = join(runtimeRoot, '.owned-msi-startup-write');
+    const file = await open(path, 'wx');
+    ownedWritePath = path;
+    try {
+      await file.writeFile('owned-runtime-write');
+      await file.sync();
+    } finally {
+      await file.close();
+    }
+    phase = 'runtime-delete';
+    await unlink(path);
+    ownedWritePath = undefined;
+  }
   phase = 'resolve';
   const worker = await resolveNativeRuntime({ runtimeRoot });
   phase = 'recovery';
@@ -67,6 +83,7 @@ try {
   server = undefined;
   await report({ v: 1, phase: 'complete', failed: false });
 } catch {
+  if (ownedWritePath) await unlink(ownedWritePath).catch(() => {});
   await server?.close().catch(() => {});
   await report({ v: 1, phase, failed: true });
   process.exitCode = 1;
