@@ -21,6 +21,12 @@ foreign entries refuse without replacement. The archives are not extracted or
 executed. Native npm packaging retains its independent source/recipe checks and
 remains an offline operation over the prepared inputs.
 
+The foundation CI matrix explicitly retains GCC 11 alongside GCC 12, the
+default Ubuntu compiler and MSVC; exact GCC 8.3 remains a separate workflow.
+The GCC 11 compiler/foundation job runs on Ubuntu, so its success must not be
+reported as actual RED OS 7.3/GCC 11 platform acceptance. Named runtime/lab
+results retain their own target OS, compiler and artifact identities.
+
 ## Windows MSI physical-full CI
 
 The installed MSI / real RDP / bounded NTFS resource scenario passes in
