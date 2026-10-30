@@ -10,8 +10,10 @@ upgrade/recovery/config retention and uninstall also pass.
 For ready-made distributions, start with the concise
 [installation and operations guide](STANDALONE_INSTALL.md).
 
-The development branch `feature/host-device-inventory` adds an operator-only
-inventory command for the planned 0.7.0 capability release. **It is not present
+## Operator-only host inventory
+
+The accepted inventory feature, now in `release/0.7.0`, adds an operator-only
+inventory command for the new capability release. **It is not present
 in public 0.6.0.** Invoke the distribution's private Node directly; the normal
 service/portable launchers retain their server-start contract:
 

@@ -4,6 +4,12 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.7.0 — in preparation
+
+The inventory source feature is accepted and merged; exact npm/standalone
+archives, installed upgrades and public delivery remain pending. Public stable
+remains 0.6.0. See [source acceptance](DEVICE_REDIRECTION.md#inventory-source-feature-acceptance).
+
 - Add bounded bridge-host device inventory to the private worker and Node SDK,
   with CUPS/PCSC/libusb/device-node providers, explicit incomplete/refusal states,
   single-use discovery lifecycle and matching exports in all four adapters.

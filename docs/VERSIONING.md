@@ -15,18 +15,32 @@ Full Stage 7/V1, OS file clipboard and unaccepted resource/device gates remain o
 The accepted 0.6.0 standalone upgrade predecessor is exactly **v0.5.0**.
 Unknown future minor seeds remain refused.
 
-The next development capability, bridge-host device inventory on
-`feature/host-device-inventory`, targets **0.7.0** under the new-capability minor
-rule. This is a release plan, not an accepted or published version. Manifests,
-production locks and immutable public 0.6.0 artifacts remain unchanged while
-exact versioned standalone/npm acceptance is pending. Inventory source,
+The accepted bridge-host device-inventory feature is merged into private
+`master` at `8b2ef15` and public `main` at `188ca5a`. Separate `release/0.7.0`
+aligns the ten workspace manifests and CMake project at **0.7.0** under the
+new-capability minor rule. This version is not yet published. Both production
+locks now bind the ten exact 0.7.0 npm archives with the external dependency
+graph unchanged. Eight independent Windows/Linux adapter consumers pass twelve
+native inventory profiles and fifteen managed-file regression profiles
+(synthetic RDP state). Native CTest passes Windows 25/25 and 42/42, Linux 43/43.
+The first versioned full Node checks exposed the not-yet-advanced production
+locks and a Linux test container without an init/reaper; full checks are being
+repeated with the corrected release metadata and launcher. One Windows MSI
+download cleanup assertion also failed; its unchanged isolated suite passes,
+and the original full failure remains retained pending the full repeat.
+Immutable public 0.6.0 artifacts remain unchanged. Exact versioned standalone
+distribution acceptance is pending. Inventory source,
 backend/emulator, named Astra/RED OS metadata and installed npm-consumer checks
 are accepted for feature merge at private executable-source `613ecfa` / public
 `41cf7a90`, with subsequent documentation-only checkpoints.
 [Source acceptance and limits](../DEVICE_REDIRECTION.md#inventory-source-feature-acceptance).
-Physical printer/card/USB/port redirection remains separately gated. The future
-0.7.0 installer seed and exact 0.6.0 upgrade path must be implemented and tested
-before a release can be published; unknown seeds still refuse today.
+Physical printer/card/USB/port redirection remains separately gated.
+`release/0.7.0` explicitly selects immutable `v0.6.0` as the standalone upgrade
+predecessor. Seed and manifest controls require that exact predecessor on both
+platforms and reject missing, mixed, older or same-version evidence. The new
+controls fail before the implementation and pass after it; unknown 0.8.0 still
+refuses. Actual versioned 0.6.0-to-0.7.0 installer upgrades remain required
+before release publication.
 
 ## Earlier release checkpoints
 
