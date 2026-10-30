@@ -20,6 +20,7 @@ export {
   recoverRuntimeSessions,
   RuntimeRecoveryError,
   resolveManagedFilesPolicy,
+  discoverHostDevices,
 } from '@freerdp-bridge/node';
 export type {
   WorkerOptions,
@@ -30,6 +31,8 @@ export type {
   RuntimeRecoveryReport,
   ManagedFilesOptions,
   ManagedFilesPolicy,
+  HostInventoryRequest,
+  HostInventoryReport,
 } from '@freerdp-bridge/node';
 export { createSecureLogger } from './logging.js';
 export type BridgeHandle = Awaited<ReturnType<typeof registerSessionRoutes>>;

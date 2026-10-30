@@ -17,6 +17,9 @@ import {
 } from '../../packages/node-bridge/dist/index.js';
 
 const binaryDir = process.env.BRIDGE_TEST_BINARY_DIR;
+// Sanitizer CI deliberately does not build a Node addon. Default Linux source /
+// bundled profiles still require both transports; never infer this from a missing file.
+const framedOnly = process.env.BRIDGE_INVENTORY_FRAMED_ONLY === '1';
 const workerPath = join(
   resolve(binaryDir ?? 'build/foundation'),
   'rdp-worker' + (process.platform === 'win32' ? '.exe' : ''),
@@ -26,7 +29,14 @@ for (const ipcTransport of process.platform === 'linux'
   : ['framed-pipes']) {
   test(
     `actual native ${ipcTransport}: host metadata only, single-use inventory, healthy heartbeat and joined cleanup; no RDP`,
-    { skip: !binaryDir, timeout: 25000 },
+    {
+      skip: !binaryDir
+        ? 'explicit native binary profile required'
+        : framedOnly && ipcTransport === 'unix-seqpacket-rws1'
+          ? 'explicit sanitizer profile has no Node IPC addon; actual framed path is tested'
+          : false,
+      timeout: 25000,
+    },
     async (context) => {
       const root = await mkdtemp(join(tmpdir(), 'bridge-owned-inventory-'));
       const worker = new WorkerProcess({

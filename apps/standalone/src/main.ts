@@ -2,19 +2,33 @@ import { isAbsolute } from 'node:path';
 import {
   resolveNativeRuntime,
   recoverRuntimeSessions,
+  discoverHostDevices,
 } from '@freerdp-bridge/api/fastify';
 import { readStandaloneConfig } from './config.js';
 import { createStandaloneServer } from './server.js';
 import { bindStandaloneSupervisor } from './supervisor.js';
+import { parseStandaloneInventoryArgs } from './inventory.js';
 
 async function main() {
   if (
     process.versions.node.split('.')[0] !== '24' ||
+    (process.platform === 'linux' && process.getuid?.() === 0)
+  )
+    throw new Error('STANDALONE_USAGE');
+  if (process.argv[2] === '--inventory') {
+    const selected = parseStandaloneInventoryArgs(process.argv.slice(2));
+    const worker = await resolveNativeRuntime({
+      runtimeRoot: selected.runtimeRoot,
+    });
+    const report = await discoverHostDevices(worker, selected.request);
+    console.log(JSON.stringify(report));
+    return;
+  }
+  if (
     !(
       process.argv.length === 6 ||
       (process.argv.length === 7 && process.argv[6] === '--supervised')
     ) ||
-    (process.platform === 'linux' && process.getuid?.() === 0) ||
     process.argv[2] !== '--config' ||
     process.argv[4] !== '--runtime-root' ||
     !isAbsolute(process.argv[3]!) ||
@@ -58,6 +72,13 @@ async function main() {
   }
 }
 void main().catch(() => {
-  console.error(JSON.stringify({ code: 'STANDALONE_START_FAILED' }));
+  console.error(
+    JSON.stringify({
+      code:
+        process.argv[2] === '--inventory'
+          ? 'STANDALONE_INVENTORY_FAILED'
+          : 'STANDALONE_START_FAILED',
+    }),
+  );
   process.exitCode = 1;
 });

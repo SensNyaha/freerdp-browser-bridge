@@ -2581,6 +2581,11 @@ remain explicit under quota/disk-full and the final V1 qualification.
   libusb bindings for linked builds. Actual backend/platform and installed-
   consumer acceptance remain required before this checkbox can be checked;
   physical redirection stays disabled by its existing gates.
+  Standalone now has an explicit operator-only `--inventory` CLI, without
+  reading server configuration or starting HTTP/RDP. Pure/invalid-CLI controls
+  and source CLI composition with the real SDK/native worker pass; runtime
+  resolution is controlled in that composition, so installed acceptance remains
+  separate. [Usage and limits](docs/STANDALONE.md).
   [Development contract](PROTOCOL.md#host-device-inventory-grammar-in-development).
 - [ ] Host printer allowlist and RDPDR printer mapping.
 - [ ] Virtual spool printer backend and download event/API.

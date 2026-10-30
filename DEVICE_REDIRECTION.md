@@ -91,8 +91,19 @@ populated CUPS/PCSC/device acceptance. The source audit is
 `build/current-validation/device-inventory-platform-checkpoint.json`.
 The initial GCC 12 source CI refuses a test's copied structured binding under
 `-Werror=range-loop-construct`; the loop now borrows the pair. Its failure log
-is retained. Corrected hosted gates, populated/emulated Linux backend tests,
-standalone entry point and exact installed-consumer acceptance remain open.
+is retained. Corrected hosted gates, populated/emulated Linux backend tests and
+exact installed-consumer acceptance remain open. The standalone operator CLI
+is implemented and source-tested with the real SDK/native worker under a
+controlled runtime resolver; it has not yet passed an installed-distribution
+test. [CLI syntax and scope](docs/STANDALONE.md).
+
+The first corrected-source sanitizer job `41042085443` passes native CTest and
+then fails the inventory Node test's unconditional seqpacket start: that profile
+does not build the Node IPC addon. It now explicitly selects framed-only inventory
+integration with `BRIDGE_INVENTORY_FRAMED_ONLY=1`. The skipped seqpacket case
+states this reason; it is not inferred from absent/broken files. Ordinary Linux
+foundation and bundled jobs retain mandatory framed and seqpacket tests. This
+does not establish ASan-instrumented Node-addon or seqpacket composition acceptance.
 
 ## 2. Drives / `thinclient_drives`
 
