@@ -4,6 +4,23 @@ const refuse = () => {
   throw new Error('OWNED_INSTALLED_INPUT_REFUSED');
 };
 
+export function windowsInstalledRuntimeComponent(names) {
+  if (
+    !Array.isArray(names) ||
+    names.length !== 2 ||
+    names.filter((name) => name === '.bridge-service.lock').length !== 1
+  )
+    refuse();
+  const component = names.find((name) => name !== '.bridge-service.lock');
+  // Native RuntimeOwner.id and the HTTP session ID are independent UUIDs.
+  if (
+    typeof component !== 'string' ||
+    !/^worker-[0-9a-f]{32}-1-[0-9a-f]{32}$/.test(component)
+  )
+    refuse();
+  return component;
+}
+
 export function requireWindowsInstalledCi(platform, argv, environment) {
   if (
     platform !== 'win32' ||

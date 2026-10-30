@@ -91,6 +91,15 @@ A bounded PID/parent/fixed-name snapshot records future selection failures,
 without command lines, environment or arbitrary executable paths. This is not
 yet accepted connected disk-full testing.
 
+Attempt `41019037273` passes exact worker PID/image/SID/hash verification and
+complete cleanup, then refuses the fixture's runtime-name assertion. The SDK
+creates `worker-<RuntimeOwner.id>-1-<nonce>`; that private lifetime-owner UUID
+is independent of the HTTP session ID. The corrected fixture still requires
+the service lock and exactly one schema-1 worker directory in its fresh
+exclusive runtime, after verifying the single real native worker. Pure tests
+reject missing/extra entries and malformed/traversing names. A separate fixed
+failure-phase field preserves client failures even after service-stop cleanup.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

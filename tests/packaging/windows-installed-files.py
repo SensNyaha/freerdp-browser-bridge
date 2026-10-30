@@ -251,6 +251,7 @@ def main():
     events = []
     cleanup = {}
     startup_diagnostic = None
+    failure_phase = None
     phase = 'mount'
     try:
         mounted = host('mount', imageDirectory=str(image_directory))
@@ -338,10 +339,11 @@ def main():
                 # Never persist unvalidated child error strings or input objects.
                 client_phase = event.get('phase')
                 if client_phase in ['admission', 'service-configure', 'session-create',
-                    'rdp-connect', 'bounded-pressure', 'connected-http-full', 'owned-ci-task',
+                    'rdp-connect', 'runtime-observation', 'bounded-pressure', 'connected-http-full', 'owned-ci-task',
                     'windows-drive-full', 'remote-created', 'remote-clean', 'max-file-quota',
                     'session-close']:
                     phase = 'client-' + client_phase
+                    failure_phase = phase
                 events.append({'event': 'client-refused', 'sourceLine': event.get('sourceLine')
                                if type(event.get('sourceLine')) is int else 0})
             elif name == 'closed':
@@ -369,7 +371,7 @@ def main():
                   'msiSha256': descriptor['sha256'], 'workerSha256': worker_sha,
                   'runtimeIntegrity': integrity, 'publicSourceCommit': descriptor['sourceCommit'],
                   'events': events, 'cleanup': cleanup, 'hostFailures': host_failures,
-                  'startupDiagnostic': startup_diagnostic}
+                  'startupDiagnostic': startup_diagnostic, 'failurePhase': failure_phase}
         if accepted:
             accepted = (cleanup['installed'].get('uninstalled') is True
                     and cleanup['rdp'].get('accountRemoved') is True

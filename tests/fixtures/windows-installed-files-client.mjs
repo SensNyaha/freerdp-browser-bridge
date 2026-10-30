@@ -20,6 +20,7 @@ import {
   requireWindowsInstalledCi,
   windowsInstalledPrivateRecords,
   windowsInstalledBootstrap,
+  windowsInstalledRuntimeComponent,
 } from './windows-installed-full-inputs.mjs';
 import {
   standalonePayloadInventory,
@@ -324,15 +325,9 @@ try {
   const unauth = await fetch('http://127.0.0.1:8080' + files);
   assert.equal(unauth.status, 401);
   await unauth.arrayBuffer();
-  const names = (await readdir(runtime)).filter(
-    (name) => name !== '.bridge-service.lock',
-  );
-  assert.equal(names.length, 1);
-  assert.match(
-    names[0],
-    new RegExp('^worker-' + session.sessionId + '-1-[0-9a-f]{32}$'),
-  );
-  const staging = join(runtime, names[0], 'managed-files', '.uploads');
+  phase = 'runtime-observation';
+  const component = windowsInstalledRuntimeComponent(await readdir(runtime));
+  const staging = join(runtime, component, 'managed-files', '.uploads');
   phase = 'bounded-pressure';
   const ownedPressurePath = join(input.root, 'owned-pressure.bin');
   pressure = await open(ownedPressurePath, 'wx', 0o600);

@@ -21,10 +21,29 @@ import {
   windowsInstalledPrivateRecords,
   windowsInstalledBootstrap,
   windowsInstalledVersion,
+  windowsInstalledRuntimeComponent,
 } from '../fixtures/windows-installed-full-inputs.mjs';
 
 const refused = { message: 'OWNED_INSTALLED_INPUT_REFUSED' };
 const version = '0.6.0';
+test('installed runtime selection uses the native owner UUID with one exclusive worker directory', () => {
+  const component = 'worker-' + 'b'.repeat(32) + '-1-' + 'c'.repeat(32);
+  assert.equal(
+    windowsInstalledRuntimeComponent(['.bridge-service.lock', component]),
+    component,
+  );
+  for (const names of [
+    [],
+    [component],
+    ['.bridge-service.lock'],
+    ['.bridge-service.lock', component, component],
+    ['.bridge-service.lock', '.bridge-service.lock'],
+    ['.bridge-service.lock', '../' + component],
+    ['.bridge-service.lock', component.replace('-1-', '-2-')],
+    ['.bridge-service.lock', 42],
+  ])
+    assert.throws(() => windowsInstalledRuntimeComponent(names), refused);
+});
 const asset = {
   id: 19,
   name: 'freerdp-bridge-0.6.0-win32-x64.msi',
