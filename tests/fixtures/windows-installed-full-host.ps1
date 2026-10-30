@@ -363,12 +363,25 @@ try {
         }
         'identity' {
             $installation=Own-InstallRecord;$service=Own-Service
-            $rows=@(Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,ExecutablePath,Name)
+            $rows=@(Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,Name)
             $ids=New-Object 'Collections.Generic.HashSet[uint32]';[void]$ids.Add([uint32]$service.ProcessId)
             for($i=0;$i -lt $rows.Count;$i++){foreach($row in $rows){if($ids.Contains([uint32]$row.ParentProcessId)){[void]$ids.Add([uint32]$row.ProcessId)}}}
             $path=Join-Path $installation.program 'service\node_modules\@freerdp-bridge\runtime-win32-x64\runtime\bin\rdp-worker.exe'
-            $workers=@($rows | Where-Object {$ids.Contains([uint32]$_.ProcessId) -and $_.ExecutablePath -ceq $path})
+            $descendants=@($rows | Where-Object {$ids.Contains([uint32]$_.ProcessId)})
+            Own-Require ($descendants.Count -le 16)
+            $metadata=@()
+            foreach($row in $descendants){
+                $kind='other'
+                if($row.Name -iin @('node.exe','rdp-worker.exe','bridge-service.exe')){$kind=$row.Name.ToLowerInvariant()}
+                $metadata+=@{pid=[int]$row.ProcessId;parent=[int]$row.ParentProcessId;kind=$kind}
+            }
+            Own-NewJson (Join-Path $script:context 'identity-snapshot.json') @{servicePid=[int]$service.ProcessId;descendants=$metadata}
+            $workers=@($descendants | Where-Object {$_.Name -ieq 'rdp-worker.exe'})
             Own-Require ($workers.Count -eq 1)
+            # ExecutablePath is privilege-qualified in Win32_Process. Query only
+            # this service descendant with the provider's privilege option.
+            $image=Get-WmiObject -Class Win32_Process -Filter ('ProcessId='+$workers[0].ProcessId) -Property ProcessId,ExecutablePath -EnableAllPrivileges
+            Own-Require ($image -and (Test-OwnedInstalledExecutablePath $image.ExecutablePath $path))
             $sid=Invoke-CimMethod -InputObject $workers[0] -MethodName GetOwnerSid
             Own-Require ($sid.ReturnValue -eq 0 -and $sid.Sid -ceq 'S-1-5-19')
             $answer=@{nativePid=[int]$workers[0].ProcessId;workerSid=$sid.Sid;workerSha256=(Own-Hash $path)}

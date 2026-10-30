@@ -40,6 +40,13 @@ foreach($rule in $imageRules){
     $expected=[Security.AccessControl.FileSystemRights]::FullControl
     if($rule.IdentityReference.Value -cnotin @($imageOwner.Value,'S-1-5-18','S-1-5-19') -or $rule.FileSystemRights -ne $expected -or $rule.AccessControlType -ne 'Allow' -or $rule.IsInherited -or $rule.InheritanceFlags -ne 'None'){throw 'OWNED_TEST_IMAGE_ACL_FAILED'}
 }
+$expectedExecutable='C:\Program Files\FreeRDP Bridge\rdp-worker.exe'
+foreach($actual in @($expectedExecutable,$expectedExecutable.ToLowerInvariant(),('\\?\'+$expectedExecutable))){
+    if(-not (Test-OwnedInstalledExecutablePath $actual $expectedExecutable)){throw 'OWNED_TEST_EXECUTABLE_PATH_FAILED'}
+}
+foreach($actual in @($null,42,@($expectedExecutable),('\\.\'+$expectedExecutable),('\\?\UNC\'+$expectedExecutable),('C:\other\rdp-worker.exe'),($expectedExecutable+'x'),($expectedExecutable+'\..\rdp-worker.exe'))){
+    if(Test-OwnedInstalledExecutablePath $actual $expectedExecutable){throw 'OWNED_TEST_EXECUTABLE_PATH_FAILED'}
+}
 $publicPath=Join-Path 'C:\owned-fixture' 'proof.json'
 $marker=@{context=$publicPath;source=$publicPath;signature=[uint32]4294967000}
 $roundtrip=$decoder.DeserializeObject((ConvertTo-OwnedInstalledPublicJson $marker))

@@ -124,6 +124,7 @@ jobs:
             build/windows-msi-controller-*.json
             build/windows-msi-run-*/proof.json
             build/windows-msi-run-*/image-filter-acl.json
+            build/windows-msi-run-*/identity-snapshot.json
             build/windows-msi-run-*/acceptance.json
             build/windows-msi-run-*/service-start-deadline-*.json
             build/windows-msi-run-*/startup-probe/output/diagnostic.json

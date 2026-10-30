@@ -78,6 +78,19 @@ tiny owned runtime file and deletion, with fixed write/delete failure phases.
 Full source foundation and GCC 8.3 checks pass for `373ebb4`; installed SCM and
 the connected resource scenario still require their own positive result.
 
+Attempt `41017607893` passes actual published MSI installation, SCM startup,
+public configuration and the client's real loopback RDP connection. Failure
+is now the fixture's worker-image selection, before resource tests. Actual
+MSI uninstall, native/runtime retirement, account/settings restoration and
+empty/detached VHD cleanup all pass. The identity fixture now selects the one
+service-descendant worker by name, then reads its exact image with the WMI
+privilege option required for [Win32_Process.ExecutablePath](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-process).
+It accepts only the same installed local-drive path, including normal Windows
+case/extended-prefix forms; SID and exact worker hash checks remain mandatory.
+A bounded PID/parent/fixed-name snapshot records future selection failures,
+without command lines, environment or arbitrary executable paths. This is not
+yet accepted connected disk-full testing.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

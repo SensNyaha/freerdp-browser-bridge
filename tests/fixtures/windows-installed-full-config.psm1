@@ -1,4 +1,12 @@
 # Pure validation/security-descriptor construction; no host operations.
+function Test-OwnedInstalledExecutablePath([object]$Actual,[string]$Expected) {
+    if($Actual -isnot [string] -or $Actual.Length -gt 32767){return $false}
+    if($Actual.StartsWith('\\?\',[StringComparison]::Ordinal)){
+        $Actual=$Actual.Substring(4)
+    }
+    if($Actual -cnotmatch '^[A-Za-z]:\\' -or $Expected -cnotmatch '^[A-Za-z]:\\'){return $false}
+    return [string]::Equals($Actual,$Expected,[StringComparison]::OrdinalIgnoreCase)
+}
 function New-OwnedInstalledDataRootSecurity {
     $security = New-Object Security.AccessControl.DirectorySecurity
     $security.SetSecurityDescriptorSddlForm('O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;LS)')
@@ -61,4 +69,4 @@ function ConvertTo-OwnedInstalledPublicJson([object]$Value) {
     # Credential-bearing input continues using the private .NET reader.
     return ConvertTo-Json -InputObject $Value -Depth 12 -Compress
 }
-Export-ModuleMember -Function Confirm-OwnedInstalledConfiguration,ConvertTo-OwnedInstalledPublicJson,New-OwnedInstalledDataRootSecurity,New-OwnedInstalledImageSecurity
+Export-ModuleMember -Function Confirm-OwnedInstalledConfiguration,ConvertTo-OwnedInstalledPublicJson,New-OwnedInstalledDataRootSecurity,New-OwnedInstalledImageSecurity,Test-OwnedInstalledExecutablePath
