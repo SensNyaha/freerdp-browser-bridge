@@ -289,6 +289,8 @@ export function registerFileRoutes(
       let download: Awaited<ReturnType<typeof files.download>>;
       try {
         download = await files.download(request.params.fileId, client.signal);
+        // A zero-length HTTP response completes with its headers alone.
+        if (download.file.size === 0) await download.close();
       } catch (error) {
         client.release();
         throw error;
@@ -300,6 +302,16 @@ export function registerFileRoutes(
             while (remaining > 0) {
               const bytes = await download.read();
               remaining -= bytes.length;
+              // Content-Length lets clients finish before stream EOF. Retire the
+              // native transaction before publishing its last bytes as complete.
+              if (remaining === 0) {
+                try {
+                  await download.close();
+                } catch (error) {
+                  bytes.fill(0);
+                  throw error;
+                }
+              }
               // The socket may retain this buffer after the iterator resumes.
               yield bytes;
             }

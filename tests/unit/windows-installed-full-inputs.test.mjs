@@ -611,13 +611,17 @@ test(
   },
 );
 
-const coordinatorPython = ['python', 'python3'].find(
+const coordinatorPython = ['python3', 'python'].find(
   (command) =>
-    spawnSync(command, ['--version'], {
-      windowsHide: true,
-      timeout: 3000,
-      encoding: 'utf8',
-    }).status === 0,
+    spawnSync(
+      command,
+      ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)'],
+      {
+        windowsHide: true,
+        timeout: 3000,
+        encoding: 'utf8',
+      },
+    ).status === 0,
 );
 test(
   'installed coordinator pure context, secret-free environment, verdict and bounded child-pipe controls',

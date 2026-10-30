@@ -125,6 +125,63 @@ async function fixture(run, extra = {}) {
     await rm(root, { recursive: true, force: true, maxRetries: 3 });
   }
 }
+test(
+  'HTTP download withholds final bytes and empty headers until native close; actual file IPC, synthetic RDP',
+  { skip: !binaryDir, timeout: 20000 },
+  async () =>
+    fixture(async ({ req, create, workers }) => {
+      const path = await create();
+      for (const size of [0, 65543]) {
+        const payload = Buffer.alloc(size, 73);
+        const upload = await req(
+          'POST',
+          path + '?name=close-' + size + '.bin',
+          payload,
+          { 'content-type': 'application/octet-stream' },
+        );
+        assert.equal(upload.status, 201);
+        const file = await upload.json();
+        const worker = workers.at(-1),
+          original = worker.fileCommand.bind(worker);
+        const reached = Promise.withResolvers(),
+          release = Promise.withResolvers();
+        worker.fileCommand = async (command) => {
+          if (command.operation === 'close-download') {
+            reached.resolve();
+            await release.promise;
+          }
+          return original(command);
+        };
+        let complete = false;
+        const result = req('GET', path + '/' + file.fileId).then(
+          async (response) => {
+            assert.equal(response.status, 200);
+            const bytes = Buffer.from(await response.arrayBuffer());
+            complete = true;
+            return bytes;
+          },
+        );
+        // Attach rejection handling immediately, including on assertion failure.
+        result.catch(() => {});
+        try {
+          await reached.promise;
+          await delay(150);
+          assert.equal(complete, false, 'HTTP completed before native close');
+        } finally {
+          release.resolve();
+          worker.fileCommand = original;
+        }
+        assert.deepEqual(await result, payload);
+        const listing = await req('GET', path);
+        assert.equal(listing.status, 200, await listing.clone().text());
+        assert.ok(
+          (await listing.json()).entries.some(
+            (entry) => entry.fileId === file.fileId,
+          ),
+        );
+      }
+    }),
+);
 for (const transport of process.platform === 'linux'
   ? ['framed-pipes', 'unix-seqpacket-rws1']
   : ['framed-pipes']) {

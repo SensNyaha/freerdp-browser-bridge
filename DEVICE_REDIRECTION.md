@@ -105,6 +105,25 @@ states this reason; it is not inferred from absent/broken files. Ordinary Linux
 foundation and bundled jobs retain mandatory framed and seqpacket tests. This
 does not establish ASan-instrumented Node-addon or seqpacket composition acceptance.
 
+The latest hosted source checkpoint `4f163229` passes GCC 8.3, Windows/MSVC,
+default Linux GCC and the declared sanitizer profile. Its GCC 12 Node suite
+exposes a pre-existing HTTP final-body/native-close race; the fix holds the final
+chunk until close completes and adds an actual-native regression with delayed
+close, including an empty file. The bundled Linux build at `ad38cb18` compiles
+and runs native checks but fails a pure coordinator test because its interpreter
+selector chooses Python 2. The selector now verifies Python 3.7 or newer before
+running those controls. Both original job logs and SHA256 are retained in the
+local validation record; corrected hosted acceptance remains pending.
+
+The isolated [daemon fixture](tests/fixtures/device-inventory-lab/README.md)
+passes two fresh, networkless, unprivileged Debian containers. It invokes the
+actual inventory providers using the pinned private library closure from public
+0.6.0, admits one owned local CUPS queue and two virtual PC/SC readers, repeats
+the snapshot and observes unavailable states before and after both daemons exit
+normally. It sends no print job/card operation and maps no host devices. This
+accepts that named metadata component profile, not Astra/RED OS, packaged worker
+composition or physical redirection. These broader gates remain open.
+
 ## 2. Drives / `thinclient_drives`
 
 ### Bridge-host/session drive
