@@ -19,7 +19,11 @@ The next development capability, bridge-host device inventory on
 `feature/host-device-inventory`, targets **0.7.0** under the new-capability minor
 rule. This is a release plan, not an accepted or published version. Manifests,
 production locks and immutable public 0.6.0 artifacts remain unchanged while
-source/backend/platform and standalone/installed-consumer acceptance are pending.
+exact versioned standalone/npm acceptance is pending. Inventory source,
+backend/emulator, named Astra/RED OS metadata and installed npm-consumer checks
+are accepted for feature merge at private executable-source `613ecfa` / public
+`41cf7a90`, with subsequent documentation-only checkpoints.
+[Source acceptance and limits](../DEVICE_REDIRECTION.md#inventory-source-feature-acceptance).
 Physical printer/card/USB/port redirection remains separately gated. The future
 0.7.0 installer seed and exact 0.6.0 upgrade path must be implemented and tested
 before a release can be published; unknown seeds still refuse today.

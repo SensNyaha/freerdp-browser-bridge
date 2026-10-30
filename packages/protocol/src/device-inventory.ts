@@ -1,7 +1,7 @@
 import { isUtf8 } from 'node:buffer';
 import { ProtocolError } from './index.js';
 
-/** Development contract; no worker capability or physical redirection is enabled. */
+/** Bounded bridge-host metadata contract; physical redirection is separate. */
 export const HOST_INVENTORY_MAX_BYTES = 65536;
 export const HOST_INVENTORY_MAX_DEVICES = 128;
 export const HOST_INVENTORY_TEXT_BYTES = 255;

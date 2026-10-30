@@ -24,10 +24,10 @@ their implementation and policy gates pass.
 
 The development branch starts the Stage 8 inventory with matching bounded
 TypeScript/C++ [binary codecs](PROTOCOL.md#host-device-inventory-grammar-in-development).
-The private worker/SDK inventory path is implemented in that branch; it has no
-HTTP route and is not yet a released or fully platform-accepted capability.
-The original inventory checkbox stays open until the actual backend and platform
-matrix passes. Physical redirection remains disabled by its existing gates.
+The private worker/SDK inventory path is implemented and source-accepted as
+recorded below; it has no HTTP route and is not yet a released capability.
+Exact 0.7.0 package/installer acceptance is separate from source acceptance.
+Physical redirection remains disabled by its existing gates.
 
 ### Host inventory in the development branch
 
@@ -159,6 +159,58 @@ native component/platform profile; installed npm/standalone composition remains
 separate. The first controller failure was before upload: Paramiko has no
 `statvfs` method. Its retained refusal is followed by a bounded read-only SSH
 capacity query and the successful repeats, without changes to target services.
+
+### Installed-consumer and compiler checkpoint
+
+Bundled workflow `41072347727` at public `704b5f75` passes both complete
+Windows/MSVC and Linux/GCC 8.3 builds, native checks and full Node checks.
+Four fresh npm projects per OS import inventory through the actual HTTP,
+Express, Fastify and NestJS packages, compile strict TypeScript and execute
+native metadata RPCs with automatic packaged-runtime selection. Windows
+passes four framed profiles; Linux passes eight framed/RWS1 profiles. These
+are unpublished development archives retaining the 0.6.0 manifest number,
+not a claim that the published 0.6.0 packages include inventory. No RDP or
+device-open operation is used. Source CLI staging also passes automatic runtime
+resolution; exact 0.7.0 portable and installed CLI acceptance remains separate.
+
+The previously failing Windows binary-cache source-companion step now passes:
+the explicit build phase downloads the pinned public archive, checks its
+SHA512 and prepares the corresponding source before offline packaging. A
+separate cold-cache invocation and network-free warm-cache repeat pass without
+relaxing the source-companion verifier.
+
+Public `41cf7a90` adds an explicit Ubuntu GCC 11 foundation profile. Its native
+CTest passes 25/25, full Node checks pass 1220 with 239 explicit skips, and
+the two native disk-full HTTP transports pass. GCC 8.3, GCC 12, default GCC
+and the declared sanitizer profile also pass. Ubuntu GCC 11 is compiler
+evidence; actual Astra/RED OS component results above remain separate. In that
+run, Windows foundation exceeds the unchanged 25-second limit in one Edge
+image-view test (zero assertion failures, one cancelled test). The identical
+test passes in the bundled Windows suite in 1.95 seconds and in a focused
+local run in 1.36 seconds. The original log is retained; one unchanged full
+Windows retry is pending. Neither the timeout nor the assertions were relaxed.
+This checkpoint preceded the successful repeat and source acceptance below.
+
+### Inventory source feature acceptance
+
+The unchanged Windows retry in run `41074685900`, job `124162197245`, passes
+foundation CTest, actual LocalService isolation and full Node checks:
+1279 pass, 156 explicit skips, zero failures/cancellations. The image-view
+test passes in 2.02 seconds without changing its 25-second limit. Both the
+initial timeout and successful repeat are retained. All five foundation jobs
+in the current attempt, exact GCC 8.3 run `41074686149`, and both bundled
+jobs in `41072347727` are successful. Public `41cf7a90` / private `613ecfa`
+identify the tested executable source; the subsequent `f873542` and `2eeb974`
+changes contain documentation and one comment only.
+
+Together with the named backend/emulator, actual Astra/RED OS metadata,
+Windows metadata, strict codec/lifecycle and installed npm-consumer checks
+above, this accepts the Stage 8 capability-inventory source feature for merge.
+Local `build/current-validation/device-inventory-source-acceptance.json` binds
+the source files, retained logs and terminal job results. It does not accept
+physical redirection, final versioned npm/standalone bytes or publication.
+Those delivery checks proceed separately in `release/0.7.0`; public stable
+remains 0.6.0 until exact delivery is verified.
 
 ## 2. Drives / `thinclient_drives`
 

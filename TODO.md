@@ -2569,7 +2569,7 @@ remain explicit under quota/disk-full and the final V1 qualification.
 
 ## Stage 8 — printer, smartcard, serial, parallel, USB
 
-- [ ] Capability inventory for CUPS/PCSC/libusb/device nodes.
+- [x] DONE for bridge-host metadata — Capability inventory for CUPS/PCSC/libusb/device nodes.
   Development branch `feature/host-device-inventory` starts with matching
   TypeScript/native binary codecs: explicit bridge-host origin, five classes,
   separate availability/refusal states, 128-device / 64-KiB response bounds,
@@ -2579,14 +2579,16 @@ remain explicit under quota/disk-full and the final V1 qualification.
   maximum RPC deadline and joined cleanup. Windows printer/PCSC/COM/LPT and
   Linux device-node providers are implemented, with pinned CUPS/WinPR-PCSC/
   libusb bindings for linked builds. Actual backend/platform and installed-
-  consumer acceptance remain required before this checkbox can be checked;
-  physical redirection stays disabled by its existing gates.
+  consumer acceptance passes below; physical redirection stays disabled by its
+  existing gates.
   The exact metadata component passes twice on Astra 1.7.5 and RED OS 7.3,
   separately from GCC 8.3 compiler checks. Two isolated CUPS/virtual-PCSC daemon
   containers pass populated snapshots and normal shutdown. Four fresh Windows
   npm projects now pass strict types, adapter exports, automatic packaged-runtime
-  selection and actual inventory RPCs. Linux installed-consumer and final
-  versioned distribution acceptance remain open.
+  selection and actual inventory RPCs. The bundled hosted workflow
+  `41072347727` also passes all four installed consumers on Windows and Linux:
+  four framed profiles on Windows and eight framed/RWS1 profiles on Linux.
+  Exact versioned distribution acceptance remains open.
   Standalone now has an explicit operator-only `--inventory` CLI, without
   reading server configuration or starting HTTP/RDP. Pure/invalid-CLI controls
   and source CLI composition with the real SDK/native worker pass; runtime
@@ -2595,6 +2597,11 @@ remain explicit under quota/disk-full and the final V1 qualification.
   An additional Windows source-CLI staging check uses an unchanged entry point
   and real installed npm packages with automatic resolution (no loader hook),
   and joins its empty private runtime. It is not final 0.7.0 installer evidence.
+  All current hosted source gates pass, including exact GCC 8.3, GCC 11,
+  GCC 12, MSVC, sanitizers and both linked bundled profiles. The Windows
+  timeout and unchanged successful repeat are retained, not suppressed.
+  [Source acceptance and commit references](DEVICE_REDIRECTION.md#inventory-source-feature-acceptance)
+  permits merging the feature; exact 0.7.0 delivery remains a separate release gate.
   [Development contract](PROTOCOL.md#host-device-inventory-grammar-in-development).
 - [ ] Host printer allowlist and RDPDR printer mapping.
 - [ ] Virtual spool printer backend and download event/API.
