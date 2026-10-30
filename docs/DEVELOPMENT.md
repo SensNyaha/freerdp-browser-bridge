@@ -43,6 +43,17 @@ matches the MSI's administrative data-root contract; its separate controller
 context remains private. Pure tests construct and inspect this security
 descriptor without applying permissions or executing the host helper locally.
 
+Attempt `41003665765` confirms the ACL contract and SCM exit code **1067**
+(`Stopped`, PID zero), not a slow successful startup. It remains failed MSI
+acceptance, with failed retirement retained. A failure-only scheduled task now
+reuses the existing static startup diagnostic under LocalService, using the
+unchanged installed private Node/modules and matching environment. It reports
+only a fixed bootstrap phase and task result; it has no session credentials.
+Its copied code is read-only to LocalService, which can write only its public
+diagnostic output subdirectory. The task is stopped/unregistered afterward.
+This alternate-process probe diagnoses startup; it cannot establish SCM,
+installed-session or disk-full acceptance.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

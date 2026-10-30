@@ -14,6 +14,19 @@ spec.loader.exec_module(owned)
 
 
 class Controls(unittest.TestCase):
+    def test_startup_probe_is_fixed_public_local_service_metadata(self):
+        value = {'available': True, 'phase': 'resolve', 'failed': True,
+                 'principalSid': 'S-1-5-19', 'taskResult': 1}
+        self.assertEqual(owned.validate_startup_probe(value), value)
+        self.assertNotIn('rawError', owned.validate_startup_probe(dict(value, rawError='PRIVATE-fixture')))
+        for change in [{'phase': 'PRIVATE-fixture'}, {'principalSid': 'S-1-5-18'},
+                       {'failed': False}, {'phase': 'complete'}, {'available': False}, {'taskResult': True},
+                       {'taskResult': -1}, {'taskResult': 4294967296}]:
+            with self.assertRaises(owned.Refused):
+                owned.validate_startup_probe(dict(value, **change))
+        complete = dict(value, phase='complete', failed=False, taskResult=0)
+        self.assertEqual(owned.validate_startup_probe(complete), complete)
+
     def test_context(self):
         env = {'GITHUB_ACTIONS': 'true', 'RUNNER_OS': 'Windows'}
         owned.require_ci('nt', env)

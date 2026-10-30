@@ -328,6 +328,23 @@ test('public MSI download bounds redirects and bytes, checks SHA256 and never re
   }
 });
 
+test('LocalService diagnostic output refuses an ordinary source-tree invocation', () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      'tests/fixtures/standalone-startup-diagnostic.mjs',
+      'C:\\unused-payload',
+      'C:\\unused-config',
+      'E:\\bridge-owned-full-' + 'a'.repeat(32) + '\\runtime',
+      '--owned-localservice-result',
+    ],
+    { windowsHide: true, encoding: 'utf8', timeout: 5000, maxBuffer: 8192 },
+  );
+  assert.equal(result.status, 2);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, '');
+});
+
 test(
   'installed client refuses invalid invocation and empty bootstrap before installed-service actions',
   { timeout: 10000 },

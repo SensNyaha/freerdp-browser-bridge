@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][ValidateSet('mount','unmount','rdp-state','rdp-start','account','certificate','install','configure','identity','task','retire','rdp-retire')][string]$Action)
+param([Parameter(Mandatory=$true)][ValidateSet('mount','unmount','rdp-state','rdp-start','account','certificate','install','startup-probe','configure','identity','task','retire','rdp-retire')][string]$Action)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 [Console]::InputEncoding = New-Object Text.UTF8Encoding($false,$true)
@@ -281,6 +281,68 @@ try {
             Own-Require ($service.State -eq 'Running')
             Own-NewJson (Join-Path $script:context 'default-config.json') (Own-ReadJson (Join-Path $mounted.root 'config\bridge.json'))
             $answer=@{installed=$true;servicePathVerified=$true;msiSha256=$inputs.sha256}
+        }
+        'startup-probe' {
+            # Failure-only diagnostic of unchanged installed modules, not SCM acceptance.
+            $installation=Own-InstallRecord
+            $service=Own-Service
+            Own-Require ($service.State -ceq 'Stopped' -and $service.ProcessId -eq 0)
+            $probeDirectory=Join-Path $script:context 'startup-probe'
+            Own-PrivateDirectory $probeDirectory
+            $localService=New-Object Security.Principal.SecurityIdentifier('S-1-5-19')
+            $security=Get-Acl -LiteralPath $probeDirectory
+            $reader=New-Object Security.AccessControl.FileSystemAccessRule($localService,'ReadAndExecute','ContainerInherit,ObjectInherit','None','Allow')
+            $security.AddAccessRule($reader)
+            Set-Acl -LiteralPath $probeDirectory -AclObject $security
+            $contextSecurity=Get-Acl -LiteralPath $script:context
+            $traverse=New-Object Security.AccessControl.FileSystemAccessRule($localService,'Traverse','None','None','Allow')
+            $contextSecurity.AddAccessRule($traverse)
+            Set-Acl -LiteralPath $script:context -AclObject $contextSecurity
+            $outputDirectory=Join-Path $probeDirectory 'output'
+            Own-PrivateDirectory $outputDirectory
+            $outputSecurity=Get-Acl -LiteralPath $outputDirectory
+            $writer=New-Object Security.AccessControl.FileSystemAccessRule($localService,'Modify','ContainerInherit,ObjectInherit','None','Allow')
+            $outputSecurity.AddAccessRule($writer)
+            Set-Acl -LiteralPath $outputDirectory -AclObject $outputSecurity
+            $source=Join-Path $PSScriptRoot 'standalone-startup-diagnostic.mjs'
+            $null=Own-Plain $source
+            $copy=Join-Path $probeDirectory 'standalone-startup-diagnostic.mjs'
+            [IO.File]::Copy($source,$copy,$false)
+            Own-Require ((Own-Hash $source) -ceq (Own-Hash $copy))
+            $node=Join-Path $installation.program 'node\node.exe'
+            $null=Own-Plain $node
+            $configuration=Join-Path $installation.root 'config\bridge.json'
+            $runtime=Join-Path $installation.root 'runtime'
+            $arguments='"'+$copy+'" "'+$installation.program+'" "'+$configuration+'" "'+$runtime+'" --owned-localservice-result'
+            $taskName='BridgeOwnedStartup_'+$script:data.id
+            Own-Require (-not (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue))
+            $taskAction=New-ScheduledTaskAction -Execute $node -Argument $arguments -WorkingDirectory $installation.program
+            $principal=New-ScheduledTaskPrincipal -UserId 'S-1-5-19' -LogonType ServiceAccount -RunLevel Limited
+            $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::FromSeconds(35)) -MultipleInstances IgnoreNew
+            $registered=$false
+            try {
+                [void](Register-ScheduledTask -TaskName $taskName -Action $taskAction -Principal $principal -Settings $settings)
+                $registered=$true
+                Start-ScheduledTask -TaskName $taskName
+                $resultPath=Join-Path $outputDirectory 'diagnostic.json'
+                $deadline=[Diagnostics.Stopwatch]::StartNew()
+                while(-not (Test-Path -LiteralPath $resultPath) -and $deadline.ElapsedMilliseconds -lt 30000){Start-Sleep -Milliseconds 100}
+                $task=Get-ScheduledTask -TaskName $taskName
+                Own-Require ($task.Principal.UserId -iin @('S-1-5-19','LOCAL SERVICE','NT AUTHORITY\LOCAL SERVICE'))
+                $info=Get-ScheduledTaskInfo -TaskName $taskName
+                $answer=@{available=$false;phase='unavailable';failed=$true;principalSid='S-1-5-19';taskResult=[long]$info.LastTaskResult}
+                if(Test-Path -LiteralPath $resultPath){
+                    $result=Own-ReadJson $resultPath
+                    Own-Require ($result.v -eq 1 -and $result.failed -is [bool])
+                    Own-Require ($result.phase -cin @('import','config','resolve','recovery','create','listen','close','complete'))
+                    $answer.available=$true;$answer.phase=$result.phase;$answer.failed=$result.failed
+                }
+            } finally {
+                if($registered){
+                    Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+                    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+                }
+            }
         }
         'configure' {
             $installation=Own-InstallRecord;Own-StopService

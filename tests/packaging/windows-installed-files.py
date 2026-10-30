@@ -166,6 +166,20 @@ def validate_verdict(event, msi_sha, worker_sha):
             'staleLocatorRefused', 'maxFileQuotaRefused']}
 
 
+def validate_startup_probe(value):
+    fields = ['available', 'phase', 'failed', 'principalSid', 'taskResult']
+    require(type(value) is dict and all(name in value for name in fields))
+    require(type(value['available']) is bool and type(value['failed']) is bool)
+    require(value['principalSid'] == 'S-1-5-19')
+    require(type(value['taskResult']) is int and 0 <= value['taskResult'] <= 4294967295)
+    require(value['phase'] in ['unavailable', 'import', 'config', 'resolve',
+                              'recovery', 'create', 'listen', 'close', 'complete'])
+    require((value['available'] and value['phase'] != 'unavailable')
+            or (not value['available'] and value['phase'] == 'unavailable' and value['failed']))
+    require(value['failed'] == (value['phase'] != 'complete'))
+    return {name: value[name] for name in fields}
+
+
 def main():
     require_ci(os.name, os.environ)
     parser = argparse.ArgumentParser()
@@ -208,6 +222,7 @@ def main():
     helper = root / 'tests/fixtures/windows-installed-full-host.ps1'
 
     def host(action, **values):
+        print(json.dumps({'event': 'owned-msi-host', 'action': action, 'state': 'started'}), flush=True)
         child = OwnedProcess([powershell, '-NoProfile', '-NonInteractive', '-File',
                               str(helper), '-Action', action], root)
         try:
@@ -219,6 +234,7 @@ def main():
                     'lines': [v for v in result.get('lines', []) if type(v) is int and 0 < v < 10000][:6]})
                 raise Refused('OWNED_INSTALLED_HOST_ACTION_REFUSED')
             require(type(result.get('result')) is dict)
+            print(json.dumps({'event': 'owned-msi-host', 'action': action, 'state': 'completed'}), flush=True)
             return result['result']
         finally:
             child.stop()
@@ -234,6 +250,7 @@ def main():
     retired = False
     events = []
     cleanup = {}
+    startup_diagnostic = None
     phase = 'mount'
     try:
         mounted = host('mount', imageDirectory=str(image_directory))
@@ -250,7 +267,14 @@ def main():
         require(certificate['derivedFromLocalListener'] is True)
         require(re.fullmatch('sha256:[0-9a-f]{64}', certificate['fingerprint']))
         phase = 'install'
-        installed = host('install', inputs=str(inputs_path))
+        try:
+            installed = host('install', inputs=str(inputs_path))
+        except Exception:
+            try:
+                startup_diagnostic = validate_startup_probe(host('startup-probe'))
+            except Exception:
+                startup_diagnostic = {'available': False}
+            raise
         require(installed['installed'] is True and installed['msiSha256'] == descriptor['sha256'])
         installation_observed = True
         phase = 'client'
@@ -344,7 +368,8 @@ def main():
                   'actualInstalledService': installation_observed, 'syntheticRdp': False,
                   'msiSha256': descriptor['sha256'], 'workerSha256': worker_sha,
                   'runtimeIntegrity': integrity, 'publicSourceCommit': descriptor['sourceCommit'],
-                  'events': events, 'cleanup': cleanup, 'hostFailures': host_failures}
+                  'events': events, 'cleanup': cleanup, 'hostFailures': host_failures,
+                  'startupDiagnostic': startup_diagnostic}
         if accepted:
             accepted = (cleanup['installed'].get('uninstalled') is True
                     and cleanup['rdp'].get('accountRemoved') is True
