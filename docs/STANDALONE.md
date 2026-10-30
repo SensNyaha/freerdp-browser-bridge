@@ -46,6 +46,11 @@ public logs. Discovery does not authorize or enable physical redirection.
 Source CLI composition passes with the real SDK/native worker and a controlled
 runtime resolver; that is separate from exact installed-distribution acceptance,
 which remains required before this feature is released.
+An additional Windows staging check now passes the unchanged source CLI beside
+an independent installed npm graph, including its declared `jose` dependency,
+through the automatic packaged resolver with no loader hook. Its private Node
+and entry-point hashes are recorded; this is still source/staging evidence,
+not final MSI/ZIP/DEB/RPM acceptance.
 
 Portable and installed-package tests require this command for versions 0.7.0
 and later, including an upgrade from 0.6.0. They use the distribution's private

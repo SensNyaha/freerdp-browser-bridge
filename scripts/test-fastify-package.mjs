@@ -13,6 +13,10 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { productVersion } from './product-version.mjs';
 import {
+  inventoryConsumerArguments,
+  prepareInventoryConsumer,
+} from './inventory-consumer.mjs';
+import {
   managedFilesArguments,
   prepareManagedFilesConsumer,
   consumerNpmCli,
@@ -21,8 +25,13 @@ import { checkNpmArchiveReadme } from './npm-readme.mjs';
 import { tarManifest } from './github-delivery/manifest.mjs';
 
 const project = fileURLToPath(new URL('..', import.meta.url));
-const { args, managedFiles } = managedFilesArguments(
+const inventorySelection = inventoryConsumerArguments(
   process.argv.slice(2),
+  productVersion,
+);
+const hostInventory = inventorySelection.hostInventory;
+const { args, managedFiles } = managedFilesArguments(
+  inventorySelection.args,
   productVersion,
 );
 const registryOnly = args[0] === '--registry-only';
@@ -212,6 +221,7 @@ await writeFile(
   }),
 );
 if (managedFiles) await prepareManagedFilesConsumer(fixture, 'fastify');
+if (hostInventory) await prepareInventoryConsumer(fixture, 'fastify');
 if (npmConsumer) {
   const userConfig = join(root, 'empty-npmrc'),
     globalConfig = join(root, 'empty-global-npmrc');
@@ -262,6 +272,12 @@ await copyFile(
   join(fixture, 'runtime-recovery.mjs'),
 );
 run(process.execPath, ['runtime-recovery.mjs', 'fastify'], fixture);
+if (hostInventory)
+  run(
+    process.execPath,
+    ['host-inventory.mjs', 'fastify', productVersion],
+    fixture,
+  );
 if (managedFiles)
   run(
     process.execPath,
@@ -277,6 +293,7 @@ const report = {
   checkoutImports: false,
   strictTypeScript: true,
   managedFiles,
+  hostInventory,
   managedFilesRdpState: managedFiles ? 'synthetic' : null,
   nativeRuntimePackage: Boolean(runtimeArchive) || registryOnly,
   exactPublicationArchives: Boolean(publicationArchives),

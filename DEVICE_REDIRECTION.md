@@ -41,6 +41,29 @@ the function as an unrestricted browser/API endpoint or log its device names.
 Every returned device has `origin: 'bridge-host'`; inventory IDs are metadata,
 not authorizations and not stable across reconnect/reboot.
 
+The same function and `HostInventoryRequest` / `HostInventoryReport` types are
+also exported from each adapter package in the development branch. For example,
+trusted application startup/diagnostics can use the planned 0.7.0 Express API:
+
+```ts
+import { resolve } from 'node:path';
+import { resolveNativeRuntime, discoverHostDevices } from '@freerdp-bridge/express';
+
+const worker = await resolveNativeRuntime({
+  runtimeRoot: resolve('.runtime/operator-inventory'),
+});
+const snapshot = await discoverHostDevices(worker, {
+  classes: ['printers', 'smartcards', 'serial', 'parallel', 'usb'],
+  maxDevices: 16,
+});
+// Consume snapshot inside the trusted application; do not log device names.
+```
+
+Use the corresponding `@freerdp-bridge/http`, `@freerdp-bridge/fastify` or
+`@freerdp-bridge/nestjs` import for the other adapters. This is not available in
+published 0.6.0, creates no browser-facing discovery route and does not change
+the adapter's HTTP/WebSocket server or grant device redirection.
+
 | Source | Implemented discovery | Limits and exclusions |
 | --- | --- | --- |
 | Windows printers | `EnumPrintersW`, level 4, local/connected queue names | 2 MiB API buffer ceiling; no print job, driver loading or printer properties/credentials. |
@@ -123,6 +146,19 @@ the snapshot and observes unavailable states before and after both daemons exit
 normally. It sends no print job/card operation and maps no host devices. This
 accepts that named metadata component profile, not Astra/RED OS, packaged worker
 composition or physical redirection. These broader gates remain open.
+
+The subsequently authorized exact 16-file/55,235,825-byte component payload
+passes twice on actual Astra 1.7.5 and RED OS 7.3 as UID 1000, using strict saved
+SSH host keys. Astra admits one existing CUPS queue and fifteen serial nodes;
+RED OS admits sixteen serial nodes. The global sixteen-record ceiling produces
+explicit `limit` states for later nonempty classes; these are incomplete
+snapshots, not empty/full USB inventory acceptance. Both runs use the pinned
+public Linux library closure and unchanged GCC 8.3 probe, perform no RDP/device
+open and remove only their new private test directories. This accepts the named
+native component/platform profile; installed npm/standalone composition remains
+separate. The first controller failure was before upload: Paramiko has no
+`statvfs` method. Its retained refusal is followed by a bounded read-only SSH
+capacity query and the successful repeats, without changes to target services.
 
 ## 2. Drives / `thinclient_drives`
 

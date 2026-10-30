@@ -2581,11 +2581,20 @@ remain explicit under quota/disk-full and the final V1 qualification.
   libusb bindings for linked builds. Actual backend/platform and installed-
   consumer acceptance remain required before this checkbox can be checked;
   physical redirection stays disabled by its existing gates.
+  The exact metadata component passes twice on Astra 1.7.5 and RED OS 7.3,
+  separately from GCC 8.3 compiler checks. Two isolated CUPS/virtual-PCSC daemon
+  containers pass populated snapshots and normal shutdown. Four fresh Windows
+  npm projects now pass strict types, adapter exports, automatic packaged-runtime
+  selection and actual inventory RPCs. Linux installed-consumer and final
+  versioned distribution acceptance remain open.
   Standalone now has an explicit operator-only `--inventory` CLI, without
   reading server configuration or starting HTTP/RDP. Pure/invalid-CLI controls
   and source CLI composition with the real SDK/native worker pass; runtime
   resolution is controlled in that composition, so installed acceptance remains
   separate. [Usage and limits](docs/STANDALONE.md).
+  An additional Windows source-CLI staging check uses an unchanged entry point
+  and real installed npm packages with automatic resolution (no loader hook),
+  and joins its empty private runtime. It is not final 0.7.0 installer evidence.
   [Development contract](PROTOCOL.md#host-device-inventory-grammar-in-development).
 - [ ] Host printer allowlist and RDPDR printer mapping.
 - [ ] Virtual spool printer backend and download event/API.

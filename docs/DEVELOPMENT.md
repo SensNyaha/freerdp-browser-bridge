@@ -11,6 +11,16 @@ worker executable available again.
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
+The bundled builder explicitly prepares corresponding-source archives after
+staging native binaries. A vcpkg binary-cache hit can restore libraries without
+downloading their upstream sources. `scripts/fetch-native-package-sources.mjs`
+reads the staged dependency SBOMs and verifies the pinned SHA-512 archives in
+`.tools/vcpkg-downloads`, fetching only missing bytes from the public upstream
+GitHub source endpoint. Valid cached archives require no network; corrupt or
+foreign entries refuse without replacement. The archives are not extracted or
+executed. Native npm packaging retains its independent source/recipe checks and
+remains an offline operation over the prepared inputs.
+
 ## Windows MSI physical-full CI
 
 The installed MSI / real RDP / bounded NTFS resource scenario passes in

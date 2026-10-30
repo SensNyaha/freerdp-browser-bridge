@@ -49,6 +49,7 @@ for (const kind of ['http', 'express', 'fastify', 'nestjs']) {
       'scripts/test-' + kind + '-package.mjs',
       ...(kind === 'fastify' ? ['--npm'] : []),
       '--managed-files',
+      '--host-inventory',
       '--runtime-archive',
       archive,
     ],
@@ -71,6 +72,9 @@ const receipt = {
   independentInstalledProjects: 4,
   managedFileProfiles: process.platform === 'linux' ? 10 : 5,
   strictTypeScript: true,
+  hostInventory: true,
+  hostInventoryProfiles: process.platform === 'linux' ? 8 : 4,
+  hostInventoryNoRdp: true,
   actualNativeFileIo: true,
   syntheticRdpOnly: true,
 };

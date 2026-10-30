@@ -13,6 +13,10 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { productVersion } from './product-version.mjs';
 import {
+  inventoryConsumerArguments,
+  prepareInventoryConsumer,
+} from './inventory-consumer.mjs';
+import {
   managedFilesArguments,
   prepareManagedFilesConsumer,
   consumerNpmCli,
@@ -20,8 +24,13 @@ import {
 import { checkNpmArchiveReadme } from './npm-readme.mjs';
 
 const project = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const { args, managedFiles } = managedFilesArguments(
+const inventorySelection = inventoryConsumerArguments(
   process.argv.slice(2),
+  productVersion,
+);
+const hostInventory = inventorySelection.hostInventory;
+const { args, managedFiles } = managedFilesArguments(
+  inventorySelection.args,
   productVersion,
 );
 const registryOnly = args[0] === '--registry-only';
@@ -270,6 +279,7 @@ await writeFile(
   ) + '\n',
 );
 if (managedFiles) await prepareManagedFilesConsumer(consumer, 'nestjs');
+if (hostInventory) await prepareInventoryConsumer(consumer, 'nestjs');
 const npmCli = consumerNpmCli();
 console.log(
   JSON.stringify({
@@ -306,6 +316,12 @@ await copyFile(
   join(consumer, 'runtime-recovery.mjs'),
 );
 run(process.execPath, ['runtime-recovery.mjs', 'nestjs'], consumer);
+if (hostInventory)
+  run(
+    process.execPath,
+    ['host-inventory.mjs', 'nestjs', productVersion],
+    consumer,
+  );
 if (managedFiles)
   run(
     process.execPath,
@@ -321,6 +337,7 @@ const report = {
   exactPublicationArchives: !!publicationArchives,
   strictTypeScript: true,
   managedFiles,
+  hostInventory,
   managedFilesRdpState: managedFiles ? 'synthetic' : null,
   checkoutImports: false,
   nativeRuntimePackage: true,
