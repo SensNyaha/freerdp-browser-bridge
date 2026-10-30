@@ -1,0 +1,143 @@
+name: Windows installed MSI file disk full
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact published version (empty selects package.json)
+        type: string
+        default: ''
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: ''
+  push:
+    branches: [feature/windows-msi-disk-full]
+    paths:
+      - tests/fixtures/windows-installed-*
+      - tests/packaging/windows-installed-*
+      - tests/packaging/prepare-windows-installed-inputs.mjs
+      - tests/unit/windows-installed-full-inputs.test.mjs
+      - tests/unit/windows-managed-files-lab.test.mjs
+      - tests/fixtures/windows-managed-files.ps1
+      - tests/fixtures/windows-full-root.mjs
+      - tests/fixtures/windows-owned-full-volume.ps1
+      - tests/fixtures/create-owned-ntfs-vhd.py
+      - tests/fixtures/standalone-startup-diagnostic.mjs
+      - scripts/windows-managed-files-lab.mjs
+      - .github/workflows/windows-installed-files-full.yml
+permissions:
+  contents: read
+concurrency:
+  group: windows-installed-files-full-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+jobs:
+  fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-utils ntfs-3g
+      - name: Create only regular offline files and verify the 16 MiB roundtrip
+        run: python3 tests/fixtures/create-owned-ntfs-vhd.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-installed-ntfs-${{ github.run_id }}
+          path: |
+            build/owned-ntfs-*/owned-full.vhd
+            build/owned-ntfs-*/volume.json
+          if-no-files-found: error
+          retention-days: 7
+  installed:
+    needs: fixture
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24.21.0'
+          package-manager-cache: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: windows-installed-ntfs-${{ github.run_id }}
+          path: build/windows-installed-volume-input
+          digest-mismatch: error
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm build
+      - name: Private input, public configuration and explicit CI host admission controls
+        run: node --test tests/unit/windows-installed-full-inputs.test.mjs
+        env:
+          BRIDGE_WINDOWS_MSI_HOST_TEST: '1'
+      - name: Obtain the exact stable MSI with its public digest and tag binding
+        shell: powershell
+        env:
+          BRIDGE_PUBLIC_MSI_VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $version=$env:BRIDGE_PUBLIC_MSI_VERSION
+          if (-not $version) { $version=(Get-Content package.json -Raw | ConvertFrom-Json).version }
+          node --use-system-ca tests/packaging/prepare-windows-installed-inputs.mjs --published-version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Bind the public native package to the production lock
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $version=(Get-Content build/windows-installed-inputs.json -Raw | ConvertFrom-Json).version
+          $metadata=Invoke-RestMethod -Uri "https://registry.npmjs.org/@freerdp-bridge%2Fruntime-win32-x64/$version"
+          $integrity=@'
+          import { readFile } from 'node:fs/promises';
+          const lock=JSON.parse(await readFile('packaging/standalone/locks/win32-x64.json','utf8'));
+          console.log(lock.packages['node_modules/@freerdp-bridge/runtime-win32-x64'].integrity);
+          '@ | node --input-type=module
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($integrity -cnotmatch '^sha512-[A-Za-z0-9+/]{86}==$' -or $metadata.version -cne $version -or $metadata.dist.integrity -cne $integrity) { throw 'PUBLIC_NATIVE_INTEGRITY_REQUIRED' }
+          $destination=New-Item -ItemType Directory -Path build/windows-installed-native
+          $packed=& npm pack "@freerdp-bridge/runtime-win32-x64@$version" --ignore-scripts --loglevel=error --json --pack-destination $destination.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result=@($packed | Out-String | ConvertFrom-Json)
+          if ($result.Count -ne 1 -or $result[0].integrity -cne $integrity -or $result[0].filename -cne "freerdp-bridge-runtime-win32-x64-$version.tgz") { throw 'PUBLIC_NATIVE_ARCHIVE_REQUIRED' }
+          $archive=Join-Path $destination.FullName $result[0].filename
+          if ((Get-Item -LiteralPath $archive).Length -gt 67108864) { throw 'PUBLIC_NATIVE_ARCHIVE_BOUND' }
+          $stream=[IO.File]::OpenRead($archive);$algorithm=[Security.Cryptography.SHA512]::Create()
+          try { $actual='sha512-'+[Convert]::ToBase64String($algorithm.ComputeHash($stream)) }
+          finally { $stream.Dispose();$algorithm.Dispose() }
+          if ($actual -cne $integrity) { throw 'PUBLIC_NATIVE_ARCHIVE_INTEGRITY' }
+          & tar -xf $archive -C $destination.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @{version=$version;archive=$archive;packageRoot=(Join-Path $destination.FullName 'package');integrity=$integrity} | ConvertTo-Json -Compress | Set-Content -LiteralPath build/windows-installed-runtime-inputs.json -Encoding UTF8
+      - name: Real installed LocalService, loopback RDP account and bounded NTFS exhaustion
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $manifests=@(Get-ChildItem -LiteralPath build/windows-installed-volume-input -Filter volume.json -Recurse -File)
+          if ($manifests.Count -ne 1) { throw 'OWNED_VHD_INPUT_REQUIRED' }
+          python tests/packaging/windows-installed-files.py --owned-windows-msi-full --image-directory $manifests[0].DirectoryName --inputs build/windows-installed-inputs.json --runtime-inputs build/windows-installed-runtime-inputs.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: windows-installed-full-evidence-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/windows-msi-controller-*.json
+            build/windows-msi-run-*/proof.json
+            build/windows-msi-run-*/image-filter-acl.json
+            build/windows-msi-run-*/identity-snapshot.json
+            build/windows-msi-run-*/logoff-admission-*.json
+            build/windows-msi-run-*/logoff-result-*.json
+            build/windows-msi-run-*/staging-observer/ready.json
+            build/windows-msi-run-*/staging-observer/summary.json
+            build/windows-msi-run-*/acceptance.json
+            build/windows-msi-run-*/service-start-deadline-*.json
+            build/windows-msi-run-*/startup-probe/output/diagnostic.json
+            build/windows-msi-run-*/msi-install.log
+            build/windows-msi-run-*/msi-uninstall.log

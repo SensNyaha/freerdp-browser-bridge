@@ -196,9 +196,16 @@ export async function dispatchWindowsManagedFiles(
 }
 
 /** Only bounded scalar receipts from the owned script may leave the lab. */
-export function parseWindowsFilesReceipt(text, id, phase) {
+export function parseWindowsFilesReceipt(
+  text,
+  id,
+  phase,
+  allocationTail = false,
+) {
   if (
     !validId(id) ||
+    typeof allocationTail !== 'boolean' ||
+    (allocationTail && phase !== 'full') ||
     !['created', 'clean', 'failed', 'full'].includes(phase) ||
     typeof text !== 'string' ||
     Buffer.byteLength(text) > 2048
@@ -241,12 +248,20 @@ export function parseWindowsFilesReceipt(text, id, phase) {
         throw refused();
     } else if (phase === 'full') {
       if (
-        keys !== 'acknowledgedBytes,errno,id,ok,phase,v' ||
+        keys !==
+          (allocationTail
+            ? 'acknowledgedBytes,errno,id,ok,phase,tailAcknowledgedBytes,v'
+            : 'acknowledgedBytes,errno,id,ok,phase,v') ||
         ![39, 112].includes(value.errno) ||
         !Number.isInteger(value.acknowledgedBytes) ||
         value.acknowledgedBytes < 65536 ||
         value.acknowledgedBytes >= 2097152 ||
-        value.acknowledgedBytes % 65536 !== 0
+        value.acknowledgedBytes % 65536 !== 0 ||
+        (allocationTail &&
+          (!Number.isInteger(value.tailAcknowledgedBytes) ||
+            value.tailAcknowledgedBytes < 0 ||
+            value.tailAcknowledgedBytes >= 65536 ||
+            value.acknowledgedBytes + value.tailAcknowledgedBytes >= 2097152))
       )
         throw refused();
     } else if (phase === 'created') {

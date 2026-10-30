@@ -11,6 +11,158 @@ worker executable available again.
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
+## Windows MSI physical-full CI
+
+The installed MSI / real RDP / bounded NTFS resource scenario passes in
+run `41027120795` and independent fresh-runner repeat `41029036732` on
+`feature/windows-msi-disk-full`, with unchanged functional helper/product bytes.
+Final source-wide gates pass at public `5e0bf07` / private `de2d6e3`:
+foundation `41029036693` (Windows/MSVC, two Linux/GCC profiles and sanitizers /
+bounded fuzz) and exact GCC 8.3 `41029036699`. This accepts the named branch
+scenario for merge; the broader resource/soak requirements remain open.
+[Accepted case and exact evidence](FILES.md#installed-windows-msi-physical-full-acceptance).
+Its privileged host helper is reserved for an isolated Windows CI runner with
+an admitted private 16 MiB VHD and a verified absent product installation.
+Ordinary unit tests import only the pure configuration validator and exercise
+the bounded input/download/client admission controls. The host admission smoke
+case additionally requires `BRIDGE_WINDOWS_MSI_HOST_TEST=1` in that designated
+job; do not enable it for local development.
+
+An earlier local invalid-input smoke invocation was blocked by endpoint
+protection with `ScriptContainedMaliciousContent`. The local record is
+`build/current-validation/windows-msi-local-protection-response.json`.
+The new task uses a plain local `.ps1` through `-File`, validates its hash and
+session identity, and grants the temporary account only read/execute access to
+that fixture. No generated PowerShell source, execution-policy override or
+antivirus exception is used. The privileged helper has not been rerun on the
+developer workstation; successful isolated CI execution does not establish
+approval by that workstation's endpoint protection.
+
+Hosted attempt `41001988763` passes the fixture controls and reaches the actual
+published MSI's `StartServices` action, then fails its 120-second installation
+deadline. This is not installed acceptance: retirement fails and the detached
+test volume retains diagnostic files, although the temporary RDP account and
+RDP settings are restored. The next diagnostic revision records only public
+SCM state and data/config/runtime ACLs on that deadline. It stops only the
+verified, freshly installed LocalService process to let MSI finish rollback
+before terminating its own installer client. The VHD data-root owner/ACL now
+matches the MSI's administrative data-root contract; its separate controller
+context remains private. Pure tests construct and inspect this security
+descriptor without applying permissions or executing the host helper locally.
+
+Attempt `41003665765` confirms the ACL contract and SCM exit code **1067**
+(`Stopped`, PID zero), not a slow successful startup. It remains failed MSI
+acceptance, with failed retirement retained. A failure-only scheduled task now
+reuses the existing static startup diagnostic under LocalService, using the
+unchanged installed private Node/modules and matching environment. It reports
+only a fixed bootstrap phase and task result; it has no session credentials.
+Its copied code is read-only to LocalService, which can write only its public
+diagnostic output subdirectory. The task is stopped/unregistered afterward.
+This alternate-process probe diagnoses startup; it cannot establish SCM,
+installed-session or disk-full acceptance.
+
+Attempt `41005712810` runs that diagnostic successfully under SID `S-1-5-19`
+and localizes the failure to **config** (task result 1), before runtime resolve.
+The NTFS file/directory DACLs still admit LocalService. The disposable image
+now explicitly grants that SID read/execute/write on the backing file before
+attachment: the [AttachVirtualDisk contract](https://learn.microsoft.com/en-us/windows/win32/api/virtdisk/nf-virtdisk-attachvirtualdisk)
+uses the image's descriptor when no attachment descriptor is supplied. The
+previous private controller copy did not explicitly admit the service account
+at this separate device-filter layer. Its original source image and all
+production/session ACLs are unchanged. Pure tests verify owner, protection,
+exact principals and bounded rights, without mounting anything locally.
+This is a test-device admission correction; its actual MSI result remains open.
+
+Attempt `41006724177` confirms the read-access correction: the unchanged
+installed Node bootstrap now completes under LocalService (task result 0).
+SCM still exits with 1067. Its C++ supervisor additionally creates a private
+runtime lock with `FILE_FLAG_DELETE_ON_CLOSE`; the test image filter's initial
+read/write grant did not include delete or native security operations. The
+private 16 MiB copy now admits full device access for its controller, SYSTEM
+and LocalService only, leaving every production/session NTFS ACL unchanged.
+The failure-only Node diagnostic additionally checks an exclusively created,
+tiny owned runtime file and deletion, with fixed write/delete failure phases.
+Full source foundation and GCC 8.3 checks pass for `373ebb4`; installed SCM and
+the connected resource scenario still require their own positive result.
+
+Attempt `41017607893` passes actual published MSI installation, SCM startup,
+public configuration and the client's real loopback RDP connection. Failure
+is now the fixture's worker-image selection, before resource tests. Actual
+MSI uninstall, native/runtime retirement, account/settings restoration and
+empty/detached VHD cleanup all pass. The identity fixture now selects the one
+service-descendant worker by name, then reads its exact image with the WMI
+privilege option required for [Win32_Process.ExecutablePath](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-process).
+It accepts only the same installed local-drive path, including normal Windows
+case/extended-prefix forms; SID and exact worker hash checks remain mandatory.
+A bounded PID/parent/fixed-name snapshot records future selection failures,
+without command lines, environment or arbitrary executable paths. This is not
+yet accepted connected disk-full testing.
+
+Attempt `41019037273` passes exact worker PID/image/SID/hash verification and
+complete cleanup, then refuses the fixture's runtime-name assertion. The SDK
+creates `worker-<RuntimeOwner.id>-1-<nonce>`; that private lifetime-owner UUID
+is independent of the HTTP session ID. The corrected fixture still requires
+the service lock and exactly one schema-1 worker directory in its fresh
+exclusive runtime, after verifying the single real native worker. Pure tests
+reject missing/extra entries and malformed/traversing names. A separate fixed
+failure-phase field preserves client failures even after service-stop cleanup.
+
+Attempt `41020419951` reaches connected HTTP exhaustion and fails its observation
+helper; complete installed/account/volume cleanup passes. The native protected
+directory grants data access to LocalService and SYSTEM, not the administrative
+HTTP client. A separate static SYSTEM task now observes only the admitted
+worker's `.uploads` count/size, without reading content or changing its ACL.
+It has at most 24 ordered snapshots, bounded JSON/files/enumeration/time and
+verified private-Node image/SYSTEM identity. Atomic request/reply files live in
+the controller context, outside the bounded volume, and contain no credentials.
+The producer still waits for 393216 staged bytes before EOF, checks empty staging
+after each 507, and requires every observation plus joined task cleanup. The
+task is stopped/unregistered before installed-service retirement. Its final
+count/size receipts are retained as separate evidence. Unstructured PowerShell
+warnings/progress are suppressed on the private JSON pipe; terminating errors
+still refuse. This fixes test observation, not production/session permissions;
+actual resource acceptance remains open.
+
+Attempt `41022399807` passes all twelve connected HTTP 507 cases, confirming
+4718592 pre-EOF staged bytes and all 24 staged/empty snapshots; observer task
+and PID retirement pass. The real RDP task receives Windows disk-full status,
+but the independent zero-free-space assertion fails. The MSI-only task now
+explicitly exhausts a remaining allocation tail through RDP with bounded 4 KiB
+and one-byte append attempts. Its extra tail acknowledgements require an
+explicit receipt-parser mode; the original aligned 64 KiB prefix and default
+lab profiles keep their contracts. Host physical free space must still be
+exactly zero. A numeric sample is retained before that assertion. RDP retirement
+also failed at native `logoff`; native text is now discarded with its exit code
+retained, while owned-session absence, profile unload, account removal and RDP
+settings restoration remain required. This source correction is not accepted
+until the complete live case and cleanup pass.
+
+Attempt `41025154912` passes the complete installed MSI/native/real-RDP file
+scenario: 13 HTTP 507s, independent physical free space zero, Windows error 112,
+757760 verified partial bytes, recovery/Unicode/read-only/quota/stale-ID checks,
+74 exact native package files and native PID exit. MSI, observer and volume
+retirement pass; RDP retirement still fails reading the automatic
+`LASTEXITCODE` variable. The helper now waits on an explicit, owned logoff
+process handle with a deadline and captures its numeric exit code directly.
+Its bounded native output is discarded, never uploaded; fixed admission/result
+metadata records executable presence, bitness and byte counts. Final session,
+profile, account and RDP-settings conditions remain unchanged. Overall MSI
+acceptance remains false until that final cleanup passes.
+
+Run `41027120795` passes that final cleanup with native logoff exit zero and
+zero output bytes, owned account/task/settings retirement, empty runtime,
+successful MSI uninstall and empty/detached private VHD. Its exact public MSI
+and native hashes, 13 HTTP 507s, zero physical free bytes, verified 757760-byte
+partial file, 74 native package files, Unicode/chunked/read-only/quota/stale-ID
+and native PID proofs are saved separately from all earlier failed attempts.
+The fixture now also runs automatically after successful installer publication
+or publication resume, using the exact published version; this is qualification
+of public bytes, not a prepublication gate. Existing-source checks and their
+candidate/installer gates remain separate. Already-published plan skips do not
+republish or launch this post-publication job. The helper's dependency paths
+also trigger the isolated development workflow. No new product version or
+archive is produced by these test/documentation changes.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in
