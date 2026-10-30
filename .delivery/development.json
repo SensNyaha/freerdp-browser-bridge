@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "kind": "post-release-documentation",
+  "productVersion": "0.7.0",
+  "stableTag": "v0.7.0",
+  "stableCommit": "dbf6ca53ff0edfe035fd3bcee259fd2573291b28",
+  "upstreamDocumentationCommit": "4b994479e6c6344c43e4d2e169dca9d0a80358ff",
+  "immutableReleaseUnchanged": true,
+  "documents": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 21698,
+      "sha256": "977cd96ad18a8fb8c1a7597beac6726735295f6b87476f2a8950196d6d1c5c5c"
+    },
+    {
+      "path": "DEVICE_REDIRECTION.md",
+      "bytes": 19780,
+      "sha256": "44a2d279b2c49d3a318b17daf3900bc961b79abb60f1023e15f5eb893e9676fb"
+    },
+    {
+      "path": "PROTOCOL.md",
+      "bytes": 43652,
+      "sha256": "4569c998ab450fa3eee8d43599abd5b2c177a5317515b40165f23de0e716222e"
+    },
+    {
+      "path": "README.md",
+      "bytes": 6284,
+      "sha256": "971e5c69fba472f42ca4b7e0dae2511b7513fbc1693b9b95976e72e5ccea30ea"
+    },
+    {
+      "path": "TODO.md",
+      "bytes": 262759,
+      "sha256": "8e75bf911a152bf2b3ff2003b023d828c623d4cf28e5a20a73cc06b5bf368c1a"
+    },
+    {
+      "path": "apps/standalone/README.md",
+      "bytes": 2045,
+      "sha256": "9c82b90422cd0dc310d9cd3217d963d266a2e3c5e44d08e06117e35a3996cdf6"
+    },
+    {
+      "path": "docs/DEVELOPMENT.md",
+      "bytes": 173263,
+      "sha256": "e2d0f138be2447f6e9747f0646b002a8abf5e17e6e8a2bfa639ef0c1ac339013"
+    },
+    {
+      "path": "docs/EXPRESS_USAGE.md",
+      "bytes": 16397,
+      "sha256": "36d3d2cc00dd433c910292316b8d6ab128b7db48f6a52be006596630aad35c1b"
+    },
+    {
+      "path": "docs/FASTIFY_USAGE.md",
+      "bytes": 20716,
+      "sha256": "047955d836f42d846227144b75c42d0c4da2f70d39eecdf0eecc320e10980a74"
+    },
+    {
+      "path": "docs/GITHUB_DELIVERY.md",
+      "bytes": 18973,
+      "sha256": "25328053543b87438f6e8b441666da114aa4cc0c092fff37f755118d994531c6"
+    },
+    {
+      "path": "docs/NATIVE_NPM_RUNTIME.md",
+      "bytes": 13181,
+      "sha256": "30f4cefa43c1fe3e57f736fdfd737c8bd8405cf50035789209d3b8b67228a313"
+    },
+    {
+      "path": "docs/NESTJS_USAGE.md",
+      "bytes": 18676,
+      "sha256": "6af39c7f489c02b1df531a05fcec4fb79fbb491ae72c973e1fff67fcfdf10b4a"
+    },
+    {
+      "path": "docs/NODE_HTTP_USAGE.md",
+      "bytes": 16757,
+      "sha256": "5339fe4463c47c7bbc3d6468b8cccfe6654f1a9d407d8618d4d717669e36de10"
+    },
+    {
+      "path": "docs/README.md",
+      "bytes": 8887,
+      "sha256": "6bf16881f39b0faa058b7870cbad8fc14b03fe279e63eef7376ec7d5edbd3207"
+    },
+    {
+      "path": "docs/RELEASE_0_7_0.md",
+      "bytes": 12324,
+      "sha256": "b755903f001f507a9eb7ce2d7d3cb2362c300c0ba6356f922e166d39f57d69aa"
+    },
+    {
+      "path": "docs/STANDALONE.md",
+      "bytes": 29170,
+      "sha256": "900cd156d9f43691e18fadcae38fe029054b8acdfa94483cc63030306ec98d40"
+    },
+    {
+      "path": "docs/STANDALONE_INSTALL.md",
+      "bytes": 9503,
+      "sha256": "eddbbb4d141609e8bfc13d4c1ec286cb1e7b46cd184c0a575222e78937114a3e"
+    },
+    {
+      "path": "docs/VERSIONING.md",
+      "bytes": 21062,
+      "sha256": "506e4684cd3eb067371182a9f20776c3fd613b31e23c456aff3cba3966bd6c8c"
+    }
+  ]
+}

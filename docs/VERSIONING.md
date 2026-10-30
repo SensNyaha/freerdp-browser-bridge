@@ -1,5 +1,26 @@
 # Product versions and release branches
 
+Current public capability release: **0.7.0**, bounded bridge-host device
+metadata inventory through the SDK, four adapters and standalone operator CLI.
+Private immutable `v0.7.0` is `afc7f40`, merged into `master` at `52db030`;
+the public core tag is `dbf6ca5`. All ten exact npm packages are latest 0.7.0,
+all five OIDC workflows/Releases pass, and eight fresh registry consumers pass
+on Windows/Linux (12 inventory and 15 synthetic-RDP managed-file profiles).
+Seven final standalone files and the public checksum/manifest identities are
+verified. Final 0.6.0-to-0.7.0 upgrades pass Windows Server 2025, Ubuntu 24.04,
+Astra 1.7.5 and RED OS 7.3, including Linux service-account inventory.
+Published native NTFS exhaustion and installed Windows MSI/LocalService/
+loopback-RDP qualification also pass. Owned GNU test contexts are removed.
+[Public delivery, exact hashes and limits](RELEASE_0_7_0.md#public-delivery).
+
+The accepted 0.7.0 upgrade predecessor is exactly **v0.6.0**. Unknown future
+minor seeds still refuse. Physical redirection, OS file clipboard and the
+remaining Stage 8/V1 requirements remain open.
+
+## Historical 0.6.0 delivery and 0.7.0 preparation
+
+The following preserves earlier checkpoints; current release status is above.
+
 Current public capability release: **0.6.0**, managed HTTP files and redirected
 sandbox drives. Private immutable `v0.6.0` is `98b8f46`; the public core tag is
 `21b4091`. All ten exact npm packages are latest 0.6.0, all five OIDC workflows

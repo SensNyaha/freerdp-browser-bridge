@@ -742,6 +742,10 @@ negotiation, packet credit/ACK and 20 ms frames do not change.
 
 ## Host device inventory grammar in development
 
+This additive contract is released in 0.7.0. The heading is retained for stable
+links; the source/backend checkpoints are historical.
+[Public package and standalone acceptance](docs/RELEASE_0_7_0.md#public-delivery).
+
 Stage 8 / SPECIFICATION 2.9 starts with a bounded binary inventory contract.
 The current branch assigns private IPC kinds 50 (request, exactly eight bytes)
 and 51 (response, 16..65536 bytes), both with nonzero correlated request IDs.

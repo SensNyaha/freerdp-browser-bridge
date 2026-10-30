@@ -1,19 +1,19 @@
 # Standalone service and installers
 
-Standalone **0.6.0** is publicly released: ten exact npm packages, five GitHub
+Standalone **0.7.0** is publicly released: ten exact npm packages, five GitHub
 Releases and MSI/DEB/RPM/ZIP/TGZ/source companions. All four fresh registry-only
-consumers pass on Windows and Linux. Final published DEB/RPM upgrades from 0.5.0
+consumers pass on Windows and Linux. Final published DEB/RPM upgrades from 0.6.0
 pass on Astra 1.7.5 and RED OS 7.3; final hosted Windows/Ubuntu installation,
 upgrade/recovery/config retention and uninstall also pass.
-[Release acceptance and limits](RELEASE_0_6_0.md#public-delivery).
-[Download 0.6.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.6.0).
+[Release acceptance and limits](RELEASE_0_7_0.md#public-delivery).
+[Download 0.7.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.7.0).
 For ready-made distributions, start with the concise
 [installation and operations guide](STANDALONE_INSTALL.md).
 
 ## Operator-only host inventory
 
-The accepted inventory feature, now in `release/0.7.0`, adds an operator-only
-inventory command for the new capability release. **It is not present
+Published 0.7.0 adds an operator-only
+inventory command. **It is not present
 in public 0.6.0.** Invoke the distribution's private Node directly; the normal
 service/portable launchers retain their server-start contract:
 
@@ -46,8 +46,8 @@ Names are operator metadata: protect the output rather than collecting it in
 public logs. Discovery does not authorize or enable physical redirection.
 [Device/backend limits and acceptance boundaries](../DEVICE_REDIRECTION.md#host-inventory-in-the-development-branch).
 Source CLI composition passes with the real SDK/native worker and a controlled
-runtime resolver; that is separate from exact installed-distribution acceptance,
-which remains required before this feature is released.
+runtime resolver; that remains separate from the now-passing exact public
+installed-distribution acceptance.
 An additional Windows staging check now passes the unchanged source CLI beside
 an independent installed npm graph, including its declared `jose` dependency,
 through the automatic packaged resolver with no loader hook. Its private Node
@@ -59,8 +59,10 @@ and later, including an upgrade from 0.6.0. They use the distribution's private
 Node, unmodified entry point and automatic packaged runtime resolver, request
 at most three USB metadata records and verify the temporary runtime is empty
 after exit. Installed Linux runs it as `freerdp-bridge`, not root. Evidence
-retains only status/count, never device names. These checks are prepared; their
-exact 0.7.0 distribution acceptance is still pending.
+retains only status/count, never device names. These checks pass the exact
+public 0.7.0 portable/installed distributions, including Windows/Ubuntu hosted
+profiles and actual Astra/RED OS installed upgrades. Physical device operations
+and actual desktop RDP are outside these inventory/lifecycle fixtures.
 
 User clarification, 2026-10-23: retain the standalone web server and installers;
 exclude a separate desktop GUI application. The service uses the browser

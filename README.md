@@ -4,7 +4,7 @@
 Node.js для HTTP/WebSocket API. FreeRDP выполняется вне процесса Node.js.
 Можно встроить bridge в существующий backend или установить отдельную службу.
 
-Релизная линия **0.7.0** добавляет ограниченную инвентаризацию устройств хоста
+Опубликованный релиз **0.7.0** добавляет ограниченную инвентаризацию устройств хоста
 через Node SDK, четыре серверных адаптера и отдельную команду standalone.
 Десять точных npm-пакетов проверены в независимых проектах Windows/Linux;
 standalone MSI/DEB/RPM/ZIP/TGZ и обновления с 0.6.0 проверены на Windows
@@ -34,10 +34,10 @@ Server 2025, Ubuntu 24.04, Astra Linux 1.7.5 и RED OS 7.3.
 Например, Express на Linux x64/glibc:
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
+npm install express@5.3.0 @freerdp-bridge/express@0.7.0 @freerdp-bridge/runtime-linux-x64-gnu@0.7.0
 ```
 
-На Windows x64 выбирайте `@freerdp-bridge/runtime-win32-x64@0.6.0`.
+На Windows x64 выбирайте `@freerdp-bridge/runtime-win32-x64@0.7.0`.
 Готовым npm/standalone комплектам не нужен системный FreeRDP или компилятор.
 Для standalone не нужен и глобальный Node.js. macOS, ARM и musl этими
 проверками не приняты.

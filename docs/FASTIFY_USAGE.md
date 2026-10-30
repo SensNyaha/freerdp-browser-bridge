@@ -37,11 +37,11 @@ Windows/Linux consumers проходят strict TypeScript, HTTP/WS, assets и n
 TLS/lifecycle. [Публикация](RELEASE_0_5_0.md#public-delivery). Установка:
 
 ```sh
-npm install fastify@5.12.5 @freerdp-bridge/fastify@0.6.0
+npm install fastify@5.12.5 @freerdp-bridge/fastify@0.7.0
 # Выберите один native runtime той же версии для ОС сервера приложения:
-npm install @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
+npm install @freerdp-bridge/runtime-linux-x64-gnu@0.7.0
 # Windows x64 вместо Linux runtime:
-# npm install @freerdp-bridge/runtime-win32-x64@0.6.0
+# npm install @freerdp-bridge/runtime-win32-x64@0.7.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 

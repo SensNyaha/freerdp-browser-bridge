@@ -22,28 +22,31 @@ does not enable the capability model or satisfy device integration. Current
 USB/serial/parallel/smartcard and host-printer selections remain refused until
 their implementation and policy gates pass.
 
-The development branch starts the Stage 8 inventory with matching bounded
+Release **0.7.0** supplies the bounded bridge-host inventory through the private
+worker/SDK, all four adapters and the standalone operator command, with matching
 TypeScript/C++ [binary codecs](PROTOCOL.md#host-device-inventory-grammar-in-development).
-The private worker/SDK inventory path is implemented and source-accepted as
-recorded below; it has no HTTP route and is not yet a released capability.
-Exact 0.7.0 package/installer acceptance is separate from source acceptance.
-Physical redirection remains disabled by its existing gates.
+Exact public npm and installer acceptance passes separately from source tests.
+Inventory has no HTTP route and does not enable physical redirection.
+[Public release identities and limits](docs/RELEASE_0_7_0.md#public-delivery).
+Earlier source/compiler/backend checkpoints below retain their original scope.
 
-### Host inventory in the development branch
+<a id="host-inventory-in-the-development-branch"></a>
+
+### Host inventory in 0.7.0
 
 `discoverHostDevices(workerOptions, { classes, maxDevices })` is an opt-in
 trusted-host SDK operation. Classes are `printers`, `smartcards`, `serial`,
 `parallel` and `usb`; the global count is 1..128. Use a dedicated private runtime
-root under the service account and the matching native source build. Published
-0.6.0 lacks this RPC; the development SDK refuses a 0.6.0 worker with
+root under the service account and the matching 0.7.0 native runtime. Published
+0.6.0 lacks this RPC; the 0.7.0 SDK refuses a 0.6.0 worker with
 `DEVICE_INVENTORY_NOT_IMPLEMENTED`. Do not expose
 the function as an unrestricted browser/API endpoint or log its device names.
 Every returned device has `origin: 'bridge-host'`; inventory IDs are metadata,
 not authorizations and not stable across reconnect/reboot.
 
 The same function and `HostInventoryRequest` / `HostInventoryReport` types are
-also exported from each adapter package in the development branch. For example,
-trusted application startup/diagnostics can use the planned 0.7.0 Express API:
+also exported from each 0.7.0 adapter package. For example,
+trusted application startup/diagnostics can use the published Express API:
 
 ```ts
 import { resolve } from 'node:path';
@@ -95,6 +98,8 @@ a node does not prove that opening or redirecting it is allowed.
 The CUPS callback and timeout/filter semantics follow the pinned public
 [2.4.20 header](https://github.com/OpenPrinting/cups/blob/ef80eeaea51430a055948240eea3f28ef5354edf/cups/cups.h)
 and [OpenPrinting programming manual](https://openprinting.github.io/cups/doc/cupspm.html).
+
+### Historical source and backend checkpoints
 
 The initial development checks pass actual Windows foundation and linked
 worker calls with joined cleanup, native rejection of duplicate/ordinary IO

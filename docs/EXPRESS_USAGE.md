@@ -20,7 +20,7 @@ strict TypeScript и 11/11 проверок. [Публикация](RELEASE_0_6_
 Установка в существующем проекте:
 
 ```sh
-npm install express@5.3.0 @freerdp-bridge/express@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
+npm install express@5.3.0 @freerdp-bridge/express@0.7.0 @freerdp-bridge/runtime-linux-x64-gnu@0.7.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 
@@ -31,7 +31,7 @@ npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 `"type": "module"`. Не копируйте workspace-исходники в `node_modules`.
 
 На Windows x64 вместо Linux runtime явно установите
-`@freerdp-bridge/runtime-win32-x64@0.6.0`. На Windows x64 и Linux x64 glibc
+`@freerdp-bridge/runtime-win32-x64@0.7.0`. На Windows x64 и Linux x64 glibc
 `resolveNativeRuntime()` выбирает уже установленный пакет нужной платформы,
 проверяет версию, FreeRDP pin, inventory и hashes. Resolver не скачивает runtime.
 Общие JS-пакеты http/api/node/config/protocol устанавливаются автоматически

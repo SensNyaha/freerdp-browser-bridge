@@ -33,7 +33,7 @@ FreeRDP не загружается в процесс Node. Внутренний
 Установка опубликованного 0.5.0 на Linux x64/glibc:
 
 ```sh
-npm install @freerdp-bridge/http@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
+npm install @freerdp-bridge/http@0.7.0 @freerdp-bridge/runtime-linux-x64-gnu@0.7.0
 npm install --save-dev typescript@5.9.3 @types/node@24.10.0
 ```
 

@@ -4,20 +4,19 @@ Product release versions follow [the version policy](docs/VERSIONING.md).
 
 ## Unreleased
 
-## 0.7.0 — in preparation
+## 0.7.0 — 2026-10-30
 
-The inventory source feature is accepted and merged. Exact npm archives,
-standalone candidates and installed 0.6.0 upgrades pass prepublication acceptance
-on Windows, Ubuntu, Astra and RED OS. Stable public delivery remains pending;
-public stable is still 0.6.0. See [accepted scope and exact archives](docs/RELEASE_0_7_0.md).
+Bridge-host metadata inventory is published in ten exact npm packages,
+five GitHub Releases and final standalone distributions. Eight fresh registry
+consumers and final public installer/0.6.0 upgrade checks pass on Windows,
+Ubuntu, Astra and RED OS. See [accepted scope and exact archives](docs/RELEASE_0_7_0.md#public-delivery).
 
 - Add bounded bridge-host device inventory to the private worker and Node SDK,
   with CUPS/PCSC/libusb/device-node providers, explicit incomplete/refusal states,
   single-use discovery lifecycle and matching exports in all four adapters.
   Physical device redirection remains separately gated.
 - Add an operator-only standalone inventory command, verified in exact portable
-  and installed 0.7.0 distributions. Final public delivery acceptance remains
-  pending.
+  and installed 0.7.0 distributions, including Linux service-account inventory.
 - Join native download closure before completing HTTP responses, including
   empty files, so a following operation can reuse the session's file service.
 - Prepare SHA-512-pinned source companions when dependency binaries are restored

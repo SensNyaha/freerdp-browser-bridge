@@ -2,9 +2,16 @@
 
 ## Status
 
-**Prepublication acceptance has passed. Stable npm and standalone publication remain pending.** Public stable is 0.6.0 until public delivery is verified.
+**0.7.0 is published and verified:** all ten npm packages, five GitHub Releases
+and the final standalone distributions pass public delivery acceptance.
+[Public sources, file identities and installed profiles](#public-delivery)
+are authoritative for this release.
 
 This minor release adds bounded bridge-host device metadata inventory. It does not complete Stage 8 or V1, physical device redirection, or OS file clipboard.
+
+### Historical prepublication checkpoint
+
+**Prepublication acceptance has passed. Stable npm and standalone publication remain pending.** Public stable is 0.6.0 until public delivery is verified.
 
 ## Delivered capability
 
@@ -61,3 +68,81 @@ These are acceptance candidates, not public stable installer identities.
 | `freerdp-bridge_0.7.0_amd64.deb` | 122253940 | `fd4bd7076f83f9e481a41a57395d00ba4d965ac8bbf6d5de12302f3a0be5e20a` |
 
 Final public delivery must retain the exact npm archives and separately verify the public standalone files and installation scope. Physical printer/card/USB/port redirection, browser device access and remaining TODO gates stay open.
+
+## Public delivery
+
+Private immutable `v0.7.0` identifies `afc7f4039ee753e92b026b6bbedcd27a2be5ae41`;
+its release branch is merged into private `master` at `52db030`.
+The independent public core tag identifies `dbf6ca53ff0edfe035fd3bcee259fd2573291b28`.
+All five public release histories continue their accepted parents. Existing tags
+and archive bytes were not changed. All ten npm latest tags select 0.7.0 at
+the exact accepted SRI. Registry provenance subject digests, source commits,
+workflow paths and invocation IDs match these releases; this records metadata
+comparison, not independent cryptographic verification of Sigstore bundles.
+Publication uses OIDC with no new manual per-package approval queue.
+
+| Repository | Public source | Successful OIDC run |
+| --- | --- | --- |
+| [freerdp-browser-bridge](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.7.0) | `dbf6ca5` | [41115827640](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/41115827640) |
+| [freerdp-bridge-fastify](https://github.com/SensNyaha/freerdp-bridge-fastify/releases/tag/v0.7.0) | `60cabb9` | [41118988347](https://github.com/SensNyaha/freerdp-bridge-fastify/actions/runs/41118988347) |
+| [freerdp-bridge-nestjs](https://github.com/SensNyaha/freerdp-bridge-nestjs/releases/tag/v0.7.0) | `147a6eb` | [41119069171](https://github.com/SensNyaha/freerdp-bridge-nestjs/actions/runs/41119069171) |
+| [freerdp-bridge-http](https://github.com/SensNyaha/freerdp-bridge-http/releases/tag/v0.7.0) | `f95a869` | [41118909293](https://github.com/SensNyaha/freerdp-bridge-http/actions/runs/41118909293) |
+| [freerdp-bridge-express](https://github.com/SensNyaha/freerdp-bridge-express/releases/tag/v0.7.0) | `324fd69` | [41119661539](https://github.com/SensNyaha/freerdp-bridge-express/actions/runs/41119661539) |
+
+The public source passes [foundation CI](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/41118833427)
+and [GCC 8.3 CI](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/41118833268).
+Eight fresh registry-only consumer projects pass on Windows/Linux: strict
+TypeScript, framework/server/TLS behavior, installed browser assets, recovery,
+twelve native inventory profiles and fifteen native managed-file profiles.
+Inventory opens no device and creates no RDP session. The file profiles use
+synthetic RDP state; they do not establish desktop or file-clipboard acceptance.
+
+Final [standalone workflow 41118833374](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/41118833374)
+passes both platform builds, portable/installed inventory, 0.6.0 upgrades,
+aggregate verification, publication and post-publication Windows MSI resource
+qualification. All seven public files below were downloaded and verified
+against the final manifest, GitHub digests, SHA256SUMS and SHA-512 integrities.
+The checksum list also binds the manifest itself. `candidateOnly` is false.
+
+| Final public file | Bytes | SHA256 |
+| --- | --- | --- |
+| `freerdp-bridge_0.7.0_amd64.deb` | 122254156 | `5957dc22c982d5d951d8dbe8b4af3160232914ab1f2f4de6ac13467deb4bf726` |
+| `freerdp-bridge-0.7.0-1.x86_64.rpm` | 122800226 | `a155601a4cbcba4d7f9817b265e85b4f478a81e97bc564ad7667f6da4424ab01` |
+| `freerdp-bridge-0.7.0-corresponding-source-linux-x64-gnu.tar.gz` | 4008580 | `5638e3111d875cd98de10a4cd866fe8c95a22b941ad437760ebe36e559ac58ea` |
+| `freerdp-bridge-0.7.0-corresponding-source-win32-x64.tar.gz` | 440162 | `3e0dbf182eaf111a2569840ff742fa9c4b8ab89db0440df3b7eebe41b788bf8f` |
+| `freerdp-bridge-0.7.0-linux-x64-gnu.tar.gz` | 122583508 | `456d863d5ca2eee9acfd0be9df374977079bd583c227bf610e016c3233fa4e48` |
+| `freerdp-bridge-0.7.0-win32-x64.msi` | 36850786 | `1c816b23fc41e80f702dd6142ad4d50e401fbc6b35b58e02f49e10a7ff2d2468` |
+| `freerdp-bridge-0.7.0-win32-x64.zip` | 47894941 | `006719d1750f715d691148b94b795b2ef05f16dfae2b037c8f52b792f5b2053e` |
+
+Final public DEB/RPM separately pass immutable public 0.6.0-to-0.7.0 upgrades
+on Astra Linux 1.7.5 and RED OS 7.3: service-account inventory, native TLS,
+non-root identity, crash recovery, retained default configuration and uninstall.
+Both owned test contexts are removed after hash/ownership/live-process checks;
+the program and service remain absent. These lifecycle fixtures make no actual
+desktop RDP claim. Existing 0.6.0 application/RDP evidence remains versioned
+separately and is not relabeled as a new 0.7.0 desktop test.
+
+The [Windows NTFS gate](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/41118833346)
+passes source and exact published runtime physical exhaustion, quota refund
+and cleanup. Its first attempt had one source-worker HTTP `ECONNRESET` before
+the published-runtime step. The failed log remains retained; one unchanged
+repeat on a fresh runner passes both profiles, including the shipping worker
+SHA256 above. No product assertion or timeout was weakened.
+The final public MSI separately passes LocalService, real loopback RDP and
+bounded NTFS exhaustion with complete installed/account/volume cleanup in
+job `124285544194` of the standalone workflow.
+
+Local evidence: `inventory07-public-identity-acceptance.json`,
+`inventory07-registry-consumer-acceptance.json`,
+`inventory07-final-hosted-acceptance.json`,
+`inventory07-public-installed-labs/` and both
+`inventory07-*-installed-public-cleanup.json` receipts.
+The initial report collector incorrectly expected seven checksum rows rather
+than seven files plus the manifest; its refusal and correction are retained.
+This changed no public bytes or acceptance tests.
+
+## Remaining scope
+
+Physical printer/card/USB/port redirection, browser device access, OS file
+clipboard (`clipboardFiles: false`) and the remaining Stage 8/V1 requirements
+remain open. Host metadata discovery does not authorize device access.

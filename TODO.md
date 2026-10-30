@@ -2589,7 +2589,9 @@ remain explicit under quota/disk-full and the final V1 qualification.
   `41072347727` also passes all four installed consumers on Windows and Linux:
   four framed profiles on Windows and eight framed/RWS1 profiles on Linux.
   Exact 0.7.0 prepublication distribution acceptance now passes Windows,
-  Ubuntu, Astra and RED OS; public delivery remains pending.
+  Ubuntu, Astra and RED OS. Public 0.7.0 delivery also passes all ten exact
+  latest npm packages, five OIDC Releases, eight fresh registry consumers,
+  final standalone files and four-platform installed 0.6.0 upgrades.
   Standalone now has an explicit operator-only `--inventory` CLI, without
   reading server configuration or starting HTTP/RDP. Pure/invalid-CLI controls
   and source CLI composition with the real SDK/native worker pass; runtime
@@ -2604,8 +2606,10 @@ remain explicit under quota/disk-full and the final V1 qualification.
   [Source acceptance and commit references](DEVICE_REDIRECTION.md#inventory-source-feature-acceptance)
   permits merging the feature. Exact 0.7.0 npm consumers, portable/installed CLI,
   four-platform 0.6.0 upgrades and actual RED OS/GCC 11 CTest 43/43 now pass.
-  Remote test inputs are removed; public delivery remains a separate gate.
-  [Versioned prepublication acceptance](docs/RELEASE_0_7_0.md).
+  Final public delivery is verified; owned remote test inputs are removed.
+  Source/exact-runtime NTFS exhaustion and the final public Windows MSI
+  LocalService/loopback-RDP/resource qualification pass in hosted CI.
+  [Versioned public acceptance and exact identities](docs/RELEASE_0_7_0.md#public-delivery).
   [Development contract](PROTOCOL.md#host-device-inventory-grammar-in-development).
 - [ ] Host printer allowlist and RDPDR printer mapping.
 - [ ] Virtual spool printer backend and download event/API.

@@ -25,7 +25,7 @@ registry-only consumers проходят strict TS и 15/15 проверок н�
 
 ```sh
 # Linux x64 / glibc
-npm install @freerdp-bridge/nestjs@0.6.0 @freerdp-bridge/runtime-linux-x64-gnu@0.6.0
+npm install @freerdp-bridge/nestjs@0.7.0 @freerdp-bridge/runtime-linux-x64-gnu@0.7.0
 # Windows x64: вместо Linux runtime выбирается runtime-win32-x64 той же версии
 ```
 

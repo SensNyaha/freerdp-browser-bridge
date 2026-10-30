@@ -1,5 +1,10 @@
 # Building the foundation
 
+Current public release is **0.7.0**. The inventory feature and release branches
+are merged; exact npm and standalone distribution acceptance is complete.
+[Public sources, installer profiles and remaining limits](RELEASE_0_7_0.md#public-delivery).
+Older version-specific checkpoints below retain their original scope.
+
 For current installation, architecture and release reading paths start with the
 [documentation map](README.md). Historical lab commands below retain their
 one-run authorizations and original scope; they are not permission to repeat
