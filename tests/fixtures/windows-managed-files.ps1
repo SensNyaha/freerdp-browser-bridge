@@ -1,6 +1,7 @@
-param([string]$RunId, [switch]$DiskFull)
+param([string]$RunId, [switch]$DiskFull, [switch]$ExhaustAllocationTail)
 $ErrorActionPreference = 'Stop'
 if ($RunId -cnotmatch '^[0-9a-f]{32}$') { throw 'OWNED_ID' }
+if ($ExhaustAllocationTail -and -not $DiskFull) { throw 'OWNED_MODE' }
 $rw = '\\tsclient\RW' + $RunId.Substring(0, 5)
 $ro = '\\tsclient\RO' + $RunId.Substring(0, 5)
 $phase = 'mount'
@@ -136,7 +137,40 @@ try {
       [Array]::Clear($fullBlock, 0, $fullBlock.Length)
     }
     if ($fullError -notin @(39, 112) -or $acknowledged -lt 65536 -or $acknowledged -ge 2097152) { throw 'OWNED_WRONG_FULL_REFUSAL' }
-    Write-OwnedReservedReceipt 'receipt-full.json' @{ v=1; id=$RunId; phase='full'; ok=$true; errno=$fullError; acknowledgedBytes=$acknowledged }
+    $tailAcknowledged = 0
+    if ($ExhaustAllocationTail) {
+      # Fill smaller free allocation units through RDP, not from the host.
+      foreach ($blockSize in @(4096, 1)) {
+        $tailBlock = [byte[]]::new($blockSize)
+        $tailStream = [IO.FileStream]::new($fullPath, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::Read, 1)
+        $tailRefused = $false
+        try {
+          for ($attempt = 0; $attempt -lt 8192; $attempt++) {
+            if ($tailAcknowledged -ge 65536 -or $tailStream.Position + $blockSize -ge 2097152) { throw 'OWNED_TAIL_BOUND' }
+            $position = $tailStream.Position
+            for ($i = 0; $i -lt $blockSize; $i++) { $tailBlock[$i] = [byte]((($position + $i) * 17 + 83) -band 255) }
+            try {
+              $tailStream.Write($tailBlock, 0, $blockSize)
+            } catch {
+              $cause = $_.Exception
+              while ($cause.InnerException) { $cause = $cause.InnerException }
+              if (($cause.HResult -band 65535) -notin @(39, 112)) { throw 'OWNED_WRONG_TAIL_REFUSAL' }
+              $tailRefused = $true
+              break
+            }
+            $tailAcknowledged += $blockSize
+            if ($tailAcknowledged -ge 65536) { throw 'OWNED_TAIL_BOUND' }
+          }
+        } finally {
+          $tailStream.Dispose()
+          [Array]::Clear($tailBlock, 0, $tailBlock.Length)
+        }
+        if (-not $tailRefused) { throw 'OWNED_TAIL_BOUND' }
+      }
+    }
+    $fullReceipt = @{ v=1; id=$RunId; phase='full'; ok=$true; errno=$fullError; acknowledgedBytes=$acknowledged }
+    if ($ExhaustAllocationTail) { $fullReceipt.tailAcknowledgedBytes = $tailAcknowledged }
+    Write-OwnedReservedReceipt 'receipt-full.json' $fullReceipt
     $phase = 'wait-full-host'
     $resume = Join-Path $rw 'continue-full.json'
     $clock = [Diagnostics.Stopwatch]::StartNew()

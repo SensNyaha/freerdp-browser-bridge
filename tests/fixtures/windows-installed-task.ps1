@@ -13,4 +13,4 @@ $probe=Join-Path $PSScriptRoot 'windows-managed-files.ps1'
 $file=Get-Item -LiteralPath $probe
 if($file.PSIsContainer -or ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $file.Length -gt 16384){throw 'OWNED_TASK_SOURCE_REFUSED'}
 if((Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant() -cne $ScriptSha256){throw 'OWNED_TASK_SOURCE_REFUSED'}
-& $probe -RunId $RunId -DiskFull
+& $probe -RunId $RunId -DiskFull -ExhaustAllocationTail

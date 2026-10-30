@@ -258,6 +258,38 @@ test('Windows full-disk receipt binds identity, real Windows disk-full errno and
     );
 });
 
+test('allocation-tail receipts require explicit mode and preserve aligned prefix acknowledgements', () => {
+  const full = {
+    v: 1,
+    id,
+    phase: 'full',
+    ok: true,
+    errno: 112,
+    acknowledgedBytes: 655360,
+    tailAcknowledgedBytes: 4095,
+  };
+  const parse = (value, enabled = true) =>
+    parseWindowsFilesReceipt(JSON.stringify(value), id, 'full', enabled);
+  assert.deepEqual(parse(full), full);
+  assert.equal(
+    parse({ ...full, tailAcknowledgedBytes: 0 }).tailAcknowledgedBytes,
+    0,
+  );
+  assert.throws(() => parse(full, false), /FILES_LAB_RECEIPT_REFUSED/);
+  for (const change of [
+    { tailAcknowledgedBytes: true },
+    { tailAcknowledgedBytes: -1 },
+    { tailAcknowledgedBytes: 65536 },
+    { acknowledgedBytes: 655361 },
+    { extraPath: '/private' },
+  ])
+    assert.throws(
+      () => parse({ ...full, ...change }),
+      /FILES_LAB_RECEIPT_REFUSED/,
+    );
+  assert.throws(() => parse(full, 'true'), /FILES_LAB_RECEIPT_REFUSED/);
+});
+
 test('Windows file input requires a confirmed private target and a user-prepared window before any input', async () => {
   let calls = 0;
   const send = async () => {

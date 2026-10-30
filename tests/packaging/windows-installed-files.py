@@ -252,6 +252,7 @@ def main():
     cleanup = {}
     startup_diagnostic = None
     failure_phase = None
+    resource_samples = []
     phase = 'mount'
     try:
         mounted = host('mount', imageDirectory=str(image_directory))
@@ -330,6 +331,10 @@ def main():
                 task = host('task', scriptSha256=expected)
                 require(task['started'] is True and task['passwordStored'] is False)
                 client.send({'command': 'owned-ci-task-started'})
+            elif name == 'owned-full-space-sample':
+                free = event.get('freeBytes')
+                require(type(free) is int and 0 <= free <= 16777216 and not resource_samples)
+                resource_samples.append({'freeBytes': free})
             elif name == 'installed-windows-drive-full-verified':
                 require(event.get('actualRdp') is True and event.get('physicalFreeBytes') == 0
                         and event.get('remoteErrno') in (39, 112) and event.get('crossHttpStatus') == 507)
@@ -381,7 +386,8 @@ def main():
                   'msiSha256': descriptor['sha256'], 'workerSha256': worker_sha,
                   'runtimeIntegrity': integrity, 'publicSourceCommit': descriptor['sourceCommit'],
                   'events': events, 'cleanup': cleanup, 'hostFailures': host_failures,
-                  'startupDiagnostic': startup_diagnostic, 'failurePhase': failure_phase}
+                  'startupDiagnostic': startup_diagnostic, 'failurePhase': failure_phase,
+                  'resourceSamples': resource_samples}
         if accepted:
             accepted = (cleanup['installed'].get('uninstalled') is True
                     and cleanup['observer'].get('taskRemoved') is True

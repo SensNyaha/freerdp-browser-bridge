@@ -526,9 +526,19 @@ try {
                 }
             }
             $accountPath=Join-Path $script:context 'account.json'
+            $logoffCodes=@()
             if(Test-Path -LiteralPath $accountPath){
                 $account=Own-Account
-                foreach($session in @(Own-Sessions $account.Name)) {& (Join-Path $env:SystemRoot 'System32\logoff.exe') ([string]$session) *> $null;Own-Require ($LASTEXITCODE -eq 0)}
+                foreach($session in @(Own-Sessions $account.Name)) {
+                    # A disconnected owned session may vanish before logoff.
+                    # Discard native text; retain its code and prove final absence.
+                    $previousPreference=$ErrorActionPreference
+                    try {
+                        $ErrorActionPreference='Continue'
+                        & (Join-Path $env:SystemRoot 'System32\logoff.exe') ([string]$session) *> $null
+                        $logoffCodes+=[int]$LASTEXITCODE
+                    } finally {$ErrorActionPreference=$previousPreference}
+                }
                 $deadline=[Diagnostics.Stopwatch]::StartNew()
                 do {$sessions=@(Own-Sessions $account.Name);if(-not $sessions.Count){break};Start-Sleep -Milliseconds 200}while($deadline.ElapsedMilliseconds -lt 20000)
                 Own-Require ($sessions.Count -eq 0)
@@ -552,7 +562,7 @@ try {
                 Set-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name fDenyTSConnections -Value $state.deny
                 foreach($name in @('UmRdpService','SessionEnv','TermService')){if($state.services[$name] -ceq 'Stopped' -and (Get-Service $name).Status -ne 'Stopped'){Stop-Service -Name $name; (Get-Service $name).WaitForStatus('Stopped',[TimeSpan]::FromSeconds(20))}}
             }
-            $answer=@{accountRemoved=$true;taskRemoved=$true;rdpStateRestored=$true;firewallRulesAdded=$false}
+            $answer=@{accountRemoved=$true;taskRemoved=$true;rdpStateRestored=$true;firewallRulesAdded=$false;logoffExitCodes=$logoffCodes}
         }
     }
     [Console]::Out.WriteLine((Own-Json @{ok=$true;action=$Action;result=$answer}))

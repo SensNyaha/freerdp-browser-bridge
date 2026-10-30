@@ -116,6 +116,20 @@ warnings/progress are suppressed on the private JSON pipe; terminating errors
 still refuse. This fixes test observation, not production/session permissions;
 actual resource acceptance remains open.
 
+Attempt `41022399807` passes all twelve connected HTTP 507 cases, confirming
+4718592 pre-EOF staged bytes and all 24 staged/empty snapshots; observer task
+and PID retirement pass. The real RDP task receives Windows disk-full status,
+but the independent zero-free-space assertion fails. The MSI-only task now
+explicitly exhausts a remaining allocation tail through RDP with bounded 4 KiB
+and one-byte append attempts. Its extra tail acknowledgements require an
+explicit receipt-parser mode; the original aligned 64 KiB prefix and default
+lab profiles keep their contracts. Host physical free space must still be
+exactly zero. A numeric sample is retained before that assertion. RDP retirement
+also failed at native `logoff`; native text is now discarded with its exit code
+retained, while owned-session absence, profile unload, account removal and RDP
+settings restoration remain required. This source correction is not accepted
+until the complete live case and cleanup pass.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in

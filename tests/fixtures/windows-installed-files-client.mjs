@@ -486,6 +486,7 @@ try {
             text,
             input.id,
             isFailed ? 'failed' : expectedPhase,
+            !isFailed && expectedPhase === 'full',
           );
           if (isFailed) throw new Error('OWNED_INSTALLED_REMOTE_FAILED');
           return { entry, value: parsed };
@@ -500,6 +501,10 @@ try {
   phase = 'windows-drive-full';
   const fullReceipt = await receipt('receipt-full.json', 'full');
   const fullFs = await statfs(runtime);
+  send({
+    event: 'owned-full-space-sample',
+    freeBytes: fullFs.bavail * fullFs.bsize,
+  });
   assert.equal(fullFs.bavail * fullFs.bsize, 0);
   const partial = (await page(rw.fileId)).entries.find(
     (e) => e.name === 'owned-resource-full.bin',
