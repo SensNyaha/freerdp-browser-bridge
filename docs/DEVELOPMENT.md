@@ -11,6 +11,26 @@ worker executable available again.
 Current delivery criteria and evidence boundaries are in
 [practical MVP acceptance](MVP_ACCEPTANCE.md).
 
+## Windows MSI physical-full CI preparation
+
+The installed MSI / real RDP / bounded NTFS resource scenario is being prepared
+on `feature/windows-msi-disk-full`; it has not passed actual installed acceptance.
+Its privileged host helper is reserved for an isolated Windows CI runner with
+an admitted private 16 MiB VHD and a verified absent product installation.
+Ordinary unit tests import only the pure configuration validator and exercise
+the bounded input/download/client admission controls. The host admission smoke
+case additionally requires `BRIDGE_WINDOWS_MSI_HOST_TEST=1` in that designated
+job; do not enable it for local development.
+
+An earlier local invalid-input smoke invocation was blocked by endpoint
+protection with `ScriptContainedMaliciousContent`. The local record is
+`build/current-validation/windows-msi-local-protection-response.json`.
+The new task uses a plain local `.ps1` through `-File`, validates its hash and
+session identity, and grants the temporary account only read/execute access to
+that fixture. No generated PowerShell source, execution-policy override or
+antivirus exception is used. This change does not claim positive execution of
+the privileged helper; that remains a CI acceptance requirement.
+
 ## Prepared Windows managed-file application check
 
 Current accepted public **0.6.0** profiles and their scope are recorded in
