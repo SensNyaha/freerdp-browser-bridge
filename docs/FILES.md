@@ -30,8 +30,9 @@ per-profile events, original log hashes, native tests and unchanged native /
 package / application code since the accepted release. Its local binding is
 `build/current-validation/stage7-capability-acceptance-audit.json`.
 
-Quota/disk-full Windows qualification, broader resource/soak/device/server
-matrices and the complete Stage 7/V1 acceptance remain open below. The explicit
+Windows MSI disk-full qualification now passes the two fresh-runner cases
+[below](#installed-windows-msi-physical-full-acceptance). Broader resource/soak/
+device/server matrices and complete Stage 7/V1 acceptance remain open. The explicit
 file-clipboard deferral is unchanged; HTTP/RDPDR file transfer supplies a
 separate capability.
 
@@ -730,6 +731,46 @@ with the individual `windows-rdpdr-full-*-diagnostic-v2.json` and
 Windows-worker/NTFS full-drive case, Windows MSI exhaustion, file clipboard or
 the complete Stage 7 resource/soak matrix. No production code, npm archive,
 standalone artifact or immutable release tag changes in this test-only work.
+
+### Installed Windows MSI physical-full acceptance
+
+Two independent Windows Server 2025 runners pass the exact public **0.6.0**
+MSI with its actual LocalService process, one real native worker and a real
+loopback RDP connection:
+
+- [First complete run 41027120795](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/41027120795), public source `0259439` / private `dc32b1e`.
+- [Fresh repeat 41029036732](https://github.com/SensNyaha/freerdp-browser-bridge/actions/runs/41029036732), public source `5e0bf07` / private `de2d6e3`.
+
+The functional helper and product bytes are identical between these runs.
+The MSI SHA256 is `8019d33db826150488cc3eaa8c4fdb2f3f1bb5a5963d08ec6c8d6aea78dc1666`;
+the native worker SHA256 is `8f5b7c6b70f77dbf8ea586cdc87d49032dc77f94161c003a499f63f8d9e333a5`.
+All 74 installed native package files match the public npm runtime.
+
+Each fresh private 16 MiB NTFS VHD verifies twelve connected HTTP 507 failures
+with 393216 staged bytes observed before each producer finishes. Twenty-four
+bounded SYSTEM metadata snapshots prove staging and subsequent cleanup without
+reading contents or weakening the worker's protected directory ACL. The
+aggregate staged bytes exceed the configured session quota, checking refunds.
+Actual RDPDR writes then exhaust the allocation tail: independently observed
+physical free bytes are zero, Windows reports error 112, and the 757760-byte
+partial native file matches the expected pattern. A further HTTP request
+returns 507; deletion restores space and invalidates the stale locator.
+
+Subsequent Unicode CRUD, 65599-byte readback, 131111-byte chunked transfer,
+three read-only refusals and per-file quota refusal pass. Both runs verify the
+worker exit, empty runtime, actual MSI uninstall, observer task/process removal,
+owned RDP account removal, logoff exit zero, restored RDP settings and empty /
+detached test volume. No firewall rules are added; the original image is retained.
+
+The local audit is
+`build/current-validation/windows-msi-stable-case-acceptance.json`; it binds both
+downloaded evidence archives and job logs by SHA256. Earlier failed attempts
+remain recorded in [development evidence](DEVELOPMENT.md#windows-msi-physical-full-ci).
+This accepts the named installed Windows-worker/NTFS HTTP/RDPDR case. Broader
+resource/soak matrices and file clipboard remain separate, unaccepted gates.
+Future successful standalone publication/resume invokes this reusable check
+against the exact public MSI; it is post-publication qualification, not a
+prepublication gate. No product archive, version or immutable tag changes here.
 
 ## Native drive backend in development
 

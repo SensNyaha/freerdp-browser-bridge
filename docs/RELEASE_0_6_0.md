@@ -7,6 +7,12 @@ and the final standalone distributions pass public delivery acceptance.
 [Public artifacts, exact identities and installed profiles](#public-delivery)
 are authoritative for the current release. Broader Stage 7/V1 gates remain open.
 
+Post-release qualification also passes the exact public Windows MSI under
+LocalService with real loopback RDP and bounded NTFS physical exhaustion on two
+fresh CI runners. HTTP/RDPDR recovery and complete installed/account/volume
+cleanup pass without changing any public bytes or tags.
+[Installed Windows MSI scope and evidence](FILES.md#installed-windows-msi-physical-full-acceptance).
+
 ### Historical prepublication checkpoint
 
 **Prepublication acceptance has passed. Public npm and stable standalone delivery

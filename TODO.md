@@ -2551,9 +2551,14 @@ remain explicit under quota/disk-full and the final V1 qualification.
   zero physical free bytes, exact native partial-content verification, 13 HTTP
   507 responses per run, deletion/refund and subsequent real CRUD/read-only /
   joined cleanup. The initial final-cleanup assertion failure remains recorded
-  separately; no assertions were relaxed. Connected Windows-worker/NTFS,
-  Windows MSI / service and broader resource/soak acceptance remain open;
-  this checkbox stays open.
+  separately; no assertions were relaxed. Connected Windows-worker/NTFS and
+  the exact public MSI / LocalService scenario now pass two fresh Windows CI
+  runners with unchanged functional helper/product bytes: twelve staged HTTP
+  507 refunds, real RDPDR error 112, zero physical free bytes, verified partial
+  content, subsequent CRUD/read-only/quota refusals and complete service /
+  account / task / volume cleanup. Broader resource/soak acceptance remains
+  open; this checkbox stays open.
+  [Installed Windows MSI scope](docs/FILES.md#installed-windows-msi-physical-full-acceptance).
   [Windows-server scope](docs/FILES.md#connected-windows-server-rdpdr-disk-full-acceptance).
   [Installed Linux scope](docs/FILES.md#installed-astra-and-red-os-disk-full-acceptance).
   [Windows physical scope](docs/FILES.md#bounded-windows-ntfs-disk-full-check).

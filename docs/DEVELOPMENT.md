@@ -13,9 +13,14 @@ Current delivery criteria and evidence boundaries are in
 
 ## Windows MSI physical-full CI
 
-The installed MSI / real RDP / bounded NTFS resource scenario first passes in
-run `41027120795` on `feature/windows-msi-disk-full`. An independent repeat and
-final source-wide gates remain required before this branch is merged.
+The installed MSI / real RDP / bounded NTFS resource scenario passes in
+run `41027120795` and independent fresh-runner repeat `41029036732` on
+`feature/windows-msi-disk-full`, with unchanged functional helper/product bytes.
+Final source-wide gates pass at public `5e0bf07` / private `de2d6e3`:
+foundation `41029036693` (Windows/MSVC, two Linux/GCC profiles and sanitizers /
+bounded fuzz) and exact GCC 8.3 `41029036699`. This accepts the named branch
+scenario for merge; the broader resource/soak requirements remain open.
+[Accepted case and exact evidence](FILES.md#installed-windows-msi-physical-full-acceptance).
 Its privileged host helper is reserved for an isolated Windows CI runner with
 an admitted private 16 MiB VHD and a verified absent product installation.
 Ordinary unit tests import only the pure configuration validator and exercise
@@ -29,8 +34,9 @@ protection with `ScriptContainedMaliciousContent`. The local record is
 The new task uses a plain local `.ps1` through `-File`, validates its hash and
 session identity, and grants the temporary account only read/execute access to
 that fixture. No generated PowerShell source, execution-policy override or
-antivirus exception is used. This change does not claim positive execution of
-the privileged helper; that remains a CI acceptance requirement.
+antivirus exception is used. The privileged helper has not been rerun on the
+developer workstation; successful isolated CI execution does not establish
+approval by that workstation's endpoint protection.
 
 Hosted attempt `41001988763` passes the fixture controls and reaches the actual
 published MSI's `StartServices` action, then fails its 120-second installation
