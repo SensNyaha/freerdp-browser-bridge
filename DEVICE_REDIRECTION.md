@@ -171,7 +171,13 @@ passes four framed profiles; Linux passes eight framed/RWS1 profiles. These
 are unpublished development archives retaining the 0.6.0 manifest number,
 not a claim that the published 0.6.0 packages include inventory. No RDP or
 device-open operation is used. Source CLI staging also passes automatic runtime
-resolution; exact 0.7.0 portable and installed CLI acceptance remains separate.
+resolution. Subsequent exact 0.7.0 prepublication checks pass eight npm
+consumers, portable and installed CLI on Windows/Ubuntu, and actual installed
+0.6.0 upgrades with service-account inventory on Astra/RED OS. Actual RED OS /
+GCC 11.4.1 passes linked CTest 43/43 with all 450 source files verified; it reuses
+the GCC 8.3-built SDK and makes no dependency-rebuild, Node-addon or RDP claim.
+All owned remote test inputs are removed. Public delivery remains separate.
+[Exact versioned evidence](docs/RELEASE_0_7_0.md).
 
 The previously failing Windows binary-cache source-companion step now passes:
 the explicit build phase downloads the pinned public archive, checks its

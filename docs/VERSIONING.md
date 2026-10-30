@@ -15,18 +15,45 @@ Full Stage 7/V1, OS file clipboard and unaccepted resource/device gates remain o
 The accepted 0.6.0 standalone upgrade predecessor is exactly **v0.5.0**.
 Unknown future minor seeds remain refused.
 
-The next development capability, bridge-host device inventory on
-`feature/host-device-inventory`, targets **0.7.0** under the new-capability minor
-rule. This is a release plan, not an accepted or published version. Manifests,
-production locks and immutable public 0.6.0 artifacts remain unchanged while
-exact versioned standalone/npm acceptance is pending. Inventory source,
+The accepted bridge-host device-inventory feature is merged into private
+`master` at `8b2ef15` and public `main` at `188ca5a`. Separate `release/0.7.0`
+aligns the ten workspace manifests and CMake project at **0.7.0** under the
+new-capability minor rule. This version is not yet published. Both production
+locks now bind the ten exact 0.7.0 npm archives with the external dependency
+graph unchanged. Eight independent Windows/Linux adapter consumers pass twelve
+native inventory profiles and fifteen managed-file regression profiles
+(synthetic RDP state). Native CTest passes Windows 25/25 and 42/42, Linux 43/43.
+Full versioned `pnpm check` passes at `cc13ac9`: Windows 1353 passed / 84 skipped,
+Linux 1320 passed / 141 skipped, with zero failures or cancellations. Original
+failures from the not-yet-advanced locks, missing Linux container init/reaper
+and a Windows MSI download cleanup assertion remain retained. The unchanged
+download suite passes both separately and in the full repeat; no product,
+assertion or timeout was changed for those runner failures.
+The separate [0.7.0 installer acceptance prerelease](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/standalone-candidate-0.7.0-15af3cec1cc3)
+contains six exact core archives. Public `release/0.7.0` at `ff744d6` selects
+this candidate for hosted installer and 0.6.0 upgrade acceptance. A candidate
+pointer refuses stable publication while it remains present.
+Prepublication acceptance now passes all ten exact npm archives and seven
+standalone files, including actual 0.6.0-to-0.7.0 DEB/RPM upgrades on Astra 1.7.5
+and RED OS 7.3, service-account inventory, TLS, crash recovery and uninstall.
+Actual RED OS/GCC 11.4.1 also passes linked CTest 43/43 with all 450 source files
+verified, separately from the GCC 8.3 SDK and shipping runtime qualification.
+All created remote test contexts are removed. The acceptance-candidate pointer
+is removed before preparing stable publication; its immutable prerelease is
+retained. [Exact prepublication evidence and limits](RELEASE_0_7_0.md).
+Immutable public 0.6.0 artifacts remain unchanged. Public delivery is pending.
+Inventory source,
 backend/emulator, named Astra/RED OS metadata and installed npm-consumer checks
 are accepted for feature merge at private executable-source `613ecfa` / public
 `41cf7a90`, with subsequent documentation-only checkpoints.
 [Source acceptance and limits](../DEVICE_REDIRECTION.md#inventory-source-feature-acceptance).
-Physical printer/card/USB/port redirection remains separately gated. The future
-0.7.0 installer seed and exact 0.6.0 upgrade path must be implemented and tested
-before a release can be published; unknown seeds still refuse today.
+Physical printer/card/USB/port redirection remains separately gated.
+`release/0.7.0` explicitly selects immutable `v0.6.0` as the standalone upgrade
+predecessor. Seed and manifest controls require that exact predecessor on both
+platforms and reject missing, mixed, older or same-version evidence. The new
+controls fail before the implementation and pass after it; unknown 0.8.0 still
+refuses. Actual versioned 0.6.0-to-0.7.0 installer upgrades now pass all four
+named installer platforms; final public distribution acceptance remains required.
 
 ## Earlier release checkpoints
 

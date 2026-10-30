@@ -4,12 +4,14 @@
 Node.js для HTTP/WebSocket API. FreeRDP выполняется вне процесса Node.js.
 Можно встроить bridge в существующий backend или установить отдельную службу.
 
-Текущий публичный релиз — **0.6.0**. Все десять npm-пакетов и пять GitHub
-Releases опубликованы; чистые установки четырёх адаптеров проверены на Windows
-и Linux. Standalone MSI/DEB/RPM/ZIP/TGZ автоматически опубликованы по push в
-`main`; обновления проверены на Windows Server 2025, Ubuntu 24.04,
-Astra Linux 1.7.5 и RED OS 7.3.
-[Приёмка и границы поддержки](docs/RELEASE_0_6_0.md#public-delivery).
+Релизная линия **0.7.0** добавляет ограниченную инвентаризацию устройств хоста
+через Node SDK, четыре серверных адаптера и отдельную команду standalone.
+Десять точных npm-пакетов проверены в независимых проектах Windows/Linux;
+standalone MSI/DEB/RPM/ZIP/TGZ и обновления с 0.6.0 проверены на Windows
+Server 2025, Ubuntu 24.04, Astra Linux 1.7.5 и RED OS 7.3.
+[Статус публикации, приёмка и границы поддержки](docs/RELEASE_0_7_0.md).
+Обнаружение устройств не включает их перенаправление в RDP.
+[API инвентаризации](DEVICE_REDIRECTION.md), [команда оператора](docs/STANDALONE.md#operator-only-host-inventory).
 В 0.6.0 добавлены управляемое файловое хранилище с HTTP-передачей и
 перенаправляемые RDP-диски. [Настройка, примеры и ограничения](docs/FILES.md).
 Файловый Ctrl+C/Ctrl+V остаётся отдельной незавершённой возможностью.
@@ -20,7 +22,7 @@ Astra Linux 1.7.5 и RED OS 7.3.
 
 | Задача | С чего начать |
 | --- | --- |
-| Установить отдельный web-сервер с приватным Node.js | [Standalone: установка и эксплуатация](docs/STANDALONE.md), [скачать 0.6.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.6.0) |
+| Установить отдельный web-сервер с приватным Node.js | [Standalone: установка и эксплуатация](docs/STANDALONE.md), [скачать 0.7.0](https://github.com/SensNyaha/freerdp-browser-bridge/releases/tag/v0.7.0) |
 | Подключить к Fastify | [Реальный проект Fastify](docs/FASTIFY_USAGE.md) |
 | Подключить к NestJS | [Реальный проект NestJS](docs/NESTJS_USAGE.md) |
 | Подключить к Node HTTP/HTTPS | [Реальный проект node:http](docs/NODE_HTTP_USAGE.md) |

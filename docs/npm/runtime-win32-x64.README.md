@@ -68,7 +68,7 @@ arbitrary image formats remain separate. See the
 
 ## Managed files in 0.6.0
 
-Use this runtime with matching 0.6.0 JS packages for managed files and
+Use this runtime with matching JS product versions for managed files and
 selected sandbox drives. The trusted server must explicitly enable a file
 policy; compiled channels do not grant arbitrary host-file access. On the
 tested Windows profile, audio-off drive sessions use guarded zero-format
@@ -77,9 +77,9 @@ RDPSND without a host sound backend or audio publication.
 OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
 See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
-## Host-device inventory (planned 0.7.0)
+## Host-device inventory in 0.7.0
 
-The matching development SDK exposes `discoverHostDevices` for bounded
+The matching 0.7.0 SDK exposes `discoverHostDevices` for bounded
 bridge-host printer, PC/SC reader, port and USB metadata. Public 0.6.0 lacks
 this capability; upgrade the JS packages and runtime together. Use the SDK or
 framework adapter, not executable arguments or raw private IPC. Discovery

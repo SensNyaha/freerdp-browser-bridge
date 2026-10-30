@@ -23,3 +23,10 @@ remains deferred (`clipboardFiles: false`). See [FILES](../../docs/FILES.md)
 for deployment policy, routes, quotas, read-only shares and tested scope, and
 [STANDALONE](../../docs/STANDALONE.md) for service installation/operation.
 Full Stage 7 and arbitrary device/server support remain separate.
+
+Release preparation 0.7.0 adds an operator-only `--inventory` command using
+the distribution's private Node. It starts one disposable worker, prints a
+bounded bridge-host metadata report and exits without server configuration,
+HTTP, RDP or credentials. It does not redirect devices or inspect the browser's
+computer. Public 0.6.0 lacks this command; final 0.7.0 distribution checks are
+pending. See [syntax, permissions and statuses](../../docs/STANDALONE.md#operator-only-host-inventory).

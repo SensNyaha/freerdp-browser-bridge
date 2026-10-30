@@ -10,6 +10,7 @@ export function standaloneUpgradeSeed(version) {
   if (minor === 4 && patch === 0) return { version: '0.3.0', ref: 'v0.3.0' };
   if (minor === 5 && patch === 0) return { version: '0.4.0', ref: 'v0.4.0' };
   if (minor === 6 && patch === 0) return { version: '0.5.0', ref: 'v0.5.0' };
+  if (minor === 7 && patch === 0) return { version: '0.6.0', ref: 'v0.6.0' };
   if (patch === 0) throw new Error('STANDALONE_RELEASE_UPGRADE_SEED_REQUIRED');
   return {
     version: `0.${minor}.${patch - 1}`,

@@ -2588,7 +2588,8 @@ remain explicit under quota/disk-full and the final V1 qualification.
   selection and actual inventory RPCs. The bundled hosted workflow
   `41072347727` also passes all four installed consumers on Windows and Linux:
   four framed profiles on Windows and eight framed/RWS1 profiles on Linux.
-  Exact versioned distribution acceptance remains open.
+  Exact 0.7.0 prepublication distribution acceptance now passes Windows,
+  Ubuntu, Astra and RED OS; public delivery remains pending.
   Standalone now has an explicit operator-only `--inventory` CLI, without
   reading server configuration or starting HTTP/RDP. Pure/invalid-CLI controls
   and source CLI composition with the real SDK/native worker pass; runtime
@@ -2601,7 +2602,10 @@ remain explicit under quota/disk-full and the final V1 qualification.
   GCC 12, MSVC, sanitizers and both linked bundled profiles. The Windows
   timeout and unchanged successful repeat are retained, not suppressed.
   [Source acceptance and commit references](DEVICE_REDIRECTION.md#inventory-source-feature-acceptance)
-  permits merging the feature; exact 0.7.0 delivery remains a separate release gate.
+  permits merging the feature. Exact 0.7.0 npm consumers, portable/installed CLI,
+  four-platform 0.6.0 upgrades and actual RED OS/GCC 11 CTest 43/43 now pass.
+  Remote test inputs are removed; public delivery remains a separate gate.
+  [Versioned prepublication acceptance](docs/RELEASE_0_7_0.md).
   [Development contract](PROTOCOL.md#host-device-inventory-grammar-in-development).
 - [ ] Host printer allowlist and RDPDR printer mapping.
 - [ ] Virtual spool printer backend and download event/API.

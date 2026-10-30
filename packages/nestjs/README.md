@@ -105,16 +105,16 @@ browser/RDP acceptance limits.
 Enable trusted server-side `sessions.files` limits to expose authenticated
 streaming file routes and select session-sandbox drives in session JSON.
 `thinclientDrives` is an alias for those descriptors, including read-only
-shares. Use matching 0.6.0 JS/native packages; published 0.5.0 does not
+shares. Use matching JS/native product versions; published 0.5.0 does not
 provide these file APIs. Session input cannot select an arbitrary host path.
 
 OS file-manager Ctrl+C/Ctrl+V remains deferred (`clipboardFiles: false`).
 See the [file policy, routes, framework examples and tested scope](https://github.com/SensNyaha/freerdp-browser-bridge/blob/v0.6.0/docs/FILES.md).
 
-## Host-device inventory (planned 0.7.0)
+## Host-device inventory in 0.7.0
 
-This development API is absent from public 0.6.0. Use matching JS/native
-artifacts from the inventory release. It lists metadata on the application
+Version 0.7.0 adds this API; public 0.6.0 does not contain it. Keep JS/native
+versions matched. Until publication, use the complete verified local archives. It lists metadata on the application
 server; it does not list devices on the browser computer or redirect a device.
 
 ```js
